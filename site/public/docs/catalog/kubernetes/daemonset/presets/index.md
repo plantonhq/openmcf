@@ -8,14 +8,18 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-monitoring-agent"
+  - slug: "01-log-collector"
     rank: "01"
-    title: "Monitoring Agent DaemonSet"
-    excerpt: "This preset deploys a monitoring agent on every node in the cluster, including control-plane nodes. Suitable for node-level metrics collection, log forwarding, or security agents that need to run on..."
-  - slug: "02-log-collector"
+    title: "Log Collector"
+    excerpt: "This preset deploys a log-shipping agent (the Fluent Bit / Vector / Filebeat shape) on every node in the cluster: it reads node and pod logs from HostPath mounts, buffers in a size-limited EmptyDir,..."
+  - slug: "02-node-monitor"
     rank: "02"
-    title: "Log Collector DaemonSet"
-    excerpt: "This preset deploys a log collector on every node with host path mounts for `/var/log` and container log directories. Designed for log forwarders like Fluent Bit, Fluentd, or Filebeat that need to..."
+    title: "Node Monitor"
+    excerpt: "This preset deploys a node-metrics agent (the node-exporter shape) that observes the node itself: it joins the node's network and PID namespaces, reads `/proc` and `/sys` through read-only HostPath..."
+  - slug: "03-hardened-agent"
+    rank: "03"
+    title: "Hardened Agent"
+    excerpt: "This preset deploys a per-node agent that passes the Kubernetes restricted Pod Security Standard: non-root with a pinned UID, read-only root filesystem (with a writable EmptyDir for /tmp), all Linux..."
 ---
 
 # DaemonSet Presets

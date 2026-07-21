@@ -2,10 +2,10 @@ package module
 
 const (
 	OpNamespace          = "namespace"
-	OpHeadlessService    = "headless_service"
+	OpStatefulSetName    = "stateful_set_name"
 	OpService            = "service"
+	OpSelectorLabels     = "selector_labels"
 	OpPortForwardCommand = "port_forward_command"
 	OpKubeEndpoint       = "kube_endpoint"
-	OpExternalHostname   = "external_hostname"
-	OpInternalHostname   = "internal_hostname"
+	OpPodDnsTemplate     = "pod_dns_template"
 )

@@ -6,19 +6,21 @@ spec:
   namespace:
     value: e2e-job-minimal-ns
   create_namespace: true
-  image:
-    repo: busybox
-    tag: "1.36"
-  resources:
-    requests:
-      cpu: "10m"
-      memory: "32Mi"
-    limits:
-      cpu: "50m"
-      memory: "64Mi"
-  backoff_limit: 3
+  container:
+    app:
+      image:
+        repo: busybox
+        tag: "1.36"
+      command:
+        - /bin/sh
+        - -c
+        - echo "e2e-job-test"
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "32Mi"
+        limits:
+          cpu: "50m"
+          memory: "64Mi"
   restart_policy: Never
-  command:
-    - /bin/sh
-    - -c
-    - echo "e2e-job-test"
+  backoff_limit: 3

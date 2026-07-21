@@ -1,5 +1,7 @@
 package module
 
 const (
-	OpNamespace = "namespace"
+	OpNamespace   = "namespace"
+	OpCronJobName = "cron_job_name"
+	OpSchedule    = "schedule"
 )

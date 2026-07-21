@@ -1,0 +1,68 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesDeployment
+metadata:
+  name: my-hardened-service
+spec:
+  namespace:
+    value: "<your-namespace>"
+  createNamespace: false
+  container:
+    app:
+      image:
+        repo: "<your-container-registry>/<your-image>"
+        tag: "<your-image-tag>"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+      ports:
+        - name: http
+          containerPort: 8080
+          servicePort: 80
+          appProtocol: http
+      readinessProbe:
+        httpGet:
+          path: /healthz
+          portNumber: 8080
+        periodSeconds: 5
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+          emptyDir:
+            sizeLimit: 128Mi
+      securityContext:
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+  pod:
+    serviceAccount:
+      valueFrom:
+        kind: KubernetesServiceAccount
+        name: "<your-service-account-resource>"
+        fieldPath: "status.outputs.service_account_name"
+    automountServiceAccountToken: false
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10001
+      runAsGroup: 10001
+      fsGroup: 10001
+      seccompProfile:
+        type: RuntimeDefault
+    scheduling:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+  availability:
+    replicas: 3
+    strategy:
+      type: RollingUpdate
+      maxUnavailable: "0"
+      maxSurge: "1"
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: "2"

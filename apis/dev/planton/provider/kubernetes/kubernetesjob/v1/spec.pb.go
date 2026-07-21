@@ -26,111 +26,114 @@ const (
 )
 
 // *
-// KubernetesJobSpec defines the configuration for deploying a one-shot Job on a Kubernetes cluster.
-// Unlike CronJob which runs on a schedule, a Job executes immediately when created and runs pods
-// to completion. Jobs are ideal for batch processing, data migrations, one-time tasks, and
-// workflows that need to run to completion before the process exits.
+// **KubernetesJobSpec** runs work to completion on a Kubernetes cluster as a
+// batch/v1 Job: pods are created, execute until they succeed (or exhaust their
+// retry budget), and are never restarted once the Job finishes. This is the kind
+// for one-shot work — data migrations, backfills, report generation, parallel
+// batch processing. For work that runs on a schedule use KubernetesCronJob; for
+// always-on services use KubernetesDeployment.
+//
+// The batch controls sit flat at the spec level, mirroring the upstream JobSpec
+// one-to-one: parallelism/completions shape how many pods run, backoff_limit and
+// pod_failure_policy shape how failures are handled, and completion_mode selects
+// between interchangeable pods (NonIndexed) and numbered partitions (Indexed).
 type KubernetesJobSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
 	// *
-	// The container image to be used for the job.
-	// The pull_secret_name is determined by looking up the
-	// container_image_artifact_store_id from the environment where the job is deployed.
-	Image *kubernetes.ContainerImage `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
+	// The namespace to run the Job in. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource, so an infra chart creates the
+	// namespace and the Job in one run.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// *
-	// The CPU and memory resources allocated to the job container.
-	// If not specified, default container resources (limits.cpu=1000m, limits.memory=1Gi,
-	// requests.cpu=50m, requests.memory=100Mi) are applied.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,5,opt,name=resources,proto3" json:"resources,omitempty"`
+	// When true, the module creates the namespace if it does not exist. Leave false
+	// when the namespace is owned by a KubernetesNamespace resource or pre-exists.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
 	// *
-	// Environment variables and secrets for the job container.
-	Env *kubernetes.ContainerEnv `protobuf:"bytes,6,opt,name=env,proto3" json:"env,omitempty"`
+	// The containers of every Job pod: one main application container that performs
+	// the work and any sidecars. All containers share the pod's network namespace
+	// and volumes.
+	Container *KubernetesJobContainer `protobuf:"bytes,3,opt,name=container,proto3" json:"container,omitempty"`
 	// *
-	// Number of parallel pods to run for the job.
-	// Default is 1 (sequential execution).
-	// Set higher for parallel batch processing.
-	Parallelism *uint32 `protobuf:"varint,7,opt,name=parallelism,proto3,oneof" json:"parallelism,omitempty"`
+	// Pod-level configuration shared by every Job pod: identity (ServiceAccount
+	// reference), init containers, scheduling, security hardening, DNS, and
+	// termination behavior.
+	Pod *kubernetes.WorkloadPod `protobuf:"bytes,4,opt,name=pod,proto3" json:"pod,omitempty"`
 	// *
-	// Number of successful completions required before the job is considered complete.
-	// Default is 1.
-	// For parallel jobs, this specifies the total number of successful pods needed.
-	// For indexed jobs, this equals the number of indexes (0 to completions-1).
-	Completions *uint32 `protobuf:"varint,8,opt,name=completions,proto3,oneof" json:"completions,omitempty"`
+	// Maximum number of pods running at any one time. The controller runs fewer
+	// when the remaining work is smaller (completions minus successes). Defaults
+	// to 1 — sequential execution; raise it to fan out parallel batch work.
+	Parallelism *int32 `protobuf:"varint,5,opt,name=parallelism,proto3,oneof" json:"parallelism,omitempty"`
 	// *
-	// Number of retries before marking this job as failed.
-	// Default is 6.
-	BackoffLimit *uint32 `protobuf:"varint,9,opt,name=backoff_limit,json=backoffLimit,proto3,oneof" json:"backoff_limit,omitempty"`
+	// Number of successful pod completions required for the Job to succeed.
+	// Defaults to 1. In Indexed mode this is also the number of indexes — each
+	// pod is assigned an index from 0 to completions-1 and the Job completes when
+	// every index has one successful pod.
+	Completions *int32 `protobuf:"varint,6,opt,name=completions,proto3,oneof" json:"completions,omitempty"`
 	// *
-	// Maximum duration in seconds for the job to run.
-	// If the job runs longer than this, it will be terminated.
-	// Set to 0 for no deadline (default).
-	// Useful for preventing runaway jobs.
-	ActiveDeadlineSeconds *uint64 `protobuf:"varint,10,opt,name=active_deadline_seconds,json=activeDeadlineSeconds,proto3,oneof" json:"active_deadline_seconds,omitempty"`
+	// How pod completions are tracked. "NonIndexed" (default): pods are
+	// interchangeable and the Job completes after `completions` successes.
+	// "Indexed": each pod receives a completion index (0 to completions-1, exposed
+	// via the batch.kubernetes.io/job-completion-index annotation and the pod
+	// hostname), so each pod can claim its own partition of the work — the mode
+	// for parallel processing of partitioned data.
+	CompletionMode *string `protobuf:"bytes,7,opt,name=completion_mode,json=completionMode,proto3,oneof" json:"completion_mode,omitempty"`
 	// *
-	// Time in seconds to retain the job after completion (either success or failure).
-	// After this duration, the job and its pods will be automatically deleted.
-	// Useful for cleanup of completed jobs.
-	// Default is 0 (no automatic cleanup).
-	TtlSecondsAfterFinished *uint32 `protobuf:"varint,11,opt,name=ttl_seconds_after_finished,json=ttlSecondsAfterFinished,proto3,oneof" json:"ttl_seconds_after_finished,omitempty"`
+	// Number of pod-failure retries before the whole Job is marked failed.
+	// Kubernetes defaults to 6, with exponential back-off between retries. Note:
+	// when backoff_limit_per_index is set, upstream stops counting failures
+	// globally and this limit is effectively unlimited unless set explicitly.
+	BackoffLimit *int32 `protobuf:"varint,8,opt,name=backoff_limit,json=backoffLimit,proto3,oneof" json:"backoff_limit,omitempty"`
 	// *
-	// Completion mode for the job.
-	// "NonIndexed" (default): All pods are equivalent, job completes when 'completions' pods succeed.
-	// "Indexed": Each pod gets an index (0 to completions-1), job completes when each index has one successful pod.
-	// Indexed mode is useful for parallel processing of partitioned data.
-	CompletionMode *string `protobuf:"bytes,12,opt,name=completion_mode,json=completionMode,proto3,oneof" json:"completion_mode,omitempty"`
+	// Retry budget per completion index instead of per Job — one flaky partition
+	// exhausts only its own retries rather than the whole Job's. Indexed mode
+	// only, and requires restart_policy "Never". Unset keeps the global
+	// backoff_limit behavior.
+	BackoffLimitPerIndex *uint32 `protobuf:"varint,9,opt,name=backoff_limit_per_index,json=backoffLimitPerIndex,proto3,oneof" json:"backoff_limit_per_index,omitempty"`
 	// *
-	// Pod restart policy.
-	// Allowed values: "OnFailure", "Never".
-	// Default is "Never".
-	// Note: "Always" is not allowed for Jobs.
-	RestartPolicy *string `protobuf:"bytes,13,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
+	// Maximum number of indexes that may fail (exhaust their per-index retries)
+	// before the entire Job is marked failed and terminated. Requires
+	// backoff_limit_per_index. Unset lets every index run to its own outcome and
+	// the Job completes with whatever mix of succeeded and failed indexes results.
+	MaxFailedIndexes *uint32 `protobuf:"varint,10,opt,name=max_failed_indexes,json=maxFailedIndexes,proto3,oneof" json:"max_failed_indexes,omitempty"`
 	// *
-	// An optional list of commands (equivalent to an ENTRYPOINT override) for the job container.
-	// If omitted, the default ENTRYPOINT in the image will be used.
-	// Example: ["sh", "-c", "python process_data.py"]
-	Command []string `protobuf:"bytes,14,rep,name=command,proto3" json:"command,omitempty"`
+	// Hard wall-clock limit in seconds for the whole Job, counted from its start
+	// time. When exceeded, all running pods are killed and the Job is marked
+	// failed — regardless of remaining retries. Unset means no deadline. The
+	// standard guard against runaway batch work; note that suspending the Job
+	// resets this timer.
+	ActiveDeadlineSeconds *int64 `protobuf:"varint,11,opt,name=active_deadline_seconds,json=activeDeadlineSeconds,proto3,oneof" json:"active_deadline_seconds,omitempty"`
 	// *
-	// An optional list of arguments passed to the container command or the image's default ENTRYPOINT.
-	// If omitted, the default CMD in the image will be used.
-	// Example: ["--input", "/data/input.csv", "--output", "/data/output.csv"]
-	Args []string `protobuf:"bytes,15,rep,name=args,proto3" json:"args,omitempty"`
+	// Seconds after the Job finishes (success or failure) before the Job and its
+	// pods are automatically deleted. 0 deletes immediately on finish; unset means
+	// the Job persists until deleted manually — keep some retention if you rely on
+	// `kubectl logs` for post-mortems.
+	TtlSecondsAfterFinished *int32 `protobuf:"varint,12,opt,name=ttl_seconds_after_finished,json=ttlSecondsAfterFinished,proto3,oneof" json:"ttl_seconds_after_finished,omitempty"`
 	// *
-	// ConfigMaps to create alongside the Job.
-	// Key is the ConfigMap name, value is the content.
-	// These ConfigMaps can be referenced in volume mounts.
-	//
-	// Example:
-	//
-	//	config_maps:
-	//	  processing-script: |
-	//	    #!/bin/bash
-	//	    echo "Processing data..."
-	//	    python /scripts/process.py
-	ConfigMaps map[string]string `protobuf:"bytes,16,rep,name=config_maps,json=configMaps,proto3" json:"config_maps,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// When true, the controller creates no pods for this Job. Suspending a running
+	// Job deletes its active pods (design the workload to tolerate that) and
+	// resets the start time — and with it the active_deadline_seconds timer.
+	Suspend bool `protobuf:"varint,13,opt,name=suspend,proto3" json:"suspend,omitempty"`
 	// *
-	// Volume mounts for the Job container.
-	// Supports mounting ConfigMaps, Secrets, HostPaths, EmptyDirs, and PVCs.
-	// ConfigMaps defined in spec.config_maps can be referenced here.
-	//
-	// Example:
-	//
-	//	volume_mounts:
-	//	  - name: processing-script
-	//	    mountPath: /scripts/process.sh
-	//	    configMap:
-	//	      name: processing-script
-	//	      key: processing-script
-	//	      path: process.sh
-	VolumeMounts []*kubernetes.VolumeMount `protobuf:"bytes,17,rep,name=volume_mounts,json=volumeMounts,proto3" json:"volume_mounts,omitempty"`
+	// What the kubelet does when a container in a Job pod exits non-zero: "Never"
+	// (default) leaves the pod failed and lets the Job controller create a
+	// replacement pod, keeping one pod per attempt for debugging; "OnFailure"
+	// restarts the container in place, reusing the pod. "Always" is invalid for
+	// Jobs — it would restart even successfully completed containers, so the Job
+	// could never finish.
+	RestartPolicy *string `protobuf:"bytes,14,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
 	// *
-	// If true, no pods are created for this job.
-	// Existing pods are not affected.
-	// Default is false.
-	Suspend       *bool `protobuf:"varint,18,opt,name=suspend,proto3,oneof" json:"suspend,omitempty"`
+	// Fine-grained handling of pod failures based on container exit codes or pod
+	// conditions — e.g. fail the whole Job immediately on a "misconfiguration"
+	// exit code, or ignore failures caused by node disruption so they don't burn
+	// the retry budget. Omit for the default behavior (every failure counts
+	// toward backoff_limit).
+	PodFailurePolicy *KubernetesJobPodFailurePolicy `protobuf:"bytes,15,opt,name=pod_failure_policy,json=podFailurePolicy,proto3" json:"pod_failure_policy,omitempty"`
+	// *
+	// Early-success criteria for Indexed Jobs — declare the Job succeeded once
+	// the leading indexes (or enough indexes) finish, without waiting for every
+	// index. Omit for the default behavior (success requires `completions`
+	// successful pods).
+	SuccessPolicy *KubernetesJobSuccessPolicy `protobuf:"bytes,16,opt,name=success_policy,json=successPolicy,proto3" json:"success_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -179,58 +182,30 @@ func (x *KubernetesJobSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesJobSpec) GetImage() *kubernetes.ContainerImage {
+func (x *KubernetesJobSpec) GetContainer() *KubernetesJobContainer {
 	if x != nil {
-		return x.Image
+		return x.Container
 	}
 	return nil
 }
 
-func (x *KubernetesJobSpec) GetResources() *kubernetes.ContainerResources {
+func (x *KubernetesJobSpec) GetPod() *kubernetes.WorkloadPod {
 	if x != nil {
-		return x.Resources
+		return x.Pod
 	}
 	return nil
 }
 
-func (x *KubernetesJobSpec) GetEnv() *kubernetes.ContainerEnv {
-	if x != nil {
-		return x.Env
-	}
-	return nil
-}
-
-func (x *KubernetesJobSpec) GetParallelism() uint32 {
+func (x *KubernetesJobSpec) GetParallelism() int32 {
 	if x != nil && x.Parallelism != nil {
 		return *x.Parallelism
 	}
 	return 0
 }
 
-func (x *KubernetesJobSpec) GetCompletions() uint32 {
+func (x *KubernetesJobSpec) GetCompletions() int32 {
 	if x != nil && x.Completions != nil {
 		return *x.Completions
-	}
-	return 0
-}
-
-func (x *KubernetesJobSpec) GetBackoffLimit() uint32 {
-	if x != nil && x.BackoffLimit != nil {
-		return *x.BackoffLimit
-	}
-	return 0
-}
-
-func (x *KubernetesJobSpec) GetActiveDeadlineSeconds() uint64 {
-	if x != nil && x.ActiveDeadlineSeconds != nil {
-		return *x.ActiveDeadlineSeconds
-	}
-	return 0
-}
-
-func (x *KubernetesJobSpec) GetTtlSecondsAfterFinished() uint32 {
-	if x != nil && x.TtlSecondsAfterFinished != nil {
-		return *x.TtlSecondsAfterFinished
 	}
 	return 0
 }
@@ -242,6 +217,48 @@ func (x *KubernetesJobSpec) GetCompletionMode() string {
 	return ""
 }
 
+func (x *KubernetesJobSpec) GetBackoffLimit() int32 {
+	if x != nil && x.BackoffLimit != nil {
+		return *x.BackoffLimit
+	}
+	return 0
+}
+
+func (x *KubernetesJobSpec) GetBackoffLimitPerIndex() uint32 {
+	if x != nil && x.BackoffLimitPerIndex != nil {
+		return *x.BackoffLimitPerIndex
+	}
+	return 0
+}
+
+func (x *KubernetesJobSpec) GetMaxFailedIndexes() uint32 {
+	if x != nil && x.MaxFailedIndexes != nil {
+		return *x.MaxFailedIndexes
+	}
+	return 0
+}
+
+func (x *KubernetesJobSpec) GetActiveDeadlineSeconds() int64 {
+	if x != nil && x.ActiveDeadlineSeconds != nil {
+		return *x.ActiveDeadlineSeconds
+	}
+	return 0
+}
+
+func (x *KubernetesJobSpec) GetTtlSecondsAfterFinished() int32 {
+	if x != nil && x.TtlSecondsAfterFinished != nil {
+		return *x.TtlSecondsAfterFinished
+	}
+	return 0
+}
+
+func (x *KubernetesJobSpec) GetSuspend() bool {
+	if x != nil {
+		return x.Suspend
+	}
+	return false
+}
+
 func (x *KubernetesJobSpec) GetRestartPolicy() string {
 	if x != nil && x.RestartPolicy != nil {
 		return *x.RestartPolicy
@@ -249,84 +266,530 @@ func (x *KubernetesJobSpec) GetRestartPolicy() string {
 	return ""
 }
 
-func (x *KubernetesJobSpec) GetCommand() []string {
+func (x *KubernetesJobSpec) GetPodFailurePolicy() *KubernetesJobPodFailurePolicy {
 	if x != nil {
-		return x.Command
+		return x.PodFailurePolicy
 	}
 	return nil
 }
 
-func (x *KubernetesJobSpec) GetArgs() []string {
+func (x *KubernetesJobSpec) GetSuccessPolicy() *KubernetesJobSuccessPolicy {
 	if x != nil {
-		return x.Args
+		return x.SuccessPolicy
 	}
 	return nil
 }
 
-func (x *KubernetesJobSpec) GetConfigMaps() map[string]string {
+// *
+// **KubernetesJobContainer** groups the main application container and its
+// sidecars for the Job's pods.
+type KubernetesJobContainer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// The main application container — the process that performs the batch work
+	// and whose exit code decides the pod's success or failure.
+	App *kubernetes.WorkloadContainer `protobuf:"bytes,1,opt,name=app,proto3" json:"app,omitempty"`
+	// *
+	// Sidecar containers running alongside the app in every Job pod — log
+	// shippers, proxies. Sidecars are full containers: probes, mounts, security
+	// context, and lifecycle hooks all apply. Each sidecar must be named.
+	// WARNING: a Job pod only completes when ALL its containers exit — a sidecar
+	// that never exits keeps the Job running forever. Use termination-aware
+	// sidecars, or have the app signal them to shut down when its work is done.
+	Sidecars      []*kubernetes.WorkloadContainer `protobuf:"bytes,2,rep,name=sidecars,proto3" json:"sidecars,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesJobContainer) Reset() {
+	*x = KubernetesJobContainer{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesJobContainer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesJobContainer) ProtoMessage() {}
+
+func (x *KubernetesJobContainer) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[1]
 	if x != nil {
-		return x.ConfigMaps
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesJobContainer.ProtoReflect.Descriptor instead.
+func (*KubernetesJobContainer) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesJobContainer) GetApp() *kubernetes.WorkloadContainer {
+	if x != nil {
+		return x.App
 	}
 	return nil
 }
 
-func (x *KubernetesJobSpec) GetVolumeMounts() []*kubernetes.VolumeMount {
+func (x *KubernetesJobContainer) GetSidecars() []*kubernetes.WorkloadContainer {
 	if x != nil {
-		return x.VolumeMounts
+		return x.Sidecars
 	}
 	return nil
 }
 
-func (x *KubernetesJobSpec) GetSuspend() bool {
-	if x != nil && x.Suspend != nil {
-		return *x.Suspend
+// *
+// **KubernetesJobPodFailurePolicy** decides, per pod failure, whether the
+// failure counts against the retry budget, is ignored, or terminates the Job
+// (or index) outright. Rules are evaluated in order and the first matching rule
+// wins; failures matching no rule get the default Count handling. Requires
+// restart_policy "Never" — it cannot be combined with "OnFailure", because
+// in-place container restarts never surface as pod failures for the rules to
+// match.
+type KubernetesJobPodFailurePolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Ordered rules; the first rule matching a pod failure decides its handling.
+	Rules         []*KubernetesJobPodFailurePolicyRule `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesJobPodFailurePolicy) Reset() {
+	*x = KubernetesJobPodFailurePolicy{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesJobPodFailurePolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesJobPodFailurePolicy) ProtoMessage() {}
+
+func (x *KubernetesJobPodFailurePolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
 	}
-	return false
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesJobPodFailurePolicy.ProtoReflect.Descriptor instead.
+func (*KubernetesJobPodFailurePolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesJobPodFailurePolicy) GetRules() []*KubernetesJobPodFailurePolicyRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+// *
+// **KubernetesJobPodFailurePolicyRule** pairs one action with one trigger:
+// either a container exit-code check or a pod-condition check, never both.
+type KubernetesJobPodFailurePolicyRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// What happens when the rule matches. "FailJob": the whole Job is marked
+	// failed immediately and all running pods are terminated, ignoring
+	// backoff_limit — for unrecoverable errors like misconfiguration. "Ignore":
+	// the failure does not count toward backoff_limit and a replacement pod is
+	// created — for infrastructure-caused failures like node disruption.
+	// "Count": the default handling, the failure counts toward backoff_limit.
+	// "FailIndex": only the pod's completion index is marked failed and not
+	// retried — Indexed mode only, and requires backoff_limit_per_index.
+	Action string `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
+	// *
+	// Trigger on container exit codes — e.g. exit code 42 meaning "bad input,
+	// do not retry".
+	OnExitCodes *KubernetesJobPodFailurePolicyOnExitCodes `protobuf:"bytes,2,opt,name=on_exit_codes,json=onExitCodes,proto3" json:"on_exit_codes,omitempty"`
+	// *
+	// Trigger on pod conditions — e.g. type "DisruptionTarget" to recognize
+	// pods killed by node drains or preemption. The rule matches when at least
+	// one pattern matches an actual pod condition.
+	OnPodConditions []*KubernetesJobPodFailurePolicyOnPodCondition `protobuf:"bytes,3,rep,name=on_pod_conditions,json=onPodConditions,proto3" json:"on_pod_conditions,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesJobPodFailurePolicyRule) Reset() {
+	*x = KubernetesJobPodFailurePolicyRule{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesJobPodFailurePolicyRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesJobPodFailurePolicyRule) ProtoMessage() {}
+
+func (x *KubernetesJobPodFailurePolicyRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesJobPodFailurePolicyRule.ProtoReflect.Descriptor instead.
+func (*KubernetesJobPodFailurePolicyRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesJobPodFailurePolicyRule) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *KubernetesJobPodFailurePolicyRule) GetOnExitCodes() *KubernetesJobPodFailurePolicyOnExitCodes {
+	if x != nil {
+		return x.OnExitCodes
+	}
+	return nil
+}
+
+func (x *KubernetesJobPodFailurePolicyRule) GetOnPodConditions() []*KubernetesJobPodFailurePolicyOnPodCondition {
+	if x != nil {
+		return x.OnPodConditions
+	}
+	return nil
+}
+
+// *
+// **KubernetesJobPodFailurePolicyOnExitCodes** matches a pod failure by the
+// exit codes of its failed containers. Containers that exited 0 (success) are
+// never considered.
+type KubernetesJobPodFailurePolicyOnExitCodes struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Restricts the exit-code check to the named container (app, sidecar, or
+	// init container). Empty matches any container in the pod.
+	ContainerName string `protobuf:"bytes,1,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
+	// *
+	// How exit codes relate to `values`: "In" matches when a failed container's
+	// exit code is in the set; "NotIn" matches when it is not.
+	Operator string `protobuf:"bytes,2,opt,name=operator,proto3" json:"operator,omitempty"`
+	// *
+	// The exit codes checked against the operator. Must not contain duplicates,
+	// and cannot contain 0 for the "In" operator — exit code 0 is success and is
+	// excluded from the check.
+	Values        []int32 `protobuf:"varint,3,rep,packed,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesJobPodFailurePolicyOnExitCodes) Reset() {
+	*x = KubernetesJobPodFailurePolicyOnExitCodes{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesJobPodFailurePolicyOnExitCodes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesJobPodFailurePolicyOnExitCodes) ProtoMessage() {}
+
+func (x *KubernetesJobPodFailurePolicyOnExitCodes) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesJobPodFailurePolicyOnExitCodes.ProtoReflect.Descriptor instead.
+func (*KubernetesJobPodFailurePolicyOnExitCodes) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesJobPodFailurePolicyOnExitCodes) GetContainerName() string {
+	if x != nil {
+		return x.ContainerName
+	}
+	return ""
+}
+
+func (x *KubernetesJobPodFailurePolicyOnExitCodes) GetOperator() string {
+	if x != nil {
+		return x.Operator
+	}
+	return ""
+}
+
+func (x *KubernetesJobPodFailurePolicyOnExitCodes) GetValues() []int32 {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+// *
+// **KubernetesJobPodFailurePolicyOnPodCondition** matches a pod failure by an
+// actual pod condition — the lever for treating infrastructure-caused failures
+// differently from application failures.
+type KubernetesJobPodFailurePolicyOnPodCondition struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// The pod condition type to match, e.g. "DisruptionTarget" (pod terminated
+	// by node drain, preemption, or taint eviction).
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// *
+	// The condition status that must be present for the match. Defaults to
+	// "True" — the overwhelmingly common intent.
+	Status        *string `protobuf:"bytes,2,opt,name=status,proto3,oneof" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesJobPodFailurePolicyOnPodCondition) Reset() {
+	*x = KubernetesJobPodFailurePolicyOnPodCondition{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesJobPodFailurePolicyOnPodCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesJobPodFailurePolicyOnPodCondition) ProtoMessage() {}
+
+func (x *KubernetesJobPodFailurePolicyOnPodCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesJobPodFailurePolicyOnPodCondition.ProtoReflect.Descriptor instead.
+func (*KubernetesJobPodFailurePolicyOnPodCondition) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesJobPodFailurePolicyOnPodCondition) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *KubernetesJobPodFailurePolicyOnPodCondition) GetStatus() string {
+	if x != nil && x.Status != nil {
+		return *x.Status
+	}
+	return ""
+}
+
+// *
+// **KubernetesJobSuccessPolicy** declares the Job succeeded before every
+// completion finishes — Indexed mode only. The Job succeeds as soon as ANY rule
+// is satisfied; lingering pods are then terminated. The pattern for
+// leader/worker batch topologies where only the leader index's success matters.
+type KubernetesJobSuccessPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Alternative success rules; the Job succeeds when any one of them is met.
+	Rules         []*KubernetesJobSuccessPolicyRule `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesJobSuccessPolicy) Reset() {
+	*x = KubernetesJobSuccessPolicy{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesJobSuccessPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesJobSuccessPolicy) ProtoMessage() {}
+
+func (x *KubernetesJobSuccessPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesJobSuccessPolicy.ProtoReflect.Descriptor instead.
+func (*KubernetesJobSuccessPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesJobSuccessPolicy) GetRules() []*KubernetesJobSuccessPolicyRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+// *
+// **KubernetesJobSuccessPolicyRule** is one way the Job may be declared
+// succeeded. Set at least one of the two criteria; when both are set, the count
+// is checked only within the listed indexes.
+type KubernetesJobSuccessPolicyRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Indexes that must succeed, as comma-separated integers or ranges within
+	// 0 to completions-1 — e.g. "0" (leader only) or "0-2,4".
+	SucceededIndexes string `protobuf:"bytes,1,opt,name=succeeded_indexes,json=succeededIndexes,proto3" json:"succeeded_indexes,omitempty"`
+	// *
+	// Minimum number of succeeded indexes. When combined with succeeded_indexes,
+	// only successes within that set are counted.
+	SucceededCount *int32 `protobuf:"varint,2,opt,name=succeeded_count,json=succeededCount,proto3,oneof" json:"succeeded_count,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *KubernetesJobSuccessPolicyRule) Reset() {
+	*x = KubernetesJobSuccessPolicyRule{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesJobSuccessPolicyRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesJobSuccessPolicyRule) ProtoMessage() {}
+
+func (x *KubernetesJobSuccessPolicyRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesJobSuccessPolicyRule.ProtoReflect.Descriptor instead.
+func (*KubernetesJobSuccessPolicyRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesJobSuccessPolicyRule) GetSucceededIndexes() string {
+	if x != nil {
+		return x.SucceededIndexes
+	}
+	return ""
+}
+
+func (x *KubernetesJobSuccessPolicyRule) GetSucceededCount() int32 {
+	if x != nil && x.SucceededCount != nil {
+		return *x.SucceededCount
+	}
+	return 0
 }
 
 var File_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	";dev/planton/provider/kubernetes/kubernetesjob/v1/spec.proto\x120dev.planton.provider.kubernetes.kubernetesjob.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe8\n" +
-	"\n" +
+	";dev/planton/provider/kubernetes/kubernetesjob/v1/spec.proto\x120dev.planton.provider.kubernetes.kubernetesjob.v1\x1a\x1bbuf/validate/validate.proto\x1a8dev/planton/provider/kubernetes/workload_container.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa4\r\n" +
 	"\x11KubernetesJobSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12E\n" +
-	"\x05image\x18\x04 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12t\n" +
-	"\tresources\x18\x05 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100MiR\tresources\x12?\n" +
-	"\x03env\x18\x06 \x01(\v2-.dev.planton.provider.kubernetes.ContainerEnvR\x03env\x12,\n" +
-	"\vparallelism\x18\a \x01(\rB\x05\x8a\xa6\x1d\x011H\x00R\vparallelism\x88\x01\x01\x12,\n" +
-	"\vcompletions\x18\b \x01(\rB\x05\x8a\xa6\x1d\x011H\x01R\vcompletions\x88\x01\x01\x12/\n" +
-	"\rbackoff_limit\x18\t \x01(\rB\x05\x8a\xa6\x1d\x016H\x02R\fbackoffLimit\x88\x01\x01\x12B\n" +
-	"\x17active_deadline_seconds\x18\n" +
-	" \x01(\x04B\x05\x8a\xa6\x1d\x010H\x03R\x15activeDeadlineSeconds\x88\x01\x01\x12G\n" +
-	"\x1attl_seconds_after_finished\x18\v \x01(\rB\x05\x8a\xa6\x1d\x010H\x04R\x17ttlSecondsAfterFinished\x88\x01\x01\x12V\n" +
-	"\x0fcompletion_mode\x18\f \x01(\tB(\xbaH\x17r\x15R\n" +
-	"NonIndexedR\aIndexed\x8a\xa6\x1d\n" +
-	"NonIndexedH\x05R\x0ecompletionMode\x88\x01\x01\x12L\n" +
-	"\x0erestart_policy\x18\r \x01(\tB \xbaH\x14r\x12R\tOnFailureR\x05Never\x8a\xa6\x1d\x05NeverH\x06R\rrestartPolicy\x88\x01\x01\x12\x18\n" +
-	"\acommand\x18\x0e \x03(\tR\acommand\x12\x12\n" +
-	"\x04args\x18\x0f \x03(\tR\x04args\x12t\n" +
-	"\vconfig_maps\x18\x10 \x03(\v2S.dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.ConfigMapsEntryR\n" +
-	"configMaps\x12Q\n" +
-	"\rvolume_mounts\x18\x11 \x03(\v2,.dev.planton.provider.kubernetes.VolumeMountR\fvolumeMounts\x12(\n" +
-	"\asuspend\x18\x12 \x01(\bB\t\x8a\xa6\x1d\x05falseH\aR\asuspend\x88\x01\x01\x1a=\n" +
-	"\x0fConfigMapsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0e\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12n\n" +
+	"\tcontainer\x18\x03 \x01(\v2H.dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12>\n" +
+	"\x03pod\x18\x04 \x01(\v2,.dev.planton.provider.kubernetes.WorkloadPodR\x03pod\x123\n" +
+	"\vparallelism\x18\x05 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x011H\x00R\vparallelism\x88\x01\x01\x123\n" +
+	"\vcompletions\x18\x06 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x011H\x01R\vcompletions\x88\x01\x01\x12\xc6\x01\n" +
+	"\x0fcompletion_mode\x18\a \x01(\tB\x97\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
+	"\x14spec.completion_mode\x128Completion mode must be either \"NonIndexed\" or \"Indexed\"\x1a/this == '' || this in ['NonIndexed', 'Indexed']\x8a\xa6\x1d\n" +
+	"NonIndexedH\x02R\x0ecompletionMode\x88\x01\x01\x126\n" +
+	"\rbackoff_limit\x18\b \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x016H\x03R\fbackoffLimit\x88\x01\x01\x12:\n" +
+	"\x17backoff_limit_per_index\x18\t \x01(\rH\x04R\x14backoffLimitPerIndex\x88\x01\x01\x121\n" +
+	"\x12max_failed_indexes\x18\n" +
+	" \x01(\rH\x05R\x10maxFailedIndexes\x88\x01\x01\x12D\n" +
+	"\x17active_deadline_seconds\x18\v \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x06R\x15activeDeadlineSeconds\x88\x01\x01\x12I\n" +
+	"\x1attl_seconds_after_finished\x18\f \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\aR\x17ttlSecondsAfterFinished\x88\x01\x01\x12\x18\n" +
+	"\asuspend\x18\r \x01(\bR\asuspend\x12\x87\x02\n" +
+	"\x0erestart_policy\x18\x0e \x01(\tB\xda\x01\xbaH\xcd\x01\xba\x01\xc9\x01\n" +
+	"\x13spec.restart_policy\x12\x83\x01Restart policy must be either \"Never\" or \"OnFailure\" — \"Always\" would restart completed containers and the Job could never finish\x1a,this == '' || this in ['Never', 'OnFailure']\x8a\xa6\x1d\x05NeverH\bR\rrestartPolicy\x88\x01\x01\x12}\n" +
+	"\x12pod_failure_policy\x18\x0f \x01(\v2O.dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyR\x10podFailurePolicy\x12s\n" +
+	"\x0esuccess_policy\x18\x10 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSuccessPolicyR\rsuccessPolicyB\x0e\n" +
 	"\f_parallelismB\x0e\n" +
-	"\f_completionsB\x10\n" +
+	"\f_completionsB\x12\n" +
+	"\x10_completion_modeB\x10\n" +
 	"\x0e_backoff_limitB\x1a\n" +
+	"\x18_backoff_limit_per_indexB\x15\n" +
+	"\x13_max_failed_indexesB\x1a\n" +
 	"\x18_active_deadline_secondsB\x1d\n" +
-	"\x1b_ttl_seconds_after_finishedB\x12\n" +
-	"\x10_completion_modeB\x11\n" +
-	"\x0f_restart_policyB\n" +
-	"\n" +
-	"\b_suspendB\x8c\x03\n" +
+	"\x1b_ttl_seconds_after_finishedB\x11\n" +
+	"\x0f_restart_policy\"\xa3\x02\n" +
+	"\x16KubernetesJobContainer\x12L\n" +
+	"\x03app\x18\x01 \x01(\v22.dev.planton.provider.kubernetes.WorkloadContainerB\x06\xbaH\x03\xc8\x01\x01R\x03app\x12\xba\x01\n" +
+	"\bsidecars\x18\x02 \x03(\v22.dev.planton.provider.kubernetes.WorkloadContainerBj\xbaHg\xba\x01d\n" +
+	"\x1dspec.container.sidecars.named\x12(Every sidecar container must have a name\x1a\x19this.all(c, c.name != '')R\bsidecars\"\x94\x01\n" +
+	"\x1dKubernetesJobPodFailurePolicy\x12s\n" +
+	"\x05rules\x18\x01 \x03(\v2S.dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyRuleB\b\xbaH\x05\x92\x01\x02\b\x01R\x05rules\"\xf3\x05\n" +
+	"!KubernetesJobPodFailurePolicyRule\x12\xc2\x01\n" +
+	"\x06action\x18\x01 \x01(\tB\xa9\x01\xbaH\xa5\x01\xba\x01\x9e\x01\n" +
+	"#spec.pod_failure_policy.rule.action\x12BAction must be one of \"FailJob\", \"Ignore\", \"Count\", or \"FailIndex\"\x1a3this in ['FailJob', 'Ignore', 'Count', 'FailIndex']\xc8\x01\x01R\x06action\x12~\n" +
+	"\ron_exit_codes\x18\x02 \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyOnExitCodesR\vonExitCodes\x12\x89\x01\n" +
+	"\x11on_pod_conditions\x18\x03 \x03(\v2].dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyOnPodConditionR\x0fonPodConditions:\xfc\x01\xbaH\xf8\x01\x1a\xf5\x01\n" +
+	"0spec.pod_failure_policy.rule.exactly_one_trigger\x12>Set exactly one of on_exit_codes or on_pod_conditions per rule\x1a\x80\x01(has(this.on_exit_codes) && size(this.on_pod_conditions) == 0) || (!has(this.on_exit_codes) && size(this.on_pod_conditions) > 0)\"\x8d\x02\n" +
+	"(KubernetesJobPodFailurePolicyOnExitCodes\x12%\n" +
+	"\x0econtainer_name\x18\x01 \x01(\tR\rcontainerName\x12\x97\x01\n" +
+	"\boperator\x18\x02 \x01(\tB{\xbaHx\xba\x01r\n" +
+	".spec.pod_failure_policy.on_exit_codes.operator\x12'Operator must be either \"In\" or \"NotIn\"\x1a\x17this in ['In', 'NotIn']\xc8\x01\x01R\boperator\x12 \n" +
+	"\x06values\x18\x03 \x03(\x05B\b\xbaH\x05\x92\x01\x02\b\x01R\x06values\"\xaa\x02\n" +
+	"+KubernetesJobPodFailurePolicyOnPodCondition\x12\x1a\n" +
+	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\xd3\x01\n" +
+	"\x06status\x18\x02 \x01(\tB\xb5\x01\xbaH\xa9\x01\xba\x01\xa5\x01\n" +
+	"0spec.pod_failure_policy.on_pod_conditions.status\x12=Condition status must be one of \"True\", \"False\", or \"Unknown\"\x1a2this == '' || this in ['True', 'False', 'Unknown']\x8a\xa6\x1d\x04TrueH\x00R\x06status\x88\x01\x01B\t\n" +
+	"\a_status\"\x8e\x01\n" +
+	"\x1aKubernetesJobSuccessPolicy\x12p\n" +
+	"\x05rules\x18\x01 \x03(\v2P.dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSuccessPolicyRuleB\b\xbaH\x05\x92\x01\x02\b\x01R\x05rules\"\xaf\x04\n" +
+	"\x1eKubernetesJobSuccessPolicyRule\x12\xfa\x01\n" +
+	"\x11succeeded_indexes\x18\x01 \x01(\tB\xcc\x01\xbaH\xc8\x01\xba\x01\xc4\x01\n" +
+	"*spec.success_policy.rule.succeeded_indexes\x12PSucceeded indexes must be comma-separated integers or ranges (e.g. \"0\", \"0-2,4\")\x1aDthis == '' || this.matches('^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$')R\x10succeededIndexes\x125\n" +
+	"\x0fsucceeded_count\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\x0esucceededCount\x88\x01\x01:\xc4\x01\xbaH\xc0\x01\x1a\xbd\x01\n" +
+	"/spec.success_policy.rule.at_least_one_criterion\x12OEach success rule must set at least one of succeeded_indexes or succeeded_count\x1a9this.succeeded_indexes != '' || has(this.succeeded_count)B\x12\n" +
+	"\x10_succeeded_countB\x8c\x03\n" +
 	"4com.dev.planton.provider.kubernetes.kubernetesjob.v1B\tSpecProtoP\x01Zbgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjob/v1;kubernetesjobv1\xa2\x02\x05DPPKK\xaa\x020Dev.Planton.Provider.Kubernetes.Kubernetesjob.V1\xca\x020Dev\\Planton\\Provider\\Kubernetes\\Kubernetesjob\\V1\xe2\x02<Dev\\Planton\\Provider\\Kubernetes\\Kubernetesjob\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Kubernetes::Kubernetesjob::V1b\x06proto3"
 
 var (
@@ -341,28 +804,37 @@ func file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescGZI
 	return file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_goTypes = []any{
-	(*KubernetesJobSpec)(nil),             // 0: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec
-	nil,                                   // 1: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.ConfigMapsEntry
-	(*v1.StringValueOrRef)(nil),           // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerImage)(nil),     // 3: dev.planton.provider.kubernetes.ContainerImage
-	(*kubernetes.ContainerResources)(nil), // 4: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerEnv)(nil),       // 5: dev.planton.provider.kubernetes.ContainerEnv
-	(*kubernetes.VolumeMount)(nil),        // 6: dev.planton.provider.kubernetes.VolumeMount
+	(*KubernetesJobSpec)(nil),                           // 0: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec
+	(*KubernetesJobContainer)(nil),                      // 1: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobContainer
+	(*KubernetesJobPodFailurePolicy)(nil),               // 2: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicy
+	(*KubernetesJobPodFailurePolicyRule)(nil),           // 3: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyRule
+	(*KubernetesJobPodFailurePolicyOnExitCodes)(nil),    // 4: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyOnExitCodes
+	(*KubernetesJobPodFailurePolicyOnPodCondition)(nil), // 5: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyOnPodCondition
+	(*KubernetesJobSuccessPolicy)(nil),                  // 6: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSuccessPolicy
+	(*KubernetesJobSuccessPolicyRule)(nil),              // 7: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSuccessPolicyRule
+	(*v1.StringValueOrRef)(nil),                         // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.WorkloadPod)(nil),                      // 9: dev.planton.provider.kubernetes.WorkloadPod
+	(*kubernetes.WorkloadContainer)(nil),                // 10: dev.planton.provider.kubernetes.WorkloadContainer
 }
 var file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	4, // 2: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	5, // 3: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
-	1, // 4: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.ConfigMapsEntry
-	6, // 5: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	8,  // 0: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobContainer
+	9,  // 2: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.pod:type_name -> dev.planton.provider.kubernetes.WorkloadPod
+	2,  // 3: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.pod_failure_policy:type_name -> dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicy
+	6,  // 4: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSpec.success_policy:type_name -> dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSuccessPolicy
+	10, // 5: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobContainer.app:type_name -> dev.planton.provider.kubernetes.WorkloadContainer
+	10, // 6: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobContainer.sidecars:type_name -> dev.planton.provider.kubernetes.WorkloadContainer
+	3,  // 7: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicy.rules:type_name -> dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyRule
+	4,  // 8: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyRule.on_exit_codes:type_name -> dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyOnExitCodes
+	5,  // 9: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyRule.on_pod_conditions:type_name -> dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobPodFailurePolicyOnPodCondition
+	7,  // 10: dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSuccessPolicy.rules:type_name -> dev.planton.provider.kubernetes.kubernetesjob.v1.KubernetesJobSuccessPolicyRule
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_init() }
@@ -371,13 +843,15 @@ func file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_init() {
 		return
 	}
 	file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesjob_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

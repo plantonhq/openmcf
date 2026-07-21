@@ -1,6 +1,7 @@
 package module
 
 const (
-	OpNamespace     = "namespace"
-	OpDaemonSetName = "daemonset_name"
+	OpNamespace      = "namespace"
+	OpDaemonSetName  = "daemon_set_name"
+	OpSelectorLabels = "selector_labels"
 )

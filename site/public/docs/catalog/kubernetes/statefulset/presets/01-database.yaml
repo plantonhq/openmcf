@@ -1,0 +1,43 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesStatefulSet
+metadata:
+  name: my-database
+spec:
+  namespace:
+    value: "<your-namespace>"
+  createNamespace: false
+  container:
+    app:
+      image:
+        repo: "<your-container-registry>/<your-database-image>"
+        tag: "<your-image-tag>"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+      ports:
+        - name: db
+          containerPort: 5432
+          servicePort: 5432
+      readinessProbe:
+        tcpSocket:
+          portNumber: 5432
+        periodSeconds: 5
+      livenessProbe:
+        tcpSocket:
+          portNumber: 5432
+        initialDelaySeconds: 15
+        periodSeconds: 10
+      volumeMounts:
+        - name: data
+          mountPath: /var/lib/data
+          pvc:
+            claimName: data
+  volumeClaimTemplates:
+    - name: data
+      size: 10Gi
+      accessModes:
+        - ReadWriteOnce

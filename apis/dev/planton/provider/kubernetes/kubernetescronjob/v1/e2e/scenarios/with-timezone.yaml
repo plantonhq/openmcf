@@ -1,0 +1,33 @@
+# Exercises the time-zone arm: the schedule is evaluated in an explicit IANA
+# zone instead of the controller's local clock.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesCronJob
+metadata:
+  name: e2e-cronjob-timezone
+spec:
+  namespace:
+    value: e2e-cronjob-timezone-ns
+  create_namespace: true
+  schedule: "*/2 * * * *"
+  time_zone: America/New_York
+  starting_deadline_seconds: 120
+  concurrency_policy: Forbid
+  job_template:
+    container:
+      app:
+        image:
+          repo: busybox
+          tag: "1.36"
+        command:
+          - /bin/sh
+          - -c
+          - echo "timezone-run"
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+    restart_policy: Never
+    backoff_limit: 1

@@ -1,61 +1,42 @@
-# Overview
+# Kubernetes DaemonSet
 
-The **Kubernetes DaemonSet** API resource provides a standardized and streamlined way to deploy DaemonSets onto Kubernetes clusters. A DaemonSet ensures that all (or some) nodes run a copy of a pod. As nodes are added to the cluster, pods are added to them. As nodes are removed from the cluster, those pods are garbage collected.
+## Overview
 
-## Purpose
+**KubernetesDaemonSet** is a Planton deployment component that deploys a node agent to a Kubernetes cluster as an apps/v1 DaemonSet: exactly one pod runs on every node that matches the pod's scheduling rules, and pods are added or garbage-collected as nodes join and leave. This is the kind for log shippers, node monitors, storage daemons, and CNI components.
 
-DaemonSets are ideal for deploying system-level services that need to run on every node (or a subset of nodes) in the cluster. Common use cases include:
+There is no replica count — node membership IS the replica count — and no Service or ingress: clients that must reach an agent do so on its node via per-container `hostPort` or `pod.hostNetwork`. For stateless services use **KubernetesDeployment**; for stateful members use **KubernetesStatefulSet**; for run-to-completion work use **KubernetesJob** / **KubernetesCronJob**.
 
-- **Log Collection**: Deploy log collectors like Fluentd, Fluent Bit, or Filebeat on every node
-- **Node Monitoring**: Deploy monitoring agents like Prometheus Node Exporter or Datadog agents
-- **Cluster Storage**: Deploy distributed storage daemons like Ceph or GlusterFS
-- **Network Plugins**: Deploy CNI plugins or network proxies
-- **Security Agents**: Deploy security scanning or compliance tools
+## What Gets Created
 
-The Kubernetes DaemonSet API resource aims to:
+- **DaemonSet** — the apps/v1 workload, with the pod template assembled from `spec.container` (agent + sidecars) and `spec.pod` (identity, scheduling, host access, security, DNS, termination)
+- **Env Secret** — `<name>-env-secrets`, materialized only when the spec carries literal secret env values
+- **Namespace** — only when `createNamespace` is true
 
-- **Standardize Deployments**: Offer a consistent interface for deploying DaemonSets
-- **Simplify Configuration**: Consolidate all DaemonSet-related settings into one place
-- **Node-Level Access**: Provide built-in support for host paths, tolerations, and privileged containers
+Deliberately absent: Services, ingress, HPAs, and PDBs — none of them apply to the one-pod-per-node model.
 
-## Key Features
+## Composition, Not Bundling
 
-### Namespace Management
+- **Identity is composed.** `pod.serviceAccount` references a **KubernetesServiceAccount** resource (or names an existing ServiceAccount literally). API permissions come from **KubernetesRbac** grants targeting that identity — many node agents (kube-state-style collectors, CNI components) need cluster-scoped reads, and those grants are visible resources in the graph, not side effects of the workload.
+- **Configuration is composed.** ConfigMaps are first-class **KubernetesConfigMap** resources that containers mount or import by name.
+- **Node access composes from shared building blocks.** `pod.hostNetwork` / `pod.hostPid` for host namespaces, per-container port `hostPort` for node-IP exposure, HostPath volume mounts for the node filesystem, and the container `securityContext` for capabilities — each an explicit, reviewable line in the spec.
 
-- **Flexible Namespace Control**: Choose between creating a new dedicated namespace or deploying into an existing namespace via the `create_namespace` boolean flag
-- **Isolated Deployments**: When `create_namespace` is `true`, each DaemonSet gets its own namespace with proper labeling
-- **Multi-tenant Support**: When `create_namespace` is `false`, multiple DaemonSets can share the same namespace
+## Spec Highlights
 
-### Container Specification
+- **`container.app`** — the main agent container, using the shared workload container model: image (repo + tag), env, probes, volume mounts (HostPath sources for node logs and runtime sockets are the classic DaemonSet pattern), lifecycle hooks, and a container security context. Node-local endpoints are exposed through each port's `hostPort` — DaemonSets have no Service. `container.sidecars` are full containers with the same surface.
+- **`pod.scheduling`** — controls WHICH nodes run the agent: `nodeSelector` and `nodeAffinity` narrow the node set, `tolerations` unlock tainted nodes (control-plane nodes carry a `NoSchedule` taint — agents that should cover them need an explicit toleration).
+- **`pod.hostNetwork` / `pod.hostPid`** — host namespaces for agents that observe the node itself; host-network agents that resolve cluster services should also set `dnsPolicy: ClusterFirstWithHostNet`.
+- **`updateStrategy`** — `RollingUpdate` (node by node within `maxUnavailable`/`maxSurge` bounds) or `OnDelete` (per-node manual control). `maxSurge` gives gapless updates for agents that must never miss data, but requires old and new pods to coexist on a node — it cannot be combined with exclusive host ports.
+- **`minReadySeconds` / `revisionHistoryLimit`** — rollout flap detection and rollback depth.
 
-- **App Container Configuration**: Define the main application container, including:
-  - **Container Image**: Set the container image and tag
-  - **Resources**: Allocate CPU and memory resources
-  - **Environment Variables and Secrets**: Manage configuration data and sensitive information
-  - **Ports**: Configure container ports with optional host port mapping
-  - **Volume Mounts**: Mount host paths for accessing node-level files/directories
-  - **Security Context**: Configure privileged mode, user/group IDs, and Linux capabilities
-  - **Command and Args**: Override container entrypoint and arguments
+## Stack Outputs
 
-- **Health Probes**: Configure liveness, readiness, and startup probes
+After deployment, the following are available in `status.outputs`:
 
-### Node Selection
-
-- **Node Selector**: Use key-value pairs to constrain DaemonSet pods to specific nodes
-- **Tolerations**: Allow pods to be scheduled on nodes with specific taints (e.g., master nodes)
-
-### Update Strategy
-
-- **RollingUpdate**: Progressively update pods with configurable `maxUnavailable` and `maxSurge`
-- **OnDelete**: Only update pods when they are manually deleted
-
-## Benefits
-
-- **Consistency Across Nodes**: DaemonSets ensure your system services run on every applicable node
-- **Automatic Scaling**: New nodes automatically get the DaemonSet pods
-- **Node-Level Operations**: Built-in support for privileged access and host path mounts
-- **Security**: Securely manage sensitive information with Kubernetes secrets
-- **Flexibility**: Support for node selectors and tolerations for fine-grained control
+| Output | Description |
+|--------|-------------|
+| `namespace` | The namespace the workload was deployed into |
+| `daemon_set_name` | The name of the DaemonSet object in the cluster |
+| `selector_labels` | Pod selector labels as `k=v,k=v` — for NetworkPolicies, `kubectl -l`, and pod-affinity terms in sibling workloads |
 
 ## Example
 
@@ -63,43 +44,52 @@ The Kubernetes DaemonSet API resource aims to:
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDaemonSet
 metadata:
-  name: fluentd-logger
+  name: log-collector
 spec:
   namespace:
-    value: logging
-  create_namespace: true
+    value: observability
   container:
     app:
       image:
-        repo: fluent/fluentd-kubernetes-daemonset
-        tag: v1.16-debian-elasticsearch8
+        repo: fluent/fluent-bit
+        tag: "3.0.7"
       resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
         limits:
           cpu: 500m
           memory: 512Mi
-        requests:
-          cpu: 100m
-          memory: 200Mi
-      volume_mounts:
+      volumeMounts:
         - name: varlog
-          mount_path: /var/log
-          host_path: /var/log
-          read_only: true
-        - name: containers
-          mount_path: /var/lib/docker/containers
-          host_path: /var/lib/docker/containers
-          read_only: true
-      ports:
-        - name: metrics
-          container_port: 24231
-          network_protocol: TCP
-  tolerations:
-    - key: node-role.kubernetes.io/master
-      operator: Exists
-      effect: NoSchedule
-  update_strategy:
-    type: RollingUpdate
-    rolling_update:
-      max_unavailable: "1"
+          mountPath: /var/log
+          readOnly: true
+          hostPath:
+            path: /var/log
+            type: Directory
+  pod:
+    scheduling:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
 ```
 
+Deploy with `planton apply -f daemonset.yaml`. One collector pod runs on every node, including control-plane nodes, reading node logs through the read-only HostPath mount.
+
+## When to Use
+
+Use **KubernetesDaemonSet** when the unit of deployment is "per node": log and metrics collection, node security agents, storage daemons, network plugins, per-node caches.
+
+**Do NOT use** when:
+
+- You need N interchangeable replicas — use **KubernetesDeployment**
+- Replicas need identity and their own storage — use **KubernetesStatefulSet**
+- The work runs to completion — use **KubernetesJob** or **KubernetesCronJob**
+
+## References
+
+- [Kubernetes DaemonSet Documentation](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)
+- [DaemonSet Rolling Updates](https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/)
+- [Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+- [DaemonSet API Reference](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/daemon-set-v1/)

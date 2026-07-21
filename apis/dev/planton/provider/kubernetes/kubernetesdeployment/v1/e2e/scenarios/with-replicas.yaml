@@ -26,4 +26,4 @@ spec:
           app_protocol: http
           service_port: 80
   availability:
-    min_replicas: 3
+    replicas: 3

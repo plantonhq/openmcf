@@ -2,32 +2,43 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesdeployment.v1;
 
-//microservice-kubernetes-stack outputs
+/**
+ * **KubernetesDeploymentStackOutputs** captures the observable handles of a deployed
+ * workload. Downstream resources compose on these: routes and network policies match
+ * `selector_labels`, clients connect through `service` / `kube_endpoint`, and charts
+ * wire dependents to the exported hostnames.
+ */
 message KubernetesDeploymentStackOutputs {
-  //kubernetes namespace in which microservice-kubernetes is created.
+  // The namespace the workload was deployed into.
   string namespace = 1;
 
-  //kubernetes service name for microservice-kubernetes.
-  //ex: main-microservice-kubernetes
-  //in the above example, "main" is the name of the microservice-kubernetes
-  string service = 2;
+  // The name of the Deployment object as created in the cluster.
+  string deployment_name = 2;
 
-  //command to setup port-forwarding to open microservice-kubernetes from developers laptop.
-  //this might come handy when microservice-kubernetes ingress is disabled for security reasons.
-  //this is rendered by combining microservice_kubernetes_kubernetes_service and kubernetes_namespace
-  //ex: kubectl port-forward svc/microservice_kubernetes_kubernetes_service -n kubernetes_namespace 8080:8080
-  //running the command from this attribute makes it possible to access microservice-kubernetes using http://localhost:8080
-  string port_forward_command = 3;
+  /**
+   * The Kubernetes Service fronting the replicas. Empty when the app container
+   * exposes no ports (no Service is created).
+   */
+  string service = 3;
 
-  //kubernetes endpoint to connect to microservice-kubernetes from the web browser.
-  //ex: main-microservice-kubernetes.namespace.svc.instance.local:8080
-  string kube_endpoint = 4;
+  /**
+   * The pod selector labels as a "k=v,k=v" string — the exact labels the Service
+   * selects on, ready for NetworkPolicy podSelectors, `kubectl get pods -l`, and
+   * pod-affinity terms in sibling workloads.
+   */
+  string selector_labels = 4;
 
-  //public endpoint to open microservice-kubernetes from clients outside kubernetes.
-  //ex: https://k8sms-planton-pcs-dev-account.dev.planton.live:8080
-  string external_hostname = 5;
+  /**
+   * Ready-to-run port-forward command for reaching the workload from a developer
+   * machine without any external exposure.
+   * ex: kubectl port-forward -n my-ns service/my-app 8080:8080
+   */
+  string port_forward_command = 5;
 
-  //internal endpoint to open microservice-kubernetes from clients inside kubernetes.
-  //ex: https://k8sms-planton-pcs-dev-account-internal.dev.planton.live:8080
-  string internal_hostname = 6;
+  /**
+   * In-cluster DNS endpoint of the Service — the handle exposure kinds
+   * (KubernetesHttpRoute and the other Gateway API route kinds) and sibling workloads connect to.
+   * ex: my-app.my-ns.svc.cluster.local
+   */
+  string kube_endpoint = 6;
 }

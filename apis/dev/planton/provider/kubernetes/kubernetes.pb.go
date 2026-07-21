@@ -21,91 +21,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **Container** defines the specifications for a container within a microservice deployment configuration.
-// This message mirrors the Kubernetes container spec (https://pkg.go.dev/k8s.io/api/core/v1#Container),
-// allowing you to specify container attributes such as the image, ports, resources, and environment variables.
-// **Warning:** The sidecar feature currently does not support all features of a Kubernetes container spec.
-type Container struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the container.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The container image to be used.
-	Image string `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
-	// A list of ports exposed by the container.
-	Ports []*ContainerPort `protobuf:"bytes,3,rep,name=ports,proto3" json:"ports,omitempty"`
-	// Resource specifications for the container, including CPU and memory limits and requests.
-	Resources *ContainerResources `protobuf:"bytes,4,opt,name=resources,proto3" json:"resources,omitempty"`
-	// A list of environment variables to be set in the container.
-	Env           []*ContainerEnvVar `protobuf:"bytes,5,rep,name=env,proto3" json:"env,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Container) Reset() {
-	*x = Container{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Container) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Container) ProtoMessage() {}
-
-func (x *Container) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Container.ProtoReflect.Descriptor instead.
-func (*Container) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *Container) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *Container) GetImage() string {
-	if x != nil {
-		return x.Image
-	}
-	return ""
-}
-
-func (x *Container) GetPorts() []*ContainerPort {
-	if x != nil {
-		return x.Ports
-	}
-	return nil
-}
-
-func (x *Container) GetResources() *ContainerResources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-func (x *Container) GetEnv() []*ContainerEnvVar {
-	if x != nil {
-		return x.Env
-	}
-	return nil
-}
-
 // **ContainerResources** specifies the CPU and memory resources for a container.
 // It allows you to define resource limits and requests to manage resource allocation and ensure optimal performance.
 type ContainerResources struct {
@@ -122,7 +37,7 @@ type ContainerResources struct {
 
 func (x *ContainerResources) Reset() {
 	*x = ContainerResources{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -134,7 +49,7 @@ func (x *ContainerResources) String() string {
 func (*ContainerResources) ProtoMessage() {}
 
 func (x *ContainerResources) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -147,7 +62,7 @@ func (x *ContainerResources) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContainerResources.ProtoReflect.Descriptor instead.
 func (*ContainerResources) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *ContainerResources) GetLimits() *CpuMemory {
@@ -164,127 +79,6 @@ func (x *ContainerResources) GetRequests() *CpuMemory {
 	return nil
 }
 
-// **ContainerEnvVar** represents an environment variable to be set in the container.
-// It allows you to pass configuration or sensitive information to the container at runtime.
-type ContainerEnvVar struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the environment variable.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The value of the environment variable.
-	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ContainerEnvVar) Reset() {
-	*x = ContainerEnvVar{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ContainerEnvVar) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ContainerEnvVar) ProtoMessage() {}
-
-func (x *ContainerEnvVar) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ContainerEnvVar.ProtoReflect.Descriptor instead.
-func (*ContainerEnvVar) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *ContainerEnvVar) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *ContainerEnvVar) GetValue() string {
-	if x != nil {
-		return x.Value
-	}
-	return ""
-}
-
-// **ContainerPort** specifies a network port in a single container.
-// It allows you to expose ports for communication with other services or the external network.
-type ContainerPort struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the port.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The port number on the container.
-	ContainerPort int32 `protobuf:"varint,2,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
-	// The protocol used by the port (e.g., "TCP" or "UDP").
-	Protocol      string `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ContainerPort) Reset() {
-	*x = ContainerPort{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ContainerPort) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ContainerPort) ProtoMessage() {}
-
-func (x *ContainerPort) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ContainerPort.ProtoReflect.Descriptor instead.
-func (*ContainerPort) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *ContainerPort) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *ContainerPort) GetContainerPort() int32 {
-	if x != nil {
-		return x.ContainerPort
-	}
-	return 0
-}
-
-func (x *ContainerPort) GetProtocol() string {
-	if x != nil {
-		return x.Protocol
-	}
-	return ""
-}
-
 // **CpuMemory** defines CPU and memory resource quantities for a container.
 // It is used to specify the limits and requests for CPU and memory resources.
 type CpuMemory struct {
@@ -297,7 +91,7 @@ type CpuMemory struct {
 
 func (x *CpuMemory) Reset() {
 	*x = CpuMemory{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -309,7 +103,7 @@ func (x *CpuMemory) String() string {
 func (*CpuMemory) ProtoMessage() {}
 
 func (x *CpuMemory) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -322,7 +116,7 @@ func (x *CpuMemory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CpuMemory.ProtoReflect.Descriptor instead.
 func (*CpuMemory) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CpuMemory) GetCpu() string {
@@ -355,7 +149,7 @@ type ContainerImage struct {
 
 func (x *ContainerImage) Reset() {
 	*x = ContainerImage{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -367,7 +161,7 @@ func (x *ContainerImage) String() string {
 func (*ContainerImage) ProtoMessage() {}
 
 func (x *ContainerImage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -380,7 +174,7 @@ func (x *ContainerImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContainerImage.ProtoReflect.Descriptor instead.
 func (*ContainerImage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ContainerImage) GetRepo() string {
@@ -418,7 +212,7 @@ type KubernetesSecretKey struct {
 
 func (x *KubernetesSecretKey) Reset() {
 	*x = KubernetesSecretKey{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -430,7 +224,7 @@ func (x *KubernetesSecretKey) String() string {
 func (*KubernetesSecretKey) ProtoMessage() {}
 
 func (x *KubernetesSecretKey) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -443,7 +237,7 @@ func (x *KubernetesSecretKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesSecretKey.ProtoReflect.Descriptor instead.
 func (*KubernetesSecretKey) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *KubernetesSecretKey) GetName() string {
@@ -464,23 +258,10 @@ var File_dev_planton_provider_kubernetes_kubernetes_proto protoreflect.FileDescr
 
 const file_dev_planton_provider_kubernetes_kubernetes_proto_rawDesc = "" +
 	"\n" +
-	"0dev/planton/provider/kubernetes/kubernetes.proto\x12\x1fdev.planton.provider.kubernetes\"\x92\x02\n" +
-	"\tContainer\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05image\x18\x02 \x01(\tR\x05image\x12D\n" +
-	"\x05ports\x18\x03 \x03(\v2..dev.planton.provider.kubernetes.ContainerPortR\x05ports\x12Q\n" +
-	"\tresources\x18\x04 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12B\n" +
-	"\x03env\x18\x05 \x03(\v20.dev.planton.provider.kubernetes.ContainerEnvVarR\x03env\"\xa0\x01\n" +
+	"0dev/planton/provider/kubernetes/kubernetes.proto\x12\x1fdev.planton.provider.kubernetes\"\xa0\x01\n" +
 	"\x12ContainerResources\x12B\n" +
 	"\x06limits\x18\x01 \x01(\v2*.dev.planton.provider.kubernetes.CpuMemoryR\x06limits\x12F\n" +
-	"\brequests\x18\x02 \x01(\v2*.dev.planton.provider.kubernetes.CpuMemoryR\brequests\";\n" +
-	"\x0fContainerEnvVar\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"f\n" +
-	"\rContainerPort\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12%\n" +
-	"\x0econtainer_port\x18\x02 \x01(\x05R\rcontainerPort\x12\x1a\n" +
-	"\bprotocol\x18\x03 \x01(\tR\bprotocol\"5\n" +
+	"\brequests\x18\x02 \x01(\v2*.dev.planton.provider.kubernetes.CpuMemoryR\brequests\"5\n" +
 	"\tCpuMemory\x12\x10\n" +
 	"\x03cpu\x18\x01 \x01(\tR\x03cpu\x12\x16\n" +
 	"\x06memory\x18\x02 \x01(\tR\x06memory\"`\n" +
@@ -505,27 +286,21 @@ func file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescGZIP() []byte 
 	return file_dev_planton_provider_kubernetes_kubernetes_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_dev_planton_provider_kubernetes_kubernetes_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_provider_kubernetes_kubernetes_proto_goTypes = []any{
-	(*Container)(nil),           // 0: dev.planton.provider.kubernetes.Container
-	(*ContainerResources)(nil),  // 1: dev.planton.provider.kubernetes.ContainerResources
-	(*ContainerEnvVar)(nil),     // 2: dev.planton.provider.kubernetes.ContainerEnvVar
-	(*ContainerPort)(nil),       // 3: dev.planton.provider.kubernetes.ContainerPort
-	(*CpuMemory)(nil),           // 4: dev.planton.provider.kubernetes.CpuMemory
-	(*ContainerImage)(nil),      // 5: dev.planton.provider.kubernetes.ContainerImage
-	(*KubernetesSecretKey)(nil), // 6: dev.planton.provider.kubernetes.KubernetesSecretKey
+	(*ContainerResources)(nil),  // 0: dev.planton.provider.kubernetes.ContainerResources
+	(*CpuMemory)(nil),           // 1: dev.planton.provider.kubernetes.CpuMemory
+	(*ContainerImage)(nil),      // 2: dev.planton.provider.kubernetes.ContainerImage
+	(*KubernetesSecretKey)(nil), // 3: dev.planton.provider.kubernetes.KubernetesSecretKey
 }
 var file_dev_planton_provider_kubernetes_kubernetes_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.kubernetes.Container.ports:type_name -> dev.planton.provider.kubernetes.ContainerPort
-	1, // 1: dev.planton.provider.kubernetes.Container.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	2, // 2: dev.planton.provider.kubernetes.Container.env:type_name -> dev.planton.provider.kubernetes.ContainerEnvVar
-	4, // 3: dev.planton.provider.kubernetes.ContainerResources.limits:type_name -> dev.planton.provider.kubernetes.CpuMemory
-	4, // 4: dev.planton.provider.kubernetes.ContainerResources.requests:type_name -> dev.planton.provider.kubernetes.CpuMemory
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.kubernetes.ContainerResources.limits:type_name -> dev.planton.provider.kubernetes.CpuMemory
+	1, // 1: dev.planton.provider.kubernetes.ContainerResources.requests:type_name -> dev.planton.provider.kubernetes.CpuMemory
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetes_proto_init() }
@@ -539,7 +314,7 @@ func file_dev_planton_provider_kubernetes_kubernetes_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetes_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetes_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

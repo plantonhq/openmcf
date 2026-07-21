@@ -1,0 +1,13 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesConfigMap
+metadata:
+  name: app-assets
+spec:
+  name: app-assets
+  namespace:
+    value: "<your-namespace>"
+  data:
+    asset-manifest: |
+      favicon.ico: served at /favicon.ico
+  binaryData:
+    favicon.ico: "AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAA="

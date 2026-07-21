@@ -1,3 +1,6 @@
+# One volume claim template mounted by the app container via a PVC source
+# whose claim name matches the template name. storage_class stays unset so
+# the kind cluster's default provisioner ("standard") serves the claim.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStatefulSet
 metadata:
@@ -24,8 +27,13 @@ spec:
           network_protocol: TCP
           app_protocol: http
           service_port: 80
+      volume_mounts:
+        - name: data
+          mount_path: /data
+          pvc:
+            claim_name: data
   volume_claim_templates:
     - name: data
-      size: "1Gi"
+      size: "100Mi"
       access_modes:
         - ReadWriteOnce

@@ -8,6 +8,10 @@ provider: "azure"
 icon: "package"
 order: 200
 presets:
+  - slug: "01-privatelink-zone"
+    rank: "01"
+    title: "Private Link Zone"
+    excerpt: "This preset creates the Azure-defined privatelink zone for PostgreSQL Flexible Server -- the zone private endpoints register their records in so VNet-connected clients resolve the server's FQDN to..."
   - slug: "02-internal-zone"
     rank: "02"
     title: "Custom Internal DNS Zone"

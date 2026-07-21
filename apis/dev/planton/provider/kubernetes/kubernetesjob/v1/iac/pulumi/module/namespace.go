@@ -4,22 +4,19 @@ import (
 	"github.com/pkg/errors"
 	kubernetesjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjob/v1"
 	kubernetescorev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
-	kubernetesmeta "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
+	kubernetesmetav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// namespace conditionally creates the Kubernetes namespace that will hold every
-// resource in the KubernetesJob deployment based on the create_namespace flag.
-// We return the created object (or nil if not created) so that downstream helpers
-// can set it as Parent and inherit the namespace automatically.
-//
-// If create_namespace is false, the namespace is assumed to exist and is not created.
-// In this case, nil is returned and downstream resources will use the namespace name
-// directly from locals.Namespace.
-func namespace(ctx *pulumi.Context, stackInput *kubernetesjobv1.KubernetesJobStackInput,
-	locals *Locals, kubernetesProvider pulumi.ProviderResource) (*kubernetescorev1.Namespace, error) {
-
-	// Only create namespace if the flag is set to true
+// namespace conditionally creates the Kubernetes namespace based on the
+// create_namespace flag.
+// Returns the created namespace resource (or nil when create_namespace is false).
+// Terraform equivalent: kubernetes_namespace resource with count.
+func namespace(ctx *pulumi.Context,
+	stackInput *kubernetesjobv1.KubernetesJobStackInput,
+	locals *Locals,
+	kubernetesProvider pulumi.ProviderResource,
+) (*kubernetescorev1.Namespace, error) {
 	if !stackInput.Target.Spec.CreateNamespace {
 		return nil, nil
 	}
@@ -27,10 +24,11 @@ func namespace(ctx *pulumi.Context, stackInput *kubernetesjobv1.KubernetesJobSta
 	createdNamespace, err := kubernetescorev1.NewNamespace(ctx,
 		locals.Namespace,
 		&kubernetescorev1.NamespaceArgs{
-			Metadata: &kubernetesmeta.ObjectMetaArgs{
-				Name:   pulumi.String(locals.Namespace),
-				Labels: pulumi.ToStringMap(locals.Labels),
-			},
+			Metadata: kubernetesmetav1.ObjectMetaPtrInput(
+				&kubernetesmetav1.ObjectMetaArgs{
+					Name:   pulumi.String(locals.Namespace),
+					Labels: pulumi.ToStringMap(locals.Labels),
+				}),
 		}, pulumi.Provider(kubernetesProvider))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create %s namespace", locals.Namespace)

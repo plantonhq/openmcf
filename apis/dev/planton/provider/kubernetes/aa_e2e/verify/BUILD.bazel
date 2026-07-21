@@ -13,6 +13,7 @@ go_library(
         "manifest.go",
         "namespace.go",
         "operator.go",
+        "rbac.go",
         "resource_existence.go",
         "verifier.go",
         "workload.go",

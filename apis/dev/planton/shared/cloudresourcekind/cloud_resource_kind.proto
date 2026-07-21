@@ -2578,6 +2578,7 @@ enum CloudResourceKind {
     provider: kubernetes
     version: v1
     id_prefix: "k8scron"
+    is_service_kind: true
   }];
   KubernetesService = 806 [(kind_meta) = {
     provider: kubernetes

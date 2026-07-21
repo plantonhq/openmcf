@@ -1,0 +1,74 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesdeployment
+spec:
+  # Every object this module creates keys off the workload's namespace/name
+  # pair. The Deployment, Service, and PDB share metadata.name; the HPA and
+  # env Secret carry fixed suffixes ("-hpa", "-env-secrets") that the schema
+  # cannot derive mechanically, so those fall back to guided entry.
+  values:
+    - name: deployment_name
+      derivations:
+        - from_stack_output: deployment_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `kubectl get deployments -A` (NAME column).
+    - name: deployment_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `kubectl get deployments -A` (NAMESPACE column).
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the workload's namespace.
+    - name: service_name
+      derivations:
+        - from_stack_output: service
+        - from_metadata_name: true
+      where_to_find: >-
+        `kubectl get services -n <namespace>` — the Service shares the
+        workload's name; absent when the app container exposes no ports.
+    - name: service_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the workload.
+    - name: hpa_name
+      where_to_find: >-
+        `kubectl get hpa -n <namespace>` — named "<metadata.name>-hpa"; only
+        present when autoscaling is enabled.
+    - name: hpa_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the workload.
+    - name: pdb_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `kubectl get pdb -n <namespace>` — shares the workload's name; only
+        present when the disruption budget is enabled.
+    - name: pdb_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the workload.
+    - name: secret_name
+      where_to_find: >-
+        `kubectl get secrets -n <namespace>` — named
+        "<metadata.name>-env-secrets"; only present when the spec carries
+        literal secret env values.
+    - name: secret_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the workload.

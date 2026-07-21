@@ -4,17 +4,17 @@
       "name": "Tier 1 Pulumi",
       "tier": 1,
       "engine": "pulumi",
-      "timeout": 150,
-      "run_regex": "Test(KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesJob|KubernetesManifest|KubernetesNamespace|KubernetesSecret|KubernetesService|KubernetesStatefulSet)_Pulumi",
-      "component_count": 9
+      "timeout": 255,
+      "run_regex": "Test(KubernetesConfigMap|KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesJob|KubernetesManifest|KubernetesNamespace|KubernetesRbac|KubernetesSecret|KubernetesService|KubernetesServiceAccount|KubernetesStatefulSet)_Pulumi",
+      "component_count": 12
     },
     {
       "name": "Tier 1 Terraform",
       "tier": 1,
       "engine": "terraform",
-      "timeout": 135,
-      "run_regex": "Test(KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesJob|KubernetesNamespace|KubernetesSecret|KubernetesService|KubernetesStatefulSet)_Terraform",
-      "component_count": 8
+      "timeout": 235,
+      "run_regex": "Test(KubernetesConfigMap|KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesJob|KubernetesNamespace|KubernetesRbac|KubernetesSecret|KubernetesService|KubernetesServiceAccount|KubernetesStatefulSet)_Terraform",
+      "component_count": 11
     },
     {
       "name": "Tier 2 Pulumi",

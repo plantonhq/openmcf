@@ -21,21 +21,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesDaemonSetStackOutputs contains the outputs from the KubernetesDaemonSet deployment.
+// *
+// **KubernetesDaemonSetStackOutputs** captures the observable handles of a deployed
+// node agent. DaemonSets have no Service or ingress, so the composition surface is
+// the object identity and its selector labels.
 type KubernetesDaemonSetStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes namespace in which the DaemonSet is created.
+	// The namespace the workload was deployed into.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Kubernetes DaemonSet name.
-	DaemonsetName string `protobuf:"bytes,2,opt,name=daemonset_name,json=daemonsetName,proto3" json:"daemonset_name,omitempty"`
-	// Number of nodes that should be running the daemon pod.
-	DesiredNumberScheduled string `protobuf:"bytes,3,opt,name=desired_number_scheduled,json=desiredNumberScheduled,proto3" json:"desired_number_scheduled,omitempty"`
-	// Number of nodes that are running at least one daemon pod and are supposed to run the daemon pod.
-	CurrentNumberScheduled string `protobuf:"bytes,4,opt,name=current_number_scheduled,json=currentNumberScheduled,proto3" json:"current_number_scheduled,omitempty"`
-	// Number of nodes that are running the daemon pod and have one or more ready.
-	NumberReady   string `protobuf:"bytes,5,opt,name=number_ready,json=numberReady,proto3" json:"number_ready,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The name of the DaemonSet object as created in the cluster.
+	DaemonSetName string `protobuf:"bytes,2,opt,name=daemon_set_name,json=daemonSetName,proto3" json:"daemon_set_name,omitempty"`
+	// *
+	// The pod selector labels as a "k=v,k=v" string — the exact labels the DaemonSet
+	// selects on, ready for NetworkPolicy podSelectors, `kubectl get pods -l`, and
+	// pod-affinity terms in sibling workloads.
+	SelectorLabels string `protobuf:"bytes,3,opt,name=selector_labels,json=selectorLabels,proto3" json:"selector_labels,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *KubernetesDaemonSetStackOutputs) Reset() {
@@ -75,30 +77,16 @@ func (x *KubernetesDaemonSetStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesDaemonSetStackOutputs) GetDaemonsetName() string {
+func (x *KubernetesDaemonSetStackOutputs) GetDaemonSetName() string {
 	if x != nil {
-		return x.DaemonsetName
+		return x.DaemonSetName
 	}
 	return ""
 }
 
-func (x *KubernetesDaemonSetStackOutputs) GetDesiredNumberScheduled() string {
+func (x *KubernetesDaemonSetStackOutputs) GetSelectorLabels() string {
 	if x != nil {
-		return x.DesiredNumberScheduled
-	}
-	return ""
-}
-
-func (x *KubernetesDaemonSetStackOutputs) GetCurrentNumberScheduled() string {
-	if x != nil {
-		return x.CurrentNumberScheduled
-	}
-	return ""
-}
-
-func (x *KubernetesDaemonSetStackOutputs) GetNumberReady() string {
-	if x != nil {
-		return x.NumberReady
+		return x.SelectorLabels
 	}
 	return ""
 }
@@ -107,13 +95,11 @@ var File_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_stack_outputs_pr
 
 const file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Jdev/planton/provider/kubernetes/kubernetesdaemonset/v1/stack_outputs.proto\x126dev.planton.provider.kubernetes.kubernetesdaemonset.v1\"\xfd\x01\n" +
+	"Jdev/planton/provider/kubernetes/kubernetesdaemonset/v1/stack_outputs.proto\x126dev.planton.provider.kubernetes.kubernetesdaemonset.v1\"\x90\x01\n" +
 	"\x1fKubernetesDaemonSetStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12%\n" +
-	"\x0edaemonset_name\x18\x02 \x01(\tR\rdaemonsetName\x128\n" +
-	"\x18desired_number_scheduled\x18\x03 \x01(\tR\x16desiredNumberScheduled\x128\n" +
-	"\x18current_number_scheduled\x18\x04 \x01(\tR\x16currentNumberScheduled\x12!\n" +
-	"\fnumber_ready\x18\x05 \x01(\tR\vnumberReadyB\xbe\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12&\n" +
+	"\x0fdaemon_set_name\x18\x02 \x01(\tR\rdaemonSetName\x12'\n" +
+	"\x0fselector_labels\x18\x03 \x01(\tR\x0eselectorLabelsB\xbe\x03\n" +
 	":com.dev.planton.provider.kubernetes.kubernetesdaemonset.v1B\x11StackOutputsProtoP\x01Zngithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdaemonset/v1;kubernetesdaemonsetv1\xa2\x02\x05DPPKK\xaa\x026Dev.Planton.Provider.Kubernetes.Kubernetesdaemonset.V1\xca\x026Dev\\Planton\\Provider\\Kubernetes\\Kubernetesdaemonset\\V1\xe2\x02BDev\\Planton\\Provider\\Kubernetes\\Kubernetesdaemonset\\V1\\GPBMetadata\xea\x02;Dev::Planton::Provider::Kubernetes::Kubernetesdaemonset::V1b\x06proto3"
 
 var (

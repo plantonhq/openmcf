@@ -2,13 +2,22 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesjob.v1;
 
-// KubernetesJobStackOutputs defines the outputs from a KubernetesJob deployment.
-// These outputs are populated after the IaC module successfully deploys the job
-// and are available in status.outputs for reference by other resources.
+/**
+ * **KubernetesJobStackOutputs** captures the observable handles of a deployed
+ * Job. Jobs front no Service, so the useful handles are the object's identity
+ * and the label selector for finding its pods.
+ */
 message KubernetesJobStackOutputs {
-  // The Kubernetes namespace in which the job is created.
+  // The namespace the Job was created in.
   string namespace = 1;
 
-  // The name of the job as created in Kubernetes.
+  // The name of the Job object as created in the cluster.
   string job_name = 2;
+
+  /**
+   * The controller-generated job-name label selector as a "k=v,k=v" string —
+   * ready for locating this Job's pods with `kubectl get pods -l` or `kubectl
+   * logs -l` for post-run inspection.
+   */
+  string selector_labels = 3;
 }

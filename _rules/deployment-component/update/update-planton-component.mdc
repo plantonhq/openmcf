@@ -341,6 +341,23 @@ Based on scenario:
   stack outputs). When touching an older kind, diff the two engines' tag
   maps against the current convention and converge both in the same
   session.
+- **Never read a proto oneof through an interface assertion in module code**:
+  asserting `x.Source.(interface{ GetValue() string })` compiles and silently
+  matches NOTHING — generated oneof wrapper structs carry plain fields, not
+  getters, so the branch never runs and the dependent resource is silently
+  skipped. Every offline gate stays green; the failure surfaces live as a
+  missing satellite (e.g. an env Secret that never materializes, wedging pod
+  startup until the engine's readiness await times out). Switch on the
+  concrete wrapper type (`case *Msg_Value:`) or call the getter on the PARENT
+  message (`s.GetValue()`), never an interface assertion on the oneof field.
+- **When an engine provider cannot express a spec field, fail the plan — never
+  silently drop it**: alongside the `PARITY-EXCEPTION:` twin comments, add a
+  Terraform `lifecycle { precondition }` on the resource that rejects a set
+  value with an error naming the gap and the working engine. A documented
+  divergence that silently ignores user intent still deploys different
+  behavior per engine; a loud plan failure routes the user before anything
+  ships. (Keep the kind's hack manifest free of those fields — the offline
+  plan proof runs through both engines from one manifest.)
 - **Verify the Pulumi module sets the cloud name argument explicitly**
   (`Name`/`AlarmName`/equivalent from `metadata.name`): modules authored
   before the explicit-naming mandate rely on Pulumi auto-naming, which

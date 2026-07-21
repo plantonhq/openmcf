@@ -40,6 +40,39 @@ spec:
     - terraform_type: kubernetes_namespace_v1
       pulumi_type: kubernetes:core/v1:Namespace
       id_format: "{namespace_name}"
+    # Workload kinds also create their namespace through this type when
+    # create_namespace is set; the plain (non-_v1) resource shares the format.
+    - terraform_type: kubernetes_namespace
+      pulumi_type: kubernetes:core/v1:Namespace
+      id_format: "{namespace_name}"
+
+    # --- Workloads (namespace-scoped) ----------------------------------------
+    - terraform_type: kubernetes_deployment_v1
+      pulumi_type: kubernetes:apps/v1:Deployment
+      id_format: "{deployment_namespace}/{deployment_name}"
+    - terraform_type: kubernetes_stateful_set_v1
+      pulumi_type: kubernetes:apps/v1:StatefulSet
+      id_format: "{stateful_set_namespace}/{stateful_set_name}"
+    - terraform_type: kubernetes_daemon_set_v1
+      pulumi_type: kubernetes:apps/v1:DaemonSet
+      id_format: "{daemon_set_namespace}/{daemon_set_name}"
+    - terraform_type: kubernetes_job_v1
+      pulumi_type: kubernetes:batch/v1:Job
+      id_format: "{job_namespace}/{job_name}"
+    - terraform_type: kubernetes_cron_job_v1
+      pulumi_type: kubernetes:batch/v1:CronJob
+      id_format: "{cron_job_namespace}/{cron_job_name}"
+
+    # --- Workload satellites --------------------------------------------------
+    - terraform_type: kubernetes_service_v1
+      pulumi_type: kubernetes:core/v1:Service
+      id_format: "{service_namespace}/{service_name}"
+    - terraform_type: kubernetes_horizontal_pod_autoscaler_v2
+      pulumi_type: kubernetes:autoscaling/v2:HorizontalPodAutoscaler
+      id_format: "{hpa_namespace}/{hpa_name}"
+    - terraform_type: kubernetes_pod_disruption_budget_v1
+      pulumi_type: kubernetes:policy/v1:PodDisruptionBudget
+      id_format: "{pdb_namespace}/{pdb_name}"
 
     # --- RBAC ----------------------------------------------------------------
     - terraform_type: kubernetes_role_v1

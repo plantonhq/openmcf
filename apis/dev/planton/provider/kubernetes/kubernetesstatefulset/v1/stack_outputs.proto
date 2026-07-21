@@ -2,33 +2,53 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesstatefulset.v1;
 
-// KubernetesStatefulSetStackOutputs contains the outputs from deploying a KubernetesStatefulSet.
+/**
+ * **KubernetesStatefulSetStackOutputs** captures the observable handles of a deployed
+ * stateful set. Downstream resources compose on these: routes and network policies
+ * match `selector_labels`, clients connect through `service` / `kube_endpoint`, and
+ * member-aware clients address individual replicas through `pod_dns_template`.
+ */
 message KubernetesStatefulSetStackOutputs {
-  // Kubernetes namespace in which the stateful set is deployed.
+  // The namespace the workload was deployed into.
   string namespace = 1;
 
-  // Kubernetes headless service name for the stateful set.
-  // This service enables stable network identity for pods.
-  // Pod DNS: <pod-name>.<headless-service>.<namespace>.svc.cluster.local
-  string headless_service = 2;
+  // The name of the StatefulSet object as created in the cluster.
+  string stateful_set_name = 2;
 
-  // Kubernetes ClusterIP service name for client access (if ports are defined).
-  // This service provides load-balanced access to stateful set pods.
+  /**
+   * The headless governing Service of the StatefulSet — the Service that gives each
+   * replica its stable per-pod DNS name. Load-balanced client access also goes
+   * through this name.
+   */
   string service = 3;
 
-  // Command to setup port-forwarding to access the stateful set from a local machine.
-  // Example: kubectl port-forward svc/<service> -n <namespace> 8080:8080
-  string port_forward_command = 4;
+  /**
+   * The pod selector labels as a "k=v,k=v" string — the exact labels the Service
+   * selects on, ready for NetworkPolicy podSelectors, `kubectl get pods -l`, and
+   * pod-affinity terms in sibling workloads.
+   */
+  string selector_labels = 4;
 
-  // Kubernetes endpoint for internal access.
-  // Example: <service>.<namespace>.svc.cluster.local:8080
-  string kube_endpoint = 5;
+  /**
+   * Ready-to-run port-forward command for reaching the workload from a developer
+   * machine without any external exposure.
+   * ex: kubectl port-forward -n my-ns service/my-db 5432:5432
+   */
+  string port_forward_command = 5;
 
-  // Public endpoint for external access (if ingress is enabled).
-  // Example: https://myapp.example.com
-  string external_hostname = 6;
+  /**
+   * In-cluster DNS endpoint of the Service — the handle exposure kinds
+   * (KubernetesHttpRoute and the other Gateway API route kinds) and sibling workloads connect to.
+   * ex: my-db.my-ns.svc.cluster.local
+   */
+  string kube_endpoint = 6;
 
-  // Internal endpoint for access within the cluster (if ingress is enabled).
-  // Example: https://internal-myapp.example.com
-  string internal_hostname = 7;
+  /**
+   * Template for each replica's stable DNS name:
+   * "<name>-<ordinal>.<service>.<namespace>.svc.cluster.local". Substitute the
+   * ordinal to address a specific member — e.g. replica 0 of a StatefulSet "my-db"
+   * in namespace "my-ns" is "my-db-0.my-db.my-ns.svc.cluster.local". This is how
+   * clustered clients build their member lists.
+   */
+  string pod_dns_template = 7;
 }

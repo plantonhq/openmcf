@@ -139,6 +139,79 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesDeployment: workload identity + Service handles from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesDeployment",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesDeployment,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"deployment_name":      "checkout",
+				"service":              "checkout",
+				"selector_labels":      "app=checkout,resource_name=checkout",
+				"port_forward_command": "kubectl port-forward -n team-alpha service/checkout 8080:8080",
+				"kube_endpoint":        "checkout.team-alpha.svc.cluster.local",
+			},
+			mustPopulate: []string{
+				"namespace", "deployment_name", "service", "selector_labels",
+				"port_forward_command", "kube_endpoint",
+			},
+		},
+		{
+			// KubernetesStatefulSet: identity handles plus the per-replica DNS
+			// template from both engines must land on the StackOutputs proto.
+			name: "KubernetesStatefulSet",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesStatefulSet,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"stateful_set_name":    "orders-db",
+				"service":              "orders-db",
+				"selector_labels":      "app=orders-db,resource_name=orders-db",
+				"port_forward_command": "kubectl port-forward -n team-alpha service/orders-db 8080:8080",
+				"kube_endpoint":        "orders-db.team-alpha.svc.cluster.local",
+				"pod_dns_template":     "orders-db-{ordinal}.orders-db.team-alpha.svc.cluster.local",
+			},
+			mustPopulate: []string{
+				"namespace", "stateful_set_name", "service", "selector_labels",
+				"port_forward_command", "kube_endpoint", "pod_dns_template",
+			},
+		},
+		{
+			// KubernetesDaemonSet: object identity + selector labels from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesDaemonSet",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesDaemonSet,
+			rawOutputs: map[string]interface{}{
+				"namespace":       "kube-system",
+				"daemon_set_name": "log-collector",
+				"selector_labels": "app=log-collector,resource_name=log-collector",
+			},
+			mustPopulate: []string{"namespace", "daemon_set_name", "selector_labels"},
+		},
+		{
+			// KubernetesJob: object identity + selector labels from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesJob",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesJob,
+			rawOutputs: map[string]interface{}{
+				"namespace":       "team-alpha",
+				"job_name":        "schema-migrate",
+				"selector_labels": "app=schema-migrate,resource_name=schema-migrate",
+			},
+			mustPopulate: []string{"namespace", "job_name", "selector_labels"},
+		},
+		{
+			// KubernetesCronJob: object identity + the effective schedule from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesCronJob",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesCronJob,
+			rawOutputs: map[string]interface{}{
+				"namespace":     "team-alpha",
+				"cron_job_name": "nightly-backup",
+				"schedule":      "0 3 * * *",
+			},
+			mustPopulate: []string{"namespace", "cron_job_name", "schedule"},
+		},
+		{
 			// AwsSubnet: flat scalar outputs from both engines (subnet id/arn, AZ,
 			// CIDR, route table id, region) must each land on the StackOutputs proto.
 			name: "AwsSubnet",

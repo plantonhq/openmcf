@@ -1,0 +1,56 @@
+# Init container writes a marker file into a shared EmptyDir; the app
+# container reads it back and exits 0. Every container exits, so the Job
+# completes in seconds — no never-exiting sidecars.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesJob
+metadata:
+  name: e2e-job-sidecar-init
+spec:
+  namespace:
+    value: e2e-job-sidecar-init-ns
+  create_namespace: true
+  container:
+    app:
+      image:
+        repo: busybox
+        tag: "1.36"
+      command:
+        - /bin/sh
+        - -c
+        - cat /work/marker.txt
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "32Mi"
+        limits:
+          cpu: "50m"
+          memory: "64Mi"
+      volume_mounts:
+        - name: work
+          mount_path: /work
+          empty_dir:
+            size_limit: 16Mi
+  pod:
+    init_containers:
+      - name: init-writer
+        image:
+          repo: busybox
+          tag: "1.36"
+        command:
+          - /bin/sh
+          - -c
+          - echo "prepared-by-init" > /work/marker.txt
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "32Mi"
+          limits:
+            cpu: "50m"
+            memory: "64Mi"
+        volume_mounts:
+          - name: work
+            mount_path: /work
+            empty_dir:
+              size_limit: 16Mi
+  restart_policy: Never
+  backoff_limit: 2

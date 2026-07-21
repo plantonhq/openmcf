@@ -1,0 +1,32 @@
+# Indexed completion mode: three numbered partitions, two in flight at a
+# time, each retrying within its own per-index budget.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesJob
+metadata:
+  name: e2e-job-indexed
+spec:
+  namespace:
+    value: e2e-job-indexed-ns
+  create_namespace: true
+  container:
+    app:
+      image:
+        repo: busybox
+        tag: "1.36"
+      command:
+        - /bin/sh
+        - -c
+        - echo "processing index $JOB_COMPLETION_INDEX"
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "32Mi"
+        limits:
+          cpu: "50m"
+          memory: "64Mi"
+  completion_mode: Indexed
+  completions: 3
+  parallelism: 2
+  restart_policy: Never
+  backoff_limit_per_index: 1
+  max_failed_indexes: 1

@@ -1,0 +1,40 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetescronjob
+spec:
+  # Every object this module creates keys off the workload's namespace/name
+  # pair. The CronJob shares metadata.name; the satellite Secrets carry fixed
+  # suffixes ("-env-secrets", "-image-pull") that the schema cannot derive
+  # mechanically, so those fall back to guided entry.
+  values:
+    - name: cron_job_name
+      derivations:
+        - from_stack_output: cron_job_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `kubectl get cronjobs -A` (NAME column).
+    - name: cron_job_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `kubectl get cronjobs -A` (NAMESPACE column).
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the workload's namespace.
+    - name: secret_name
+      where_to_find: >-
+        `kubectl get secrets -n <namespace>` — named
+        "<metadata.name>-env-secrets" (literal secret env values) or
+        "<metadata.name>-image-pull" (docker-registry credentials); each is
+        only present when the corresponding spec arm is used.
+    - name: secret_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the workload.

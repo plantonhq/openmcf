@@ -1,0 +1,43 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesDaemonSet
+metadata:
+  name: my-log-collector
+spec:
+  namespace:
+    value: "<your-namespace>"
+  createNamespace: false
+  container:
+    app:
+      image:
+        repo: "<your-container-registry>/<your-log-collector-image>"
+        tag: "<your-image-tag>"
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+          hostPath:
+            path: /var/log
+            type: Directory
+        - name: pod-logs
+          mountPath: /var/log/pods
+          readOnly: true
+          hostPath:
+            path: /var/log/pods
+            type: DirectoryOrCreate
+        - name: buffer
+          mountPath: /var/lib/collector-buffer
+          emptyDir:
+            sizeLimit: 256Mi
+  pod:
+    scheduling:
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule

@@ -10,6 +10,7 @@ import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -25,45 +26,53 @@ const (
 )
 
 // *
-// **KubernetesDeploymentSpec** defines the configuration for deploying a microservice on a Kubernetes cluster.
-// This message includes specifications for the microservice version, container configurations, ingress settings,
-// and availability options for zero-downtime deployments.
+// **KubernetesDeploymentSpec** deploys a long-running, stateless application on a
+// Kubernetes cluster as an apps/v1 Deployment, fronted by a Kubernetes Service.
+// This is the workhorse kind for microservices: replicas are interchangeable,
+// updates roll out gradually, and scaling is horizontal. For workloads needing
+// stable identity or per-replica storage use KubernetesStatefulSet; for
+// run-to-completion work use KubernetesJob/KubernetesCronJob.
+//
+// External exposure is composed, never embedded: this kind exports its Service
+// name and selector labels, and first-class exposure kinds (KubernetesHttpRoute
+// and the other Gateway API route kinds, with certificates) reference them — so
+// every piece of exposure infrastructure is a visible node in the resource graph.
+//
+// DEPLOY-TARGET CONTRACT: this kind is a Service Hub deployment target. Deployment
+// pipelines inject the freshly built artifact through exactly two stable paths —
+// `spec.version` and `spec.container.app.image` (repo + tag). These paths are part of
+// the kind's public contract and must survive any future spec evolution.
 type KubernetesDeploymentSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// The version of the microservice being deployed.
-	// This is usually either "main" (the default git branch name) or "review-<id>" where <id> is the merge request number.
-	// It must be between 1 and 30 characters and can only contain lowercase letters, numbers, and hyphens.
-	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
-	// The container specifications for the microservice deployment.
-	// This includes configurations for the main application container and any sidecar containers.
-	Container *KubernetesDeploymentContainer `protobuf:"bytes,5,opt,name=container,proto3" json:"container,omitempty"`
-	// The ingress configuration for the microservice.
-	// This defines how the microservice can be accessed externally.
-	Ingress *KubernetesDeploymentIngress `protobuf:"bytes,6,opt,name=ingress,proto3" json:"ingress,omitempty"`
-	// The availability configuration for the microservice.
-	// This includes settings for replicas, autoscaling, deployment strategy, and pod disruption budgets.
-	Availability *KubernetesDeploymentAvailability `protobuf:"bytes,7,opt,name=availability,proto3" json:"availability,omitempty"`
 	// *
-	// ConfigMaps to create alongside the deployment.
-	// Key is the ConfigMap name, value is the content.
-	// For multi-key ConfigMaps, use YAML format in the value.
-	// These ConfigMaps can be referenced in volume mounts.
-	//
-	// Example:
-	//
-	//	config_maps:
-	//	  app-config: |
-	//	    key1: value1
-	//	    key2: value2
-	//	  nginx-conf: |
-	//	    server {
-	//	      listen 80;
-	//	    }
-	ConfigMaps    map[string]string `protobuf:"bytes,8,rep,name=config_maps,json=configMaps,proto3" json:"config_maps,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The namespace to deploy into. Accepts a literal namespace name or a reference to a
+	// KubernetesNamespace resource, so an infra chart creates the namespace and the
+	// workload in one run.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the module creates the namespace if it does not exist. Leave false when
+	// the namespace is owned by a KubernetesNamespace resource or pre-exists.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// The deployment track of this workload — usually "main" for the primary line, or a
+	// flattened branch name like "review-42" for preview deployments. Stamped as a pod
+	// label so multiple tracks of one app coexist in a namespace with disjoint traffic.
+	// Deployment pipelines set this from the git branch (deploy-target contract).
+	Version *string `protobuf:"bytes,3,opt,name=version,proto3,oneof" json:"version,omitempty"`
+	// *
+	// The containers of every replica: one main application container and any sidecars.
+	// All containers share the pod's network namespace and volumes.
+	Container *KubernetesDeploymentContainer `protobuf:"bytes,4,opt,name=container,proto3" json:"container,omitempty"`
+	// *
+	// Pod-level configuration shared by all replicas: identity (ServiceAccount
+	// reference), init containers, scheduling, security hardening, DNS, and termination
+	// behavior.
+	Pod *kubernetes.WorkloadPod `protobuf:"bytes,5,opt,name=pod,proto3" json:"pod,omitempty"`
+	// *
+	// Availability configuration: replica count, autoscaling, rollout strategy, and
+	// disruption budget. Omit for a single-replica deployment with Kubernetes-default
+	// rolling updates.
+	Availability  *KubernetesDeploymentAvailability `protobuf:"bytes,6,opt,name=availability,proto3" json:"availability,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -113,8 +122,8 @@ func (x *KubernetesDeploymentSpec) GetCreateNamespace() bool {
 }
 
 func (x *KubernetesDeploymentSpec) GetVersion() string {
-	if x != nil {
-		return x.Version
+	if x != nil && x.Version != nil {
+		return *x.Version
 	}
 	return ""
 }
@@ -126,9 +135,9 @@ func (x *KubernetesDeploymentSpec) GetContainer() *KubernetesDeploymentContainer
 	return nil
 }
 
-func (x *KubernetesDeploymentSpec) GetIngress() *KubernetesDeploymentIngress {
+func (x *KubernetesDeploymentSpec) GetPod() *kubernetes.WorkloadPod {
 	if x != nil {
-		return x.Ingress
+		return x.Pod
 	}
 	return nil
 }
@@ -140,86 +149,28 @@ func (x *KubernetesDeploymentSpec) GetAvailability() *KubernetesDeploymentAvaila
 	return nil
 }
 
-func (x *KubernetesDeploymentSpec) GetConfigMaps() map[string]string {
-	if x != nil {
-		return x.ConfigMaps
-	}
-	return nil
-}
-
 // *
-// KubernetesDeploymentIngress defines ingress configuration for the deployment.
-type KubernetesDeploymentIngress struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Flag to enable or disable ingress.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// The full hostname for external access (e.g., "myapp.example.com").
-	// Required when enabled is true.
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesDeploymentIngress) Reset() {
-	*x = KubernetesDeploymentIngress{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDeploymentIngress) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDeploymentIngress) ProtoMessage() {}
-
-func (x *KubernetesDeploymentIngress) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDeploymentIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesDeploymentIngress) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *KubernetesDeploymentIngress) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *KubernetesDeploymentIngress) GetHostname() string {
-	if x != nil {
-		return x.Hostname
-	}
-	return ""
-}
-
-// *
-// **KubernetesDeploymentContainer** specifies the container configuration for the microservice.
-// It includes the main application container and any sidecar containers that need to run alongside it.
+// **KubernetesDeploymentContainer** groups the main application container and its
+// sidecars. The `app` path is load-bearing: deployment pipelines inject the built
+// image at `spec.container.app.image` (deploy-target contract).
 type KubernetesDeploymentContainer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The main application container specifications.
-	App *KubernetesDeploymentContainerApp `protobuf:"bytes,1,opt,name=app,proto3" json:"app,omitempty"`
-	// A list of sidecar containers to be deployed alongside the main application container.
-	Sidecars      []*kubernetes.Container `protobuf:"bytes,2,rep,name=sidecars,proto3" json:"sidecars,omitempty"`
+	// *
+	// The main application container. Its ports drive the workload's Service, and its
+	// image is the pipeline injection point.
+	App *kubernetes.WorkloadContainer `protobuf:"bytes,1,opt,name=app,proto3" json:"app,omitempty"`
+	// *
+	// Sidecar containers running alongside the app in every replica — log shippers,
+	// proxies, cache warmers. Sidecars are full containers: probes, mounts, security
+	// context, and lifecycle hooks all apply. Each sidecar must be named.
+	Sidecars      []*kubernetes.WorkloadContainer `protobuf:"bytes,2,rep,name=sidecars,proto3" json:"sidecars,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesDeploymentContainer) Reset() {
 	*x = KubernetesDeploymentContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -231,7 +182,7 @@ func (x *KubernetesDeploymentContainer) String() string {
 func (*KubernetesDeploymentContainer) ProtoMessage() {}
 
 func (x *KubernetesDeploymentContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -244,17 +195,17 @@ func (x *KubernetesDeploymentContainer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesDeploymentContainer.ProtoReflect.Descriptor instead.
 func (*KubernetesDeploymentContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesDeploymentContainer) GetApp() *KubernetesDeploymentContainerApp {
+func (x *KubernetesDeploymentContainer) GetApp() *kubernetes.WorkloadContainer {
 	if x != nil {
 		return x.App
 	}
 	return nil
 }
 
-func (x *KubernetesDeploymentContainer) GetSidecars() []*kubernetes.Container {
+func (x *KubernetesDeploymentContainer) GetSidecars() []*kubernetes.WorkloadContainer {
 	if x != nil {
 		return x.Sidecars
 	}
@@ -262,296 +213,50 @@ func (x *KubernetesDeploymentContainer) GetSidecars() []*kubernetes.Container {
 }
 
 // *
-// **KubernetesDeploymentContainerApp** specifies the configuration for the main application container.
-// It includes the container image, resource allocations, environment variables, ports, and health probes.
-type KubernetesDeploymentContainerApp struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// The container image to be used for the application.
-	// This value is computed during creation but can be updated.
-	// It is derived by combining the Docker repository of the artifact store configured for the environment and the code project path.
-	// The `pull_secret_name` is the name of the image pull secret to be configured in the Kubernetes Deployment resource.
-	// It is determined by looking up the `container_image_artifact_store_id` from the environment where the microservice is deployed.
-	Image *kubernetes.ContainerImage `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
-	// The CPU and memory resources allocated to the application container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// *
-	// The environment variables and secrets for the application container.
-	Env *kubernetes.ContainerEnv `protobuf:"bytes,3,opt,name=env,proto3" json:"env,omitempty"`
-	// *
-	// A list of ports to be configured for the application container.
-	Ports []*KubernetesDeploymentContainerAppPort `protobuf:"bytes,4,rep,name=ports,proto3" json:"ports,omitempty"`
-	// *
-	// Liveness probe configuration.
-	// Periodic probe of container liveness. Container will be restarted if the probe fails.
-	// This helps detect and recover from deadlocks or unresponsive applications.
-	// Reference: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
-	LivenessProbe *kubernetes.Probe `protobuf:"bytes,5,opt,name=liveness_probe,json=livenessProbe,proto3" json:"liveness_probe,omitempty"`
-	// *
-	// Readiness probe configuration.
-	// Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails.
-	// This ensures traffic is only routed to pods that are ready to handle requests.
-	// Essential for zero-downtime deployments.
-	// Reference: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
-	ReadinessProbe *kubernetes.Probe `protobuf:"bytes,6,opt,name=readiness_probe,json=readinessProbe,proto3" json:"readiness_probe,omitempty"`
-	// *
-	// Startup probe configuration.
-	// Indicates whether the application within the container is started.
-	// All other probes are disabled if a startup probe is provided, until it succeeds.
-	// Useful for slow-starting containers to avoid them getting killed by liveness probes before they are up.
-	// Reference: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes
-	StartupProbe *kubernetes.Probe `protobuf:"bytes,7,opt,name=startup_probe,json=startupProbe,proto3" json:"startup_probe,omitempty"`
-	// *
-	// Volume mounts for the application container.
-	// Supports mounting ConfigMaps, Secrets, HostPaths, EmptyDirs, and PVCs.
-	// ConfigMaps defined in spec.config_maps can be referenced here.
-	//
-	// Example:
-	//
-	//	volume_mounts:
-	//	  - name: config-volume
-	//	    mount_path: /etc/app/config.yaml
-	//	    config_map:
-	//	      name: app-config
-	//	      key: app-config
-	VolumeMounts []*kubernetes.VolumeMount `protobuf:"bytes,8,rep,name=volume_mounts,json=volumeMounts,proto3" json:"volume_mounts,omitempty"`
-	// *
-	// Command to run in the container (overrides the container image's ENTRYPOINT).
-	// Example: ["/bin/sh", "-c"]
-	Command []string `protobuf:"bytes,9,rep,name=command,proto3" json:"command,omitempty"`
-	// *
-	// Arguments to pass to the command (overrides the container image's CMD).
-	// Example: ["echo hello"]
-	Args          []string `protobuf:"bytes,10,rep,name=args,proto3" json:"args,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesDeploymentContainerApp) Reset() {
-	*x = KubernetesDeploymentContainerApp{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDeploymentContainerApp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDeploymentContainerApp) ProtoMessage() {}
-
-func (x *KubernetesDeploymentContainerApp) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDeploymentContainerApp.ProtoReflect.Descriptor instead.
-func (*KubernetesDeploymentContainerApp) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *KubernetesDeploymentContainerApp) GetImage() *kubernetes.ContainerImage {
-	if x != nil {
-		return x.Image
-	}
-	return nil
-}
-
-func (x *KubernetesDeploymentContainerApp) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-func (x *KubernetesDeploymentContainerApp) GetEnv() *kubernetes.ContainerEnv {
-	if x != nil {
-		return x.Env
-	}
-	return nil
-}
-
-func (x *KubernetesDeploymentContainerApp) GetPorts() []*KubernetesDeploymentContainerAppPort {
-	if x != nil {
-		return x.Ports
-	}
-	return nil
-}
-
-func (x *KubernetesDeploymentContainerApp) GetLivenessProbe() *kubernetes.Probe {
-	if x != nil {
-		return x.LivenessProbe
-	}
-	return nil
-}
-
-func (x *KubernetesDeploymentContainerApp) GetReadinessProbe() *kubernetes.Probe {
-	if x != nil {
-		return x.ReadinessProbe
-	}
-	return nil
-}
-
-func (x *KubernetesDeploymentContainerApp) GetStartupProbe() *kubernetes.Probe {
-	if x != nil {
-		return x.StartupProbe
-	}
-	return nil
-}
-
-func (x *KubernetesDeploymentContainerApp) GetVolumeMounts() []*kubernetes.VolumeMount {
-	if x != nil {
-		return x.VolumeMounts
-	}
-	return nil
-}
-
-func (x *KubernetesDeploymentContainerApp) GetCommand() []string {
-	if x != nil {
-		return x.Command
-	}
-	return nil
-}
-
-func (x *KubernetesDeploymentContainerApp) GetArgs() []string {
-	if x != nil {
-		return x.Args
-	}
-	return nil
-}
-
-// *
-// **KubernetesDeploymentContainerAppPort** specifies the port configuration for the application container.
-// It includes details such as the port name, container port, network protocol, application protocol, and service port.
-type KubernetesDeploymentContainerAppPort struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the port (e.g., "http", "grpc").
-	// The name must only contain lowercase alphanumeric characters and hyphens.
-	// Port names must also start and end with an alphanumeric character.
-	// For example, "123-abc" and "web" are valid, but "123_abc" and "-web" are not.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The port number on the container.
-	ContainerPort int32 `protobuf:"varint,2,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
-	// The network protocol used by the port (e.g., "TCP", "UDP", "SCTP").
-	// Must be one of "TCP", "UDP", or "SCTP".
-	NetworkProtocol string `protobuf:"bytes,3,opt,name=network_protocol,json=networkProtocol,proto3" json:"network_protocol,omitempty"`
-	// The application protocol for the microservice (e.g., "http").
-	// This field is used for setting up the name of the service port in Kubernetes.
-	// It is used during microservice deployment and is relevant for deployment and stateful set pod managers.
-	// Refer to: https://kubernetes.io/docs/concepts/services-networking/service/#application-protocol
-	AppProtocol string `protobuf:"bytes,4,opt,name=app_protocol,json=appProtocol,proto3" json:"app_protocol,omitempty"`
-	// The port number on the Kubernetes service.
-	ServicePort int32 `protobuf:"varint,5,opt,name=service_port,json=servicePort,proto3" json:"service_port,omitempty"`
-	// A flag indicating whether this port should be exposed via ingress.
-	IsIngressPort bool `protobuf:"varint,6,opt,name=is_ingress_port,json=isIngressPort,proto3" json:"is_ingress_port,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesDeploymentContainerAppPort) Reset() {
-	*x = KubernetesDeploymentContainerAppPort{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDeploymentContainerAppPort) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDeploymentContainerAppPort) ProtoMessage() {}
-
-func (x *KubernetesDeploymentContainerAppPort) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDeploymentContainerAppPort.ProtoReflect.Descriptor instead.
-func (*KubernetesDeploymentContainerAppPort) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *KubernetesDeploymentContainerAppPort) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *KubernetesDeploymentContainerAppPort) GetContainerPort() int32 {
-	if x != nil {
-		return x.ContainerPort
-	}
-	return 0
-}
-
-func (x *KubernetesDeploymentContainerAppPort) GetNetworkProtocol() string {
-	if x != nil {
-		return x.NetworkProtocol
-	}
-	return ""
-}
-
-func (x *KubernetesDeploymentContainerAppPort) GetAppProtocol() string {
-	if x != nil {
-		return x.AppProtocol
-	}
-	return ""
-}
-
-func (x *KubernetesDeploymentContainerAppPort) GetServicePort() int32 {
-	if x != nil {
-		return x.ServicePort
-	}
-	return 0
-}
-
-func (x *KubernetesDeploymentContainerAppPort) GetIsIngressPort() bool {
-	if x != nil {
-		return x.IsIngressPort
-	}
-	return false
-}
-
-// *
-// **KubernetesDeploymentAvailability** specifies the availability configuration for the microservice.
-// Groups all settings related to high availability: replicas, autoscaling, deployment strategy, and disruption budgets.
-// Proper configuration of these fields enables zero-downtime deployments and resilient operations.
+// **KubernetesDeploymentAvailability** groups replica management: how many pods run,
+// how they scale, how updates roll out, and how many must survive disruptions.
 type KubernetesDeploymentAvailability struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The minimum number of pod replicas to maintain.
-	MinReplicas int32 `protobuf:"varint,1,opt,name=min_replicas,json=minReplicas,proto3" json:"min_replicas,omitempty"`
-	// The configuration for horizontal pod autoscaling.
-	HorizontalPodAutoscaling *KubernetesDeploymentAvailabilityHpa `protobuf:"bytes,2,opt,name=horizontal_pod_autoscaling,json=horizontalPodAutoscaling,proto3" json:"horizontal_pod_autoscaling,omitempty"`
-	// Deployment strategy configuration for rolling updates.
-	// Controls how pod updates are rolled out to achieve zero-downtime deployments.
-	// If not specified, uses Kubernetes default (maxUnavailable: 25%, maxSurge: 25%).
-	DeploymentStrategy *KubernetesDeploymentDeploymentStrategy `protobuf:"bytes,3,opt,name=deployment_strategy,json=deploymentStrategy,proto3" json:"deployment_strategy,omitempty"`
-	// Pod disruption budget configuration.
-	// Ensures minimum availability during voluntary disruptions (node maintenance, cluster upgrades).
-	// Helps prevent service outages during infrastructure operations.
+	// *
+	// Desired replica count; the floor when autoscaling is enabled. Defaults to 1.
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// Horizontal pod autoscaling on CPU and/or memory utilization. When enabled, the
+	// module manages an HPA with `replicas` as the floor and `max_replicas` as the
+	// ceiling.
+	HorizontalPodAutoscaling *KubernetesDeploymentHpa `protobuf:"bytes,2,opt,name=horizontal_pod_autoscaling,json=horizontalPodAutoscaling,proto3" json:"horizontal_pod_autoscaling,omitempty"`
+	// *
+	// How updates replace pods. Omit for the Kubernetes default (RollingUpdate,
+	// 25% surge / 25% unavailable).
+	Strategy *KubernetesDeploymentStrategy `protobuf:"bytes,3,opt,name=strategy,proto3" json:"strategy,omitempty"`
+	// *
+	// PodDisruptionBudget guarding availability during voluntary disruptions (node
+	// drains, cluster upgrades).
 	PodDisruptionBudget *KubernetesDeploymentPodDisruptionBudget `protobuf:"bytes,4,opt,name=pod_disruption_budget,json=podDisruptionBudget,proto3" json:"pod_disruption_budget,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// *
+	// Seconds a new pod must stay ready (no container crashes) before it counts as
+	// available during rollouts. A cheap flap detector — 10–30s catches crash-on-first-
+	// request regressions before they replace the whole fleet.
+	MinReadySeconds *int32 `protobuf:"varint,5,opt,name=min_ready_seconds,json=minReadySeconds,proto3,oneof" json:"min_ready_seconds,omitempty"`
+	// *
+	// How many old ReplicaSets are retained for rollback. Kubernetes defaults to 10;
+	// 0 disables rollback entirely.
+	RevisionHistoryLimit *int32 `protobuf:"varint,6,opt,name=revision_history_limit,json=revisionHistoryLimit,proto3,oneof" json:"revision_history_limit,omitempty"`
+	// *
+	// Seconds a rollout may make no progress before it is marked failed (surfaced in
+	// the Deployment's conditions). Kubernetes defaults to 600.
+	ProgressDeadlineSeconds *int32 `protobuf:"varint,7,opt,name=progress_deadline_seconds,json=progressDeadlineSeconds,proto3,oneof" json:"progress_deadline_seconds,omitempty"`
+	// *
+	// Pauses rollouts: spec changes accumulate without creating new pods until
+	// unpaused. The lever for batching several changes into one rollout.
+	Paused        bool `protobuf:"varint,8,opt,name=paused,proto3" json:"paused,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesDeploymentAvailability) Reset() {
 	*x = KubernetesDeploymentAvailability{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -563,7 +268,7 @@ func (x *KubernetesDeploymentAvailability) String() string {
 func (*KubernetesDeploymentAvailability) ProtoMessage() {}
 
 func (x *KubernetesDeploymentAvailability) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -576,26 +281,26 @@ func (x *KubernetesDeploymentAvailability) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesDeploymentAvailability.ProtoReflect.Descriptor instead.
 func (*KubernetesDeploymentAvailability) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *KubernetesDeploymentAvailability) GetMinReplicas() int32 {
-	if x != nil {
-		return x.MinReplicas
+func (x *KubernetesDeploymentAvailability) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
 	}
 	return 0
 }
 
-func (x *KubernetesDeploymentAvailability) GetHorizontalPodAutoscaling() *KubernetesDeploymentAvailabilityHpa {
+func (x *KubernetesDeploymentAvailability) GetHorizontalPodAutoscaling() *KubernetesDeploymentHpa {
 	if x != nil {
 		return x.HorizontalPodAutoscaling
 	}
 	return nil
 }
 
-func (x *KubernetesDeploymentAvailability) GetDeploymentStrategy() *KubernetesDeploymentDeploymentStrategy {
+func (x *KubernetesDeploymentAvailability) GetStrategy() *KubernetesDeploymentStrategy {
 	if x != nil {
-		return x.DeploymentStrategy
+		return x.Strategy
 	}
 	return nil
 }
@@ -607,36 +312,73 @@ func (x *KubernetesDeploymentAvailability) GetPodDisruptionBudget() *KubernetesD
 	return nil
 }
 
+func (x *KubernetesDeploymentAvailability) GetMinReadySeconds() int32 {
+	if x != nil && x.MinReadySeconds != nil {
+		return *x.MinReadySeconds
+	}
+	return 0
+}
+
+func (x *KubernetesDeploymentAvailability) GetRevisionHistoryLimit() int32 {
+	if x != nil && x.RevisionHistoryLimit != nil {
+		return *x.RevisionHistoryLimit
+	}
+	return 0
+}
+
+func (x *KubernetesDeploymentAvailability) GetProgressDeadlineSeconds() int32 {
+	if x != nil && x.ProgressDeadlineSeconds != nil {
+		return *x.ProgressDeadlineSeconds
+	}
+	return 0
+}
+
+func (x *KubernetesDeploymentAvailability) GetPaused() bool {
+	if x != nil {
+		return x.Paused
+	}
+	return false
+}
+
 // *
-// **KubernetesDeploymentAvailabilityHpa** specifies the horizontal pod autoscaling configuration.
-// It includes settings to enable autoscaling based on CPU and memory utilization.
-type KubernetesDeploymentAvailabilityHpa struct {
+// **KubernetesDeploymentHpa** configures horizontal pod autoscaling. At least one
+// target metric must be set when enabled.
+type KubernetesDeploymentHpa struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// A flag to enable or disable horizontal pod autoscaling.
-	IsEnabled bool `protobuf:"varint,1,opt,name=is_enabled,json=isEnabled,proto3" json:"is_enabled,omitempty"`
-	// The target CPU utilization percentage to trigger autoscaling (e.g., 60.0).
-	TargetCpuUtilizationPercent float64 `protobuf:"fixed64,2,opt,name=target_cpu_utilization_percent,json=targetCpuUtilizationPercent,proto3" json:"target_cpu_utilization_percent,omitempty"`
-	// The target memory utilization to trigger autoscaling (e.g., "1Gi").
-	TargetMemoryUtilization string `protobuf:"bytes,3,opt,name=target_memory_utilization,json=targetMemoryUtilization,proto3" json:"target_memory_utilization,omitempty"`
+	// Enables the autoscaler.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Maximum replicas the autoscaler may scale to. Required when enabled; must be at
+	// least the availability replica floor.
+	MaxReplicas int32 `protobuf:"varint,2,opt,name=max_replicas,json=maxReplicas,proto3" json:"max_replicas,omitempty"`
+	// *
+	// Target average CPU utilization percentage across replicas (e.g. 60). Scale-out
+	// triggers above it, scale-in below.
+	TargetCpuUtilizationPercent *int32 `protobuf:"varint,3,opt,name=target_cpu_utilization_percent,json=targetCpuUtilizationPercent,proto3,oneof" json:"target_cpu_utilization_percent,omitempty"`
+	// *
+	// Target average memory utilization as an absolute quantity per pod (e.g. "1Gi").
+	// Prefer CPU-based scaling for most services — memory rarely falls after scale-out,
+	// which makes it a poor scale-in signal.
+	TargetMemoryUtilization string `protobuf:"bytes,4,opt,name=target_memory_utilization,json=targetMemoryUtilization,proto3" json:"target_memory_utilization,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
 
-func (x *KubernetesDeploymentAvailabilityHpa) Reset() {
-	*x = KubernetesDeploymentAvailabilityHpa{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[6]
+func (x *KubernetesDeploymentHpa) Reset() {
+	*x = KubernetesDeploymentHpa{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesDeploymentAvailabilityHpa) String() string {
+func (x *KubernetesDeploymentHpa) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesDeploymentAvailabilityHpa) ProtoMessage() {}
+func (*KubernetesDeploymentHpa) ProtoMessage() {}
 
-func (x *KubernetesDeploymentAvailabilityHpa) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[6]
+func (x *KubernetesDeploymentHpa) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -647,26 +389,33 @@ func (x *KubernetesDeploymentAvailabilityHpa) ProtoReflect() protoreflect.Messag
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesDeploymentAvailabilityHpa.ProtoReflect.Descriptor instead.
-func (*KubernetesDeploymentAvailabilityHpa) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{6}
+// Deprecated: Use KubernetesDeploymentHpa.ProtoReflect.Descriptor instead.
+func (*KubernetesDeploymentHpa) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *KubernetesDeploymentAvailabilityHpa) GetIsEnabled() bool {
+func (x *KubernetesDeploymentHpa) GetEnabled() bool {
 	if x != nil {
-		return x.IsEnabled
+		return x.Enabled
 	}
 	return false
 }
 
-func (x *KubernetesDeploymentAvailabilityHpa) GetTargetCpuUtilizationPercent() float64 {
+func (x *KubernetesDeploymentHpa) GetMaxReplicas() int32 {
 	if x != nil {
-		return x.TargetCpuUtilizationPercent
+		return x.MaxReplicas
 	}
 	return 0
 }
 
-func (x *KubernetesDeploymentAvailabilityHpa) GetTargetMemoryUtilization() string {
+func (x *KubernetesDeploymentHpa) GetTargetCpuUtilizationPercent() int32 {
+	if x != nil && x.TargetCpuUtilizationPercent != nil {
+		return *x.TargetCpuUtilizationPercent
+	}
+	return 0
+}
+
+func (x *KubernetesDeploymentHpa) GetTargetMemoryUtilization() string {
 	if x != nil {
 		return x.TargetMemoryUtilization
 	}
@@ -674,51 +423,43 @@ func (x *KubernetesDeploymentAvailabilityHpa) GetTargetMemoryUtilization() strin
 }
 
 // *
-// **KubernetesDeploymentDeploymentStrategy** defines the deployment strategy for rolling updates.
-// This controls how Kubernetes replaces old pods with new ones during updates.
-// Proper configuration enables zero-downtime deployments.
-// Reference: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
-type KubernetesDeploymentDeploymentStrategy struct {
+// **KubernetesDeploymentStrategy** controls how pods are replaced during updates.
+type KubernetesDeploymentStrategy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// The maximum number of pods that can be unavailable during the update.
-	// Can be an absolute number (e.g., 0) or a percentage of desired pods (e.g., "25%").
-	//
-	// For zero-downtime deployments, set to 0 or "0%".
-	// This ensures at least the desired number of pods are always available.
-	//
-	// Defaults to 25% if not specified.
-	// Cannot be 0 if max_surge is also 0.
-	MaxUnavailable string `protobuf:"bytes,1,opt,name=max_unavailable,json=maxUnavailable,proto3" json:"max_unavailable,omitempty"`
+	// "RollingUpdate" (default) replaces pods gradually per max_surge/max_unavailable;
+	// "Recreate" kills every old pod before starting new ones — required when two
+	// versions cannot coexist (exclusive volume locks, incompatible schemas), at the
+	// cost of downtime.
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// *
-	// The maximum number of pods that can be created above the desired number of pods.
-	// Can be an absolute number (e.g., 1) or a percentage of desired pods (e.g., "25%").
-	//
-	// For zero-downtime deployments with max_unavailable=0, set to at least 1 or "100%".
-	// This allows new pods to be created before old ones are terminated.
-	//
-	// Defaults to 25% if not specified.
-	// Cannot be 0 if max_unavailable is also 0.
-	MaxSurge      string `protobuf:"bytes,2,opt,name=max_surge,json=maxSurge,proto3" json:"max_surge,omitempty"`
+	// Maximum pods below the desired count during a rolling update — absolute ("0") or
+	// percentage ("25%"). Zero-downtime rollouts set 0 with max_surge >= 1. Ignored for
+	// Recreate.
+	MaxUnavailable string `protobuf:"bytes,2,opt,name=max_unavailable,json=maxUnavailable,proto3" json:"max_unavailable,omitempty"`
+	// *
+	// Maximum pods above the desired count during a rolling update — absolute ("1") or
+	// percentage ("25%"). Cannot be 0 when max_unavailable is 0. Ignored for Recreate.
+	MaxSurge      string `protobuf:"bytes,3,opt,name=max_surge,json=maxSurge,proto3" json:"max_surge,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesDeploymentDeploymentStrategy) Reset() {
-	*x = KubernetesDeploymentDeploymentStrategy{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[7]
+func (x *KubernetesDeploymentStrategy) Reset() {
+	*x = KubernetesDeploymentStrategy{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesDeploymentDeploymentStrategy) String() string {
+func (x *KubernetesDeploymentStrategy) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesDeploymentDeploymentStrategy) ProtoMessage() {}
+func (*KubernetesDeploymentStrategy) ProtoMessage() {}
 
-func (x *KubernetesDeploymentDeploymentStrategy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[7]
+func (x *KubernetesDeploymentStrategy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -729,19 +470,26 @@ func (x *KubernetesDeploymentDeploymentStrategy) ProtoReflect() protoreflect.Mes
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesDeploymentDeploymentStrategy.ProtoReflect.Descriptor instead.
-func (*KubernetesDeploymentDeploymentStrategy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{7}
+// Deprecated: Use KubernetesDeploymentStrategy.ProtoReflect.Descriptor instead.
+func (*KubernetesDeploymentStrategy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *KubernetesDeploymentDeploymentStrategy) GetMaxUnavailable() string {
+func (x *KubernetesDeploymentStrategy) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *KubernetesDeploymentStrategy) GetMaxUnavailable() string {
 	if x != nil {
 		return x.MaxUnavailable
 	}
 	return ""
 }
 
-func (x *KubernetesDeploymentDeploymentStrategy) GetMaxSurge() string {
+func (x *KubernetesDeploymentStrategy) GetMaxSurge() string {
 	if x != nil {
 		return x.MaxSurge
 	}
@@ -749,34 +497,19 @@ func (x *KubernetesDeploymentDeploymentStrategy) GetMaxSurge() string {
 }
 
 // *
-// **KubernetesDeploymentPodDisruptionBudget** configures a PodDisruptionBudget (PDB) to ensure
-// minimum availability during voluntary disruptions like node maintenance or cluster upgrades.
-// Reference: https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
+// **KubernetesDeploymentPodDisruptionBudget** bounds voluntary disruptions (drains,
+// upgrades). Set exactly one of min_available or max_unavailable.
 type KubernetesDeploymentPodDisruptionBudget struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// Enable or disable PodDisruptionBudget creation.
-	// When disabled, no PDB is created and the cluster can evict pods freely.
-	// When enabled, the cluster must respect the min_available constraint.
+	// Enables PDB creation.
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	// *
-	// Minimum number of pods that must be available during voluntary disruptions.
-	// Can be an absolute number (e.g., 1) or a percentage (e.g., "50%").
-	//
-	// For high availability, typically set to:
-	// - 1 for single-replica services (ensures at least one pod always available)
-	// - N-1 for N-replica services (allows one pod to be disrupted at a time)
-	// - A percentage like "50%" for large replica counts
-	//
-	// Cannot be used together with max_unavailable.
-	// If both min_available and max_unavailable are not set, defaults to 1.
+	// Minimum pods that must stay available — absolute ("1") or percentage ("50%").
+	// For an N-replica service, "N-1 as a number" allows one disruption at a time.
 	MinAvailable string `protobuf:"bytes,2,opt,name=min_available,json=minAvailable,proto3" json:"min_available,omitempty"`
 	// *
-	// Maximum number of pods that can be unavailable during voluntary disruptions.
-	// Can be an absolute number (e.g., 1) or a percentage (e.g., "50%").
-	//
-	// This is an alternative to min_available.
-	// Cannot be used together with min_available.
+	// Maximum pods that may be down — absolute or percentage. Alternative to
+	// min_available; do not set both.
 	MaxUnavailable string `protobuf:"bytes,3,opt,name=max_unavailable,json=maxUnavailable,proto3" json:"max_unavailable,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -784,7 +517,7 @@ type KubernetesDeploymentPodDisruptionBudget struct {
 
 func (x *KubernetesDeploymentPodDisruptionBudget) Reset() {
 	*x = KubernetesDeploymentPodDisruptionBudget{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -796,7 +529,7 @@ func (x *KubernetesDeploymentPodDisruptionBudget) String() string {
 func (*KubernetesDeploymentPodDisruptionBudget) ProtoMessage() {}
 
 func (x *KubernetesDeploymentPodDisruptionBudget) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -809,7 +542,7 @@ func (x *KubernetesDeploymentPodDisruptionBudget) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use KubernetesDeploymentPodDisruptionBudget.ProtoReflect.Descriptor instead.
 func (*KubernetesDeploymentPodDisruptionBudget) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *KubernetesDeploymentPodDisruptionBudget) GetEnabled() bool {
@@ -837,71 +570,53 @@ var File_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto prot
 
 const file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/kubernetes/kubernetesdeployment/v1/spec.proto\x127dev.planton.provider.kubernetes.kubernetesdeployment.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a+dev/planton/provider/kubernetes/probe.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xce\a\n" +
+	"Bdev/planton/provider/kubernetes/kubernetesdeployment/v1/spec.proto\x127dev.planton.provider.kubernetes.kubernetesdeployment.v1\x1a\x1bbuf/validate/validate.proto\x1a8dev/planton/provider/kubernetes/workload_container.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9e\x06\n" +
 	"\x18KubernetesDeploymentSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\xe9\x01\n" +
-	"\aversion\x18\x04 \x01(\tB\xce\x01\xbaH\xca\x01\xba\x01l\n" +
-	"\x12spec.version.chars\x128Only lowercase letters, numbers, and hyphens are allowed\x1a\x1cthis.matches('^[a-z0-9-]+$')\xba\x01R\n" +
-	"\x1dspec.version.no-hyphen-ending\x12\x1aMust not end with a hyphen\x1a\x15this.matches('[^-]$')r\x04\x10\x01\x18\x1eR\aversion\x12|\n" +
-	"\tcontainer\x18\x05 \x01(\v2V.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12n\n" +
-	"\aingress\x18\x06 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentIngressR\aingress\x12}\n" +
-	"\favailability\x18\a \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailabilityR\favailability\x12\x82\x01\n" +
-	"\vconfig_maps\x18\b \x03(\v2a.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.ConfigMapsEntryR\n" +
-	"configMaps\x1a=\n" +
-	"\x0fConfigMapsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd2\x01\n" +
-	"\x1bKubernetesDeploymentIngress\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
-	"\x1espec.ingress.hostname.required\x12,hostname is required when ingress is enabled\x1a(!this.enabled || size(this.hostname) > 0\"\xdc\x01\n" +
-	"\x1dKubernetesDeploymentContainer\x12s\n" +
-	"\x03app\x18\x01 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerAppB\x06\xbaH\x03\xc8\x01\x01R\x03app\x12F\n" +
-	"\bsidecars\x18\x02 \x03(\v2*.dev.planton.provider.kubernetes.ContainerR\bsidecars\"\xc4\a\n" +
-	" KubernetesDeploymentContainerApp\x12\x85\x02\n" +
-	"\x05image\x18\x01 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageB\xbd\x01\xbaH\xb9\x01\xba\x01Z\n" +
-	"\x1dspec.container.app.image.repo\x12\x16Image repo is required\x1a!has(this.repo) && this.repo != ''\xba\x01V\n" +
-	"\x1cspec.container.app.image.tag\x12\x15Image tag is required\x1a\x1fhas(this.tag) && this.tag != ''\xc8\x01\x01R\x05image\x12t\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100MiR\tresources\x12?\n" +
-	"\x03env\x18\x03 \x01(\v2-.dev.planton.provider.kubernetes.ContainerEnvR\x03env\x12s\n" +
-	"\x05ports\x18\x04 \x03(\v2].dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerAppPortR\x05ports\x12M\n" +
-	"\x0eliveness_probe\x18\x05 \x01(\v2&.dev.planton.provider.kubernetes.ProbeR\rlivenessProbe\x12O\n" +
-	"\x0freadiness_probe\x18\x06 \x01(\v2&.dev.planton.provider.kubernetes.ProbeR\x0ereadinessProbe\x12K\n" +
-	"\rstartup_probe\x18\a \x01(\v2&.dev.planton.provider.kubernetes.ProbeR\fstartupProbe\x12Q\n" +
-	"\rvolume_mounts\x18\b \x03(\v2,.dev.planton.provider.kubernetes.VolumeMountR\fvolumeMounts\x12\x18\n" +
-	"\acommand\x18\t \x03(\tR\acommand\x12\x12\n" +
-	"\x04args\x18\n" +
-	" \x03(\tR\x04args\"\xe9\x05\n" +
-	"$KubernetesDeploymentContainerAppPort\x12\xd0\x02\n" +
-	"\x04name\x18\x01 \x01(\tB\xbb\x02\xbaH\xb7\x02\xba\x01\xb0\x02\n" +
-	"\x1dspec.container.app.ports.name\x12\xe0\x01Name for ports must only contain lowercase alphanumeric characters and hyphens. Port names must also start and end with an alphanumeric character. For example, '123-abc' and 'web' are valid, but '123_abc' and '-web' are not.\x1a,this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$')\xc8\x01\x01R\x04name\x12-\n" +
-	"\x0econtainer_port\x18\x02 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\rcontainerPort\x12\xc0\x01\n" +
-	"\x10network_protocol\x18\x03 \x01(\tB\x94\x01\xbaH\x90\x01\xba\x01\x89\x01\n" +
-	")spec.container.app.ports.network_protocol\x12<The network protocol must be one of \"SCTP\", \"TCP\", or \"UDP\".\x1a\x1ethis in [\"SCTP\", \"TCP\", \"UDP\"]\xc8\x01\x01R\x0fnetworkProtocol\x12)\n" +
-	"\fapp_protocol\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vappProtocol\x12)\n" +
-	"\fservice_port\x18\x05 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\vservicePort\x12&\n" +
-	"\x0fis_ingress_port\x18\x06 \x01(\bR\risIngressPort\"\x8c\x04\n" +
-	" KubernetesDeploymentAvailability\x12!\n" +
-	"\fmin_replicas\x18\x01 \x01(\x05R\vminReplicas\x12\x9a\x01\n" +
-	"\x1ahorizontal_pod_autoscaling\x18\x02 \x01(\v2\\.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailabilityHpaR\x18horizontalPodAutoscaling\x12\x90\x01\n" +
-	"\x13deployment_strategy\x18\x03 \x01(\v2_.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentDeploymentStrategyR\x12deploymentStrategy\x12\x94\x01\n" +
-	"\x15pod_disruption_budget\x18\x04 \x01(\v2`.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentPodDisruptionBudgetR\x13podDisruptionBudget\"\xc5\x01\n" +
-	"#KubernetesDeploymentAvailabilityHpa\x12\x1d\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xa1\x02\n" +
+	"\aversion\x18\x03 \x01(\tB\x81\x02\xbaH\xf5\x01\xba\x01\xed\x01\n" +
+	"\x13spec.version.format\x12|Version must contain only lowercase letters, numbers, and hyphens, and must not end with a hyphen (e.g. \"main\", \"review-42\")\x1aXthis == '' || this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$') || this.matches('^[a-z0-9]$')r\x02\x18\x1e\x8a\xa6\x1d\x04mainH\x00R\aversion\x88\x01\x01\x12|\n" +
+	"\tcontainer\x18\x04 \x01(\v2V.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12>\n" +
+	"\x03pod\x18\x05 \x01(\v2,.dev.planton.provider.kubernetes.WorkloadPodR\x03pod\x12}\n" +
+	"\favailability\x18\x06 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailabilityR\favailabilityB\n" +
 	"\n" +
-	"is_enabled\x18\x01 \x01(\bR\tisEnabled\x12C\n" +
-	"\x1etarget_cpu_utilization_percent\x18\x02 \x01(\x01R\x1btargetCpuUtilizationPercent\x12:\n" +
-	"\x19target_memory_utilization\x18\x03 \x01(\tR\x17targetMemoryUtilization\"n\n" +
-	"&KubernetesDeploymentDeploymentStrategy\x12'\n" +
-	"\x0fmax_unavailable\x18\x01 \x01(\tR\x0emaxUnavailable\x12\x1b\n" +
-	"\tmax_surge\x18\x02 \x01(\tR\bmaxSurge\"\x91\x01\n" +
+	"\b_version\"\xaa\x02\n" +
+	"\x1dKubernetesDeploymentContainer\x12L\n" +
+	"\x03app\x18\x01 \x01(\v22.dev.planton.provider.kubernetes.WorkloadContainerB\x06\xbaH\x03\xc8\x01\x01R\x03app\x12\xba\x01\n" +
+	"\bsidecars\x18\x02 \x03(\v22.dev.planton.provider.kubernetes.WorkloadContainerBj\xbaHg\xba\x01d\n" +
+	"\x1dspec.container.sidecars.named\x12(Every sidecar container must have a name\x1a\x19this.all(c, c.name != '')R\bsidecars\"\xa8\x06\n" +
+	" KubernetesDeploymentAvailability\x12-\n" +
+	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12\x8e\x01\n" +
+	"\x1ahorizontal_pod_autoscaling\x18\x02 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentHpaR\x18horizontalPodAutoscaling\x12q\n" +
+	"\bstrategy\x18\x03 \x01(\v2U.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentStrategyR\bstrategy\x12\x94\x01\n" +
+	"\x15pod_disruption_budget\x18\x04 \x01(\v2`.dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentPodDisruptionBudgetR\x13podDisruptionBudget\x128\n" +
+	"\x11min_ready_seconds\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\x0fminReadySeconds\x88\x01\x01\x12B\n" +
+	"\x16revision_history_limit\x18\x06 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x02R\x14revisionHistoryLimit\x88\x01\x01\x12H\n" +
+	"\x19progress_deadline_seconds\x18\a \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x03R\x17progressDeadlineSeconds\x88\x01\x01\x12\x16\n" +
+	"\x06paused\x18\b \x01(\bR\x06pausedB\v\n" +
+	"\t_replicasB\x14\n" +
+	"\x12_min_ready_secondsB\x19\n" +
+	"\x17_revision_history_limitB\x1c\n" +
+	"\x1a_progress_deadline_seconds\"\x82\x06\n" +
+	"\x17KubernetesDeploymentHpa\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12!\n" +
+	"\fmax_replicas\x18\x02 \x01(\x05R\vmaxReplicas\x12S\n" +
+	"\x1etarget_cpu_utilization_percent\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x01H\x00R\x1btargetCpuUtilizationPercent\x88\x01\x01\x12\x8e\x02\n" +
+	"\x19target_memory_utilization\x18\x04 \x01(\tB\xd1\x01\xbaH\xcd\x01\xba\x01\xc9\x01\n" +
+	"\"spec.hpa.target_memory_utilization\x12MTarget memory utilization must be a Kubernetes quantity (e.g. \"512Mi\", \"1Gi\")\x1aTthis == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?(m|k|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$')R\x17targetMemoryUtilization:\xa0\x02\xbaH\x9c\x02\x1a\x99\x02\n" +
+	"\x18spec.hpa.metric.required\x12}When autoscaling is enabled, set max_replicas and at least one of target_cpu_utilization_percent or target_memory_utilization\x1a~!this.enabled || (this.max_replicas > 0 && (has(this.target_cpu_utilization_percent) || this.target_memory_utilization != ''))B!\n" +
+	"\x1f_target_cpu_utilization_percent\"\xda\x03\n" +
+	"\x1cKubernetesDeploymentStrategy\x12\xa2\x01\n" +
+	"\x04type\x18\x01 \x01(\tB\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
+	"\x12spec.strategy.type\x12:Strategy type must be either \"RollingUpdate\" or \"Recreate\"\x1a3this == '' || this in ['RollingUpdate', 'Recreate']R\x04type\x12'\n" +
+	"\x0fmax_unavailable\x18\x02 \x01(\tR\x0emaxUnavailable\x12\x1b\n" +
+	"\tmax_surge\x18\x03 \x01(\tR\bmaxSurge:\xce\x01\xbaH\xca\x01\x1a\xc7\x01\n" +
+	"\x1bspec.strategy.not_both_zero\x12_max_unavailable and max_surge cannot both be 0 — the rollout would be unable to make progress\x1aG!(this.max_unavailable in ['0', '0%'] && this.max_surge in ['0', '0%'])\"\xed\x02\n" +
 	"'KubernetesDeploymentPodDisruptionBudget\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12#\n" +
 	"\rmin_available\x18\x02 \x01(\tR\fminAvailable\x12'\n" +
-	"\x0fmax_unavailable\x18\x03 \x01(\tR\x0emaxUnavailableB\xbd\x03\n" +
+	"\x0fmax_unavailable\x18\x03 \x01(\tR\x0emaxUnavailable:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
+	"\x1aspec.pdb.exactly_one_bound\x12hSet exactly one of min_available or max_unavailable (defaults to min_available: \"1\" when both are empty)\x1aJ!this.enabled || !(this.min_available != '' && this.max_unavailable != '')B\xbd\x03\n" +
 	";com.dev.planton.provider.kubernetes.kubernetesdeployment.v1B\tSpecProtoP\x01Zpgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdeployment/v1;kubernetesdeploymentv1\xa2\x02\x05DPPKK\xaa\x027Dev.Planton.Provider.Kubernetes.Kubernetesdeployment.V1\xca\x027Dev\\Planton\\Provider\\Kubernetes\\Kubernetesdeployment\\V1\xe2\x02CDev\\Planton\\Provider\\Kubernetes\\Kubernetesdeployment\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Kubernetes::Kubernetesdeployment::V1b\x06proto3"
 
 var (
@@ -916,50 +631,33 @@ func file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_raw
 	return file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_goTypes = []any{
 	(*KubernetesDeploymentSpec)(nil),                // 0: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec
-	(*KubernetesDeploymentIngress)(nil),             // 1: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentIngress
-	(*KubernetesDeploymentContainer)(nil),           // 2: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainer
-	(*KubernetesDeploymentContainerApp)(nil),        // 3: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerApp
-	(*KubernetesDeploymentContainerAppPort)(nil),    // 4: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerAppPort
-	(*KubernetesDeploymentAvailability)(nil),        // 5: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailability
-	(*KubernetesDeploymentAvailabilityHpa)(nil),     // 6: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailabilityHpa
-	(*KubernetesDeploymentDeploymentStrategy)(nil),  // 7: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentDeploymentStrategy
-	(*KubernetesDeploymentPodDisruptionBudget)(nil), // 8: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentPodDisruptionBudget
-	nil,                                   // 9: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.ConfigMapsEntry
-	(*v1.StringValueOrRef)(nil),           // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.Container)(nil),          // 11: dev.planton.provider.kubernetes.Container
-	(*kubernetes.ContainerImage)(nil),     // 12: dev.planton.provider.kubernetes.ContainerImage
-	(*kubernetes.ContainerResources)(nil), // 13: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerEnv)(nil),       // 14: dev.planton.provider.kubernetes.ContainerEnv
-	(*kubernetes.Probe)(nil),              // 15: dev.planton.provider.kubernetes.Probe
-	(*kubernetes.VolumeMount)(nil),        // 16: dev.planton.provider.kubernetes.VolumeMount
+	(*KubernetesDeploymentContainer)(nil),           // 1: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainer
+	(*KubernetesDeploymentAvailability)(nil),        // 2: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailability
+	(*KubernetesDeploymentHpa)(nil),                 // 3: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentHpa
+	(*KubernetesDeploymentStrategy)(nil),            // 4: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentStrategy
+	(*KubernetesDeploymentPodDisruptionBudget)(nil), // 5: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentPodDisruptionBudget
+	(*v1.StringValueOrRef)(nil),                     // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.WorkloadPod)(nil),                  // 7: dev.planton.provider.kubernetes.WorkloadPod
+	(*kubernetes.WorkloadContainer)(nil),            // 8: dev.planton.provider.kubernetes.WorkloadContainer
 }
 var file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_depIdxs = []int32{
-	10, // 0: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 1: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainer
-	1,  // 2: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentIngress
-	5,  // 3: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.availability:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailability
-	9,  // 4: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.ConfigMapsEntry
-	3,  // 5: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainer.app:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerApp
-	11, // 6: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainer.sidecars:type_name -> dev.planton.provider.kubernetes.Container
-	12, // 7: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerApp.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	13, // 8: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerApp.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	14, // 9: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerApp.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
-	4,  // 10: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerApp.ports:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerAppPort
-	15, // 11: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerApp.liveness_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	15, // 12: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerApp.readiness_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	15, // 13: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerApp.startup_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	16, // 14: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainerApp.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
-	6,  // 15: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailability.horizontal_pod_autoscaling:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailabilityHpa
-	7,  // 16: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailability.deployment_strategy:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentDeploymentStrategy
-	8,  // 17: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailability.pod_disruption_budget:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentPodDisruptionBudget
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	6, // 0: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainer
+	7, // 2: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.pod:type_name -> dev.planton.provider.kubernetes.WorkloadPod
+	2, // 3: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.availability:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailability
+	8, // 4: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainer.app:type_name -> dev.planton.provider.kubernetes.WorkloadContainer
+	8, // 5: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentContainer.sidecars:type_name -> dev.planton.provider.kubernetes.WorkloadContainer
+	3, // 6: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailability.horizontal_pod_autoscaling:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentHpa
+	4, // 7: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailability.strategy:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentStrategy
+	5, // 8: dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentAvailability.pod_disruption_budget:type_name -> dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentPodDisruptionBudget
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_init() }
@@ -967,13 +665,16 @@ func file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_ini
 	if File_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

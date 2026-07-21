@@ -7,69 +7,63 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Resources deploys a KubernetesStatefulSet: an optional namespace, the env and
+// image-pull satellite Secrets, the headless governing Service, the StatefulSet
+// itself, and an optional PDB.
+//
+// Identity and exposure are composed, not created: pods run as the
+// ServiceAccount referenced in spec.pod.service_account, and external exposure
+// attaches through first-class ingress kinds referencing this workload's
+// exported Service handle. This module never creates ServiceAccounts, RBAC
+// objects, certificates, gateways, or routes.
 func Resources(ctx *pulumi.Context, stackInput *kubernetesstatefulsetv1.KubernetesStatefulSetStackInput) error {
 	locals, err := initializeLocals(ctx, stackInput)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize locals")
 	}
 
-	// Create kubernetes-provider from the credential in the stack-input
 	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
 		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
 		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
-	// ------------------------------ namespace ----------------------------
-	// Conditionally create namespace based on create_namespace flag
 	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	// Build conditional namespace dependency (Pulumi equivalent of Terraform depends_on).
-	// When create_namespace is false, createdNamespace is nil and namespaceDeps is empty.
+	// Conditional namespace dependency (Pulumi equivalent of Terraform depends_on):
+	// empty when the namespace pre-exists or is owned by a KubernetesNamespace resource.
 	var namespaceDeps []pulumi.ResourceOption
 	if createdNamespace != nil {
 		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
 	}
 
-	// Create ConfigMaps from spec before StatefulSet
-	_, err = configMaps(ctx, locals, kubernetesProvider, namespaceDeps)
-	if err != nil {
-		return errors.Wrap(err, "failed to create configmaps")
+	// Satellite secrets are created BEFORE the StatefulSet: pods reference them by
+	// name at startup, and a pod that starts before its env secret exists crashes.
+	if err := secret(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
+		return errors.Wrap(err, "failed to create env secret")
 	}
 
-	// Create the headless service for stable network identity (required for StatefulSet)
-	createdHeadlessService, err := headlessService(ctx, locals, kubernetesProvider, namespaceDeps)
+	createdImagePullSecret, err := imagePullSecret(ctx, locals, kubernetesProvider, namespaceDeps)
+	if err != nil {
+		return errors.Wrap(err, "failed to create image pull secret")
+	}
+
+	// The governing Service is created BEFORE the StatefulSet: the Kubernetes API
+	// requires spec.serviceName to reference an existing Service, and pods resolve
+	// peer DNS through it during bootstrap — creating it after the StatefulSet
+	// would leave early pods unable to find their peers.
+	createdService, err := service(ctx, locals, kubernetesProvider, namespaceDeps)
 	if err != nil {
 		return errors.Wrap(err, "failed to create headless service")
 	}
 
-	// Create the StatefulSet
-	createdStatefulSet, err := statefulSet(ctx, locals, kubernetesProvider, createdHeadlessService, namespaceDeps)
-	if err != nil {
+	if err := statefulSet(ctx, locals, kubernetesProvider, createdImagePullSecret, createdService, namespaceDeps); err != nil {
 		return errors.Wrap(err, "failed to create stateful set")
 	}
 
-	// Create ClusterIP service for client access (if ports are defined)
-	if err := clientService(ctx, locals, kubernetesProvider, createdStatefulSet, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create client service")
-	}
-
-	// Create kubernetes secret with app secrets
-	if err := secret(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create secret")
-	}
-
-	// Create istio-ingress resources if ingress is enabled
-	if locals.KubernetesStatefulSet.Spec.Ingress != nil && locals.KubernetesStatefulSet.Spec.Ingress.Enabled {
-		if err := ingress(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-			return errors.Wrap(err, "failed to create istio ingress resources")
-		}
-	}
-
-	// Create pod disruption budget if enabled
 	if err := podDisruptionBudget(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
 		return errors.Wrap(err, "failed to create pod disruption budget")
 	}

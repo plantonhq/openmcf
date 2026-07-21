@@ -1,0 +1,58 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesStatefulSet
+metadata:
+  name: my-quorum-cluster
+spec:
+  namespace:
+    value: "<your-namespace>"
+  createNamespace: false
+  container:
+    app:
+      image:
+        repo: "<your-container-registry>/<your-cluster-image>"
+        tag: "<your-image-tag>"
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+      ports:
+        - name: client
+          containerPort: 9092
+          servicePort: 9092
+        - name: peer
+          containerPort: 9093
+          servicePort: 9093
+      readinessProbe:
+        tcpSocket:
+          portNumber: 9092
+        periodSeconds: 5
+      volumeMounts:
+        - name: data
+          mountPath: /var/lib/data
+          pvc:
+            claimName: data
+  pod:
+    scheduling:
+      podAntiAffinity:
+        required:
+          - matchLabels:
+              app: my-quorum-cluster
+            topologyKey: kubernetes.io/hostname
+    terminationGracePeriodSeconds: 120
+  availability:
+    replicas: 3
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: "2"
+  podManagementPolicy: Parallel
+  pvcRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  volumeClaimTemplates:
+    - name: data
+      size: 20Gi
+      accessModes:
+        - ReadWriteOnce
