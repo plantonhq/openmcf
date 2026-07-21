@@ -156,6 +156,7 @@ type ImportValueDerivation struct {
 	//	*ImportValueDerivation_FromStackOutput
 	//	*ImportValueDerivation_FromArnPart
 	//	*ImportValueDerivation_FromAddressKey
+	//	*ImportValueDerivation_FromMetadataNameSuffix
 	Source        isImportValueDerivation_Source `protobuf_oneof:"source"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -243,6 +244,15 @@ func (x *ImportValueDerivation) GetFromAddressKey() bool {
 	return false
 }
 
+func (x *ImportValueDerivation) GetFromMetadataNameSuffix() string {
+	if x != nil {
+		if x, ok := x.Source.(*ImportValueDerivation_FromMetadataNameSuffix); ok {
+			return x.FromMetadataNameSuffix
+		}
+	}
+	return ""
+}
+
 type isImportValueDerivation_Source interface {
 	isImportValueDerivation_Source()
 }
@@ -280,6 +290,15 @@ type ImportValueDerivation_FromAddressKey struct {
 	FromAddressKey bool `protobuf:"varint,5,opt,name=from_address_key,json=fromAddressKey,proto3,oneof"`
 }
 
+type ImportValueDerivation_FromMetadataNameSuffix struct {
+	// metadata.name plus this literal suffix -- for satellite resources a
+	// module names by convention off the parent's name (a workload's
+	// "<name>-hpa" autoscaler, its "<name>-env-secrets" Secret). Keeps
+	// convention-named satellites blind-derivable without exporting their
+	// names as stack outputs.
+	FromMetadataNameSuffix string `protobuf:"bytes,6,opt,name=from_metadata_name_suffix,json=fromMetadataNameSuffix,proto3,oneof"`
+}
+
 func (*ImportValueDerivation_FromMetadataName) isImportValueDerivation_Source() {}
 
 func (*ImportValueDerivation_FromSpecField) isImportValueDerivation_Source() {}
@@ -289,6 +308,8 @@ func (*ImportValueDerivation_FromStackOutput) isImportValueDerivation_Source() {
 func (*ImportValueDerivation_FromArnPart) isImportValueDerivation_Source() {}
 
 func (*ImportValueDerivation_FromAddressKey) isImportValueDerivation_Source() {}
+
+func (*ImportValueDerivation_FromMetadataNameSuffix) isImportValueDerivation_Source() {}
 
 var File_dev_planton_iac_componentimportmap_v1_spec_proto protoreflect.FileDescriptor
 
@@ -300,13 +321,14 @@ const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\vImportValue\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12^\n" +
 	"\vderivations\x18\x02 \x03(\v2<.dev.planton.iac.componentimportmap.v1.ImportValueDerivationR\vderivations\x12\"\n" +
-	"\rwhere_to_find\x18\x03 \x01(\tR\vwhereToFind\"\xfb\x01\n" +
+	"\rwhere_to_find\x18\x03 \x01(\tR\vwhereToFind\"\xb8\x02\n" +
 	"\x15ImportValueDerivation\x12.\n" +
 	"\x12from_metadata_name\x18\x01 \x01(\bH\x00R\x10fromMetadataName\x12(\n" +
 	"\x0ffrom_spec_field\x18\x02 \x01(\tH\x00R\rfromSpecField\x12,\n" +
 	"\x11from_stack_output\x18\x03 \x01(\tH\x00R\x0ffromStackOutput\x12$\n" +
 	"\rfrom_arn_part\x18\x04 \x01(\tH\x00R\vfromArnPart\x12*\n" +
-	"\x10from_address_key\x18\x05 \x01(\bH\x00R\x0efromAddressKeyB\b\n" +
+	"\x10from_address_key\x18\x05 \x01(\bH\x00R\x0efromAddressKey\x12;\n" +
+	"\x19from_metadata_name_suffix\x18\x06 \x01(\tH\x00R\x16fromMetadataNameSuffixB\b\n" +
 	"\x06sourceB\xcd\x02\n" +
 	")com.dev.planton.iac.componentimportmap.v1B\tSpecProtoP\x01Z\\github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1;componentimportmapv1\xa2\x02\x04DPIC\xaa\x02%Dev.Planton.Iac.Componentimportmap.V1\xca\x02%Dev\\Planton\\Iac\\Componentimportmap\\V1\xe2\x021Dev\\Planton\\Iac\\Componentimportmap\\V1\\GPBMetadata\xea\x02)Dev::Planton::Iac::Componentimportmap::V1b\x06proto3"
 
@@ -349,6 +371,7 @@ func file_dev_planton_iac_componentimportmap_v1_spec_proto_init() {
 		(*ImportValueDerivation_FromStackOutput)(nil),
 		(*ImportValueDerivation_FromArnPart)(nil),
 		(*ImportValueDerivation_FromAddressKey)(nil),
+		(*ImportValueDerivation_FromMetadataNameSuffix)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

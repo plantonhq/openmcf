@@ -1,147 +1,255 @@
-# KubernetesService: Research Documentation
+# Kubernetes Service: Research Documentation
 
 ## Introduction
 
-The Kubernetes Service is one of the most fundamental networking primitives in the Kubernetes ecosystem. It provides a stable network identity and load balancing for a set of pods, abstracting away the ephemeral nature of individual pod IPs. Services are the standard mechanism for service discovery, inter-service communication, and external access to workloads running in a Kubernetes cluster.
+The Service is Kubernetes' answer to a problem as old as the platform itself: pods are ephemeral, but the things that talk to them need a stable address. A Service gives a set of pods one durable virtual IP and DNS name; kube-proxy (or its dataplane successors) keeps traffic flowing to whichever pods currently match the selector. Everything else in the networking stack composes on it — Ingress backends are Services, NetworkPolicies reason about the pods Services select, meshes discover endpoints through Services, and every in-cluster client connects through a Service DNS name.
 
-This document provides a comprehensive analysis of the Kubernetes Service landscape, explains why Planton offers a standalone Service component, and justifies the design decisions behind the `KubernetesServiceSpec` schema.
+Planton workload kinds (KubernetesDeployment, KubernetesStatefulSet) already create a Service for their own pods, so the ordinary case needs no separate resource. The standalone **KubernetesService** component exists for everything the workload-owned Service does not cover: exposing pods managed outside Planton, LoadBalancer/NodePort exposure with cloud-provider annotations, ExternalName aliases to endpoints outside the cluster, headless services for custom discovery, dual-stack addressing, and selectorless services fronting manually-managed endpoints.
 
-## The Kubernetes Service Primitive
+The spec models the complete core/v1 ServiceSpec surface. The single deliberate omission is the deprecated `loadBalancerIP` field, discussed below.
 
-### What is a Kubernetes Service?
+## Evolution and Historical Context
 
-A Kubernetes Service is an abstraction that defines a logical set of pods and a policy by which to access them. Services enable:
+### The original core (Kubernetes 1.0)
 
-- **Service Discovery**: Pods can find each other by service name through cluster DNS (CoreDNS)
-- **Load Balancing**: Traffic is distributed across all healthy pods matching the service selector
-- **Stable Endpoints**: A service maintains a consistent IP and DNS name regardless of pod churn
-- **External Access**: LoadBalancer and NodePort types expose services outside the cluster
+Services shipped in Kubernetes 1.0 with the shape still recognizable today: a selector, a list of ports, a virtual ClusterIP, and the NodePort/LoadBalancer escalation ladder. ExternalName arrived in 1.5 as the odd one out — a pure DNS CNAME with no proxying at all. Headless services (`clusterIP: None`) also date to the earliest days, born from the needs of stateful systems that must address each replica individually.
 
-### Service Types
+### Traffic policies (1.7+)
 
-Kubernetes defines four service types, each serving different network topology needs:
+`externalTrafficPolicy: Local` answered a persistent complaint: NodePort/LoadBalancer traffic proxied through a random node masquerades the client source IP and adds a hop. Local-policy routing keeps traffic on the receiving node, preserving the source IP — at the price that nodes without endpoints must be health-checked out by the external load balancer, which is what `healthCheckNodePort` exists for. `internalTrafficPolicy` (1.22+) brought the same node-local option to ClusterIP traffic for agent patterns like node-level DNS caches.
 
-| Type | Description | Cluster IP | External Access | Use Case |
-|------|-------------|------------|-----------------|----------|
-| ClusterIP | Internal only | Allocated | No | Inter-service communication |
-| NodePort | Static port on nodes | Allocated | Via node IP + port | Dev/test, bare metal |
-| LoadBalancer | Cloud provider LB | Allocated | Via LB IP/hostname | Production external access |
-| ExternalName | DNS CNAME alias | None | N/A (DNS redirect) | External service proxying |
+### Dual-stack (stable in 1.23)
 
-Additionally, the **headless** variant (clusterIP: None) provides direct pod IP resolution through DNS, which is essential for StatefulSets and custom service discovery.
+IPv4/IPv6 dual-stack introduced `ipFamilies` (which families, in what order) and `ipFamilyPolicy` (SingleStack / PreferDualStack / RequireDualStack). PreferDualStack is the portable opt-in: two families on dual-stack clusters, graceful single-family fallback elsewhere.
 
-### Why a Standalone Service Component?
+### The deprecation of `loadBalancerIP`
 
-Workload components in Planton (`KubernetesDeployment`, `KubernetesStatefulSet`) automatically create Services for their pods. However, a standalone `KubernetesService` component addresses scenarios that fall outside the workload lifecycle:
+The original `spec.loadBalancerIP` promised a pinned load-balancer address but never specified semantics — each cloud interpreted it differently and several ignored it. Upstream deprecated it in 1.24 in favor of provider-specific annotations (`networking.gke.io/load-balancer-ip-addresses`, AWS EIP allocations, Azure PIP names). This spec follows upstream: no `load_balancer_ip` field; pinned addresses are expressed in `annotations`, which is where every cloud actually reads them. In the same era, `loadBalancerClass` (1.24) made multiple LB implementations per cluster first-class, and `allocateLoadBalancerNodePorts` (1.24) let VIP-mode implementations skip the NodePort hop entirely.
 
-1. **ExternalName services**: Proxying to external DNS names (e.g., RDS endpoints, external APIs) without any pods
-2. **Services without selectors**: Manually managed Endpoints pointing to non-Kubernetes backends
-3. **Headless services**: For StatefulSets or custom DNS-based discovery mechanisms managed by separate components
-4. **Cross-tool integration**: Services for pods managed by Helm charts, operators, or other tools outside Planton
-5. **LoadBalancer services**: Adding external access to existing internal workloads without modifying the workload component
-6. **Service migration**: Gradually migrating traffic between different backends by managing the service independently
+### Traffic distribution (stable in 1.33)
 
-## Deployment Methods
+`trafficDistribution` superseded the older topology-keys experiments with two modest, honorable hints: `PreferSameZone` (cut cross-zone data transfer cost and latency) and `PreferSameNode` (DaemonSet-style node-local routing). It is a preference, not a guarantee — implementations honor it when safe.
 
-### Manual (kubectl)
+## Deployment Methods Landscape
 
-The most basic approach. Services are created via YAML manifests and `kubectl apply`. Simple but lacks drift detection, version control integration, and automation.
+### Level 0: Manual (kubectl)
 
 ```bash
-kubectl apply -f service.yaml
+kubectl expose deployment my-app --port=80 --target-port=8080
+kubectl create service loadbalancer my-app --tcp=443:8443
 ```
 
-**Limitations**: No state management, no dependency tracking, difficult to audit or roll back.
+**Pros:**
+- Immediate; `kubectl expose` reads the selector off the workload
 
-### Helm Charts
+**Cons:**
+- Imperative — no drift detection, no reproducibility
+- The interesting surface (traffic policies, LB annotations, dual-stack) is unreachable without follow-up edits
 
-Helm wraps service definitions within chart templates. Services are typically a supporting resource within a larger application chart, not managed independently.
+**Verdict:** Fine for a demo. Not for production infrastructure.
 
-**Limitations**: Tight coupling to the chart lifecycle, templating complexity, hard to manage standalone services.
+### Level 1: Declarative YAML Manifests
 
-### Kustomize
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: public-web
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+  ports:
+    - name: https
+      port: 443
+      targetPort: 8443
+  externalTrafficPolicy: Local
+```
 
-Kustomize overlays allow environment-specific service customization. Good for multi-environment deployments but requires understanding of the overlay system.
+**Pros:**
+- Declarative, version-controllable, full surface available
 
-**Limitations**: No state management, limited cross-resource dependency handling.
+**Cons:**
+- The Service API is a minefield of cross-field rules enforced only at the API server: headless vs. NodePort, ExternalName vs. selector, LoadBalancer-only knobs, affinity timeouts, dual-stack consistency — all fail at apply time
+- No state management, no composition with surrounding resources
 
-### Terraform (hashicorp/kubernetes provider)
+**Verdict:** The baseline. Everything above it adds lifecycle.
 
-Terraform manages Kubernetes resources declaratively with state tracking. The `kubernetes_service_v1` resource provides full service configuration.
+### Level 2: Terraform
 
-**Strengths**: State management, plan/apply workflow, integration with cloud provider resources.
+```hcl
+resource "kubernetes_service_v1" "public_web" {
+  metadata {
+    name = "public-web"
+    annotations = {
+      "service.beta.kubernetes.io/aws-load-balancer-type" = "nlb"
+    }
+  }
+  spec {
+    type = "LoadBalancer"
+    selector = { app = "web" }
+    port {
+      name        = "https"
+      port        = 443
+      target_port = 8443
+    }
+    external_traffic_policy = "Local"
+  }
+}
+```
 
-### Pulumi (pulumi-kubernetes)
+**Pros:**
+- Full IaC lifecycle (plan, apply, destroy, import), drift detection
+- The provider waits for the load balancer to provision, so the LB address is a usable output
 
-Pulumi uses real programming languages (Go, TypeScript, Python) to create Kubernetes resources. The `kubernetes.core.v1.Service` resource mirrors the Kubernetes API.
+**Cons:**
+- Untyped strings — every cross-field rule still surfaces at apply
+- The provider lags the API: `trafficDistribution` is not exposed at all (v3.2.x)
 
-**Strengths**: Type safety, IDE support, conditional logic, reusable components.
+**Verdict:** Production-grade lifecycle, thin validation, incomplete surface.
 
-### Planton Approach
+### Level 3: Pulumi
 
-Planton provides a unified manifest format that works with both Pulumi and Terraform, plus:
-- Protocol Buffer schema with compile-time validation
-- Consistent KRM structure across all components
-- Built-in credential management and provider configuration
-- Dual IaC support with feature parity
+```go
+service, err := corev1.NewService(ctx, "public-web", &corev1.ServiceArgs{
+    Spec: &corev1.ServiceSpecArgs{
+        Type:     pulumi.String("LoadBalancer"),
+        Selector: pulumi.StringMap{"app": pulumi.String("web")},
+        Ports: corev1.ServicePortArray{&corev1.ServicePortArgs{
+            Port: pulumi.Int(443), TargetPort: pulumi.Int(8443),
+        }},
+        TrafficDistribution: pulumi.String("PreferSameZone"),
+    },
+})
+```
 
-## 80/20 Scoping Decision
+**Pros:**
+- Full programming language, preview before apply
+- Tracks the upstream API closely — the full surface including `trafficDistribution` is available
+- Await logic blocks on LoadBalancer ingress, so the LB address resolves reliably
 
-### In-Scope Fields (Covers 80%+ of Use Cases)
+**Cons:**
+- Constraint violations still surface at apply
+- Requires Pulumi runtime and SDK
 
-| Field | Rationale |
-|-------|-----------|
-| `type` | Fundamental -- every service has a type |
-| `selector` | Core routing mechanism -- matches pods by label |
-| `ports` | Essential -- defines what the service exposes |
-| `headless` | Common pattern for StatefulSets and service discovery |
-| `external_dns_name` | Required for ExternalName type |
-| `external_traffic_policy` | Critical for source IP preservation in production |
-| `session_affinity` | Common for stateful applications |
-| `load_balancer_source_ranges` | Security best practice for LoadBalancer |
-| `annotations` | Essential for cloud-specific LB configuration |
-| `labels` | Standard Kubernetes governance mechanism |
+**Verdict:** Excellent IaC choice with the most complete surface.
 
-### Out-of-Scope Fields
+### Other Methods
 
-| Field | Rationale for Exclusion |
-|-------|------------------------|
-| `ipFamilies` / `ipFamilyPolicy` | Dual-stack networking is used by <5% of clusters |
-| `allocateLoadBalancerNodePorts` | Niche optimization, defaults work for 99% of cases |
-| `loadBalancerClass` | Emerging feature, not widely adopted yet |
-| `internalTrafficPolicy` | Rarely changed from default (Cluster) |
-| `topologyKeys` (deprecated) | Removed in Kubernetes 1.22+ |
-| `publishNotReadyAddresses` | Very specialized use case (Consul, custom DNS) |
-| `healthCheckNodePort` | Auto-managed when externalTrafficPolicy=Local |
+**Helm:** Services templated inside charts are ubiquitous, but the chart owns the shape — a standalone Service for someone else's pods is not what charts are for.
 
-### Design Decisions
+**Operators/meshes:** Meshes (Istio, Linkerd) consume Services rather than replace them; the Service remains the discovery unit underneath.
 
-**`headless` as boolean vs raw `clusterIP`**: We use a boolean `headless` flag rather than exposing the raw `clusterIP` field. This provides a cleaner UX (`headless: true` vs `cluster_ip: "None"`) and prevents users from accidentally setting invalid ClusterIP values. The boolean clearly communicates intent.
+## Comparative Analysis
 
-**`target_port` as string**: Kubernetes allows `targetPort` to be either a number or a named port reference. We use `string` to support both formats (`"8080"` or `"http"`), matching Kubernetes API behavior.
+| Aspect | kubectl | YAML | Terraform | Pulumi | Planton |
+|--------|---------|------|-----------|--------|---------|
+| Validation | At creation | API server | Plan time (basic) | Preview time (basic) | Schema + CEL |
+| Cross-field rules checked early | No | No | No | No | Yes (11 rules) |
+| trafficDistribution | Via edit | Yes | **No (provider gap)** | Yes | Yes (Pulumi engine) |
+| State Management | None | None | Full | Full | Full (via IaC) |
+| LB address as output | Manual | Manual | Yes | Yes | Yes (ip + hostname) |
+| Namespace as reference | No | No | Manual wiring | Manual wiring | First-class |
+| Dual IaC | N/A | N/A | TF only | Pulumi only | Both |
 
-**`external_dns_name` instead of `external_name`**: The field was named `external_dns_name` instead of `external_name` to avoid a protobuf scoping conflict with the `external_name` enum value (protobuf uses C++ scoping where enum values exist in the enclosing scope). The name is also more descriptive -- it explicitly communicates that this is a DNS name.
+## The Planton Approach
 
-**Enum conventions**: Service types use lowercase values (`cluster_ip`, `node_port`, `load_balancer`, `external_name`) following Planton enum guidelines. Protocol values (`TCP`, `UDP`, `SCTP`) use uppercase as they represent external standards where uppercase is conventional.
+### Full surface, validated early
+
+The spec models the entire ServiceSpec surface and moves the API server's cross-field rules to validation time. Eleven CEL rules each mirror a live kube-apiserver rejection:
+
+- ExternalName requires `external_dns_name`, and forbids selector, ports, and cluster IP (it is a DNS alias, not a proxy)
+- `external_dns_name` is rejected on every other type
+- Headless is incompatible with NodePort/LoadBalancer (no virtual IP to build on) and with a static `cluster_ip_address` (headless IS clusterIP "None")
+- Every proxying type requires at least one port
+- `health_check_node_port` only exists for Local-policy LoadBalancers
+- The affinity timeout only applies to ClientIP affinity
+- LoadBalancer-only knobs (`load_balancer_source_ranges`, `load_balancer_class`, `allocate_load_balancer_node_ports`) are rejected on other types
+- Dual-stack: family entries must be distinct, and SingleStack allows at most one explicit family
+
+Field-level rules do the same for formats: the Service name is validated as a DNS-1035 label (Services reject leading digits that other kinds accept, because DNS SRV labels cannot start with a digit), port names as IANA service names, `target_port` as number-or-name, IPs and CIDRs as such, and `external_dns_name` as an RFC-1123 hostname.
+
+### Semantic booleans over magic strings
+
+Upstream encodes "headless" as the literal string `"None"` in `clusterIP` — a string-typed field carrying two unrelated meanings. The spec separates them: `headless: true` for the discovery mode, `cluster_ip_address` strictly for a static IP (validated as an IP, so `"None"` cannot sneak in). The modules translate `headless: true` back to `clusterIP: "None"` on the wire.
+
+### Omission-correct field handling
+
+For several Service fields, an empty value is not the same as an absent one: `clusterIP`, `healthCheckNodePort`, and `loadBalancerClass` are immutable or type-gated, and sending them empty (or on the wrong type) is an API rejection. Both modules therefore send each optional field only when the user actually set it, guarded by the same conditions in both engines.
+
+### The one parity exception: `traffic_distribution`
+
+The Terraform kubernetes provider (v3.2.x) does not expose `spec.trafficDistribution`, so only the Pulumi engine can apply it. The Terraform module refuses to pretend otherwise: a lifecycle precondition fails the plan loudly when the field is set, with an error message directing the user to the Pulumi engine (or to unset the field). Silently dropping a set field would be worse than failing — a topology hint the user asked for would just not exist, invisibly.
+
+### Namespace by value or reference
+
+`spec.namespace` is a `StringValueOrRef`: a literal namespace name, or a reference to a `KubernetesNamespace` resource. The reference form lets an infra chart create the namespace and the Service in one run, with ordering handled by the resource graph. When omitted, the Service lands in `default` — the same behavior as kubectl without a namespace flag.
+
+### Composition with Planton workloads
+
+Planton workloads stamp a stable selector identity on their pods — the `app` label set to the workload's `metadata.name` — and export the full set as their `selector_labels` output. Selecting a Planton workload's pods from this kind is therefore one line: `selector: {app: <workload-metadata-name>}`. The common reasons to do so are an additional differently-shaped exposure (a LoadBalancer in front of a workload whose built-in Service is internal, a headless companion for direct pod addressing) rather than the ordinary case, which the workload's own Service already covers.
+
+## Implementation Landscape
+
+### Pulumi Module Architecture
+
+The Pulumi module (`iac/pulumi/module/`) follows the standard Planton pattern:
+
+- **`main.go`**: Orchestrates provider init, Service creation, and output export
+- **`locals.go`**: Computes merged labels, annotations, the resolved namespace, and — centrally — the enum translations from proto value names to Kubernetes API strings (`load_balancer` → `LoadBalancer`, `client_ip` → `ClientIP`, `prefer_same_zone` → `PreferSameZone`, ...), resolved once so the resource and the outputs agree on wire values
+- **`service.go`**: Builds the ServiceSpec with the omission-correct guards described above
+- **`outputs.go`**: Exports the eight outputs; Pulumi's await logic waits for LoadBalancer ingress, so the LB address handles resolve before export
+
+### Terraform Module Architecture
+
+The Terraform module (`iac/tf/`) mirrors the Pulumi logic guard-for-guard:
+
+- **`variables.tf`**: Mirrors `spec.proto`; enums arrive as proto value names, `StringValueOrRef` fields arrive flattened to plain strings
+- **`locals.tf`**: The same enum maps and label merging as the Pulumi locals
+- **`main.tf`**: Creates the `kubernetes_service_v1` resource with identical conditional guards, plus the `traffic_distribution` precondition
+- **`outputs.tf`**: Exports the identical eight-output set (empty strings where not applicable, so both engines flatten the same field shape onto the outputs proto)
+
+### Outputs contract
+
+Both engines export: `service_name`, `namespace`, `type`, `cluster_ip` (empty for headless and ExternalName — the API's literal `"None"` is normalized away), `load_balancer_ip` and `load_balancer_hostname` (a provider populates one or the other, never reliably both — exported independently so DNS automation picks whichever is present), `kube_endpoint` (the in-cluster DNS name, which for ExternalName is the very alias the service exists to provide), and `port_forward_command` (empty for ExternalName — there is nothing to forward to).
+
+### Resource Count
+
+This is a lean component — it creates exactly **one Kubernetes resource**: the Service itself. For `type: load_balancer` the cloud provider provisions a load balancer as a side effect, driven entirely by the Service object and its annotations. The complexity is in the spec validation and enum translation, not in resource orchestration.
 
 ## Production Best Practices
 
-1. **Default to ClusterIP**: Only use NodePort or LoadBalancer when external access is genuinely needed
-2. **Use `external_traffic_policy: local`** for LoadBalancer services when source IP preservation matters (security logging, geo-routing)
-3. **Name all ports** when exposing multiple ports -- required by Kubernetes and improves readability
-4. **Use annotations for LB configuration** rather than separate cloud resources -- keeps configuration co-located
-5. **Set `load_balancer_source_ranges`** for any public-facing LoadBalancer to restrict access
-6. **Use headless services for StatefulSets** to enable per-pod DNS resolution
-7. **Use ExternalName services** instead of hardcoding external endpoints in application config
+### Exposure discipline
 
-## Common Pitfalls
+1. **Default to ClusterIP**: Every external exposure is attack surface and (for LoadBalancer) a billed cloud resource. HTTP workloads usually want one Ingress in front of many ClusterIP services, not many LoadBalancers
+2. **Tune load balancers through annotations**: internal vs. external, NLB vs. ELB, pinned addresses, external-dns records — the annotation set is the reproducible record of LB configuration
+3. **Restrict sources where supported**: `load_balancer_source_ranges` on LoadBalancers that only specific CIDRs should reach
 
-1. **Forgetting `external_traffic_policy: local`**: Source IP is masked with the default `cluster` policy, breaking IP-based security rules
-2. **NodePort range conflicts**: Node ports must be in 30000-32767; let Kubernetes auto-allocate when possible
-3. **ExternalName and selectors**: ExternalName services must not have a selector; they only provide DNS CNAME records
-4. **Headless + NodePort/LoadBalancer**: Headless services are incompatible with these types -- there's no ClusterIP to front
-5. **Missing port names**: When a service has multiple ports, all ports must be named -- Kubernetes requires this
+### Traffic correctness
+
+1. **Use `external_traffic_policy: local` when the client IP matters**: and run enough replicas that every schedulable node is likely to hold one — nodes without endpoints are health-checked out and receive nothing
+2. **Reserve `publish_not_ready_addresses` for bootstrap discovery**: on the headless governing Service of a quorum system it is essential; on a traffic-serving service it routes real requests to pods that cannot handle them
+3. **Treat `traffic_distribution` as a hint**: set `prefer_same_zone` only when endpoints are spread evenly enough that zone-local preference cannot overload one zone
+
+### Naming and ports
+
+1. **Name every port on multi-port services**: required by the API; named ports keep Ingress and mesh references readable
+2. **Prefer named `target_port` over numbers**: `target_port: "http"` keeps working when the container port number changes
+3. **Remember Service names are DNS names**: DNS-1035 rules apply — a name that starts with a digit is rejected
 
 ## Conclusion
 
-The `KubernetesService` component provides a clean, validated interface for managing Kubernetes Services as standalone deployment units. By focusing on the 80/20 of service configuration, it delivers a practical tool that covers the vast majority of real-world use cases while maintaining the simplicity and consistency that Planton is built on. The cross-field validation rules (ExternalName requires DNS name, headless incompatible with NodePort/LoadBalancer, ports required for non-ExternalName) catch configuration errors at schema validation time, long before they reach the cluster.
+KubernetesService is the escape hatch and the composition point: workload kinds cover their own pods, and this kind covers every other shape a Service can take — external exposure, DNS aliases, headless discovery, dual-stack, selectorless endpoints. The component's value is the full upstream surface with the API server's own rules enforced before apply, semantic fields where upstream uses magic strings, and a dual-IaC lifecycle whose one parity gap fails loudly instead of silently.
+
+## References
+
+- [Kubernetes Service Documentation](https://kubernetes.io/docs/concepts/services-networking/service/)
+- [Service API Reference](https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/)
+- [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
+- [Dual-stack Services](https://kubernetes.io/docs/concepts/services-networking/dual-stack/)
+- [Traffic Distribution](https://kubernetes.io/docs/concepts/services-networking/service/#traffic-distribution)
+- [Source IP and External Traffic Policy](https://kubernetes.io/docs/tutorials/services/source-ip/)
+- [Pulumi Kubernetes Service](https://www.pulumi.com/registry/packages/kubernetes/api-docs/core/v1/service/)
+- [Terraform kubernetes_service_v1](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/service_v1)

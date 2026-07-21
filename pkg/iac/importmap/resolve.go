@@ -85,6 +85,10 @@ func resolveDerivation(d *componentv1.ImportValueDerivation, rctx ResolveContext
 		if source.FromAddressKey {
 			return rctx.AddressKey
 		}
+	case *componentv1.ImportValueDerivation_FromMetadataNameSuffix:
+		if rctx.MetadataName != "" && source.FromMetadataNameSuffix != "" {
+			return rctx.MetadataName + source.FromMetadataNameSuffix
+		}
 	}
 	return ""
 }

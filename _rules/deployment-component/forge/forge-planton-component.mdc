@@ -272,8 +272,16 @@ platform's guided import can derive identifiers instead of asking the user
    an entry per resource type the module declares -- the import-ID format from
    the PROVIDER's import documentation (read the provider docs/source, never
    guess), the Pulumi type token, and any `config_only_attributes` (attributes
-   that exist only in IaC configuration, e.g. `force_destroy`-class delete
-   behavior -- import can never carry them).
+   that exist only in IaC configuration -- `force_destroy`-class delete
+   behavior, and the kubernetes provider's `wait_for_*` lifecycle knobs
+   (`wait_for_rollout`, `wait_for_load_balancer`,
+   `wait_for_service_account_token`) -- import can never carry them; declare
+   them when the resource type first enters the catalog, or every consumer's
+   round-trip lane fails on the same knob later). When a provider's importer
+   fails to read back ONE nested block (found only by running the round-trip),
+   declare it as a dotted `write_normalized_attributes` sub-path
+   (e.g. `"spec.update_strategy"`) -- never tolerate a whole structural
+   attribute like `spec`, which would blind the proof.
 2. **Component map** (`v1/iac/import-map.yaml`): the value source per
    `{placeholder}` -- prefer derivable sources (metadata.name, spec field,
    stack output, ARN part, address key); `where_to_find` is mandatory when
@@ -373,7 +381,12 @@ Until then, author the profile as `status: deferred` with an empty
 (the field is `deferred_reason` — protojson silently drops unknown keys, so a
 misspelled key vanishes without an error). A profile that overclaims is a
 lie in the release ledger; flip it to green in the same session the lanes
-pass, never before.
+pass, never before. Note the mechanics for a NEW kind: the test entrypoints
+SKIP components whose profile is deferred, so a deferred profile can never
+run its own lanes — flip the profile to green immediately before executing
+the lanes, and if they do not pass by session end, flip it back to deferred
+in the same commit. Honesty is judged on the COMMITTED state, not the
+mid-session working tree.
 
 ### Wire the kind into the provider E2E first (required for either tier)
 

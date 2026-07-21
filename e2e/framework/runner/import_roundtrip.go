@@ -91,17 +91,28 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	// attributes read back in a provider-normalized form -- either way an
 	// in-place update touching only them is the documented post-import shape,
 	// not a wrong import.
+	// A declared tolerance is either a top-level attribute name ("force_destroy")
+	// or a dotted sub-path ("spec.update_strategy") for the narrower class where
+	// a provider's importer fails to read back ONE nested block while the rest
+	// of the attribute must stay under the oracle. Dotted entries are collected
+	// separately: the changed attribute is then re-compared with only those
+	// sub-paths pruned, so an undeclared sibling drift still fails.
 	formats := map[string]string{}
 	toleratedAttributes := map[string]map[string]bool{}
+	toleratedSubPaths := map[string][][]string{}
 	for _, rt := range catalog.GetSpec().GetResourceTypes() {
 		formats[rt.GetTerraformType()] = rt.GetIdFormat()
 		declared := append(append([]string{}, rt.GetConfigOnlyAttributes()...), rt.GetWriteNormalizedAttributes()...)
-		if len(declared) > 0 {
-			allowed := make(map[string]bool, len(declared))
-			for _, attr := range declared {
-				allowed[attr] = true
+		for _, attr := range declared {
+			if strings.Contains(attr, ".") {
+				toleratedSubPaths[rt.GetTerraformType()] = append(
+					toleratedSubPaths[rt.GetTerraformType()], strings.Split(attr, "."))
+				continue
 			}
-			toleratedAttributes[rt.GetTerraformType()] = allowed
+			if toleratedAttributes[rt.GetTerraformType()] == nil {
+				toleratedAttributes[rt.GetTerraformType()] = map[string]bool{}
+			}
+			toleratedAttributes[rt.GetTerraformType()][attr] = true
 		}
 	}
 
@@ -189,11 +200,15 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 		}
 		changed := changedTopLevelAttributes(rc.Change.Before, rc.Change.After)
 		for _, attribute := range changed {
-			if !toleratedAttributes[rc.Type][attribute] {
-				return errors.Errorf(
-					"plan after blind re-import updates %s.%s (changed: %v) -- not a declared config-only/write-normalized attribute of %s; deployed state kept at %s",
-					address, attribute, changed, rc.Type, asidePath)
+			if toleratedAttributes[rc.Type][attribute] {
+				continue
 			}
+			if changeCoveredBySubPaths(rc.Change.Before, rc.Change.After, attribute, toleratedSubPaths[rc.Type]) {
+				continue
+			}
+			return errors.Errorf(
+				"plan after blind re-import updates %s.%s (changed: %v) -- not a declared config-only/write-normalized attribute of %s; deployed state kept at %s",
+				address, attribute, changed, rc.Type, asidePath)
 		}
 		fmt.Printf("  [import-rt] tolerating declared update on %s: %v (config-only/write-normalized in the %s catalog)\n",
 			address, changed, tc.Provider)
@@ -255,6 +270,75 @@ func requiredUnresolved(idFormat string, unresolved []string) []string {
 		}
 	}
 	return missing
+}
+
+// changeCoveredBySubPaths reports whether the drift on ONE changed top-level
+// attribute is fully explained by the declared dotted sub-paths: both sides
+// are re-compared with those sub-paths pruned, and only if the remainder is
+// identical is the change tolerated. Sub-path segments walk JSON objects and
+// apply element-wise through arrays (Terraform plan JSON renders blocks as
+// arrays), so "spec.update_strategy" prunes spec[i].update_strategy on both
+// sides. Any structural surprise fails closed (returns false).
+func changeCoveredBySubPaths(before, after interface{}, attribute string, subPaths [][]string) bool {
+	if len(subPaths) == 0 {
+		return false
+	}
+	var relevant [][]string
+	for _, p := range subPaths {
+		if p[0] == attribute {
+			relevant = append(relevant, p[1:])
+		}
+	}
+	if len(relevant) == 0 {
+		return false
+	}
+	beforeMap, beforeOK := before.(map[string]interface{})
+	afterMap, afterOK := after.(map[string]interface{})
+	if !beforeOK || !afterOK {
+		return false
+	}
+	prunedBefore := pruneSubPaths(beforeMap[attribute], relevant)
+	prunedAfter := pruneSubPaths(afterMap[attribute], relevant)
+	return reflect.DeepEqual(prunedBefore, prunedAfter)
+}
+
+// pruneSubPaths returns a deep copy of value with every declared sub-path
+// removed. Arrays are traversed element-wise; scalar leaves along a declared
+// path are dropped wherever the path bottoms out.
+func pruneSubPaths(value interface{}, paths [][]string) interface{} {
+	if len(paths) == 0 {
+		return value
+	}
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		copied := make(map[string]interface{}, len(typed))
+		for key, child := range typed {
+			var childPaths [][]string
+			drop := false
+			for _, p := range paths {
+				if len(p) > 0 && p[0] == key {
+					if len(p) == 1 {
+						drop = true
+						break
+					}
+					childPaths = append(childPaths, p[1:])
+				}
+			}
+			if drop {
+				continue
+			}
+			copied[key] = pruneSubPaths(child, childPaths)
+		}
+		return copied
+	case []interface{}:
+		copied := make([]interface{}, len(typed))
+		for i, element := range typed {
+			copied[i] = pruneSubPaths(element, paths)
+		}
+		return copied
+	default:
+		return value
+	}
 }
 
 // changedTopLevelAttributes diffs a plan change's before/after objects and

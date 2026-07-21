@@ -195,6 +195,25 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Name:      info.Name,
 		}, nil
 
+	// An Ingress is a valid API object with or without a controller running in
+	// the cluster, so existence (not load-balancer status) is the correct
+	// verification on every lane.
+	case "kubernetesingress":
+		return &ResourceExistenceVerifier{
+			Namespace: info.Namespace,
+			Kind:      "ingress",
+			Name:      info.Name,
+		}, nil
+
+	// A NetworkPolicy has no runtime status of its own (enforcement lives in
+	// the CNI); the object's existence is the verifiable contract.
+	case "kubernetesnetworkpolicy":
+		return &ResourceExistenceVerifier{
+			Namespace: info.Namespace,
+			Kind:      "networkpolicy",
+			Name:      info.Name,
+		}, nil
+
 	case "kubernetescronjob":
 		return &ResourceExistenceVerifier{
 			Namespace: info.Namespace,

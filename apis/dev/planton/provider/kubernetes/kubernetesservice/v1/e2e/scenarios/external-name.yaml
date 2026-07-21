@@ -3,7 +3,8 @@ kind: KubernetesService
 metadata:
   name: e2e-svc-extname
 spec:
-  namespace: default
+  namespace:
+    value: default
   name: e2e-svc-extname
   type: external_name
   external_dns_name: "api.example.com"

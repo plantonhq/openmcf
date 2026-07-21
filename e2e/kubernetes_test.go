@@ -118,6 +118,8 @@ func TestKubernetesDeployment_Pulumi(t *testing.T) { runAllScenariosForComponent
 func TestKubernetesStatefulSet_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesstatefulset", "pulumi") }
 func TestKubernetesSecret_Pulumi(t *testing.T)     { runAllScenariosForComponent(t, "kubernetessecret", "pulumi") }
 func TestKubernetesService_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "kubernetesservice", "pulumi") }
+func TestKubernetesIngress_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "kubernetesingress", "pulumi") }
+func TestKubernetesNetworkPolicy_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesnetworkpolicy", "pulumi") }
 func TestKubernetesCronJob_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "kubernetescronjob", "pulumi") }
 func TestKubernetesJob_Pulumi(t *testing.T)        { runAllScenariosForComponent(t, "kubernetesjob", "pulumi") }
 func TestKubernetesDaemonSet_Pulumi(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesdaemonset", "pulumi") }
@@ -133,6 +135,8 @@ func TestKubernetesDeployment_Terraform(t *testing.T) { runAllScenariosForCompon
 func TestKubernetesStatefulSet_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesstatefulset", "terraform") }
 func TestKubernetesSecret_Terraform(t *testing.T)     { runAllScenariosForComponent(t, "kubernetessecret", "terraform") }
 func TestKubernetesService_Terraform(t *testing.T)    { runAllScenariosForComponent(t, "kubernetesservice", "terraform") }
+func TestKubernetesIngress_Terraform(t *testing.T)    { runAllScenariosForComponent(t, "kubernetesingress", "terraform") }
+func TestKubernetesNetworkPolicy_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesnetworkpolicy", "terraform") }
 func TestKubernetesCronJob_Terraform(t *testing.T)    { runAllScenariosForComponent(t, "kubernetescronjob", "terraform") }
 func TestKubernetesJob_Terraform(t *testing.T)        { runAllScenariosForComponent(t, "kubernetesjob", "terraform") }
 func TestKubernetesDaemonSet_Terraform(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesdaemonset", "terraform") }

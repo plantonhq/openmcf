@@ -34,9 +34,10 @@ const (
 // run-to-completion work use KubernetesJob/KubernetesCronJob.
 //
 // External exposure is composed, never embedded: this kind exports its Service
-// name and selector labels, and first-class exposure kinds (KubernetesHttpRoute
-// and the other Gateway API route kinds, with certificates) reference them — so
-// every piece of exposure infrastructure is a visible node in the resource graph.
+// name and selector labels, and first-class exposure kinds (KubernetesIngress,
+// KubernetesHttpRoute and the other Gateway API route kinds, with certificates)
+// reference them — so every piece of exposure infrastructure is a visible node
+// in the resource graph.
 //
 // DEPLOY-TARGET CONTRACT: this kind is a Service Hub deployment target. Deployment
 // pipelines inject the freshly built artifact through exactly two stable paths —

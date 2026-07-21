@@ -6,6 +6,7 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
 func TestKubernetesServiceSpec(t *testing.T) {
@@ -13,417 +14,352 @@ func TestKubernetesServiceSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "KubernetesServiceSpec Validation Suite")
 }
 
+// enum shorthands keep the table-style specs readable.
+func svcType(t KubernetesServiceSpec_KubernetesServiceType) *KubernetesServiceSpec_KubernetesServiceType {
+	return &t
+}
+
+func affinity(a KubernetesServiceSpec_KubernetesServiceSessionAffinity) *KubernetesServiceSpec_KubernetesServiceSessionAffinity {
+	return &a
+}
+
+func etp(p KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy) *KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy {
+	return &p
+}
+
+func famPolicy(p KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy) *KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy {
+	return &p
+}
+
+func i32(v int32) *int32 { return &v }
+
+func boolPtr(v bool) *bool { return &v }
+
 var _ = ginkgo.Describe("KubernetesServiceSpec validations", func() {
-
-	// Helper to create a pointer to a service type enum value.
-	svcType := func(t KubernetesServiceSpec_KubernetesServiceType) *KubernetesServiceSpec_KubernetesServiceType {
-		return &t
-	}
-
-	// Helper to create a pointer to an external traffic policy enum value.
-	extPolicy := func(p KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy) *KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy {
-		return &p
-	}
-
-	// Helper to create a pointer to a session affinity enum value.
-	sessAffinity := func(s KubernetesServiceSpec_KubernetesServiceSessionAffinity) *KubernetesServiceSpec_KubernetesServiceSessionAffinity {
-		return &s
-	}
-
-	// Helper to create a pointer to a protocol enum value.
-	proto := func(p KubernetesServicePort_KubernetesServiceProtocol) *KubernetesServicePort_KubernetesServiceProtocol {
-		return &p
-	}
 
 	ginkgo.Context("When valid specs are provided", func() {
 
-		ginkgo.It("accepts a minimal ClusterIP service", func() {
+		ginkgo.It("accepts a minimal spec: name plus one port", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "my-service",
-				Selector:  map[string]string{"app": "web"},
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
+				Name:  "web",
+				Ports: []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts a ClusterIP service with explicit type", func() {
+		ginkgo.It("accepts a namespace provided as a literal value", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "production",
-				Name:      "api-gateway",
-				Type:      svcType(KubernetesServiceSpec_cluster_ip),
-				Selector:  map[string]string{"app": "api", "tier": "frontend"},
-				Ports: []*KubernetesServicePort{
-					{Name: "http", Port: 80, TargetPort: "8080", Protocol: proto(KubernetesServicePort_TCP)},
-					{Name: "https", Port: 443, TargetPort: "8443", Protocol: proto(KubernetesServicePort_TCP)},
+				Name: "web",
+				Namespace: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "prod"},
 				},
-				Labels:      map[string]string{"team": "platform"},
-				Annotations: map[string]string{"description": "API gateway service"},
+				Ports: []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts a NodePort service", func() {
+		ginkgo.It("accepts a namespace provided as a resource reference", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "staging",
-				Name:      "web-nodeport",
-				Type:      svcType(KubernetesServiceSpec_node_port),
-				Selector:  map[string]string{"app": "web"},
-				Ports: []*KubernetesServicePort{
-					{Port: 80, TargetPort: "8080", NodePort: 30080},
+				Name: "web",
+				Namespace: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+						ValueFrom: &foreignkeyv1.ValueFromRef{Name: "team-namespace"},
+					},
 				},
-				ExternalTrafficPolicy: extPolicy(KubernetesServiceSpec_local),
+				Ports: []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts a LoadBalancer service", func() {
+		ginkgo.It("accepts a full LoadBalancer spec with all LB knobs", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "production",
-				Name:      "web-lb",
-				Type:      svcType(KubernetesServiceSpec_load_balancer),
-				Selector:  map[string]string{"app": "web"},
-				Ports: []*KubernetesServicePort{
-					{Name: "http", Port: 80, TargetPort: "8080"},
-					{Name: "https", Port: 443, TargetPort: "8443"},
-				},
-				ExternalTrafficPolicy:    extPolicy(KubernetesServiceSpec_cluster),
-				SessionAffinity:          sessAffinity(KubernetesServiceSpec_client_ip),
-				LoadBalancerSourceRanges: []string{"203.0.113.0/24", "10.0.0.0/8"},
-				Annotations: map[string]string{
-					"service.beta.kubernetes.io/aws-load-balancer-type": "nlb",
-				},
+				Name:                          "public-lb",
+				Type:                          svcType(KubernetesServiceSpec_load_balancer),
+				Selector:                      map[string]string{"app": "web"},
+				Ports:                         []*KubernetesServicePort{{Name: "http", Port: 80, NodePort: 30080}},
+				ExternalTrafficPolicy:         etp(KubernetesServiceSpec_local),
+				HealthCheckNodePort:           30081,
+				LoadBalancerSourceRanges:      []string{"203.0.113.0/24", "2001:db8::/64"},
+				LoadBalancerClass:             "example.com/internal-vip",
+				AllocateLoadBalancerNodePorts: boolPtr(false),
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
-		})
-
-		ginkgo.It("accepts an ExternalName service", func() {
-			spec := &KubernetesServiceSpec{
-				Namespace:       "production",
-				Name:            "external-db",
-				Type:            svcType(KubernetesServiceSpec_external_name),
-				ExternalDnsName: "my-database.us-east-1.rds.amazonaws.com",
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
 		ginkgo.It("accepts a headless service", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "production",
-				Name:      "statefulset-headless",
-				Headless:  true,
-				Selector:  map[string]string{"app": "cassandra"},
-				Ports: []*KubernetesServicePort{
-					{Port: 9042, TargetPort: "cql"},
-				},
+				Name:                     "peers",
+				Headless:                 true,
+				Selector:                 map[string]string{"app": "db"},
+				Ports:                    []*KubernetesServicePort{{Port: 5432}},
+				PublishNotReadyAddresses: true,
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts a headless service with explicit ClusterIP type", func() {
+		ginkgo.It("accepts an ExternalName service with no ports", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "data",
-				Name:      "etcd-headless",
-				Type:      svcType(KubernetesServiceSpec_cluster_ip),
-				Headless:  true,
-				Selector:  map[string]string{"app": "etcd"},
-				Ports: []*KubernetesServicePort{
-					{Name: "client", Port: 2379},
-					{Name: "peer", Port: 2380},
-				},
+				Name:            "ext-db",
+				Type:            svcType(KubernetesServiceSpec_external_name),
+				ExternalDnsName: "db.prod.example.com",
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts a service with UDP protocol", func() {
+		ginkgo.It("accepts a static cluster IP on a non-headless service", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "kube-system",
-				Name:      "dns-service",
-				Selector:  map[string]string{"app": "coredns"},
-				Ports: []*KubernetesServicePort{
-					{Name: "dns-udp", Port: 53, Protocol: proto(KubernetesServicePort_UDP)},
-					{Name: "dns-tcp", Port: 53, Protocol: proto(KubernetesServicePort_TCP)},
-				},
+				Name:             "pinned-vip",
+				ClusterIpAddress: "10.96.0.50",
+				Ports:            []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts a NodePort service with auto-allocated node port", func() {
+		ginkgo.It("accepts ClientIP session affinity with a timeout", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "staging",
-				Name:      "web-auto-nodeport",
-				Type:      svcType(KubernetesServiceSpec_node_port),
-				Selector:  map[string]string{"app": "web"},
-				Ports: []*KubernetesServicePort{
-					{Port: 80, NodePort: 0},
-				},
+				Name:                          "sticky",
+				SessionAffinity:               affinity(KubernetesServiceSpec_client_ip),
+				SessionAffinityTimeoutSeconds: i32(3600),
+				Ports:                         []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts a service with named target port", func() {
+		ginkgo.It("accepts dual-stack with two distinct families", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "named-port-svc",
-				Selector:  map[string]string{"app": "web"},
+				Name:           "dual",
+				IpFamilies:     []KubernetesServiceSpec_KubernetesServiceIpFamily{KubernetesServiceSpec_ipv6, KubernetesServiceSpec_ipv4},
+				IpFamilyPolicy: famPolicy(KubernetesServiceSpec_require_dual_stack),
+				Ports:          []*KubernetesServicePort{{Port: 80}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts named and numeric target ports", func() {
+			spec := &KubernetesServiceSpec{
+				Name: "multi",
 				Ports: []*KubernetesServicePort{
-					{Port: 80, TargetPort: "http"},
+					{Name: "http", Port: 80, TargetPort: "8080"},
+					{Name: "metrics", Port: 9090, TargetPort: "metrics"},
 				},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts external IPs", func() {
+			spec := &KubernetesServiceSpec{
+				Name:        "ext-vip",
+				ExternalIps: []string{"198.51.100.7"},
+				Ports:       []*KubernetesServicePort{{Port: 80}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 	})
 
 	ginkgo.Context("When invalid specs are provided", func() {
 
-		ginkgo.It("rejects empty service name", func() {
+		ginkgo.It("rejects an empty name", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "",
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
+				Ports: []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects empty namespace", func() {
+		ginkgo.It("rejects a name starting with a digit (DNS-1035, verified against the live API)", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "",
-				Name:      "my-service",
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
+				Name:  "0web",
+				Ports: []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects service name with uppercase letters", func() {
+		ginkgo.It("rejects an uppercase name", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "MyService",
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
+				Name:  "Web",
+				Ports: []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects service name with underscores", func() {
-			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "my_service",
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+		ginkgo.It("rejects a proxying service with zero ports", func() {
+			spec := &KubernetesServiceSpec{Name: "web"}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects service name starting with hyphen", func() {
+		ginkgo.It("rejects ExternalName without external_dns_name", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "-my-service",
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
+				Name: "ext",
+				Type: svcType(KubernetesServiceSpec_external_name),
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects service name ending with hyphen", func() {
+		ginkgo.It("rejects external_dns_name on a non-ExternalName type", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "my-service-",
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
+				Name:            "web",
+				ExternalDnsName: "db.example.com",
+				Ports:           []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects service name longer than 63 characters", func() {
+		ginkgo.It("rejects a selector on an ExternalName service", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "this-is-a-very-long-service-name-that-exceeds-sixty-three-characters-limit",
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("rejects namespace with uppercase letters", func() {
-			spec := &KubernetesServiceSpec{
-				Namespace: "Default",
-				Name:      "my-service",
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("rejects port number 0", func() {
-			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "my-service",
-				Ports: []*KubernetesServicePort{
-					{Port: 0},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("rejects port number exceeding 65535", func() {
-			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "my-service",
-				Ports: []*KubernetesServicePort{
-					{Port: 70000},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("rejects node port outside valid range", func() {
-			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "my-service",
-				Type:      svcType(KubernetesServiceSpec_node_port),
-				Selector:  map[string]string{"app": "web"},
-				Ports: []*KubernetesServicePort{
-					{Port: 80, NodePort: 8080},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("rejects node port just below valid range", func() {
-			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "my-service",
-				Type:      svcType(KubernetesServiceSpec_node_port),
-				Selector:  map[string]string{"app": "web"},
-				Ports: []*KubernetesServicePort{
-					{Port: 80, NodePort: 29999},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("rejects node port just above valid range", func() {
-			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "my-service",
-				Type:      svcType(KubernetesServiceSpec_node_port),
-				Selector:  map[string]string{"app": "web"},
-				Ports: []*KubernetesServicePort{
-					{Port: 80, NodePort: 32768},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("rejects ExternalName type without external_dns_name", func() {
-			spec := &KubernetesServiceSpec{
-				Namespace:       "default",
-				Name:            "external-svc",
+				Name:            "ext",
 				Type:            svcType(KubernetesServiceSpec_external_name),
-				ExternalDnsName: "",
+				ExternalDnsName: "db.example.com",
+				Selector:        map[string]string{"app": "db"},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects headless with NodePort type", func() {
+		ginkgo.It("rejects headless combined with NodePort", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "headless-nodeport",
-				Type:      svcType(KubernetesServiceSpec_node_port),
-				Headless:  true,
-				Selector:  map[string]string{"app": "web"},
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
+				Name:     "bad",
+				Type:     svcType(KubernetesServiceSpec_node_port),
+				Headless: true,
+				Ports:    []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects headless with LoadBalancer type", func() {
+		ginkgo.It("rejects a static cluster IP on a headless service", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "headless-lb",
-				Type:      svcType(KubernetesServiceSpec_load_balancer),
-				Headless:  true,
-				Selector:  map[string]string{"app": "web"},
-				Ports: []*KubernetesServicePort{
-					{Port: 80},
-				},
+				Name:             "bad",
+				Headless:         true,
+				ClusterIpAddress: "10.96.0.50",
+				Ports:            []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects non-ExternalName service without ports", func() {
+		ginkgo.It("rejects the literal \"None\" as a cluster IP", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "no-ports",
-				Type:      svcType(KubernetesServiceSpec_cluster_ip),
-				Selector:  map[string]string{"app": "web"},
-				Ports:     []*KubernetesServicePort{},
+				Name:             "bad",
+				ClusterIpAddress: "None",
+				Ports:            []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects ClusterIP service with no ports (default type)", func() {
+		ginkgo.It("rejects an invalid external IP", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "no-ports-default",
-				Selector:  map[string]string{"app": "web"},
+				Name:        "bad",
+				ExternalIps: []string{"not-an-ip"},
+				Ports:       []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects port name longer than 63 characters", func() {
+		ginkgo.It("rejects an invalid load balancer source range", func() {
 			spec := &KubernetesServiceSpec{
-				Namespace: "default",
-				Name:      "long-port-name",
-				Selector:  map[string]string{"app": "web"},
-				Ports: []*KubernetesServicePort{
-					{Name: "this-is-a-very-long-port-name-that-exceeds-the-sixty-three-character-limit", Port: 80},
-				},
+				Name:                     "bad",
+				Type:                     svcType(KubernetesServiceSpec_load_balancer),
+				LoadBalancerSourceRanges: []string{"203.0.113.5"},
+				Ports:                    []*KubernetesServicePort{{Port: 80}},
 			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects LoadBalancer-only knobs on a ClusterIP service", func() {
+			spec := &KubernetesServiceSpec{
+				Name:              "bad",
+				LoadBalancerClass: "example.com/vip",
+				Ports:             []*KubernetesServicePort{{Port: 80}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects health_check_node_port without Local-policy LoadBalancer", func() {
+			spec := &KubernetesServiceSpec{
+				Name:                "bad",
+				Type:                svcType(KubernetesServiceSpec_load_balancer),
+				HealthCheckNodePort: 30081,
+				Ports:               []*KubernetesServicePort{{Port: 80}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a session affinity timeout without ClientIP affinity", func() {
+			spec := &KubernetesServiceSpec{
+				Name:                          "bad",
+				SessionAffinityTimeoutSeconds: i32(3600),
+				Ports:                         []*KubernetesServicePort{{Port: 80}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a session affinity timeout above one day", func() {
+			spec := &KubernetesServiceSpec{
+				Name:                          "bad",
+				SessionAffinity:               affinity(KubernetesServiceSpec_client_ip),
+				SessionAffinityTimeoutSeconds: i32(90000),
+				Ports:                         []*KubernetesServicePort{{Port: 80}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects duplicate IP families", func() {
+			spec := &KubernetesServiceSpec{
+				Name:       "bad",
+				IpFamilies: []KubernetesServiceSpec_KubernetesServiceIpFamily{KubernetesServiceSpec_ipv4, KubernetesServiceSpec_ipv4},
+				Ports:      []*KubernetesServicePort{{Port: 80}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects two families under a single_stack policy", func() {
+			spec := &KubernetesServiceSpec{
+				Name:           "bad",
+				IpFamilies:     []KubernetesServiceSpec_KubernetesServiceIpFamily{KubernetesServiceSpec_ipv4, KubernetesServiceSpec_ipv6},
+				IpFamilyPolicy: famPolicy(KubernetesServiceSpec_single_stack),
+				Ports:          []*KubernetesServicePort{{Port: 80}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Port-level validations", func() {
+
+		ginkgo.It("rejects a port number out of range", func() {
+			spec := &KubernetesServiceSpec{
+				Name:  "bad",
+				Ports: []*KubernetesServicePort{{Port: 70000}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a node port outside the node-port range", func() {
+			spec := &KubernetesServiceSpec{
+				Name:  "bad",
+				Type:  svcType(KubernetesServiceSpec_node_port),
+				Ports: []*KubernetesServicePort{{Port: 80, NodePort: 8080}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an uppercase port name", func() {
+			spec := &KubernetesServiceSpec{
+				Name:  "bad",
+				Ports: []*KubernetesServicePort{{Name: "HTTP", Port: 80}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an all-digit port name (must contain a letter)", func() {
+			spec := &KubernetesServiceSpec{
+				Name:  "bad",
+				Ports: []*KubernetesServicePort{{Name: "8080", Port: 80}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a numeric target port out of range", func() {
+			spec := &KubernetesServiceSpec{
+				Name:  "bad",
+				Ports: []*KubernetesServicePort{{Port: 80, TargetPort: "99999"}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 		})
 	})
 })

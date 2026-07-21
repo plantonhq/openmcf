@@ -23,6 +23,9 @@ spec:
     - terraform_type: kubernetes_secret_v1
       pulumi_type: kubernetes:core/v1:Secret
       id_format: "{secret_namespace}/{secret_name}"
+      # Provider lifecycle knob (block until the token controller populates a
+      # service-account token Secret); configuration-only, never cluster-side.
+      config_only_attributes: [wait_for_service_account_token]
     - terraform_type: kubernetes_service_account_v1
       pulumi_type: kubernetes:core/v1:ServiceAccount
       id_format: "{service_account_namespace}/{service_account_name}"
@@ -35,6 +38,12 @@ spec:
     - terraform_type: kubernetes_network_policy_v1
       pulumi_type: kubernetes:networking.k8s.io/v1:NetworkPolicy
       id_format: "{network_policy_namespace}/{network_policy_name}"
+    - terraform_type: kubernetes_ingress_v1
+      pulumi_type: kubernetes:networking.k8s.io/v1:Ingress
+      id_format: "{ingress_namespace}/{ingress_name}"
+      # Same provider-side lifecycle knob as kubernetes_service_v1: exists only
+      # in configuration, never in the cluster, so import can never carry it.
+      config_only_attributes: [wait_for_load_balancer]
 
     # --- Core (cluster-scoped) ----------------------------------------------
     - terraform_type: kubernetes_namespace_v1
@@ -47,15 +56,26 @@ spec:
       id_format: "{namespace_name}"
 
     # --- Workloads (namespace-scoped) ----------------------------------------
+    # wait_for_rollout on the workload types is a Terraform-provider lifecycle
+    # knob (block apply until the rollout completes) that exists only in
+    # configuration -- the cluster never stores it, so import can never carry it.
     - terraform_type: kubernetes_deployment_v1
       pulumi_type: kubernetes:apps/v1:Deployment
       id_format: "{deployment_namespace}/{deployment_name}"
+      config_only_attributes: [wait_for_rollout]
     - terraform_type: kubernetes_stateful_set_v1
       pulumi_type: kubernetes:apps/v1:StatefulSet
       id_format: "{stateful_set_namespace}/{stateful_set_name}"
+      config_only_attributes: [wait_for_rollout]
+      # The provider's importer does not read spec.updateStrategy back into
+      # state (the cluster object carries it; the post-import plan re-adds the
+      # exact configured values as a server-side no-op). Declared as a dotted
+      # sub-path so the rest of the spec stays under the round-trip oracle.
+      write_normalized_attributes: ["spec.update_strategy"]
     - terraform_type: kubernetes_daemon_set_v1
       pulumi_type: kubernetes:apps/v1:DaemonSet
       id_format: "{daemon_set_namespace}/{daemon_set_name}"
+      config_only_attributes: [wait_for_rollout]
     - terraform_type: kubernetes_job_v1
       pulumi_type: kubernetes:batch/v1:Job
       id_format: "{job_namespace}/{job_name}"
@@ -67,6 +87,10 @@ spec:
     - terraform_type: kubernetes_service_v1
       pulumi_type: kubernetes:core/v1:Service
       id_format: "{service_namespace}/{service_name}"
+      # wait_for_load_balancer is a Terraform-provider lifecycle knob (block
+      # apply until LB ingress appears) that exists only in configuration --
+      # the cluster never stores it, so import can never carry it.
+      config_only_attributes: [wait_for_load_balancer]
     - terraform_type: kubernetes_horizontal_pod_autoscaler_v2
       pulumi_type: kubernetes:autoscaling/v2:HorizontalPodAutoscaler
       id_format: "{hpa_namespace}/{hpa_name}"

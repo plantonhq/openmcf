@@ -2617,6 +2617,16 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8srbac"
   }];
+  KubernetesIngress = 813 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sing"
+  }];
+  KubernetesNetworkPolicy = 814 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8snp"
+  }];
   // 830–859: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh)
   KubernetesCertManager = 830 [(kind_meta) = {
     provider: kubernetes

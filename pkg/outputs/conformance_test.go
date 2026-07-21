@@ -212,6 +212,57 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"namespace", "cron_job_name", "schedule"},
 		},
 		{
+			// KubernetesService: identity + address handles from both engines must
+			// land on the StackOutputs proto. LB handles are exercised with the
+			// hostname form (the ip form flattens through the same scalar path).
+			name: "KubernetesService",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesService,
+			rawOutputs: map[string]interface{}{
+				"service_name":           "checkout",
+				"namespace":              "team-alpha",
+				"type":                   "LoadBalancer",
+				"cluster_ip":             "10.96.14.7",
+				"load_balancer_ip":       "",
+				"load_balancer_hostname": "a1b2c3.elb.us-west-2.amazonaws.com",
+				"kube_endpoint":          "checkout.team-alpha.svc.cluster.local",
+				"port_forward_command":   "kubectl port-forward -n team-alpha service/checkout 80:80",
+			},
+			mustPopulate: []string{
+				"service_name", "namespace", "type", "cluster_ip",
+				"load_balancer_hostname", "kube_endpoint", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesIngress: identity + load-balancer address handles from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesIngress",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesIngress,
+			rawOutputs: map[string]interface{}{
+				"ingress_name":           "checkout-web",
+				"namespace":              "team-alpha",
+				"load_balancer_ip":       "203.0.113.10",
+				"load_balancer_hostname": "",
+				"first_host":             "shop.example.com",
+			},
+			mustPopulate: []string{
+				"ingress_name", "namespace", "load_balancer_ip", "first_host",
+			},
+		},
+		{
+			// KubernetesNetworkPolicy: object identity + the governed directions
+			// from both engines must land on the StackOutputs proto.
+			name: "KubernetesNetworkPolicy",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesNetworkPolicy,
+			rawOutputs: map[string]interface{}{
+				"network_policy_name": "default-deny-all",
+				"namespace":           "team-alpha",
+				"policy_types":        "Ingress,Egress",
+			},
+			mustPopulate: []string{
+				"network_policy_name", "namespace", "policy_types",
+			},
+		},
+		{
 			// AwsSubnet: flat scalar outputs from both engines (subnet id/arn, AZ,
 			// CIDR, route table id, region) must each land on the StackOutputs proto.
 			name: "AwsSubnet",

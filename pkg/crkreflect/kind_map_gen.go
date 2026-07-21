@@ -445,6 +445,7 @@ import (
 	kubernetesharborv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesharbor/v1"
 	kuberneteshelmreleasev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteshelmrelease/v1"
 	kuberneteshttproutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteshttproute/v1"
+	kubernetesingressv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesingress/v1"
 	kubernetesingressnginxv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesingressnginx/v1"
 	kubernetesissuerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesissuer/v1"
 	kubernetesistiov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesistio/v1"
@@ -459,6 +460,7 @@ import (
 	kubernetesnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnamespace/v1"
 	kubernetesnatsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnats/v1"
 	kubernetesneo4jv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesneo4j/v1"
+	kubernetesnetworkpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnetworkpolicy/v1"
 	kubernetesopenbaov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesopenbao/v1"
 	kubernetesopenfgav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesopenfga/v1"
 	kubernetespeerauthenticationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespeerauthentication/v1"
@@ -1060,6 +1062,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesHarbor:                      &kubernetesharborv1.KubernetesHarbor{},
 	cloudresourcekind.CloudResourceKind_KubernetesHelmRelease:                 &kuberneteshelmreleasev1.KubernetesHelmRelease{},
 	cloudresourcekind.CloudResourceKind_KubernetesHttpRoute:                   &kuberneteshttproutev1.KubernetesHttpRoute{},
+	cloudresourcekind.CloudResourceKind_KubernetesIngress:                     &kubernetesingressv1.KubernetesIngress{},
 	cloudresourcekind.CloudResourceKind_KubernetesIngressNginx:                &kubernetesingressnginxv1.KubernetesIngressNginx{},
 	cloudresourcekind.CloudResourceKind_KubernetesIssuer:                      &kubernetesissuerv1.KubernetesIssuer{},
 	cloudresourcekind.CloudResourceKind_KubernetesIstio:                       &kubernetesistiov1.KubernetesIstio{},
@@ -1074,6 +1077,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesNamespace:                   &kubernetesnamespacev1.KubernetesNamespace{},
 	cloudresourcekind.CloudResourceKind_KubernetesNats:                        &kubernetesnatsv1.KubernetesNats{},
 	cloudresourcekind.CloudResourceKind_KubernetesNeo4j:                       &kubernetesneo4jv1.KubernetesNeo4J{},
+	cloudresourcekind.CloudResourceKind_KubernetesNetworkPolicy:               &kubernetesnetworkpolicyv1.KubernetesNetworkPolicy{},
 	cloudresourcekind.CloudResourceKind_KubernetesOpenBao:                     &kubernetesopenbaov1.KubernetesOpenBao{},
 	cloudresourcekind.CloudResourceKind_KubernetesOpenFga:                     &kubernetesopenfgav1.KubernetesOpenFga{},
 	cloudresourcekind.CloudResourceKind_KubernetesPeerAuthentication:          &kubernetespeerauthenticationv1.KubernetesPeerAuthentication{},

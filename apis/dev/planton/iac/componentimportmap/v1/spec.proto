@@ -54,5 +54,11 @@ message ImportValueDerivation {
     // by exactly the discriminator the import ID needs (e.g. an S3
     // intelligent-tiering configuration's name), so the address carries it.
     bool from_address_key = 5;
+    // metadata.name plus this literal suffix -- for satellite resources a
+    // module names by convention off the parent's name (a workload's
+    // "<name>-hpa" autoscaler, its "<name>-env-secrets" Secret). Keeps
+    // convention-named satellites blind-derivable without exporting their
+    // names as stack outputs.
+    string from_metadata_name_suffix = 6;
   }
 }

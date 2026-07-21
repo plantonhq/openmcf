@@ -3,7 +3,8 @@ kind: KubernetesService
 metadata:
   name: e2e-svc-labels
 spec:
-  namespace: default
+  namespace:
+    value: default
   name: e2e-svc-labels
   selector:
     app: test-app

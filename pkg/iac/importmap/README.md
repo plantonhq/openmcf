@@ -11,7 +11,7 @@ authored, in two tiers:
 | Tier | Kind | Location | Owns |
 |------|------|----------|------|
 | Provider | `ProviderImportCatalog` | `apis/dev/planton/provider/{provider}/aa_import/catalog.yaml` | Import-ID **format** per resource type (`"{bucket}"`, `"{vpc_id}"`), plus `config_only_attributes` — attributes that exist only in IaC configuration and can never round-trip through import |
-| Component | `ComponentImportMap` | `{component}/v1/iac/import-map.yaml` | The **value source** per `{placeholder}`: metadata.name, a spec field, a stack output, a pasted ARN's part, or the enumerated address's instance key — with "where to find this" guidance for anything only the user can supply |
+| Component | `ComponentImportMap` | `{component}/v1/iac/import-map.yaml` | The **value source** per `{placeholder}`: metadata.name (optionally with a literal suffix, for convention-named satellites like `<name>-hpa`), a spec field, a stack output, a pasted ARN's part, or the enumerated address's instance key — with "where to find this" guidance for anything only the user can supply |
 
 Both are proto-backed KRM documents (`iac.planton.dev/v1`, protos under
 `apis/dev/planton/iac/`), parsed through `pkg/protobufyaml` like the E2E
@@ -30,7 +30,11 @@ profiles.
   require the follow-up plan to propose no real change — in-place updates
   are tolerated only for declared `config_only_attributes`
   (e.g. `aws_s3_bucket.force_destroy`, engine delete behavior with no
-  cloud-side existence). The destroy that follows runs through the
+  cloud-side existence) and `write_normalized_attributes`. A tolerance may
+  be a dotted sub-path (`"spec.update_strategy"`) when a provider's importer
+  fails to read back one nested block — the oracle then prunes exactly that
+  sub-path from both plan sides and requires the remainder identical, so
+  sibling drift still fails. The destroy that follows runs through the
   re-imported state, proving it fully owns the resources.
 
 ## Enrollment is the file itself
@@ -71,6 +75,14 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `awssqsqueue` | 2026-07-10, fifo-full-surface (queue URL id) | — |
 | `awssnstopic` | 2026-07-10, standard-topic (topic ARN id) | `aws_sns_topic_data_protection_policy` not composed by the scenario, offline-validated only |
 | `awskmskey` | 2026-07-10, minimal (key UUID + `alias/...` via `for_each` key) | `aws_kms_key.deletion_window_in_days` declared (provider-documented config-only; scenario does not set it) |
+| `kubernetesdeployment` | 2026-07-21, all 13 scenarios (workload + service + HPA + PDB + env Secret + created namespace) | `kubernetes_deployment_v1.wait_for_rollout`, `kubernetes_service_v1.wait_for_load_balancer`, `kubernetes_secret_v1.wait_for_service_account_token` (config-only) |
+| `kubernetesstatefulset` | 2026-07-21, all 13 scenarios | same config-only knobs; `kubernetes_stateful_set_v1` `spec.update_strategy` (write-normalized dotted sub-path: the provider importer does not read the block back) |
+| `kubernetesdaemonset` | 2026-07-21, all 5 scenarios | `kubernetes_daemon_set_v1.wait_for_rollout` (config-only) |
+| `kubernetesjob` | 2026-07-21, all 5 scenarios | — |
+| `kubernetescronjob` | 2026-07-21, all 4 scenarios | — |
+| `kubernetesservice` | 2026-07-21, all 13 scenarios | `kubernetes_service_v1.wait_for_load_balancer` (config-only) |
+| `kubernetesingress` | 2026-07-21, all 4 scenarios (incl. the composed real-backend fixture) | `kubernetes_ingress_v1.wait_for_load_balancer` (config-only) |
+| `kubernetesnetworkpolicy` | 2026-07-21, all 4 scenarios | — |
 
 ## Adding a kind
 

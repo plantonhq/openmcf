@@ -3,7 +3,8 @@ kind: KubernetesService
 metadata:
   name: e2e-svc-clusterip
 spec:
-  namespace: default
+  namespace:
+    value: default
   name: e2e-svc-clusterip
   selector:
     app: test-app

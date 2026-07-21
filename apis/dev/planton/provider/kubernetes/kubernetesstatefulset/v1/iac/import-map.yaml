@@ -53,6 +53,8 @@ spec:
       where_to_find: >-
         Same namespace as the workload.
     - name: secret_name
+      derivations:
+        - from_metadata_name_suffix: "-env-secrets"
       where_to_find: >-
         `kubectl get secrets -n <namespace>` — named
         "<metadata.name>-env-secrets"; only present when the spec carries

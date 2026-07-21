@@ -3,240 +3,517 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetesservice.v1;
 
 import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
 /**
- * **KubernetesServiceSpec** defines the configuration for creating and managing a standalone
- * Kubernetes Service resource. This component exposes the Kubernetes Service primitive as a
- * first-class deployment unit, enabling declarative management of service discovery, load
- * balancing, and external access for workloads running in a Kubernetes cluster.
+ * **KubernetesServiceSpec** defines a standalone Kubernetes Service — the stable
+ * network identity in front of a set of pods. A Service gives its backends one
+ * durable virtual IP and DNS name while the pods behind it come and go, and it is
+ * the unit every other networking construct composes on: Ingress backends point at
+ * a Service, NetworkPolicies allow traffic to the pods a Service selects, and
+ * sibling workloads connect to its in-cluster DNS name.
  *
- * Primary use cases include:
- * - Exposing existing cluster workloads via LoadBalancer or NodePort
- * - Creating ExternalName services to proxy external DNS endpoints
- * - Headless services for direct pod addressing and custom DNS resolution
- * - Services targeting pods managed outside of Planton
+ * Workload kinds (KubernetesDeployment, KubernetesStatefulSet) already create a
+ * Service for their own pods; this standalone kind covers everything else:
+ * exposing pods managed outside Planton, LoadBalancer/NodePort exposure with
+ * cloud-provider annotations, ExternalName aliases to services outside the
+ * cluster, headless services for custom discovery, dual-stack addressing, and
+ * selectorless services fronting manually-managed endpoints.
  *
- * This spec follows the 80/20 rule, covering the essential Service configurations that the
- * vast majority of users need while remaining deployment-agnostic.
+ * The spec covers the complete core/v1 ServiceSpec surface. The single deliberate
+ * omission is the deprecated `loadBalancerIP` field — upstream deprecated it as
+ * under-specified and non-portable; every cloud expresses a pinned LB address
+ * through provider-specific annotations instead (set them in `annotations`).
  */
 message KubernetesServiceSpec {
   /**
-   * The namespace in which the service will be created.
-   * Must be a valid DNS label (lowercase alphanumeric and hyphens, max 63 characters).
-   * The namespace must already exist in the target cluster.
+   * The namespace to create the Service in. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource, so an infra chart creates the
+   * namespace and the Service in one run. When omitted, the Service lands in the
+   * cluster's `default` namespace — the same behavior as kubectl without a
+   * namespace flag.
    */
-  string namespace = 2 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * The name of the Service (its `metadata.name` in the cluster). This becomes the
+   * service's DNS name, so the Kubernetes API enforces the stricter RFC 1035 label
+   * form: lowercase alphanumeric and hyphens, at most 63 characters, and it MUST
+   * start with a letter (a leading digit is valid for most Kubernetes names but is
+   * rejected live for Services because DNS labels used in SRV records cannot start
+   * with a digit).
+   */
+  string name = 2 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 63,
     (buf.validate.field).cel = {
-      id: "namespace.dns_label"
-      message: "namespace must be a valid DNS label (lowercase alphanumeric and hyphens, no leading/trailing hyphens)"
-      expression: "this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')"
+      id: "name.dns_1035_label"
+      message: "Service name must be a valid DNS-1035 label: lowercase alphanumeric and hyphens, starting with a letter and ending with an alphanumeric (e.g. \"my-service\", \"web\")"
+      expression: "this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')"
     }
   ];
 
   /**
-   * The name of the Kubernetes Service.
-   * Used as `metadata.name` on the created Service resource.
-   * Must be a valid DNS label (lowercase alphanumeric and hyphens, max 63 characters).
+   * Additional labels to apply to the Service object. Merged with the standard
+   * Planton governance labels. These label the Service itself — pod selection is
+   * controlled by `selector`, not by these labels.
    */
-  string name = 3 [
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 63,
-    (buf.validate.field).cel = {
-      id: "name.dns_label"
-      message: "name must be a valid DNS label (lowercase alphanumeric and hyphens, no leading/trailing hyphens)"
-      expression: "this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')"
-    }
-  ];
+  map<string, string> labels = 3;
 
   /**
-   * Additional labels to apply to the Service resource.
-   * These are merged with standard Planton labels for governance and discoverability.
+   * Annotations to apply to the Service object. For LoadBalancer services this is
+   * where cloud-provider behavior is configured — the annotation set IS the
+   * portable way to tune the provisioned load balancer:
+   * - `service.beta.kubernetes.io/aws-load-balancer-type: "nlb"` — AWS NLB
+   * - `service.beta.kubernetes.io/aws-load-balancer-internal: "true"` — AWS internal LB
+   * - `cloud.google.com/load-balancer-type: "Internal"` — GCP internal LB
+   * - `networking.gke.io/load-balancer-ip-addresses: "<name>"` — GKE pinned address
+   * - `service.beta.kubernetes.io/azure-load-balancer-internal: "true"` — Azure internal LB
+   * - `external-dns.alpha.kubernetes.io/hostname: "app.example.com"` — external-dns record
    */
-  map<string, string> labels = 4;
+  map<string, string> annotations = 4;
 
   /**
-   * Annotations to apply to the Service resource.
-   * Annotations are critical for configuring cloud-provider-specific load balancer behavior.
-   * Common use cases:
-   * - `service.beta.kubernetes.io/aws-load-balancer-type: "nlb"` for AWS NLB
-   * - `cloud.google.com/neg: '{"ingress": true}'` for GCP NEG
-   * - `service.beta.kubernetes.io/azure-load-balancer-internal: "true"` for Azure internal LB
-   */
-  map<string, string> annotations = 5;
-
-  /**
-   * **KubernetesServiceType** defines the type of Kubernetes Service to create.
+   * **KubernetesServiceType** determines how the Service is exposed.
    */
   enum KubernetesServiceType {
-    // Unspecified service type. Defaults to ClusterIP.
+    // Unspecified. Defaults to cluster_ip.
     kubernetes_service_type_unspecified = 0;
 
-    // ClusterIP: Exposes the service on a cluster-internal IP.
-    // The service is only reachable from within the cluster.
-    // This is the default and most common service type.
+    // ClusterIP: a cluster-internal virtual IP. Reachable only from inside the
+    // cluster. The default and most common type.
     cluster_ip = 1;
 
-    // NodePort: Exposes the service on each node's IP at a static port.
-    // A ClusterIP service is automatically created as well.
-    // Accessible externally via <NodeIP>:<NodePort>.
+    // NodePort: builds on ClusterIP and additionally opens a static port on every
+    // node. Reachable externally at <NodeIP>:<NodePort>.
     node_port = 2;
 
-    // LoadBalancer: Exposes the service externally using a cloud provider's load balancer.
-    // NodePort and ClusterIP services are automatically created as well.
+    // LoadBalancer: builds on NodePort and asks the cloud provider to provision an
+    // external load balancer routing to the same endpoints.
     load_balancer = 3;
 
-    // ExternalName: Maps the service to the contents of the external_dns_name field
-    // by returning a CNAME record. No proxying of any kind is set up.
+    // ExternalName: a DNS alias — cluster DNS returns a CNAME to `external_name`.
+    // No proxying, no selectors, no ports are involved.
     external_name = 4;
   }
 
   /**
-   * The type of Kubernetes Service to create.
+   * How the Service is exposed.
    * Default: cluster_ip
    */
-  optional KubernetesServiceType type = 6 [(buf.validate.field).enum.defined_only = true];
+  optional KubernetesServiceType type = 5 [
+    (dev.planton.shared.options.default) = "cluster_ip",
+    (buf.validate.field).enum.defined_only = true
+  ];
 
   /**
-   * Label selector for identifying the pods that this service routes traffic to.
-   * The service will route traffic to pods whose labels match all key-value pairs
-   * in this selector.
+   * Label selector identifying the pods this Service routes to. Traffic goes to
+   * pods whose labels match ALL key-value pairs listed here. Planton workloads
+   * stamp a stable selector identity on their pods — the `app` label set to the
+   * workload's `metadata.name` — and export the full set as their
+   * `selector_labels` output, so `app: <workload-name>` is sufficient to select
+   * a Planton-managed workload's pods.
    *
-   * Not required for ExternalName services or services with manually managed endpoints.
+   * Leave empty for ExternalName services, or to create a selectorless service
+   * whose endpoints are managed manually (via EndpointSlice objects) or by an
+   * external controller.
    */
-  map<string, string> selector = 7;
+  map<string, string> selector = 6;
 
   /**
-   * The list of ports exposed by this service.
-   * At least one port must be specified for all service types except ExternalName.
+   * The ports this Service exposes. At least one port is required for every type
+   * except ExternalName (which forwards by DNS, not by port).
    */
-  repeated KubernetesServicePort ports = 8;
+  repeated KubernetesServicePort ports = 7;
 
   /**
-   * Whether to create a headless service (clusterIP: None).
-   * Headless services do not allocate a cluster IP; DNS queries return the pod IPs directly.
-   * Useful for StatefulSets and custom service discovery mechanisms.
-   *
-   * Cannot be combined with service types NodePort or LoadBalancer.
+   * When true, creates a headless service (`clusterIP: None`): no virtual IP is
+   * allocated and DNS returns the pod IPs directly. The tool of choice for
+   * StatefulSet peer discovery and any client that wants to talk to each pod
+   * individually. Incompatible with NodePort/LoadBalancer types and with a static
+   * `cluster_ip`.
    */
-  bool headless = 9;
+  bool headless = 8;
 
   /**
-   * The external DNS name for ExternalName-type services.
-   * This must be a valid DNS name (e.g., "my-database.example.com").
-   * Only used when type is set to external_name.
+   * A specific cluster-internal IP to assign instead of an allocated one. Must be
+   * a valid IP inside the cluster's service CIDR and not already in use — the API
+   * server rejects the Service otherwise. Rarely needed; omit to let Kubernetes
+   * allocate. For a headless service use `headless: true`, never "None" here.
+   * Immutable after creation.
    */
-  string external_dns_name = 10;
+  string cluster_ip_address = 9 [(buf.validate.field).cel = {
+    id: "cluster_ip_address.format"
+    message: "cluster_ip_address must be a valid IPv4 or IPv6 address (to create a headless service set headless: true instead of clusterIP \"None\")"
+    expression: "this == '' || this.isIp()"
+  }];
 
   /**
-   * **KubernetesServiceExternalTrafficPolicy** controls how external traffic is routed to service endpoints.
+   * The DNS name an ExternalName service aliases to (e.g.
+   * "db.prod.example.com") — cluster DNS returns it as a CNAME. Required when
+   * (and only meaningful when) `type` is external_name. Must be a lowercase
+   * RFC-1123 hostname.
+   */
+  string external_dns_name = 10 [(buf.validate.field).cel = {
+    id: "external_dns_name.hostname"
+    message: "external_dns_name must be a lowercase RFC-1123 hostname (e.g. \"db.prod.example.com\")"
+    expression: "this == '' || this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$')"
+  }];
+
+  /**
+   * IP addresses outside Kubernetes' management for which nodes also accept
+   * traffic for this Service — typically VIPs owned by an external load balancer
+   * or router that fronts the cluster. The user is responsible for routing
+   * traffic to these IPs; Kubernetes only accepts it once it arrives at a node.
+   */
+  repeated string external_ips = 11 [(buf.validate.field).repeated.items.cel = {
+    id: "external_ips.format"
+    message: "each external IP must be a valid IPv4 or IPv6 address"
+    expression: "this.isIp()"
+  }];
+
+  /**
+   * **KubernetesServiceExternalTrafficPolicy** controls routing for externally
+   * originated traffic (NodePort, ExternalIPs, LoadBalancer IPs).
    */
   enum KubernetesServiceExternalTrafficPolicy {
-    // Unspecified. Defaults to Cluster.
+    // Unspecified. Defaults to cluster.
     external_traffic_policy_unspecified = 0;
 
-    // Cluster: Routes traffic to all ready endpoints across all nodes.
-    // May cause a second hop but distributes load evenly.
+    // Cluster: routes to all ready endpoints across all nodes. Even load
+    // distribution, but adds a possible second hop and masquerades the client
+    // source IP.
     cluster = 1;
 
-    // Local: Routes traffic only to node-local endpoints.
-    // Preserves client source IP but may cause uneven load distribution.
-    // If there are no local endpoints, traffic is dropped.
+    // Local: routes only to endpoints on the node that received the traffic.
+    // Preserves the client source IP and removes the extra hop, but nodes
+    // without endpoints drop the traffic — pair with a load balancer health
+    // check (see health_check_node_port).
     local = 2;
   }
 
   /**
-   * External traffic policy for NodePort and LoadBalancer services.
-   * Controls whether traffic is routed to node-local endpoints only or across all nodes.
-   * Only applicable when type is node_port or load_balancer.
+   * External traffic policy for NodePort and LoadBalancer services. Choose
+   * `local` when the application needs the real client source IP.
    * Default: cluster
    */
-  optional KubernetesServiceExternalTrafficPolicy external_traffic_policy = 11 [(buf.validate.field).enum.defined_only = true];
+  optional KubernetesServiceExternalTrafficPolicy external_traffic_policy = 12 [
+    (dev.planton.shared.options.default) = "cluster",
+    (buf.validate.field).enum.defined_only = true
+  ];
 
   /**
-   * **KubernetesServiceSessionAffinity** defines session affinity behavior.
+   * **KubernetesServiceInternalTrafficPolicy** controls routing for traffic
+   * arriving on the ClusterIP from inside the cluster.
+   */
+  enum KubernetesServiceInternalTrafficPolicy {
+    // Unspecified. Defaults to cluster.
+    internal_traffic_policy_unspecified = 0;
+
+    // Cluster: routes to all ready endpoints evenly (the standard behavior).
+    internal_cluster = 1;
+
+    // Local: routes only to endpoints on the same node as the client pod,
+    // dropping traffic when the node has none. Useful for node-local agents
+    // (DNS caches, log collectors) exposed behind a Service.
+    internal_local = 2;
+  }
+
+  /**
+   * Internal traffic policy for ClusterIP traffic.
+   * Default: internal_cluster
+   */
+  optional KubernetesServiceInternalTrafficPolicy internal_traffic_policy = 13 [
+    (dev.planton.shared.options.default) = "internal_cluster",
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  /**
+   * **KubernetesServiceTrafficDistribution** expresses a topology preference for
+   * routing — a hint implementations honor when it is safe to do so.
+   */
+  enum KubernetesServiceTrafficDistribution {
+    // Unspecified: the implementation applies its default routing strategy.
+    traffic_distribution_unspecified = 0;
+
+    // PreferSameZone: prefer endpoints in the client's zone — cuts cross-zone
+    // data transfer cost and latency. Only set when endpoints are spread evenly
+    // enough that same-zone preference cannot overload a zone's endpoints.
+    prefer_same_zone = 1;
+
+    // PreferSameNode: prefer endpoints on the client's node. For node-local
+    // patterns where every node runs an endpoint (e.g. DaemonSet-backed
+    // services).
+    prefer_same_node = 2;
+  }
+
+  /**
+   * Topology-aware routing preference. Omit for the cluster's default routing.
+   */
+  optional KubernetesServiceTrafficDistribution traffic_distribution = 14 [(buf.validate.field).enum.defined_only = true];
+
+  /**
+   * **KubernetesServiceSessionAffinity** pins clients to backends.
    */
   enum KubernetesServiceSessionAffinity {
     // Unspecified. Defaults to none.
     session_affinity_unspecified = 0;
 
-    // None: No session affinity. Each request may be routed to any backend pod.
+    // None: every request may land on any backend pod.
     none = 1;
 
-    // ClientIP: Routes requests from the same client IP to the same backend pod.
-    // Useful for stateful applications that require sticky sessions.
+    // ClientIP: requests from one client IP stick to one backend pod for the
+    // affinity timeout window. For stateful applications needing sticky
+    // sessions without a smarter L7 layer.
     client_ip = 2;
   }
 
   /**
-   * Session affinity configuration.
-   * Determines whether requests from the same client are routed to the same backend pod.
+   * Session affinity mode.
    * Default: none
    */
-  optional KubernetesServiceSessionAffinity session_affinity = 12 [(buf.validate.field).enum.defined_only = true];
+  optional KubernetesServiceSessionAffinity session_affinity = 15 [
+    (dev.planton.shared.options.default) = "none",
+    (buf.validate.field).enum.defined_only = true
+  ];
 
   /**
-   * Restrict access to the load balancer by source IP ranges.
-   * Only applicable when type is load_balancer.
-   * Each entry must be a valid CIDR notation (e.g., "203.0.113.0/24", "10.0.0.0/8").
-   *
-   * An empty list means the load balancer is accessible from any source IP.
+   * How long (in seconds) a ClientIP affinity pin lasts. Only meaningful when
+   * `session_affinity` is client_ip. Kubernetes default: 10800 (3 hours).
+   * Range: 1–86400 (1 day).
    */
-  repeated string load_balancer_source_ranges = 13;
+  optional int32 session_affinity_timeout_seconds = 16 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 86400
+  }];
 
-  // -- Cross-field validations --
+  /**
+   * Restrict which client CIDRs may reach the provisioned load balancer. Only
+   * meaningful for LoadBalancer services, and only enforced by cloud providers
+   * that support it. An empty list means open to all sources.
+   */
+  repeated string load_balancer_source_ranges = 17 [(buf.validate.field).repeated.items.cel = {
+    id: "load_balancer_source_ranges.cidr"
+    message: "each source range must be a valid CIDR (e.g. \"203.0.113.0/24\", \"2001:db8::/64\")"
+    expression: "this.isIpPrefix()"
+  }];
 
-  // ExternalName services require external_dns_name to be set.
+  /**
+   * Selects which load-balancer implementation provisions this Service when the
+   * cluster runs more than one (e.g. the cloud default plus MetalLB). A
+   * label-style identifier, optionally domain-prefixed (e.g.
+   * "example.com/internal-vip"). Omit for the cluster's default implementation.
+   * Only settable for LoadBalancer services; immutable once set.
+   */
+  string load_balancer_class = 18 [(buf.validate.field).string.max_len = 317];
+
+  /**
+   * Whether NodePorts are auto-allocated for this LoadBalancer service.
+   * Unset defers to the Kubernetes default (true) — deliberately NOT a
+   * platform default, because the field may only exist on LoadBalancer
+   * services and a platform-applied value would be rejected on every other
+   * type. Set false only when the load-balancer implementation routes to pods
+   * directly (e.g. VIP-mode MetalLB, some NLB IP-target setups) and the
+   * NodePort hop is dead weight.
+   */
+  optional bool allocate_load_balancer_node_ports = 19;
+
+  /**
+   * A specific health-check NodePort for `external_traffic_policy: local`
+   * LoadBalancer services — the port external load balancers probe to learn
+   * which nodes hold endpoints. Omit to let Kubernetes allocate one. Only
+   * settable when type is load_balancer AND external_traffic_policy is local
+   * (the API rejects it otherwise). Immutable once set.
+   */
+  int32 health_check_node_port = 20 [(buf.validate.field).cel = {
+    id: "health_check_node_port.range"
+    message: "health_check_node_port must be 0 (auto-allocate) or in the node-port range 30000-32767"
+    expression: "this == 0 || (this >= 30000 && this <= 32767)"
+  }];
+
+  /**
+   * When true, endpoint controllers publish pod addresses even before the pods
+   * report Ready. The canonical use is a StatefulSet's headless governing
+   * Service, where peers must discover each other DURING startup (databases
+   * bootstrapping a quorum). Leave false for ordinary traffic-serving services —
+   * publishing not-ready backends sends real traffic to pods that cannot
+   * handle it.
+   */
+  bool publish_not_ready_addresses = 21;
+
+  /**
+   * **KubernetesServiceIpFamily** is one IP address family.
+   */
+  enum KubernetesServiceIpFamily {
+    // Unspecified.
+    ip_family_unspecified = 0;
+
+    // IPv4.
+    ipv4 = 1;
+
+    // IPv6.
+    ipv6 = 2;
+  }
+
+  /**
+   * The IP families assigned to this Service, in preference order. Usually left
+   * empty (the cluster assigns based on its configuration and
+   * `ip_family_policy`). Set explicitly to pin the primary family or the
+   * dual-stack order, e.g. [ipv6, ipv4] for IPv6-primary. At most two entries,
+   * and they must differ. The requested families must be available in the
+   * cluster or creation fails.
+   */
+  repeated KubernetesServiceIpFamily ip_families = 22 [
+    (buf.validate.field).repeated.max_items = 2,
+    (buf.validate.field).repeated.items.enum = {
+      defined_only: true
+      not_in: [0]
+    }
+  ];
+
+  /**
+   * **KubernetesServiceIpFamilyPolicy** is the dual-stack requirement level.
+   */
+  enum KubernetesServiceIpFamilyPolicy {
+    // Unspecified. Kubernetes defaults to SingleStack.
+    ip_family_policy_unspecified = 0;
+
+    // SingleStack: one IP family (the cluster default or ip_families[0]).
+    single_stack = 1;
+
+    // PreferDualStack: two families on dual-stack clusters, one on single-stack
+    // clusters — the portable way to opt into dual-stack.
+    prefer_dual_stack = 2;
+
+    // RequireDualStack: two families or fail — creation errors on single-stack
+    // clusters.
+    require_dual_stack = 3;
+  }
+
+  /**
+   * The dual-stack policy for this Service. Omit for SingleStack.
+   */
+  optional KubernetesServiceIpFamilyPolicy ip_family_policy = 23 [(buf.validate.field).enum.defined_only = true];
+
+  // -- Cross-field validations (each mirrors a live kube-apiserver rejection,
+  // surfaced at validation time instead of apply time) --
+
+  // ExternalName services must say which name they alias.
   option (buf.validate.message).cel = {
     id: "external_name_requires_dns_name"
     message: "external_dns_name must be set when type is external_name"
-    expression: "this.type != 4 || this.external_dns_name != ''"
+    expression: "!has(this.type) || this.type != 4 || this.external_dns_name != ''"
   };
 
-  // Headless services cannot be NodePort or LoadBalancer.
+  // external_dns_name is meaningless (and rejected) on other types.
+  option (buf.validate.message).cel = {
+    id: "external_dns_name_only_for_external_name_type"
+    message: "external_dns_name can only be set when type is external_name"
+    expression: "this.external_dns_name == '' || (has(this.type) && this.type == 4)"
+  };
+
+  // A headless service has no virtual IP for NodePort/LoadBalancer to build on.
   option (buf.validate.message).cel = {
     id: "headless_incompatible_with_nodeport_loadbalancer"
     message: "headless cannot be true when type is node_port or load_balancer"
-    expression: "!this.headless || (this.type != 2 && this.type != 3)"
+    expression: "!this.headless || !has(this.type) || (this.type != 2 && this.type != 3)"
   };
 
-  // Non-ExternalName services must have at least one port.
+  // headless IS clusterIP "None"; a static IP contradicts it.
+  option (buf.validate.message).cel = {
+    id: "headless_excludes_static_cluster_ip"
+    message: "cluster_ip_address cannot be set on a headless service (headless means clusterIP \"None\")"
+    expression: "!this.headless || this.cluster_ip_address == ''"
+  };
+
+  // Every proxying type needs at least one port.
   option (buf.validate.message).cel = {
     id: "non_external_name_requires_ports"
-    message: "at least one port must be specified for non-ExternalName services"
-    expression: "this.type == 4 || this.ports.size() > 0"
+    message: "at least one port must be specified for every service type except external_name"
+    expression: "(has(this.type) && this.type == 4) || this.ports.size() > 0"
+  };
+
+  // ExternalName is pure DNS — the API rejects selectors and cluster IPs on it.
+  option (buf.validate.message).cel = {
+    id: "external_name_excludes_selector_and_cluster_ip"
+    message: "selector and cluster_ip_address cannot be set when type is external_name (an ExternalName service is a DNS alias, not a proxy)"
+    expression: "!has(this.type) || this.type != 4 || (this.selector.size() == 0 && this.cluster_ip_address == '')"
+  };
+
+  // health_check_node_port exists only for Local-policy LoadBalancers.
+  option (buf.validate.message).cel = {
+    id: "health_check_node_port_requires_local_lb"
+    message: "health_check_node_port can only be set when type is load_balancer and external_traffic_policy is local"
+    expression: "this.health_check_node_port == 0 || (has(this.type) && this.type == 3 && has(this.external_traffic_policy) && this.external_traffic_policy == 2)"
+  };
+
+  // The affinity timeout only applies to ClientIP affinity.
+  option (buf.validate.message).cel = {
+    id: "session_affinity_timeout_requires_client_ip"
+    message: "session_affinity_timeout_seconds can only be set when session_affinity is client_ip"
+    expression: "!has(this.session_affinity_timeout_seconds) || (has(this.session_affinity) && this.session_affinity == 2)"
+  };
+
+  // LoadBalancer-only knobs on non-LoadBalancer types are silent no-ops at best
+  // and API rejections at worst — fail loudly here.
+  option (buf.validate.message).cel = {
+    id: "load_balancer_fields_require_load_balancer_type"
+    message: "load_balancer_source_ranges, load_balancer_class, and allocate_load_balancer_node_ports can only be set when type is load_balancer"
+    expression: "(has(this.type) && this.type == 3) || (this.load_balancer_source_ranges.size() == 0 && this.load_balancer_class == '' && !has(this.allocate_load_balancer_node_ports))"
+  };
+
+  // Dual-stack: the two entries must be different families.
+  option (buf.validate.message).cel = {
+    id: "ip_families_distinct"
+    message: "ip_families entries must be distinct (at most one ipv4 and one ipv6)"
+    expression: "this.ip_families.size() < 2 || this.ip_families[0] != this.ip_families[1]"
+  };
+
+  // RequireDualStack/PreferDualStack pair with up to two families; SingleStack
+  // with at most one explicit family.
+  option (buf.validate.message).cel = {
+    id: "single_stack_allows_one_family"
+    message: "ip_families may list at most one family when ip_family_policy is single_stack"
+    expression: "!has(this.ip_family_policy) || this.ip_family_policy != 1 || this.ip_families.size() <= 1"
   };
 }
 
 /**
- * **KubernetesServicePort** defines a port exposed by the Kubernetes Service.
+ * **KubernetesServicePort** is one port the Service exposes.
  */
 message KubernetesServicePort {
   /**
-   * **KubernetesServiceProtocol** defines the network protocol for a service port.
+   * Name of this port. Required (and must be unique) when the Service exposes
+   * more than one port; optional for a single port. Must be a valid IANA service
+   * name: lowercase alphanumeric and hyphens, at most 15 characters, at least
+   * one letter. Named ports let consumers reference "http" instead of a number.
    */
-  enum KubernetesServiceProtocol {
-    // Unspecified protocol. Defaults to TCP.
-    kubernetes_service_protocol_unspecified = 0;
-
-    // TCP protocol. The most common protocol for services.
-    TCP = 1;
-
-    // UDP protocol. Used for DNS, streaming, and other UDP-based services.
-    UDP = 2;
-
-    // SCTP protocol. Used for telecommunications and specialized networking.
-    SCTP = 3;
-  }
+  string name = 1 [(buf.validate.field).cel = {
+    id: "port_name.iana_svc_name"
+    message: "Port name must be a valid IANA service name: lowercase alphanumeric and hyphens, at most 15 characters, containing at least one letter (e.g. \"http\", \"grpc-web\")"
+    expression: "this == '' || (this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$') && this.size() <= 15 && this.matches('.*[a-z].*'))"
+  }];
 
   /**
-   * Optional name for this port. Must be unique within the list of ports.
-   * Required when the service exposes more than one port.
-   * Must be a valid IANA service name (lowercase alphanumeric and hyphens).
+   * **KubernetesServiceProtocol** is the L4 protocol of a port.
    */
-  string name = 1 [(buf.validate.field).string.max_len = 63];
+  enum KubernetesServiceProtocol {
+    // Unspecified. Defaults to TCP.
+    kubernetes_service_protocol_unspecified = 0;
+
+    // TCP — the default and most common.
+    TCP = 1;
+
+    // UDP — DNS, QUIC, media streaming.
+    UDP = 2;
+
+    // SCTP — telecom workloads; requires cluster SCTP support.
+    SCTP = 3;
+  }
 
   /**
    * The IP protocol for this port.
@@ -248,32 +525,51 @@ message KubernetesServicePort {
   ];
 
   /**
-   * The port number exposed by the service.
-   * This is the port that clients use to access the service.
-   * Must be in the range 1-65535.
+   * The application protocol for this port — a hint richer dataplanes (meshes,
+   * L7 load balancers) use to pick the right proxying behavior. Either an IANA
+   * service name ("http", "https") or a prefixed name: "kubernetes.io/h2c"
+   * (HTTP/2 cleartext), "kubernetes.io/ws" (WebSocket), "kubernetes.io/wss"
+   * (WebSocket over TLS).
    */
-  int32 port = 3 [(buf.validate.field).int32 = {
+  string app_protocol = 3 [(buf.validate.field).string.max_len = 316];
+
+  /**
+   * The port number the Service exposes — what clients connect to.
+   * Range: 1–65535.
+   */
+  int32 port = 4 [(buf.validate.field).int32 = {
     gte: 1
     lte: 65535
   }];
 
   /**
-   * The port on the target pod to route traffic to.
-   * Can be a numeric port (e.g., "8080") or a named port (e.g., "http") defined
-   * in the container's port list.
-   * If not specified, defaults to the same value as port.
+   * The port on the backend pods to route to: a number ("8080") or a named
+   * container port ("http") declared in the pod's container ports. Defaults to
+   * the same value as `port`. Ignored for headless services (which have no
+   * proxying — set it equal to `port` or omit it).
    */
-  string target_port = 4;
+  string target_port = 5 [(buf.validate.field).cel = {
+    id: "target_port.int_or_name"
+    message: "target_port must be a port number (\"8080\") or a named container port (\"http\" — a valid IANA service name)"
+    expression: "this == '' || this.matches('^[0-9]+$') || (this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$') && this.size() <= 15 && this.matches('.*[a-z].*'))"
+  }];
 
   /**
-   * The port on each node to expose for NodePort and LoadBalancer services.
-   * If not specified, Kubernetes allocates a port from the node port range (default 30000-32767).
-   * Must be in the range 30000-32767 when specified.
-   * Only applicable when the service type is node_port or load_balancer.
+   * The static port opened on every node for NodePort and LoadBalancer services.
+   * Omit (0) to let Kubernetes allocate from the node-port range. Setting it on
+   * a ClusterIP service is rejected by the API.
+   * Range when set: 30000–32767 (the default node-port range).
    */
-  int32 node_port = 5 [(buf.validate.field).cel = {
+  int32 node_port = 6 [(buf.validate.field).cel = {
     id: "node_port.valid_range"
-    message: "node_port must be 0 (auto-allocate) or in the range 30000-32767"
+    message: "node_port must be 0 (auto-allocate) or in the node-port range 30000-32767"
     expression: "this == 0 || (this >= 30000 && this <= 32767)"
   }];
+
+  // A numeric target_port must itself be a valid port number.
+  option (buf.validate.message).cel = {
+    id: "target_port.numeric_range"
+    message: "a numeric target_port must be in the range 1-65535"
+    expression: "this.target_port == '' || !this.target_port.matches('^[0-9]+$') || (int(this.target_port) >= 1 && int(this.target_port) <= 65535)"
+  };
 }

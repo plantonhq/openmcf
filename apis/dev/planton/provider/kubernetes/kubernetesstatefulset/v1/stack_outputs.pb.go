@@ -49,7 +49,8 @@ type KubernetesStatefulSetStackOutputs struct {
 	PortForwardCommand string `protobuf:"bytes,5,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
 	// *
 	// In-cluster DNS endpoint of the Service — the handle exposure kinds
-	// (KubernetesHttpRoute and the other Gateway API route kinds) and sibling workloads connect to.
+	// (KubernetesIngress, KubernetesHttpRoute and the other Gateway API route kinds)
+	// and sibling workloads connect to.
 	// ex: my-db.my-ns.svc.cluster.local
 	KubeEndpoint string `protobuf:"bytes,6,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
 	// *

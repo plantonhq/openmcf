@@ -3,9 +3,11 @@ kind: KubernetesService
 metadata:
   name: e2e-svc-affinity
 spec:
-  namespace: default
+  namespace:
+    value: default
   name: e2e-svc-affinity
   session_affinity: client_ip
+  session_affinity_timeout_seconds: 3600
   selector:
     app: test-app
   ports:

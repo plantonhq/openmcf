@@ -3,7 +3,8 @@ kind: KubernetesService
 metadata:
   name: e2e-svc-multiport
 spec:
-  namespace: default
+  namespace:
+    value: default
   name: e2e-svc-multiport
   selector:
     app: test-app

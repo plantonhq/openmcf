@@ -37,7 +37,8 @@ message KubernetesDeploymentStackOutputs {
 
   /**
    * In-cluster DNS endpoint of the Service — the handle exposure kinds
-   * (KubernetesHttpRoute and the other Gateway API route kinds) and sibling workloads connect to.
+   * (KubernetesIngress, KubernetesHttpRoute and the other Gateway API route kinds)
+   * and sibling workloads connect to.
    * ex: my-app.my-ns.svc.cluster.local
    */
   string kube_endpoint = 6;

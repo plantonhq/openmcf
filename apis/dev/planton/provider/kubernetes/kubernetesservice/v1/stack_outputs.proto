@@ -3,43 +3,55 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetesservice.v1;
 
 /**
- * **KubernetesServiceStackOutputs** captures observable outputs from a Kubernetes Service deployment.
- * These outputs provide essential information for referencing the service, connecting to it,
- * and integrating it with other resources.
+ * **KubernetesServiceStackOutputs** captures the observable handles of a deployed
+ * Service. Downstream resources compose on these: Ingress backends and sibling
+ * workloads connect through `kube_endpoint`, external-dns publishes the
+ * load-balancer address, and operators reach the workload locally through the
+ * port-forward command.
  */
 message KubernetesServiceStackOutputs {
-  /**
-   * The name of the created Kubernetes Service.
-   * This is the primary identifier for referencing the service within the cluster.
-   */
+  // The name of the Service object as created in the cluster.
   string service_name = 1;
 
-  /**
-   * The namespace in which the service was created.
-   */
+  // The namespace the Service was created in.
   string namespace = 2;
 
-  /**
-   * The type of the created service (ClusterIP, NodePort, LoadBalancer, ExternalName).
-   */
+  // The service type as deployed (ClusterIP, NodePort, LoadBalancer, ExternalName).
   string type = 3;
 
   /**
-   * The cluster-internal IP address assigned to the service.
-   * Empty for headless services (clusterIP: None) and ExternalName services.
+   * The cluster-internal virtual IP assigned to the Service. Empty for headless
+   * services (which have no virtual IP) and ExternalName services (which are DNS
+   * aliases).
    */
   string cluster_ip = 4;
 
   /**
-   * The external IP address or hostname assigned by the cloud provider's load balancer.
-   * Only populated for LoadBalancer-type services after the load balancer is provisioned.
-   * May be an IP address or a hostname depending on the cloud provider.
+   * The IP address of the provisioned load balancer. Populated only for
+   * LoadBalancer services on providers that expose an IP (GCP, Azure, MetalLB);
+   * AWS-style providers populate `load_balancer_hostname` instead.
    */
-  string load_balancer_ingress = 5;
+  string load_balancer_ip = 5;
 
   /**
-   * The fully qualified internal DNS name for the service.
-   * Format: <service-name>.<namespace>.svc.cluster.local
+   * The DNS hostname of the provisioned load balancer. Populated only for
+   * LoadBalancer services on providers that expose a hostname (AWS ELB/NLB);
+   * IP-based providers populate `load_balancer_ip` instead.
    */
-  string internal_dns_name = 6;
+  string load_balancer_hostname = 6;
+
+  /**
+   * In-cluster DNS endpoint of the Service — the handle exposure kinds and
+   * sibling workloads connect to.
+   * ex: my-app.my-ns.svc.cluster.local
+   */
+  string kube_endpoint = 7;
+
+  /**
+   * Ready-to-run port-forward command for reaching the Service from a developer
+   * machine without any external exposure. Empty for ExternalName services
+   * (there is nothing to forward to).
+   * ex: kubectl port-forward -n my-ns service/my-app 8080:80
+   */
+  string port_forward_command = 8;
 }
