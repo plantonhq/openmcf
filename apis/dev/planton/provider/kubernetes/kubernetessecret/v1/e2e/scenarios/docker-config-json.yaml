@@ -4,7 +4,8 @@ metadata:
   name: e2e-sec-docker
 spec:
   name: e2e-sec-docker
-  namespace: default
+  namespace:
+    value: default
   docker_config_json:
     registry_server: "https://index.docker.io/v1/"
     username: "e2e-test-user"

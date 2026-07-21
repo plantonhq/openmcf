@@ -18,9 +18,12 @@ import (
 // Kubernetes Tier 1 components: native K8s resources, zero dependencies.
 var kubernetesTier1Components = []string{
 	"kubernetesnamespace",
+	"kubernetesconfigmap",
 	"kubernetesdeployment",
 	"kubernetesstatefulset",
 	"kubernetessecret",
+	"kubernetesserviceaccount",
+	"kubernetesrbac",
 	"kubernetesservice",
 	"kubernetescronjob",
 	"kubernetesjob",
@@ -108,6 +111,9 @@ var kubernetesTier2Components = []string{
 // ─── Tier 1 Pulumi ──────────────────────────────────────────────────────────
 
 func TestKubernetesNamespace_Pulumi(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesnamespace", "pulumi") }
+func TestKubernetesConfigMap_Pulumi(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesconfigmap", "pulumi") }
+func TestKubernetesServiceAccount_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesserviceaccount", "pulumi") }
+func TestKubernetesRbac_Pulumi(t *testing.T)       { runAllScenariosForComponent(t, "kubernetesrbac", "pulumi") }
 func TestKubernetesDeployment_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesdeployment", "pulumi") }
 func TestKubernetesStatefulSet_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesstatefulset", "pulumi") }
 func TestKubernetesSecret_Pulumi(t *testing.T)     { runAllScenariosForComponent(t, "kubernetessecret", "pulumi") }
@@ -120,6 +126,9 @@ func TestKubernetesManifest_Pulumi(t *testing.T)   { runAllScenariosForComponent
 // ─── Tier 1 Terraform ───────────────────────────────────────────────────────
 
 func TestKubernetesNamespace_Terraform(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesnamespace", "terraform") }
+func TestKubernetesConfigMap_Terraform(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesconfigmap", "terraform") }
+func TestKubernetesServiceAccount_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesserviceaccount", "terraform") }
+func TestKubernetesRbac_Terraform(t *testing.T)       { runAllScenariosForComponent(t, "kubernetesrbac", "terraform") }
 func TestKubernetesDeployment_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesdeployment", "terraform") }
 func TestKubernetesStatefulSet_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesstatefulset", "terraform") }
 func TestKubernetesSecret_Terraform(t *testing.T)     { runAllScenariosForComponent(t, "kubernetessecret", "terraform") }

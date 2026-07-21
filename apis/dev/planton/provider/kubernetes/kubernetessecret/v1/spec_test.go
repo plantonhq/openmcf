@@ -6,11 +6,8 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
-
-func stringPtr(s string) *string {
-	return &s
-}
 
 func TestKubernetesSecretSpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
@@ -38,14 +35,68 @@ var _ = ginkgo.Describe("KubernetesSecretSpec validations", func() {
 
 		ginkgo.It("accepts an Opaque secret with multiple keys", func() {
 			spec := &KubernetesSecretSpec{
-				Name:      "multi-key-secret",
-				Namespace: stringPtr("production"),
+				Name: "multi-key-secret",
+				Namespace: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "production"},
+				},
 				SecretData: &KubernetesSecretSpec_Opaque{
 					Opaque: &KubernetesSecretOpaqueData{
 						Data: map[string]string{
 							"username": "admin",
 							"password": "s3cret",
 							"api-key":  "abc123",
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a namespace provided as a resource reference", func() {
+			spec := &KubernetesSecretSpec{
+				Name: "ref-ns-secret",
+				Namespace: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+						ValueFrom: &foreignkeyv1.ValueFromRef{Name: "team-namespace"},
+					},
+				},
+				SecretData: &KubernetesSecretSpec_Opaque{
+					Opaque: &KubernetesSecretOpaqueData{
+						Data: map[string]string{"key": "value"},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts an Opaque secret with valid base64 binary_data", func() {
+			spec := &KubernetesSecretSpec{
+				Name: "binary-secret",
+				SecretData: &KubernetesSecretSpec_Opaque{
+					Opaque: &KubernetesSecretOpaqueData{
+						BinaryData: map[string]string{
+							"keystore.jks": "AQIDBA==",
+							"cert.der":     "iVBORw0KGgo=",
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts an Opaque secret with disjoint data and binary_data keys", func() {
+			spec := &KubernetesSecretSpec{
+				Name: "mixed-secret",
+				SecretData: &KubernetesSecretSpec_Opaque{
+					Opaque: &KubernetesSecretOpaqueData{
+						Data: map[string]string{
+							"api-key": "supersecret",
+						},
+						BinaryData: map[string]string{
+							"keystore.jks": "AQIDBA==",
 						},
 					},
 				},
@@ -126,10 +177,44 @@ var _ = ginkgo.Describe("KubernetesSecretSpec validations", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
+		ginkgo.It("accepts a ServiceAccountToken secret with a service account name reference", func() {
+			spec := &KubernetesSecretSpec{
+				Name: "app-identity-token",
+				SecretData: &KubernetesSecretSpec_ServiceAccountToken{
+					ServiceAccountToken: &KubernetesSecretServiceAccountTokenData{
+						ServiceAccountName: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+								ValueFrom: &foreignkeyv1.ValueFromRef{Name: "app-identity"},
+							},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a ServiceAccountToken secret with a literal service account name", func() {
+			spec := &KubernetesSecretSpec{
+				Name: "app-identity-token",
+				SecretData: &KubernetesSecretSpec_ServiceAccountToken{
+					ServiceAccountToken: &KubernetesSecretServiceAccountTokenData{
+						ServiceAccountName: &foreignkeyv1.StringValueOrRef{
+							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "app-identity"},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
 		ginkgo.It("accepts a secret with labels and annotations", func() {
 			spec := &KubernetesSecretSpec{
-				Name:      "labeled-secret",
-				Namespace: stringPtr("kube-system"),
+				Name: "labeled-secret",
+				Namespace: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "kube-system"},
+				},
 				Labels: map[string]string{
 					"team":        "platform",
 					"environment": "production",
@@ -246,24 +331,10 @@ var _ = ginkgo.Describe("KubernetesSecretSpec validations", func() {
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects namespace with uppercase letters", func() {
+		ginkgo.It("rejects an empty namespace message", func() {
 			spec := &KubernetesSecretSpec{
 				Name:      "my-secret",
-				Namespace: stringPtr("MyNamespace"),
-				SecretData: &KubernetesSecretSpec_Opaque{
-					Opaque: &KubernetesSecretOpaqueData{
-						Data: map[string]string{"key": "value"},
-					},
-				},
-			}
-			err := protovalidate.Validate(spec)
-			gomega.Expect(err).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("rejects namespace longer than 63 characters", func() {
-			spec := &KubernetesSecretSpec{
-				Name:      "my-secret",
-				Namespace: stringPtr("this-is-a-very-long-namespace-name-that-exceeds-the-maximum-length-allowed"),
+				Namespace: &foreignkeyv1.StringValueOrRef{},
 				SecretData: &KubernetesSecretSpec_Opaque{
 					Opaque: &KubernetesSecretOpaqueData{
 						Data: map[string]string{"key": "value"},
@@ -282,12 +353,46 @@ var _ = ginkgo.Describe("KubernetesSecretSpec validations", func() {
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects Opaque secret with empty data map", func() {
+		ginkgo.It("rejects Opaque secret with both data and binary_data empty", func() {
 			spec := &KubernetesSecretSpec{
 				Name: "empty-opaque",
 				SecretData: &KubernetesSecretSpec_Opaque{
 					Opaque: &KubernetesSecretOpaqueData{
-						Data: map[string]string{},
+						Data:       map[string]string{},
+						BinaryData: map[string]string{},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects Opaque secret with a binary_data value that is not valid base64", func() {
+			spec := &KubernetesSecretSpec{
+				Name: "bad-base64-secret",
+				SecretData: &KubernetesSecretSpec_Opaque{
+					Opaque: &KubernetesSecretOpaqueData{
+						BinaryData: map[string]string{
+							"blob.bin": "not-valid-base64!!!",
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects Opaque secret with the same key in data and binary_data", func() {
+			spec := &KubernetesSecretSpec{
+				Name: "overlap-secret",
+				SecretData: &KubernetesSecretSpec_Opaque{
+					Opaque: &KubernetesSecretOpaqueData{
+						Data: map[string]string{
+							"shared-key": "text-value",
+						},
+						BinaryData: map[string]string{
+							"shared-key": "AQIDBA==",
+						},
 					},
 				},
 			}
@@ -402,6 +507,30 @@ var _ = ginkgo.Describe("KubernetesSecretSpec validations", func() {
 				SecretData: &KubernetesSecretSpec_SshAuth{
 					SshAuth: &KubernetesSecretSshAuthData{
 						SshPrivateKey: "",
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects ServiceAccountToken without a service account name", func() {
+			spec := &KubernetesSecretSpec{
+				Name: "bad-sa-token",
+				SecretData: &KubernetesSecretSpec_ServiceAccountToken{
+					ServiceAccountToken: &KubernetesSecretServiceAccountTokenData{},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects ServiceAccountToken with an empty service account name message", func() {
+			spec := &KubernetesSecretSpec{
+				Name: "bad-sa-token-empty-ref",
+				SecretData: &KubernetesSecretSpec_ServiceAccountToken{
+					ServiceAccountToken: &KubernetesSecretServiceAccountTokenData{
+						ServiceAccountName: &foreignkeyv1.StringValueOrRef{},
 					},
 				},
 			}

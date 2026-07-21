@@ -4,7 +4,8 @@ metadata:
   name: e2e-sec-opaque
 spec:
   name: e2e-sec-opaque
-  namespace: default
+  namespace:
+    value: default
   opaque:
     data:
       username: "test-user"

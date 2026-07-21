@@ -1,0 +1,8 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesServiceAccount
+metadata:
+  name: test-service-account
+spec:
+  name: test-service-account
+  namespace:
+    value: default

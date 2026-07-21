@@ -164,6 +164,22 @@ message KubernetesNamespaceCustomQuotas {
 
   // Default resource requests/limits for containers without explicit values
   KubernetesNamespaceDefaultLimits default_limits = 4;
+
+  /**
+   * Additional ResourceQuota hard limits beyond the typed CPU/memory/object-count fields,
+   * as quota resource name → quantity. Kubernetes models quota as an open map, so anything
+   * it accepts is expressible here: storage ("requests.storage": "500Gi",
+   * "<class>.storageclass.storage.k8s.io/requests.storage": "100Gi"), extended resources
+   * ("requests.nvidia.com/gpu": "4"), object counts for any resource
+   * ("count/jobs.batch": "30"), and scoped ephemeral storage. Entries here are merged into
+   * the same ResourceQuota; keys that collide with the typed fields are rejected by the
+   * cluster, so keep the typed fields authoritative for CPU, memory, and the standard
+   * object counts.
+   */
+  map<string, string> additional_hard_limits = 5 [
+    (buf.validate.field).map.keys.string.min_len = 1,
+    (buf.validate.field).map.values.string.min_len = 1
+  ];
 }
 
 /**

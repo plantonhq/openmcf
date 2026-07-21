@@ -2599,6 +2599,23 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8shelm"
   }];
+  KubernetesConfigMap = 810 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8scfg"
+  }];
+  KubernetesServiceAccount = 811 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssa"
+  }];
+  // Bundles the RBAC grant grain (Role/ClusterRole + its binding) into one
+  // component: "grant these permissions to these subjects in this scope".
+  KubernetesRbac = 812 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srbac"
+  }];
   // 830–859: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh)
   KubernetesCertManager = 830 [(kind_meta) = {
     provider: kubernetes

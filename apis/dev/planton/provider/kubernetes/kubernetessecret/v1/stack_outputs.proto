@@ -21,7 +21,7 @@ message KubernetesSecretStackOutputs {
   /**
    * The Kubernetes secret type string.
    * Possible values: "Opaque", "kubernetes.io/tls", "kubernetes.io/dockerconfigjson",
-   * "kubernetes.io/basic-auth", "kubernetes.io/ssh-auth"
+   * "kubernetes.io/basic-auth", "kubernetes.io/ssh-auth", "kubernetes.io/service-account-token"
    */
   string secret_type = 3;
 }

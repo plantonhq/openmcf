@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesrbac.v1;
+
+/**
+ * **KubernetesRbacStackOutputs** captures observable outputs from a Kubernetes RBAC grant
+ * deployment — the names and kinds of the objects actually created, so downstream grants
+ * and audits can compose on them without re-deriving naming rules.
+ */
+message KubernetesRbacStackOutputs {
+  /**
+   * The name of the role in the grant: the created Role/ClusterRole, or the existing role
+   * that was bound to.
+   */
+  string role_name = 1;
+
+  /**
+   * The Kubernetes kind of the role in the grant: "Role" or "ClusterRole".
+   */
+  string role_kind = 2;
+
+  /**
+   * The name of the created binding. Empty when the grant defined a role with no subjects
+   * (no binding is created).
+   */
+  string binding_name = 3;
+
+  /**
+   * The Kubernetes kind of the created binding: "RoleBinding" or "ClusterRoleBinding".
+   * Empty when no binding is created.
+   */
+  string binding_kind = 4;
+
+  /**
+   * The namespace the grant applies to. Empty for cluster-scoped grants.
+   */
+  string namespace = 5;
+}

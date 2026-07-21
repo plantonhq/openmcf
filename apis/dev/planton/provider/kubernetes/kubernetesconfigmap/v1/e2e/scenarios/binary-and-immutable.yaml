@@ -1,0 +1,16 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesConfigMap
+metadata:
+  name: e2e-cfg-binary
+spec:
+  name: e2e-cfg-binary
+  namespace:
+    value: default
+  data:
+    config.yaml: |
+      featureFlags:
+        newDashboard: true
+  binaryData:
+    # "planton-binary-payload" base64-encoded — a stand-in for any non-UTF-8 blob.
+    payload.bin: cGxhbnRvbi1iaW5hcnktcGF5bG9hZA==
+  immutable: true

@@ -13,6 +13,7 @@ go_library(
         "probe.pb.go",
         "provider.pb.go",
         "volume_mount.pb.go",
+        "workload_identity.pb.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes",
     visibility = ["//visibility:public"],

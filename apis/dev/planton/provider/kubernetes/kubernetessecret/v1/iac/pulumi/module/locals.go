@@ -41,8 +41,11 @@ type Locals struct {
 	// Kubernetes secret type string (e.g., "Opaque", "kubernetes.io/tls")
 	SecretType string
 
-	// Secret data map (stringData keys to values)
+	// Secret data map (stringData keys to plain-string values)
 	SecretData map[string]string
+
+	// Secret binary data map (data keys to base64-encoded values)
+	SecretBinaryData map[string]string
 }
 
 // initializeLocals creates and populates the Locals struct
@@ -55,7 +58,15 @@ func initializeLocals(ctx *pulumi.Context, stackInput *kubernetessecretv1.Kubern
 	}
 
 	locals.SecretName = stackInput.Target.Spec.Name
-	locals.SecretNamespace = stackInput.Target.Spec.GetNamespace()
+
+	// Namespace is a value-or-ref; by module execution time any reference has been
+	// resolved into the literal value. Fall back to "default" when unset, mirroring
+	// kubectl behavior without a namespace flag.
+	locals.SecretNamespace = stackInput.Target.Spec.Namespace.GetValue()
+	if locals.SecretNamespace == "" {
+		locals.SecretNamespace = "default"
+	}
+
 	locals.Immutable = stackInput.Target.Spec.Immutable
 
 	// Build labels
@@ -65,12 +76,19 @@ func initializeLocals(ctx *pulumi.Context, stackInput *kubernetessecretv1.Kubern
 	locals.Annotations = buildAnnotations(locals)
 
 	// Compute secret type and data from the oneof variant
-	secretType, secretData, err := computeSecretTypeAndData(locals.Spec)
+	variant, err := computeSecretTypeAndData(locals.Spec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compute secret type and data: %w", err)
 	}
-	locals.SecretType = secretType
-	locals.SecretData = secretData
+	locals.SecretType = variant.secretType
+	locals.SecretData = variant.stringData
+	locals.SecretBinaryData = variant.binaryData
+
+	// Some secret types mandate annotations (service-account-token binds to its
+	// ServiceAccount via annotation); merge them into the user-provided ones.
+	for k, v := range variant.annotations {
+		locals.Annotations[k] = v
+	}
 
 	return locals, nil
 }
@@ -104,41 +122,82 @@ func buildAnnotations(locals *Locals) map[string]string {
 	return annotations
 }
 
+// secretVariant holds everything derived from the oneof secret_data selection:
+// the Kubernetes secret type plus the data and annotations that type mandates.
+type secretVariant struct {
+	secretType string
+
+	// stringData carries plain-string values (Kubernetes stringData semantics)
+	stringData map[string]string
+
+	// binaryData carries base64-encoded values (Kubernetes data semantics)
+	binaryData map[string]string
+
+	// annotations mandated by the secret type (e.g., the service-account binding)
+	annotations map[string]string
+}
+
 // computeSecretTypeAndData determines the Kubernetes secret type and constructs
-// the stringData map based on which oneof variant is set in the spec.
-func computeSecretTypeAndData(spec *kubernetessecretv1.KubernetesSecretSpec) (string, map[string]string, error) {
+// the data and annotation maps based on which oneof variant is set in the spec.
+func computeSecretTypeAndData(spec *kubernetessecretv1.KubernetesSecretSpec) (*secretVariant, error) {
 	switch data := spec.SecretData.(type) {
 	case *kubernetessecretv1.KubernetesSecretSpec_Opaque:
-		return "Opaque", data.Opaque.Data, nil
+		return &secretVariant{
+			secretType: "Opaque",
+			stringData: data.Opaque.Data,
+			binaryData: data.Opaque.BinaryData,
+		}, nil
 
 	case *kubernetessecretv1.KubernetesSecretSpec_Tls:
-		return "kubernetes.io/tls", map[string]string{
-			"tls.crt": data.Tls.TlsCrt,
-			"tls.key": data.Tls.TlsKey,
+		return &secretVariant{
+			secretType: "kubernetes.io/tls",
+			stringData: map[string]string{
+				"tls.crt": data.Tls.TlsCrt,
+				"tls.key": data.Tls.TlsKey,
+			},
 		}, nil
 
 	case *kubernetessecretv1.KubernetesSecretSpec_DockerConfigJson:
 		dockerConfigJSON, err := buildDockerConfigJSON(data.DockerConfigJson)
 		if err != nil {
-			return "", nil, fmt.Errorf("failed to build docker config json: %w", err)
+			return nil, fmt.Errorf("failed to build docker config json: %w", err)
 		}
-		return "kubernetes.io/dockerconfigjson", map[string]string{
-			".dockerconfigjson": dockerConfigJSON,
+		return &secretVariant{
+			secretType: "kubernetes.io/dockerconfigjson",
+			stringData: map[string]string{
+				".dockerconfigjson": dockerConfigJSON,
+			},
 		}, nil
 
 	case *kubernetessecretv1.KubernetesSecretSpec_BasicAuth:
-		return "kubernetes.io/basic-auth", map[string]string{
-			"username": data.BasicAuth.Username,
-			"password": data.BasicAuth.Password,
+		return &secretVariant{
+			secretType: "kubernetes.io/basic-auth",
+			stringData: map[string]string{
+				"username": data.BasicAuth.Username,
+				"password": data.BasicAuth.Password,
+			},
 		}, nil
 
 	case *kubernetessecretv1.KubernetesSecretSpec_SshAuth:
-		return "kubernetes.io/ssh-auth", map[string]string{
-			"ssh-privatekey": data.SshAuth.SshPrivateKey,
+		return &secretVariant{
+			secretType: "kubernetes.io/ssh-auth",
+			stringData: map[string]string{
+				"ssh-privatekey": data.SshAuth.SshPrivateKey,
+			},
+		}, nil
+
+	case *kubernetessecretv1.KubernetesSecretSpec_ServiceAccountToken:
+		// No data is set: the cluster's token controller populates token/ca.crt/namespace
+		// after creation. The annotation binds the token to its ServiceAccount.
+		return &secretVariant{
+			secretType: "kubernetes.io/service-account-token",
+			annotations: map[string]string{
+				"kubernetes.io/service-account.name": data.ServiceAccountToken.ServiceAccountName.GetValue(),
+			},
 		}, nil
 
 	default:
-		return "", nil, fmt.Errorf("no secret data variant set in spec")
+		return nil, fmt.Errorf("no secret data variant set in spec")
 	}
 }
 

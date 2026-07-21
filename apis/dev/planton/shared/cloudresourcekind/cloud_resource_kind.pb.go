@@ -858,16 +858,21 @@ const (
 	// (830–859 also hosts CNI/autoscaling/DR addons; 930–949 reserved for
 	// analytics & ML; 990–999 reserved for growth)
 	// 800–829: Kubernetes building blocks (core API primitives)
-	CloudResourceKind_KubernetesNamespace   CloudResourceKind = 800
-	CloudResourceKind_KubernetesDeployment  CloudResourceKind = 801
-	CloudResourceKind_KubernetesStatefulSet CloudResourceKind = 802
-	CloudResourceKind_KubernetesDaemonSet   CloudResourceKind = 803
-	CloudResourceKind_KubernetesJob         CloudResourceKind = 804
-	CloudResourceKind_KubernetesCronJob     CloudResourceKind = 805
-	CloudResourceKind_KubernetesService     CloudResourceKind = 806
-	CloudResourceKind_KubernetesSecret      CloudResourceKind = 807
-	CloudResourceKind_KubernetesManifest    CloudResourceKind = 808
-	CloudResourceKind_KubernetesHelmRelease CloudResourceKind = 809
+	CloudResourceKind_KubernetesNamespace      CloudResourceKind = 800
+	CloudResourceKind_KubernetesDeployment     CloudResourceKind = 801
+	CloudResourceKind_KubernetesStatefulSet    CloudResourceKind = 802
+	CloudResourceKind_KubernetesDaemonSet      CloudResourceKind = 803
+	CloudResourceKind_KubernetesJob            CloudResourceKind = 804
+	CloudResourceKind_KubernetesCronJob        CloudResourceKind = 805
+	CloudResourceKind_KubernetesService        CloudResourceKind = 806
+	CloudResourceKind_KubernetesSecret         CloudResourceKind = 807
+	CloudResourceKind_KubernetesManifest       CloudResourceKind = 808
+	CloudResourceKind_KubernetesHelmRelease    CloudResourceKind = 809
+	CloudResourceKind_KubernetesConfigMap      CloudResourceKind = 810
+	CloudResourceKind_KubernetesServiceAccount CloudResourceKind = 811
+	// Bundles the RBAC grant grain (Role/ClusterRole + its binding) into one
+	// component: "grant these permissions to these subjects in this scope".
+	CloudResourceKind_KubernetesRbac CloudResourceKind = 812
 	// 830–859: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh)
 	CloudResourceKind_KubernetesCertManager     CloudResourceKind = 830
 	CloudResourceKind_KubernetesClusterIssuer   CloudResourceKind = 831
@@ -1453,6 +1458,9 @@ var (
 		807:  "KubernetesSecret",
 		808:  "KubernetesManifest",
 		809:  "KubernetesHelmRelease",
+		810:  "KubernetesConfigMap",
+		811:  "KubernetesServiceAccount",
+		812:  "KubernetesRbac",
 		830:  "KubernetesCertManager",
 		831:  "KubernetesClusterIssuer",
 		832:  "KubernetesIssuer",
@@ -2017,6 +2025,9 @@ var (
 		"KubernetesSecret":                               807,
 		"KubernetesManifest":                             808,
 		"KubernetesHelmRelease":                          809,
+		"KubernetesConfigMap":                            810,
+		"KubernetesServiceAccount":                       811,
+		"KubernetesRbac":                                 812,
 		"KubernetesCertManager":                          830,
 		"KubernetesClusterIssuer":                        831,
 		"KubernetesIssuer":                               832,
@@ -2516,7 +2527,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x97\xd3\x01\n" +
+	"\x02v1\x10\x01*\x9b\xd4\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2859,7 +2870,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x11KubernetesService\x10\xa6\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssvc\x12'\n" +
 	"\x10KubernetesSecret\x10\xa7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssec\x12*\n" +
 	"\x12KubernetesManifest\x10\xa8\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8smfst\x12-\n" +
-	"\x15KubernetesHelmRelease\x10\xa9\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shelm\x12+\n" +
+	"\x15KubernetesHelmRelease\x10\xa9\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shelm\x12*\n" +
+	"\x13KubernetesConfigMap\x10\xaa\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scfg\x12.\n" +
+	"\x18KubernetesServiceAccount\x10\xab\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8ssa\x12&\n" +
+	"\x0eKubernetesRbac\x10\xac\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8srbac\x12+\n" +
 	"\x15KubernetesCertManager\x10\xbe\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8scm\x12-\n" +
 	"\x17KubernetesClusterIssuer\x10\xbf\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8sci\x12'\n" +
 	"\x10KubernetesIssuer\x10\xc0\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8siss\x12,\n" +

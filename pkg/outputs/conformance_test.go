@@ -66,6 +66,79 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesNamespace: flat scalar outputs from both engines describing
+			// the namespace and which governance objects were applied.
+			name: "KubernetesNamespace",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesNamespace,
+			rawOutputs: map[string]interface{}{
+				"namespace":               "team-alpha",
+				"namespace_id":            "team-alpha",
+				"resource_quotas_applied": "true",
+				"limit_ranges_applied":    "true",
+				"pod_security_standard":   "baseline",
+			},
+			mustPopulate: []string{
+				"namespace", "namespace_id", "resource_quotas_applied",
+				"limit_ranges_applied", "pod_security_standard",
+			},
+		},
+		{
+			// KubernetesConfigMap: flat scalar outputs (name + namespace) from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesConfigMap",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesConfigMap,
+			rawOutputs: map[string]interface{}{
+				"configmap_name": "app-config",
+				"namespace":      "team-alpha",
+			},
+			mustPopulate: []string{"configmap_name", "namespace"},
+		},
+		{
+			// KubernetesSecret: flat scalar outputs (name, namespace, type) from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesSecret",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSecret,
+			rawOutputs: map[string]interface{}{
+				"secret_name":      "registry-cred",
+				"secret_namespace": "team-alpha",
+				"secret_type":      "kubernetes.io/dockerconfigjson",
+			},
+			mustPopulate: []string{"secret_name", "secret_namespace", "secret_type"},
+		},
+		{
+			// KubernetesServiceAccount: identity handles (name, namespace, the
+			// assembled RBAC subject, and the bound cloud identity) from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesServiceAccount",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesServiceAccount,
+			rawOutputs: map[string]interface{}{
+				"service_account_name":     "dns-manager",
+				"namespace":                "team-alpha",
+				"rbac_subject":             "system:serviceaccount:team-alpha:dns-manager",
+				"workload_identity_handle": "arn:aws:iam::123456789012:role/dns-manager",
+			},
+			mustPopulate: []string{
+				"service_account_name", "namespace", "rbac_subject",
+				"workload_identity_handle",
+			},
+		},
+		{
+			// KubernetesRbac: created object names/kinds from both engines must land
+			// on the StackOutputs proto.
+			name: "KubernetesRbac",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesRbac,
+			rawOutputs: map[string]interface{}{
+				"role_name":    "app-reader",
+				"role_kind":    "Role",
+				"binding_name": "app-reader-grant",
+				"binding_kind": "RoleBinding",
+				"namespace":    "team-alpha",
+			},
+			mustPopulate: []string{
+				"role_name", "role_kind", "binding_name", "binding_kind", "namespace",
+			},
+		},
+		{
 			// AwsSubnet: flat scalar outputs from both engines (subnet id/arn, AZ,
 			// CIDR, route table id, region) must each land on the StackOutputs proto.
 			name: "AwsSubnet",

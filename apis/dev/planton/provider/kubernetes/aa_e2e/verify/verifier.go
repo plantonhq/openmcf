@@ -169,6 +169,25 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Name:      info.Name,
 		}, nil
 
+	case "kubernetesconfigmap":
+		return &ResourceExistenceVerifier{
+			Namespace: info.Namespace,
+			Kind:      "configmap",
+			Name:      info.Name,
+		}, nil
+
+	case "kubernetesserviceaccount":
+		return &ResourceExistenceVerifier{
+			Namespace: info.Namespace,
+			Kind:      "serviceaccount",
+			Name:      info.Name,
+		}, nil
+
+	// The RBAC grant deploys role/binding objects whose names derive from the
+	// grant's shape, so its verifier re-reads the manifest itself.
+	case "kubernetesrbac":
+		return &RbacVerifier{ManifestPath: manifestPath}, nil
+
 	case "kubernetesservice":
 		return &ResourceExistenceVerifier{
 			Namespace: info.Namespace,

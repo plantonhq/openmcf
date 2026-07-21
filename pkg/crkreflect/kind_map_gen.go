@@ -425,6 +425,7 @@ import (
 	kubernetescertmanagerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescertmanager/v1"
 	kubernetesclickhousev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclickhouse/v1"
 	kubernetesclusterissuerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclusterissuer/v1"
+	kubernetesconfigmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesconfigmap/v1"
 	kubernetescronjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescronjob/v1"
 	kubernetesdaemonsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdaemonset/v1"
 	kubernetesdeploymentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdeployment/v1"
@@ -466,6 +467,7 @@ import (
 	kubernetesperconapostgresoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconapostgresoperator/v1"
 	kubernetespostgresv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1"
 	kubernetesprometheusv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesprometheus/v1"
+	kubernetesrbacv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrbac/v1"
 	kubernetesredisv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesredis/v1"
 	kubernetesreferencegrantv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesreferencegrant/v1"
 	kubernetesrequestauthenticationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrequestauthentication/v1"
@@ -473,6 +475,7 @@ import (
 	kubernetesrookcephoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrookcephoperator/v1"
 	kubernetessecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessecret/v1"
 	kubernetesservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesservice/v1"
+	kubernetesserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesserviceaccount/v1"
 	kubernetesserviceentryv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesserviceentry/v1"
 	kubernetessignozv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessignoz/v1"
 	kubernetessolrv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessolr/v1"
@@ -1037,6 +1040,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesCertificate:                 &kubernetescertificatev1.KubernetesCertificate{},
 	cloudresourcekind.CloudResourceKind_KubernetesClickHouse:                  &kubernetesclickhousev1.KubernetesClickHouse{},
 	cloudresourcekind.CloudResourceKind_KubernetesClusterIssuer:               &kubernetesclusterissuerv1.KubernetesClusterIssuer{},
+	cloudresourcekind.CloudResourceKind_KubernetesConfigMap:                   &kubernetesconfigmapv1.KubernetesConfigMap{},
 	cloudresourcekind.CloudResourceKind_KubernetesCronJob:                     &kubernetescronjobv1.KubernetesCronJob{},
 	cloudresourcekind.CloudResourceKind_KubernetesDaemonSet:                   &kubernetesdaemonsetv1.KubernetesDaemonSet{},
 	cloudresourcekind.CloudResourceKind_KubernetesDeployment:                  &kubernetesdeploymentv1.KubernetesDeployment{},
@@ -1078,6 +1082,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaPostgresOperator:     &kubernetesperconapostgresoperatorv1.KubernetesPerconaPostgresOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPostgres:                    &kubernetespostgresv1.KubernetesPostgres{},
 	cloudresourcekind.CloudResourceKind_KubernetesPrometheus:                  &kubernetesprometheusv1.KubernetesPrometheus{},
+	cloudresourcekind.CloudResourceKind_KubernetesRbac:                        &kubernetesrbacv1.KubernetesRbac{},
 	cloudresourcekind.CloudResourceKind_KubernetesRedis:                       &kubernetesredisv1.KubernetesRedis{},
 	cloudresourcekind.CloudResourceKind_KubernetesReferenceGrant:              &kubernetesreferencegrantv1.KubernetesReferenceGrant{},
 	cloudresourcekind.CloudResourceKind_KubernetesRequestAuthentication:       &kubernetesrequestauthenticationv1.KubernetesRequestAuthentication{},
@@ -1085,6 +1090,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesRookCephOperator:            &kubernetesrookcephoperatorv1.KubernetesRookCephOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesSecret:                      &kubernetessecretv1.KubernetesSecret{},
 	cloudresourcekind.CloudResourceKind_KubernetesService:                     &kubernetesservicev1.KubernetesService{},
+	cloudresourcekind.CloudResourceKind_KubernetesServiceAccount:              &kubernetesserviceaccountv1.KubernetesServiceAccount{},
 	cloudresourcekind.CloudResourceKind_KubernetesServiceEntry:                &kubernetesserviceentryv1.KubernetesServiceEntry{},
 	cloudresourcekind.CloudResourceKind_KubernetesSignoz:                      &kubernetessignozv1.KubernetesSignoz{},
 	cloudresourcekind.CloudResourceKind_KubernetesSolr:                        &kubernetessolrv1.KubernetesSolr{},

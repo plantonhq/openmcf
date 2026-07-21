@@ -41,6 +41,9 @@ variable "spec" {
           default_memory_request = string
           default_memory_limit   = string
         }))
+        # Arbitrary extra ResourceQuota hard entries (quota resource name -> quantity),
+        # e.g. "requests.storage" = "500Gi" or "count/jobs.batch" = "30".
+        additional_hard_limits = optional(map(string), {})
       }))
     }))
 

@@ -22,7 +22,10 @@ variable "spec" {
     # The secret type is determined by which block is set.
 
     opaque = optional(object({
-      data = map(string)
+      # data carries plain-string values; binary_data carries base64-encoded values.
+      # At least one entry across the two maps is required by the spec.
+      data        = optional(map(string), {})
+      binary_data = optional(map(string), {})
     }))
 
     tls = optional(object({
@@ -44,6 +47,10 @@ variable "spec" {
 
     ssh_auth = optional(object({
       ssh_private_key = string
+    }))
+
+    service_account_token = optional(object({
+      service_account_name = string
     }))
   })
 }

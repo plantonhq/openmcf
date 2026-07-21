@@ -1,0 +1,3 @@
+name: kubernetes-rbac
+runtime: go
+description: Kubernetes RBAC grant deployment - a Role/ClusterRole (created or existing) optionally bound to ServiceAccount, user, and group subjects

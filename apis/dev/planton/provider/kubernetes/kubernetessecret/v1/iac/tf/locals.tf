@@ -10,8 +10,14 @@ locals {
 
   labels = merge(local.standard_labels, var.spec.labels)
 
+  # The service-account-token type mandates an annotation that binds the token
+  # to its ServiceAccount; the cluster's token controller acts on it.
+  service_account_annotation = var.spec.service_account_token != null ? {
+    "kubernetes.io/service-account.name" = var.spec.service_account_token.service_account_name
+  } : {}
+
   # Build annotations
-  annotations = var.spec.annotations
+  annotations = merge(var.spec.annotations, local.service_account_annotation)
 
   # Determine secret type from which variant is set
   secret_type = (
@@ -20,6 +26,7 @@ locals {
     var.spec.docker_config_json != null ? "kubernetes.io/dockerconfigjson" :
     var.spec.basic_auth != null ? "kubernetes.io/basic-auth" :
     var.spec.ssh_auth != null ? "kubernetes.io/ssh-auth" :
+    var.spec.service_account_token != null ? "kubernetes.io/service-account-token" :
     "Opaque"
   )
 
@@ -35,7 +42,10 @@ locals {
     }
   }) : null
 
-  # Compute secret data map based on which variant is set
+  # Compute secret data map based on which variant is set.
+  # The data attribute takes plain strings (the provider base64-encodes them).
+  # service-account-token intentionally falls through to {}: the cluster's token
+  # controller populates token/ca.crt/namespace after creation.
   secret_data = (
     var.spec.opaque != null ? var.spec.opaque.data :
     var.spec.tls != null ? {
@@ -54,4 +64,9 @@ locals {
     } :
     {}
   )
+
+  # Binary entries arrive base64-encoded and flow to the binary_data attribute,
+  # which expects base64 (unlike data, which takes plain strings).
+  # try() is used for safe nested access because HCL does not short-circuit &&.
+  secret_binary_data = try(var.spec.opaque.binary_data, {})
 }

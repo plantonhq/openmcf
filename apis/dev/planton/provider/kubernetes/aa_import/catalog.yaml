@@ -1,0 +1,56 @@
+apiVersion: iac.planton.dev/v1
+kind: ProviderImportCatalog
+metadata:
+  name: kubernetes
+spec:
+  # Import-ID formats per Kubernetes resource type, as documented by the
+  # upstream terraform-provider-kubernetes / pulumi-kubernetes providers. The
+  # FORMAT lives here (provider knowledge, shared by every component); which
+  # concrete value fills each {placeholder} lives in the owning component's
+  # import-map.yaml. Correctness is machine-proven by the E2E import
+  # round-trip (deploy a fixture, set state aside, re-import blind, plan must
+  # show zero diff) -- never by review alone.
+  #
+  # Kubernetes import IDs are uniform and simple: namespaced objects import
+  # as "<namespace>/<name>", cluster-scoped objects as "<name>". There is no
+  # scan-side correspondence here (cloud_control_type_name is an AWS-only
+  # concept); cluster discovery happens through the Kubernetes API itself.
+  resource_types:
+    # --- Core (namespace-scoped) --------------------------------------------
+    - terraform_type: kubernetes_config_map_v1
+      pulumi_type: kubernetes:core/v1:ConfigMap
+      id_format: "{config_map_namespace}/{config_map_name}"
+    - terraform_type: kubernetes_secret_v1
+      pulumi_type: kubernetes:core/v1:Secret
+      id_format: "{secret_namespace}/{secret_name}"
+    - terraform_type: kubernetes_service_account_v1
+      pulumi_type: kubernetes:core/v1:ServiceAccount
+      id_format: "{service_account_namespace}/{service_account_name}"
+    - terraform_type: kubernetes_resource_quota_v1
+      pulumi_type: kubernetes:core/v1:ResourceQuota
+      id_format: "{resource_quota_namespace}/{resource_quota_name}"
+    - terraform_type: kubernetes_limit_range_v1
+      pulumi_type: kubernetes:core/v1:LimitRange
+      id_format: "{limit_range_namespace}/{limit_range_name}"
+    - terraform_type: kubernetes_network_policy_v1
+      pulumi_type: kubernetes:networking.k8s.io/v1:NetworkPolicy
+      id_format: "{network_policy_namespace}/{network_policy_name}"
+
+    # --- Core (cluster-scoped) ----------------------------------------------
+    - terraform_type: kubernetes_namespace_v1
+      pulumi_type: kubernetes:core/v1:Namespace
+      id_format: "{namespace_name}"
+
+    # --- RBAC ----------------------------------------------------------------
+    - terraform_type: kubernetes_role_v1
+      pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:Role
+      id_format: "{role_namespace}/{role_name}"
+    - terraform_type: kubernetes_role_binding_v1
+      pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:RoleBinding
+      id_format: "{role_binding_namespace}/{role_binding_name}"
+    - terraform_type: kubernetes_cluster_role_v1
+      pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:ClusterRole
+      id_format: "{cluster_role_name}"
+    - terraform_type: kubernetes_cluster_role_binding_v1
+      pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:ClusterRoleBinding
+      id_format: "{cluster_role_binding_name}"
