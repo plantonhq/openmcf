@@ -27,7 +27,6 @@ The following KUBERNETES resources can be deployed using Planton:
 - [Gateway Class](/docs/catalog/kubernetes/gateway-class)
 - [GHA Runner Scale Set](/docs/catalog/kubernetes/gha-runner-scale-set)
 - [GHA Runner Scale Set Controller](/docs/catalog/kubernetes/gha-runner-scale-set-controller)
-- [Gitlab](/docs/catalog/kubernetes/gitlab)
 - [Grafana](/docs/catalog/kubernetes/grafana)
 - [gRPC Route](/docs/catalog/kubernetes/grpc-route)
 - [Harbor](/docs/catalog/kubernetes/harbor)

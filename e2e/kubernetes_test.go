@@ -101,7 +101,6 @@ var kubernetesTier2Components = []string{
 	"kubernetesperconamongooperator",
 	"kubernetesperconamysqloperator",
 	"kubernetesperconapostgresoperator",
-	"kubernetesgitlab",
 	"kubernetestemporal",
 	"kubernetessignoz",
 }
@@ -144,7 +143,6 @@ func TestKubernetesSolrOperator_Pulumi(t *testing.T)           { runAllScenarios
 func TestKubernetesPerconaMongoOperator_Pulumi(t *testing.T)   { runAllScenariosForComponent(t, "kubernetesperconamongooperator", "pulumi") }
 func TestKubernetesPerconaMysqlOperator_Pulumi(t *testing.T)   { runAllScenariosForComponent(t, "kubernetesperconamysqloperator", "pulumi") }
 func TestKubernetesPerconaPostgresOperator_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesperconapostgresoperator", "pulumi") }
-func TestKubernetesGitlab_Pulumi(t *testing.T)                 { runAllScenariosForComponent(t, "kubernetesgitlab", "pulumi") }
 func TestKubernetesTemporal_Pulumi(t *testing.T)               { runAllScenariosForComponent(t, "kubernetestemporal", "pulumi") }
 func TestKubernetesSignoz_Pulumi(t *testing.T)                 { runAllScenariosForComponent(t, "kubernetessignoz", "pulumi") }
 

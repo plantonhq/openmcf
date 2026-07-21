@@ -448,7 +448,7 @@ const file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_spec_proto
 	"\n" +
 	"Edev/planton/provider/kubernetes/kubernetesclusterissuer/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesclusterissuer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x99\x06\n" +
 	"\x1bKubernetesClusterIssuerSpec\x12\x91\x01\n" +
-	"\x16cert_manager_namespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xb5\x06\x92\xd4a\x18status.outputs.namespaceR\x14certManagerNamespace\x12%\n" +
+	"\x16cert_manager_namespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbe\x06\x92\xd4a\x18status.outputs.namespaceR\x14certManagerNamespace\x12%\n" +
 	"\n" +
 	"dns_domain\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tdnsDomain\x12o\n" +
 	"\x04acme\x18\x04 \x01(\v2S.dev.planton.provider.kubernetes.kubernetesclusterissuer.v1.ClusterIssuerAcmeConfigB\x06\xbaH\x03\xc8\x01\x01R\x04acme\x12q\n" +

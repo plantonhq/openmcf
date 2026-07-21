@@ -439,7 +439,6 @@ import (
 	kubernetesgatewayclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatewayclass/v1"
 	kubernetesgharunnerscalesetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1"
 	kubernetesgharunnerscalesetcontrollerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1"
-	kubernetesgitlabv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgitlab/v1"
 	kubernetesgrafanav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgrafana/v1"
 	kubernetesgrpcroutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgrpcroute/v1"
 	kubernetesharborv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesharbor/v1"
@@ -1052,7 +1051,6 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesGatewayClass:                &kubernetesgatewayclassv1.KubernetesGatewayClass{},
 	cloudresourcekind.CloudResourceKind_KubernetesGhaRunnerScaleSet:           &kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSet{},
 	cloudresourcekind.CloudResourceKind_KubernetesGhaRunnerScaleSetController: &kubernetesgharunnerscalesetcontrollerv1.KubernetesGhaRunnerScaleSetController{},
-	cloudresourcekind.CloudResourceKind_KubernetesGitlab:                      &kubernetesgitlabv1.KubernetesGitlab{},
 	cloudresourcekind.CloudResourceKind_KubernetesGrafana:                     &kubernetesgrafanav1.KubernetesGrafana{},
 	cloudresourcekind.CloudResourceKind_KubernetesGrpcRoute:                   &kubernetesgrpcroutev1.KubernetesGrpcRoute{},
 	cloudresourcekind.CloudResourceKind_KubernetesHarbor:                      &kubernetesharborv1.KubernetesHarbor{},

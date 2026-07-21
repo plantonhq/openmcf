@@ -712,7 +712,7 @@ const file_dev_planton_provider_kubernetes_kubernetespostgres_v1_spec_proto_rawD
 	"\n" +
 	"owner_role\x18\x02 \x01(\tR\townerRole\"\x8c\x06\n" +
 	"\x16KubernetesPostgresSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x9c\x01\n" +
 	"\tcontainer\x18\x04 \x01(\v2R.dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresContainerB*\x8a߄\x02%\b\x01\x12\x1c\n" +
 	"\f\n" +

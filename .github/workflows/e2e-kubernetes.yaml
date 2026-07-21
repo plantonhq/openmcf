@@ -54,6 +54,9 @@ permissions:
 
 env:
   PULUMI_CONFIG_PASSPHRASE: ''
+  # CI runners are ephemeral: delete the kind cluster at teardown. Local runs keep
+  # the cluster alive across back-to-back sessions (the harness's persistent lane).
+  PLANTON_E2E_DESTROY_CLUSTER: '1'
 
 jobs:
   # ============================================================================

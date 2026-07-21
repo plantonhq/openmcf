@@ -22,8 +22,15 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesProvider enum represents the various Kubernetes providers.
-// This enumeration allows specifying the type of Kubernetes cluster being used, such as GKE, EKS, or AKS, with additional context on each.
+// KubernetesProvider enumerates the platforms whose clusters Planton deploy engines
+// can connect to.
+//
+// A value earns its place here when the platform brings its own credential shape:
+// the selected provider determines which sub-message of KubernetesProviderConfig
+// holds the connection details. Platforms that authenticate through a plain
+// kubeconfig (local development clusters, on-prem, bare metal, and managed
+// platforms like Civo or Scaleway that simply hand out a kubeconfig) share the
+// single self_managed value rather than one value per platform.
 type KubernetesProvider int32
 
 const (
@@ -32,6 +39,7 @@ const (
 	KubernetesProvider_aws_eks                         KubernetesProvider = 2 // Amazon Elastic Kubernetes Service (EKS) - A managed Kubernetes service by AWS that simplifies the deployment and management of Kubernetes clusters.
 	KubernetesProvider_azure_aks                       KubernetesProvider = 3 // Azure Kubernetes Service (AKS) - A managed Kubernetes service by Microsoft Azure that provides Kubernetes cluster orchestration and management.
 	KubernetesProvider_digital_ocean_doks              KubernetesProvider = 4 // DigitalOcean Kubernetes Service (DOKS) - A managed Kubernetes service by DigitalOcean that simplifies the deployment and management of Kubernetes clusters.
+	KubernetesProvider_self_managed                    KubernetesProvider = 5 // A cluster on no credential-bearing managed platform: kind/minikube/k3s, on-prem, bare metal, vSphere, and kubeconfig-only clouds (Civo, Scaleway). Connects through a plain kubeconfig.
 )
 
 // Enum value maps for KubernetesProvider.
@@ -42,6 +50,7 @@ var (
 		2: "aws_eks",
 		3: "azure_aks",
 		4: "digital_ocean_doks",
+		5: "self_managed",
 	}
 	KubernetesProvider_value = map[string]int32{
 		"kubernetes_provider_unspecified": 0,
@@ -49,6 +58,7 @@ var (
 		"aws_eks":                         2,
 		"azure_aks":                       3,
 		"digital_ocean_doks":              4,
+		"self_managed":                    5,
 	}
 )
 
@@ -97,8 +107,11 @@ type KubernetesProviderConfig struct {
 	// This field contains detailed information for connecting to a Azure Kubernetes Service(AKS) cluster.
 	AzureAks         *KubernetesProviderConfigAzureAks         `protobuf:"bytes,4,opt,name=azure_aks,json=azureAks,proto3" json:"azure_aks,omitempty"`
 	DigitalOceanDoks *KubernetesProviderConfigDigitalOceanDoks `protobuf:"bytes,5,opt,name=digital_ocean_doks,json=digitalOceanDoks,proto3" json:"digital_ocean_doks,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Connection specification for self-managed clusters (kind, minikube, k3s, on-prem,
+	// bare metal, vSphere, and kubeconfig-only clouds such as Civo and Scaleway).
+	SelfManaged   *KubernetesProviderConfigSelfManaged `protobuf:"bytes,6,opt,name=self_managed,json=selfManaged,proto3" json:"self_managed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesProviderConfig) Reset() {
@@ -162,6 +175,13 @@ func (x *KubernetesProviderConfig) GetAzureAks() *KubernetesProviderConfigAzureA
 func (x *KubernetesProviderConfig) GetDigitalOceanDoks() *KubernetesProviderConfigDigitalOceanDoks {
 	if x != nil {
 		return x.DigitalOceanDoks
+	}
+	return nil
+}
+
+func (x *KubernetesProviderConfig) GetSelfManaged() *KubernetesProviderConfigSelfManaged {
+	if x != nil {
+		return x.SelfManaged
 	}
 	return nil
 }
@@ -352,10 +372,38 @@ func (x *KubernetesProviderConfigAwsEks) GetSessionToken() string {
 	return ""
 }
 
-// KubernetesProviderConfigAzureEks message represents the specification required to connect to a Azure Kubernetes Service (AKS) cluster.
-// This message consolidates the necessary input parameters for establishing a secure connection with a AKS cluster.
+// KubernetesProviderConfigAzureAks contains the connection parameters for an Azure
+// Kubernetes Service (AKS) cluster with Microsoft Entra ID integration.
+//
+// Like EKS, an Entra-integrated AKS API server has no long-lived bearer credential:
+// it honors short-lived Entra access tokens issued for the AKS AAD server application
+// (a first-party Azure app whose ID is identical in every environment). This config
+// therefore carries the cluster identity as plain values plus the Entra
+// service-principal credential used to mint those tokens on demand. The caller (a
+// deploy engine or an in-process Kubernetes client) exchanges the credential for a
+// fresh token whenever one is needed; the token itself is never stored here.
+//
+// Clusters WITHOUT Entra integration (local-accounts-only) have no token to mint --
+// connect those through the self_managed arm with the kubeconfig AKS hands out.
 type KubernetesProviderConfigAzureAks struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The cluster API server endpoint URL, from the AKS portal or
+	// `az aks show --query fqdn`.
+	ClusterEndpoint string `protobuf:"bytes,1,opt,name=cluster_endpoint,json=clusterEndpoint,proto3" json:"cluster_endpoint,omitempty"`
+	// Base64-encoded cluster Certificate Authority (CA) certificate.
+	// This is the standard kubeconfig CA data format.
+	ClusterCaData string `protobuf:"bytes,2,opt,name=cluster_ca_data,json=clusterCaData,proto3" json:"cluster_ca_data,omitempty"`
+	// The Entra tenant ID the service principal lives in. Required with client_secret;
+	// omitted in ambient mode (the process's own Azure credential chain signs instead).
+	TenantId string `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// The service principal's client ID. Required with client_secret; the principal
+	// must hold RBAC on the cluster (e.g. Azure Kubernetes Service RBAC Cluster Admin,
+	// or a cluster role bound to its object ID).
+	ClientId string `protobuf:"bytes,4,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// The service principal's client secret, used to mint AKS tokens. Optional: when
+	// empty, tokens are minted from the ambient Azure credential chain of the process
+	// (environment variables, managed identity, or Azure CLI login).
+	ClientSecret  string `protobuf:"bytes,5,opt,name=client_secret,json=clientSecret,proto3" json:"client_secret,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -388,6 +436,41 @@ func (x *KubernetesProviderConfigAzureAks) ProtoReflect() protoreflect.Message {
 // Deprecated: Use KubernetesProviderConfigAzureAks.ProtoReflect.Descriptor instead.
 func (*KubernetesProviderConfigAzureAks) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_provider_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesProviderConfigAzureAks) GetClusterEndpoint() string {
+	if x != nil {
+		return x.ClusterEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesProviderConfigAzureAks) GetClusterCaData() string {
+	if x != nil {
+		return x.ClusterCaData
+	}
+	return ""
+}
+
+func (x *KubernetesProviderConfigAzureAks) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *KubernetesProviderConfigAzureAks) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *KubernetesProviderConfigAzureAks) GetClientSecret() string {
+	if x != nil {
+		return x.ClientSecret
+	}
+	return ""
 }
 
 // KubernetesProviderConfigDigitalOceanDoks message represents the specification required to connect to a DigitalOcean Kubernetes Service (DOKS) cluster.
@@ -435,17 +518,70 @@ func (x *KubernetesProviderConfigDigitalOceanDoks) GetKubeConfig() string {
 	return ""
 }
 
+// KubernetesProviderConfigSelfManaged carries the connection for any cluster that
+// authenticates through a plain kubeconfig: local development clusters (kind,
+// minikube, k3s, Docker Desktop), on-prem and bare-metal clusters, vSphere, and
+// managed platforms that simply hand out a kubeconfig (Civo, Scaleway). The file
+// bundles endpoint, CA data, and credential; there is no token to refresh and
+// therefore nothing else to configure.
+type KubernetesProviderConfigSelfManaged struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The complete kubeconfig YAML for the cluster. If the file contains several
+	// contexts, the current-context is used.
+	KubeConfig    string `protobuf:"bytes,1,opt,name=kube_config,json=kubeConfig,proto3" json:"kube_config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesProviderConfigSelfManaged) Reset() {
+	*x = KubernetesProviderConfigSelfManaged{}
+	mi := &file_dev_planton_provider_kubernetes_provider_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesProviderConfigSelfManaged) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesProviderConfigSelfManaged) ProtoMessage() {}
+
+func (x *KubernetesProviderConfigSelfManaged) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_provider_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesProviderConfigSelfManaged.ProtoReflect.Descriptor instead.
+func (*KubernetesProviderConfigSelfManaged) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_provider_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesProviderConfigSelfManaged) GetKubeConfig() string {
+	if x != nil {
+		return x.KubeConfig
+	}
+	return ""
+}
+
 var File_dev_planton_provider_kubernetes_provider_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_provider_proto_rawDesc = "" +
 	"\n" +
-	".dev/planton/provider/kubernetes/provider.proto\x12\x1fdev.planton.provider.kubernetes\x1a\x1bbuf/validate/validate.proto\"\x80\x04\n" +
+	".dev/planton/provider/kubernetes/provider.proto\x12\x1fdev.planton.provider.kubernetes\x1a\x1bbuf/validate/validate.proto\"\xe9\x04\n" +
 	"\x18KubernetesProviderConfig\x12W\n" +
 	"\bprovider\x18\x01 \x01(\x0e23.dev.planton.provider.kubernetes.KubernetesProviderB\x06\xbaH\x03\xc8\x01\x01R\bprovider\x12X\n" +
 	"\agcp_gke\x18\x02 \x01(\v2?.dev.planton.provider.kubernetes.KubernetesProviderConfigGcpGkeR\x06gcpGke\x12X\n" +
 	"\aaws_eks\x18\x03 \x01(\v2?.dev.planton.provider.kubernetes.KubernetesProviderConfigAwsEksR\x06awsEks\x12^\n" +
 	"\tazure_aks\x18\x04 \x01(\v2A.dev.planton.provider.kubernetes.KubernetesProviderConfigAzureAksR\bazureAks\x12w\n" +
-	"\x12digital_ocean_doks\x18\x05 \x01(\v2I.dev.planton.provider.kubernetes.KubernetesProviderConfigDigitalOceanDoksR\x10digitalOceanDoks\"\xbb\x01\n" +
+	"\x12digital_ocean_doks\x18\x05 \x01(\v2I.dev.planton.provider.kubernetes.KubernetesProviderConfigDigitalOceanDoksR\x10digitalOceanDoks\x12g\n" +
+	"\fself_managed\x18\x06 \x01(\v2D.dev.planton.provider.kubernetes.KubernetesProviderConfigSelfManagedR\vselfManaged\"\xbb\x01\n" +
 	"\x1eKubernetesProviderConfigGcpGke\x121\n" +
 	"\x10cluster_endpoint\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fclusterEndpoint\x12.\n" +
 	"\x0fcluster_ca_data\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rclusterCaData\x126\n" +
@@ -460,17 +596,27 @@ const file_dev_planton_provider_kubernetes_provider_proto_rawDesc = "" +
 	"'kubernetes.aws_eks.access_key_id.format\x12GMust start with 'AKIA' or 'ASIA' followed by 16 alphanumeric characters\x1a%this.matches('^.{4}[a-zA-Z0-9]{16}$')\xd8\x01\x01r\x03\x98\x01\x14R\vaccessKeyId\x12\xec\x01\n" +
 	"\x11secret_access_key\x18\x06 \x01(\tB\xbf\x01\xbaH\xbb\x01\xba\x01\xaf\x01\n" +
 	"$kubernetes.aws_eks.secret_access_key\x12bMust contain exactly 40 characters consisting of numbers, letters, slashes (/), and plus signs (+)\x1a#this.matches('^[0-9a-zA-Z/+]{40}$')\xd8\x01\x01r\x03\x98\x01(R\x0fsecretAccessKey\x12#\n" +
-	"\rsession_token\x18\a \x01(\tR\fsessionToken\"\"\n" +
-	" KubernetesProviderConfigAzureAks\"S\n" +
+	"\rsession_token\x18\a \x01(\tR\fsessionToken\"\xa9\x03\n" +
+	" KubernetesProviderConfigAzureAks\x121\n" +
+	"\x10cluster_endpoint\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fclusterEndpoint\x12.\n" +
+	"\x0fcluster_ca_data\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rclusterCaData\x12\x1b\n" +
+	"\ttenant_id\x18\x03 \x01(\tR\btenantId\x12\x1b\n" +
+	"\tclient_id\x18\x04 \x01(\tR\bclientId\x12#\n" +
+	"\rclient_secret\x18\x05 \x01(\tR\fclientSecret:\xc2\x01\xbaH\xbe\x01\x1a\xbb\x01\n" +
+	"-kubernetes.azure_aks.secret_requires_identity\x12>tenant_id and client_id are required when client_secret is set\x1aJthis.client_secret == '' || (this.tenant_id != '' && this.client_id != '')\"S\n" +
 	"(KubernetesProviderConfigDigitalOceanDoks\x12'\n" +
 	"\vkube_config\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"kubeConfig*z\n" +
+	"kubeConfig\"N\n" +
+	"#KubernetesProviderConfigSelfManaged\x12'\n" +
+	"\vkube_config\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"kubeConfig*\x8c\x01\n" +
 	"\x12KubernetesProvider\x12#\n" +
 	"\x1fkubernetes_provider_unspecified\x10\x00\x12\v\n" +
 	"\agcp_gke\x10\x01\x12\v\n" +
 	"\aaws_eks\x10\x02\x12\r\n" +
 	"\tazure_aks\x10\x03\x12\x16\n" +
-	"\x12digital_ocean_doks\x10\x04B\x97\x02\n" +
+	"\x12digital_ocean_doks\x10\x04\x12\x10\n" +
+	"\fself_managed\x10\x05B\x97\x02\n" +
 	"#com.dev.planton.provider.kubernetesB\rProviderProtoP\x01ZAgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes\xa2\x02\x04DPPK\xaa\x02\x1fDev.Planton.Provider.Kubernetes\xca\x02\x1fDev\\Planton\\Provider\\Kubernetes\xe2\x02+Dev\\Planton\\Provider\\Kubernetes\\GPBMetadata\xea\x02\"Dev::Planton::Provider::Kubernetesb\x06proto3"
 
 var (
@@ -486,7 +632,7 @@ func file_dev_planton_provider_kubernetes_provider_proto_rawDescGZIP() []byte {
 }
 
 var file_dev_planton_provider_kubernetes_provider_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_kubernetes_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_dev_planton_provider_kubernetes_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_dev_planton_provider_kubernetes_provider_proto_goTypes = []any{
 	(KubernetesProvider)(0),                          // 0: dev.planton.provider.kubernetes.KubernetesProvider
 	(*KubernetesProviderConfig)(nil),                 // 1: dev.planton.provider.kubernetes.KubernetesProviderConfig
@@ -494,6 +640,7 @@ var file_dev_planton_provider_kubernetes_provider_proto_goTypes = []any{
 	(*KubernetesProviderConfigAwsEks)(nil),           // 3: dev.planton.provider.kubernetes.KubernetesProviderConfigAwsEks
 	(*KubernetesProviderConfigAzureAks)(nil),         // 4: dev.planton.provider.kubernetes.KubernetesProviderConfigAzureAks
 	(*KubernetesProviderConfigDigitalOceanDoks)(nil), // 5: dev.planton.provider.kubernetes.KubernetesProviderConfigDigitalOceanDoks
+	(*KubernetesProviderConfigSelfManaged)(nil),      // 6: dev.planton.provider.kubernetes.KubernetesProviderConfigSelfManaged
 }
 var file_dev_planton_provider_kubernetes_provider_proto_depIdxs = []int32{
 	0, // 0: dev.planton.provider.kubernetes.KubernetesProviderConfig.provider:type_name -> dev.planton.provider.kubernetes.KubernetesProvider
@@ -501,11 +648,12 @@ var file_dev_planton_provider_kubernetes_provider_proto_depIdxs = []int32{
 	3, // 2: dev.planton.provider.kubernetes.KubernetesProviderConfig.aws_eks:type_name -> dev.planton.provider.kubernetes.KubernetesProviderConfigAwsEks
 	4, // 3: dev.planton.provider.kubernetes.KubernetesProviderConfig.azure_aks:type_name -> dev.planton.provider.kubernetes.KubernetesProviderConfigAzureAks
 	5, // 4: dev.planton.provider.kubernetes.KubernetesProviderConfig.digital_ocean_doks:type_name -> dev.planton.provider.kubernetes.KubernetesProviderConfigDigitalOceanDoks
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6, // 5: dev.planton.provider.kubernetes.KubernetesProviderConfig.self_managed:type_name -> dev.planton.provider.kubernetes.KubernetesProviderConfigSelfManaged
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_provider_proto_init() }
@@ -519,7 +667,7 @@ func file_dev_planton_provider_kubernetes_provider_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_provider_proto_rawDesc), len(file_dev_planton_provider_kubernetes_provider_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

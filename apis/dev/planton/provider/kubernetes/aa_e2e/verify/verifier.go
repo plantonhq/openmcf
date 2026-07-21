@@ -61,7 +61,6 @@ var helmTier2Kinds = map[string]bool{
 	"kubernetestemporal": true,
 	"kubernetesargocd":   true,
 	"kubernetesharbor":   true,
-	"kubernetesgitlab":   true,
 	"kuberneteslocust":   true,
 	"kubernetessignoz":   true,
 	"kuberneteskeycloak": true,

@@ -4,6 +4,24 @@ This package (`aa_e2e`) implements the E2E test harness for the Kubernetes
 provider. It manages the test cluster lifecycle and delegates resource
 verification to the `verify/` subpackage.
 
+## Cluster Lanes
+
+The harness supports two cluster lanes, selected by environment variables:
+
+| Lane | Selection | Lifecycle |
+|------|-----------|-----------|
+| kind (default) | — | Persistent: `Setup` reuses a running cluster with the configured name and creates one only when none exists. `Teardown` leaves it running unless `PLANTON_E2E_DESTROY_CLUSTER=1` (set on ephemeral CI runners). |
+| External cluster | `PLANTON_E2E_KUBECONFIG=<path>` | Never touched: the cluster (real EKS/GKE/AKS, batch-provisioned once per test wave and reused) is owned outside the run. |
+
+`PLANTON_E2E_KIND_CLUSTER_NAME` overrides the default kind cluster name
+(`planton-e2e`). The name is stable across runs by design — a run-unique name
+would defeat reuse.
+
+Component-level verification is identical in both lanes: verifiers key off the
+kubeconfig path, not the cluster's origin. Every test still deploys, verifies,
+destroys, and verifies cleanup of its own resources — only the cluster outlives
+the run.
+
 ## Why `aa_e2e`?
 
 Every cloud provider in Planton can have an E2E harness colocated alongside

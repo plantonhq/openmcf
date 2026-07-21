@@ -259,7 +259,7 @@ const file_dev_planton_provider_kubernetes_kubernetesredis_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/kubernetes/kubernetesredis/v1/spec.proto\x122dev.planton.provider.kubernetes.kubernetesredis.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a google/protobuf/descriptor.proto\"\xad\x03\n" +
 	"\x13KubernetesRedisSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x98\x01\n" +
 	"\tcontainer\x18\x04 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesredis.v1.KubernetesRedisContainerB,ʚ\x86\x02'\b\x01\x12\x1c\n" +
 	"\f\n" +

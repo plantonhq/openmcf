@@ -3,11 +3,11 @@
 // pulumi provider getter, so the two engines cannot drift on how a provider's
 // credentials are wired.
 //
-// Providers whose tokens are short-lived (EKS, GKE) get an exec entry pointing back
-// at the engine-spawning Planton binary (the ExecCredential protocol -- see
-// pkg/kubernetes/execcredential); DOKS ships a long-lived kubeconfig and passes
-// through unchanged. Kubeconfigs are rendered from typed structs, never string
-// templates, so field values can never inject YAML structure.
+// Providers whose tokens are short-lived (EKS, GKE, AKS) get an exec entry pointing
+// back at the engine-spawning Planton binary (the ExecCredential protocol -- see
+// pkg/kubernetes/execcredential); DOKS and self-managed clusters ship a long-lived
+// kubeconfig and pass through unchanged. Kubeconfigs are rendered from typed structs,
+// never string templates, so field values can never inject YAML structure.
 package kubeconfig
 
 import (
@@ -38,10 +38,12 @@ func Build(config *kubernetesprovider.KubernetesProviderConfig, credentialComman
 		return buildAwsEks(config.AwsEks, credentialCommand)
 	case kubernetesprovider.KubernetesProvider_gcp_gke:
 		return buildGcpGke(config.GcpGke, credentialCommand)
+	case kubernetesprovider.KubernetesProvider_azure_aks:
+		return buildAzureAks(config.AzureAks, credentialCommand)
 	case kubernetesprovider.KubernetesProvider_digital_ocean_doks:
 		return buildDigitalOceanDoks(config.DigitalOceanDoks)
-	case kubernetesprovider.KubernetesProvider_azure_aks:
-		return "", errors.New("azure_aks kubernetes connections are not supported yet")
+	case kubernetesprovider.KubernetesProvider_self_managed:
+		return buildSelfManaged(config.SelfManaged)
 	default:
 		return "", errors.Errorf("unsupported kubernetes provider: %v", config.Provider)
 	}
@@ -86,12 +88,44 @@ func buildGcpGke(c *kubernetesprovider.KubernetesProviderConfigGcpGke, credentia
 	return renderExecKubeconfig(c.ClusterEndpoint, c.ClusterCaData, credentialCommand, env)
 }
 
+func buildAzureAks(c *kubernetesprovider.KubernetesProviderConfigAzureAks, credentialCommand string) (string, error) {
+	if c == nil {
+		return "", errors.New("azure_aks provider config is nil")
+	}
+
+	env := []execEnvVar{
+		{Name: execcredential.ProviderEnvVar, Value: execcredential.ProviderAzureAks},
+	}
+	// The service-principal credential rides dedicated env entries; omitted entirely
+	// in ambient-chain mode so the helper's own environment is never poisoned with
+	// empty values (same discipline as the EKS arm).
+	if c.ClientSecret != "" {
+		env = append(env,
+			execEnvVar{Name: execcredential.AksTenantIdEnvVar, Value: c.TenantId},
+			execEnvVar{Name: execcredential.AksClientIdEnvVar, Value: c.ClientId},
+			execEnvVar{Name: execcredential.AksClientSecretEnvVar, Value: c.ClientSecret},
+		)
+	}
+
+	return renderExecKubeconfig(c.ClusterEndpoint, c.ClusterCaData, credentialCommand, env)
+}
+
 func buildDigitalOceanDoks(c *kubernetesprovider.KubernetesProviderConfigDigitalOceanDoks) (string, error) {
 	if c == nil {
 		return "", errors.New("digital_ocean_doks provider config is nil")
 	}
 	// DOKS hands out a complete long-lived kubeconfig; there is no token to refresh
 	// and therefore nothing for this builder to construct.
+	return c.KubeConfig, nil
+}
+
+func buildSelfManaged(c *kubernetesprovider.KubernetesProviderConfigSelfManaged) (string, error) {
+	if c == nil {
+		return "", errors.New("self_managed provider config is nil")
+	}
+	// Self-managed clusters (kind, on-prem, vSphere, kubeconfig-only clouds like Civo
+	// and Scaleway) authenticate through the kubeconfig itself -- pass-through, exactly
+	// like DOKS.
 	return c.KubeConfig, nil
 }
 

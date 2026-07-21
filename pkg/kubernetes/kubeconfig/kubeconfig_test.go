@@ -160,14 +160,72 @@ func TestBuild_DigitalOceanDoksPassthrough(t *testing.T) {
 	assert.Equal(t, rawKubeconfig, rendered)
 }
 
-func TestBuild_AzureAksNotSupported(t *testing.T) {
-	_, err := Build(&kubernetesprovider.KubernetesProviderConfig{
+func aksConfig() *kubernetesprovider.KubernetesProviderConfig {
+	return &kubernetesprovider.KubernetesProviderConfig{
 		Provider: kubernetesprovider.KubernetesProvider_azure_aks,
-		AzureAks: &kubernetesprovider.KubernetesProviderConfigAzureAks{},
-	}, testCredentialCommand)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not supported",
-		"AKS must fail loudly, never render an empty kubeconfig")
+		AzureAks: &kubernetesprovider.KubernetesProviderConfigAzureAks{
+			ClusterEndpoint: "https://demo-aks.hcp.eastus.azmk8s.io",
+			ClusterCaData:   "dGVzdC1jYS1kYXRh",
+			TenantId:        "11111111-2222-3333-4444-555555555555",
+			ClientId:        "test-client-id",
+			ClientSecret:    "test-client-secret",
+		},
+	}
+}
+
+// TestBuild_AzureAksExecShape: AKS rides the same exec seam as EKS/GKE with the
+// Entra service-principal env contract the ExecCredential command reads.
+func TestBuild_AzureAksExecShape(t *testing.T) {
+	rendered, err := Build(aksConfig(), testCredentialCommand)
+	require.NoError(t, err)
+
+	doc := parseKubeconfig(t, rendered)
+	assert.Equal(t, "https://demo-aks.hcp.eastus.azmk8s.io", doc.Clusters[0].Cluster.Server)
+	assert.Equal(t, "dGVzdC1jYS1kYXRh", doc.Clusters[0].Cluster.CertificateAuthorityData)
+	assert.Equal(t, "client.authentication.k8s.io/v1", doc.Users[0].User.Exec.APIVersion)
+
+	env := execEnvMap(t, doc)
+	assert.Equal(t, execcredential.ProviderAzureAks, env[execcredential.ProviderEnvVar])
+	assert.Equal(t, "11111111-2222-3333-4444-555555555555", env[execcredential.AksTenantIdEnvVar])
+	assert.Equal(t, "test-client-id", env[execcredential.AksClientIdEnvVar])
+	assert.Equal(t, "test-client-secret", env[execcredential.AksClientSecretEnvVar])
+
+	for _, arg := range doc.Users[0].User.Exec.Args {
+		assert.NotContains(t, arg, "test-client-secret",
+			"credential material travels ONLY in exec env entries, never argv")
+	}
+}
+
+// TestBuild_AzureAksAmbientMode: with no client secret on the connection, the
+// kubeconfig must not emit ANY Entra credential env entries -- empty values would
+// poison the helper's ambient credential chain.
+func TestBuild_AzureAksAmbientMode(t *testing.T) {
+	config := aksConfig()
+	config.AzureAks.TenantId = ""
+	config.AzureAks.ClientId = ""
+	config.AzureAks.ClientSecret = ""
+
+	rendered, err := Build(config, testCredentialCommand)
+	require.NoError(t, err)
+
+	env := execEnvMap(t, parseKubeconfig(t, rendered))
+	assert.NotContains(t, env, execcredential.AksTenantIdEnvVar)
+	assert.NotContains(t, env, execcredential.AksClientIdEnvVar)
+	assert.NotContains(t, env, execcredential.AksClientSecretEnvVar)
+}
+
+// TestBuild_SelfManagedPassthrough: self-managed clusters (kind, on-prem, vSphere,
+// kubeconfig-only clouds) authenticate through the kubeconfig itself; the builder
+// must return it byte-for-byte.
+func TestBuild_SelfManagedPassthrough(t *testing.T) {
+	rawKubeconfig := "apiVersion: v1\nkind: Config\n"
+
+	rendered, err := Build(&kubernetesprovider.KubernetesProviderConfig{
+		Provider:    kubernetesprovider.KubernetesProvider_self_managed,
+		SelfManaged: &kubernetesprovider.KubernetesProviderConfigSelfManaged{KubeConfig: rawKubeconfig},
+	}, "")
+	require.NoError(t, err)
+	assert.Equal(t, rawKubeconfig, rendered)
 }
 
 // TestBuild_ExecArmsRequireCredentialCommand: exec-credential providers must reject an

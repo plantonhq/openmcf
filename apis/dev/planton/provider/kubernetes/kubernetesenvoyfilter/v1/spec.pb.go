@@ -1060,7 +1060,7 @@ const file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/kubernetes/kubernetesenvoyfilter/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xde\x05\n" +
 	"\x19KubernetesEnvoyFilterSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12z\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12z\n" +
 	"\x11workload_selector\x18\x03 \x01(\v2M.dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelectorR\x10workloadSelector\x12\x81\x01\n" +
 	"\x0econfig_patches\x18\x04 \x03(\v2Z.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatchR\rconfigPatches\x12\x1f\n" +
 	"\bpriority\x18\x05 \x01(\x05H\x00R\bpriority\x88\x01\x01\x12s\n" +

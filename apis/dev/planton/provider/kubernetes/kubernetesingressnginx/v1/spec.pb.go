@@ -352,7 +352,7 @@ const file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_spec_proto_
 	"\n" +
 	"Ddev/planton/provider/kubernetes/kubernetesingressnginx/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesingressnginx.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd7\x04\n" +
 	"\x1aKubernetesIngressNginxSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12#\n" +
 	"\rchart_version\x18\x04 \x01(\tR\fchartVersion\x12\x1a\n" +
 	"\binternal\x18\x05 \x01(\bR\binternal\x12n\n" +

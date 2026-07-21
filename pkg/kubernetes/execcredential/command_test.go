@@ -52,7 +52,21 @@ func TestRun_RejectsMissingProvider(t *testing.T) {
 }
 
 func TestRun_RejectsUnknownProvider(t *testing.T) {
-	t.Setenv(ProviderEnvVar, "azure_aks")
+	t.Setenv(ProviderEnvVar, "digital_ocean_doks") // DOKS never uses exec credentials
+
+	err := run(context.Background(), &bytes.Buffer{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "digital_ocean_doks")
+}
+
+// TestRun_AzureAksRejectsIncompleteIdentity proves the AKS arm is wired: a client
+// secret without its identity coordinates fails inside the minter, before any
+// network activity -- and the error names the provider being minted for.
+func TestRun_AzureAksRejectsIncompleteIdentity(t *testing.T) {
+	t.Setenv(ProviderEnvVar, ProviderAzureAks)
+	t.Setenv(AksClientSecretEnvVar, "test-secret")
+	t.Setenv(AksTenantIdEnvVar, "")
+	t.Setenv(AksClientIdEnvVar, "")
 
 	err := run(context.Background(), &bytes.Buffer{})
 	require.Error(t, err)

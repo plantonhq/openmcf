@@ -29,13 +29,17 @@ const (
 	CommandPathEnvVar = "PLANTON_KUBE_CREDENTIAL_COMMAND"
 
 	// ProviderEnvVar selects the token source; values are KubernetesProvider enum
-	// value names (aws_eks, gcp_gke).
+	// value names (aws_eks, gcp_gke, azure_aks).
 	ProviderEnvVar = "PLANTON_KUBE_CREDENTIAL_PROVIDER"
 
 	EksClusterNameEnvVar = "PLANTON_EKS_CLUSTER_NAME"
 	EksRegionEnvVar      = "PLANTON_EKS_REGION"
 
 	GkeServiceAccountKeyEnvVar = "PLANTON_GKE_SERVICE_ACCOUNT_KEY"
+
+	AksTenantIdEnvVar     = "PLANTON_AKS_TENANT_ID"
+	AksClientIdEnvVar     = "PLANTON_AKS_CLIENT_ID"
+	AksClientSecretEnvVar = "PLANTON_AKS_CLIENT_SECRET"
 )
 
 // Static AWS credentials ride the SDK's standard names so the ambient credential
@@ -50,8 +54,9 @@ const (
 
 // Provider values accepted in ProviderEnvVar (KubernetesProvider enum value names).
 const (
-	ProviderAwsEks = "aws_eks"
-	ProviderGcpGke = "gcp_gke"
+	ProviderAwsEks   = "aws_eks"
+	ProviderGcpGke   = "gcp_gke"
+	ProviderAzureAks = "azure_aks"
 )
 
 // protocolAPIVersion is the only ExecCredential version emitted: v1 has been stable

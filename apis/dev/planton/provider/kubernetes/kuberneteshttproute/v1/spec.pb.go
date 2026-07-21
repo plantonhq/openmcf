@@ -1389,7 +1389,7 @@ const file_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto_raw
 	"\n" +
 	"Adev/planton/provider/kubernetes/kuberneteshttproute/v1/spec.proto\x126dev.planton.provider.kubernetes.kuberneteshttproute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe4\x03\n" +
 	"\x17KubernetesHttpRouteSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
 	"parentRefs\x12y\n" +
 	"\thostnames\x18\x04 \x03(\tB[\xbaHX\x92\x01U\x10\x10\"QrO\x10\x01\x18\xfd\x012H^(\\*\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\thostnames\x12q\n" +

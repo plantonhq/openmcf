@@ -594,7 +594,7 @@ const file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/kubernetes/kubernetescertificate/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertificate.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfb\x04\n" +
 	"\x19KubernetesCertificateSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12%\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12%\n" +
 	"\tdns_names\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\bdnsNames\x12'\n" +
 	"\vsecret_name\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"secretName\x12u\n" +
@@ -612,9 +612,9 @@ const file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_r
 	"\x17issuer_ref.one_required\x12\xce\x01An issuer reference is required -- choose 'cluster_issuer' for public TLS certificates via ACME (e.g., Let's Encrypt), or 'issuer' for namespace-scoped certificates from an internal CA or self-signed issuer\x1a,has(this.cluster_issuer) || has(this.issuer)B\r\n" +
 	"\vissuer_type\"\x8d\x01\n" +
 	"\x10ClusterIssuerRef\x12y\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd3\x06\x92\xd4a\"status.outputs.cluster_issuer_nameR\x04name\"\x88\x01\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xbf\x06\x92\xd4a\"status.outputs.cluster_issuer_nameR\x04name\"\x88\x01\n" +
 	"\x13NamespacedIssuerRef\x12q\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x06\x92\xd4a\x1astatus.outputs.issuer_nameR\x04name\"\x91\x01\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x06\x92\xd4a\x1astatus.outputs.issuer_nameR\x04name\"\x91\x01\n" +
 	"\x13CertificateDuration\x12*\n" +
 	"\bduration\x18\x01 \x01(\tB\t\x8a\xa6\x1d\x052160hH\x00R\bduration\x88\x01\x01\x120\n" +
 	"\frenew_before\x18\x02 \x01(\tB\b\x8a\xa6\x1d\x04360hH\x01R\vrenewBefore\x88\x01\x01B\v\n" +

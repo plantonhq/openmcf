@@ -65,8 +65,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	// Create kind cluster
-	clusterName := fmt.Sprintf("planton-e2e-%s", runID)
+	// The cluster name is STABLE across runs (not run-ID-suffixed) so the harness's
+	// persistent-kind lane can reuse the running cluster from the previous run.
+	clusterName := os.Getenv("PLANTON_E2E_KIND_CLUSTER_NAME")
+	if clusterName == "" {
+		clusterName = "planton-e2e"
+	}
 	testHarness = kubernetese2e.NewHarness(clusterName)
 
 	ctx := context.Background()

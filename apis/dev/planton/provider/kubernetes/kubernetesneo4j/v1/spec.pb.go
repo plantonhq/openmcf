@@ -314,7 +314,7 @@ const file_dev_planton_provider_kubernetes_kubernetesneo4j_v1_spec_proto_rawDesc
 	"\n" +
 	"=dev/planton/provider/kubernetes/kubernetesneo4j/v1/spec.proto\x122dev.planton.provider.kubernetes.kubernetesneo4j.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a google/protobuf/descriptor.proto\"\x9f\x04\n" +
 	"\x13KubernetesNeo4jSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x94\x01\n" +
 	"\tcontainer\x18\x04 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesneo4j.v1.KubernetesNeo4jContainerB(\x92\xb0\x8d\x13#\n" +
 	"\x1c\n" +
