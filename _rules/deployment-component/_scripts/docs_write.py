@@ -61,6 +61,25 @@ def read_file_content(path: str) -> str:
         return f.read()
 
 
+# The canonical license footer every component README must end with. The
+# component directory is the realistic unit of copying, and this footer is the
+# attribution that travels with it (lint.license-footers enforces it in CI).
+# The deterministic writer owns the invariant so a drafted README can never
+# ship without it, regardless of whether the author remembered.
+LICENSE_FOOTER = (
+    "© Planton. Licensed under "
+    "[Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE)."
+)
+
+
+def ensure_license_footer(content: str) -> str:
+    if content.rstrip("\n").endswith(LICENSE_FOOTER):
+        return content
+    if not content.endswith("\n"):
+        content += "\n"
+    return content + "\n---\n\n" + LICENSE_FOOTER + "\n"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Write README.md deterministically")
     parser.add_argument("--provider", required=True)
@@ -76,7 +95,7 @@ def main() -> int:
         return 2
 
     try:
-        readme_content = read_file_content(args.readme_file)
+        readme_content = ensure_license_footer(read_file_content(args.readme_file))
     except Exception as exc:
         print(json.dumps({"error": f"failed to read content file: {exc}"}))
         return 3

@@ -422,6 +422,11 @@ To the same bar as a component's docs. Structure, in order:
 5. **Day-2 notes** — what is safe to change in place, what recreates
    resources, cost/scaling levers, how to extend, and any irreversible
    decisions.
+6. **License footer** — the README's final line, after a `---` separator, is
+   always the canonical footer (the attribution that travels when a chart
+   directory is copied out of the repo; lint.license-footers enforces it):
+
+   `© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).`
 
 The README must read as if the current design always existed — no history
 narration, no migration notes, no references to how anything "used to be".

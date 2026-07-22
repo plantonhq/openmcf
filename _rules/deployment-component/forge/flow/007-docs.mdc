@@ -13,6 +13,9 @@ You are the Planton Code Partner working inside the developer's local workspace 
 TOOLS
 - Proto Readers: reuse `_rules/deployment-component/_scripts/*_reader.py` for `api.proto`, `spec.proto`, `stack_input.proto`, `stack_outputs.proto` as needed.
 - Docs Writer: `_rules/deployment-component/_scripts/docs_write.py` writes `README.md` deterministically.
+  The writer guarantees the README ends with the canonical license footer (the attribution
+  that travels with a copied component; enforced in CI by lint.license-footers) — drafts may
+  include it or omit it, the tool ensures exactly one.
 - Reference components (live ground truth): `apis/dev/planton/provider/aws/awsvpc/v1/README.md`
   and `aws/awsalb/v1/README.md` -- canonical user-facing README structure and tone.
 
