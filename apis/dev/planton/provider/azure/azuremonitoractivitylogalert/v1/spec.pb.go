@@ -1024,13 +1024,13 @@ var File_dev_planton_provider_azure_azuremonitoractivitylogalert_v1_spec_proto p
 
 const file_dev_planton_provider_azure_azuremonitoractivitylogalert_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/azure/azuremonitoractivitylogalert/v1/spec.proto\x12:dev.planton.provider.azure.azuremonitoractivitylogalert.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd1\a\n" +
+	"Edev/planton/provider/azure/azuremonitoractivitylogalert/v1/spec.proto\x12:dev.planton.provider.azure.azuremonitoractivitylogalert.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd6\a\n" +
 	" AzureMonitorActivityLogAlertSpec\x12\x8c\x01\n" +
 	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12|\n" +
-	"\blocation\x18\x03 \x01(\x0e2`.dev.planton.provider.azure.azuremonitoractivitylogalert.v1.AzureMonitorActivityLogAlertLocationR\blocation\x12}\n" +
-	"\x06scopes\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x90\x03\x92\xd4a status.outputs.resource_group_idR\x06scopes\x12\x84\x01\n" +
+	"\blocation\x18\x03 \x01(\x0e2`.dev.planton.provider.azure.azuremonitoractivitylogalert.v1.AzureMonitorActivityLogAlertLocationR\blocation\x12\x81\x01\n" +
+	"\x06scopes\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB5\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\x90\x03\x92\xd4a status.outputs.resource_group_id\x98\xd4a\x01R\x06scopes\x12\x84\x01\n" +
 	"\bcriteria\x18\x05 \x01(\v2`.dev.planton.provider.azure.azuremonitoractivitylogalert.v1.AzureMonitorActivityLogAlertCriteriaB\x06\xbaH\x03\xc8\x01\x01R\bcriteria\x12x\n" +
 	"\aactions\x18\x06 \x03(\v2^.dev.planton.provider.azure.azuremonitoractivitylogalert.v1.AzureMonitorActivityLogAlertActionR\aactions\x12 \n" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12\x1d\n" +

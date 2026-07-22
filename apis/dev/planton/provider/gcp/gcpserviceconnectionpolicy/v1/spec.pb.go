@@ -285,9 +285,9 @@ var File_dev_planton_provider_gcp_gcpserviceconnectionpolicy_v1_spec_proto proto
 
 const file_dev_planton_provider_gcp_gcpserviceconnectionpolicy_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/gcp/gcpserviceconnectionpolicy/v1/spec.proto\x126dev.planton.provider.gcp.gcpserviceconnectionpolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xea\v\n" +
-	"#GcpServiceConnectionPolicyPscConfig\x12\x8a\x01\n" +
-	"\vsubnetworks\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\vsubnetworks\x12\x1d\n" +
+	"Adev/planton/provider/gcp/gcpserviceconnectionpolicy/v1/spec.proto\x126dev.planton.provider.gcp.gcpserviceconnectionpolicy.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xee\v\n" +
+	"#GcpServiceConnectionPolicyPscConfig\x12\x8e\x01\n" +
+	"\vsubnetworks\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_link\x98\xd4a\x01R\vsubnetworks\x12\x1d\n" +
 	"\x05limit\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x05limit\x12\xc4\x02\n" +
 	"\x1aproducer_instance_location\x18\x03 \x01(\tB\x85\x02\xbaH\x81\x02\xba\x01\xfd\x01\n" +
 	"&producer_instance_location_valid_value\x12mproducer_instance_location must be PRODUCER_INSTANCE_LOCATION_UNSPECIFIED or CUSTOM_RESOURCE_HIERARCHY_LEVELS\x1adthis == '' || this in ['PRODUCER_INSTANCE_LOCATION_UNSPECIFIED', 'CUSTOM_RESOURCE_HIERARCHY_LEVELS']R\x18producerInstanceLocation\x12\xc9\x02\n" +

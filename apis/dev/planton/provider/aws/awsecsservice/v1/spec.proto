@@ -300,6 +300,7 @@ message AwsEcsServiceNetwork {
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 

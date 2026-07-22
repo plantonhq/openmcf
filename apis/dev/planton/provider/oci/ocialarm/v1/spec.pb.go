@@ -501,10 +501,10 @@ var File_dev_planton_provider_oci_ocialarm_v1_spec_proto protoreflect.FileDescri
 
 const file_dev_planton_provider_oci_ocialarm_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"/dev/planton/provider/oci/ocialarm/v1/spec.proto\x12$dev.planton.provider.oci.ocialarm.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd3\x0e\n" +
+	"/dev/planton/provider/oci/ocialarm/v1/spec.proto\x12$dev.planton.provider.oci.ocialarm.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd7\x0e\n" +
 	"\fOciAlarmSpec\x12\x87\x01\n" +
-	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12\x94\x01\n" +
-	"\x15metric_compartment_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\x13metricCompartmentId\x12%\n" +
+	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12\x98\x01\n" +
+	"\x15metric_compartment_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_id\x98\xd4a\x01R\x13metricCompartmentId\x12%\n" +
 	"\tnamespace\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tnamespace\x12\x1d\n" +
 	"\x05query\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05query\x12\xc2\x01\n" +
 	"\bseverity\x18\x05 \x01(\x0e2;.dev.planton.provider.oci.ocialarm.v1.OciAlarmSpec.SeverityBi\xbaHf\xba\x01c\n" +

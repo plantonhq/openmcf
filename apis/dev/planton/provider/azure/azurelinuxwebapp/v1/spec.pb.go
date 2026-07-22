@@ -4724,7 +4724,7 @@ var File_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto protoreflect.
 
 const file_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/azure/azurelinuxwebapp/v1/spec.proto\x12.dev.planton.provider.azure.azurelinuxwebapp.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa5$\n" +
+	"9dev/planton/provider/azure/azurelinuxwebapp/v1/spec.proto\x12.dev.planton.provider.azure.azurelinuxwebapp.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa9$\n" +
 	"\x14AzureLinuxWebAppSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -4747,8 +4747,8 @@ const file_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto_rawDesc = "
 	"\x17client_affinity_enabled\x18\r \x01(\bB\t\x8a\xa6\x1d\x05falseH\x03R\x15clientAffinityEnabled\x88\x01\x01\x12L\n" +
 	"\x1aclient_certificate_enabled\x18\x0e \x01(\bB\t\x8a\xa6\x1d\x05falseH\x04R\x18clientCertificateEnabled\x88\x01\x01\x12\x97\x01\n" +
 	"\x17client_certificate_mode\x18\x0f \x01(\x0e2U.dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppClientCertificateModeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x15clientCertificateMode\x12K\n" +
-	"\"client_certificate_exclusion_paths\x18\x10 \x01(\tR\x1fclientCertificateExclusionPaths\x12\x90\x01\n" +
-	"\x19virtual_network_subnet_id\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x16virtualNetworkSubnetId\x12E\n" +
+	"\"client_certificate_exclusion_paths\x18\x10 \x01(\tR\x1fclientCertificateExclusionPaths\x12\x94\x01\n" +
+	"\x19virtual_network_subnet_id\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x16virtualNetworkSubnetId\x12E\n" +
 	"\x17vnet_image_pull_enabled\x18\x12 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x05R\x14vnetImagePullEnabled\x88\x01\x01\x12b\n" +
 	"&virtual_network_backup_restore_enabled\x18\x13 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x06R\"virtualNetworkBackupRestoreEnabled\x88\x01\x01\x12d\n" +
 	"\bidentity\x18\x14 \x01(\v2H.dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppIdentityR\bidentity\x12\x9d\x01\n" +
@@ -4874,7 +4874,7 @@ const file_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto_rawDesc = "
 	"\x1eAzureLinuxWebAppStickySettings\x128\n" +
 	"\x11app_setting_names\x18\x01 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x0fappSettingNames\x12\x9d\x01\n" +
 	"\x17connection_string_names\x18\x02 \x03(\tBe\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01\xaa\xa6\x1dUCarries the NAMES of connection strings pinned during slot swaps, never their values.R\x15connectionStringNames:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
-	"!web_app_sticky_settings_not_empty\x12Xsticky_settings requires at least one app_setting_names or connection_string_names entry\x1aLthis.app_setting_names.size() > 0 || this.connection_string_names.size() > 0\"\xca\x04\n" +
+	"!web_app_sticky_settings_not_empty\x12Xsticky_settings requires at least one app_setting_names or connection_string_names entry\x1aLthis.app_setting_names.size() > 0 || this.connection_string_names.size() > 0\"\xce\x04\n" +
 	"\x1dAzureLinuxWebAppIpRestriction\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12,\n" +
 	"\bpriority\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xe8\xfb\x03(\x01H\x00R\bpriority\x88\x01\x01\x12u\n" +
@@ -4882,22 +4882,22 @@ const file_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto_rawDesc = "
 	"\n" +
 	"ip_address\x18\x04 \x01(\tR\tipAddress\x12\x1f\n" +
 	"\vservice_tag\x18\x05 \x01(\tR\n" +
-	"serviceTag\x12\x90\x01\n" +
-	"\x19virtual_network_subnet_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x16virtualNetworkSubnetId\x12 \n" +
+	"serviceTag\x12\x94\x01\n" +
+	"\x19virtual_network_subnet_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x16virtualNetworkSubnetId\x12 \n" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12n\n" +
 	"\aheaders\x18\b \x01(\v2T.dev.planton.provider.azure.azurelinuxwebapp.v1.AzureLinuxWebAppIpRestrictionHeadersR\aheadersB\v\n" +
-	"\t_priority\"\xc7\x02\n" +
+	"\t_priority\"\xcb\x02\n" +
 	"$AzureLinuxWebAppIpRestrictionHeaders\x120\n" +
 	"\x0fx_forwarded_for\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\rxForwardedFor\x122\n" +
-	"\x10x_forwarded_host\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\x0exForwardedHost\x12\x83\x01\n" +
-	"\fx_azure_fdid\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x05\x92\x01\x02\x10\b\x88\xd4a\xe0\x03\x92\xd4a\x1cstatus.outputs.resource_guidR\n" +
+	"\x10x_forwarded_host\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\bR\x0exForwardedHost\x12\x87\x01\n" +
+	"\fx_azure_fdid\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\b\x88\xd4a\xe0\x03\x92\xd4a\x1cstatus.outputs.resource_guid\x98\xd4a\x01R\n" +
 	"xAzureFdid\x123\n" +
 	"\x11x_fd_health_probe\x18\x04 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x01R\x0exFdHealthProbe\"\xf6\x02\n" +
 	"\x1cAzureLinuxWebAppCorsSettings\x121\n" +
 	"\x0fallowed_origins\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x0eallowedOrigins\x12?\n" +
 	"\x13support_credentials\x18\x02 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\x12supportCredentials\x88\x01\x01:\xc9\x01\xbaH\xc5\x01\x1a\xc2\x01\n" +
 	"!web_app_cors_credentials_wildcard\x12=support_credentials cannot be used with a wildcard '*' origin\x1a^!(has(this.support_credentials) && this.support_credentials) || !('*' in this.allowed_origins)B\x16\n" +
-	"\x14_support_credentials\"\xb4\x03\n" +
+	"\x14_support_credentials\"\xb8\x03\n" +
 	"\x1cAzureLinuxWebAppStorageMount\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12q\n" +
@@ -4906,9 +4906,9 @@ const file_dev_planton_provider_azure_azurelinuxwebapp_v1_spec_proto_rawDesc = "
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\vaccountName\x12)\n" +
 	"\n" +
 	"share_name\x18\x04 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tshareName\x12\x87\x01\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tshareName\x12\x8b\x01\n" +
 	"\n" +
-	"access_key\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.primary_access_keyR\taccessKey\x12\x1d\n" +
+	"access_key\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.primary_access_key\x98\xd4a\x01R\taccessKey\x12\x1d\n" +
 	"\n" +
 	"mount_path\x18\x06 \x01(\tR\tmountPath\"\xbe\x03\n" +
 	"\x14AzureLinuxWebAppLogs\x12z\n" +

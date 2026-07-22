@@ -787,9 +787,9 @@ const file_dev_planton_provider_gcp_gcpfilestoreinstance_v1_spec_proto_rawDesc =
 	"capacityGb\x12\x8d\x01\n" +
 	"\x12nfs_export_options\x18\x03 \x03(\v2U.dev.planton.provider.gcp.gcpfilestoreinstance.v1.GcpFilestoreInstanceNfsExportOptionB\b\xbaH\x05\x92\x01\x02\x10\n" +
 	"R\x10nfsExportOptions\x12#\n" +
-	"\rsource_backup\x18\x04 \x01(\tR\fsourceBackup\"\x86\x04\n" +
-	"!GcpFilestoreInstanceNetworkConfig\x12x\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x1bstatus.outputs.network_nameR\anetwork\x12\xfe\x01\n" +
+	"\rsource_backup\x18\x04 \x01(\tR\fsourceBackup\"\x8a\x04\n" +
+	"!GcpFilestoreInstanceNetworkConfig\x12|\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x1bstatus.outputs.network_name\x98\xd4a\x01R\anetwork\x12\xfe\x01\n" +
 	"\fconnect_mode\x18\x02 \x01(\tB\xda\x01\xbaH\xd6\x01\xba\x01\xd2\x01\n" +
 	"\x18connect_mode_valid_value\x12Wconnect_mode must be DIRECT_PEERING, PRIVATE_SERVICE_ACCESS, or PRIVATE_SERVICE_CONNECT\x1a]this == '' || this in ['DIRECT_PEERING', 'PRIVATE_SERVICE_ACCESS', 'PRIVATE_SERVICE_CONNECT']R\vconnectMode\x12*\n" +
 	"\x11reserved_ip_range\x18\x03 \x01(\tR\x0freservedIpRange\x12:\n" +

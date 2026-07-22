@@ -812,6 +812,7 @@ message GcpDataprocClusterKubernetesClusterConfig {
   // Dataproc uses a namespace named after the virtual cluster.
   dev.planton.shared.foreignkey.v1.StringValueOrRef kubernetes_namespace = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
   ];
 

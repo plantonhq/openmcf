@@ -1652,10 +1652,10 @@ const file_dev_planton_provider_aws_awsopensearchdomain_v1_spec_proto_rawDesc = 
 	"\troles_key\x18\x04 \x01(\tR\brolesKey\x12\x1f\n" +
 	"\vsubject_key\x18\x05 \x01(\tR\n" +
 	"subjectKey:\xa9\x01\xbaH\xa5\x01\x1a\xa2\x01\n" +
-	"\x1ejwt_validation_source_required\x12Aprovide jwks_url or public_key when JWT authentication is enabled\x1a=!this.enabled || this.jwks_url != '' || this.public_key != ''\"\xc6\x04\n" +
+	"\x1ejwt_validation_source_required\x12Aprovide jwks_url or public_key when JWT authentication is enabled\x1a=!this.enabled || this.jwks_url != '' || this.public_key != ''\"\xca\x04\n" +
 	"!AwsOpenSearchDomainCognitoOptions\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12z\n" +
-	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xac\x02\x92\xd4a\x1bstatus.outputs.user_pool_idR\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12~\n" +
+	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xac\x02\x92\xd4a\x1bstatus.outputs.user_pool_id\x98\xd4a\x01R\n" +
 	"userPoolId\x12(\n" +
 	"\x10identity_pool_id\x18\x03 \x01(\tR\x0eidentityPoolId\x12o\n" +
 	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\aroleArn:\xef\x01\xbaH\xeb\x01\x1a\xe8\x01\n" +

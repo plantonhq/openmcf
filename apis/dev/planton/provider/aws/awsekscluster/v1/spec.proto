@@ -4,6 +4,7 @@ package dev.planton.provider.aws.awsekscluster.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
 
 // AwsEksClusterSpec defines an EKS cluster CONTROL PLANE: the managed
 // Kubernetes API server, etcd, and the cluster-level posture that everything
@@ -36,6 +37,7 @@ message AwsEksClusterSpec {
     (buf.validate.field).required = true,
     (buf.validate.field).repeated.min_items = 2,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.options.diagram_label) = "spans subnets",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
@@ -48,6 +50,7 @@ message AwsEksClusterSpec {
   dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_role_arn = 3 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.options.diagram_label) = "assumes cluster role",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
   ];
 
@@ -124,6 +127,7 @@ message AwsEksClusterSpec {
   // ARN.
   dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 13 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.options.diagram_label) = "secrets encrypted with",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];
 

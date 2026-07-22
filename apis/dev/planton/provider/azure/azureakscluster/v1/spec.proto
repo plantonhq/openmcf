@@ -149,6 +149,7 @@ message AzureAksClusterSpec {
   // Changing it replaces the cluster.
   dev.planton.shared.foreignkey.v1.StringValueOrRef private_dns_zone_id = 15 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzurePrivateDnsZone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
   ];
 
@@ -2068,6 +2069,7 @@ message AzureAksClusterWebAppRouting {
   // without DNS automation.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef dns_zone_ids = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureDnsZone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
   ];
 
@@ -2139,6 +2141,7 @@ message AzureAksClusterServiceMeshCertificateAuthority {
   dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
   ];
 

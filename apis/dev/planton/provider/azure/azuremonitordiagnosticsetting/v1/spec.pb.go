@@ -370,7 +370,7 @@ var File_dev_planton_provider_azure_azuremonitordiagnosticsetting_v1_spec_proto 
 
 const file_dev_planton_provider_azure_azuremonitordiagnosticsetting_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/azure/azuremonitordiagnosticsetting/v1/spec.proto\x12;dev.planton.provider.azure.azuremonitordiagnosticsetting.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xdf\x11\n" +
+	"Fdev/planton/provider/azure/azuremonitordiagnosticsetting/v1/spec.proto\x12;dev.planton.provider.azure.azuremonitordiagnosticsetting.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe8\x11\n" +
 	"!AzureMonitorDiagnosticSettingSpec\x12\xbb\x01\n" +
 	"\fsetting_name\x18\x01 \x01(\tB\x97\x01\xbaH\x93\x01\xba\x01\x85\x01\n" +
 	"\x1fdiagnostic_setting_name_charset\x12Bdiagnostic setting name may not contain any of < > * % & : \\ ? + /\x1a\x1e!this.matches('[<>*%&:\\\\?+/]')\xc8\x01\x01r\x05\x10\x01\x18\x84\x02R\vsettingName\x12h\n" +
@@ -378,10 +378,10 @@ const file_dev_planton_provider_azure_azuremonitordiagnosticsetting_v1_spec_prot
 	"\fenabled_logs\x18\x03 \x03(\v2].dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingLogR\venabledLogs\x12\x89\x01\n" +
 	"\x0fenabled_metrics\x18\x04 \x03(\v2`.dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingMetricR\x0eenabledMetrics\x12\x95\x01\n" +
 	"\x1alog_analytics_workspace_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xc2\x03\x92\xd4a\x1bstatus.outputs.workspace_idR\x17logAnalyticsWorkspaceId\x12\xc4\x01\n" +
-	"\x1elog_analytics_destination_type\x18\x06 \x01(\x0e2u.dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingLogAnalyticsDestinationTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x1blogAnalyticsDestinationType\x12\x8c\x01\n" +
-	"\x12storage_account_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xa6\x01\n" +
-	"\x1eeventhub_authorization_rule_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xdf\x03\x92\xd4a$status.outputs.authorization_rule_idR\x1beventhubAuthorizationRuleId\x12\x7f\n" +
-	"\reventhub_name\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xdd\x03\x92\xd4a\x1dstatus.outputs.event_hub_nameR\feventhubName\x12.\n" +
+	"\x1elog_analytics_destination_type\x18\x06 \x01(\x0e2u.dev.planton.provider.azure.azuremonitordiagnosticsetting.v1.AzureMonitorDiagnosticSettingLogAnalyticsDestinationTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x1blogAnalyticsDestinationType\x12\x90\x01\n" +
+	"\x12storage_account_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_id\x98\xd4a\x01R\x10storageAccountId\x12\xa6\x01\n" +
+	"\x1eeventhub_authorization_rule_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xdf\x03\x92\xd4a$status.outputs.authorization_rule_idR\x1beventhubAuthorizationRuleId\x12\x83\x01\n" +
+	"\reventhub_name\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xdd\x03\x92\xd4a\x1dstatus.outputs.event_hub_name\x98\xd4a\x01R\feventhubName\x12.\n" +
 	"\x13partner_solution_id\x18\n" +
 	" \x01(\tR\x11partnerSolutionId:\xba\x06\xbaH\xb6\x06\x1a\xd8\x01\n" +
 	"(diagnostic_setting_at_least_one_category\x12kenable at least one log or metric category -- a diagnostic setting that routes nothing is rejected by Azure\x1a?this.enabled_logs.size() > 0 || this.enabled_metrics.size() > 0\x1a\xde\x02\n" +

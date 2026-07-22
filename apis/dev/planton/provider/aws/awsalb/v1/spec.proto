@@ -206,6 +206,7 @@ message AwsAlbDns {
   // Required when enabled is true.
   dev.planton.shared.foreignkey.v1.StringValueOrRef route53_zone_id = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsRoute53Zone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
   ];
 

@@ -733,14 +733,14 @@ const file_dev_planton_provider_aws_awssesconfigurationset_v1_spec_proto_rawDesc
 	"\r_https_policy\"\xab\x01\n" +
 	" AwsSesConfigurationSetVdmOptions\x12<\n" +
 	"\x1aengagement_metrics_enabled\x18\x01 \x01(\bR\x18engagementMetricsEnabled\x12I\n" +
-	"!optimized_shared_delivery_enabled\x18\x02 \x01(\bR\x1eoptimizedSharedDeliveryEnabled\"\x8d\t\n" +
+	"!optimized_shared_delivery_enabled\x18\x02 \x01(\bR\x1eoptimizedSharedDeliveryEnabled\"\x91\t\n" +
 	"&AwsSesConfigurationSetEventDestination\x122\n" +
 	"\x04name\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x16\x10\x01\x18@2\x10^[a-zA-Z0-9_-]+$R\x04name\x12'\n" +
 	"\aenabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12\xa9\x01\n" +
 	"\x14matching_event_types\x18\x03 \x03(\tBw\xbaHt\x92\x01q\b\x01\x18\x01\"kriR\x04SENDR\x06REJECTR\x06BOUNCER\tCOMPLAINTR\bDELIVERYR\x04OPENR\x05CLICKR\x11RENDERING_FAILURER\x0eDELIVERY_DELAYR\fSUBSCRIPTIONR\x12matchingEventTypes\x12\x85\x01\n" +
 	"\vcloud_watch\x18\x04 \x01(\v2d.dev.planton.provider.aws.awssesconfigurationset.v1.AwsSesConfigurationSetEventDestinationCloudWatchR\n" +
-	"cloudWatch\x12p\n" +
-	"\tevent_bus\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xe3\x01\x92\xd4a\x16status.outputs.bus_arnR\beventBus\x12~\n" +
+	"cloudWatch\x12t\n" +
+	"\tevent_bus\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xe3\x01\x92\xd4a\x16status.outputs.bus_arn\x98\xd4a\x01R\beventBus\x12~\n" +
 	"\bfirehose\x18\x06 \x01(\v2b.dev.planton.provider.aws.awssesconfigurationset.v1.AwsSesConfigurationSetEventDestinationFirehoseR\bfirehose\x12r\n" +
 	"\tsns_topic\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe2\x01\x92\xd4a\x18status.outputs.topic_arnR\bsnsTopic\x128\n" +
 	"\x18pinpoint_application_arn\x18\b \x01(\tR\x16pinpointApplicationArn:\xa5\x02\xbaH\xa1\x02\x1a\x9e\x02\n" +

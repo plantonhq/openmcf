@@ -656,12 +656,12 @@ const file_dev_planton_provider_gcp_gcprouternat_v1_spec_proto_rawDesc = "" +
 	"\x17source_ip_ranges_to_nat\x18\x02 \x03(\tBH\xbaHE\x92\x01B\"@r>R\rALL_IP_RANGESR\x10PRIMARY_IP_RANGER\x1bLIST_OF_SECONDARY_IP_RANGESR\x13sourceIpRangesToNat\x127\n" +
 	"\x18secondary_ip_range_names\x18\x03 \x03(\tR\x15secondaryIpRangeNames:\x8f\x04\xbaH\x8b\x04\x1a\xfe\x01\n" +
 	"&secondary_names_require_secondary_mode\x12fsecondary_ip_range_names is required when source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES\x1al!('LIST_OF_SECONDARY_IP_RANGES' in this.source_ip_ranges_to_nat) || this.secondary_ip_range_names.size() > 0\x1a\x87\x02\n" +
-	"(secondary_names_only_with_secondary_mode\x12msecondary_ip_range_names is only meaningful when source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES\x1althis.secondary_ip_range_names.size() == 0 || ('LIST_OF_SECONDARY_IP_RANGES' in this.source_ip_ranges_to_nat)\"\xe2\x04\n" +
+	"(secondary_names_only_with_secondary_mode\x12msecondary_ip_range_names is only meaningful when source_ip_ranges_to_nat contains LIST_OF_SECONDARY_IP_RANGES\x1althis.secondary_ip_range_names.size() == 0 || ('LIST_OF_SECONDARY_IP_RANGES' in this.source_ip_ranges_to_nat)\"\xea\x04\n" +
 	"\x16GcpRouterNatRuleAction\x12\x88\x01\n" +
 	"\x15source_nat_active_ips\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xca\x05\x92\xd4a\x18status.outputs.self_linkR\x12sourceNatActiveIps\x12\x86\x01\n" +
-	"\x14source_nat_drain_ips\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xca\x05\x92\xd4a\x18status.outputs.self_linkR\x11sourceNatDrainIps\x12\x99\x01\n" +
-	"\x18source_nat_active_ranges\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\x15sourceNatActiveRanges\x12\x97\x01\n" +
-	"\x17source_nat_drain_ranges\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_linkR\x14sourceNatDrainRanges\"\xd8\x01\n" +
+	"\x14source_nat_drain_ips\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xca\x05\x92\xd4a\x18status.outputs.self_linkR\x11sourceNatDrainIps\x12\x9d\x01\n" +
+	"\x18source_nat_active_ranges\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_link\x98\xd4a\x01R\x15sourceNatActiveRanges\x12\x9b\x01\n" +
+	"\x17source_nat_drain_ranges\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xe3\x04\x92\xd4a#status.outputs.subnetwork_self_link\x98\xd4a\x01R\x14sourceNatDrainRanges\"\xd8\x01\n" +
 	"\x10GcpRouterNatRule\x12*\n" +
 	"\vrule_number\x18\x01 \x01(\rB\t\xbaH\x06*\x04\x18\xe8\xfb\x03R\n" +
 	"ruleNumber\x12\x1c\n" +

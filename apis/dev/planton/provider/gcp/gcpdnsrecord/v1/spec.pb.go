@@ -682,7 +682,7 @@ const file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDesc = "" +
 	" GcpDnsRecordHealthCheckedTargets\x12\x88\x01\n" +
 	"\x17internal_load_balancers\x18\x01 \x03(\v2P.dev.planton.provider.gcp.gcpdnsrecord.v1.GcpDnsRecordInternalLoadBalancerTargetR\x15internalLoadBalancers\x12-\n" +
 	"\x12external_endpoints\x18\x02 \x03(\tR\x11externalEndpoints:\xc6\x01\xbaH\xc2\x01\x1a\xbf\x01\n" +
-	"#health_checked_targets.at_least_one\x12Iat least one of internal_load_balancers or external_endpoints must be set\x1aMthis.internal_load_balancers.size() > 0 || this.external_endpoints.size() > 0\"\xf4\x05\n" +
+	"#health_checked_targets.at_least_one\x12Iat least one of internal_load_balancers or external_endpoints must be set\x1aMthis.internal_load_balancers.size() > 0 || this.external_endpoints.size() > 0\"\xf8\x05\n" +
 	"&GcpDnsRecordInternalLoadBalancerTarget\x12x\n" +
 	"\n" +
 	"ip_address\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x05\x92\xd4a\x16status.outputs.addressR\tipAddress\x123\n" +
@@ -690,8 +690,8 @@ const file_dev_planton_provider_gcp_gcpdnsrecord_v1_spec_proto_rawDesc = "" +
 	"R\x03tcpR\x03udpR\n" +
 	"ipProtocol\x12\xe7\x01\n" +
 	"\x12load_balancer_type\x18\x03 \x01(\tB\xb8\x01\xbaH\xb4\x01\xba\x01\xb0\x01\n" +
-	"\x18load_balancer_type.valid\x12Kload_balancer_type must be one of regionalL4ilb, regionalL7ilb, globalL7ilb\x1aGthis == '' || this in ['regionalL4ilb', 'regionalL7ilb', 'globalL7ilb']R\x10loadBalancerType\x12\x84\x01\n" +
-	"\vnetwork_url\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\n" +
+	"\x18load_balancer_type.valid\x12Kload_balancer_type must be one of regionalL4ilb, regionalL7ilb, globalL7ilb\x1aGthis == '' || this in ['regionalL4ilb', 'regionalL7ilb', 'globalL7ilb']R\x10loadBalancerType\x12\x88\x01\n" +
+	"\vnetwork_url\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\n" +
 	"networkUrl\x12\x1a\n" +
 	"\x04port\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04port\x12v\n" +
 	"\aproject\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\aproject\x12\x16\n" +

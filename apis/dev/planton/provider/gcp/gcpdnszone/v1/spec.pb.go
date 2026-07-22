@@ -672,12 +672,12 @@ const file_dev_planton_provider_gcp_gcpdnszone_v1_spec_proto_rawDesc = "" +
 	"\x11default_key_specs\x18\x02 \x03(\v2?.dev.planton.provider.gcp.gcpdnszone.v1.GcpDnsZoneDnssecKeySpecR\x0fdefaultKeySpecs\x12\x8e\x01\n" +
 	"\rnon_existence\x18\x03 \x01(\tBi\xbaHf\xba\x01c\n" +
 	"\x13non_existence_valid\x12#non_existence must be nsec or nsec3\x1a'this == '' || this in ['nsec', 'nsec3']R\fnonExistenceB\b\n" +
-	"\x06_state\"\xab\x01\n" +
-	"\"GcpDnsZonePrivateVisibilityNetwork\x12\x84\x01\n" +
-	"\vnetwork_url\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\n" +
-	"networkUrl\"\xb0\x01\n" +
-	"%GcpDnsZonePrivateVisibilityGkeCluster\x12\x86\x01\n" +
-	"\x10gke_cluster_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x19status.outputs.cluster_idR\x0egkeClusterName\"\xa8\x03\n" +
+	"\x06_state\"\xaf\x01\n" +
+	"\"GcpDnsZonePrivateVisibilityNetwork\x12\x88\x01\n" +
+	"\vnetwork_url\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\n" +
+	"networkUrl\"\xb4\x01\n" +
+	"%GcpDnsZonePrivateVisibilityGkeCluster\x12\x8a\x01\n" +
+	"\x10gke_cluster_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x19status.outputs.cluster_id\x98\xd4a\x01R\x0egkeClusterName\"\xa8\x03\n" +
 	"!GcpDnsZonePrivateVisibilityConfig\x12f\n" +
 	"\bnetworks\x18\x01 \x03(\v2J.dev.planton.provider.gcp.gcpdnszone.v1.GcpDnsZonePrivateVisibilityNetworkR\bnetworks\x12p\n" +
 	"\fgke_clusters\x18\x02 \x03(\v2M.dev.planton.provider.gcp.gcpdnszone.v1.GcpDnsZonePrivateVisibilityGkeClusterR\vgkeClusters:\xa8\x01\xbaH\xa4\x01\x1a\xa1\x01\n" +
@@ -690,9 +690,9 @@ const file_dev_planton_provider_gcp_gcpdnszone_v1_spec_proto_rawDesc = "" +
 	"\x15forwarding_path_valid\x12*forwarding_path must be default or private\x1a,this == '' || this in ['default', 'private']R\x0eforwardingPath:\x8c\x01\xbaH\x88\x01\x1a\x85\x01\n" +
 	"\x12target_has_address\x12<each target_name_server requires ipv4_address or domain_name\x1a1this.ipv4_address != '' || this.domain_name != ''\"\xa5\x01\n" +
 	"\x1aGcpDnsZoneForwardingConfig\x12\x86\x01\n" +
-	"\x13target_name_servers\x18\x01 \x03(\v2L.dev.planton.provider.gcp.gcpdnszone.v1.GcpDnsZoneForwardingTargetNameServerB\b\xbaH\x05\x92\x01\x02\b\x01R\x11targetNameServers\"\xa6\x01\n" +
-	"\x17GcpDnsZonePeeringConfig\x12\x8a\x01\n" +
-	"\x0etarget_network\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\rtargetNetwork\"\xb8\x10\n" +
+	"\x13target_name_servers\x18\x01 \x03(\v2L.dev.planton.provider.gcp.gcpdnszone.v1.GcpDnsZoneForwardingTargetNameServerB\b\xbaH\x05\x92\x01\x02\b\x01R\x11targetNameServers\"\xaa\x01\n" +
+	"\x17GcpDnsZonePeeringConfig\x12\x8e\x01\n" +
+	"\x0etarget_network\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\rtargetNetwork\"\xb8\x10\n" +
 	"\x0eGcpDnsZoneSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x81\x02\n" +

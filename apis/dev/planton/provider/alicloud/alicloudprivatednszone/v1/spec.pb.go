@@ -336,9 +336,9 @@ const file_dev_planton_provider_alicloud_alicloudprivatednszone_v1_spec_proto_ra
 	"\x04tags\x18\a \x03(\v2].dev.planton.provider.alicloud.alicloudprivatednszone.v1.AliCloudPrivateDnsZoneSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb3\x01\n" +
-	"#AliCloudPrivateDnsZoneVpcAttachment\x12o\n" +
-	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x1b\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb7\x01\n" +
+	"#AliCloudPrivateDnsZoneVpcAttachment\x12s\n" +
+	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_id\x98\xd4a\x01R\x05vpcId\x12\x1b\n" +
 	"\tregion_id\x18\x02 \x01(\tR\bregionId\"\xc1\x02\n" +
 	"\x1cAliCloudPrivateDnsZoneRecord\x12\x1a\n" +
 	"\x02rr\x18\x01 \x01(\tB\n" +

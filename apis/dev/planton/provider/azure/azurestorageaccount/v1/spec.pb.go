@@ -3580,13 +3580,13 @@ const file_dev_planton_provider_azure_azurestorageaccount_v1_spec_proto_rawDesc 
 	"'storage_account_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xce\x02\n" +
 	"%AzureStorageAccountCustomerManagedKey\x12\x89\x01\n" +
 	"\x10key_vault_key_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa9\x03\x92\xd4a\x1dstatus.outputs.versionless_idR\rkeyVaultKeyId\x12\x98\x01\n" +
-	"\x19user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId\"\xee\x04\n" +
+	"\x19user_assigned_identity_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x16userAssignedIdentityId\"\xf2\x04\n" +
 	"\x1fAzureStorageAccountNetworkRules\x12\x89\x01\n" +
 	"\x0edefault_action\x18\x01 \x01(\x0e2Z.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkDefaultActionB\x06\xbaH\x03\xc8\x01\x01R\rdefaultAction\x12z\n" +
 	"\x06bypass\x18\x02 \x03(\x0e2S.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountNetworkBypassB\r\xbaH\n" +
 	"\x92\x01\a\"\x05\x82\x01\x02\x10\x01R\x06bypass\x12$\n" +
-	"\bip_rules\x18\x03 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\x90\x03R\aipRules\x12\x92\x01\n" +
-	"\x1avirtual_network_subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x17virtualNetworkSubnetIds\x12\x87\x01\n" +
+	"\bip_rules\x18\x03 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\x90\x03R\aipRules\x12\x96\x01\n" +
+	"\x1avirtual_network_subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x17virtualNetworkSubnetIds\x12\x87\x01\n" +
 	"\x13private_link_access\x18\x05 \x03(\v2W.dev.planton.provider.azure.azurestorageaccount.v1.AzureStorageAccountPrivateLinkAccessR\x11privateLinkAccess\"\xb8\x01\n" +
 	"$AzureStorageAccountPrivateLinkAccess\x12<\n" +
 	"\x14endpoint_resource_id\x18\x01 \x01(\tB\n" +

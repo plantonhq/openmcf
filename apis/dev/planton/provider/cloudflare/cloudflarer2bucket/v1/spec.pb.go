@@ -1416,10 +1416,10 @@ const file_dev_planton_provider_cloudflare_cloudflarer2bucket_v1_spec_proto_rawD
 	"\aactions\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\aactions\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x16\n" +
 	"\x06prefix\x18\x03 \x01(\tR\x06prefix\x12\x16\n" +
-	"\x06suffix\x18\x04 \x01(\tR\x06suffix\"\x8e\x05\n" +
+	"\x06suffix\x18\x04 \x01(\tR\x06suffix\"\x92\x05\n" +
 	"$CloudflareR2BucketCustomDomainConfig\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12l\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12 \n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12p\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\x12 \n" +
 	"\x06domain\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xfd\x01R\x06domain\x12\xa6\x01\n" +
 	"\amin_tls\x18\x04 \x01(\tB\x8c\x01\xbaH\x88\x01\xba\x01\x84\x01\n" +
 	"\x1bcustom_domain_min_tls.valid\x121min_tls must be one of \"1.0\", \"1.1\", \"1.2\", \"1.3\"\x1a2this == '' || this in ['1.0', '1.1', '1.2', '1.3']R\x06minTls\x12\x18\n" +

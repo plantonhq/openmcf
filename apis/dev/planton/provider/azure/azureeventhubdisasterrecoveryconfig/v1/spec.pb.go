@@ -130,13 +130,13 @@ var File_dev_planton_provider_azure_azureeventhubdisasterrecoveryconfig_v1_spec_
 
 const file_dev_planton_provider_azure_azureeventhubdisasterrecoveryconfig_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ldev/planton/provider/azure/azureeventhubdisasterrecoveryconfig/v1/spec.proto\x12Adev.planton.provider.azure.azureeventhubdisasterrecoveryconfig.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8f\x05\n" +
+	"Ldev/planton/provider/azure/azureeventhubdisasterrecoveryconfig/v1/spec.proto\x12Adev.planton.provider.azure.azureeventhubdisasterrecoveryconfig.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x93\x05\n" +
 	"'AzureEventHubDisasterRecoveryConfigSpec\x12\xbd\x02\n" +
 	"\n" +
 	"alias_name\x18\x01 \x01(\tB\x9d\x02\xbaH\x99\x02\xba\x01\x8c\x02\n" +
 	"\x1eevent_hub_dr_alias_name_format\x12\x8a\x01alias_name must be up to 60 characters of letters, numbers, periods, hyphens, and underscores, starting and ending with a letter or number\x1a]this.matches('^[a-zA-Z0-9]$') || this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{0,58}[a-zA-Z0-9]$')\xc8\x01\x01r\x04\x10\x01\x18<R\taliasName\x12\x90\x01\n" +
-	"\x14primary_namespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\x03\x92\xd4a\x1bstatus.outputs.namespace_idR\x12primaryNamespaceId\x12\x90\x01\n" +
-	"\x14partner_namespace_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\x03\x92\xd4a\x1bstatus.outputs.namespace_idR\x12partnerNamespaceIdB\x89\x04\n" +
+	"\x14primary_namespace_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\x03\x92\xd4a\x1bstatus.outputs.namespace_idR\x12primaryNamespaceId\x12\x94\x01\n" +
+	"\x14partner_namespace_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\x03\x92\xd4a\x1bstatus.outputs.namespace_id\x98\xd4a\x01R\x12partnerNamespaceIdB\x89\x04\n" +
 	"Ecom.dev.planton.provider.azure.azureeventhubdisasterrecoveryconfig.v1B\tSpecProtoP\x01Z\x89\x01github.com/plantonhq/planton/apis/dev/planton/provider/azure/azureeventhubdisasterrecoveryconfig/v1;azureeventhubdisasterrecoveryconfigv1\xa2\x02\x05DPPAA\xaa\x02ADev.Planton.Provider.Azure.Azureeventhubdisasterrecoveryconfig.V1\xca\x02ADev\\Planton\\Provider\\Azure\\Azureeventhubdisasterrecoveryconfig\\V1\xe2\x02MDev\\Planton\\Provider\\Azure\\Azureeventhubdisasterrecoveryconfig\\V1\\GPBMetadata\xea\x02FDev::Planton::Provider::Azure::Azureeventhubdisasterrecoveryconfig::V1b\x06proto3"
 
 var (

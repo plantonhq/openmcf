@@ -932,10 +932,10 @@ const file_dev_planton_provider_aws_awsclientvpn_v1_spec_proto_rawDesc = "" +
 	"\x0faccess_group_id\x18\x02 \x01(\tR\raccessGroupId\x120\n" +
 	"\x14authorize_all_groups\x18\x03 \x01(\bR\x12authorizeAllGroups\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription:\xcc\x01\xbaH\xc8\x01\x1a\xc5\x01\n" +
-	"\x13exactly_one_grantee\x12sset exactly one of access_group_id (grant one IdP group) or authorize_all_groups (grant every authenticated client)\x1a9(this.access_group_id != '') != this.authorize_all_groups\"\xb6\x02\n" +
+	"\x13exactly_one_grantee\x12sset exactly one of access_group_id (grant one IdP group) or authorize_all_groups (grant every authenticated client)\x1a9(this.access_group_id != '') != this.authorize_all_groups\"\xba\x02\n" +
 	"\x11AwsClientVpnRoute\x12w\n" +
-	"\x16destination_cidr_block\x18\x01 \x01(\tBA\xbaH>\xc8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x14destinationCidrBlock\x12\x85\x01\n" +
-	"\x10target_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\x0etargetSubnetId\x12 \n" +
+	"\x16destination_cidr_block\x18\x01 \x01(\tBA\xbaH>\xc8\x01\x01r927^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$R\x14destinationCidrBlock\x12\x89\x01\n" +
+	"\x10target_subnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x0etargetSubnetId\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\"\xb3\x01\n" +
 	" AwsClientVpnClientConnectOptions\x12\x8e\x01\n" +
 	"\x13lambda_function_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xd1\x01\x92\xd4a\x1bstatus.outputs.function_arnR\x11lambdaFunctionArn\"G\n" +

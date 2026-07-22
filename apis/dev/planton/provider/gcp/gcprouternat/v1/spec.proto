@@ -83,12 +83,14 @@ message GcpRouterNatRuleAction {
   // traffic (private NAT only).
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_nat_active_ranges = 3 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
   ];
 
   // Subnetwork ranges being drained (private NAT only).
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef source_nat_drain_ranges = 4 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
   ];
 }

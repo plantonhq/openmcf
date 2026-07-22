@@ -334,9 +334,9 @@ const file_dev_planton_provider_alicloud_alicloudnatgateway_v1_spec_proto_rawDes
 	"\r_payment_typeB\x17\n" +
 	"\x15_internet_charge_typeB\x10\n" +
 	"\x0e_specificationB\x16\n" +
-	"\x14_deletion_protection\"\xe1\x01\n" +
-	"\x11AliCloudSnatEntry\x12\x82\x01\n" +
-	"\x11source_vswitch_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_idR\x0fsourceVswitchId\x12\x1f\n" +
+	"\x14_deletion_protection\"\xe5\x01\n" +
+	"\x11AliCloudSnatEntry\x12\x86\x01\n" +
+	"\x11source_vswitch_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xcd\x17\x92\xd4a\x19status.outputs.vswitch_id\x98\xd4a\x01R\x0fsourceVswitchId\x12\x1f\n" +
 	"\vsource_cidr\x18\x02 \x01(\tR\n" +
 	"sourceCidr\x12&\n" +
 	"\x0fsnat_entry_name\x18\x03 \x01(\tR\rsnatEntryNameB\xa3\x03\n" +

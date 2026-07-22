@@ -1715,7 +1715,7 @@ const file_dev_planton_provider_aws_awslaunchtemplate_v1_spec_proto_rawDesc = ""
 	"\x10throughput_range\x126throughput_mibps must be between 125 and 1000 when set\x1a]this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)\x1a\x80\x01\n" +
 	"\x17throughput_only_for_gp3\x12,throughput_mibps only applies to gp3 volumes\x1a7this.throughput_mibps == 0 || this.volume_type == 'gp3'\x1a\x8e\x01\n" +
 	"\x1fiops_only_for_provisioned_types\x12.iops only applies to gp3, io1, and io2 volumes\x1a;this.iops == 0 || this.volume_type in ['gp3', 'io1', 'io2']B\x18\n" +
-	"\x16_delete_on_termination\"\xcb\x0e\n" +
+	"\x16_delete_on_termination\"\xcf\x0e\n" +
 	"!AwsLaunchTemplateNetworkInterface\x12!\n" +
 	"\fdevice_index\x18\x01 \x01(\x05R\vdeviceIndex\x12,\n" +
 	"\x12network_card_index\x18\x02 \x01(\x05R\x10networkCardIndex\x12 \n" +
@@ -1723,8 +1723,8 @@ const file_dev_planton_provider_aws_awslaunchtemplate_v1_spec_proto_rawDesc = ""
 	"\x0einterface_type\x18\x04 \x01(\tR\rinterfaceType\x120\n" +
 	"\x14network_interface_id\x18\x05 \x01(\tR\x12networkInterfaceId\x12B\n" +
 	"\x1bassociate_public_ip_address\x18\x06 \x01(\bH\x00R\x18associatePublicIpAddress\x88\x01\x01\x127\n" +
-	"\x15delete_on_termination\x18\a \x01(\bH\x01R\x13deleteOnTermination\x88\x01\x01\x12r\n" +
-	"\tsubnet_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x8b\x01\n" +
+	"\x15delete_on_termination\x18\a \x01(\bH\x01R\x13deleteOnTermination\x88\x01\x01\x12v\n" +
+	"\tsubnet_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12\x8b\x01\n" +
 	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12,\n" +
 	"\x12private_ip_address\x18\n" +
 	" \x01(\tR\x10privateIpAddress\x12,\n" +

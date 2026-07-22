@@ -717,9 +717,9 @@ const file_dev_planton_provider_azure_azureeventhubnamespace_v1_spec_proto_rawDe
 	"\x15virtual_network_rules\x18\x05 \x03(\v2^.dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceVirtualNetworkRuleR\x13virtualNetworkRules:\xa8\x02\xbaH\xa4\x02\x1a\xa1\x02\n" +
 	"(event_hub_deny_requires_admitted_sources\x12\x95\x01default_action DENY needs at least one admitted source -- add ip_rules or virtual_network_rules, or the namespace would reject all data-plane traffic\x1a]this.default_action != 2 || this.ip_rules.size() > 0 || this.virtual_network_rules.size() > 0B \n" +
 	"\x1e_public_network_access_enabledB!\n" +
-	"\x1f_trusted_service_access_enabled\"\xc2\x02\n" +
-	"(AzureEventHubNamespaceVirtualNetworkRule\x12x\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12h\n" +
+	"\x1f_trusted_service_access_enabled\"\xc6\x02\n" +
+	"(AzureEventHubNamespaceVirtualNetworkRule\x12|\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12h\n" +
 	"/ignore_missing_virtual_network_service_endpoint\x18\x02 \x01(\bH\x00R*ignoreMissingVirtualNetworkServiceEndpoint\x88\x01\x01B2\n" +
 	"0_ignore_missing_virtual_network_service_endpoint*p\n" +
 	"\x19AzureEventHubNamespaceSku\x12-\n" +

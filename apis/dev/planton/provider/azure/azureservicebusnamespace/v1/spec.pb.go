@@ -772,9 +772,9 @@ const file_dev_planton_provider_azure_azureservicebusnamespace_v1_spec_proto_raw
 	"\rnetwork_rules\x18\x05 \x03(\v2[.dev.planton.provider.azure.azureservicebusnamespace.v1.AzureServiceBusNamespaceNetworkRuleR\fnetworkRules:\xbd\x02\xbaH\xb9\x02\x1a\xb6\x02\n" +
 	"*service_bus_deny_requires_admitted_sources\x12\xb0\x01default_action DENY needs at least one admitted source -- add ip_rules or network_rules, or the namespace would reject all data-plane traffic (Azure refuses this configuration)\x1aUthis.default_action != 2 || this.ip_rules.size() > 0 || this.network_rules.size() > 0B \n" +
 	"\x1e_public_network_access_enabledB\x1b\n" +
-	"\x19_trusted_services_allowed\"\x9d\x02\n" +
-	"#AzureServiceBusNamespaceNetworkRule\x12x\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12S\n" +
+	"\x19_trusted_services_allowed\"\xa1\x02\n" +
+	"#AzureServiceBusNamespaceNetworkRule\x12|\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12S\n" +
 	"$ignore_missing_vnet_service_endpoint\x18\x02 \x01(\bH\x00R ignoreMissingVnetServiceEndpoint\x88\x01\x01B'\n" +
 	"%_ignore_missing_vnet_service_endpoint*t\n" +
 	"\x1bAzureServiceBusNamespaceSku\x12/\n" +

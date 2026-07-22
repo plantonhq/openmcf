@@ -1048,13 +1048,13 @@ const file_dev_planton_provider_gcp_gcpalloydbcluster_v1_spec_proto_rawDesc = ""
 	"\x12DatabaseFlagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x8a\x01\xbaH\x86\x01\x1a\x83\x01\n" +
-	"\x1fmachine_config_mutual_exclusion\x120only one of cpu_count or machine_type may be set\x1a.this.cpu_count == 0 || this.machine_type == ''\"\x88\x17\n" +
+	"\x1fmachine_config_mutual_exclusion\x120only one of cpu_count or machine_type may be set\x1a.this.cpu_count == 0 || this.machine_type == ''\"\x8c\x17\n" +
 	"\x15GcpAlloydbClusterSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12O\n" +
 	"\fcluster_name\x18\x02 \x01(\tB,\xbaH)\xc8\x01\x01r$\x10\x02\x18?2\x1e^[a-z][a-z0-9-]{0,61}[a-z0-9]$R\vclusterName\x12\"\n" +
-	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12p\n" +
-	"\anetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_idR\anetwork\x12h\n" +
+	"\blocation\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\blocation\x12t\n" +
+	"\anetwork\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\anetwork\x12h\n" +
 	"\n" +
 	"psc_config\x18\x0e \x01(\v2I.dev.planton.provider.gcp.gcpalloydbcluster.v1.GcpAlloydbClusterPscConfigR\tpscConfig\x12\xa9\x01\n" +
 	"\fcluster_type\x18\x0f \x01(\tB\x80\x01\xbaHr\xba\x01o\n" +

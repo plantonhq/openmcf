@@ -1655,7 +1655,7 @@ var File_dev_planton_provider_gcp_gcpcloudsql_v1_spec_proto protoreflect.FileDes
 
 const file_dev_planton_provider_gcp_gcpcloudsql_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2dev/planton/provider/gcp/gcpcloudsql/v1/spec.proto\x12'dev.planton.provider.gcp.gcpcloudsql.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb88\n" +
+	"2dev/planton/provider/gcp/gcpcloudsql/v1/spec.proto\x12'dev.planton.provider.gcp.gcpcloudsql.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbc8\n" +
 	"\x0fGcpCloudSqlSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12M\n" +
@@ -1698,8 +1698,8 @@ const file_dev_planton_provider_gcp_gcpcloudsql_v1_spec_proto_rawDesc = "" +
 	"\x13encryption_key_name\x18\x1d \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xb3\x05\x92\xd4a\x15status.outputs.key_idR\x11encryptionKeyName\x12/\n" +
 	"\x13deletion_protection\x18\x1e \x01(\bR\x12deletionProtection\x12>\n" +
 	"\x1bdeletion_protection_enabled\x18\x1f \x01(\bR\x19deletionProtectionEnabled\x127\n" +
-	"\x18retain_backups_on_delete\x18  \x01(\bR\x15retainBackupsOnDelete\x12\x8b\x01\n" +
-	"\x14master_instance_name\x18! \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xdc\x04\x92\xd4a\x1cstatus.outputs.instance_nameR\x12masterInstanceName\x12}\n" +
+	"\x18retain_backups_on_delete\x18  \x01(\bR\x15retainBackupsOnDelete\x12\x8f\x01\n" +
+	"\x14master_instance_name\x18! \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xdc\x04\x92\xd4a\x1cstatus.outputs.instance_name\x98\xd4a\x01R\x12masterInstanceName\x12}\n" +
 	"\x15replica_configuration\x18\" \x01(\v2H.dev.planton.provider.gcp.gcpcloudsql.v1.GcpCloudSqlReplicaConfigurationR\x14replicaConfiguration\x123\n" +
 	"\rroot_password\x18# \x01(\tB\x0e\xbaH\a\xd8\x01\x01r\x02\x10\b\xa0\xa6\x1d\x01R\frootPassword\x1a@\n" +
 	"\x12DatabaseFlagsEntry\x12\x10\n" +
@@ -1738,9 +1738,9 @@ const file_dev_planton_provider_gcp_gcpcloudsql_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"\b_size_gbB\x0e\n" +
 	"\f_auto_resizeB\x14\n" +
-	"\x12_auto_resize_limit\"\x99\x16\n" +
-	"\x12GcpCloudSqlNetwork\x12\x7f\n" +
-	"\x0fprivate_network\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_idR\x0eprivateNetwork\x12!\n" +
+	"\x12_auto_resize_limit\"\x9e\x16\n" +
+	"\x12GcpCloudSqlNetwork\x12\x83\x01\n" +
+	"\x0fprivate_network\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\x0eprivateNetwork\x12!\n" +
 	"\fipv4_enabled\x18\x02 \x01(\bR\vipv4Enabled\x12v\n" +
 	"\x13authorized_networks\x18\x03 \x03(\v2E.dev.planton.provider.gcp.gcpcloudsql.v1.GcpCloudSqlAuthorizedNetworkR\x12authorizedNetworks\x12,\n" +
 	"\x12allocated_ip_range\x18\x04 \x01(\tR\x10allocatedIpRange\x12^\n" +

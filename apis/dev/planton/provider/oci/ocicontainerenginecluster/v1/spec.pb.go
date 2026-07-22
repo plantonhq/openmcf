@@ -1000,7 +1000,7 @@ var File_dev_planton_provider_oci_ocicontainerenginecluster_v1_spec_proto protor
 
 const file_dev_planton_provider_oci_ocicontainerenginecluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/oci/ocicontainerenginecluster/v1/spec.proto\x125dev.planton.provider.oci.ocicontainerenginecluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd0&\n" +
+	"@dev/planton/provider/oci/ocicontainerenginecluster/v1/spec.proto\x125dev.planton.provider.oci.ocicontainerenginecluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd4&\n" +
 	"\x1dOciContainerEngineClusterSpec\x12\x87\x01\n" +
 	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12o\n" +
 	"\x06vcn_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xe4\x19\x92\xd4a\x15status.outputs.vcn_idR\x05vcnId\x12\x12\n" +
@@ -1018,10 +1018,10 @@ const file_dev_planton_provider_oci_ocicontainerenginecluster_v1_spec_proto_rawD
 	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x124\n" +
 	"\x14is_public_ip_enabled\x18\x02 \x01(\bH\x00R\x11isPublicIpEnabled\x88\x01\x01\x12~\n" +
 	"\ansg_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xe6\x19\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIdsB\x17\n" +
-	"\x15_is_public_ip_enabled\x1a\xab\b\n" +
+	"\x15_is_public_ip_enabled\x1a\xaf\b\n" +
 	"\x0eClusterOptions\x12\xa8\x01\n" +
-	"\x19kubernetes_network_config\x18\x01 \x01(\v2l.dev.planton.provider.oci.ocicontainerenginecluster.v1.OciContainerEngineClusterSpec.KubernetesNetworkConfigR\x17kubernetesNetworkConfig\x12\x88\x01\n" +
-	"\x15service_lb_subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_idR\x12serviceLbSubnetIds\x12~\n" +
+	"\x19kubernetes_network_config\x18\x01 \x01(\v2l.dev.planton.provider.oci.ocicontainerenginecluster.v1.OciContainerEngineClusterSpec.KubernetesNetworkConfigR\x17kubernetesNetworkConfig\x12\x8c\x01\n" +
+	"\x15service_lb_subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x12serviceLbSubnetIds\x12~\n" +
 	"\vip_families\x18\x03 \x03(\x0e2].dev.planton.provider.oci.ocicontainerenginecluster.v1.OciContainerEngineClusterSpec.IpFamilyR\n" +
 	"ipFamilies\x12\x90\x01\n" +
 	"\x11service_lb_config\x18\x04 \x01(\v2d.dev.planton.provider.oci.ocicontainerenginecluster.v1.OciContainerEngineClusterSpec.ServiceLbConfigR\x0fserviceLbConfig\x12\xa5\x01\n" +

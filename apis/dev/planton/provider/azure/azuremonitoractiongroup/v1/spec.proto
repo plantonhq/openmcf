@@ -368,6 +368,7 @@ message AzureMonitorActionGroupEventHubReceiver {
   dev.planton.shared.foreignkey.v1.StringValueOrRef event_hub_name = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHub,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.event_hub_name"
   ];
 
@@ -376,6 +377,7 @@ message AzureMonitorActionGroupEventHubReceiver {
   dev.planton.shared.foreignkey.v1.StringValueOrRef event_hub_namespace = 3 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHubNamespace,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.namespace_name"
   ];
 

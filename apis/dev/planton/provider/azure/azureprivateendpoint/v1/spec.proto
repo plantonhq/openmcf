@@ -79,6 +79,7 @@ message AzurePrivateEndpointSpec {
   // without registration the FQDN resolves to the PUBLIC IP.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef private_dns_zone_ids = 6 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzurePrivateDnsZone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
   ];
 

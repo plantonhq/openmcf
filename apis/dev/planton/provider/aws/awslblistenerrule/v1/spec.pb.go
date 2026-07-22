@@ -1709,11 +1709,11 @@ const file_dev_planton_provider_aws_awslblistenerrule_v1_spec_proto_rawDesc = ""
 	"statusCode\x12+\n" +
 	"\fmessage_body\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vmessageBody:\xa2\x03\xbaH\x9e\x03\x1a\xf7\x01\n" +
 	"!fixed_response_content_type_valid\x12fcontent_type must be one of: text/plain, text/css, text/html, application/javascript, application/json\x1ajthis.content_type in ['text/plain', 'text/css', 'text/html', 'application/javascript', 'application/json']\x1a\xa1\x01\n" +
-	" fixed_response_status_code_valid\x124status_code must be a 2xx, 4xx, or 5xx code when set\x1aGthis.status_code == '' || this.status_code.matches('^[245][0-9][0-9]$')\"\xa3\t\n" +
-	"*AwsLbListenerRuleActionAuthenticateCognito\x12\x83\x01\n" +
-	"\ruser_pool_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1cstatus.outputs.user_pool_arnR\vuserPoolArn\x12\x8a\x01\n" +
-	"\x13user_pool_client_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x02\x92\xd4a\x18status.outputs.client_idR\x10userPoolClientId\x12\x8c\x01\n" +
-	"\x10user_pool_domain\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1fstatus.outputs.user_pool_domainR\x0euserPoolDomain\x12\xce\x01\n" +
+	" fixed_response_status_code_valid\x124status_code must be a 2xx, 4xx, or 5xx code when set\x1aGthis.status_code == '' || this.status_code.matches('^[245][0-9][0-9]$')\"\xab\t\n" +
+	"*AwsLbListenerRuleActionAuthenticateCognito\x12\x87\x01\n" +
+	"\ruser_pool_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1cstatus.outputs.user_pool_arn\x98\xd4a\x01R\vuserPoolArn\x12\x8a\x01\n" +
+	"\x13user_pool_client_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xe6\x02\x92\xd4a\x18status.outputs.client_idR\x10userPoolClientId\x12\x90\x01\n" +
+	"\x10user_pool_domain\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x1fstatus.outputs.user_pool_domain\x98\xd4a\x01R\x0euserPoolDomain\x12\xce\x01\n" +
 	"#authentication_request_extra_params\x18\x04 \x03(\v2\x7f.dev.planton.provider.aws.awslblistenerrule.v1.AwsLbListenerRuleActionAuthenticateCognito.AuthenticationRequestExtraParamsEntryR authenticationRequestExtraParams\x12<\n" +
 	"\x1aon_unauthenticated_request\x18\x05 \x01(\tR\x18onUnauthenticatedRequest\x12\x14\n" +
 	"\x05scope\x18\x06 \x01(\tR\x05scope\x12.\n" +

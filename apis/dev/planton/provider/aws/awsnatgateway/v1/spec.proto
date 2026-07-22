@@ -64,6 +64,7 @@ message AwsNatGatewaySpec {
   dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 3 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.options.diagram_label) = "in subnet",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
@@ -74,6 +75,7 @@ message AwsNatGatewaySpec {
   // changing it replaces the gateway.
   dev.planton.shared.foreignkey.v1.StringValueOrRef allocation_id = 4 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsElasticIp,
+    (dev.planton.shared.options.diagram_label) = "elastic ip",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.allocation_id"
   ];
 
@@ -88,6 +90,7 @@ message AwsNatGatewaySpec {
   // when connectivity_type is public.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef secondary_allocation_ids = 6 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsElasticIp,
+    (dev.planton.shared.options.diagram_label) = "secondary elastic ips",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.allocation_id"
   ];
 

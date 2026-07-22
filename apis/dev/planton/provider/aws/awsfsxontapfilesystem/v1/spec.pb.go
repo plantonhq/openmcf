@@ -452,7 +452,7 @@ var File_dev_planton_provider_aws_awsfsxontapfilesystem_v1_spec_proto protorefle
 
 const file_dev_planton_provider_aws_awsfsxontapfilesystem_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/aws/awsfsxontapfilesystem/v1/spec.proto\x121dev.planton.provider.aws.awsfsxontapfilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe35\n" +
+	"<dev/planton/provider/aws/awsfsxontapfilesystem/v1/spec.proto\x121dev.planton.provider.aws.awsfsxontapfilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe75\n" +
 	"\x19AwsFsxOntapFileSystemSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12=\n" +
 	"\x0fdeployment_type\x18\x02 \x01(\tB\x0f\x8a\xa6\x1d\vSINGLE_AZ_2H\x00R\x0edeploymentType\x88\x01\x01\x12>\n" +
@@ -467,8 +467,8 @@ const file_dev_planton_provider_aws_awsfsxontapfilesystem_v1_spec_proto_rawDesc 
 	"\x12security_group_ids\x18\n" +
 	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\xfa\x01\n" +
 	"\x19endpoint_ip_address_range\x18\v \x01(\tB\xbe\x01\xbaH\xba\x01\xba\x01\xb6\x01\n" +
-	"\x1dendpoint_ip_range_cidr_format\x12Lendpoint_ip_address_range must be an IPv4 CIDR block (e.g., '198.19.0.0/24')\x1aGthis == '' || this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$')R\x16endpointIpAddressRange\x12\x8a\x01\n" +
-	"\x0froute_table_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x05\x92\x01\x02\x102\x88\xd4a\x9c\x02\x92\xd4a\x1dstatus.outputs.route_table_idR\rrouteTableIds\x12q\n" +
+	"\x1dendpoint_ip_range_cidr_format\x12Lendpoint_ip_address_range must be an IPv4 CIDR block (e.g., '198.19.0.0/24')\x1aGthis == '' || this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$')R\x16endpointIpAddressRange\x12\x8e\x01\n" +
+	"\x0froute_table_ids\x18\f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x05\x92\x01\x02\x102\x88\xd4a\x9c\x02\x92\xd4a\x1dstatus.outputs.route_table_id\x98\xd4a\x01R\rrouteTableIds\x12q\n" +
 	"\n" +
 	"kms_key_id\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x122\n" +
 	"\x12fsx_admin_password\x18\x0e \x01(\tB\x04\xa0\xa6\x1d\x01R\x10fsxAdminPassword\x12\x95\x01\n" +

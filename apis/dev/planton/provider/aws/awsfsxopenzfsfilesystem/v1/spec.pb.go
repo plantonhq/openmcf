@@ -826,7 +826,7 @@ var File_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto protoref
 
 const file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/aws/awsfsxopenzfsfilesystem/v1/spec.proto\x123dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb13\n" +
+	">dev/planton/provider/aws/awsfsxopenzfsfilesystem/v1/spec.proto\x123dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb53\n" +
 	"\x1bAwsFsxOpenzfsFileSystemSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12=\n" +
 	"\x0fdeployment_type\x18\x02 \x01(\tB\x0f\x8a\xa6\x1d\vSINGLE_AZ_2H\x00R\x0edeploymentType\x88\x01\x01\x12B\n" +
@@ -839,8 +839,8 @@ const file_dev_planton_provider_aws_awsfsxopenzfsfilesystem_v1_spec_proto_rawDes
 	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x85\x01\n" +
 	"\x13preferred_subnet_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x129\n" +
 	"\x19endpoint_ip_address_range\x18\n" +
-	" \x01(\tR\x16endpointIpAddressRange\x12\x8a\x01\n" +
-	"\x0froute_table_ids\x18\v \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x05\x92\x01\x02\x102\x88\xd4a\x9c\x02\x92\xd4a\x1dstatus.outputs.route_table_idR\rrouteTableIds\x12q\n" +
+	" \x01(\tR\x16endpointIpAddressRange\x12\x8e\x01\n" +
+	"\x0froute_table_ids\x18\v \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x05\x92\x01\x02\x102\x88\xd4a\x9c\x02\x92\xd4a\x1dstatus.outputs.route_table_id\x98\xd4a\x01R\rrouteTableIds\x12q\n" +
 	"\n" +
 	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +
 	"\tbackup_id\x18\r \x01(\tR\bbackupId\x12\x99\x01\n" +

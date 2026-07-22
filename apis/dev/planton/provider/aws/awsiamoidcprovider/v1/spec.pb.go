@@ -139,10 +139,10 @@ var File_dev_planton_provider_aws_awsiamoidcprovider_v1_spec_proto protoreflect.
 
 const file_dev_planton_provider_aws_awsiamoidcprovider_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/aws/awsiamoidcprovider/v1/spec.proto\x12.dev.planton.provider.aws.awsiamoidcprovider.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb3\x02\n" +
+	"9dev/planton/provider/aws/awsiamoidcprovider/v1/spec.proto\x12.dev.planton.provider.aws.awsiamoidcprovider.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb7\x02\n" +
 	"\x16AwsIamOidcProviderSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12s\n" +
-	"\x03url\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xcf\x01\x92\xd4a\x1estatus.outputs.oidc_issuer_urlR\x03url\x129\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12w\n" +
+	"\x03url\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xcf\x01\x92\xd4a\x1estatus.outputs.oidc_issuer_url\x98\xd4a\x01R\x03url\x129\n" +
 	"\x0eclient_id_list\x18\x03 \x03(\tB\x13\xbaH\x10\x92\x01\r\b\x01\x18\x01\"\ar\x05\x10\x01\x18\xff\x01R\fclientIdList\x12H\n" +
 	"\x0fthumbprint_list\x18\x04 \x03(\tB\x1f\xbaH\x1c\x92\x01\x19\x18\x01\"\x15r\x132\x11^[0-9a-fA-F]{40}$R\x0ethumbprintListB\x85\x03\n" +
 	"2com.dev.planton.provider.aws.awsiamoidcprovider.v1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsiamoidcprovider/v1;awsiamoidcproviderv1\xa2\x02\x05DPPAA\xaa\x02.Dev.Planton.Provider.Aws.Awsiamoidcprovider.V1\xca\x02.Dev\\Planton\\Provider\\Aws\\Awsiamoidcprovider\\V1\xe2\x02:Dev\\Planton\\Provider\\Aws\\Awsiamoidcprovider\\V1\\GPBMetadata\xea\x023Dev::Planton::Provider::Aws::Awsiamoidcprovider::V1b\x06proto3"

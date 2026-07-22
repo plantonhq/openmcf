@@ -252,7 +252,7 @@ const file_dev_planton_provider_gcp_gcpvertexaiindexendpoint_v1_spec_proto_rawDe
 	"3GcpVertexAiIndexEndpointPrivateServiceConnectConfig\x12\x82\x02\n" +
 	"\x1eenable_private_service_connect\x18\x01 \x01(\bB\xbc\x01\xbaH\xb8\x01\xba\x01\xb4\x01\n" +
 	"\x17psc_enable_must_be_true\x12\x8a\x01enable_private_service_connect must be true when the Private Service Connect block is present — remove the block instead of disabling it\x1a\fthis == trueR\x1benablePrivateServiceConnect\x12+\n" +
-	"\x11project_allowlist\x18\x02 \x03(\tR\x10projectAllowlist\"\xad\v\n" +
+	"\x11project_allowlist\x18\x02 \x03(\tR\x10projectAllowlist\"\xb1\v\n" +
 	"\x1cGcpVertexAiIndexEndpointSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +
@@ -261,8 +261,8 @@ const file_dev_planton_provider_gcp_gcpvertexaiindexendpoint_v1_spec_proto_rawDe
 	"\fdisplay_name\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\vdisplayName\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x126\n" +
-	"\x17public_endpoint_enabled\x18\x05 \x01(\bR\x15publicEndpointEnabled\x12w\n" +
-	"\anetwork\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\xae\x01\n" +
+	"\x17public_endpoint_enabled\x18\x05 \x01(\bR\x15publicEndpointEnabled\x12{\n" +
+	"\anetwork\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\anetwork\x12\xae\x01\n" +
 	"\x1eprivate_service_connect_config\x18\a \x01(\v2i.dev.planton.provider.gcp.gcpvertexaiindexendpoint.v1.GcpVertexAiIndexEndpointPrivateServiceConnectConfigR\x1bprivateServiceConnectConfig\x12v\n" +
 	"\x06labels\x18\b \x03(\v2^.dev.planton.provider.gcp.gcpvertexaiindexendpoint.v1.GcpVertexAiIndexEndpointSpec.LabelsEntryR\x06labels\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +

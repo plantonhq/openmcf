@@ -502,7 +502,7 @@ const file_dev_planton_provider_gcp_gcpredisinstance_v1_spec_proto_rawDesc = "" 
 	"\x17rdb_snapshot_start_time\x18\x03 \x01(\tB\xe1\x01\xbaH\xdd\x01\xba\x01\xd9\x01\n" +
 	"\x1frdb_snapshot_start_time_rfc3339\x12Rrdb_snapshot_start_time must be an RFC3339 UTC timestamp like 2014-10-02T15:01:23Z\x1abthis == '' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?Z$')R\x14rdbSnapshotStartTime:\xef\x02\xbaH\xeb\x02\x1a\xab\x01\n" +
 	"%rdb_snapshot_period_requires_rdb_mode\x12<rdb_snapshot_period is required when persistence_mode is RDB\x1aDthis.persistence_mode != 'RDB' || size(this.rdb_snapshot_period) > 0\x1a\xba\x01\n" +
-	")rdb_snapshot_start_time_requires_rdb_mode\x12Grdb_snapshot_start_time is only meaningful when persistence_mode is RDB\x1aDthis.rdb_snapshot_start_time == '' || this.persistence_mode == 'RDB'\"\xaf\x17\n" +
+	")rdb_snapshot_start_time_requires_rdb_mode\x12Grdb_snapshot_start_time is only meaningful when persistence_mode is RDB\x1aDthis.rdb_snapshot_start_time == '' || this.persistence_mode == 'RDB'\"\xb3\x17\n" +
 	"\x14GcpRedisInstanceSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
@@ -515,9 +515,9 @@ const file_dev_planton_provider_gcp_gcpredisinstance_v1_spec_proto_rawDesc = "" 
 	"\fdisplay_name\x18\a \x01(\tR\vdisplayName\x12\x1f\n" +
 	"\vlocation_id\x18\b \x01(\tR\n" +
 	"locationId\x126\n" +
-	"\x17alternative_location_id\x18\t \x01(\tR\x15alternativeLocationId\x12\x8c\x01\n" +
+	"\x17alternative_location_id\x18\t \x01(\tR\x15alternativeLocationId\x12\x90\x01\n" +
 	"\x12authorized_network\x18\n" +
-	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_linkR\x11authorizedNetwork\x12\xc9\x01\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xe2\x04\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\x11authorizedNetwork\x12\xc9\x01\n" +
 	"\fconnect_mode\x18\v \x01(\tB\xa5\x01\xbaH\xa1\x01\xba\x01\x9d\x01\n" +
 	"\x18connect_mode_valid_value\x12=connect_mode must be DIRECT_PEERING or PRIVATE_SERVICE_ACCESS\x1aBthis == '' || this in ['DIRECT_PEERING', 'PRIVATE_SERVICE_ACCESS']R\vconnectMode\x12*\n" +
 	"\x11reserved_ip_range\x18\f \x01(\tR\x0freservedIpRange\x12,\n" +

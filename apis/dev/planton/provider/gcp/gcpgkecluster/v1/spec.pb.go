@@ -2587,9 +2587,9 @@ const file_dev_planton_provider_gcp_gcpgkecluster_v1_spec_proto_rawDesc = "" +
 	"\x05topic\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x94\x05\x92\xd4a\x17status.outputs.topic_idR\x05topic\x12\x85\x01\n" +
 	"\vevent_types\x18\x03 \x03(\tBd\xbaHa\xd8\x01\x01\x92\x01[\x18\x01\"WrUR\rUPGRADE_EVENTR\x17UPGRADE_AVAILABLE_EVENTR\x17SECURITY_BULLETIN_EVENTR\x12UPGRADE_INFO_EVENTR\n" +
 	"eventTypes:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
-	"\x16enabled_requires_topic\x12Qnotification_pubsub.enabled requires topic — the Pub/Sub topic GKE publishes to\x1a[!this.enabled || (has(this.topic) && (has(this.topic.value) || has(this.topic.value_from)))\"\xff\x02\n" +
-	" GcpGkeClusterResourceUsageExport\x12\x8c\x01\n" +
-	"\x13bigquery_dataset_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a\x05\x92\xd4a\x19status.outputs.dataset_idR\x11bigqueryDatasetId\x12C\n" +
+	"\x16enabled_requires_topic\x12Qnotification_pubsub.enabled requires topic — the Pub/Sub topic GKE publishes to\x1a[!this.enabled || (has(this.topic) && (has(this.topic.value) || has(this.topic.value_from)))\"\x83\x03\n" +
+	" GcpGkeClusterResourceUsageExport\x12\x90\x01\n" +
+	"\x13bigquery_dataset_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a\x05\x92\xd4a\x19status.outputs.dataset_id\x98\xd4a\x01R\x11bigqueryDatasetId\x12C\n" +
 	"\x1eenable_network_egress_metering\x18\x02 \x01(\bR\x1benableNetworkEgressMetering\x12^\n" +
 	"$enable_resource_consumption_metering\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R!enableResourceConsumptionMetering\x88\x01\x01B'\n" +
 	"%_enable_resource_consumption_metering\"\x9a\x06\n" +

@@ -2023,12 +2023,12 @@ var File_dev_planton_provider_gcp_gcpgkenodepool_v1_spec_proto protoreflect.File
 
 const file_dev_planton_provider_gcp_gcpgkenodepool_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5dev/planton/provider/gcp/gcpgkenodepool/v1/spec.proto\x12*dev.planton.provider.gcp.gcpgkenodepool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb5\r\n" +
+	"5dev/planton/provider/gcp/gcpgkenodepool/v1/spec.proto\x12*dev.planton.provider.gcp.gcpgkenodepool.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb9\r\n" +
 	"\x12GcpGkeNodePoolSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12y\n" +
-	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x13status.outputs.nameR\vclusterName\x12v\n" +
-	"\blocation\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x17status.outputs.locationR\blocation\x12Q\n" +
+	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x13status.outputs.nameR\vclusterName\x12z\n" +
+	"\blocation\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x17status.outputs.location\x98\xd4a\x01R\blocation\x12Q\n" +
 	"\x0enode_pool_name\x18\x04 \x01(\tB+\xbaH(\xd8\x01\x01r#2!^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$R\fnodePoolName\x12S\n" +
 	"\x0enode_locations\x18\x05 \x03(\tB,\xbaH)\xd8\x01\x01\x92\x01#\x18\x01\"\x1fr\x1d2\x1b^[a-z]+-[a-z]+[0-9]+-[a-z]$R\rnodeLocations\x12\x18\n" +
 	"\aversion\x18\x06 \x01(\tR\aversion\x12:\n" +

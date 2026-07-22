@@ -1162,11 +1162,11 @@ const file_dev_planton_provider_azure_azuremssqlserver_v1_spec_proto_rawDesc = "
 	"\x10start_ip_address\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02x\x01R\x0estartIpAddress\x120\n" +
 	"\x0eend_ip_address\x18\x03 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02x\x01R\fendIpAddress\"\x91\x02\n" +
+	"\xbaH\a\xc8\x01\x01r\x02x\x01R\fendIpAddress\"\x95\x02\n" +
 	"\"AzureMssqlServerVirtualNetworkRule\x12!\n" +
 	"\x04name\x18\x01 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x04name\x12x\n" +
-	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12N\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x04name\x12|\n" +
+	"\tsubnet_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12N\n" +
 	"$ignore_missing_vnet_service_endpoint\x18\x03 \x01(\bR ignoreMissingVnetServiceEndpoint\"\xeb\a\n" +
 	" AzureMssqlServerExtendedAuditing\x12\xaa\x01\n" +
 	"\x10storage_endpoint\x18\x01 \x01(\tB\x7f\xbaH|\xba\x01y\n" +

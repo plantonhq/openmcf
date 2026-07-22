@@ -149,6 +149,7 @@ message AliCloudSnatEntry {
   // VSwitch. Mutually exclusive with source_cidr.
   dev.planton.shared.foreignkey.v1.StringValueOrRef source_vswitch_id = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AliCloudVswitch,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vswitch_id"
   ];
 

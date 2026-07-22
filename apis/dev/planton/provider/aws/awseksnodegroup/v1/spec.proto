@@ -40,6 +40,7 @@ message AwsEksNodeGroupSpec {
   dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_name = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsEksCluster,
+    (dev.planton.shared.options.diagram_label) = "joins cluster",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.name"
   ];
 
@@ -52,6 +53,7 @@ message AwsEksNodeGroupSpec {
   dev.planton.shared.foreignkey.v1.StringValueOrRef node_role_arn = 3 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.options.diagram_label) = "assumes node role",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
   ];
 
@@ -64,6 +66,7 @@ message AwsEksNodeGroupSpec {
     (buf.validate.field).required = true,
     (buf.validate.field).repeated.min_items = 1,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.options.diagram_label) = "spans subnets",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
@@ -202,6 +205,7 @@ message AwsEksNodeGroupLaunchTemplate {
   dev.planton.shared.foreignkey.v1.StringValueOrRef launch_template_id = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsLaunchTemplate,
+    (dev.planton.shared.options.diagram_label) = "launched from template",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.launch_template_id"
   ];
 

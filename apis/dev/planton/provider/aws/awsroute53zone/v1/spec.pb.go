@@ -400,9 +400,9 @@ const file_dev_planton_provider_aws_awsroute53zone_v1_spec_proto_rawDesc = "" +
 	"\x1adelegation_set_public_only\x12gdelegation_set_id cannot be set for private zones (reusable delegation sets apply to public zones only)\x1a0!this.is_private || this.delegation_set_id == ''\x1a\x96\x01\n" +
 	" accelerated_recovery_public_only\x12;enable_accelerated_recovery cannot be set for private zones\x1a5!this.is_private || !this.enable_accelerated_recovery\x1a\xb3\x01\n" +
 	"\x19query_logging_public_only\x12hquery_logging cannot be set for private zones (Route 53 query logging supports public hosted zones only)\x1a,!this.is_private || !has(this.query_logging)\x1a\x96\x01\n" +
-	"\x12dnssec_public_only\x12Ydnssec cannot be set for private zones (DNSSEC signing supports public hosted zones only)\x1a%!this.is_private || !has(this.dnssec)\"\xae\x01\n" +
-	"\x1cAwsRoute53ZoneVpcAssociation\x12o\n" +
-	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x1d\n" +
+	"\x12dnssec_public_only\x12Ydnssec cannot be set for private zones (DNSSEC signing supports public hosted zones only)\x1a%!this.is_private || !has(this.dnssec)\"\xb2\x01\n" +
+	"\x1cAwsRoute53ZoneVpcAssociation\x12s\n" +
+	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_id\x98\xd4a\x01R\x05vpcId\x12\x1d\n" +
 	"\n" +
 	"vpc_region\x18\x02 \x01(\tR\tvpcRegion\"\xb7\x01\n" +
 	"\x1aAwsRoute53ZoneQueryLogging\x12\x98\x01\n" +

@@ -6470,7 +6470,7 @@ var File_dev_planton_provider_azure_azureakscluster_v1_spec_proto protoreflect.F
 
 const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8dev/planton/provider/azure/azureakscluster/v1/spec.proto\x12-dev.planton.provider.azure.azureakscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa7?\n" +
+	"8dev/planton/provider/azure/azureakscluster/v1/spec.proto\x12-dev.planton.provider.azure.azureakscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xab?\n" +
 	"\x13AzureAksClusterSpec\x12\x8c\x01\n" +
 	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x1e\n" +
 	"\x06region\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12\xf9\x01\n" +
@@ -6489,8 +6489,8 @@ const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = ""
 	"\x10kubelet_identity\x18\v \x01(\v2M.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterKubeletIdentityR\x0fkubeletIdentity\x12=\n" +
 	"\x13oidc_issuer_enabled\x18\f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x11oidcIssuerEnabled\x88\x01\x01\x12:\n" +
 	"\x19workload_identity_enabled\x18\r \x01(\bR\x17workloadIdentityEnabled\x126\n" +
-	"\x17private_cluster_enabled\x18\x0e \x01(\bR\x15privateClusterEnabled\x12\x82\x01\n" +
-	"\x13private_dns_zone_id\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_idR\x10privateDnsZoneId\x12L\n" +
+	"\x17private_cluster_enabled\x18\x0e \x01(\bR\x15privateClusterEnabled\x12\x86\x01\n" +
+	"\x13private_dns_zone_id\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x10privateDnsZoneId\x12L\n" +
 	"#private_cluster_public_fqdn_enabled\x18\x10 \x01(\bR\x1fprivateClusterPublicFqdnEnabled\x12\x8f\x01\n" +
 	"\x19api_server_access_profile\x18\x11 \x01(\v2T.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterApiServerAccessProfileR\x16apiServerAccessProfile\x12W\n" +
 	"!role_based_access_control_enabled\x18\x12 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x1droleBasedAccessControlEnabled\x88\x01\x01\x124\n" +
@@ -6847,9 +6847,9 @@ const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = ""
 	"\vsubnet_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"subnetName\"_\n" +
 	"$AzureAksClusterConfidentialComputing\x127\n" +
-	"\x18sgx_quote_helper_enabled\x18\x01 \x01(\bR\x15sgxQuoteHelperEnabled\"\xa6\x02\n" +
-	"\x1cAzureAksClusterWebAppRouting\x12u\n" +
-	"\fdns_zone_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x94\x03\x92\xd4a\x16status.outputs.zone_idR\n" +
+	"\x18sgx_quote_helper_enabled\x18\x01 \x01(\bR\x15sgxQuoteHelperEnabled\"\xaa\x02\n" +
+	"\x1cAzureAksClusterWebAppRouting\x12y\n" +
+	"\fdns_zone_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x94\x03\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\n" +
 	"dnsZoneIds\x12\x8e\x01\n" +
 	"\x18default_nginx_controller\x18\x02 \x01(\x0e2T.dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterNginxDefaultControllerR\x16defaultNginxController\"\xe4\x03\n" +
 	"!AzureAksClusterServiceMeshProfile\x12n\n" +
@@ -6858,9 +6858,9 @@ const file_dev_planton_provider_azure_azureakscluster_v1_spec_proto_rawDesc = ""
 	"\xbaH\a\x92\x01\x04\b\x01\x10\x02R\trevisions\x12G\n" +
 	" internal_ingress_gateway_enabled\x18\x03 \x01(\bR\x1dinternalIngressGatewayEnabled\x12G\n" +
 	" external_ingress_gateway_enabled\x18\x04 \x01(\bR\x1dexternalIngressGatewayEnabled\x12\x92\x01\n" +
-	"\x15certificate_authority\x18\x05 \x01(\v2].dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthorityR\x14certificateAuthority\"\x8d\x03\n" +
-	".AzureAksClusterServiceMeshCertificateAuthority\x12\x80\x01\n" +
-	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_idR\n" +
+	"\x15certificate_authority\x18\x05 \x01(\v2].dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthorityR\x14certificateAuthority\"\x91\x03\n" +
+	".AzureAksClusterServiceMeshCertificateAuthority\x12\x84\x01\n" +
+	"\fkey_vault_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\x03\x92\xd4a\x1bstatus.outputs.key_vault_id\x98\xd4a\x01R\n" +
 	"keyVaultId\x129\n" +
 	"\x15root_cert_object_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x12rootCertObjectName\x12;\n" +
 	"\x16cert_chain_object_name\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13certChainObjectName\x120\n" +

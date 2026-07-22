@@ -209,6 +209,7 @@ message AliCloudFunctionVpcConfig {
   // but required in the Planton model for explicit cross-component wiring.
   dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AliCloudVpc,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
   ];
 
