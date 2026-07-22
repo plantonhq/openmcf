@@ -30,14 +30,13 @@ func buildRules(rules []*kubernetestlsroutev1.KubernetesTlsRouteRule) gatewayv1.
 // Optional fields are only set when present so controller defaults flow through.
 // TLS routes have no per-backend filters.
 //
-// Note: backend_refs is a plain reference, not an Planton foreign key (DD-009).
-// Infra-chart authors express the route -> backend dependency via
-// metadata.relationships (type: uses) when the backend is Planton-managed.
+// Each backend's name is a KubernetesService foreign key resolved to its
+// literal value before the module runs, so GetValue() returns the final name.
 func buildBackendRefs(backendRefs []*kubernetesapis.KubernetesGatewayApiBackendRef) gatewayv1.TLSRouteSpecRulesBackendRefsArray {
 	arr := gatewayv1.TLSRouteSpecRulesBackendRefsArray{}
 	for _, b := range backendRefs {
 		args := gatewayv1.TLSRouteSpecRulesBackendRefsArgs{
-			Name: pulumi.String(b.GetName()),
+			Name: pulumi.String(b.GetName().GetValue()),
 		}
 		if group := b.GetGroup(); group != "" {
 			args.Group = pulumi.String(group)

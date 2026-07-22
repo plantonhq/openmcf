@@ -1,14 +1,13 @@
 # KubernetesTcpRoute Pulumi Module
 
 This Pulumi module creates a namespaced Kubernetes Gateway API `TCPRoute` on a
-target cluster using the typed crd2pulumi SDK. TCPRoute is an experimental-channel
-resource served as `gateway.networking.k8s.io/v1alpha2`.
+target cluster using the typed crd2pulumi SDK. TCPRoute is a GA standard-channel
+resource served as `gateway.networking.k8s.io/v1`.
 
 ## Prerequisites
 
-- The Gateway API **experimental-channel** CRDs must already be installed on the
-  cluster (`KubernetesGatewayApiCrds` with `install_channel: experimental`). The
-  standard channel has no TCPRoute CRD.
+- The Gateway API standard-channel CRDs must already be installed on the
+  cluster (`KubernetesGatewayApiCrds`).
 - A `Gateway` the route attaches to via `parentRefs`, with a `TCP` listener
   (see `KubernetesGateway`).
 - The target namespace must exist (see `KubernetesNamespace`).
@@ -42,12 +41,6 @@ export STACK_INPUT_YAML_FILE=../hack/manifest.yaml
 pulumi up
 ```
 
-## Debug
-
-```bash
-bash debug.sh ../hack/manifest.yaml
-```
-
 ## Outputs
 
 | Output | Description |
@@ -63,15 +56,19 @@ pulumi/
 ├── Pulumi.yaml          # Pulumi project configuration
 ├── Makefile             # Build automation
 ├── README.md            # This file
-├── overview.md          # Architecture overview
-├── debug.sh             # Local preview helper
 └── module/
-    ├── main.go          # Resource creation (typed NewTCPRoute, v1alpha2)
+    ├── main.go          # Resource creation (typed NewTCPRoute, v1)
     ├── locals.go        # Computed values + resolved foreign keys
     ├── outputs.go       # Stack output constant names
     ├── parent_refs.go   # parentRefs (attached Gateways) mapping
     └── rules.go         # Rule + backend ref mapping (no matches/filters for TCPRoute)
 ```
+
+The route's `StringValueOrRef` foreign keys (`namespace`, `parentRefs[].name`,
+`backendRefs[].name`) arrive resolved to literal strings in the stack input;
+the module reads their final values directly. No await/wait logic is attached:
+Accepted/ResolvedRefs conditions belong to the Gateway controller's
+reconciliation, not to applying the resource.
 
 ## References
 

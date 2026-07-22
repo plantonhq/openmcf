@@ -1,0 +1,31 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesgatewayclass
+spec:
+  # One kubectl_manifest applying the Gateway API GatewayClass CR. The composed
+  # import ID is apiVersion//kind//name — apiVersion and kind are
+  # constants of this module (it renders exactly one GVK), declared as
+  # literals.
+  values:
+    - name: api_version
+      derivations:
+        - literal: gateway.networking.k8s.io/v1
+      where_to_find: >-
+        Always "gateway.networking.k8s.io/v1" — the module pins the served
+        standard-channel version.
+    - name: kind
+      derivations:
+        - literal: GatewayClass
+      where_to_find: Always "GatewayClass" — the CR kind this module applies.
+    - name: name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: gateway_class_name
+      where_to_find: >-
+        The GatewayClass's metadata.name (equals the Planton resource name) —
+        `kubectl get gatewayclasss` (NAME column).
+    - name: namespace
+      where_to_find: >-
+        Not applicable — GatewayClass is cluster-scoped, so the composed import ID
+        has no namespace segment (the optional [//{namespace}] group drops).

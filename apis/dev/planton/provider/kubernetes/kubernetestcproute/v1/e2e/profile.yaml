@@ -3,7 +3,7 @@ kind: ComponentE2EProfile
 metadata:
   name: kubernetestcproute
 spec:
-  tier: 4
+  tier: 1
   status: green
   validated_provisioners:
     - pulumi

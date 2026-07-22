@@ -11,7 +11,17 @@ authored, in two tiers:
 | Tier | Kind | Location | Owns |
 |------|------|----------|------|
 | Provider | `ProviderImportCatalog` | `apis/dev/planton/provider/{provider}/aa_import/catalog.yaml` | Import-ID **format** per resource type (`"{bucket}"`, `"{vpc_id}"`), plus `config_only_attributes` — attributes that exist only in IaC configuration and can never round-trip through import |
-| Component | `ComponentImportMap` | `{component}/v1/iac/import-map.yaml` | The **value source** per `{placeholder}`: metadata.name (optionally with a literal suffix, for convention-named satellites like `<name>-hpa`), a spec field, a stack output, a pasted ARN's part, or the enumerated address's instance key — with "where to find this" guidance for anything only the user can supply |
+| Component | `ComponentImportMap` | `{component}/v1/iac/import-map.yaml` | The **value source** per `{placeholder}`: metadata.name (optionally with a literal suffix, for convention-named satellites like `<name>-hpa`), a spec field, a stack output, a pasted ARN's part, the enumerated address's instance key, or a module-hardcoded literal (a typed-CR module's apiVersion/kind) — with "where to find this" guidance for anything only the user can supply |
+
+An id_format has two optionality forms, with deliberately different literal
+handling: `{name?}` renders as the empty string when unresolved and KEEPS its
+surrounding literal delimiters (the DynamoDB `index:{index_name?}/` shape),
+while a bracketed segment group like `[//{namespace}]` disappears WHOLESALE —
+delimiters included — when its placeholder does not resolve. The group form
+exists for composed IDs whose provider rejects a trailing delimiter:
+`kubectl_manifest` imports namespaced CRs as
+`apiVersion//kind//name//namespace` and cluster-scoped CRs as the 3-part
+`apiVersion//kind//name`, never with a trailing `//`.
 
 Both are proto-backed KRM documents (`iac.planton.dev/v1`, protos under
 `apis/dev/planton/iac/`), parsed through `pkg/protobufyaml` like the E2E
@@ -100,6 +110,21 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kubernetesexternalsecretsoperator` | 2026-07-22, both scenarios (Helm release + created namespace) | `helm_release` install-time attributes (config-only, see the catalog row) |
 | `kubernetesingressnginx` | 2026-07-22, all 3 scenarios (Helm release + created namespace; multi-instance scenario re-imports alongside a live sibling controller) | `helm_release` install-time attributes (config-only, see the catalog row); the module's controller-Service data source is a read, not an imported resource |
 | `kubernetesmetricsserver` | 2026-07-22, both scenarios (Helm release + created namespace) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetesgatewayclass` | 2026-07-22, both scenarios (the composed 3-part cluster-scoped ID — the `[//{namespace}]` segment group drops) | `kubectl_manifest` provider-side knobs (config-only) + `yaml_body`/`yaml_body_parsed` (write-normalized: the importer stores the stripped live object), see the catalog row |
+| `kubernetesgateway` | 2026-07-22, all 3 scenarios (incl. the composed GatewayClass-fixture FK) | same `kubectl_manifest` tolerances |
+| `kuberneteslistenerset` | 2026-07-22, both scenarios (incl. the composed Gateway-fixture parent FK) | same `kubectl_manifest` tolerances |
+| `kuberneteshttproute` | 2026-07-22, all 3 scenarios (incl. the composed Gateway + Service fixture chain) | same `kubectl_manifest` tolerances |
+| `kubernetesgrpcroute` | 2026-07-22, both scenarios | same `kubectl_manifest` tolerances |
+| `kubernetestcproute` | 2026-07-22, both scenarios | same `kubectl_manifest` tolerances |
+| `kubernetesudproute` | 2026-07-22, both scenarios | same `kubectl_manifest` tolerances |
+| `kubernetestlsroute` | 2026-07-22, both scenarios | same `kubectl_manifest` tolerances |
+| `kubernetesreferencegrant` | 2026-07-22, both scenarios | same `kubectl_manifest` tolerances |
+| `kubernetesclusterissuer` | 2026-07-22, self-signed scenario (cluster-scoped 3-part composed ID) | same `kubectl_manifest` tolerances; credential Secrets derive blind via `from_address_key` (the module keys them by Secret name) — the self-signed scenario materializes none, so those recipes are offline-validated only |
+| `kubernetesissuer` | 2026-07-22, self-signed + composed CA-chain scenarios | same `kubectl_manifest` tolerances; credential-Secret recipes offline-validated only (see `kubernetesclusterissuer`) |
+| `kubernetescertificate` | 2026-07-22, minimal + full-surface scenarios (real issuance fixture chain) | same `kubectl_manifest` tolerances |
+| `kubernetesclustersecretstore` | 2026-07-22, fake-backend scenario (cluster-scoped 3-part composed ID) | same `kubectl_manifest` tolerances; the conditional `<name>-credentials` Secret derives via `from_address_key` / `from_metadata_name_suffix` — the fake backend declares no credentials, so that recipe is offline-validated only |
+| `kubernetessecretstore` | 2026-07-22, fake-backend scenario | same as `kubernetesclustersecretstore` |
+| `kubernetesexternalsecret` | 2026-07-22, both scenarios (incl. the real sync-loop fixture chain) | same `kubectl_manifest` tolerances |
 
 Kinds where an import map is **deliberately not applicable** (recorded so
 absence is never mistaken for an oversight):
@@ -107,7 +132,7 @@ absence is never mistaken for an oversight):
 | Component | Why no import map |
 |-----------|-------------------|
 | `kubernetesmanifest` | The kind's state is arbitrary user YAML — there is no per-kind resource schema for a blind round-trip oracle to compare against; each deployment's resource set is defined by the manifest itself. Adopting existing raw resources is done by pasting their YAML into `spec.manifest_yaml` and applying (server-side apply takes ownership of unmanaged fields). |
-| `kubernetesclusterissuer`, `kubernetesissuer`, `kubernetescertificate`, `kubernetesclustersecretstore`, `kubernetessecretstore`, `kubernetesexternalsecret` | Deliberately deferred, not skipped: these kinds apply typed CRs through `kubectl_manifest`, whose importer takes a COMPOSED ID (`apiVersion//kind//name[//namespace]`). The provider catalog's id_format vocabulary has no composed-segments derivation yet, so an authored map could not be honestly proven. Author these maps together with the catalog uplift when the next `kubectl_manifest`-backed kinds land (the store kinds also carry a conditional credential Secret whose name derives as `<metadata.name>-credentials`). |
+| `kubernetesgatewayapicrds` (and other multi-document CRD-bundle installers) | The module applies a fetched multi-document bundle with one `kubectl_manifest` per document, keyed by the SPLIT INDEX — a positional key, never identity. The composed import ID needs each document's own apiVersion/kind/name triple, and no single derivation can honestly feed three placeholders per positional address. Adopting an existing CRD install is done by applying over it (server-side apply with force_conflicts takes ownership). |
 
 ## Adding a kind
 

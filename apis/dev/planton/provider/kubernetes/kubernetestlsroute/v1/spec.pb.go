@@ -29,7 +29,7 @@ const (
 // unmodified, to backend Services (TLS passthrough). The route attaches to a
 // Gateway listener of protocol TLS through parent_refs.
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 TLSRouteSpec
+// 100% fidelity with the upstream Gateway API v1.6.1 TLSRouteSpec
 // (kubernetes-sigs/gateway-api apis/v1/tlsroute_types.go), standard channel.
 // TLSRoute graduated to the standard channel and is served as
 // gateway.networking.k8s.io/v1 (it was experimental v1alpha2/v1alpha3 in earlier
@@ -48,23 +48,9 @@ type KubernetesTlsRouteSpec struct {
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// References to the parent resources (usually Gateways) this route attaches
 	// to. Each parent must have a TLS listener that allows attachment from
-	// TLSRoutes of this namespace.
-	//
-	// INFRA-CHART COMPOSABILITY (DD-009): parent_refs is a PLAIN reference, not an
-	// Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-	// objects, so wrapping its scalars in StringValueOrRef would break 100% upstream
-	// fidelity (DD-001) and distort the typed CRD shape (dont-do #6). Because a plain
-	// string creates NO automatic DAG edge, an infra-chart author MUST express the
-	// route -> Gateway dependency via metadata.relationships, e.g.:
-	//
-	//	metadata:
-	//	  relationships:
-	//	    - kind: KubernetesGateway
-	//	      name: "{{ values.env }}-gateway"
-	//	      type: depends_on
-	//
-	// The plain `name` here is then the literal Gateway name. See the component's
-	// "Composing in Infra Charts" docs for the full pattern.
+	// TLSRoutes of this namespace. Each reference's name defaults to a
+	// KubernetesGateway foreign key — wire it with valueFrom in an infra chart
+	// and the route deploys after its Gateway.
 	//
 	// Flattened from the upstream CommonRouteSpec.
 	ParentRefs []*kubernetes.KubernetesGatewayApiParentReference `protobuf:"bytes,3,rep,name=parent_refs,json=parentRefs,proto3" json:"parent_refs,omitempty"`
@@ -168,23 +154,9 @@ type KubernetesTlsRouteRule struct {
 	Name *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	// Backends matching connections are forwarded to. When multiple backends are
 	// given, traffic is split by weight. At least one backend is required.
-	// Upstream support level: Core for Kubernetes Service.
-	//
-	// INFRA-CHART COMPOSABILITY (DD-009): backend_refs is a PLAIN reference, not an
-	// Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-	// objects, so wrapping its scalars would break 100% fidelity (DD-001) and distort
-	// the typed CRD shape (dont-do #6). Because a plain string creates NO automatic
-	// DAG edge, an infra-chart author MUST express the route -> backend dependency via
-	// metadata.relationships when the backend is an Planton-managed resource, e.g.:
-	//
-	//	metadata:
-	//	  relationships:
-	//	    - kind: KubernetesService   # or the backend's actual kind
-	//	      name: "{{ values.service_name }}"
-	//	      type: uses
-	//
-	// The plain `name` here is then the literal Kubernetes Service name. See the
-	// component's "Composing in Infra Charts" docs for the full pattern.
+	// Upstream support level: Core for Kubernetes Service. Each backend's name
+	// defaults to a KubernetesService foreign key — wire it with valueFrom in an
+	// infra chart and the route deploys after its backend.
 	BackendRefs   []*kubernetes.KubernetesGatewayApiBackendRef `protobuf:"bytes,2,rep,name=backend_refs,json=backendRefs,proto3" json:"backend_refs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -238,13 +210,13 @@ var File_dev_planton_provider_kubernetes_kubernetestlsroute_v1_spec_proto protor
 
 const file_dev_planton_provider_kubernetes_kubernetestlsroute_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kubernetestlsroute/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestlsroute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf1\x04\n" +
+	"@dev/planton/provider/kubernetes/kubernetestlsroute/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestlsroute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xf2\x04\n" +
 	"\x16KubernetesTlsRouteSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
-	"parentRefs\x12\x88\x02\n" +
-	"\thostnames\x18\x04 \x03(\tB\xe9\x01\xbaH\xe5\x01\xba\x01\x87\x01\n" +
-	"\x19tls_route.hostnames_no_ip\x12/SNI hostnames cannot be IP addresses (RFC 6066)\x1a9this.all(h, !h.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$'))\x92\x01W\b\x01\x10\x10\"QrO\x10\x01\x18\xfd\x012H^(\\*\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\thostnames\x12o\n" +
+	"parentRefs\x12\x89\x02\n" +
+	"\thostnames\x18\x04 \x03(\tB\xea\x01\xbaH\xe6\x01\xba\x01\x87\x01\n" +
+	"\x19tls_route.hostnames_no_ip\x12/SNI hostnames cannot be IP addresses (RFC 6066)\x1a9this.all(h, !h.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$'))\x92\x01X\b\x01\x10\x80\b\"QrO\x10\x01\x18\xfd\x012H^(\\*\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\thostnames\x12o\n" +
 	"\x05rules\x18\x05 \x03(\v2M.dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteRuleB\n" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10\x01R\x05rules\"\xf9\x01\n" +
 	"\x16KubernetesTlsRouteRule\x12f\n" +

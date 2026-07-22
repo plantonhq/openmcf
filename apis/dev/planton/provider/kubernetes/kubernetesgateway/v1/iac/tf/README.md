@@ -1,10 +1,16 @@
 # KubernetesGateway Terraform Module
 
-Creates a namespaced Kubernetes Gateway API `Gateway` via the
-`kubernetes_manifest` resource. The Gateway API CRDs must already be installed
-on the target cluster (see `KubernetesGatewayApiCrds`), a controller-backed
-`GatewayClass` must exist (see `KubernetesGatewayClass`), and the target
-namespace must exist (see `KubernetesNamespace`).
+Creates a namespaced Kubernetes Gateway API `Gateway` via the `kubectl_manifest`
+resource (alekc/kubectl provider, apiVersion `gateway.networking.k8s.io/v1`,
+server-side apply). Unlike `kubernetes_manifest`, `kubectl_manifest` needs no
+cluster connection at plan time, so the Gateway can be planned before the
+Gateway API CRDs exist -- which is what lets an infra chart deploy the CRDs, a
+GatewayClass, the Gateway, and its routes in a single run (and lets offline plan
+proofs work).
+
+Prerequisites at apply time: the Gateway API CRDs (`KubernetesGatewayApiCrds`),
+a controller-backed `GatewayClass` (see `KubernetesGatewayClass`), and the
+target namespace (see `KubernetesNamespace`).
 
 ## Usage
 
@@ -23,9 +29,19 @@ terraform apply -var-file=terraform.tfvars.json
 
 ## Inputs
 
-See `variables.tf` for the full variable specification. `namespace` and
-`gateway_class_name` are plain strings: the platform resolves their
-`StringValueOrRef` foreign keys to literals before Terraform runs.
+See `variables.tf` for the full variable specification. The spec arrives from
+the proto->tfvars converter already manifest-shaped (camelCase keys,
+null-pruned), with every `StringValueOrRef` foreign key -- `namespace`,
+`gateway_class_name` (KubernetesGatewayClass), `certificateRefs[].name`
+(KubernetesSecret), frontend `caCertificateRefs[].name` (KubernetesConfigMap)
+-- resolved to a literal string before Terraform runs.
+
+## State Import
+
+Existing Gateways can be adopted into state. `kubectl_manifest` uses the
+composed import ID `apiVersion//kind//name//namespace`; the component's
+`iac/import-map.yaml` derives each part (apiVersion and kind are constants of
+this module).
 
 ## Outputs
 

@@ -36,12 +36,6 @@ export STACK_INPUT_YAML_FILE=../hack/manifest.yaml
 pulumi up
 ```
 
-## Debug
-
-```bash
-bash debug.sh ../hack/manifest.yaml
-```
-
 ## Outputs
 
 | Output | Description |
@@ -57,13 +51,14 @@ pulumi/
 ├── Pulumi.yaml       # Pulumi project configuration
 ├── Makefile          # Build automation
 ├── README.md         # This file
-├── overview.md       # Architecture overview
-├── debug.sh          # Local preview helper
 └── module/
     ├── main.go       # Resource creation (typed NewGatewayClass)
     ├── locals.go     # Computed values
     └── outputs.go    # Stack output constant names
 ```
+
+No await/wait logic is attached: the Accepted condition belongs to the named
+controller's reconciliation, not to applying the resource.
 
 ## References
 

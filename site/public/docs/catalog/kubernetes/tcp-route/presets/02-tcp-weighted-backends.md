@@ -27,13 +27,17 @@ Connection rejections (for invalid backends) respect weight too.
 
 - **`backendRefs[].weight`** -- relative share of connections per backend,
   computed as `weight / sum(weights)`. Here 90/10 sends ~10% to the canary.
+- **`parentRefs[].name` / `backendRefs[].name` are foreign keys** -- write
+  `value: <literal>` for existing resources, or `valueFrom:` to reference a
+  Planton-managed `KubernetesGateway` / `KubernetesService` and deploy in
+  dependency order.
 - A TCP route has no matching; all connections on the listener are split across
   the rule's weighted backends.
 
 ## Prerequisites
 
-- The Gateway API **experimental-channel** CRDs are installed
-  (`KubernetesGatewayApiCrds` with `install_channel: experimental`).
+- The Gateway API CRDs are installed (`KubernetesGatewayApiCrds`). TCPRoute is
+  part of the standard channel as of Gateway API v1.6.
 - The `Gateway` referenced in `parentRefs` exists (`KubernetesGateway`) with a
   `TCP` listener.
 - The target namespace exists (`KubernetesNamespace`).
@@ -46,7 +50,7 @@ Connection rejections (for invalid backends) respect weight too.
 | `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to. |
 | `<stable-service>` | Name of the current (stable) backend Service. |
 | `<canary-service>` | Name of the new (canary) backend Service. |
-| `<service-port>` | Backend Service port. |
 
-Tune the `weight` values to control the split; set `spec.namespace.value` to your
-namespace, or replace it with a `valueFrom` reference to a `KubernetesNamespace`.
+Adjust `backendRefs[].port` to your backend's port and tune the `weight` values
+to control the split; set `spec.namespace.value` to your namespace, or replace
+it with a `valueFrom` reference to a `KubernetesNamespace`.

@@ -1,0 +1,46 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesclustersecretstore
+spec:
+  # One kubectl_manifest applying the external-secrets ClusterSecretStore CR
+  # (cluster-scoped — the composed ID's namespace segment drops), plus the
+  # conditional "<name>-credentials" Secret the module materializes when the
+  # backend declares static credentials, for_each-keyed by that Secret name.
+  values:
+    - name: api_version
+      derivations:
+        - literal: external-secrets.io/v1
+      where_to_find: Always "external-secrets.io/v1" — the CR group/version this module applies.
+    - name: kind
+      derivations:
+        - literal: ClusterSecretStore
+      where_to_find: Always "ClusterSecretStore" — the CR kind this module applies.
+    - name: name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: store_name
+      where_to_find: >-
+        The ClusterSecretStore's metadata.name (equals the Planton resource
+        name) — `kubectl get clustersecretstores` (NAME column).
+    - name: namespace
+      where_to_find: >-
+        Not applicable — ClusterSecretStore is cluster-scoped, so the
+        composed import ID has no namespace segment (the optional
+        [//{namespace}] group drops).
+    - name: secret_name
+      derivations:
+        - from_address_key: true
+        - from_metadata_name_suffix: "-credentials"
+      where_to_find: >-
+        Always "<resource-name>-credentials" — the module's deterministic
+        credential Secret name; only present when the backend declares
+        static credentials.
+    - name: secret_namespace
+      derivations:
+        - from_stack_output: secrets_namespace
+        - from_spec_field: secrets_namespace.value
+      where_to_find: >-
+        The namespace credential secrets are read from (the External Secrets
+        Operator's installation namespace by convention) —
+        spec.secrets_namespace.

@@ -106,7 +106,7 @@ func buildRuleRequestMirror(m *kubernetesgrpcroutev1.KubernetesGrpcRouteRequestM
 	args := gatewayv1.GRPCRouteSpecRulesFiltersRequestMirrorArgs{}
 	if ref := m.GetBackendRef(); ref != nil {
 		backendRef := gatewayv1.GRPCRouteSpecRulesFiltersRequestMirrorBackendRefArgs{
-			Name: pulumi.String(ref.GetName()),
+			Name: pulumi.String(ref.GetName().GetValue()),
 		}
 		if group := ref.GetGroup(); group != "" {
 			backendRef.Group = pulumi.String(group)

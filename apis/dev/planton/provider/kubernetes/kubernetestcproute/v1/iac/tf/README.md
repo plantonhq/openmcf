@@ -1,12 +1,16 @@
 # KubernetesTcpRoute Terraform Module
 
-Creates a namespaced Kubernetes Gateway API `TCPRoute` via the
-`kubernetes_manifest` resource (apiVersion `gateway.networking.k8s.io/v1alpha2`).
-TCPRoute is an experimental-channel resource: the Gateway API **experimental**
-CRDs must already be installed on the target cluster (`KubernetesGatewayApiCrds`
-with `install_channel: experimental`), the `Gateway` the route attaches to via
-`parentRefs` must exist with a `TCP` listener (see `KubernetesGateway`), and the
-target namespace must exist (see `KubernetesNamespace`).
+Creates a namespaced Kubernetes Gateway API `TCPRoute` via the `kubectl_manifest`
+resource (alekc/kubectl provider, apiVersion `gateway.networking.k8s.io/v1`,
+server-side apply). Unlike `kubernetes_manifest`, `kubectl_manifest` needs no
+cluster connection at plan time, so the route can be planned before the Gateway
+API CRDs exist -- which is what lets an infra chart deploy the CRDs, a Gateway,
+and its routes in a single run (and lets offline plan proofs work).
+
+Prerequisites at apply time: the Gateway API standard-channel CRDs
+(`KubernetesGatewayApiCrds`), the `Gateway` the route attaches to via
+`parentRefs` with a `TCP` listener (see `KubernetesGateway`), and the target
+namespace (see `KubernetesNamespace`).
 
 ## Usage
 
@@ -25,11 +29,18 @@ terraform apply -var-file=terraform.tfvars.json
 
 ## Inputs
 
-See `variables.tf` for the full variable specification. `namespace` is a plain
-string: the platform resolves its `StringValueOrRef` foreign key to a literal
-before Terraform runs. `parent_refs` and `backend_refs` are plain upstream
-references (matched by name), not foreign keys -- infra-chart authors wire their
-DAG edges via `metadata.relationships` (DD-009).
+See `variables.tf` for the full variable specification. The spec arrives from the
+proto->tfvars converter already manifest-shaped (camelCase keys, null-pruned),
+with every `StringValueOrRef` foreign key -- `namespace`, `parentRefs[].name`
+(KubernetesGateway), `backendRefs[].name` (KubernetesService) -- resolved to a
+literal string before Terraform runs.
+
+## State Import
+
+Existing TCPRoutes can be adopted into state. `kubectl_manifest` uses the
+composed import ID `apiVersion//kind//name//namespace`; the component's
+`iac/import-map.yaml` derives each part (apiVersion and kind are constants of
+this module).
 
 ## Outputs
 

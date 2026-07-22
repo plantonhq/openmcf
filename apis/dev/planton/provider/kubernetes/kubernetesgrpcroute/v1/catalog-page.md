@@ -31,7 +31,8 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
   hostnames:
     - api.example.com
   rules:
@@ -39,7 +40,8 @@ spec:
         - method:
             service: helloworld.Greeter
       backendRefs:
-        - name: greeter
+        - name:
+            value: greeter
           port: 9000
 ```
 
@@ -60,11 +62,11 @@ planton apply -f grpcroute.yaml
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. |
+| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. Each `name` is a reference (defaults to `KubernetesGateway`). |
 | `hostnames` | list | Authority (Host) values that select this route. |
 | `rules[].matches` | list | Method (service/method) and header matchers. |
 | `rules[].filters` | list | Header modify, request mirror, extension ref. |
-| `rules[].backendRefs` | list | Weighted backends to forward to. |
+| `rules[].backendRefs` | list | Weighted backends; each `name` is a reference (defaults to `KubernetesService`). |
 
 ## Examples
 
@@ -75,7 +77,8 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
   hostnames:
     - api.example.com
   rules:
@@ -85,7 +88,8 @@ spec:
             service: helloworld.Greeter
             method: SayHello
       backendRefs:
-        - name: greeter
+        - name:
+            value: greeter
           port: 9000
 ```
 
@@ -96,15 +100,18 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
   hostnames:
     - api.example.com
   rules:
     - backendRefs:
-        - name: greeter-stable
+        - name:
+            value: greeter-stable
           port: 9000
           weight: 90
-        - name: greeter-canary
+        - name:
+            value: greeter-canary
           port: 9000
           weight: 10
 ```

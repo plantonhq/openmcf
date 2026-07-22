@@ -1,0 +1,3 @@
+name: kubernetes-udp-route
+runtime: go
+description: Pulumi module that provisions a Kubernetes Gateway API UDPRoute from a KubernetesUdpRoute manifest.

@@ -50,6 +50,7 @@ The following KUBERNETES resources can be deployed using Planton:
 - [KubernetesIstioBaseCrds — Design Notes](/docs/catalog/kubernetes/kubernetesistiobasecrds-design-notes)
 - [KubernetesMetricsServer](/docs/catalog/kubernetes/kubernetesmetricsserver)
 - [KubernetesSecretStore](/docs/catalog/kubernetes/kubernetessecretstore)
+- [Listener Set](/docs/catalog/kubernetes/listener-set)
 - [Locust](/docs/catalog/kubernetes/locust)
 - [Manifest](/docs/catalog/kubernetes/manifest)
 - [MongoDB](/docs/catalog/kubernetes/mongodb)
@@ -91,4 +92,5 @@ The following KUBERNETES resources can be deployed using Planton:
 - [Telemetry](/docs/catalog/kubernetes/telemetry)
 - [Temporal](/docs/catalog/kubernetes/temporal)
 - [TLS Route](/docs/catalog/kubernetes/tls-route)
+- [UDP Route](/docs/catalog/kubernetes/udp-route)
 - [Zalando Postgres Operator](/docs/catalog/kubernetes/zalando-postgres-operator)

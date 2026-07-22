@@ -42,6 +42,14 @@ func TestRequiredPlaceholders(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("RequiredPlaceholders = %v, want %v", got, want)
 	}
+
+	// A bracketed segment group's placeholder is optional by construction --
+	// the group (delimiters included) is dropped when it does not resolve.
+	got = RequiredPlaceholders("{api_version}//{kind}//{name}[//{namespace}]")
+	want = []string{"api_version", "kind", "name"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("RequiredPlaceholders with segment group = %v, want %v", got, want)
+	}
 }
 
 func TestRenderID(t *testing.T) {
@@ -69,6 +77,34 @@ func TestRenderID(t *testing.T) {
 	}
 	if id != "name:tbl/index:/123456789012" {
 		t.Fatalf("RenderID = %q, want name:tbl/index:/123456789012", id)
+	}
+
+	// A bracketed segment group renders WITH its literal delimiters when the
+	// placeholder resolves (a namespaced kubectl_manifest CR)...
+	composed := "{api_version}//{kind}//{name}[//{namespace}]"
+	id, err = RenderID(composed, map[string]string{
+		"api_version": "cert-manager.io/v1", "kind": "Certificate",
+		"name": "app-cert", "namespace": "prod",
+	})
+	if err != nil {
+		t.Fatalf("RenderID with resolved segment group: %v", err)
+	}
+	if id != "cert-manager.io/v1//Certificate//app-cert//prod" {
+		t.Fatalf("RenderID = %q, want cert-manager.io/v1//Certificate//app-cert//prod", id)
+	}
+
+	// ...and disappears wholesale when it does not (a cluster-scoped CR):
+	// the kubectl importer rejects a trailing "//", so the delimiter must
+	// vanish with the value.
+	id, err = RenderID(composed, map[string]string{
+		"api_version": "cert-manager.io/v1", "kind": "ClusterIssuer",
+		"name": "letsencrypt",
+	})
+	if err != nil {
+		t.Fatalf("RenderID with unresolved segment group: %v", err)
+	}
+	if id != "cert-manager.io/v1//ClusterIssuer//letsencrypt" {
+		t.Fatalf("RenderID = %q, want cert-manager.io/v1//ClusterIssuer//letsencrypt", id)
 	}
 }
 
@@ -130,6 +166,14 @@ func TestResolveValues(t *testing.T) {
 					},
 				},
 				{Name: "association_id", WhereToFind: "describe-vpcs"},
+				{
+					// A literal derivation: constants the module hardcodes
+					// (a typed-CR module's apiVersion/kind).
+					Name: "api_version",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_Literal{Literal: "cert-manager.io/v1"}},
+					},
+				},
 			},
 		},
 	}
@@ -144,7 +188,7 @@ func TestResolveValues(t *testing.T) {
 
 	resolved, unresolved := ResolveValues(
 		m,
-		[]string{"bucket", "repository_name", "vpc_id", "tiering_name", "association_id"},
+		[]string{"bucket", "repository_name", "vpc_id", "tiering_name", "association_id", "api_version"},
 		rctx,
 	)
 
@@ -154,6 +198,7 @@ func TestResolveValues(t *testing.T) {
 		// stack output empty -> falls through to the ARN part.
 		"vpc_id":       "vpc-0abc",
 		"tiering_name": "archive",
+		"api_version":  "cert-manager.io/v1",
 	}
 	if !reflect.DeepEqual(resolved, want) {
 		t.Errorf("resolved = %v, want %v", resolved, want)

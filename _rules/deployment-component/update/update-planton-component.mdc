@@ -396,6 +396,23 @@ Based on scenario:
   deploys prerequisite fixtures automatically, and a fixture manifest can
   chain further fixtures it references via the
   `planton.dev/e2e-prerequisites` annotation.
+- **kubectl_manifest kinds ARE import-mappable — use the composed-ID
+  vocabulary, never skip the map**: the kubernetes provider catalog carries a
+  `kubectl_manifest` row whose id_format is
+  `"{api_version}//{kind}//{name}[//{namespace}]"`. A typed-CR module renders
+  exactly one GVK, so the component map declares `api_version` and `kind`
+  with the `literal` derivation; `name` derives from metadata.name (plus the
+  kind's name stack output); `namespace` derives from the namespace stack
+  output / spec field for namespaced kinds and is left derivation-less for
+  cluster-scoped kinds — the bracketed `[//{namespace}]` segment group then
+  drops wholesale, which matters because the kubectl importer REJECTS a
+  trailing `//`. Modules that materialize convention-named satellite Secrets
+  key their `for_each` by the SECRET NAME, so `from_address_key` derives the
+  `{secret_name}` placeholder blind. The importer reconstructs `yaml_body`
+  from the STRIPPED LIVE object and resets every provider-side knob to its
+  schema default, so the catalog row declares those knobs config-only and
+  `yaml_body`/`yaml_body_parsed` write-normalized — the first post-import
+  plan re-asserting the module's rendered manifest is a server-side no-op.
 - **When an engine provider cannot express a spec field, fail the plan — never
   silently drop it**: alongside the `PARITY-EXCEPTION:` twin comments, add a
   Terraform `lifecycle { precondition }` on the resource that rejects a set

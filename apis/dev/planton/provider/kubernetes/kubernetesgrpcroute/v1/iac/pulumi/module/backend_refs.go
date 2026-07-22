@@ -10,14 +10,13 @@ import (
 // name / namespace / port / weight plus optional per-backend filters) onto the
 // typed crd2pulumi backendRefs array.
 //
-// Note: backend_refs is a plain reference, not an Planton foreign key (DD-009).
-// Infra-chart authors express the route -> backend dependency via
-// metadata.relationships (type: uses) when the backend is Planton-managed.
+// Each backend's name is a KubernetesService foreign key resolved to its
+// literal value before the module runs, so GetValue() returns the final name.
 func buildBackendRefs(backendRefs []*kubernetesgrpcroutev1.KubernetesGrpcRouteBackendRef) gatewayv1.GRPCRouteSpecRulesBackendRefsArray {
 	arr := gatewayv1.GRPCRouteSpecRulesBackendRefsArray{}
 	for _, b := range backendRefs {
 		args := gatewayv1.GRPCRouteSpecRulesBackendRefsArgs{
-			Name: pulumi.String(b.GetName()),
+			Name: pulumi.String(b.GetName().GetValue()),
 		}
 		if group := b.GetGroup(); group != "" {
 			args.Group = pulumi.String(group)
@@ -134,7 +133,7 @@ func buildBackendRequestMirror(m *kubernetesgrpcroutev1.KubernetesGrpcRouteReque
 	args := gatewayv1.GRPCRouteSpecRulesBackendRefsFiltersRequestMirrorArgs{}
 	if ref := m.GetBackendRef(); ref != nil {
 		backendRef := gatewayv1.GRPCRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefArgs{
-			Name: pulumi.String(ref.GetName()),
+			Name: pulumi.String(ref.GetName().GetValue()),
 		}
 		if group := ref.GetGroup(); group != "" {
 			backendRef.Group = pulumi.String(group)

@@ -1,8 +1,11 @@
 go_build_dir=pkg
 
 #https://github.com/kubernetes-sigs/gateway-api/tree/main/config/crd/standard
-#https://github.com/kubernetes-sigs/gateway-api/tree/v1.5.1/config/crd/standard
-gateway_apis=v1.5.1
+#https://github.com/kubernetes-sigs/gateway-api/tree/v1.6.1/config/crd/standard
+#Note: TCPRoute and UDPRoute graduated to GA (v1) in the v1.6 release and are
+#served from the standard channel; the experimental channel is no longer needed
+#for any generated type below.
+gateway_apis=v1.6.1
 
 #https://github.com/istio/istio/tree/master/manifests/charts/base/crds
 #https://github.com/istio/istio/tree/release-1.26
@@ -69,7 +72,9 @@ gen-gateway-apis:
 	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml \
 	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_referencegrants.yaml \
 	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_tlsroutes.yaml \
-	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/experimental/gateway.networking.k8s.io_tcproutes.yaml
+	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_tcproutes.yaml \
+	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_udproutes.yaml \
+	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_listenersets.yaml
 
 .PHONY: gen-istio
 gen-istio:

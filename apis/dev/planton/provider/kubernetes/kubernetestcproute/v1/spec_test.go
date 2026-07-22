@@ -28,7 +28,7 @@ func literal(value string) *foreignkeyv1.StringValueOrRef {
 // serviceBackend returns a minimal valid backend reference to a Service.
 func serviceBackend(name string, port int32) *kubernetes.KubernetesGatewayApiBackendRef {
 	return &kubernetes.KubernetesGatewayApiBackendRef{
-		Name: name,
+		Name: literal(name),
 		Port: int32Ptr(port),
 	}
 }
@@ -46,7 +46,7 @@ var _ = ginkgo.Describe("KubernetesTcpRoute Validation Tests", func() {
 			Spec: &KubernetesTcpRouteSpec{
 				Namespace: literal("app-ns"),
 				ParentRefs: []*kubernetes.KubernetesGatewayApiParentReference{
-					{Name: "my-gateway"},
+					{Name: literal("my-gateway")},
 				},
 				Rules: []*KubernetesTcpRouteRule{
 					{
@@ -69,20 +69,10 @@ var _ = ginkgo.Describe("KubernetesTcpRoute Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("use_default_gateways All should be valid", func() {
-			input.Spec.UseDefaultGateways = stringPtr("All")
-			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
-		})
-
-		ginkgo.It("use_default_gateways None should be valid", func() {
-			input.Spec.UseDefaultGateways = stringPtr("None")
-			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
-		})
-
 		ginkgo.It("multiple weighted backends should be valid", func() {
 			input.Spec.Rules[0].BackendRefs = []*kubernetes.KubernetesGatewayApiBackendRef{
-				{Name: "tcp-stable", Port: int32Ptr(5432), Weight: int32Ptr(90)},
-				{Name: "tcp-canary", Port: int32Ptr(5432), Weight: int32Ptr(10)},
+				{Name: literal("tcp-stable"), Port: int32Ptr(5432), Weight: int32Ptr(90)},
+				{Name: literal("tcp-canary"), Port: int32Ptr(5432), Weight: int32Ptr(10)},
 			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
@@ -107,11 +97,6 @@ var _ = ginkgo.Describe("KubernetesTcpRoute Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("invalid use_default_gateways value should fail", func() {
-			input.Spec.UseDefaultGateways = stringPtr("Some")
-			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
-		})
-
 		ginkgo.It("zero rules should fail (min_items=1)", func() {
 			input.Spec.Rules = nil
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
@@ -131,14 +116,14 @@ var _ = ginkgo.Describe("KubernetesTcpRoute Validation Tests", func() {
 
 		ginkgo.It("backend ref with out-of-range port should fail", func() {
 			input.Spec.Rules[0].BackendRefs = []*kubernetes.KubernetesGatewayApiBackendRef{
-				{Name: "tcp-svc", Port: int32Ptr(70000)},
+				{Name: literal("tcp-svc"), Port: int32Ptr(70000)},
 			}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("backend ref with invalid group pattern should fail", func() {
 			input.Spec.Rules[0].BackendRefs = []*kubernetes.KubernetesGatewayApiBackendRef{
-				{Name: "tcp-svc", Group: stringPtr("Bad_Group"), Port: int32Ptr(5432)},
+				{Name: literal("tcp-svc"), Group: stringPtr("Bad_Group"), Port: int32Ptr(5432)},
 			}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
@@ -150,7 +135,7 @@ var _ = ginkgo.Describe("KubernetesTcpRoute Validation Tests", func() {
 
 		ginkgo.It("a parent ref with a malformed kind should fail", func() {
 			input.Spec.ParentRefs = []*kubernetes.KubernetesGatewayApiParentReference{
-				{Name: "my-gateway", Kind: stringPtr("bad/kind")},
+				{Name: literal("my-gateway"), Kind: stringPtr("bad/kind")},
 			}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})

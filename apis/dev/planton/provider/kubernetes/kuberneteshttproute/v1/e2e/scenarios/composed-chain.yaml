@@ -1,0 +1,31 @@
+# The composition proof for the whole exposure chain: a real Gateway fixture
+# (which itself chains the GatewayClass fixture) and a real Service fixture
+# deploy first; the route's parent resolves through the Gateway foreign key
+# and its backend through the Service foreign key -- the same wiring an infra
+# chart uses to route traffic at a workload's exported service.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesHttpRoute
+metadata:
+  name: e2e-route-composed
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesGateway, KubernetesService"
+spec:
+  namespace:
+    value: default
+  parent_refs:
+    - name:
+        valueFrom:
+          name: e2e-gw-fixture
+      section_name: http
+  hostnames:
+    - composed.e2e.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backend_refs:
+        - name:
+            valueFrom:
+              name: e2e-svc-fixture
+          port: 80

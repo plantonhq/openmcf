@@ -86,9 +86,15 @@ type ResourceTypeImportId struct {
 	// "{vpc_id}_{association_id}"). A trailing "?" inside the braces marks a
 	// segment the provider documents as legitimately empty in some variants
 	// (e.g. DynamoDB contributor insights on the table itself:
-	// "name:{table_name}/index:{index_name?}/{account_id}"); required
-	// placeholders that fail to resolve abort the import instead of
-	// rendering empty. A template with no placeholders is a literal ID.
+	// "name:{table_name}/index:{index_name?}/{account_id}"); the surrounding
+	// literals STAY when it renders empty. An optional SEGMENT GROUP in
+	// [square brackets] -- literal text plus one placeholder, e.g.
+	// "{api_version}//{kind}//{name}[//{namespace}]" -- instead disappears
+	// WHOLESALE (delimiters included) when its placeholder does not resolve,
+	// for providers that reject a trailing delimiter (kubectl_manifest's
+	// composed ID with cluster-scoped resources). Required placeholders that
+	// fail to resolve abort the import instead of rendering empty. A template
+	// with no placeholders is a literal ID.
 	IdFormat string `protobuf:"bytes,3,opt,name=id_format,json=idFormat,proto3" json:"id_format,omitempty"`
 	// Provider-documentation notes about the format -- optional variants
 	// (e.g. a trailing ",{expected_bucket_owner}"), gotchas, or where the

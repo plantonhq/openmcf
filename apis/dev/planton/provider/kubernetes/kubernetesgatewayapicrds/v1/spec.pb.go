@@ -27,11 +27,16 @@ type KubernetesGatewayApiCrdsSpec_InstallChannel_GatewayApiInstallChannel int32
 
 const (
 	KubernetesGatewayApiCrdsSpec_InstallChannel_gateway_api_install_channel_unspecified KubernetesGatewayApiCrdsSpec_InstallChannel_GatewayApiInstallChannel = 0
-	// Standard channel: GatewayClass, Gateway, HTTPRoute, GRPCRoute, TLSRoute,
-	// ReferenceGrant (GRPCRoute and TLSRoute graduated to standard as of v1.5.1).
+	// Standard channel (GA/beta resources). As of v1.6: GatewayClass,
+	// Gateway, ListenerSet, HTTPRoute, GRPCRoute, TLSRoute, TCPRoute,
+	// UDPRoute, ReferenceGrant, BackendTLSPolicy. This is the channel the
+	// catalog's projection kinds target.
 	KubernetesGatewayApiCrdsSpec_InstallChannel_standard KubernetesGatewayApiCrdsSpec_InstallChannel_GatewayApiInstallChannel = 1
-	// Experimental channel: includes all standard resources plus TCPRoute and
-	// UDPRoute.
+	// Experimental channel: all standard resources (with additional
+	// experimental fields) plus experimental resources such as XBackend,
+	// XBackendTrafficPolicy, and XMesh. Future releases may break or remove
+	// experimental resources — prefer standard unless a specific
+	// experimental feature is required.
 	KubernetesGatewayApiCrdsSpec_InstallChannel_experimental KubernetesGatewayApiCrdsSpec_InstallChannel_GatewayApiInstallChannel = 2
 )
 
@@ -84,8 +89,12 @@ func (KubernetesGatewayApiCrdsSpec_InstallChannel_GatewayApiInstallChannel) Enum
 // GRPCRoute, and other Gateway API resources to be used in the cluster.
 type KubernetesGatewayApiCrdsSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Gateway API version to install (e.g., "v1.2.1", "v1.3.0").
-	// Defaults to v1.2.1 if not specified.
+	// Gateway API version to install (e.g., "v1.6.1").
+	// Defaults to v1.6.1 if not specified — the version the catalog's Gateway
+	// API projection kinds (Gateway, routes, ListenerSet, ReferenceGrant) are
+	// designed against. Installing an older version narrows what those kinds
+	// can deploy (for example, TCPRoute and UDPRoute are standard-channel only
+	// from v1.6.0, and ListenerSet from v1.5.0).
 	// Must start with 'v' followed by a valid semver version.
 	Version *string `protobuf:"bytes,2,opt,name=version,proto3,oneof" json:"version,omitempty"`
 	// Installation channel for Gateway API CRDs.
@@ -192,7 +201,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgatewayapicrds_v1_spec_prot
 	"\n" +
 	"Fdev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xc0\x04\n" +
 	"\x1cKubernetesGatewayApiCrdsSpec\x12[\n" +
-	"\aversion\x18\x02 \x01(\tB<\xbaH/r-\x10\x012)^v[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9]+)?$\x8a\xa6\x1d\x06v1.2.1H\x00R\aversion\x88\x01\x01\x12\x91\x01\n" +
+	"\aversion\x18\x02 \x01(\tB<\xbaH/r-\x10\x012)^v[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9]+)?$\x8a\xa6\x1d\x06v1.6.1H\x00R\aversion\x88\x01\x01\x12\x91\x01\n" +
 	"\x0finstall_channel\x18\x03 \x01(\v2h.dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannelR\x0einstallChannel\x1a\xa2\x02\n" +
 	"\x0eInstallChannel\x12\xa6\x01\n" +
 	"\achannel\x18\x01 \x01(\x0e2\x81\x01.dev.planton.provider.kubernetes.kubernetesgatewayapicrds.v1.KubernetesGatewayApiCrdsSpec.InstallChannel.GatewayApiInstallChannelB\b\xbaH\x05\x82\x01\x02\x10\x01R\achannel\"g\n" +

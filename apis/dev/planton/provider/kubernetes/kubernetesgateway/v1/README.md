@@ -6,13 +6,14 @@
 
 `KubernetesGateway` is a first-class Planton component that provisions an
 upstream Gateway API `Gateway` resource at 100% fidelity with the standard
-channel of Gateway API v1.5.1. It models listeners, per-listener TLS
+channel of Gateway API v1.6.1. It models listeners, per-listener TLS
 termination/passthrough, requested addresses, infrastructure labels/annotations,
 gateway-wide frontend (mutual TLS) and backend client-certificate
 configuration, and route/listener-set attachment policy.
 
 Unlike a raw `KubernetesManifest`, this component gives you proto validation,
-foreign-key wiring (to `KubernetesNamespace` and `KubernetesGatewayClass`),
+foreign-key wiring (to `KubernetesNamespace`, `KubernetesGatewayClass`, and the
+`KubernetesSecret`/`KubernetesConfigMap` objects its TLS references point at),
 typed Pulumi and Terraform modules, and InfraChart composability.
 
 ## Prerequisites
@@ -45,7 +46,8 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: app-tls
+          - name:
+              value: app-tls
 ```
 
 ```bash
@@ -84,7 +86,7 @@ planton pulumi up --manifest gateway.yaml
 | `port` | int32 (1-65535) | yes | Network port. |
 | `protocol` | string | yes | `HTTP`, `HTTPS`, `TLS`, `TCP`, `UDP`, or a domain-prefixed custom protocol. |
 | `tls.mode` | string | no | `Terminate` (default) or `Passthrough`. |
-| `tls.certificate_refs` | `[]SecretObjectReference` | conditionally | TLS Secrets to terminate with (required for Terminate). |
+| `tls.certificate_refs` | `[]SecretObjectReference` | conditionally | TLS Secrets to terminate with (required for Terminate). Each `name` is an FK to `KubernetesSecret` -- typically wired with `valueFrom` against a `KubernetesCertificate`'s `status.outputs.secret_name`. |
 | `allowed_routes` | `KubernetesGatewayAllowedRoutes` | no | Which Route kinds/namespaces may attach. |
 
 ## Stack Outputs
@@ -100,4 +102,5 @@ planton pulumi up --manifest gateway.yaml
 - [`KubernetesGatewayApiCrds`](../kubernetesgatewayapicrds/) -- installs the Gateway API CRDs (prerequisite).
 - [`KubernetesGatewayClass`](../kubernetesgatewayclass/) -- defines the controller class this Gateway references.
 - [`KubernetesCertificate`](../kubernetescertificate/) -- provisions the TLS Secret HTTPS listeners reference.
+- [`KubernetesListenerSet`](../kuberneteslistenerset/) -- merges additional listeners into this Gateway (requires `allowed_listeners` opt-in).
 - [`KubernetesNamespace`](../kubernetesnamespace/) -- the namespace the Gateway is created in.

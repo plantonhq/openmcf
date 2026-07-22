@@ -12,13 +12,18 @@ spec:
       port: 80
       protocol: HTTP
     - name: https
-      hostname: <app-hostname>
+      hostname: app.example.com
       port: 443
       protocol: HTTPS
       tls:
         mode: Terminate
         certificateRefs:
-          - name: <tls-secret-name>
+          # Foreign key: `value:` names an existing Secret literally; switch to
+          # `valueFrom:` (kind KubernetesCertificate, fieldPath
+          # status.outputs.secret_name) to reference a Planton-managed
+          # certificate's Secret and deploy in dependency order.
+          - name:
+              value: <tls-secret-name>
     - name: postgres
       port: 5432
       protocol: TCP

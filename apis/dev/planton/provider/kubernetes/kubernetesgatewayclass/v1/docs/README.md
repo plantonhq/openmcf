@@ -7,7 +7,7 @@ is a cluster-scoped resource that declares which controller implementation is
 responsible for a class of Gateways, much like a `StorageClass` declares which
 provisioner backs a class of volumes. This document explains the Gateway API
 role model, why GatewayClass deserves to be a first-class Planton component, the
-design decisions behind this component, and how it composes with the rest of the
+reasoning behind this component, and how it composes with the rest of the
 Planton Gateway API family.
 
 ## The Gateway API Role-Oriented Model
@@ -41,7 +41,7 @@ HTTPRoute / GRPCRoute / TLSRoute / TCPRoute (namespaced)
 
 ## Anatomy of GatewayClassSpec
 
-Upstream `GatewayClassSpec` (gateway-api v1.5.1, `apis/v1/gatewayclass_types.go`)
+Upstream `GatewayClassSpec` (gateway-api v1.6.1, `apis/v1/gatewayclass_types.go`)
 has exactly three fields:
 
 | Field | Upstream type | Required | Notes |
@@ -66,7 +66,7 @@ Some controllers accept additional configuration via a referenced resource. For
 example, Envoy Gateway uses an `EnvoyProxy` custom resource; other controllers
 use a `ConfigMap`. `parametersRef` is a structured reference
 (group/kind/name/namespace), not a single-value identifier, so it is modeled as a
-shared structured message rather than a foreign key (see Design Decisions).
+shared structured message rather than a foreign key (see Design Notes).
 
 ### description
 
@@ -88,14 +88,14 @@ their own default GatewayClass, so why model it separately? Three reasons:
 The spec is tiny (three fields), so the cost of providing this surface is low and
 the composability payoff is high.
 
-## Design Decisions
+## Design Notes
 
-### 100% upstream fidelity
+### Complete upstream surface
 
-Per the project's design decision DD-001, this component mirrors the upstream
-spec exactly rather than subsetting it. Gateway API is an external standard, so
-"the what" the user wants to express *is* the upstream spec. All three fields are
-present with upstream semantics and validation.
+This component mirrors the upstream spec exactly rather than subsetting it.
+Gateway API is an external standard, so "the what" the user wants to express
+*is* the upstream spec. All three fields are present with upstream semantics and
+validation.
 
 ### Cluster-scoped: no namespace
 
@@ -126,7 +126,9 @@ single default kind to point at, so it reuses the shared
 The Pulumi module uses the typed `gatewayv1.NewGatewayClass` from the
 crd2pulumi-generated SDK rather than an untyped `CustomResource`. This catches
 field-name and structure errors at compile time and matches how every other
-Planton ingress component consumes the Gateway API types.
+Planton ingress component consumes the Gateway API types. The Terraform module
+applies through `kubectl_manifest` (alekc/kubectl) with server-side apply,
+plannable before the Gateway API CRDs exist.
 
 ## Controller Landscape
 
@@ -210,16 +212,13 @@ Planton Gateway API networking layer.
 
 `KubernetesGatewayClass` is a cluster-scoped, Layer-0 foundation in the ingress
 DAG: it has no cross-resource inputs of its own, and downstream
-`KubernetesGateway` resources reference it. Two mechanisms wire the family
-together (see project decision DD-009):
-
-1. **Data dependencies use `valueFrom`.** A `KubernetesGateway` references this
-   class through its `gateway_class_name` `StringValueOrRef`, pointing at this
-   component's `status.outputs.gateway_class_name`. The platform builds that DAG
-   edge automatically, deploying the GatewayClass before the Gateway.
-2. **Topology dependencies use `metadata.relationships`.** A GatewayClass is
-   served by a controller running on the cluster; you can record that with a
-   `runs_on` relationship if your chart models the controller as a resource.
+`KubernetesGateway` resources reference it. A `KubernetesGateway` references
+this class through its `gateway_class_name` `StringValueOrRef` foreign key,
+pointing at this component's `status.outputs.gateway_class_name`; the platform
+builds that dependency edge automatically, deploying the GatewayClass before
+the Gateway. (A GatewayClass is served by a controller running on the cluster;
+if your chart models the controller as a resource, a `runs_on`
+`metadata.relationships` entry can record that topology.)
 
 ```yaml
 # Downstream Gateway wiring (consumer side):

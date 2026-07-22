@@ -1,0 +1,95 @@
+# Full GatewaySpec: multi-protocol listeners with TLS termination and
+# passthrough, per-listener allowed routes (selector form), requested
+# addresses, infrastructure attributes, ListenerSet opt-in, and gateway-wide
+# frontend/backend TLS. Certificate and CA references use literal names --
+# the API server accepts dangling references (controllers resolve them
+# asynchronously), so the full reference surface is exercised without
+# fixture Secrets.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGateway
+metadata:
+  name: e2e-gateway-full
+spec:
+  namespace:
+    value: default
+  gateway_class_name:
+    value: istio
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowed_routes:
+        namespaces:
+          from: All
+        kinds:
+          - kind: HTTPRoute
+    - name: https
+      hostname: app.e2e.example.com
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificate_refs:
+          - name:
+              value: e2e-app-tls
+        options:
+          e2e.planton.dev/minimum-tls-version: "1.3"
+      allowed_routes:
+        namespaces:
+          from: Selector
+          selector:
+            match_labels:
+              team: web
+            match_expressions:
+              - key: environment
+                operator: In
+                values:
+                  - staging
+                  - production
+    - name: tls-passthrough
+      hostname: db.e2e.example.com
+      port: 8443
+      protocol: TLS
+      tls:
+        mode: Passthrough
+  addresses:
+    - type: IPAddress
+      value: 203.0.113.10
+    - type: Hostname
+      value: gw.e2e.example.com
+  infrastructure:
+    labels:
+      e2e.planton.dev/cost-center: platform
+    annotations:
+      e2e.planton.dev/lb-hint: internal
+    parameters_ref:
+      group: e2e.planton.dev
+      kind: GatewayParams
+      name: e2e-gw-params
+  allowed_listeners:
+    namespaces:
+      from: Same
+  tls:
+    backend:
+      client_certificate_ref:
+        name:
+          value: e2e-backend-client-cert
+    frontend:
+      default:
+        validation:
+          ca_certificate_refs:
+            - group: ""
+              kind: ConfigMap
+              name:
+                value: e2e-client-ca
+          mode: AllowValidOnly
+      per_port:
+        - port: 443
+          tls:
+            validation:
+              ca_certificate_refs:
+                - group: ""
+                  kind: ConfigMap
+                  name:
+                    value: e2e-strict-ca
+              mode: AllowValidOnly

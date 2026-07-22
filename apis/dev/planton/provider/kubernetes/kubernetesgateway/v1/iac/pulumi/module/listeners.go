@@ -32,7 +32,7 @@ func buildListeners(listeners []*kubernetesgatewayv1.KubernetesGatewayListener) 
 	return arr
 }
 
-func buildListenerTls(tls *kubernetesgatewayv1.KubernetesGatewayListenerTlsConfig) gatewayv1.GatewaySpecListenersTlsArgs {
+func buildListenerTls(tls *kubernetesapis.KubernetesGatewayApiListenerTlsConfig) gatewayv1.GatewaySpecListenersTlsArgs {
 	args := gatewayv1.GatewaySpecListenersTlsArgs{}
 	if mode := tls.GetMode(); mode != "" {
 		args.Mode = pulumi.String(mode)
@@ -52,7 +52,7 @@ func buildListenerTls(tls *kubernetesgatewayv1.KubernetesGatewayListenerTlsConfi
 
 func buildListenerCertificateRef(ref *kubernetesapis.KubernetesGatewayApiSecretObjectReference) gatewayv1.GatewaySpecListenersTlsCertificateRefsArgs {
 	args := gatewayv1.GatewaySpecListenersTlsCertificateRefsArgs{
-		Name: pulumi.String(ref.GetName()),
+		Name: pulumi.String(ref.GetName().GetValue()),
 	}
 	if group := ref.GetGroup(); group != "" {
 		args.Group = pulumi.String(group)
@@ -66,7 +66,7 @@ func buildListenerCertificateRef(ref *kubernetesapis.KubernetesGatewayApiSecretO
 	return args
 }
 
-func buildAllowedRoutes(allowedRoutes *kubernetesgatewayv1.KubernetesGatewayAllowedRoutes) gatewayv1.GatewaySpecListenersAllowedRoutesArgs {
+func buildAllowedRoutes(allowedRoutes *kubernetesapis.KubernetesGatewayApiAllowedRoutes) gatewayv1.GatewaySpecListenersAllowedRoutesArgs {
 	args := gatewayv1.GatewaySpecListenersAllowedRoutesArgs{}
 	if namespaces := allowedRoutes.GetNamespaces(); namespaces != nil {
 		nsArgs := gatewayv1.GatewaySpecListenersAllowedRoutesNamespacesArgs{}

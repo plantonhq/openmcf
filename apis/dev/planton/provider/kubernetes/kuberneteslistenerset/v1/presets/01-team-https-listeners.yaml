@@ -1,0 +1,42 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesListenerSet
+metadata:
+  name: my-team-listeners
+spec:
+  namespace:
+    value: team-a
+  parentRef:
+    # The parent Gateway name is a foreign key. Here `valueFrom:` references a
+    # Planton-managed KubernetesGateway, so the ListenerSet deploys after the
+    # Gateway and follows its renames. Use `value: <literal-gateway-name>`
+    # instead when the Gateway is created outside Planton (see the
+    # 02-tls-passthrough-listener preset).
+    name:
+      valueFrom:
+        kind: KubernetesGateway
+        name: <shared-gateway-resource-name>
+        fieldPath: status.outputs.gateway_name
+    namespace: istio-ingress  # the shared Gateway's namespace
+  listeners:
+    - name: team-https
+      hostname: team-a.example.com
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          # Foreign key wired to a Planton-managed KubernetesCertificate: the
+          # certificate's cert-manager-issued Secret name is read from
+          # status.outputs.secret_name, so the listener terminates with the
+          # issued certificate. Use `value: <literal-secret-name>` for a Secret
+          # provisioned outside Planton.
+          - name:
+              valueFrom:
+                kind: KubernetesCertificate
+                name: <certificate-resource-name>
+                fieldPath: status.outputs.secret_name
+      allowedRoutes:
+        namespaces:
+          from: Same
+        kinds:
+          - kind: HTTPRoute

@@ -1,8 +1,8 @@
 # KubernetesGrpcRoute -- Research Documentation
 
 This document explains why `KubernetesGrpcRoute` exists, how it maps the upstream
-Gateway API `GRPCRoute` into the Planton component model, and the design
-decisions behind its spec, validation, and IaC. It is the source-of-truth
+Gateway API `GRPCRoute` into the Planton component model, and the reasoning
+behind its spec, validation, and IaC. It is the source-of-truth
 companion to the user-facing `README.md` (getting started) and `catalog-page.md`
 (catalog listing).
 
@@ -15,7 +15,7 @@ companion to the user-facing `README.md` (getting started) and `catalog-page.md`
 5. The Match / Filter / Backend Model
 6. Validation Rules
 7. Why GRPCRoute Is a First-Class Planton Component
-8. Design Decisions
+8. Design Notes
 9. Standard vs Experimental Channel
 10. Composing in Infra Charts
 11. Controller Landscape
@@ -84,6 +84,12 @@ namespaced envelope (`namespace`):
 
 Unlike `HTTPRouteRule`, `GRPCRouteRule` has no `timeouts` field.
 
+Reference names are foreign keys: `parent_refs[].name` defaults to
+`KubernetesGateway` and `backend_refs[].name` defaults to `KubernetesService`,
+both as `StringValueOrRef`. In infra charts these wire with `valueFrom` and give
+the resource graph real dependency edges; when the referent is not
+Planton-managed, the literal name is passed with `value:`.
+
 ## The Match / Filter / Backend Model
 
 - **Match** (`KubernetesGrpcRouteMatch`): a `method` matcher
@@ -113,7 +119,7 @@ Every upstream `XValidation` and kubebuilder marker is translated to
 - Rule level: `RequestHeaderModifier` / `ResponseHeaderModifier` each at most once.
 - Request mirror: `percent` xor `fraction`.
 - Closed enums (`type` fields) use CEL `in [...]`; open sets (hostnames, header
-  names) use the upstream regex (DD-008).
+  names) use the upstream regex.
 
 Two upstream rules are intentionally **not** translated, matching the
 `KubernetesHttpRoute` sibling: the aggregate "total matches across all rules
@@ -128,23 +134,28 @@ no proto validation, no typed SDKs, no FK wiring, no InfraChart composability, n
 UI wizards. `KubernetesGrpcRoute` closes that gap for the gRPC half of the
 ingress story, alongside `KubernetesHttpRoute`.
 
-## Design Decisions
+## Design Notes
 
 - **Standard channel only.** Experimental `sessionPersistence` (on the rule) and
   `useDefaultGateways` (on CommonRouteSpec) are excluded -- they are absent from
   the standard-channel CRD and the typed crd2pulumi resource, so they have no
   deployable target.
-- **Plain `parent_refs` / `backend_refs` (DD-009).** Kept as plain upstream
-  references, not `StringValueOrRef`, because they are arrays of multi-field
-  objects; wrapping them would break 100% fidelity and distort the typed CRD
-  shape. Their DAG edges are expressed via `metadata.relationships` (see below).
+- **Foreign-key `parent_refs` / `backend_refs` names.** Each reference keeps the
+  upstream multi-field shape, but its `name` is a `StringValueOrRef` foreign key
+  (defaulting to `KubernetesGateway` and `KubernetesService` respectively):
+  `valueFrom` wiring creates real dependency edges in infra charts, while
+  `value:` carries literal names for referents outside Planton.
 - **Flat backend ref.** The six backend fields plus filters are flattened to
   match the upstream inline `GRPCBackendRef` and the flat crd2pulumi shape.
-- **DD-008 value modeling.** Closed enums use CEL `in`; open sets use the upstream
-  regex; no proto enums and no baked-in Planton defaults on upstream fields.
+- **String-typed enum aliases stay strings.** Upstream models its enums as string
+  type aliases; the proto mirrors that. Closed enums use CEL `in`; open sets use
+  the upstream regex; no proto enums and no baked-in Planton defaults on upstream
+  fields, so CEL comparisons and controller-specific values keep working.
 - **Typed crd2pulumi IaC.** `gatewayv1.NewGRPCRoute`, with rule-level and
   backend-level filter builders kept separate because crd2pulumi emits distinct
-  Go types for the same JSON shape.
+  Go types for the same JSON shape. The Terraform module applies through
+  `kubectl_manifest` (alekc/kubectl) with server-side apply, plannable before
+  the Gateway API CRDs exist.
 
 ## Standard vs Experimental Channel
 
@@ -157,27 +168,19 @@ Planton provisions the standard-channel GRPCRoute. Excluded experimental fields:
 
 ## Composing in Infra Charts
 
-`KubernetesGrpcRoute` is designed as a LEGO block for Infra Charts. Two
-mechanisms wire it into the dependency DAG (see project decision DD-009):
+`KubernetesGrpcRoute` is designed as a LEGO block for Infra Charts. Every
+neighbor reference is a `StringValueOrRef` foreign key:
 
-1. **Data dependencies use `StringValueOrRef` (`valueFrom`).** `namespace` is a
-   `StringValueOrRef` with `default_kind = KubernetesNamespace`, so it can
-   reference a namespace output and the platform builds the DAG edge
-   automatically.
-2. **Topology dependencies use `metadata.relationships`.** `parent_refs` and
-   `backend_refs` are plain references -- a plain name string creates no automatic
-   DAG edge. Infra-chart authors express those edges explicitly:
+- `namespace` (default kind `KubernetesNamespace`),
+- `parent_refs[].name` (default kind `KubernetesGateway`),
+- `backend_refs[].name` (default kind `KubernetesService`).
+
+Wiring them with `valueFrom` creates real dependency edges, so the platform
+builds the DAG automatically -- no manual relationship declarations:
 
 ```yaml
 metadata:
   name: "{{ values.env }}-greeter-route"
-  relationships:
-    - kind: KubernetesGateway
-      name: "{{ values.env }}-gateway"
-      type: depends_on
-    - kind: KubernetesService          # when the backend is Planton-managed
-      name: "{{ values.service_name }}"
-      type: uses
 spec:
   namespace:
     valueFrom:
@@ -185,13 +188,21 @@ spec:
       name: "{{ values.env }}-ns"
       fieldPath: spec.name
   parentRefs:
-    - name: "{{ values.env }}-gateway"
+    - name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: "{{ values.env }}-gateway"
+          fieldPath: status.outputs.gateway_name
   rules:
     - matches:
         - method:
             service: "{{ values.grpc_service }}"
       backendRefs:
-        - name: "{{ values.service_name }}"
+        - name:
+            valueFrom:
+              kind: KubernetesService
+              name: "{{ values.service_name }}"
+              fieldPath: status.outputs.service_name
           port: 9000
 ```
 
@@ -202,15 +213,13 @@ KubernetesCertManager            (runs_on cluster)
   -> KubernetesClusterIssuer     (cert_manager_namespace: valueFrom CertManager)
     -> KubernetesCertificate     (issuerRef: valueFrom ClusterIssuer)
       -> (Kubernetes Secret)     (Certificate.status.outputs.secret_name)
-        -> KubernetesGateway     (gateway_class_name + namespace: valueFrom;
-                                   certificate_refs -> Certificate: relationships uses)
-          -> KubernetesGrpcRoute (namespace: valueFrom;
-                                  parent_refs -> Gateway: relationships depends_on;
-                                  backend_refs -> Service: relationships uses)
+        -> KubernetesGateway     (certificate_refs[].name: valueFrom Certificate)
+          -> KubernetesGrpcRoute (parent_refs[].name: valueFrom Gateway;
+                                  backend_refs[].name: valueFrom Service)
 ```
 
-Data edges use `valueFrom`; topology edges (the plain refs) use
-`metadata.relationships`. Both are required for the platform to build the full DAG.
+When the parent or backend is not a Planton-managed resource, pass the literal
+name with `value:` -- no edge is created, matching reality.
 
 ## Controller Landscape
 
@@ -223,8 +232,9 @@ comments and left to the controller rather than baked into the spec.
 
 - **Listener must accept HTTP/2.** A GRPCRoute attached to a plain HTTP/1-only
   listener will not serve gRPC. Use h2c (`HTTP`) or HTTP/2 over `HTTPS`.
-- **Plain refs need relationships in charts.** Setting only `parentRefs[].name`
-  does not create a DAG edge; add `metadata.relationships` (DD-009).
+- **Literal `value:` names create no dependency edge.** In infra charts, prefer
+  `valueFrom` for Planton-managed Gateways and Services so ordering is
+  guaranteed.
 - **`Exact` method match needs a value.** An `Exact` method matcher with neither
   `service` nor `method` is rejected.
 
@@ -237,6 +247,5 @@ convention and fully accounting for infra-chart composability.
 ## References
 
 - [Gateway API GRPCRoute](https://gateway-api.sigs.k8s.io/api-types/grpcroute/)
-- Upstream types: `kubernetes-sigs/gateway-api` `apis/v1/grpcroute_types.go` (v1.5.1)
+- Upstream types: `kubernetes-sigs/gateway-api` `apis/v1/grpcroute_types.go` (v1.6.1)
 - Sibling component: `KubernetesHttpRoute`
-- Project decision: DD-009 (infra-chart composability, plain refs + relationships)

@@ -1,8 +1,8 @@
 # KubernetesHttpRoute -- Research Documentation
 
 This document explains why `KubernetesHttpRoute` exists, how it maps the upstream
-Gateway API `HTTPRoute` into the Planton component model, and the design
-decisions behind its spec, validation, and IaC. It is the source-of-truth
+Gateway API `HTTPRoute` into the Planton component model, and the reasoning
+behind its spec, validation, and IaC. It is the source-of-truth
 companion to the user-facing `README.md` (getting started) and `catalog-page.md`
 (catalog listing).
 
@@ -15,7 +15,7 @@ companion to the user-facing `README.md` (getting started) and `catalog-page.md`
 5. The Match / Filter / Backend Model
 6. Validation Rules
 7. Why HTTPRoute Is a First-Class Planton Component
-8. Design Decisions
+8. Design Notes
 9. Standard vs Experimental Channel
 10. Controller Landscape
 11. 80/20 Scoping
@@ -68,10 +68,10 @@ KubernetesNamespace             (namespace FK)
 ```
 
 In an InfraChart, the DAG ordering is: CRDs -> GatewayClass -> Gateway -> Route.
-The route's `parentRefs.name` references the Gateway by name, and its
-`backendRefs.name` references Services by name. Neither is an Planton foreign key
-(see Design Decisions); the DAG provides ordering, and the names match upstream
-exactly.
+The route's `parentRefs[].name` is a foreign key defaulting to
+`KubernetesGateway`, and its `backendRefs[].name` a foreign key defaulting to
+`KubernetesService` -- wiring them with `valueFrom` creates real dependency
+edges, so the platform orders the deployment automatically.
 
 ## Anatomy of HTTPRouteSpec
 
@@ -164,22 +164,25 @@ gap is the most painful one to leave open. Modeling it as a typed component give
   cluster,
 - DAG-ordered composition with the Gateway, namespace, and backends.
 
-## Design Decisions
+## Design Notes
 
-1. **100% standard-channel fidelity.** Every standard-channel field of the
+1. **Complete standard-channel surface.** Every standard-channel field of the
    upstream `HTTPRouteSpec` is modeled. No subsetting, because the Gateway API is
    itself "the what" -- any combination of routing features is legitimate.
-2. **String value-fields, not proto enums (DD-008).** Closed enums validate with
-   CEL `in [...]`; open sets (hostnames, header names, paths) validate with the
-   upstream regex. This preserves custom values where upstream allows them, keeps
-   CEL expressions readable, and requires zero case-mapping in IaC.
+2. **String value-fields, not proto enums.** Upstream models its enums as string
+   type aliases; the proto mirrors that. Closed enums validate with CEL
+   `in [...]`; open sets (hostnames, header names, paths) validate with the
+   upstream regex. This preserves custom and controller-specific values where
+   upstream allows them, keeps CEL string comparisons working, and requires zero
+   case-mapping in IaC.
 3. **Discriminated unions via discriminator + fields, never `oneof`.** Filters
    and path modifiers keep the upstream JSON structure; CEL enforces that the
    populated field matches the `type`.
-4. **Plain `parent_refs` and `backend_refs` (not foreign keys).** They are arrays
-   of multi-field upstream objects; wrapping each in `StringValueOrRef` would
-   distort the structure. InfraChart DAG ordering sequences the Gateway and
-   backends; the `name` fields match upstream exactly.
+4. **Foreign-key `parent_refs` and `backend_refs` names.** Each reference keeps
+   the upstream multi-field shape, but its `name` is a `StringValueOrRef`
+   foreign key (defaulting to `KubernetesGateway` and `KubernetesService`
+   respectively): `valueFrom` wiring creates real dependency edges in infra
+   charts, while `value:` carries literal names for referents outside Planton.
 5. **No baked-in Planton defaults on upstream fields.** Upstream kubebuilder
    defaults (path `type=PathPrefix`, match `type=Exact`, redirect
    `status_code=302`, CORS `max_age=5`) are documented in comments only, so the
@@ -187,8 +190,10 @@ gap is the most painful one to leave open. Modeling it as a typed component give
 6. **Flat `HTTPBackendRef`.** Upstream embeds `BackendRef` inline and the typed
    CRD shape is flat, so the backend-ref fields are flattened directly (plus a
    `filters` list) rather than nesting the shared `BackendRef` message.
-7. **Typed crd2pulumi IaC.** Both IaC modules use the generated typed resource
-   (`NewHTTPRoute`), catching field and structure errors at compile time.
+7. **Typed crd2pulumi IaC.** The Pulumi module uses the generated typed resource
+   (`NewHTTPRoute`), catching field and structure errors at compile time; the
+   Terraform module applies through `kubectl_manifest` (alekc/kubectl) with
+   server-side apply, plannable before the Gateway API CRDs exist.
 
 ## Standard vs Experimental Channel
 
@@ -252,32 +257,21 @@ routing is a first-class Planton experience rather than raw YAML.
 - [Gateway API specification](https://gateway-api.sigs.k8s.io/)
 - [GEP-2257: Gateway API Duration format](https://gateway-api.sigs.k8s.io/geps/gep-2257/)
 - [Gateway API conformance](https://gateway-api.sigs.k8s.io/concepts/conformance/)
-- Upstream source: `kubernetes-sigs/gateway-api` `apis/v1/httproute_types.go` (v1.5.1)
+- Upstream source: `kubernetes-sigs/gateway-api` `apis/v1/httproute_types.go` (v1.6.1)
 
 ## Composing in Infra Charts
 
 `KubernetesHttpRoute` is a leaf in the ingress DAG: it attaches to a `Gateway`
-and forwards to backend Services. Two mechanisms wire it to its neighbors (see
-project decision DD-009):
-
-1. **Data dependencies use `valueFrom`.** `namespace` is a `StringValueOrRef`, so
-   it can reference a `KubernetesNamespace` output and the platform builds that DAG
-   edge automatically.
-2. **Topology dependencies use `metadata.relationships`.** `parentRefs` and
-   `backendRefs` are **plain** upstream references (arrays of multi-field objects),
-   not foreign keys -- a plain name creates no automatic DAG edge. Express those
-   edges explicitly:
+and forwards to backend Services. Every neighbor reference is a
+`StringValueOrRef` foreign key -- `namespace` (default kind
+`KubernetesNamespace`), `parentRefs[].name` (default kind `KubernetesGateway`),
+and `backendRefs[].name` (default kind `KubernetesService`) -- so wiring them
+with `valueFrom` creates real dependency edges and the platform builds the DAG
+automatically:
 
 ```yaml
 metadata:
   name: "{{ values.env }}-web-route"
-  relationships:
-    - kind: KubernetesGateway
-      name: "{{ values.env }}-gateway"
-      type: depends_on
-    - kind: KubernetesService          # when the backend is Planton-managed
-      name: "{{ values.service_name }}"
-      type: uses
 spec:
   namespace:
     valueFrom:
@@ -285,7 +279,11 @@ spec:
       name: "{{ values.env }}-ns"
       fieldPath: spec.name
   parentRefs:
-    - name: "{{ values.env }}-gateway"   # literal Gateway name
+    - name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: "{{ values.env }}-gateway"
+          fieldPath: status.outputs.gateway_name
   hostnames:
     - "app.{{ values.domain }}"
   rules:
@@ -294,11 +292,16 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: "{{ values.service_name }}"
+        - name:
+            valueFrom:
+              kind: KubernetesService
+              name: "{{ values.service_name }}"
+              fieldPath: status.outputs.service_name
           port: 8080
 ```
 
+When a parent or backend is not Planton-managed, pass the literal name with
+`value:` -- no edge is created, matching reality.
+
 Full ingress stack:
 `CertManager -> ClusterIssuer -> Certificate -> (Secret) -> Gateway -> HTTPRoute / GRPCRoute`.
-Data edges use `valueFrom`; the plain `parentRefs` / `backendRefs` edges use
-`metadata.relationships`.

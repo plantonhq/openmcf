@@ -28,7 +28,7 @@ func literal(value string) *foreignkeyv1.StringValueOrRef {
 // serviceBackend returns a minimal valid backend reference to a Service.
 func serviceBackend(name string, port int32) *kubernetes.KubernetesGatewayApiBackendRef {
 	return &kubernetes.KubernetesGatewayApiBackendRef{
-		Name: name,
+		Name: literal(name),
 		Port: int32Ptr(port),
 	}
 }
@@ -46,7 +46,7 @@ var _ = ginkgo.Describe("KubernetesTlsRoute Validation Tests", func() {
 			Spec: &KubernetesTlsRouteSpec{
 				Namespace: literal("app-ns"),
 				ParentRefs: []*kubernetes.KubernetesGatewayApiParentReference{
-					{Name: "my-gateway"},
+					{Name: literal("my-gateway")},
 				},
 				Hostnames: []string{"secure.example.com"},
 				Rules: []*KubernetesTlsRouteRule{
@@ -77,14 +77,25 @@ var _ = ginkgo.Describe("KubernetesTlsRoute Validation Tests", func() {
 
 		ginkgo.It("weighted backends should be valid", func() {
 			input.Spec.Rules[0].BackendRefs = []*kubernetes.KubernetesGatewayApiBackendRef{
-				{Name: "tls-stable", Port: int32Ptr(8443), Weight: int32Ptr(90)},
-				{Name: "tls-canary", Port: int32Ptr(8443), Weight: int32Ptr(10)},
+				{Name: literal("tls-stable"), Port: int32Ptr(8443), Weight: int32Ptr(90)},
+				{Name: literal("tls-canary"), Port: int32Ptr(8443), Weight: int32Ptr(10)},
 			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
 		ginkgo.It("route without parent_refs should be valid (attachment optional)", func() {
 			input.Spec.ParentRefs = nil
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("17 hostnames should be valid (max_items=1024)", func() {
+			input.Spec.Hostnames = []string{
+				"a.example.com", "b.example.com", "c.example.com", "d.example.com",
+				"e.example.com", "f.example.com", "g.example.com", "h.example.com",
+				"i.example.com", "j.example.com", "k.example.com", "l.example.com",
+				"m.example.com", "n.example.com", "o.example.com", "p.example.com",
+				"q.example.com",
+			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 	})
@@ -107,17 +118,6 @@ var _ = ginkgo.Describe("KubernetesTlsRoute Validation Tests", func() {
 
 		ginkgo.It("invalid hostname pattern should fail", func() {
 			input.Spec.Hostnames = []string{"Not_A_Host"}
-			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("more than 16 hostnames should fail", func() {
-			input.Spec.Hostnames = []string{
-				"a.example.com", "b.example.com", "c.example.com", "d.example.com",
-				"e.example.com", "f.example.com", "g.example.com", "h.example.com",
-				"i.example.com", "j.example.com", "k.example.com", "l.example.com",
-				"m.example.com", "n.example.com", "o.example.com", "p.example.com",
-				"q.example.com",
-			}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
@@ -148,14 +148,14 @@ var _ = ginkgo.Describe("KubernetesTlsRoute Validation Tests", func() {
 
 		ginkgo.It("backend ref with out-of-range port should fail", func() {
 			input.Spec.Rules[0].BackendRefs = []*kubernetes.KubernetesGatewayApiBackendRef{
-				{Name: "tls-svc", Port: int32Ptr(70000)},
+				{Name: literal("tls-svc"), Port: int32Ptr(70000)},
 			}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("backend ref with invalid kind pattern should fail", func() {
 			input.Spec.Rules[0].BackendRefs = []*kubernetes.KubernetesGatewayApiBackendRef{
-				{Name: "tls-svc", Kind: stringPtr("bad kind"), Port: int32Ptr(8443)},
+				{Name: literal("tls-svc"), Kind: stringPtr("bad kind"), Port: int32Ptr(8443)},
 			}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
@@ -167,7 +167,7 @@ var _ = ginkgo.Describe("KubernetesTlsRoute Validation Tests", func() {
 
 		ginkgo.It("a parent ref with a malformed kind should fail", func() {
 			input.Spec.ParentRefs = []*kubernetes.KubernetesGatewayApiParentReference{
-				{Name: "my-gateway", Kind: stringPtr("bad/kind")},
+				{Name: literal("my-gateway"), Kind: stringPtr("bad/kind")},
 			}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})

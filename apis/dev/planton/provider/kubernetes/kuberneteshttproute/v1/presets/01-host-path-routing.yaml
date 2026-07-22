@@ -6,14 +6,27 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: <gateway-name>
+    # The Gateway name is a foreign key. Use `value:` for a literal name (an
+    # existing or externally managed Gateway); use `valueFrom:` to reference a
+    # Planton-managed KubernetesGateway so the route deploys after it:
+    #   name:
+    #     valueFrom:
+    #       kind: KubernetesGateway
+    #       name: <gateway-resource-name>
+    #       fieldPath: status.outputs.gateway_name
+    - name:
+        value: <gateway-name>
   hostnames:
-    - <app-hostname>
+    - app.example.com
   rules:
     - matches:
         - path:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: <service-name>
+        # Also a foreign key: `value:` for a literal Service name, `valueFrom:`
+        # (kind KubernetesService, fieldPath status.outputs.service_name) for a
+        # Planton-managed backend.
+        - name:
+            value: <service-name>
           port: 8080

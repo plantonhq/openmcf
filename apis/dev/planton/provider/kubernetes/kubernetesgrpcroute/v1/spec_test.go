@@ -28,7 +28,7 @@ func literal(value string) *foreignkeyv1.StringValueOrRef {
 // serviceBackend returns a minimal valid backend reference to a Service.
 func serviceBackend(name string, port int32) *KubernetesGrpcRouteBackendRef {
 	return &KubernetesGrpcRouteBackendRef{
-		Name: name,
+		Name: literal(name),
 		Port: int32Ptr(port),
 	}
 }
@@ -46,7 +46,7 @@ var _ = ginkgo.Describe("KubernetesGrpcRoute Validation Tests", func() {
 			Spec: &KubernetesGrpcRouteSpec{
 				Namespace: literal("app-ns"),
 				ParentRefs: []*kubernetes.KubernetesGatewayApiParentReference{
-					{Name: "my-gateway"},
+					{Name: literal("my-gateway")},
 				},
 				Rules: []*KubernetesGrpcRouteRule{
 					{
@@ -102,8 +102,8 @@ var _ = ginkgo.Describe("KubernetesGrpcRoute Validation Tests", func() {
 
 		ginkgo.It("weighted canary across two backends should be valid", func() {
 			input.Spec.Rules[0].BackendRefs = []*KubernetesGrpcRouteBackendRef{
-				{Name: "grpc-stable", Port: int32Ptr(9000), Weight: int32Ptr(90)},
-				{Name: "grpc-canary", Port: int32Ptr(9000), Weight: int32Ptr(10)},
+				{Name: literal("grpc-stable"), Port: int32Ptr(9000), Weight: int32Ptr(90)},
+				{Name: literal("grpc-canary"), Port: int32Ptr(9000), Weight: int32Ptr(10)},
 			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
@@ -128,7 +128,7 @@ var _ = ginkgo.Describe("KubernetesGrpcRoute Validation Tests", func() {
 					Type: "RequestMirror",
 					RequestMirror: &KubernetesGrpcRouteRequestMirrorFilter{
 						BackendRef: &kubernetes.KubernetesGatewayApiBackendObjectReference{
-							Name: "grpc-mirror",
+							Name: literal("grpc-mirror"),
 							Port: int32Ptr(9000),
 						},
 						Percent: int32Ptr(10),
@@ -143,7 +143,7 @@ var _ = ginkgo.Describe("KubernetesGrpcRoute Validation Tests", func() {
 				{
 					Type: "ExtensionRef",
 					ExtensionRef: &kubernetes.KubernetesGatewayApiLocalObjectReference{
-						Group: "example.com",
+						Group: stringPtr("example.com"),
 						Kind:  "MyGrpcFilter",
 						Name:  "custom",
 					},
@@ -239,7 +239,7 @@ var _ = ginkgo.Describe("KubernetesGrpcRoute Validation Tests", func() {
 				{
 					Type: "RequestMirror",
 					RequestMirror: &KubernetesGrpcRouteRequestMirrorFilter{
-						BackendRef: &kubernetes.KubernetesGatewayApiBackendObjectReference{Name: "m", Port: int32Ptr(9000)},
+						BackendRef: &kubernetes.KubernetesGatewayApiBackendObjectReference{Name: literal("m"), Port: int32Ptr(9000)},
 						Percent:    int32Ptr(10),
 						Fraction:   &kubernetes.KubernetesGatewayApiFraction{Numerator: 5},
 					},
@@ -250,7 +250,7 @@ var _ = ginkgo.Describe("KubernetesGrpcRoute Validation Tests", func() {
 
 		ginkgo.It("backend ref weight above max should fail", func() {
 			input.Spec.Rules[0].BackendRefs = []*KubernetesGrpcRouteBackendRef{
-				{Name: "grpc-svc", Port: int32Ptr(9000), Weight: int32Ptr(1000001)},
+				{Name: literal("grpc-svc"), Port: int32Ptr(9000), Weight: int32Ptr(1000001)},
 			}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
@@ -265,7 +265,7 @@ var _ = ginkgo.Describe("KubernetesGrpcRoute Validation Tests", func() {
 		ginkgo.It("too many parent refs should fail (max 32)", func() {
 			refs := make([]*kubernetes.KubernetesGatewayApiParentReference, 0, 33)
 			for i := 0; i < 33; i++ {
-				refs = append(refs, &kubernetes.KubernetesGatewayApiParentReference{Name: "gw"})
+				refs = append(refs, &kubernetes.KubernetesGatewayApiParentReference{Name: literal("gw")})
 			}
 			input.Spec.ParentRefs = refs
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
@@ -273,7 +273,7 @@ var _ = ginkgo.Describe("KubernetesGrpcRoute Validation Tests", func() {
 
 		ginkgo.It("a parent ref with a malformed kind should fail", func() {
 			input.Spec.ParentRefs = []*kubernetes.KubernetesGatewayApiParentReference{
-				{Name: "my-gateway", Kind: stringPtr("bad/kind")},
+				{Name: literal("my-gateway"), Kind: stringPtr("bad/kind")},
 			}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
@@ -284,7 +284,7 @@ var _ = ginkgo.Describe("KubernetesGrpcRoute Validation Tests", func() {
 					Type: "RequestMirror",
 					RequestMirror: &KubernetesGrpcRouteRequestMirrorFilter{
 						BackendRef: &kubernetes.KubernetesGatewayApiBackendObjectReference{
-							Name: "m", Port: int32Ptr(9000), Group: stringPtr("Bad_Group"),
+							Name: literal("m"), Port: int32Ptr(9000), Group: stringPtr("Bad_Group"),
 						},
 					},
 				},
@@ -297,7 +297,7 @@ var _ = ginkgo.Describe("KubernetesGrpcRoute Validation Tests", func() {
 				{
 					Type: "ExtensionRef",
 					ExtensionRef: &kubernetes.KubernetesGatewayApiLocalObjectReference{
-						Group: "example.com", Name: "custom",
+						Group: stringPtr("example.com"), Name: "custom",
 					},
 				},
 			}

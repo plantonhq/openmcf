@@ -148,6 +148,52 @@ spec:
         - description
         - lint
 
+    # --- Typed custom resources (kubectl_manifest) -----------------------------
+    # Every typed-CR module (cert-manager issuers/certificates, external-secrets
+    # stores/secrets, Gateway API kinds) applies through alekc/kubectl's
+    # kubectl_manifest, whose importer takes a COMPOSED ID:
+    # apiVersion//kind//name for cluster-scoped CRs, plus //namespace for
+    # namespaced ones. The "//" delimiter is the provider's own (an apiVersion
+    # can itself contain a slash), and the importer REJECTS a trailing "//" --
+    # which is why the namespace rides in an optional [bracketed] segment group
+    # that disappears wholesale when the CR is cluster-scoped. apiVersion and
+    # kind are constants of each module (a typed-CR module renders exactly one
+    # GVK), declared per component via the literal derivation.
+    - terraform_type: kubectl_manifest
+      pulumi_type: ""
+      id_format: "{api_version}//{kind}//{name}[//{namespace}]"
+      # The importer reconstructs yaml_body from the live object and resets
+      # every provider-side knob to its schema default -- none of these exist
+      # cluster-side, so a configured non-default value re-appears in the
+      # first post-import plan as an in-place update (a server-side no-op).
+      config_only_attributes:
+        - server_side_apply
+        - force_conflicts
+        - force_new
+        - apply_only
+        - wait
+        - wait_for
+        - wait_for_rollout
+        - validate_schema
+        - field_manager
+        - upgrade_api_version
+        - override_namespace
+        - sensitive_fields
+        - ignore_fields
+        - delete_cascade
+        - timeouts
+        - show_drift_values
+        - drift_engine
+        - mask_paths
+        # yaml_body itself is write-normalized rather than config-only: the
+        # importer stores the STRIPPED LIVE object (server defaults included,
+        # volatile metadata removed), so the first post-import plan re-asserts
+        # the module's rendered manifest -- a server-side no-op that
+        # converges on the second plan.
+      write_normalized_attributes:
+        - yaml_body
+        - yaml_body_parsed
+
     # --- RBAC ----------------------------------------------------------------
     - terraform_type: kubernetes_role_v1
       pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:Role

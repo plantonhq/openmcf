@@ -60,5 +60,13 @@ message ImportValueDerivation {
     // convention-named satellites blind-derivable without exporting their
     // names as stack outputs.
     string from_metadata_name_suffix = 6;
+    // A constant the module hardcodes -- for placeholder values that are
+    // properties of the module itself rather than of any one resource. The
+    // canonical case is kubectl_manifest's composed import ID
+    // ("{api_version}//{kind}//{name}[//{namespace}]"): a typed-CR module
+    // renders exactly one apiVersion and kind, so the map author declares
+    // them as literals. Never use a literal for anything a user could vary
+    // per resource -- that is what the other derivations are for.
+    string literal = 7;
   }
 }

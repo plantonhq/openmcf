@@ -13,7 +13,7 @@ func buildBackendRefs(backendRefs []*kuberneteshttproutev1.KubernetesHttpRouteBa
 	arr := gatewayv1.HTTPRouteSpecRulesBackendRefsArray{}
 	for _, b := range backendRefs {
 		args := gatewayv1.HTTPRouteSpecRulesBackendRefsArgs{
-			Name: pulumi.String(b.GetName()),
+			Name: pulumi.String(b.GetName().GetValue()),
 		}
 		if group := b.GetGroup(); group != "" {
 			args.Group = pulumi.String(group)
@@ -139,7 +139,7 @@ func buildBackendRequestMirror(m *kuberneteshttproutev1.KubernetesHttpRouteReque
 	args := gatewayv1.HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorArgs{}
 	if ref := m.GetBackendRef(); ref != nil {
 		backendRef := gatewayv1.HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefArgs{
-			Name: pulumi.String(ref.GetName()),
+			Name: pulumi.String(ref.GetName().GetValue()),
 		}
 		if group := ref.GetGroup(); group != "" {
 			backendRef.Group = pulumi.String(group)

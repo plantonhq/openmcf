@@ -29,7 +29,7 @@ const (
 // or header), optionally transform them with filters, and forward them to
 // backend Services. Routes attach to a Gateway through parent_refs.
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 GRPCRouteSpec
+// 100% fidelity with the upstream Gateway API v1.6.1 GRPCRouteSpec
 // (kubernetes-sigs/gateway-api apis/v1/grpcroute_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
 // (namespace). Experimental fields are intentionally excluded
@@ -45,22 +45,9 @@ type KubernetesGrpcRouteSpec struct {
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// References to the parent resources (usually Gateways) this route attaches
 	// to. Each parent must allow attachment from GRPCRoutes of this namespace.
-	//
-	// INFRA-CHART COMPOSABILITY (DD-009): parent_refs is a PLAIN reference, not an
-	// Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-	// objects, so wrapping its scalars in StringValueOrRef would break 100% upstream
-	// fidelity (DD-001) and distort the typed CRD shape (dont-do #6). Because a plain
-	// string creates NO automatic DAG edge, an infra-chart author MUST express the
-	// route -> Gateway dependency via metadata.relationships, e.g.:
-	//
-	//	metadata:
-	//	  relationships:
-	//	    - kind: KubernetesGateway
-	//	      name: "{{ values.env }}-gateway"
-	//	      type: depends_on
-	//
-	// The plain `name` here is then the literal Gateway name. See the component's
-	// "Composing in Infra Charts" docs for the full pattern.
+	// Each reference's name defaults to a KubernetesGateway foreign key — wire
+	// it with valueFrom in an infra chart and the route deploys after its
+	// Gateway.
 	//
 	// Flattened from the upstream CommonRouteSpec; the experimental
 	// useDefaultGateways field is excluded (standard channel only).
@@ -665,12 +652,8 @@ func (x *KubernetesGrpcRouteHeader) GetValue() string {
 type KubernetesGrpcRouteRequestMirrorFilter struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Backend that mirrored requests are sent to. Required. Upstream support
-	// level: Extended for Kubernetes Service.
-	//
-	// INFRA-CHART COMPOSABILITY (DD-009): backend_ref is a PLAIN reference (an
-	// array-free but multi-field upstream object), not a StringValueOrRef foreign
-	// key. Express the route -> mirror-backend dependency via metadata.relationships
-	// (type: uses) when the backend is an Planton-managed resource.
+	// level: Extended for Kubernetes Service. The reference's name defaults to
+	// a KubernetesService foreign key.
 	BackendRef *kubernetes.KubernetesGatewayApiBackendObjectReference `protobuf:"bytes,1,opt,name=backend_ref,json=backendRef,proto3" json:"backend_ref,omitempty"`
 	// Percentage of requests to mirror (0-100). When neither percent nor fraction
 	// is set, 100% are mirrored.
@@ -736,25 +719,10 @@ func (x *KubernetesGrpcRouteRequestMirrorFilter) GetFraction() *kubernetes.Kuber
 // KubernetesGrpcRouteBackendRef is a backend a matching request is forwarded
 // to, optionally with per-backend filters. The backend reference fields are
 // flattened (matching the upstream inline GRPCBackendRef and the typed CRD
-// shape) rather than nesting the shared BackendRef message.
+// shape) rather than nesting the shared BackendRef message, because each gRPC
+// backend additionally carries filters.
 //
 // Upstream: GRPCBackendRef in apis/v1/grpcroute_types.go
-//
-// INFRA-CHART COMPOSABILITY (DD-009): backend_refs is a PLAIN reference, not an
-// Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-// objects, so wrapping its scalars would break 100% fidelity (DD-001) and distort
-// the typed CRD shape (dont-do #6). Because a plain string creates NO automatic
-// DAG edge, an infra-chart author MUST express the route -> backend dependency via
-// metadata.relationships when the backend is an Planton-managed resource, e.g.:
-//
-//	metadata:
-//	  relationships:
-//	    - kind: KubernetesService   # or the backend's actual kind
-//	      name: "{{ values.service_name }}"
-//	      type: uses
-//
-// The plain `name` here is then the literal Kubernetes Service name. See the
-// component's "Composing in Infra Charts" docs for the full pattern.
 type KubernetesGrpcRouteBackendRef struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Group of the referent. Empty string infers the core API group.
@@ -767,10 +735,11 @@ type KubernetesGrpcRouteBackendRef struct {
 	// Upstream default: "Service".
 	// Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
 	Kind *string `protobuf:"bytes,2,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
-	// Name of the referent (for example a Kubernetes Service name). This is a
-	// plain name reference, not an Planton foreign key (see the message comment
-	// and spec.parent_refs for the infra-chart relationship guidance).
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Name of the referent. Defaults to a KubernetesService foreign key: in an
+	// infra chart, wire it with valueFrom against the backend Service and the
+	// route deploys after its backend. When the backend is not a
+	// Planton-managed Service, pass the literal name with `value:`.
+	Name *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Namespace of the backend. When unspecified, the route's namespace is
 	// inferred. Cross-namespace references require a ReferenceGrant.
 	Namespace *string `protobuf:"bytes,4,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
@@ -831,11 +800,11 @@ func (x *KubernetesGrpcRouteBackendRef) GetKind() string {
 	return ""
 }
 
-func (x *KubernetesGrpcRouteBackendRef) GetName() string {
+func (x *KubernetesGrpcRouteBackendRef) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesGrpcRouteBackendRef) GetNamespace() string {
@@ -938,12 +907,11 @@ const file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_raw
 	"\bfraction\x18\x03 \x01(\v2=.dev.planton.provider.kubernetes.KubernetesGatewayApiFractionR\bfraction:\xac\x01\xbaH\xa8\x01\x1a\xa5\x01\n" +
 	"(grpc_request_mirror.percent_xor_fraction\x12Mspecify either percent or fraction for the mirror sampling rate, but not both\x1a*!(has(this.percent) && has(this.fraction))B\n" +
 	"\n" +
-	"\b_percent\"\x97\x04\n" +
+	"\b_percent\"\xe8\x04\n" +
 	"\x1dKubernetesGrpcRouteBackendRef\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
-	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12!\n" +
-	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12!\n" +
+	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12r\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12!\n" +
 	"\tnamespace\x18\x04 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12$\n" +
 	"\x04port\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x03R\x04port\x88\x01\x01\x12(\n" +
 	"\x06weight\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xc0\x84=(\x00H\x04R\x06weight\x88\x01\x01\x12u\n" +
@@ -1003,12 +971,13 @@ var file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_depId
 	7,  // 13: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeaderFilter.add:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteHeader
 	13, // 14: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRequestMirrorFilter.backend_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
 	14, // 15: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteRequestMirrorFilter.fraction:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
-	5,  // 16: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteBackendRef.filters:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	10, // 16: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteBackendRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 17: dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteBackendRef.filters:type_name -> dev.planton.provider.kubernetes.kubernetesgrpcroute.v1.KubernetesGrpcRouteFilter
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesgrpcroute_v1_spec_proto_init() }

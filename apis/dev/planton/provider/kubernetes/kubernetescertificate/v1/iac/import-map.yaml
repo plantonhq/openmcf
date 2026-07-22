@@ -1,0 +1,31 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetescertificate
+spec:
+  # One kubectl_manifest applying the cert-manager Certificate CR
+  # (namespaced). The issued TLS Secret is created by cert-manager, never by
+  # this module, so it has no address to import.
+  values:
+    - name: api_version
+      derivations:
+        - literal: cert-manager.io/v1
+      where_to_find: Always "cert-manager.io/v1" — the CR group/version this module applies.
+    - name: kind
+      derivations:
+        - literal: Certificate
+      where_to_find: Always "Certificate" — the CR kind this module applies.
+    - name: name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: certificate_name
+      where_to_find: >-
+        The Certificate's metadata.name (equals the Planton resource name) —
+        `kubectl get certificates -A` (NAME column).
+    - name: namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        The namespace the Certificate lives in — `kubectl get certificates -A`
+        (NAMESPACE column).

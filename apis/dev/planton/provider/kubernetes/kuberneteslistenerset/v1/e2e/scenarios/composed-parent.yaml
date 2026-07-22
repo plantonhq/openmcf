@@ -1,0 +1,37 @@
+# The composition proof: the ListenerSet's parent resolves through the Gateway
+# foreign key against a live Gateway fixture that opts in to ListenerSet
+# attachment (allowed_listeners: Same) -- the per-team delegation pattern.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesListenerSet
+metadata:
+  name: e2e-lset-composed
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesGateway"
+spec:
+  namespace:
+    value: default
+  parent_ref:
+    name:
+      valueFrom:
+        name: e2e-gw-fixture
+  listeners:
+    - name: tenant-https
+      hostname: tenant.e2e.example.com
+      port: 9443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificate_refs:
+          - name:
+              value: tenant-tls-cert
+      allowed_routes:
+        namespaces:
+          from: Same
+        kinds:
+          - kind: HTTPRoute
+    - name: tenant-tls
+      hostname: db.tenant.e2e.example.com
+      port: 9444
+      protocol: TLS
+      tls:
+        mode: Passthrough

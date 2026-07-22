@@ -4,7 +4,7 @@
 
 The Kubernetes Gateway API represents the next generation of ingress and service mesh traffic routing APIs for Kubernetes. Unlike its predecessor, the Ingress API, Gateway API was designed from the ground up with role-oriented design, expressiveness, and extensibility as core principles.
 
-This research document explores the Gateway API landscape, explains why CRD management matters, and justifies the design decisions in Planton's KubernetesGatewayApiCrds component.
+This research document explores the Gateway API landscape, explains why CRD management matters, and explains the reasoning behind Planton's KubernetesGatewayApiCrds component.
 
 ## The Evolution of Kubernetes Traffic Management
 
@@ -42,6 +42,8 @@ The Gateway API project started in 2019 as a Kubernetes SIG-Network initiative t
 | 2022 | Beta release (v0.5.0) |
 | 2023 | GA release (v1.0.0) |
 | 2024 | v1.2.0 with enhanced features |
+| 2025 | v1.5 promotes TLSRoute and ListenerSet to standard |
+| 2026 | v1.6 promotes TCPRoute and UDPRoute to GA (standard) |
 
 ## Gateway API Architecture
 
@@ -139,25 +141,30 @@ Gateway API maintains two release channels:
 
 #### Standard Channel
 
-Contains stable, GA resources with strong backward compatibility guarantees:
+Contains stable resources with strong backward compatibility guarantees
+(as of Gateway API v1.6):
 
 | Resource | Status | Use Case |
 |----------|--------|----------|
 | GatewayClass | GA | Define gateway types |
 | Gateway | GA | Define entry points |
+| ListenerSet | Standard | Delegated listener management on a shared Gateway |
 | HTTPRoute | GA | HTTP routing |
+| GRPCRoute | GA | Native gRPC routing |
+| TLSRoute | Standard | TLS passthrough by SNI |
+| TCPRoute | GA | Raw TCP routing |
+| UDPRoute | GA | UDP routing |
 | ReferenceGrant | GA | Cross-namespace refs |
+| BackendTLSPolicy | Standard | Gateway-to-backend TLS |
+
+Earlier Gateway API releases shipped the layer-4 routes only in the
+experimental channel; since v1.6 all five route kinds are standard.
 
 #### Experimental Channel
 
-Contains resources still maturing:
-
-| Resource | Status | Use Case |
-|----------|--------|----------|
-| TCPRoute | Beta | Raw TCP routing |
-| UDPRoute | Alpha | UDP routing |
-| TLSRoute | Alpha | TLS passthrough |
-| GRPCRoute | Beta | Native gRPC |
+Contains all standard resources (with additional experimental fields) plus
+resources still maturing, such as `XBackend`, `XBackendTrafficPolicy`, and
+`XMesh`.
 
 ## Installation Landscape
 
@@ -167,10 +174,10 @@ The simplest approach—apply manifests directly:
 
 ```bash
 # Standard channel
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/standard-install.yaml
 
 # Experimental channel
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/experimental-install.yaml
 ```
 
 **Pros:**
@@ -215,7 +222,7 @@ metadata:
 spec:
   source:
     repoURL: https://github.com/kubernetes-sigs/gateway-api
-    targetRevision: v1.2.1
+    targetRevision: v1.6.1
     path: config/crd/standard
   destination:
     server: https://kubernetes.default.svc

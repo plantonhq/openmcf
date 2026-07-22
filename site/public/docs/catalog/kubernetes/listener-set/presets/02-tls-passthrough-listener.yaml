@@ -1,0 +1,30 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesListenerSet
+metadata:
+  name: my-passthrough-listeners
+spec:
+  namespace:
+    value: team-a
+  parentRef:
+    # The parent Gateway name is a foreign key. Here `value:` names the Gateway
+    # literally -- appropriate when the Gateway is created outside Planton. Use
+    # `valueFrom:` (kind KubernetesGateway, fieldPath
+    # status.outputs.gateway_name) to reference a Planton-managed Gateway and
+    # deploy in dependency order (see the 01-team-https-listeners preset).
+    name:
+      value: <gateway-name>
+    namespace: istio-ingress  # the shared Gateway's namespace
+  listeners:
+    - name: team-tls-passthrough
+      hostname: db.team-a.example.com
+      port: 9443
+      protocol: TLS
+      tls:
+        # Passthrough forwards the encrypted stream untouched -- the backend
+        # terminates TLS, so no certificateRefs are needed here.
+        mode: Passthrough
+      allowedRoutes:
+        namespaces:
+          from: Same
+        kinds:
+          - kind: TLSRoute

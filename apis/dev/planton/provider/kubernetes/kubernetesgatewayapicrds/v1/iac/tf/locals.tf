@@ -7,7 +7,7 @@
 
 locals {
   # Gateway API version
-  version = coalesce(var.spec.version, "v1.2.1")
+  version = coalesce(var.spec.version, "v1.6.1")
 
   # Determine if experimental channel is requested
   is_experimental = try(var.spec.install_channel.channel, "standard") == "experimental"

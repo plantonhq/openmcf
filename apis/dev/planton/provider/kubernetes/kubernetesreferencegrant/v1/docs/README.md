@@ -2,7 +2,7 @@
 
 This document explains why `KubernetesReferenceGrant` exists, how it maps the
 upstream Gateway API `ReferenceGrant` into the Planton component model, and the
-design decisions behind its spec, validation, and IaC. It is the source-of-truth
+reasoning behind its spec, validation, and IaC. It is the source-of-truth
 companion to the user-facing `README.md` (getting started) and `catalog-page.md`
 (catalog listing).
 
@@ -15,7 +15,7 @@ companion to the user-facing `README.md` (getting started) and `catalog-page.md`
 5. The from / to Model
 6. Validation Rules
 7. Why ReferenceGrant Is a First-Class Planton Component
-8. Design Decisions
+8. Design Notes
 9. No Status Subresource
 10. Composing in Infra Charts
 11. Controller Landscape
@@ -35,11 +35,11 @@ pointing at a Service in another team's namespace -- is denied unless the *targe
 namespace publishes a `ReferenceGrant` that trusts the source.
 
 `KubernetesReferenceGrant` brings that resource into Planton as a first-class
-deployment component, at 100% fidelity with the upstream standard channel, so
+deployment component modeling the complete upstream standard-channel surface, so
 customers never have to fall back to a raw `KubernetesManifest` to authorize
-cross-namespace references. It is the seventh and final member of the Planton
-Gateway API family, alongside `KubernetesGatewayClass`, `KubernetesGateway`, and
-the four route kinds.
+cross-namespace references. It is the trust primitive of the Planton Gateway API
+family, alongside `KubernetesGatewayClass`, `KubernetesGateway`,
+`KubernetesListenerSet`, and the five route kinds.
 
 ## The Cross-Namespace Trust Problem
 
@@ -114,34 +114,38 @@ kinds, this spec needs none.
 Without it, every production Gateway deployment that spans namespaces is forced
 back to a raw `KubernetesManifest` to authorize its own cross-namespace references:
 no proto validation, no typed SDKs, no FK wiring, no InfraChart composability, no
-UI wizards. Worse, without ReferenceGrant the other six Gateway API components can
+UI wizards. Worse, without ReferenceGrant the rest of the Gateway API family can
 only operate within a single namespace -- a severe limitation for any realistic
 ingress topology where Gateways, certs, and backends live apart. Including it
 completes the family and unlocks true multi-namespace ingress.
 
-## Design Decisions
+## Design Notes
 
 - **Standard channel, `v1`.** ReferenceGrant is served in the standard channel as
   `gateway.networking.k8s.io/v1`. The typed crd2pulumi resource emits the `v1`
-  apiVersion (aliased from `v1beta1`).
+  apiVersion.
 - **Component-local from / to types.** Unlike the routes, ReferenceGrant does not
   reuse the shared `gateway_api.proto` reference types -- its entries are trust
   assertions about kinds, structurally unrelated to `ParentReference` /
   `BackendRef`. They are modeled as component-prefixed local messages.
-- **`group` / `kind` are plain `string`, `to.name` is `optional string` (DD-008,
-  dont-do #2).** For `group`/`kind` the empty/zero value is either meaningful
-  (`""` = core group) or simply invalid (empty kind), with no "unset vs empty"
-  distinction to preserve, so a pointer would add noise. For `to.name`, absence
-  (meaning "all resources") is genuinely distinct from any concrete name, so it is
+- **from / to fields stay plain strings, not foreign keys.** The route and
+  Gateway kinds wrap reference *names* in `StringValueOrRef` because those point
+  at specific resource instances; a grant's `group`/`kind`/`namespace` entries
+  instead assert trust in *kinds* of resources, so wrapping them would
+  misrepresent their semantics. For `group`/`kind` the empty/zero value is
+  either meaningful (`""` = core group) or simply invalid (empty kind), with no
+  "unset vs empty" distinction to preserve. For `to.name`, absence (meaning
+  "all resources") is genuinely distinct from any concrete name, so it is
   `optional`.
-- **No baked-in Planton defaults on upstream fields (dont-do #4).** Upstream
-  defaults are documented in comments and left to the controller.
+- **No baked-in Planton defaults on upstream fields.** Upstream defaults are
+  documented in comments and left to the controller.
 - **Typed crd2pulumi IaC.** `gatewayv1.NewReferenceGrant`; the spec mapping (the
   two from/to lists) lives in `references.go`. No matches/filters/refs files.
-- **e2e `deferred` (DD-007).** Although ReferenceGrant has no runtime dependency on
-  a Gateway/route existing (it needs only the CRDs), the current E2E harness does
-  not provision the `KubernetesGatewayApiCrds` prerequisite on the bare kind
-  cluster, so it is deferred like the rest of the family.
+  The Terraform module applies through `kubectl_manifest` (alekc/kubectl) with
+  server-side apply, plannable before the Gateway API CRDs exist.
+- **e2e verified.** The component's end-to-end test provisions the
+  `KubernetesGatewayApiCrds` prerequisite and passes on both the Pulumi and
+  Terraform engines.
 
 ## No Status Subresource
 
@@ -154,7 +158,7 @@ is faithful: inventing a status would diverge from the upstream contract.
 ## Composing in Infra Charts
 
 `KubernetesReferenceGrant` is designed as a LEGO block for Infra Charts. Two
-mechanisms wire it into the dependency DAG (see project decision DD-009):
+mechanisms wire it into the dependency DAG:
 
 1. **Data dependencies use `StringValueOrRef` (`valueFrom`).** `namespace` is a
    `StringValueOrRef` with `default_kind = KubernetesNamespace`, so the grant's own
@@ -223,18 +227,17 @@ grant is removed. The proto carries no controller-specific behavior.
   group; express that as the empty string, not `core` or `v1`.
 - **The grant alone does not order deployment.** It is a leaf; the consuming
   Gateway/Route must declare the `depends_on`/`uses` relationship so the platform
-  sequences the grant first (DD-009).
+  sequences the grant first.
 
 ## Conclusion
 
-`KubernetesReferenceGrant` completes the Planton Gateway API ingress layer at 100%
-standard-channel fidelity, unlocking multi-namespace topologies for the entire
-family while faithfully preserving the upstream trust model -- including its
-deliberate absence of a status subresource.
+`KubernetesReferenceGrant` completes the Planton Gateway API ingress layer,
+modeling the complete upstream standard-channel surface and unlocking
+multi-namespace topologies for the entire family while faithfully preserving the
+upstream trust model -- including its deliberate absence of a status subresource.
 
 ## References
 
 - [Gateway API ReferenceGrant](https://gateway-api.sigs.k8s.io/api-types/referencegrant/)
-- Upstream types: `kubernetes-sigs/gateway-api` `apis/v1/referencegrant_types.go` (v1.5.1)
-- Sibling components: `KubernetesGateway`, `KubernetesHttpRoute`, `KubernetesGrpcRoute`, `KubernetesTlsRoute`, `KubernetesTcpRoute`
-- Project decision: DD-009 (infra-chart composability, plain refs + relationships)
+- Upstream types: `kubernetes-sigs/gateway-api` `apis/v1/referencegrant_types.go` (v1.6.1)
+- Sibling components: `KubernetesGateway`, `KubernetesHttpRoute`, `KubernetesGrpcRoute`, `KubernetesTlsRoute`, `KubernetesTcpRoute`, `KubernetesUdpRoute`, `KubernetesListenerSet`

@@ -523,6 +523,113 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesGatewayApiCrds: install identity (version, channel,
+			// manifest URL) from both engines must land on the StackOutputs proto.
+			name: "KubernetesGatewayApiCrds",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGatewayApiCrds,
+			rawOutputs: map[string]interface{}{
+				"installed_version":      "v1.6.1",
+				"installed_channel":      "standard",
+				"installed_manifest_url": "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/standard-install.yaml",
+			},
+			mustPopulate: []string{
+				"installed_version", "installed_channel", "installed_manifest_url",
+			},
+		},
+		{
+			// KubernetesGatewayClass: class identity (cluster-scoped, no
+			// namespace) from both engines must land on the StackOutputs proto.
+			name: "KubernetesGatewayClass",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGatewayClass,
+			rawOutputs: map[string]interface{}{
+				"gateway_class_name": "istio",
+				"controller_name":    "istio.io/gateway-controller",
+			},
+			mustPopulate: []string{"gateway_class_name", "controller_name"},
+		},
+		{
+			// KubernetesGateway: gateway identity + its class handle from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesGateway",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGateway,
+			rawOutputs: map[string]interface{}{
+				"gateway_name":       "edge-gateway",
+				"namespace":          "gateway-system",
+				"gateway_class_name": "istio",
+			},
+			mustPopulate: []string{"gateway_name", "namespace", "gateway_class_name"},
+		},
+		{
+			// KubernetesListenerSet: listener-set identity + the parent Gateway
+			// handle from both engines must land on the StackOutputs proto.
+			name: "KubernetesListenerSet",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesListenerSet,
+			rawOutputs: map[string]interface{}{
+				"listener_set_name": "team-alpha-listeners",
+				"namespace":         "team-alpha",
+				"gateway_name":      "edge-gateway",
+			},
+			mustPopulate: []string{"listener_set_name", "namespace", "gateway_name"},
+		},
+		{
+			// KubernetesHttpRoute: route identity from both engines must land
+			// on the StackOutputs proto (the route kinds share this shape).
+			name: "KubernetesHttpRoute",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesHttpRoute,
+			rawOutputs: map[string]interface{}{
+				"route_name": "app-route",
+				"namespace":  "team-alpha",
+			},
+			mustPopulate: []string{"route_name", "namespace"},
+		},
+		{
+			name: "KubernetesGrpcRoute",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGrpcRoute,
+			rawOutputs: map[string]interface{}{
+				"route_name": "grpc-route",
+				"namespace":  "team-alpha",
+			},
+			mustPopulate: []string{"route_name", "namespace"},
+		},
+		{
+			name: "KubernetesTcpRoute",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesTcpRoute,
+			rawOutputs: map[string]interface{}{
+				"route_name": "tcp-route",
+				"namespace":  "team-alpha",
+			},
+			mustPopulate: []string{"route_name", "namespace"},
+		},
+		{
+			name: "KubernetesUdpRoute",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesUdpRoute,
+			rawOutputs: map[string]interface{}{
+				"route_name": "udp-route",
+				"namespace":  "team-alpha",
+			},
+			mustPopulate: []string{"route_name", "namespace"},
+		},
+		{
+			name: "KubernetesTlsRoute",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesTlsRoute,
+			rawOutputs: map[string]interface{}{
+				"route_name": "tls-route",
+				"namespace":  "team-alpha",
+			},
+			mustPopulate: []string{"route_name", "namespace"},
+		},
+		{
+			// KubernetesReferenceGrant: grant identity from both engines must
+			// land on the StackOutputs proto.
+			name: "KubernetesReferenceGrant",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesReferenceGrant,
+			rawOutputs: map[string]interface{}{
+				"reference_grant_name": "allow-frontend-routes",
+				"namespace":            "backend",
+			},
+			mustPopulate: []string{"reference_grant_name", "namespace"},
+		},
+		{
 			// KubernetesManifest: the anchor namespace + the applied-resource
 			// inventory (a repeated string derived from the input YAML) from
 			// both engines must land on the StackOutputs proto.

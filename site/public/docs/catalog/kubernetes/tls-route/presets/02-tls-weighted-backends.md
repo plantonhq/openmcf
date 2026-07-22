@@ -30,6 +30,7 @@ that rule.
 - **`backendRefs[].weight`** -- relative share of connections per backend,
   computed as `weight / sum(weights)`. Here 90/10 sends ~10% to the canary.
 - **`hostnames`** -- the SNI hostname(s) this route serves.
+- **`parentRefs[].name` / `backendRefs[].name` are foreign keys** -- write `value: <literal>` for existing resources, or `valueFrom:` to reference a Planton-managed `KubernetesGateway` / `KubernetesService` and deploy in dependency order.
 - A TLSRoute has exactly one rule; put all weighted backends in that rule.
 
 ## Prerequisites
@@ -44,8 +45,8 @@ that rule.
 
 | Placeholder | Description |
 |-------------|-------------|
-| `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to. |
-| `<sni-hostname>` | SNI hostname this route serves, e.g. `secure.example.com`. |
+| `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to (inside `name.value`, or switch to `valueFrom`). |
+| `secure.example.com` | SNI hostname this route serves (a literal example value -- replace with your real host). |
 | `<stable-service>` | Name of the current (stable) backend Service. |
 | `<canary-service>` | Name of the new (canary) backend Service. |
 

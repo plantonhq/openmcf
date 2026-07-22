@@ -1,0 +1,40 @@
+# Install manifest used when OTHER components declare KubernetesGateway as an
+# E2E prerequisite (route and ListenerSet scenarios composing a real parent).
+# Chains the GatewayClass fixture through the e2e-prerequisites annotation and
+# resolves it through the foreign key -- the same wiring an infra chart uses.
+# allowed_listeners opts in to ListenerSet attachment so the composed
+# ListenerSet scenario exercises the delegation path.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGateway
+metadata:
+  name: e2e-gw-fixture
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesGatewayClass"
+spec:
+  namespace:
+    value: default
+  gateway_class_name:
+    valueFrom:
+      name: e2e-gwc-fixture
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowed_routes:
+        namespaces:
+          from: All
+    - name: tcp
+      port: 5432
+      protocol: TCP
+    - name: udp
+      port: 5353
+      protocol: UDP
+    - name: tls-passthrough
+      hostname: "*.fixture.example.com"
+      port: 8443
+      protocol: TLS
+      tls:
+        mode: Passthrough
+  allowed_listeners:
+    namespaces:
+      from: Same

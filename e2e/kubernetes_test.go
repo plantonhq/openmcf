@@ -37,6 +37,20 @@ var kubernetesTier1Components = []string{
 	"kubernetesexternalsecret",
 	"kubernetesingressnginx",
 	"kubernetesmetricsserver",
+	// Gateway API family. The CR kinds declare KubernetesGatewayApiCrds as a
+	// registry prerequisite, which the harness installs (standard channel)
+	// before applying the route/gateway scenario; verification is
+	// controller-free (applies succeed once the CRDs are present).
+	"kubernetesgatewayapicrds",
+	"kubernetesgatewayclass",
+	"kubernetesgateway",
+	"kuberneteslistenerset",
+	"kuberneteshttproute",
+	"kubernetesgrpcroute",
+	"kubernetestcproute",
+	"kubernetesudproute",
+	"kubernetestlsroute",
+	"kubernetesreferencegrant",
 }
 
 // Kubernetes Tier 3 components: operator-dependent. Each declares its operator
@@ -62,26 +76,15 @@ var kubernetesTier4Components = []string{
 	"kubernetesstrimzikafkaoperator",
 	"kuberneteselasticoperator",
 	"kubernetesaltinityoperator",
-	"kubernetesgatewayapicrds",
 	"kubernetesgharunnerscalesetcontroller",
 	"kubernetesrookcephoperator",
 	"kubernetestekton",
 	"kubernetestektonoperator",
 	"kubernetesistio",
-	// Istio base CRDs installer (868). The CRDs-only prerequisite for the typed
+	// Istio base CRDs installer: the CRDs-only prerequisite for the typed
 	// Istio API components; analog of kubernetesgatewayapicrds.
 	"kubernetesistiobasecrds",
-	// Gateway API deployment components (854-860). Each declares
-	// KubernetesGatewayApiCrds as a registry prerequisite, which the harness
-	// installs (experimental v1.5.1) before applying the route/gateway scenario.
-	"kubernetesgatewayclass",
-	"kubernetesgateway",
-	"kuberneteshttproute",
-	"kubernetesgrpcroute",
-	"kubernetestcproute",
-	"kubernetestlsroute",
-	"kubernetesreferencegrant",
-	// Istio API deployment components (861-867). Each declares
+	// Istio API deployment components. Each declares
 	// KubernetesIstioBaseCrds as a registry prerequisite, which the harness
 	// installs (istio/base CRDs, no istiod) before applying the scenario.
 	// Verification asserts the typed Istio CR exists.
@@ -499,7 +502,7 @@ func TestKubernetesIstioBaseCrds_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesistiobasecrds", "terraform")
 }
 
-// ─── Gateway API Pulumi (854-860) ───────────────────────────────────────────
+// ─── Gateway API Pulumi ─────────────────────────────────────────────────────
 // Each kind declares KubernetesGatewayApiCrds as a registry prerequisite, which
 // the harness installs before the scenario applies. Verification asserts the CR
 // exists (controller-free: applies succeed once the CRDs are present).
@@ -525,8 +528,14 @@ func TestKubernetesTlsRoute_Pulumi(t *testing.T) {
 func TestKubernetesReferenceGrant_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesreferencegrant", "pulumi")
 }
+func TestKubernetesUdpRoute_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesudproute", "pulumi")
+}
+func TestKubernetesListenerSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteslistenerset", "pulumi")
+}
 
-// ─── Gateway API Terraform (854-860) ────────────────────────────────────────
+// ─── Gateway API Terraform ──────────────────────────────────────────────────
 
 func TestKubernetesGatewayClass_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgatewayclass", "terraform")
@@ -548,6 +557,12 @@ func TestKubernetesTlsRoute_Terraform(t *testing.T) {
 }
 func TestKubernetesReferenceGrant_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesreferencegrant", "terraform")
+}
+func TestKubernetesUdpRoute_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesudproute", "terraform")
+}
+func TestKubernetesListenerSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteslistenerset", "terraform")
 }
 
 // ─── Istio API Pulumi (861-867) ─────────────────────────────────────────────

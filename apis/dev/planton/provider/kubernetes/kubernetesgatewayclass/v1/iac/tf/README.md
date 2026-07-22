@@ -1,8 +1,13 @@
 # KubernetesGatewayClass Terraform Module
 
 Creates a cluster-scoped Kubernetes Gateway API `GatewayClass` via the
-`kubernetes_manifest` resource. The Gateway API CRDs must already be installed
-on the target cluster (see the `KubernetesGatewayApiCrds` component).
+`kubectl_manifest` resource (alekc/kubectl provider, apiVersion
+`gateway.networking.k8s.io/v1`, server-side apply). Unlike
+`kubernetes_manifest`, `kubectl_manifest` needs no cluster connection at plan
+time, so the class can be planned before the Gateway API CRDs exist -- which is
+what lets an infra chart deploy the CRDs and the class in a single run (and lets
+offline plan proofs work). At apply time the Gateway API CRDs must be installed
+(see the `KubernetesGatewayApiCrds` component).
 
 ## Usage
 
@@ -22,6 +27,13 @@ terraform apply -var-file=terraform.tfvars.json
 ## Inputs
 
 See `variables.tf` for the full variable specification.
+
+## State Import
+
+Existing GatewayClasses can be adopted into state. `kubectl_manifest` uses the
+composed import ID `apiVersion//kind//name` (no namespace -- GatewayClass is
+cluster-scoped); the component's `iac/import-map.yaml` derives each part
+(apiVersion and kind are constants of this module).
 
 ## Outputs
 

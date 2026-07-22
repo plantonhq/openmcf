@@ -1918,6 +1918,9 @@ type TLSRouteSpecRules struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -1925,6 +1928,8 @@ type TLSRouteSpecRules struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs []TLSRouteSpecRulesBackendRefs `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name *string `pulumi:"name"`
@@ -1952,6 +1957,9 @@ type TLSRouteSpecRulesArgs struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -1959,6 +1967,8 @@ type TLSRouteSpecRulesArgs struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs TLSRouteSpecRulesBackendRefsArrayInput `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name pulumi.StringPtrInput `pulumi:"name"`
@@ -2025,6 +2035,9 @@ func (o TLSRouteSpecRulesOutput) ToTLSRouteSpecRulesOutputWithContext(ctx contex
 // weight; if an invalid backend is requested to have 80% of requests, then
 // 80% of requests must be rejected instead.
 //
+// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+// can be used to enable re-encryption of the traffic to the backends.
+//
 // Support: Core for Kubernetes Service
 //
 // Support: Extended for Kubernetes ServiceImport
@@ -2032,6 +2045,8 @@ func (o TLSRouteSpecRulesOutput) ToTLSRouteSpecRulesOutputWithContext(ctx contex
 // Support: Implementation-specific for any other resource
 //
 // Support for weight: Extended
+//
+// Support for BackendTLSPolicy: Extended
 func (o TLSRouteSpecRulesOutput) BackendRefs() TLSRouteSpecRulesBackendRefsArrayOutput {
 	return o.ApplyT(func(v TLSRouteSpecRules) []TLSRouteSpecRulesBackendRefs { return v.BackendRefs }).(TLSRouteSpecRulesBackendRefsArrayOutput)
 }
@@ -2650,6 +2665,9 @@ type TLSRouteSpecRulesPatch struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -2657,6 +2675,8 @@ type TLSRouteSpecRulesPatch struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs []TLSRouteSpecRulesBackendRefsPatch `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name *string `pulumi:"name"`
@@ -2684,6 +2704,9 @@ type TLSRouteSpecRulesPatchArgs struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -2691,6 +2714,8 @@ type TLSRouteSpecRulesPatchArgs struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs TLSRouteSpecRulesBackendRefsPatchArrayInput `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name pulumi.StringPtrInput `pulumi:"name"`
@@ -2757,6 +2782,9 @@ func (o TLSRouteSpecRulesPatchOutput) ToTLSRouteSpecRulesPatchOutputWithContext(
 // weight; if an invalid backend is requested to have 80% of requests, then
 // 80% of requests must be rejected instead.
 //
+// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+// can be used to enable re-encryption of the traffic to the backends.
+//
 // Support: Core for Kubernetes Service
 //
 // Support: Extended for Kubernetes ServiceImport
@@ -2764,6 +2792,8 @@ func (o TLSRouteSpecRulesPatchOutput) ToTLSRouteSpecRulesPatchOutputWithContext(
 // Support: Implementation-specific for any other resource
 //
 // Support for weight: Extended
+//
+// Support for BackendTLSPolicy: Extended
 func (o TLSRouteSpecRulesPatchOutput) BackendRefs() TLSRouteSpecRulesBackendRefsPatchArrayOutput {
 	return o.ApplyT(func(v TLSRouteSpecRulesPatch) []TLSRouteSpecRulesBackendRefsPatch { return v.BackendRefs }).(TLSRouteSpecRulesBackendRefsPatchArrayOutput)
 }

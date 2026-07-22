@@ -6,9 +6,18 @@ spec:
   namespace:
     value: test-namespace
   parentRefs:
-    - name: test-gateway
+    - name:
+        value: test-gateway
       sectionName: tcp
+      port: 5432
   rules:
-    - backendRefs:
-        - name: tcp-backend
+    - name: postgres
+      backendRefs:
+        - name:
+            value: tcp-backend
           port: 5432
+          weight: 90
+        - name:
+            value: tcp-backend-replica
+          port: 5432
+          weight: 10

@@ -33,13 +33,17 @@ Our KubernetesGatewayApiCrds module solves these problems by providing:
 - Works with any Kubernetes cluster (GKE, EKS, AKS, etc.)
 
 ### 📦 Version Control
-- Pin to specific Gateway API versions (v1.2.1, v1.3.0, etc.)
+- Pin to specific Gateway API versions (defaults to v1.6.1)
 - Easily upgrade by changing version in manifest
 - Audit trail of version changes
 
 ### 🔧 Channel Selection
-- **Standard channel**: Stable resources (Gateway, GatewayClass, HTTPRoute, ReferenceGrant)
-- **Experimental channel**: All standard resources plus TCPRoute, UDPRoute, TLSRoute, GRPCRoute
+- **Standard channel**: stable resources -- as of v1.6: GatewayClass, Gateway,
+  ListenerSet, HTTPRoute, GRPCRoute, TLSRoute, TCPRoute, UDPRoute,
+  ReferenceGrant, BackendTLSPolicy
+- **Experimental channel**: all standard resources (with additional
+  experimental fields) plus experimental resources such as XBackend,
+  XBackendTrafficPolicy, and XMesh
 
 ### 🌍 Multi-Cloud Ready
 - Works on any Kubernetes cluster
@@ -58,16 +62,22 @@ kind: KubernetesGatewayApiCrds
 metadata:
   name: gateway-api-crds
 spec:
-  version: v1.2.1
+  version: v1.6.1
   install_channel:
     channel: standard
 ```
 
-This installs:
+This installs the full standard-channel CRD set:
 - `gatewayclasses.gateway.networking.k8s.io`
 - `gateways.gateway.networking.k8s.io`
+- `listenersets.gateway.networking.k8s.io`
 - `httproutes.gateway.networking.k8s.io`
+- `grpcroutes.gateway.networking.k8s.io`
+- `tlsroutes.gateway.networking.k8s.io`
+- `tcproutes.gateway.networking.k8s.io`
+- `udproutes.gateway.networking.k8s.io`
 - `referencegrants.gateway.networking.k8s.io`
+- `backendtlspolicies.gateway.networking.k8s.io`
 
 ## How It Works
 
@@ -80,34 +90,43 @@ This installs:
 
 ### Standard Channel (Recommended)
 
-Includes stable, production-ready resources:
+Includes stable, production-ready resources (as of Gateway API v1.6):
 
 | CRD | Description |
 |-----|-------------|
 | `GatewayClass` | Defines a class of Gateways with shared configuration |
 | `Gateway` | Defines where and how traffic enters the cluster |
+| `ListenerSet` | Merges additional listeners into an opted-in Gateway |
 | `HTTPRoute` | Routes HTTP traffic to backend services |
+| `GRPCRoute` | Native gRPC routing (without HTTP tunneling) |
+| `TLSRoute` | Routes TLS traffic based on SNI (passthrough) |
+| `TCPRoute` | Routes TCP traffic |
+| `UDPRoute` | Routes UDP traffic |
 | `ReferenceGrant` | Allows cross-namespace references |
+| `BackendTLSPolicy` | TLS from the Gateway to backends |
+
+All of the catalog's Gateway API kinds (`KubernetesGateway`, the route kinds,
+`KubernetesListenerSet`, `KubernetesReferenceGrant`) target this channel.
 
 ### Experimental Channel
 
-Includes all standard CRDs plus experimental resources:
+Includes all standard CRDs (with additional experimental fields) plus
+experimental resources such as `XBackend`, `XBackendTrafficPolicy`, and
+`XMesh`.
 
-| CRD | Description |
-|-----|-------------|
-| `TCPRoute` | Routes TCP traffic |
-| `UDPRoute` | Routes UDP traffic |
-| `TLSRoute` | Routes TLS traffic based on SNI |
-| `GRPCRoute` | Native gRPC routing (without HTTP tunneling) |
-
-**Note:** Experimental resources may change between versions.
+**Note:** Experimental resources may change or be removed between versions;
+prefer standard unless a specific experimental feature is required.
 
 ## Configuration Reference
 
 | Field | Description | Default |
 |-------|-------------|---------|
-| `version` | Gateway API version to install | `v1.2.1` |
+| `version` | Gateway API version to install | `v1.6.1` |
 | `install_channel.channel` | CRD channel (standard/experimental) | `standard` |
+
+Installing an older version narrows what the catalog's Gateway API kinds can
+deploy: TCPRoute and UDPRoute are standard-channel only from v1.6.0, and
+ListenerSet from v1.5.0.
 
 ## Prerequisites
 

@@ -1,21 +1,21 @@
 # KubernetesTcpRoute -- Research Documentation
 
 This document explains why `KubernetesTcpRoute` exists, how it maps the upstream
-Gateway API `TCPRoute` into the Planton component model, and the design decisions
-behind its spec, validation, and IaC. It is the source-of-truth companion to the
+Gateway API `TCPRoute` into the Planton component model, and the reasoning behind
+its spec, validation, and IaC. It is the source-of-truth companion to the
 user-facing `README.md` (getting started) and `catalog-page.md` (catalog listing).
 
 ## Table of Contents
 
 1. Introduction
-2. The Experimental Channel (read this first)
+2. Standard Channel, GA
 3. The Gateway API Role-Oriented Model
 4. Where TCPRoute Sits
 5. Anatomy of TCPRouteSpec
 6. The Backend Model
 7. Validation Rules
 8. Why TCPRoute Is a First-Class Planton Component
-9. Design Decisions
+9. Design Notes
 10. Composing in Infra Charts
 11. Controller Landscape
 12. Common Pitfalls
@@ -33,25 +33,21 @@ forwards it (splitting by weight across backends). Use it to put non-HTTP TCP
 services (Postgres, Redis, Kafka, a custom protocol) behind a Gateway.
 
 `KubernetesTcpRoute` brings that resource into Planton as a first-class deployment
-component at 100% upstream fidelity, so customers never have to fall back to a raw
-`KubernetesManifest` to express TCP routing.
+component modeling the complete upstream surface, so customers never have to fall
+back to a raw `KubernetesManifest` to express TCP routing.
 
-## The Experimental Channel (read this first)
+## Standard Channel, GA
 
-Unlike `KubernetesHttpRoute`, `KubernetesGrpcRoute`, and `KubernetesTlsRoute`
-(all standard channel), **TCPRoute exists only in the Gateway API experimental
-channel** and is served as `gateway.networking.k8s.io/v1alpha2`. Consequences:
+TCPRoute graduated to GA in the Gateway API standard channel and is served as
+`gateway.networking.k8s.io/v1` (it was an experimental `v1alpha2` resource in
+earlier Gateway API releases). Consequences:
 
-- The prerequisite CRDs must be installed from the experimental channel:
-  `KubernetesGatewayApiCrds` with `install_channel: experimental`. The standard
-  channel has no TCPRoute CRD, so a standard-channel install makes this component
-  undeployable.
-- The Gateway controller must support TCPRoute (not all do).
-- The typed crd2pulumi resource is `gatewayv1alpha2.NewTCPRoute`, and the
-  Terraform `kubernetes_manifest` uses apiVersion `gateway.networking.k8s.io/v1alpha2`.
-
-This is the family's first wholly-experimental resource; the version and channel
-are dictated entirely by upstream and the regenerated crd2pulumi types.
+- The default standard-channel install of `KubernetesGatewayApiCrds` (Gateway API
+  v1.6.1) includes the TCPRoute CRD; no experimental channel is required.
+- The typed crd2pulumi resource is `gatewayv1.NewTCPRoute`, and the Terraform
+  module applies apiVersion `gateway.networking.k8s.io/v1`.
+- The experimental `CommonRouteSpec` field `useDefaultGateways` is excluded: it
+  is absent from the standard-channel CRD, so it would have no deployable target.
 
 ## The Gateway API Role-Oriented Model
 
@@ -70,7 +66,7 @@ may attach (via `allowedRoutes`). A TCPRoute must attach to a listener of protoc
 ## Where TCPRoute Sits
 
 ```
-KubernetesGatewayApiCrds        (install EXPERIMENTAL CRDs + controller)
+KubernetesGatewayApiCrds        (install standard-channel CRDs)
         |
 KubernetesGatewayClass          (controller class)
         |
@@ -86,15 +82,20 @@ backend Services
 The Planton spec flattens the upstream `TCPRouteSpec` after the standard
 namespaced envelope (`namespace`):
 
-- `parent_refs` -- the Gateways this route attaches to (max 32).
-- `use_default_gateways` -- experimental default-Gateway attachment (`All` /
-  `None`); see Design Decisions.
+- `parent_refs` -- the Gateways this route attaches to (max 32). Flattened from
+  the upstream `CommonRouteSpec`.
 - `rules` -- 1 to 16 routing rules. Each rule has only:
   - an optional `name`;
   - `backend_refs` (1 to 16) -- weighted backends.
 
 There are no hostnames, matches, or filters: a TCP route has no application-layer
 visibility.
+
+Reference names are foreign keys: `parent_refs[].name` defaults to
+`KubernetesGateway` and `backend_refs[].name` defaults to `KubernetesService`,
+both as `StringValueOrRef`. In infra charts these wire with `valueFrom` and give
+the resource graph real dependency edges; when the referent is not
+Planton-managed, the literal name is passed with `value:`.
 
 ## The Backend Model
 
@@ -111,15 +112,18 @@ Every upstream `XValidation` and kubebuilder marker is translated to
 `buf.validate`:
 
 - `parent_refs`: `max_items: 32`.
-- `use_default_gateways`: closed enum CEL `in ['All', 'None']`.
 - `rules`: `min_items: 1`, `max_items: 16`.
 - `backend_refs`: `min_items: 1`, `max_items: 16`; the shared backend ref carries
-  the upstream group/kind/name patterns and port/weight bounds.
+  the upstream group/kind patterns and port/weight bounds.
 - `name` (rule): SectionName pattern (lowercase RFC 1123 subdomain, 1-253).
 
+The upstream length/format constraints on foreign-key `name` fields are enforced
+by the Kubernetes API server at apply time; the referenced object's own creation
+already validated them.
+
 The experimental rule-name-uniqueness `XValidation` is not translated (consistent
-with the rest of the route family -- it is `<gateway:experimental>` even within
-the experimental CRD and is controller-enforced).
+with the rest of the route family -- it is `<gateway:experimental>` even in the
+GA CRD and is controller-enforced).
 
 ## Why TCPRoute Is a First-Class Planton Component
 
@@ -128,47 +132,45 @@ proto validation, no typed SDKs, no FK wiring, no InfraChart composability, no U
 wizards. `KubernetesTcpRoute` closes that gap for the raw-TCP slice of the ingress
 story.
 
-## Design Decisions
+## Design Notes
 
-- **Experimental channel, `v1alpha2`.** Dictated by upstream; the typed
-  crd2pulumi resource and Terraform manifest both use the `v1alpha2` apiVersion.
-- **`use_default_gateways` is included.** This experimental `CommonRouteSpec`
-  field is reachable on the experimental TCPRoute deployment target (it is absent
-  from the standard-channel routes' targets, which is the only reason HttpRoute /
-  GrpcRoute excluded it). Including it is 100% fidelity (DD-001), not divergence
-  from the siblings; the difference is explained inline in `spec.proto`.
-- **Plain `parent_refs` / `backend_refs` (DD-009).** Kept as plain upstream
-  references, not `StringValueOrRef`; their DAG edges are expressed via
-  `metadata.relationships`.
+- **Standard channel, `v1`.** Dictated by upstream Gateway API v1.6.1; the typed
+  crd2pulumi resource and the Terraform manifest both use the `v1` apiVersion.
+- **`use_default_gateways` is excluded.** This experimental `CommonRouteSpec`
+  field is absent from the standard-channel CRD, so including it would produce a
+  field with no deployable target -- the same reasoning applied across the whole
+  route family.
+- **Foreign-key `parent_refs` / `backend_refs` names.** Each reference's `name`
+  is a `StringValueOrRef` (Gateway and Service foreign keys respectively):
+  `valueFrom` wiring creates real dependency edges in infra charts, while
+  `value:` carries literal names for referents outside Planton.
 - **Reuse the shared backend ref.** TCP routes have no per-backend filters, so
   they consume the canonical `KubernetesGatewayApiBackendRef` directly.
-- **DD-008 value modeling.** Closed enum (`use_default_gateways`) uses CEL `in`;
-  no proto enums and no baked-in Planton defaults on upstream fields.
-- **Typed crd2pulumi IaC.** `gatewayv1alpha2.NewTCPRoute`; the spec mapping is
-  split across `parent_refs.go` and `rules.go` (no matches/filters).
+- **String-typed enum aliases stay strings.** Upstream models its enums as string
+  type aliases with validation markers; the proto mirrors that with `optional
+  string` plus CEL `in [...]` checks, so CEL comparisons and controller-specific
+  values keep working, and no Planton defaults are baked into upstream fields.
+- **Typed crd2pulumi IaC.** `gatewayv1.NewTCPRoute`; the spec mapping is split
+  across `parent_refs.go` and `rules.go` (no matches/filters).
+- **Terraform applies through `kubectl_manifest`** (alekc/kubectl) with
+  server-side apply: plannable before the Gateway API CRDs exist, so an infra
+  chart can deploy CRDs, Gateway, and routes in one run.
 
 ## Composing in Infra Charts
 
-`KubernetesTcpRoute` is designed as a LEGO block for Infra Charts. Two mechanisms
-wire it into the dependency DAG (see project decision DD-009):
+`KubernetesTcpRoute` is designed as a LEGO block for Infra Charts. Every neighbor
+reference is a `StringValueOrRef` foreign key:
 
-1. **Data dependencies use `StringValueOrRef` (`valueFrom`).** `namespace` is a
-   `StringValueOrRef` with `default_kind = KubernetesNamespace`, so it can
-   reference a namespace output and the platform builds the DAG edge automatically.
-2. **Topology dependencies use `metadata.relationships`.** `parent_refs` and
-   `backend_refs` are plain references -- a plain name string creates no automatic
-   DAG edge. Infra-chart authors express those edges explicitly:
+- `namespace` (default kind `KubernetesNamespace`),
+- `parent_refs[].name` (default kind `KubernetesGateway`),
+- `backend_refs[].name` (default kind `KubernetesService`).
+
+Wiring them with `valueFrom` creates real dependency edges, so the platform
+builds the DAG automatically -- no manual relationship declarations:
 
 ```yaml
 metadata:
   name: "{{ values.env }}-postgres-route"
-  relationships:
-    - kind: KubernetesGateway
-      name: "{{ values.env }}-gateway"
-      type: depends_on
-    - kind: KubernetesService          # when the backend is Planton-managed
-      name: "{{ values.service_name }}"
-      type: uses
 spec:
   namespace:
     valueFrom:
@@ -176,48 +178,56 @@ spec:
       name: "{{ values.env }}-ns"
       fieldPath: spec.name
   parentRefs:
-    - name: "{{ values.env }}-gateway"
+    - name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: "{{ values.env }}-gateway"
+          fieldPath: status.outputs.gateway_name
       sectionName: tcp
   rules:
     - backendRefs:
-        - name: "{{ values.service_name }}"
+        - name:
+            valueFrom:
+              kind: KubernetesService
+              name: "{{ values.service_name }}"
+              fieldPath: status.outputs.service_name
           port: 5432
 ```
 
-Data edges use `valueFrom`; topology edges (the plain refs) use
-`metadata.relationships`. Both are required for the platform to build the full DAG.
+When the parent or backend is not a Planton-managed resource, pass the literal
+name with `value:` -- no edge is created, matching reality.
 
 ## Controller Landscape
 
 TCPRoute is implemented by Gateway API controllers that support layer-4 routing
-(Istio, Envoy Gateway, and others) -- and only when the experimental channel is
-installed. The proto carries no controller-specific behavior; upstream defaults
-are documented in comments and left to the controller rather than baked into the
-spec.
+(Istio, Envoy Gateway, and others). The proto carries no controller-specific
+behavior; upstream defaults are documented in comments and left to the controller
+rather than baked into the spec. Deploying the route never blocks on a
+controller: the per-parent Accepted/ResolvedRefs conditions appear when a Gateway
+implementation reconciles the resource, which is observed via kubectl rather than
+awaited at apply time.
 
 ## Common Pitfalls
 
-- **Experimental CRDs required.** Installing `KubernetesGatewayApiCrds` in the
-  default standard channel leaves no TCPRoute CRD on the cluster, and the apply
-  fails. Use `install_channel: experimental`.
 - **Listener must be `TCP` protocol.** A TCPRoute attached to an HTTP/HTTPS/TLS
   listener will not attach.
 - **No matching.** TCP routes cannot match on hostnames, paths, headers, or
   methods -- they forward by listener port. Use TLSRoute (SNI) or HTTPRoute
   (layer 7) when you need matching.
-- **Plain refs need relationships in charts.** Setting only `parentRefs[].name`
-  does not create a DAG edge; add `metadata.relationships` (DD-009).
+- **Controller support varies.** Not every Gateway controller implements
+  layer-4 routes; confirm yours does before attaching.
+- **Literal `value:` names create no dependency edge.** In infra charts, prefer
+  `valueFrom` for Planton-managed Gateways and Services so ordering is
+  guaranteed.
 
 ## Conclusion
 
 `KubernetesTcpRoute` completes the raw-TCP slice of the Planton Gateway API
-ingress layer at 100% fidelity with the upstream experimental channel, mirroring
-its sibling routes in every convention and fully accounting for infra-chart
-composability.
+ingress layer, modeling the complete upstream GA surface, mirroring its sibling
+routes in every convention and fully accounting for infra-chart composability.
 
 ## References
 
 - [Gateway API TCPRoute](https://gateway-api.sigs.k8s.io/api-types/tcproute/)
-- Upstream types: `kubernetes-sigs/gateway-api` `apis/v1alpha2/tcproute_types.go` (v1.5.1)
-- Sibling components: `KubernetesTlsRoute`, `KubernetesHttpRoute`, `KubernetesGrpcRoute`
-- Project decision: DD-009 (infra-chart composability, plain refs + relationships)
+- Upstream types: `kubernetes-sigs/gateway-api` `apis/v1/tcproute_types.go` (v1.6.1)
+- Sibling components: `KubernetesUdpRoute`, `KubernetesTlsRoute`, `KubernetesHttpRoute`, `KubernetesGrpcRoute`

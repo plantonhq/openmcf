@@ -39,12 +39,6 @@ export STACK_INPUT_YAML_FILE=../hack/manifest.yaml
 pulumi up
 ```
 
-## Debug
-
-```bash
-bash debug.sh ../hack/manifest.yaml
-```
-
 ## Outputs
 
 | Output | Description |
@@ -60,8 +54,6 @@ pulumi/
 ├── Pulumi.yaml          # Pulumi project configuration
 ├── Makefile             # Build automation
 ├── README.md            # This file
-├── overview.md          # Architecture overview
-├── debug.sh             # Local preview helper
 └── module/
     ├── main.go          # Resource creation (typed NewGRPCRoute)
     ├── locals.go        # Computed values + resolved foreign keys
@@ -72,6 +64,12 @@ pulumi/
     ├── filters.go       # Rule-level filter mapping (header modify, mirror, extension ref)
     └── backend_refs.go  # Backend ref + backend-level filter mapping
 ```
+
+The route's `StringValueOrRef` foreign keys (`namespace`, `parentRefs[].name`,
+`backendRefs[].name`) arrive resolved to literal strings in the stack input;
+the module reads their final values directly. No await/wait logic is attached:
+Accepted/ResolvedRefs conditions belong to the Gateway controller's
+reconciliation, not to applying the resource.
 
 ## References
 

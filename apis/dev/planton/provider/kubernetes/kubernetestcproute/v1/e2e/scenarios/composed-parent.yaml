@@ -1,0 +1,27 @@
+# The composition proof: the route's parent resolves through the Gateway
+# foreign key against a live Gateway fixture (its "tcp" listener).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTcpRoute
+metadata:
+  name: e2e-tcp-composed
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesGateway"
+spec:
+  namespace:
+    value: default
+  parent_refs:
+    - name:
+        valueFrom:
+          name: e2e-gw-fixture
+      section_name: tcp
+  rules:
+    - name: postgres
+      backend_refs:
+        - name:
+            value: tcp-backend
+          port: 5432
+          weight: 90
+        - name:
+            value: tcp-backend-replica
+          port: 5432
+          weight: 10

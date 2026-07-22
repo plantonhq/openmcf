@@ -30,20 +30,12 @@ const (
 // the listener's port is forwarded to the rule's backends. The route attaches to
 // a Gateway listener of protocol TCP through parent_refs.
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 TCPRouteSpec
-// (kubernetes-sigs/gateway-api apis/v1alpha2/tcproute_types.go).
-//
-// CHANNEL NOTE: TCPRoute is an EXPERIMENTAL-channel resource. Unlike HttpRoute,
-// GrpcRoute, and TlsRoute (which are standard channel), TCPRoute exists only in
-// the Gateway API experimental channel and is served as
-// gateway.networking.k8s.io/v1alpha2. It is therefore deployable only on clusters
-// where the experimental CRDs are installed -- install KubernetesGatewayApiCrds
-// with install_channel: experimental. See the component's docs/README.md.
-//
-// Because the whole resource is experimental, the experimental CommonRouteSpec
-// field use_default_gateways IS reachable on this deployment target (it is absent
-// from the standard-channel routes' targets, which is the only reason HttpRoute /
-// GrpcRoute excluded it). It is included here for 100% fidelity (DD-001).
+// 100% fidelity with the upstream Gateway API v1.6.1 TCPRouteSpec
+// (kubernetes-sigs/gateway-api apis/v1/tcproute_types.go), standard channel.
+// TCPRoute graduated to GA and is served as gateway.networking.k8s.io/v1 (it
+// was an experimental v1alpha2 resource in earlier releases). The experimental
+// CommonRouteSpec field useDefaultGateways is intentionally excluded: it is
+// absent from the standard-channel CRD, so it would have no deployable target.
 //
 // TCPRoute is a layer-4 route: it has no hostnames, no matches, and no filters.
 // Each rule simply forwards to one or more backends, so it reuses the shared
@@ -57,42 +49,15 @@ type KubernetesTcpRouteSpec struct {
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// References to the parent resources (usually Gateways) this route attaches
 	// to. Each parent must have a TCP listener that allows attachment from
-	// TCPRoutes of this namespace.
-	//
-	// INFRA-CHART COMPOSABILITY (DD-009): parent_refs is a PLAIN reference, not an
-	// Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-	// objects, so wrapping its scalars in StringValueOrRef would break 100% upstream
-	// fidelity (DD-001) and distort the typed CRD shape (dont-do #6). Because a plain
-	// string creates NO automatic DAG edge, an infra-chart author MUST express the
-	// route -> Gateway dependency via metadata.relationships, e.g.:
-	//
-	//	metadata:
-	//	  relationships:
-	//	    - kind: KubernetesGateway
-	//	      name: "{{ values.env }}-gateway"
-	//	      type: depends_on
-	//
-	// The plain `name` here is then the literal Gateway name. See the component's
-	// "Composing in Infra Charts" docs for the full pattern.
+	// TCPRoutes of this namespace. Each reference's name defaults to a
+	// KubernetesGateway foreign key — wire it with valueFrom in an infra chart
+	// and the route deploys after its Gateway.
 	//
 	// Flattened from the upstream CommonRouteSpec.
 	ParentRefs []*kubernetes.KubernetesGatewayApiParentReference `protobuf:"bytes,3,rep,name=parent_refs,json=parentRefs,proto3" json:"parent_refs,omitempty"`
-	// Default Gateway scope this route should attach to, in addition to (or instead
-	// of) explicit parent_refs. "None" (or unset) attaches to no default Gateway;
-	// "All" attaches to any default Gateway supporting the scope.
-	//
-	// Upstream default: behaves as "None". Closed enum.
-	//
-	// This is the experimental CommonRouteSpec.useDefaultGateways field. It is
-	// modeled here (unlike on the standard-channel HttpRoute / GrpcRoute, where it
-	// is absent from the deployment target) because TCPRoute is itself an
-	// experimental-channel resource whose typed target exposes it -- so including it
-	// is 100% fidelity (DD-001), not divergence. Think carefully before using it:
-	// the set of default Gateways can change without notice to the route author.
-	UseDefaultGateways *string `protobuf:"bytes,4,opt,name=use_default_gateways,json=useDefaultGateways,proto3,oneof" json:"use_default_gateways,omitempty"`
 	// Routing rules. Each rule forwards matching connections to one or more
 	// backends. At least one rule is required; upstream allows up to 16.
-	Rules         []*KubernetesTcpRouteRule `protobuf:"bytes,5,rep,name=rules,proto3" json:"rules,omitempty"`
+	Rules         []*KubernetesTcpRouteRule `protobuf:"bytes,4,rep,name=rules,proto3" json:"rules,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -141,13 +106,6 @@ func (x *KubernetesTcpRouteSpec) GetParentRefs() []*kubernetes.KubernetesGateway
 	return nil
 }
 
-func (x *KubernetesTcpRouteSpec) GetUseDefaultGateways() string {
-	if x != nil && x.UseDefaultGateways != nil {
-		return *x.UseDefaultGateways
-	}
-	return ""
-}
-
 func (x *KubernetesTcpRouteSpec) GetRules() []*KubernetesTcpRouteRule {
 	if x != nil {
 		return x.Rules
@@ -158,7 +116,7 @@ func (x *KubernetesTcpRouteSpec) GetRules() []*KubernetesTcpRouteRule {
 // KubernetesTcpRouteRule forwards TCP connections to one or more backends
 // (backend_refs). There are no matches or filters for TCP routes.
 //
-// Upstream: TCPRouteRule in apis/v1alpha2/tcproute_types.go.
+// Upstream: TCPRouteRule in apis/v1/tcproute_types.go.
 type KubernetesTcpRouteRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Name of the route rule; must be unique within the route if set. Upstream
@@ -169,23 +127,9 @@ type KubernetesTcpRouteRule struct {
 	Name *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	// Backends matching connections are forwarded to. When multiple backends are
 	// given, traffic is split by weight. At least one backend is required.
-	// Upstream support level: Core for Kubernetes Service.
-	//
-	// INFRA-CHART COMPOSABILITY (DD-009): backend_refs is a PLAIN reference, not an
-	// Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-	// objects, so wrapping its scalars would break 100% fidelity (DD-001) and distort
-	// the typed CRD shape (dont-do #6). Because a plain string creates NO automatic
-	// DAG edge, an infra-chart author MUST express the route -> backend dependency via
-	// metadata.relationships when the backend is an Planton-managed resource, e.g.:
-	//
-	//	metadata:
-	//	  relationships:
-	//	    - kind: KubernetesService   # or the backend's actual kind
-	//	      name: "{{ values.service_name }}"
-	//	      type: uses
-	//
-	// The plain `name` here is then the literal Kubernetes Service name. See the
-	// component's "Composing in Infra Charts" docs for the full pattern.
+	// Upstream support level: Core for Kubernetes Service. Each backend's name
+	// defaults to a KubernetesService foreign key — wire it with valueFrom in an
+	// infra chart and the route deploys after its backend.
 	BackendRefs   []*kubernetes.KubernetesGatewayApiBackendRef `protobuf:"bytes,2,rep,name=backend_refs,json=backendRefs,proto3" json:"backend_refs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -239,16 +183,13 @@ var File_dev_planton_provider_kubernetes_kubernetestcproute_v1_spec_proto protor
 
 const file_dev_planton_provider_kubernetes_kubernetestcproute_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kubernetestcproute/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestcproute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc3\x04\n" +
+	"@dev/planton/provider/kubernetes/kubernetestcproute/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestcproute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe6\x02\n" +
 	"\x16KubernetesTcpRouteSpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
-	"parentRefs\x12\xc1\x01\n" +
-	"\x14use_default_gateways\x18\x04 \x01(\tB\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
-	"#tcp_route.use_default_gateways_enum\x123use_default_gateways must be either 'All' or 'None'\x1a%this == '' || this in ['All', 'None']H\x00R\x12useDefaultGateways\x88\x01\x01\x12o\n" +
-	"\x05rules\x18\x05 \x03(\v2M.dev.planton.provider.kubernetes.kubernetestcproute.v1.KubernetesTcpRouteRuleB\n" +
-	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x05rulesB\x17\n" +
-	"\x15_use_default_gateways\"\xf9\x01\n" +
+	"parentRefs\x12o\n" +
+	"\x05rules\x18\x04 \x03(\v2M.dev.planton.provider.kubernetes.kubernetestcproute.v1.KubernetesTcpRouteRuleB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x05rules\"\xf9\x01\n" +
 	"\x16KubernetesTcpRouteRule\x12f\n" +
 	"\x04name\x18\x01 \x01(\tBM\xbaHJrH\x10\x01\x18\xfd\x012A^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x04name\x88\x01\x01\x12n\n" +
 	"\fbackend_refs\x18\x02 \x03(\v2?.dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRefB\n" +
@@ -293,7 +234,6 @@ func file_dev_planton_provider_kubernetes_kubernetestcproute_v1_spec_proto_init(
 	if File_dev_planton_provider_kubernetes_kubernetestcproute_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_provider_kubernetes_kubernetestcproute_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetestcproute_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

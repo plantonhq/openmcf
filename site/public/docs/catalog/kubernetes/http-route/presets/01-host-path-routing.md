@@ -25,9 +25,10 @@ application behind a Gateway.
 
 ## Key Configuration Choices
 
-- **`parentRefs`** -- attaches the route to the Gateway by name; add `sectionName` to target a specific listener.
+- **`parentRefs[].name`** -- attaches the route to the Gateway; add `sectionName` to target a specific listener. The name is a foreign key: write `value: <literal>` for an existing Gateway, or `valueFrom:` (kind `KubernetesGateway`, fieldPath `status.outputs.gateway_name`) so the route deploys after its Planton-managed Gateway.
 - **`hostnames`** -- the Host header values that select this route; a leading `*.` is a suffix match.
 - **`path` (PathPrefix `/`)** -- matches every path under the host; narrow it (for example `/api`) to split traffic by path.
+- **`backendRefs[].name`** -- a foreign key like the parent ref: `value:` for a literal Service name, `valueFrom:` (kind `KubernetesService`, fieldPath `status.outputs.service_name`) for a Planton-managed backend.
 - **`backendRefs[].port`** -- required when the backend is a core Service.
 
 ## Prerequisites
@@ -41,9 +42,9 @@ application behind a Gateway.
 
 | Placeholder | Description |
 |-------------|-------------|
-| `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to. |
-| `<app-hostname>` | Public hostname this route serves, e.g. `app.example.com`. |
-| `<service-name>` | Name of the backend Kubernetes Service. |
+| `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to (inside `name.value`, or switch to `valueFrom`). |
+| `app.example.com` | Public hostname this route serves (a literal example value -- replace with your real host). |
+| `<service-name>` | Name of the backend Kubernetes Service (inside `name.value`, or switch to `valueFrom`). |
 
 Set `spec.namespace.value` to your namespace, or replace it with a `valueFrom`
 reference to a `KubernetesNamespace`.

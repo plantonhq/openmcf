@@ -11,7 +11,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // or header), optionally transform them with filters, and forward them to
 // backend Services. Routes attach to a Gateway through parent_refs.
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 GRPCRouteSpec
+// 100% fidelity with the upstream Gateway API v1.6.1 GRPCRouteSpec
 // (kubernetes-sigs/gateway-api apis/v1/grpcroute_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
 // (namespace). Experimental fields are intentionally excluded
@@ -31,20 +31,9 @@ message KubernetesGrpcRouteSpec {
 
   // References to the parent resources (usually Gateways) this route attaches
   // to. Each parent must allow attachment from GRPCRoutes of this namespace.
-  //
-  // INFRA-CHART COMPOSABILITY (DD-009): parent_refs is a PLAIN reference, not an
-  // Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-  // objects, so wrapping its scalars in StringValueOrRef would break 100% upstream
-  // fidelity (DD-001) and distort the typed CRD shape (dont-do #6). Because a plain
-  // string creates NO automatic DAG edge, an infra-chart author MUST express the
-  // route -> Gateway dependency via metadata.relationships, e.g.:
-  //   metadata:
-  //     relationships:
-  //       - kind: KubernetesGateway
-  //         name: "{{ values.env }}-gateway"
-  //         type: depends_on
-  // The plain `name` here is then the literal Gateway name. See the component's
-  // "Composing in Infra Charts" docs for the full pattern.
+  // Each reference's name defaults to a KubernetesGateway foreign key — wire
+  // it with valueFrom in an infra chart and the route deploys after its
+  // Gateway.
   //
   // Flattened from the upstream CommonRouteSpec; the experimental
   // useDefaultGateways field is excluded (standard channel only).
@@ -367,12 +356,8 @@ message KubernetesGrpcRouteRequestMirrorFilter {
   };
 
   // Backend that mirrored requests are sent to. Required. Upstream support
-  // level: Extended for Kubernetes Service.
-  //
-  // INFRA-CHART COMPOSABILITY (DD-009): backend_ref is a PLAIN reference (an
-  // array-free but multi-field upstream object), not a StringValueOrRef foreign
-  // key. Express the route -> mirror-backend dependency via metadata.relationships
-  // (type: uses) when the backend is an Planton-managed resource.
+  // level: Extended for Kubernetes Service. The reference's name defaults to
+  // a KubernetesService foreign key.
   dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference backend_ref = 1 [(buf.validate.field).required = true];
 
   // Percentage of requests to mirror (0-100). When neither percent nor fraction
@@ -390,23 +375,10 @@ message KubernetesGrpcRouteRequestMirrorFilter {
 // KubernetesGrpcRouteBackendRef is a backend a matching request is forwarded
 // to, optionally with per-backend filters. The backend reference fields are
 // flattened (matching the upstream inline GRPCBackendRef and the typed CRD
-// shape) rather than nesting the shared BackendRef message.
+// shape) rather than nesting the shared BackendRef message, because each gRPC
+// backend additionally carries filters.
 //
 // Upstream: GRPCBackendRef in apis/v1/grpcroute_types.go
-//
-// INFRA-CHART COMPOSABILITY (DD-009): backend_refs is a PLAIN reference, not an
-// Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-// objects, so wrapping its scalars would break 100% fidelity (DD-001) and distort
-// the typed CRD shape (dont-do #6). Because a plain string creates NO automatic
-// DAG edge, an infra-chart author MUST express the route -> backend dependency via
-// metadata.relationships when the backend is an Planton-managed resource, e.g.:
-//   metadata:
-//     relationships:
-//       - kind: KubernetesService   # or the backend's actual kind
-//         name: "{{ values.service_name }}"
-//         type: uses
-// The plain `name` here is then the literal Kubernetes Service name. See the
-// component's "Composing in Infra Charts" docs for the full pattern.
 message KubernetesGrpcRouteBackendRef {
   // Group of the referent. Empty string infers the core API group.
   //
@@ -427,15 +399,14 @@ message KubernetesGrpcRouteBackendRef {
     pattern: "^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$"
   }];
 
-  // Name of the referent (for example a Kubernetes Service name). This is a
-  // plain name reference, not an Planton foreign key (see the message comment
-  // and spec.parent_refs for the infra-chart relationship guidance).
-  string name = 3 [
+  // Name of the referent. Defaults to a KubernetesService foreign key: in an
+  // infra chart, wire it with valueFrom against the backend Service and the
+  // route deploys after its backend. When the backend is not a
+  // Planton-managed Service, pass the literal name with `value:`.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {
-      min_len: 1
-      max_len: 253
-    }
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.service_name"
   ];
 
   // Namespace of the backend. When unspecified, the route's namespace is

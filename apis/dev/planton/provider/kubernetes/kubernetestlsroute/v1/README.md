@@ -5,6 +5,9 @@ that attach to a Gateway and forward connections, by SNI hostname, to backend
 Services. The backend (not the Gateway) terminates TLS, so the encrypted stream
 is forwarded end to end.
 
+TLSRoute is a standard-channel resource served as
+`gateway.networking.k8s.io/v1` (standard since Gateway API v1.5).
+
 ## What Gets Created
 
 - A namespaced `gateway.networking.k8s.io/v1` `TLSRoute` custom resource.
@@ -30,13 +33,15 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tls
   hostnames:
     - secure.example.com
   rules:
     - backendRefs:
-        - name: secure-backend
+        - name:
+            value: secure-backend
           port: 8443
 ```
 
@@ -51,16 +56,16 @@ planton apply -f tlsroute.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `namespace` | reference | Namespace to create the route in. |
-| `hostnames` | list | One to 16 SNI hostnames that select this route (no IPs). |
+| `hostnames` | list | One to 1024 SNI hostnames that select this route (no IPs). |
 | `rules` | list | Exactly one routing rule. |
 
 ### Optional Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. |
+| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. Each `name` is a reference (defaults to `KubernetesGateway`). |
 | `rules[].name` | string | Optional rule name (unique within the route). |
-| `rules[].backendRefs` | list | One to 16 weighted backends to forward to. |
+| `rules[].backendRefs` | list | One to 16 weighted backends; each `name` is a reference (defaults to `KubernetesService`). |
 
 ## Examples
 
@@ -71,13 +76,15 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tls
   hostnames:
     - secure.example.com
   rules:
     - backendRefs:
-        - name: secure-backend
+        - name:
+            value: secure-backend
           port: 8443
 ```
 
@@ -88,16 +95,19 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tls
   hostnames:
     - secure.example.com
   rules:
     - backendRefs:
-        - name: secure-stable
+        - name:
+            value: secure-stable
           port: 8443
           weight: 90
-        - name: secure-canary
+        - name:
+            value: secure-canary
           port: 8443
           weight: 10
 ```
@@ -105,29 +115,17 @@ spec:
 ## Composing in Infra Charts
 
 `KubernetesTlsRoute` is a leaf in the ingress DAG: it attaches to a `Gateway` and
-forwards to backend Services. Two mechanisms wire it to its neighbors (see DD-009
-in the project knowledge base):
-
-1. **Data dependencies use `valueFrom`.** `namespace` is a `StringValueOrRef`, so
-   it can reference a `KubernetesNamespace` output and the platform builds the DAG
-   edge automatically.
-2. **Topology dependencies use `metadata.relationships`.** `parentRefs` and
-   `backendRefs` are **plain** upstream references (arrays of multi-field objects),
-   not foreign keys -- a plain name creates no automatic DAG edge. Express those
-   edges explicitly so the chart deploys in the right order:
+forwards to backend Services. Every neighbor reference is a foreign key --
+`namespace`, `parentRefs[].name` (defaults to `KubernetesGateway`), and
+`backendRefs[].name` (defaults to `KubernetesService`) -- so wiring them with
+`valueFrom` creates real dependency edges and the platform orders the deployment
+automatically:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTlsRoute
 metadata:
   name: "{{ values.env }}-secure-route"
-  relationships:
-    - kind: KubernetesGateway
-      name: "{{ values.env }}-gateway"
-      type: depends_on
-    - kind: KubernetesService          # if the backend is Planton-managed
-      name: "{{ values.service_name }}"
-      type: uses
 spec:
   namespace:
     valueFrom:
@@ -135,23 +133,36 @@ spec:
       name: "{{ values.env }}-ns"
       fieldPath: spec.name
   parentRefs:
-    - name: "{{ values.env }}-gateway"   # literal Gateway name
+    - name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: "{{ values.env }}-gateway"
+          fieldPath: status.outputs.gateway_name
       sectionName: tls
   hostnames:
     - "secure.{{ values.domain }}"
   rules:
     - backendRefs:
-        - name: "{{ values.service_name }}"
+        - name:
+            valueFrom:
+              kind: KubernetesService
+              name: "{{ values.service_name }}"
+              fieldPath: status.outputs.service_name
           port: 8443
 ```
 
-Full ingress stack DAG (mixing `valueFrom` data edges and `metadata.relationships`
-topology edges):
+When a parent or backend is not Planton-managed, pass the literal name with
+`value:` instead.
+
+Full ingress stack DAG:
 
 ```
 KubernetesCertManager -> KubernetesClusterIssuer -> KubernetesCertificate
    -> (Secret) -> KubernetesGateway -> KubernetesTlsRoute / KubernetesHttpRoute
 ```
+
+(For pure TLS passthrough the backend holds its own certificate, so the
+cert-manager prefix is optional; it applies when the Gateway terminates TLS.)
 
 ## Stack Outputs
 
@@ -165,5 +176,6 @@ KubernetesCertManager -> KubernetesClusterIssuer -> KubernetesCertificate
 - [Kubernetes Gateway](kubernetesgateway)
 - [Kubernetes Gateway Class](kubernetesgatewayclass)
 - [Kubernetes HTTP Route](kuberneteshttproute)
+- [Kubernetes TCP Route](kubernetestcproute)
 - [Kubernetes Gateway API CRDs](kubernetesgatewayapicrds)
 - [Kubernetes Namespace](kubernetesnamespace)

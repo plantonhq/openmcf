@@ -10,14 +10,13 @@ import (
 // attaches to) onto the typed crd2pulumi parentRefs array. Optional fields are
 // only set when present so controller defaults (group, kind) flow through.
 //
-// Note: parent_refs is a plain reference, not an Planton foreign key (DD-009).
-// Infra-chart authors express the route -> Gateway dependency via
-// metadata.relationships (type: depends_on); the names here are literal.
+// Each reference's name is a KubernetesGateway foreign key resolved to its
+// literal value before the module runs, so GetValue() returns the final name.
 func buildParentRefs(parentRefs []*kubernetesapis.KubernetesGatewayApiParentReference) gatewayv1.GRPCRouteSpecParentRefsArray {
 	arr := gatewayv1.GRPCRouteSpecParentRefsArray{}
 	for _, ref := range parentRefs {
 		args := gatewayv1.GRPCRouteSpecParentRefsArgs{
-			Name: pulumi.String(ref.GetName()),
+			Name: pulumi.String(ref.GetName().GetValue()),
 		}
 		if group := ref.GetGroup(); group != "" {
 			args.Group = pulumi.String(group)

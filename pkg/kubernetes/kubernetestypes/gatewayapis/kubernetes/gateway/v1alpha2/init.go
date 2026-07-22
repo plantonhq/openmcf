@@ -33,6 +33,12 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 		r = &TLSRouteList{}
 	case "kubernetes:gateway.networking.k8s.io/v1alpha2:TLSRoutePatch":
 		r = &TLSRoutePatch{}
+	case "kubernetes:gateway.networking.k8s.io/v1alpha2:UDPRoute":
+		r = &UDPRoute{}
+	case "kubernetes:gateway.networking.k8s.io/v1alpha2:UDPRouteList":
+		r = &UDPRouteList{}
+	case "kubernetes:gateway.networking.k8s.io/v1alpha2:UDPRoutePatch":
+		r = &UDPRoutePatch{}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
 	}

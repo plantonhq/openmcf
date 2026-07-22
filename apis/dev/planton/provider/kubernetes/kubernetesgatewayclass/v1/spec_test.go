@@ -11,6 +11,8 @@ import (
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 )
 
+func stringPtr(s string) *string { return &s }
+
 func TestKubernetesGatewayClass(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, "KubernetesGatewayClass Suite")
@@ -61,7 +63,7 @@ var _ = ginkgo.Describe("KubernetesGatewayClass Validation Tests", func() {
 			ginkgo.It("should not return a validation error", func() {
 				namespace := "istio-system"
 				input.Spec.ParametersRef = &kubernetes.KubernetesGatewayApiParametersReference{
-					Group:     "",
+					Group:     stringPtr(""),
 					Kind:      "ConfigMap",
 					Name:      "istio-gateway-config",
 					Namespace: &namespace,
@@ -74,7 +76,7 @@ var _ = ginkgo.Describe("KubernetesGatewayClass Validation Tests", func() {
 		ginkgo.Context("with a cluster-scoped parameters_ref (no namespace)", func() {
 			ginkgo.It("should not return a validation error", func() {
 				input.Spec.ParametersRef = &kubernetes.KubernetesGatewayApiParametersReference{
-					Group: "gateway.envoyproxy.io",
+					Group: stringPtr("gateway.envoyproxy.io"),
 					Kind:  "EnvoyProxy",
 					Name:  "custom-proxy-config",
 				}
@@ -138,7 +140,7 @@ var _ = ginkgo.Describe("KubernetesGatewayClass Validation Tests", func() {
 		ginkgo.Context("parameters_ref missing the required name", func() {
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.ParametersRef = &kubernetes.KubernetesGatewayApiParametersReference{
-					Group: "",
+					Group: stringPtr(""),
 					Kind:  "ConfigMap",
 					Name:  "",
 				}
@@ -150,7 +152,7 @@ var _ = ginkgo.Describe("KubernetesGatewayClass Validation Tests", func() {
 		ginkgo.Context("parameters_ref missing the required kind", func() {
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.ParametersRef = &kubernetes.KubernetesGatewayApiParametersReference{
-					Group: "gateway.envoyproxy.io",
+					Group: stringPtr("gateway.envoyproxy.io"),
 					Name:  "custom-proxy-config",
 				}
 				err := protovalidate.Validate(input)
@@ -161,7 +163,7 @@ var _ = ginkgo.Describe("KubernetesGatewayClass Validation Tests", func() {
 		ginkgo.Context("parameters_ref with a malformed group", func() {
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.ParametersRef = &kubernetes.KubernetesGatewayApiParametersReference{
-					Group: "Bad_Group",
+					Group: stringPtr("Bad_Group"),
 					Kind:  "ConfigMap",
 					Name:  "istio-gateway-config",
 				}
@@ -173,7 +175,7 @@ var _ = ginkgo.Describe("KubernetesGatewayClass Validation Tests", func() {
 		ginkgo.Context("parameters_ref with a malformed kind", func() {
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.ParametersRef = &kubernetes.KubernetesGatewayApiParametersReference{
-					Group: "",
+					Group: stringPtr(""),
 					Kind:  "bad/kind",
 					Name:  "istio-gateway-config",
 				}

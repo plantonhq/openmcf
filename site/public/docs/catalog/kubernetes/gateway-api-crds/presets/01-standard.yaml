@@ -3,6 +3,6 @@ kind: KubernetesGatewayApiCrds
 metadata:
   name: my-gateway-api-crds
 spec:
-  version: v1.2.1  # default from spec
+  version: v1.6.1  # default from spec
   installChannel:
     channel: standard

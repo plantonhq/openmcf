@@ -71,10 +71,18 @@ var helmTier2Kinds = map[string]bool{
 // names for components that only install cluster-scoped CRDs without deploying
 // any pods or services.
 var crdInstallKinds = map[string][]string{
+	// The standard channel serves all of these from the v1.6 release onward
+	// (TCPRoute and UDPRoute graduated to GA; ListenerSet is standard since
+	// v1.5) — assert the full set the catalog's projection kinds deploy onto.
 	"kubernetesgatewayapicrds": {
 		"gatewayclasses.gateway.networking.k8s.io",
 		"gateways.gateway.networking.k8s.io",
+		"listenersets.gateway.networking.k8s.io",
 		"httproutes.gateway.networking.k8s.io",
+		"grpcroutes.gateway.networking.k8s.io",
+		"tcproutes.gateway.networking.k8s.io",
+		"udproutes.gateway.networking.k8s.io",
+		"tlsroutes.gateway.networking.k8s.io",
 		"referencegrants.gateway.networking.k8s.io",
 	},
 	// KubernetesIstioBaseCrds installs the istio/base CRD bundle (no istiod). Verify the
@@ -97,7 +105,7 @@ var crdInstallKinds = map[string][]string{
 // registry prerequisite before the component applies.
 type gatewayApiCustomResource struct {
 	// resource is the fully-qualified kubectl resource (plural.group), which is
-	// stable across the served apiVersion (e.g. tcproutes are served at v1alpha2).
+	// stable across the served apiVersion.
 	resource string
 	// clusterScoped is true for cluster-scoped kinds (GatewayClass), which must
 	// be queried without a namespace.
@@ -109,9 +117,11 @@ type gatewayApiCustomResource struct {
 var gatewayApiKinds = map[string]gatewayApiCustomResource{
 	"kubernetesgatewayclass":   {resource: "gatewayclasses.gateway.networking.k8s.io", clusterScoped: true},
 	"kubernetesgateway":        {resource: "gateways.gateway.networking.k8s.io"},
+	"kuberneteslistenerset":    {resource: "listenersets.gateway.networking.k8s.io"},
 	"kuberneteshttproute":      {resource: "httproutes.gateway.networking.k8s.io"},
 	"kubernetesgrpcroute":      {resource: "grpcroutes.gateway.networking.k8s.io"},
 	"kubernetestcproute":       {resource: "tcproutes.gateway.networking.k8s.io"},
+	"kubernetesudproute":       {resource: "udproutes.gateway.networking.k8s.io"},
 	"kubernetestlsroute":       {resource: "tlsroutes.gateway.networking.k8s.io"},
 	"kubernetesreferencegrant": {resource: "referencegrants.gateway.networking.k8s.io"},
 }

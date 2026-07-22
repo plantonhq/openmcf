@@ -2,7 +2,7 @@
 
 This Pulumi module creates a namespaced Kubernetes Gateway API `TLSRoute` on a
 target cluster using the typed crd2pulumi SDK (served as
-`gateway.networking.k8s.io/v1`).
+`gateway.networking.k8s.io/v1`, standard channel).
 
 ## Prerequisites
 
@@ -41,12 +41,6 @@ export STACK_INPUT_YAML_FILE=../hack/manifest.yaml
 pulumi up
 ```
 
-## Debug
-
-```bash
-bash debug.sh ../hack/manifest.yaml
-```
-
 ## Outputs
 
 | Output | Description |
@@ -62,8 +56,6 @@ pulumi/
 ├── Pulumi.yaml          # Pulumi project configuration
 ├── Makefile             # Build automation
 ├── README.md            # This file
-├── overview.md          # Architecture overview
-├── debug.sh             # Local preview helper
 └── module/
     ├── main.go          # Resource creation (typed NewTLSRoute)
     ├── locals.go        # Computed values + resolved foreign keys
@@ -71,6 +63,12 @@ pulumi/
     ├── parent_refs.go   # parentRefs (attached Gateways) mapping
     └── rules.go         # Rule + backend ref mapping (no matches/filters for TLSRoute)
 ```
+
+The route's `StringValueOrRef` foreign keys (`namespace`, `parentRefs[].name`,
+`backendRefs[].name`) arrive resolved to literal strings in the stack input;
+the module reads their final values directly. No await/wait logic is attached:
+Accepted/ResolvedRefs conditions belong to the Gateway controller's
+reconciliation, not to applying the resource.
 
 ## References
 

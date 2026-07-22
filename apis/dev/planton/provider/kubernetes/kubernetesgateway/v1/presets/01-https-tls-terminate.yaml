@@ -9,13 +9,23 @@ spec:
     value: istio
   listeners:
     - name: https
-      hostname: <app-hostname>
+      hostname: app.example.com
       port: 443
       protocol: HTTPS
       tls:
         mode: Terminate
         certificateRefs:
-          - name: <tls-secret-name>
+          # The certificate Secret is a foreign key. Use `value:` for a Secret
+          # that already exists (or is created outside Planton); use `valueFrom:`
+          # to wire it to a Planton-managed KubernetesCertificate so the Gateway
+          # deploys after the certificate is issued:
+          #   name:
+          #     valueFrom:
+          #       kind: KubernetesCertificate
+          #       name: <certificate-resource-name>
+          #       fieldPath: status.outputs.secret_name
+          - name:
+              value: <tls-secret-name>
       allowedRoutes:
         namespaces:
           from: Same

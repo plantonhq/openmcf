@@ -31,7 +31,8 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
   hostnames:
     - api.example.com
   rules:
@@ -39,7 +40,8 @@ spec:
         - method:
             service: helloworld.Greeter
       backendRefs:
-        - name: greeter
+        - name:
+            value: greeter
           port: 9000
 ```
 
@@ -60,11 +62,11 @@ planton apply -f grpcroute.yaml
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. |
+| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. Each `name` is a reference (defaults to `KubernetesGateway`). |
 | `hostnames` | list | Authority (Host) values that select this route. |
 | `rules[].matches` | list | Method (service/method) and header matchers. |
 | `rules[].filters` | list | Request/response header modify, request mirror, extension ref. |
-| `rules[].backendRefs` | list | Weighted backends to forward to. |
+| `rules[].backendRefs` | list | Weighted backends; each `name` is a reference (defaults to `KubernetesService`). |
 
 ## Examples
 
@@ -75,7 +77,8 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
   hostnames:
     - api.example.com
   rules:
@@ -85,7 +88,8 @@ spec:
             service: helloworld.Greeter
             method: SayHello
       backendRefs:
-        - name: greeter
+        - name:
+            value: greeter
           port: 9000
 ```
 
@@ -96,15 +100,18 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
   hostnames:
     - api.example.com
   rules:
     - backendRefs:
-        - name: greeter-stable
+        - name:
+            value: greeter-stable
           port: 9000
           weight: 90
-        - name: greeter-canary
+        - name:
+            value: greeter-canary
           port: 9000
           weight: 10
 ```
@@ -112,29 +119,17 @@ spec:
 ## Composing in Infra Charts
 
 `KubernetesGrpcRoute` is a leaf in the ingress DAG: it attaches to a `Gateway`
-and forwards to backend Services. Two mechanisms wire it to its neighbors (see
-DD-009 in the project knowledge base):
-
-1. **Data dependencies use `valueFrom`.** `namespace` is a `StringValueOrRef`, so
-   it can reference a `KubernetesNamespace` output and the platform builds the DAG
-   edge automatically.
-2. **Topology dependencies use `metadata.relationships`.** `parentRefs` and
-   `backendRefs` are **plain** upstream references (arrays of multi-field objects),
-   not foreign keys -- a plain name creates no automatic DAG edge. Express those
-   edges explicitly so the chart deploys in the right order:
+and forwards to backend Services. Every neighbor reference is a foreign key --
+`namespace`, `parentRefs[].name` (defaults to `KubernetesGateway`), and
+`backendRefs[].name` (defaults to `KubernetesService`) -- so wiring them with
+`valueFrom` creates real dependency edges and the platform orders the deployment
+automatically:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGrpcRoute
 metadata:
   name: "{{ values.env }}-greeter-route"
-  relationships:
-    - kind: KubernetesGateway
-      name: "{{ values.env }}-gateway"
-      type: depends_on
-    - kind: KubernetesService          # if the backend is Planton-managed
-      name: "{{ values.service_name }}"
-      type: uses
 spec:
   namespace:
     valueFrom:
@@ -142,7 +137,11 @@ spec:
       name: "{{ values.env }}-ns"
       fieldPath: spec.name
   parentRefs:
-    - name: "{{ values.env }}-gateway"   # literal Gateway name
+    - name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: "{{ values.env }}-gateway"
+          fieldPath: status.outputs.gateway_name
   hostnames:
     - "api.{{ values.domain }}"
   rules:
@@ -150,12 +149,18 @@ spec:
         - method:
             service: "{{ values.grpc_service }}"
       backendRefs:
-        - name: "{{ values.service_name }}"
+        - name:
+            valueFrom:
+              kind: KubernetesService
+              name: "{{ values.service_name }}"
+              fieldPath: status.outputs.service_name
           port: 9000
 ```
 
-Full ingress stack DAG (mixing `valueFrom` data edges and `metadata.relationships`
-topology edges):
+When a parent or backend is not Planton-managed, pass the literal name with
+`value:` instead.
+
+Full ingress stack DAG:
 
 ```
 KubernetesCertManager -> KubernetesClusterIssuer -> KubernetesCertificate

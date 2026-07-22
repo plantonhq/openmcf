@@ -33,7 +33,8 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
   hostnames:
     - app.example.com
   rules:
@@ -42,7 +43,8 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: web
+        - name:
+            value: web
           port: 8080
 ```
 
@@ -65,7 +67,7 @@ planton pulumi up --manifest httproute.yaml
 | Field | Required | Description |
 |-------|----------|-------------|
 | `namespace` | yes | Namespace the route is created in (FK to `KubernetesNamespace`). |
-| `parent_refs` | no | Gateways (and optional listener `section_name`) the route attaches to. |
+| `parent_refs` | no | Gateways (and optional listener `section_name`) the route attaches to; each `name` is an FK to `KubernetesGateway`. |
 | `hostnames` | no | Host header values that select this route (wildcard prefix allowed). |
 | `rules` | yes (≥1) | Match / filter / backend rules. |
 
@@ -76,7 +78,7 @@ planton pulumi up --manifest httproute.yaml
 | `name` | Optional unique rule name. |
 | `matches` | Path / header / query-param / method matchers (max 64). |
 | `filters` | Header modify, redirect, URL rewrite, request mirror, CORS, or extension ref (max 16). |
-| `backend_refs` | Weighted backends to forward to (max 16). |
+| `backend_refs` | Weighted backends to forward to (max 16); each `name` is an FK to `KubernetesService`. |
 | `timeouts` | `request` and `backend_request` durations. |
 
 ## Stack Outputs

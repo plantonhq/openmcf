@@ -27,14 +27,14 @@ through a Gateway.
 
 ## Key Configuration Choices
 
-- **`parentRefs`** -- attaches the route to the Gateway by name; add `sectionName` to target the TCP listener (the listener's port determines which connections arrive).
+- **`parentRefs[].name`** -- attaches the route to the Gateway; add `sectionName` to target the TCP listener (the listener's port determines which connections arrive). The name is a foreign key: write `value: <literal>` for an existing Gateway, or `valueFrom:` (kind `KubernetesGateway`, fieldPath `status.outputs.gateway_name`) so the route deploys after its Planton-managed Gateway.
+- **`backendRefs[].name`** -- a foreign key like the parent ref: `value:` for a literal Service name, `valueFrom:` (kind `KubernetesService`, fieldPath `status.outputs.service_name`) for a Planton-managed backend.
 - **`backendRefs[].port`** -- the backend Service port that receives the forwarded connection.
 
 ## Prerequisites
 
-- The Gateway API **experimental-channel** CRDs are installed
-  (`KubernetesGatewayApiCrds` with `install_channel: experimental`). TCPRoute is
-  not part of the standard channel.
+- The Gateway API CRDs are installed (`KubernetesGatewayApiCrds`). TCPRoute is
+  part of the standard channel as of Gateway API v1.6.
 - The `Gateway` referenced in `parentRefs` exists (`KubernetesGateway`) with a
   listener of protocol `TCP`.
 - The target namespace exists (`KubernetesNamespace`).
@@ -46,7 +46,7 @@ through a Gateway.
 |-------------|-------------|
 | `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to. |
 | `<service-name>` | Name of the backend Kubernetes Service. |
-| `<service-port>` | Backend Service port, e.g. `5432` for Postgres. |
 
-Set `spec.namespace.value` to your namespace, or replace it with a `valueFrom`
-reference to a `KubernetesNamespace`.
+Adjust `backendRefs[].port` to your backend's port (the preset uses `5432`,
+Postgres). Set `spec.namespace.value` to your namespace, or replace it with a
+`valueFrom` reference to a `KubernetesNamespace`.

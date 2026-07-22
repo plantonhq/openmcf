@@ -11,7 +11,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // Listeners (logical endpoints with a port, protocol, and optional TLS) to
 // addresses, managed by the controller behind a GatewayClass.
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 GatewaySpec
+// 100% fidelity with the upstream Gateway API v1.6.1 GatewaySpec
 // (kubernetes-sigs/gateway-api apis/v1/gateway_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
 // (namespace). The experimental `defaultScope` field is
@@ -84,8 +84,8 @@ message KubernetesGatewaySpec {
   KubernetesGatewayInfrastructure infrastructure = 6;
 
   // Controls which ListenerSets may attach to this Gateway. Defaults to
-  // allowing none. ListenerSet itself is not yet an Planton resource; this
-  // field is retained for full spec fidelity and forward compatibility.
+  // allowing none — a Gateway must opt in before any KubernetesListenerSet
+  // can merge additional listeners into it.
   KubernetesGatewayAllowedListeners allowed_listeners = 7;
 
   // Gateway-wide TLS configuration: client-certificate validation for inbound
@@ -178,172 +178,18 @@ message KubernetesGatewayListener {
   ];
 
   // TLS configuration for this listener. Required for HTTPS and TLS protocols;
-  // must be absent for HTTP, TCP, and UDP (enforced above).
-  KubernetesGatewayListenerTlsConfig tls = 5;
+  // must be absent for HTTP, TCP, and UDP (enforced above). Certificate
+  // references default to KubernetesSecret foreign keys — wire valueFrom
+  // against a KubernetesCertificate's status.outputs.secret_name to terminate
+  // with cert-manager-issued material. Shared Gateway API type (also used by
+  // KubernetesListenerSet listener entries).
+  dev.planton.provider.kubernetes.KubernetesGatewayApiListenerTlsConfig tls = 5;
 
   // Restricts which Routes (by kind and namespace) may attach to this
   // listener. When unset, the controller selects routes by listener protocol
-  // and the same namespace as the Gateway.
-  KubernetesGatewayAllowedRoutes allowed_routes = 6;
-}
-
-// KubernetesGatewayListenerTlsConfig describes the TLS behavior of a listener.
-//
-// Upstream: ListenerTLSConfig in apis/v1/gateway_types.go
-message KubernetesGatewayListenerTlsConfig {
-  // when terminating TLS, the listener must have somewhere to source its
-  // certificate from (an explicit certificate reference or an
-  // implementation-specific option). Mode left unset defaults to Terminate.
-  option (buf.validate.message).cel = {
-    id: "listener_tls.terminate_requires_cert_or_options"
-    message: "certificate_refs or options must be provided when tls mode is Terminate (the default)"
-    expression: "(!has(this.mode) || this.mode == '' || this.mode == 'Terminate') ? (size(this.certificate_refs) > 0 || size(this.options) > 0) : true"
-  };
-
-  // How the listener handles the client's TLS session. "Terminate" (default)
-  // decrypts at the Gateway and requires a certificate. "Passthrough" forwards
-  // the encrypted stream untouched (TLSRoute only) and ignores certificate_refs.
-  //
-  // Upstream default: "Terminate". Closed enum: Terminate | Passthrough.
-  optional string mode = 1 [(buf.validate.field).cel = {
-    id: "listener_tls.mode_enum"
-    message: "tls mode must be either 'Terminate' or 'Passthrough'"
-    expression: "this == '' || this in ['Terminate', 'Passthrough']"
-  }];
-
-  // References to Kubernetes Secrets holding the TLS certificate/key used to
-  // terminate the listener. A single reference to a kubernetes.io/tls Secret
-  // has Core support; multiple references are implementation-specific.
-  //
-  // INFRA-CHART COMPOSABILITY (DD-009): certificate_refs is a PLAIN reference, not
-  // an Planton foreign key (StringValueOrRef). It is an array of multi-field
-  // upstream objects, so wrapping its scalars would break 100% upstream fidelity
-  // (DD-001) and distort the typed CRD shape (dont-do #6). The referenced Secret
-  // is typically created by a KubernetesCertificate (cert-manager). Because a
-  // plain name creates NO automatic DAG edge, an infra-chart author MUST express
-  // the Gateway -> Certificate dependency via metadata.relationships, e.g.:
-  //   metadata:
-  //     relationships:
-  //       - kind: KubernetesCertificate
-  //         name: "{{ values.domain }}-cert"
-  //         type: uses
-  // The plain `name` here is then the literal Secret name
-  // (KubernetesCertificate.status.outputs.secret_name). See the component's
-  // "Composing in Infra Charts" docs for the full pattern.
-  repeated dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference certificate_refs = 2 [(buf.validate.field).repeated.max_items = 64];
-
-  // Implementation-specific TLS options (for example minimum TLS version or
-  // cipher suites). Keys should be domain-prefixed to avoid ambiguity.
-  //
-  // Upstream key/value: Gateway API AnnotationKey (1-253) / AnnotationValue
-  // (0-4096).
-  map<string, string> options = 3 [(buf.validate.field).map = {
-    max_pairs: 16
-    keys: {
-      string: {
-        min_len: 1
-        max_len: 253
-        pattern: "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]$"
-      }
-    }
-    values: {
-      string: {max_len: 4096}
-    }
-  }];
-}
-
-// KubernetesGatewayAllowedRoutes defines which Routes may attach to a listener.
-//
-// Upstream: AllowedRoutes in apis/v1/gateway_types.go
-message KubernetesGatewayAllowedRoutes {
-  // Namespaces from which Routes may attach. Defaults to the Gateway's own
-  // namespace.
-  KubernetesGatewayRouteNamespaces namespaces = 1;
-
-  // Route kinds allowed to bind to this listener. When empty, allowed kinds
-  // are inferred from the listener protocol.
-  repeated KubernetesGatewayRouteGroupKind kinds = 2 [(buf.validate.field).repeated.max_items = 8];
-}
-
-// KubernetesGatewayRouteNamespaces indicates the namespaces Routes are
-// selected from.
-//
-// Upstream: RouteNamespaces in apis/v1/gateway_types.go
-message KubernetesGatewayRouteNamespaces {
-  // Where Routes are selected from: "All" (any namespace), "Selector"
-  // (namespaces matching the selector), or "Same" (the Gateway's namespace).
-  //
-  // Upstream default: "Same". Closed enum: All | Selector | Same.
-  optional string from = 1 [(buf.validate.field).cel = {
-    id: "route_namespaces.from_enum"
-    message: "from must be one of 'All', 'Selector', or 'Same'"
-    expression: "this == '' || this in ['All', 'Selector', 'Same']"
-  }];
-
-  // Namespace label selector. Required (and only honored) when `from` is
-  // "Selector".
-  KubernetesGatewayLabelSelector selector = 2;
-}
-
-// KubernetesGatewayRouteGroupKind identifies a Route group and kind allowed on
-// a listener.
-//
-// Upstream: RouteGroupKind in apis/v1/gateway_types.go
-message KubernetesGatewayRouteGroupKind {
-  // API group of the Route. Empty string selects the core API group.
-  //
-  // Upstream default: "gateway.networking.k8s.io".
-  // Group pattern: empty or an RFC 1123 subdomain (max 253).
-  optional string group = 1 [(buf.validate.field).string = {
-    max_len: 253
-    pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
-  }];
-
-  // Kind of the Route (for example "HTTPRoute", "GRPCRoute", "TLSRoute").
-  //
-  // Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
-  string kind = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string = {
-      min_len: 1
-      max_len: 63
-      pattern: "^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$"
-    }
-  ];
-}
-
-// KubernetesGatewayLabelSelector is a Kubernetes label selector used to choose
-// namespaces (mirrors metav1.LabelSelector). Reused for both AllowedRoutes and
-// AllowedListeners namespace selection.
-message KubernetesGatewayLabelSelector {
-  // Map of {key,value} pairs. A namespace matches if it carries all of these
-  // labels.
-  map<string, string> match_labels = 1;
-
-  // List of label selector requirements, ANDed together with match_labels.
-  repeated KubernetesGatewayLabelSelectorRequirement match_expressions = 2;
-}
-
-// KubernetesGatewayLabelSelectorRequirement is a single label selector
-// requirement (mirrors metav1.LabelSelectorRequirement).
-message KubernetesGatewayLabelSelectorRequirement {
-  // Label key the requirement applies to.
-  string key = 1 [(buf.validate.field).required = true];
-
-  // Relationship between the key and values: "In", "NotIn", "Exists", or
-  // "DoesNotExist". For "Exists"/"DoesNotExist", values must be empty.
-  string operator = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "label_selector.operator_enum"
-      message: "operator must be one of 'In', 'NotIn', 'Exists', or 'DoesNotExist'"
-      expression: "this in ['In', 'NotIn', 'Exists', 'DoesNotExist']"
-    }
-  ];
-
-  // Values for the requirement. Must be non-empty for "In"/"NotIn" and empty
-  // for "Exists"/"DoesNotExist".
-  repeated string values = 3;
+  // and the same namespace as the Gateway. Shared Gateway API type (also used
+  // by KubernetesListenerSet listener entries).
+  dev.planton.provider.kubernetes.KubernetesGatewayApiAllowedRoutes allowed_routes = 6;
 }
 
 // KubernetesGatewayAddress is an address requested for the Gateway.
@@ -395,12 +241,16 @@ message KubernetesGatewayInfrastructure {
     }
   }];
 
-  // Annotations applied to created resources. Up to 8 entries.
+  // Annotations applied to created resources. Up to 16 entries. This is the
+  // Gateway's per-cloud injection surface: the controller propagates these
+  // annotations to the LoadBalancer Service (or equivalent) it creates, so
+  // cloud LB behavior (internal vs internet-facing, NLB attributes, static
+  // IPs) is selected exactly as it is on a Service of type LoadBalancer.
   //
   // Upstream key/value: Gateway API AnnotationKey (1-253) / AnnotationValue
   // (0-4096).
   map<string, string> annotations = 2 [(buf.validate.field).map = {
-    max_pairs: 8
+    max_pairs: 16
     keys: {
       string: {
         min_len: 1
@@ -425,8 +275,25 @@ message KubernetesGatewayInfrastructure {
 // not shared: it has no namespace field, unlike GatewayClass's
 // ParametersReference).
 message KubernetesGatewayLocalParametersReference {
-  // API group of the referent.
-  string group = 1 [(buf.validate.field).required = true];
+  // API group of the referent. Empty string infers the core API group
+  // (e.g. for ConfigMap parameters).
+  //
+  // Upstream requires the KEY to be present but allows the empty value --
+  // so this is a proto3 `optional` string with a presence `required` rule:
+  // it must be SET (and is therefore emitted to the rendered CR, whose CRD
+  // rejects a missing key) but may be empty. The `optional` is what keeps
+  // the projection faithful: protojson omits unset proto3 scalars, so a
+  // non-optional empty-string group would be dropped from the manifest and
+  // rejected by the API server.
+  //
+  // Group pattern: empty or an RFC 1123 subdomain (max 253).
+  optional string group = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 253
+      pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+    }
+  ];
 
   // Kind of the referent.
   string kind = 2 [(buf.validate.field).required = true];
@@ -466,7 +333,7 @@ message KubernetesGatewayListenerNamespaces {
 
   // Namespace label selector. Required (and only honored) when `from` is
   // "Selector".
-  KubernetesGatewayLabelSelector selector = 2;
+  dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelector selector = 2;
 }
 
 // KubernetesGatewayTlsConfig holds gateway-wide frontend and backend TLS
@@ -545,10 +412,11 @@ message KubernetesGatewayFrontendTlsValidationConfig {
 // Upstream: FrontendTLSValidation in apis/v1/gateway_types.go
 message KubernetesGatewayFrontendTlsValidation {
   // References to ConfigMaps holding PEM-encoded CA bundles used as trust
-  // anchors for client certificates. At least one, up to eight.
+  // anchors for client certificates. At least one, up to sixteen. Each
+  // reference's name defaults to a KubernetesConfigMap foreign key.
   repeated dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference ca_certificate_refs = 1 [(buf.validate.field).repeated = {
     min_items: 1
-    max_items: 8
+    max_items: 16
   }];
 
   // How strictly client certificates are validated. "AllowValidOnly" (default)
