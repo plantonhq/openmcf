@@ -824,11 +824,13 @@ type KubernetesIngressNginxService struct {
 	// Serve HTTPS (port 443). Chart default: true.
 	EnableHttps *bool `protobuf:"varint,7,opt,name=enable_https,json=enableHttps,proto3,oneof" json:"enable_https,omitempty"`
 	// *
-	// Fixed HTTP node port (type node_port or load_balancer). 0 = the
-	// service controller allocates one from the cluster's node-port range.
+	// Fixed HTTP node port (type node_port or load_balancer). Leave unset
+	// to let the service controller allocate one from the cluster's
+	// node-port range.
 	HttpNodePort *int32 `protobuf:"varint,8,opt,name=http_node_port,json=httpNodePort,proto3,oneof" json:"http_node_port,omitempty"`
 	// *
-	// Fixed HTTPS node port. 0 = allocated from the node-port range.
+	// Fixed HTTPS node port. Leave unset to let the service controller
+	// allocate one from the node-port range.
 	HttpsNodePort *int32 `protobuf:"varint,9,opt,name=https_node_port,json=httpsNodePort,proto3,oneof" json:"https_node_port,omitempty"`
 	// *
 	// ALSO create the chart's second, INTERNAL load-balancer Service

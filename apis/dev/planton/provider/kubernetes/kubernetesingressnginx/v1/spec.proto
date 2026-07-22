@@ -445,8 +445,9 @@ message KubernetesIngressNginxService {
   optional bool enable_https = 7 [(dev.planton.shared.options.default) = "true"];
 
   /**
-   * Fixed HTTP node port (type node_port or load_balancer). 0 = the
-   * service controller allocates one from the cluster's node-port range.
+   * Fixed HTTP node port (type node_port or load_balancer). Leave unset
+   * to let the service controller allocate one from the cluster's
+   * node-port range.
    */
   optional int32 http_node_port = 8 [
     (buf.validate.field).int32.gte = 1,
@@ -454,7 +455,8 @@ message KubernetesIngressNginxService {
   ];
 
   /**
-   * Fixed HTTPS node port. 0 = allocated from the node-port range.
+   * Fixed HTTPS node port. Leave unset to let the service controller
+   * allocate one from the node-port range.
    */
   optional int32 https_node_port = 9 [
     (buf.validate.field).int32.gte = 1,

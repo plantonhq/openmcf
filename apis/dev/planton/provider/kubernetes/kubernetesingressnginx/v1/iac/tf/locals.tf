@@ -70,6 +70,17 @@ locals {
 
   autoscaling_enabled = try(var.spec.autoscaling.enabled, false)
 
+  # Admission-webhook values that differ from the chart defaults (twin of
+  # the Pulumi module's `admission` map — see the usage site for why this
+  # is length-gated).
+  admission_webhooks_pruned = try(var.spec.admission_webhooks, null) == null ? {} : {
+    for ak, av in {
+      enabled        = try(var.spec.admission_webhooks.enabled, null) == false ? false : null
+      failurePolicy  = try(var.spec.admission_webhooks.failure_policy, "fail") == "ignore" ? "Ignore" : null
+      timeoutSeconds = try(var.spec.admission_webhooks.timeout_seconds, null)
+    } : ak => av if av != null
+  }
+
   # Resource-identity labels stamped on the namespace this module creates
   # (never injected into the chart's own resources — Helm owns those).
   labels = merge(
@@ -204,13 +215,12 @@ locals {
       allowSnippetAnnotations = var.spec.allow_snippet_annotations ? true : null
       extraArgs               = local.default_tls_ref != "" ? { "default-ssl-certificate" = local.default_tls_ref } : null
 
-      admissionWebhooks = try(var.spec.admission_webhooks, null) == null ? null : {
-        for ak, av in {
-          enabled        = try(var.spec.admission_webhooks.enabled, null) == false ? false : null
-          failurePolicy  = try(var.spec.admission_webhooks.failure_policy, "fail") == "ignore" ? "Ignore" : null
-          timeoutSeconds = try(var.spec.admission_webhooks.timeout_seconds, null)
-        } : ak => av if av != null
-      }
+      # Gated on the PRUNED map being non-empty, not on block presence: a
+      # block carrying only chart defaults prunes to {}, and emitting an
+      # empty map would diverge from the Pulumi twin (which omits the key)
+      # — harmless to the chart, but rendered values must stay
+      # byte-identical across engines.
+      admissionWebhooks = length(local.admission_webhooks_pruned) > 0 ? local.admission_webhooks_pruned : null
 
       metrics = try(var.spec.metrics.enabled, false) ? {
         for mk, mv in {

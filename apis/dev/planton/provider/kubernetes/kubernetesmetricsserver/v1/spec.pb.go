@@ -218,8 +218,9 @@ type KubernetesMetricsServerSpec struct {
 	Tls *KubernetesMetricsServerTls `protobuf:"bytes,10,opt,name=tls,proto3" json:"tls,omitempty"`
 	// *
 	// Container CPU/memory requests and limits. Chart default: requests
-	// cpu=100m memory=200Mi, no limits. Memory scales with node/pod count
-	// (upstream guidance: ~1 MiB per node + ~2 KiB per pod).
+	// cpu=100m memory=200Mi, no limits — upstream's envelope for clusters
+	// up to 100 nodes (≤70 pods/node). Beyond 100 nodes, upstream guidance
+	// is +1m CPU and +2Mi memory per additional node.
 	Resources *kubernetes.ContainerResources `protobuf:"bytes,11,opt,name=resources,proto3" json:"resources,omitempty"`
 	// *
 	// Node selector for the metrics-server pods.
@@ -427,9 +428,10 @@ type KubernetesMetricsServerApiService struct {
 	// *
 	// Let the API server skip TLS verification when calling metrics-server.
 	// Chart default: true — matches the default self-signed serving
-	// certificate. Set false only with tls.cert_manager or tls.existing_secret
-	// providing a CA the API server can verify (via ca_bundle or the
-	// cert-manager CA injector).
+	// certificate. Set false only when the serving certificate is
+	// verifiable: tls type helm (the chart wires the APIService caBundle
+	// automatically), cert_manager (the CA injector wires it), or
+	// existing_secret with the CA provided via ca_bundle.
 	InsecureSkipTlsVerify *bool `protobuf:"varint,2,opt,name=insecure_skip_tls_verify,json=insecureSkipTlsVerify,proto3,oneof" json:"insecure_skip_tls_verify,omitempty"`
 	// *
 	// PEM-encoded CA bundle the API server uses to verify metrics-server's
