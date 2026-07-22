@@ -89,7 +89,7 @@ planton apply -f authorizationpolicy.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `selector.match_labels` | map | Pod labels selecting target workloads. Omit to cover the whole namespace. Mutually exclusive with `target_refs`. |
-| `target_refs` | list | Resources (Gateway / Service / ServiceEntry) the policy binds to. Required for waypoints. Mutually exclusive with `selector`. |
+| `target_refs` | list | Resources (Gateway / Service / ServiceEntry) the policy binds to. Required for waypoints. Mutually exclusive with `selector`. Each `name` is a foreign key defaulting to a `KubernetesGateway` reference; pass literals with `value:`. |
 | `rules` | list | Rules to match the request (see below). With ALLOW and no rules, all requests are denied. |
 | `action` | string | `ALLOW` (default), `DENY`, `AUDIT`, or `CUSTOM`. |
 | `provider.name` | string | The MeshConfig extension provider to delegate to; used with the CUSTOM action. |
@@ -109,11 +109,16 @@ match. An empty rule matches everything.
 
 `principals`, `not_principals`, `request_principals`, `not_request_principals`,
 `namespaces`, `not_namespaces`, `service_accounts`, `not_service_accounts`,
-`ip_blocks`, `not_ip_blocks`, `remote_ip_blocks`, `not_remote_ip_blocks`.
+`ip_blocks`, `not_ip_blocks`, `remote_ip_blocks`, `not_remote_ip_blocks`,
+`trust_domains`, `not_trust_domains`.
 
 `service_accounts` / `not_service_accounts` cannot be combined with `principals` or
 `namespaces` (positive or negative), allow no wildcards, and are capped at 16 entries
 of up to 320 characters each.
+
+`trust_domains` / `not_trust_domains` match any workload whose peer identity belongs
+to one of the listed trust domains (the mesh's identity root, e.g. `cluster.local`)
+without enumerating principals; they require mTLS.
 
 ### Operation fields (all optional lists)
 
@@ -174,10 +179,39 @@ spec:
 ## Composing in Infra Charts
 
 `namespace` is a `StringValueOrRef`, so it can reference a `KubernetesNamespace` output
-via `valueFrom`. Neither `selector.match_labels` nor `target_refs` is a foreign key --
-istiod resolves them at runtime, so they create no automatic DAG edge to the workload or
-resource they target. To order this policy relative to those resources in an infra
-chart, declare the dependency on `metadata.relationships`:
+via `valueFrom`. Each `target_refs[].name` is also a foreign key: it defaults to a
+`KubernetesGateway` reference (`status.outputs.gateway_name`), so wiring it with
+`valueFrom` gives the chart a real dependency edge from the policy to the gateway it
+protects:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: edge-ns
+      fieldPath: spec.name
+  target_refs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: edge-gateway
+          fieldPath: status.outputs.gateway_name
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            request_principals:
+              - "*"
+```
+
+When the target is a Service, a ServiceEntry, or any resource not managed as a Planton
+kind, pass the literal name with `value:`. `selector.match_labels` is a plain label
+match, not a foreign key -- istiod resolves it at runtime, so it creates no automatic
+DAG edge to the workloads it selects. To order this policy relative to those workloads
+in an infra chart, declare the dependency on `metadata.relationships`:
 
 ```yaml
 metadata:

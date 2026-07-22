@@ -955,6 +955,7 @@ type DestinationRuleSpecSubsetsTrafficPolicy struct {
 	// Traffic policies specific to individual ports.
 	PortLevelSettings []DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettings `pulumi:"portLevelSettings"`
 	ProxyProtocol     *DestinationRuleSpecSubsetsTrafficPolicyProxyProtocol      `pulumi:"proxyProtocol"`
+	RetryBudget       *DestinationRuleSpecSubsetsTrafficPolicyRetryBudget        `pulumi:"retryBudget"`
 	Tls               *DestinationRuleSpecSubsetsTrafficPolicyTls                `pulumi:"tls"`
 	Tunnel            *DestinationRuleSpecSubsetsTrafficPolicyTunnel             `pulumi:"tunnel"`
 }
@@ -978,6 +979,7 @@ type DestinationRuleSpecSubsetsTrafficPolicyArgs struct {
 	// Traffic policies specific to individual ports.
 	PortLevelSettings DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsArrayInput `pulumi:"portLevelSettings"`
 	ProxyProtocol     DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPtrInput       `pulumi:"proxyProtocol"`
+	RetryBudget       DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrInput         `pulumi:"retryBudget"`
 	Tls               DestinationRuleSpecSubsetsTrafficPolicyTlsPtrInput                 `pulumi:"tls"`
 	Tunnel            DestinationRuleSpecSubsetsTrafficPolicyTunnelPtrInput              `pulumi:"tunnel"`
 }
@@ -1091,6 +1093,12 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyOutput) ProxyProtocol() Destinati
 	}).(DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPtrOutput)
 }
 
+func (o DestinationRuleSpecSubsetsTrafficPolicyOutput) RetryBudget() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicy) *DestinationRuleSpecSubsetsTrafficPolicyRetryBudget {
+		return v.RetryBudget
+	}).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput)
+}
+
 func (o DestinationRuleSpecSubsetsTrafficPolicyOutput) Tls() DestinationRuleSpecSubsetsTrafficPolicyTlsPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicy) *DestinationRuleSpecSubsetsTrafficPolicyTls {
 		return v.Tls
@@ -1171,6 +1179,15 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyPtrOutput) ProxyProtocol() Destin
 		}
 		return v.ProxyProtocol
 	}).(DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPtrOutput)
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPtrOutput) RetryBudget() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicy) *DestinationRuleSpecSubsetsTrafficPolicyRetryBudget {
+		if v == nil {
+			return nil
+		}
+		return v.RetryBudget
+	}).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput)
 }
 
 func (o DestinationRuleSpecSubsetsTrafficPolicyPtrOutput) Tls() DestinationRuleSpecSubsetsTrafficPolicyTlsPtrOutput {
@@ -3330,6 +3347,8 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashPtrOutp
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookie struct {
+	// Additional attributes for the cookie.
+	Attributes []DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes `pulumi:"attributes"`
 	// Name of the cookie.
 	Name *string `pulumi:"name"`
 	// Path to set for the cookie.
@@ -3351,6 +3370,8 @@ type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookie
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieArgs struct {
+	// Additional attributes for the cookie.
+	Attributes DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayInput `pulumi:"attributes"`
 	// Name of the cookie.
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// Path to set for the cookie.
@@ -3437,6 +3458,13 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCoo
 	}).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieOutput) Attributes() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookie) []DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes {
+		return v.Attributes
+	}).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookie) *string {
@@ -3482,6 +3510,16 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCoo
 	}).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrOutput) Attributes() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookie) []DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes {
+		if v == nil {
+			return nil
+		}
+		return v.Attributes
+	}).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookie) *string {
@@ -3512,8 +3550,230 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCoo
 	}).(pulumi.StringPtrOutput)
 }
 
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes struct {
+	// The name of the cookie attribute.
+	Name *string `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value *string `pulumi:"value"`
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs and DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesInput` via:
+//
+//	DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs{...}
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs struct {
+	// The name of the cookie attribute.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value pulumi.StringPtrInput `pulumi:"value"`
+}
+
+func (DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput)
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray and DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayInput` via:
+//
+//	DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray{ DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs{...} }
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray []DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesInput
+
+func (DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return o
+}
+
+// The name of the cookie attribute.
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes) *string {
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// The optional value of the cookie attribute.
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes) *string {
+		return v.Value
+	}).(pulumi.StringPtrOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) Index(i pulumi.IntInput) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes {
+		return vs[0].([]DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes)[vs[1].(int)]
+	}).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch struct {
+	// The name of the cookie attribute.
+	Name *string `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value *string `pulumi:"value"`
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs and DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchInput` via:
+//
+//	DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{...}
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs struct {
+	// The name of the cookie attribute.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value pulumi.StringPtrInput `pulumi:"value"`
+}
+
+func (DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput)
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray and DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput` via:
+//
+//	DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray{ DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{...} }
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray []DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchInput
+
+func (DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return o
+}
+
+// The name of the cookie attribute.
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch) *string {
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// The optional value of the cookie attribute.
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch) *string {
+		return v.Value
+	}).(pulumi.StringPtrOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ToDestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) Index(i pulumi.IntInput) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		return vs[0].([]DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch)[vs[1].(int)]
+	}).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput)
+}
+
 // Hash based on HTTP cookie.
 type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatch struct {
+	// Additional attributes for the cookie.
+	Attributes []DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch `pulumi:"attributes"`
 	// Name of the cookie.
 	Name *string `pulumi:"name"`
 	// Path to set for the cookie.
@@ -3535,6 +3795,8 @@ type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookie
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchArgs struct {
+	// Additional attributes for the cookie.
+	Attributes DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput `pulumi:"attributes"`
 	// Name of the cookie.
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// Path to set for the cookie.
@@ -3621,6 +3883,13 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCoo
 	}).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchPtrOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchOutput) Attributes() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatch) []DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		return v.Attributes
+	}).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatch) *string {
@@ -3664,6 +3933,16 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCoo
 		var ret DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatch
 		return ret
 	}).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchOutput)
+}
+
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchPtrOutput) Attributes() DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatch) []DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Attributes
+	}).(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
 }
 
 // Name of the cookie.
@@ -6505,6 +6784,7 @@ type DestinationRuleSpecSubsetsTrafficPolicyPatch struct {
 	// Traffic policies specific to individual ports.
 	PortLevelSettings []DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsPatch `pulumi:"portLevelSettings"`
 	ProxyProtocol     *DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatch      `pulumi:"proxyProtocol"`
+	RetryBudget       *DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch        `pulumi:"retryBudget"`
 	Tls               *DestinationRuleSpecSubsetsTrafficPolicyTlsPatch                `pulumi:"tls"`
 	Tunnel            *DestinationRuleSpecSubsetsTrafficPolicyTunnelPatch             `pulumi:"tunnel"`
 }
@@ -6528,6 +6808,7 @@ type DestinationRuleSpecSubsetsTrafficPolicyPatchArgs struct {
 	// Traffic policies specific to individual ports.
 	PortLevelSettings DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsPatchArrayInput `pulumi:"portLevelSettings"`
 	ProxyProtocol     DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatchPtrInput       `pulumi:"proxyProtocol"`
+	RetryBudget       DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrInput         `pulumi:"retryBudget"`
 	Tls               DestinationRuleSpecSubsetsTrafficPolicyTlsPatchPtrInput                 `pulumi:"tls"`
 	Tunnel            DestinationRuleSpecSubsetsTrafficPolicyTunnelPatchPtrInput              `pulumi:"tunnel"`
 }
@@ -6641,6 +6922,12 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyPatchOutput) ProxyProtocol() Dest
 	}).(DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatchPtrOutput)
 }
 
+func (o DestinationRuleSpecSubsetsTrafficPolicyPatchOutput) RetryBudget() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyPatch) *DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch {
+		return v.RetryBudget
+	}).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput)
+}
+
 func (o DestinationRuleSpecSubsetsTrafficPolicyPatchOutput) Tls() DestinationRuleSpecSubsetsTrafficPolicyTlsPatchPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyPatch) *DestinationRuleSpecSubsetsTrafficPolicyTlsPatch {
 		return v.Tls
@@ -6721,6 +7008,15 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyPatchPtrOutput) ProxyProtocol() D
 		}
 		return v.ProxyProtocol
 	}).(DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatchPtrOutput)
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPatchPtrOutput) RetryBudget() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyPatch) *DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch {
+		if v == nil {
+			return nil
+		}
+		return v.RetryBudget
+	}).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput)
 }
 
 func (o DestinationRuleSpecSubsetsTrafficPolicyPatchPtrOutput) Tls() DestinationRuleSpecSubsetsTrafficPolicyTlsPatchPtrOutput {
@@ -9046,6 +9342,8 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerCons
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookie struct {
+	// Additional attributes for the cookie.
+	Attributes []DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes `pulumi:"attributes"`
 	// Name of the cookie.
 	Name *string `pulumi:"name"`
 	// Path to set for the cookie.
@@ -9067,6 +9365,8 @@ type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsist
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieArgs struct {
+	// Additional attributes for the cookie.
+	Attributes DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayInput `pulumi:"attributes"`
 	// Name of the cookie.
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// Path to set for the cookie.
@@ -9153,6 +9453,13 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerCons
 	}).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePtrOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieOutput) Attributes() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookie) []DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes {
+		return v.Attributes
+	}).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookie) *string {
@@ -9198,6 +9505,16 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerCons
 	}).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePtrOutput) Attributes() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookie) []DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes {
+		if v == nil {
+			return nil
+		}
+		return v.Attributes
+	}).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePtrOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookie) *string {
@@ -9228,8 +9545,230 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerCons
 	}).(pulumi.StringPtrOutput)
 }
 
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes struct {
+	// The name of the cookie attribute.
+	Name *string `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value *string `pulumi:"value"`
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs and DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesInput` via:
+//
+//	DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs{...}
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs struct {
+	// The name of the cookie attribute.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value pulumi.StringPtrInput `pulumi:"value"`
+}
+
+func (DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput)
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray and DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayInput` via:
+//
+//	DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray{ DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs{...} }
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray []DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesInput
+
+func (DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return o
+}
+
+// The name of the cookie attribute.
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes) *string {
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// The optional value of the cookie attribute.
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes) *string {
+		return v.Value
+	}).(pulumi.StringPtrOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) Index(i pulumi.IntInput) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes {
+		return vs[0].([]DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes)[vs[1].(int)]
+	}).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch struct {
+	// The name of the cookie attribute.
+	Name *string `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value *string `pulumi:"value"`
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs and DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchInput` via:
+//
+//	DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{...}
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs struct {
+	// The name of the cookie attribute.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value pulumi.StringPtrInput `pulumi:"value"`
+}
+
+func (DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput)
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray and DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput` via:
+//
+//	DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray{ DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{...} }
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray []DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchInput
+
+func (DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return o
+}
+
+// The name of the cookie attribute.
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch) *string {
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// The optional value of the cookie attribute.
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch) *string {
+		return v.Value
+	}).(pulumi.StringPtrOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ToDestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) Index(i pulumi.IntInput) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		return vs[0].([]DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch)[vs[1].(int)]
+	}).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput)
+}
+
 // Hash based on HTTP cookie.
 type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatch struct {
+	// Additional attributes for the cookie.
+	Attributes []DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch `pulumi:"attributes"`
 	// Name of the cookie.
 	Name *string `pulumi:"name"`
 	// Path to set for the cookie.
@@ -9251,6 +9790,8 @@ type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsist
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchArgs struct {
+	// Additional attributes for the cookie.
+	Attributes DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput `pulumi:"attributes"`
 	// Name of the cookie.
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// Path to set for the cookie.
@@ -9337,6 +9878,13 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerCons
 	}).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchPtrOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchOutput) Attributes() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatch) []DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		return v.Attributes
+	}).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatch) *string {
@@ -9380,6 +9928,16 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerCons
 		var ret DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatch
 		return ret
 	}).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchOutput)
+}
+
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchPtrOutput) Attributes() DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatch) []DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Attributes
+	}).(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
 }
 
 // Name of the cookie.
@@ -13557,6 +14115,324 @@ func (o DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatchPtrOutput) Vers
 	}).(pulumi.StringPtrOutput)
 }
 
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudget struct {
+	// Specifies the minimum retry concurrency allowed for the retry budget.
+	MinRetryConcurrency *int `pulumi:"minRetryConcurrency"`
+	// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+	Percent *float64 `pulumi:"percent"`
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs and DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetInput` via:
+//
+//	DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs{...}
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput
+}
+
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs struct {
+	// Specifies the minimum retry concurrency allowed for the retry budget.
+	MinRetryConcurrency pulumi.IntPtrInput `pulumi:"minRetryConcurrency"`
+	// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+	Percent pulumi.Float64PtrInput `pulumi:"percent"`
+}
+
+func (DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyRetryBudget)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput)
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput).ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutputWithContext(ctx)
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs, DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtr and DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrInput` via:
+//
+//	        DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs{...}
+//
+//	or:
+//
+//	        nil
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput
+}
+
+type destinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrType DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs
+
+func DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtr(v *DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrInput {
+	return (*destinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrType)(v)
+}
+
+func (*destinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**DestinationRuleSpecSubsetsTrafficPolicyRetryBudget)(nil)).Elem()
+}
+
+func (i *destinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrType) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutputWithContext(context.Background())
+}
+
+func (i *destinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrType) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput)
+}
+
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyRetryBudget)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput {
+	return o.ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutputWithContext(context.Background())
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v DestinationRuleSpecSubsetsTrafficPolicyRetryBudget) *DestinationRuleSpecSubsetsTrafficPolicyRetryBudget {
+		return &v
+	}).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput)
+}
+
+// Specifies the minimum retry concurrency allowed for the retry budget.
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput) MinRetryConcurrency() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyRetryBudget) *int { return v.MinRetryConcurrency }).(pulumi.IntPtrOutput)
+}
+
+// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput) Percent() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyRetryBudget) *float64 { return v.Percent }).(pulumi.Float64PtrOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**DestinationRuleSpecSubsetsTrafficPolicyRetryBudget)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput) Elem() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyRetryBudget) DestinationRuleSpecSubsetsTrafficPolicyRetryBudget {
+		if v != nil {
+			return *v
+		}
+		var ret DestinationRuleSpecSubsetsTrafficPolicyRetryBudget
+		return ret
+	}).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput)
+}
+
+// Specifies the minimum retry concurrency allowed for the retry budget.
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput) MinRetryConcurrency() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyRetryBudget) *int {
+		if v == nil {
+			return nil
+		}
+		return v.MinRetryConcurrency
+	}).(pulumi.IntPtrOutput)
+}
+
+// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput) Percent() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyRetryBudget) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.Percent
+	}).(pulumi.Float64PtrOutput)
+}
+
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch struct {
+	// Specifies the minimum retry concurrency allowed for the retry budget.
+	MinRetryConcurrency *int `pulumi:"minRetryConcurrency"`
+	// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+	Percent *float64 `pulumi:"percent"`
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs and DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchInput` via:
+//
+//	DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs{...}
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput
+}
+
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs struct {
+	// Specifies the minimum retry concurrency allowed for the retry budget.
+	MinRetryConcurrency pulumi.IntPtrInput `pulumi:"minRetryConcurrency"`
+	// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+	Percent pulumi.Float64PtrInput `pulumi:"percent"`
+}
+
+func (DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput)
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput).ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutputWithContext(ctx)
+}
+
+// DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrInput is an input type that accepts DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs, DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtr and DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrInput` via:
+//
+//	        DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput
+	ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutputWithContext(context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput
+}
+
+type destinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrType DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs
+
+func DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtr(v *DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrInput {
+	return (*destinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrType)(v)
+}
+
+func (*destinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch)(nil)).Elem()
+}
+
+func (i *destinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrType) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput {
+	return i.ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *destinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrType) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput)
+}
+
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o.ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutputWithContext(context.Background())
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch) *DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch {
+		return &v
+	}).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput)
+}
+
+// Specifies the minimum retry concurrency allowed for the retry budget.
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput) MinRetryConcurrency() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch) *int { return v.MinRetryConcurrency }).(pulumi.IntPtrOutput)
+}
+
+// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput) Percent() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch) *float64 { return v.Percent }).(pulumi.Float64PtrOutput)
+}
+
+type DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput) ToDestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutputWithContext(ctx context.Context) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o
+}
+
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput) Elem() DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch) DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch {
+		if v != nil {
+			return *v
+		}
+		var ret DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch
+		return ret
+	}).(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput)
+}
+
+// Specifies the minimum retry concurrency allowed for the retry budget.
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput) MinRetryConcurrency() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch) *int {
+		if v == nil {
+			return nil
+		}
+		return v.MinRetryConcurrency
+	}).(pulumi.IntPtrOutput)
+}
+
+// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+func (o DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput) Percent() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatch) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.Percent
+	}).(pulumi.Float64PtrOutput)
+}
+
 // TLS related settings for connections to the upstream service.
 type DestinationRuleSpecSubsetsTrafficPolicyTls struct {
 	// OPTIONAL: The path to the file containing certificate authority certificates to use in verifying a presented server certificate.
@@ -14521,6 +15397,7 @@ type DestinationRuleSpecTrafficPolicy struct {
 	// Traffic policies specific to individual ports.
 	PortLevelSettings []DestinationRuleSpecTrafficPolicyPortLevelSettings `pulumi:"portLevelSettings"`
 	ProxyProtocol     *DestinationRuleSpecTrafficPolicyProxyProtocol      `pulumi:"proxyProtocol"`
+	RetryBudget       *DestinationRuleSpecTrafficPolicyRetryBudget        `pulumi:"retryBudget"`
 	Tls               *DestinationRuleSpecTrafficPolicyTls                `pulumi:"tls"`
 	Tunnel            *DestinationRuleSpecTrafficPolicyTunnel             `pulumi:"tunnel"`
 }
@@ -14544,6 +15421,7 @@ type DestinationRuleSpecTrafficPolicyArgs struct {
 	// Traffic policies specific to individual ports.
 	PortLevelSettings DestinationRuleSpecTrafficPolicyPortLevelSettingsArrayInput `pulumi:"portLevelSettings"`
 	ProxyProtocol     DestinationRuleSpecTrafficPolicyProxyProtocolPtrInput       `pulumi:"proxyProtocol"`
+	RetryBudget       DestinationRuleSpecTrafficPolicyRetryBudgetPtrInput         `pulumi:"retryBudget"`
 	Tls               DestinationRuleSpecTrafficPolicyTlsPtrInput                 `pulumi:"tls"`
 	Tunnel            DestinationRuleSpecTrafficPolicyTunnelPtrInput              `pulumi:"tunnel"`
 }
@@ -14657,6 +15535,12 @@ func (o DestinationRuleSpecTrafficPolicyOutput) ProxyProtocol() DestinationRuleS
 	}).(DestinationRuleSpecTrafficPolicyProxyProtocolPtrOutput)
 }
 
+func (o DestinationRuleSpecTrafficPolicyOutput) RetryBudget() DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicy) *DestinationRuleSpecTrafficPolicyRetryBudget {
+		return v.RetryBudget
+	}).(DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput)
+}
+
 func (o DestinationRuleSpecTrafficPolicyOutput) Tls() DestinationRuleSpecTrafficPolicyTlsPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicy) *DestinationRuleSpecTrafficPolicyTls { return v.Tls }).(DestinationRuleSpecTrafficPolicyTlsPtrOutput)
 }
@@ -14733,6 +15617,15 @@ func (o DestinationRuleSpecTrafficPolicyPtrOutput) ProxyProtocol() DestinationRu
 		}
 		return v.ProxyProtocol
 	}).(DestinationRuleSpecTrafficPolicyProxyProtocolPtrOutput)
+}
+
+func (o DestinationRuleSpecTrafficPolicyPtrOutput) RetryBudget() DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicy) *DestinationRuleSpecTrafficPolicyRetryBudget {
+		if v == nil {
+			return nil
+		}
+		return v.RetryBudget
+	}).(DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput)
 }
 
 func (o DestinationRuleSpecTrafficPolicyPtrOutput) Tls() DestinationRuleSpecTrafficPolicyTlsPtrOutput {
@@ -16864,6 +17757,8 @@ func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashPtrOutput) Use
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookie struct {
+	// Additional attributes for the cookie.
+	Attributes []DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes `pulumi:"attributes"`
 	// Name of the cookie.
 	Name *string `pulumi:"name"`
 	// Path to set for the cookie.
@@ -16885,6 +17780,8 @@ type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieInput i
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieArgs struct {
+	// Additional attributes for the cookie.
+	Attributes DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayInput `pulumi:"attributes"`
 	// Name of the cookie.
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// Path to set for the cookie.
@@ -16971,6 +17868,13 @@ func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieOutp
 	}).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieOutput) Attributes() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookie) []DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes {
+		return v.Attributes
+	}).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookie) *string { return v.Name }).(pulumi.StringPtrOutput)
@@ -17010,6 +17914,16 @@ func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrO
 	}).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrOutput) Attributes() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookie) []DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes {
+		if v == nil {
+			return nil
+		}
+		return v.Attributes
+	}).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookie) *string {
@@ -17040,8 +17954,230 @@ func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrO
 	}).(pulumi.StringPtrOutput)
 }
 
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes struct {
+	// The name of the cookie attribute.
+	Name *string `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value *string `pulumi:"value"`
+}
+
+// DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesInput is an input type that accepts DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs and DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesInput` via:
+//
+//	DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs{...}
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput
+	ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput
+}
+
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs struct {
+	// The name of the cookie attribute.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value pulumi.StringPtrInput `pulumi:"value"`
+}
+
+func (DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput)
+}
+
+// DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayInput is an input type that accepts DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray and DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayInput` via:
+//
+//	DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray{ DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs{...} }
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput
+	ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput
+}
+
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray []DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesInput
+
+func (DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return o
+}
+
+// The name of the cookie attribute.
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes) *string {
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// The optional value of the cookie attribute.
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes) *string {
+		return v.Value
+	}).(pulumi.StringPtrOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) Index(i pulumi.IntInput) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes {
+		return vs[0].([]DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributes)[vs[1].(int)]
+	}).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch struct {
+	// The name of the cookie attribute.
+	Name *string `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value *string `pulumi:"value"`
+}
+
+// DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchInput is an input type that accepts DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs and DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchInput` via:
+//
+//	DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{...}
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput
+	ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput
+}
+
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs struct {
+	// The name of the cookie attribute.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value pulumi.StringPtrInput `pulumi:"value"`
+}
+
+func (DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput)
+}
+
+// DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput is an input type that accepts DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray and DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput` via:
+//
+//	DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray{ DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{...} }
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput
+	ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput
+}
+
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray []DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchInput
+
+func (DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return o
+}
+
+// The name of the cookie attribute.
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch) *string {
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// The optional value of the cookie attribute.
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch) *string {
+		return v.Value
+	}).(pulumi.StringPtrOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ToDestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) Index(i pulumi.IntInput) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		return vs[0].([]DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch)[vs[1].(int)]
+	}).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput)
+}
+
 // Hash based on HTTP cookie.
 type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatch struct {
+	// Additional attributes for the cookie.
+	Attributes []DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch `pulumi:"attributes"`
 	// Name of the cookie.
 	Name *string `pulumi:"name"`
 	// Path to set for the cookie.
@@ -17063,6 +18199,8 @@ type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchIn
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchArgs struct {
+	// Additional attributes for the cookie.
+	Attributes DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput `pulumi:"attributes"`
 	// Name of the cookie.
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// Path to set for the cookie.
@@ -17149,6 +18287,13 @@ func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatc
 	}).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchPtrOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchOutput) Attributes() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatch) []DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		return v.Attributes
+	}).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatch) *string {
@@ -17192,6 +18337,16 @@ func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatc
 		var ret DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatch
 		return ret
 	}).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchOutput)
+}
+
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchPtrOutput) Attributes() DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatch) []DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Attributes
+	}).(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
 }
 
 // Name of the cookie.
@@ -20005,6 +21160,7 @@ type DestinationRuleSpecTrafficPolicyPatch struct {
 	// Traffic policies specific to individual ports.
 	PortLevelSettings []DestinationRuleSpecTrafficPolicyPortLevelSettingsPatch `pulumi:"portLevelSettings"`
 	ProxyProtocol     *DestinationRuleSpecTrafficPolicyProxyProtocolPatch      `pulumi:"proxyProtocol"`
+	RetryBudget       *DestinationRuleSpecTrafficPolicyRetryBudgetPatch        `pulumi:"retryBudget"`
 	Tls               *DestinationRuleSpecTrafficPolicyTlsPatch                `pulumi:"tls"`
 	Tunnel            *DestinationRuleSpecTrafficPolicyTunnelPatch             `pulumi:"tunnel"`
 }
@@ -20028,6 +21184,7 @@ type DestinationRuleSpecTrafficPolicyPatchArgs struct {
 	// Traffic policies specific to individual ports.
 	PortLevelSettings DestinationRuleSpecTrafficPolicyPortLevelSettingsPatchArrayInput `pulumi:"portLevelSettings"`
 	ProxyProtocol     DestinationRuleSpecTrafficPolicyProxyProtocolPatchPtrInput       `pulumi:"proxyProtocol"`
+	RetryBudget       DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrInput         `pulumi:"retryBudget"`
 	Tls               DestinationRuleSpecTrafficPolicyTlsPatchPtrInput                 `pulumi:"tls"`
 	Tunnel            DestinationRuleSpecTrafficPolicyTunnelPatchPtrInput              `pulumi:"tunnel"`
 }
@@ -20141,6 +21298,12 @@ func (o DestinationRuleSpecTrafficPolicyPatchOutput) ProxyProtocol() Destination
 	}).(DestinationRuleSpecTrafficPolicyProxyProtocolPatchPtrOutput)
 }
 
+func (o DestinationRuleSpecTrafficPolicyPatchOutput) RetryBudget() DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyPatch) *DestinationRuleSpecTrafficPolicyRetryBudgetPatch {
+		return v.RetryBudget
+	}).(DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput)
+}
+
 func (o DestinationRuleSpecTrafficPolicyPatchOutput) Tls() DestinationRuleSpecTrafficPolicyTlsPatchPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyPatch) *DestinationRuleSpecTrafficPolicyTlsPatch { return v.Tls }).(DestinationRuleSpecTrafficPolicyTlsPatchPtrOutput)
 }
@@ -20219,6 +21382,15 @@ func (o DestinationRuleSpecTrafficPolicyPatchPtrOutput) ProxyProtocol() Destinat
 		}
 		return v.ProxyProtocol
 	}).(DestinationRuleSpecTrafficPolicyProxyProtocolPatchPtrOutput)
+}
+
+func (o DestinationRuleSpecTrafficPolicyPatchPtrOutput) RetryBudget() DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyPatch) *DestinationRuleSpecTrafficPolicyRetryBudgetPatch {
+		if v == nil {
+			return nil
+		}
+		return v.RetryBudget
+	}).(DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput)
 }
 
 func (o DestinationRuleSpecTrafficPolicyPatchPtrOutput) Tls() DestinationRuleSpecTrafficPolicyTlsPatchPtrOutput {
@@ -22542,6 +23714,8 @@ func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentH
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookie struct {
+	// Additional attributes for the cookie.
+	Attributes []DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes `pulumi:"attributes"`
 	// Name of the cookie.
 	Name *string `pulumi:"name"`
 	// Path to set for the cookie.
@@ -22563,6 +23737,8 @@ type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHash
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieArgs struct {
+	// Additional attributes for the cookie.
+	Attributes DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayInput `pulumi:"attributes"`
 	// Name of the cookie.
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// Path to set for the cookie.
@@ -22649,6 +23825,13 @@ func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentH
 	}).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePtrOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieOutput) Attributes() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookie) []DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes {
+		return v.Attributes
+	}).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookie) *string {
@@ -22694,6 +23877,16 @@ func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentH
 	}).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePtrOutput) Attributes() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookie) []DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes {
+		if v == nil {
+			return nil
+		}
+		return v.Attributes
+	}).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePtrOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookie) *string {
@@ -22724,8 +23917,230 @@ func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentH
 	}).(pulumi.StringPtrOutput)
 }
 
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes struct {
+	// The name of the cookie attribute.
+	Name *string `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value *string `pulumi:"value"`
+}
+
+// DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesInput is an input type that accepts DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs and DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesInput` via:
+//
+//	DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs{...}
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput
+	ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput
+}
+
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs struct {
+	// The name of the cookie attribute.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value pulumi.StringPtrInput `pulumi:"value"`
+}
+
+func (DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput)
+}
+
+// DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayInput is an input type that accepts DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray and DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayInput` via:
+//
+//	DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray{ DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs{...} }
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput
+	ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput
+}
+
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray []DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesInput
+
+func (DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return o
+}
+
+// The name of the cookie attribute.
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes) *string {
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// The optional value of the cookie attribute.
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes) *string {
+		return v.Value
+	}).(pulumi.StringPtrOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput) Index(i pulumi.IntInput) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes {
+		return vs[0].([]DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributes)[vs[1].(int)]
+	}).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch struct {
+	// The name of the cookie attribute.
+	Name *string `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value *string `pulumi:"value"`
+}
+
+// DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchInput is an input type that accepts DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs and DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchInput` via:
+//
+//	DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{...}
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput
+	ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput
+}
+
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs struct {
+	// The name of the cookie attribute.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// The optional value of the cookie attribute.
+	Value pulumi.StringPtrInput `pulumi:"value"`
+}
+
+func (DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput)
+}
+
+// DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput is an input type that accepts DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray and DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput` via:
+//
+//	DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray{ DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{...} }
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput
+	ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput
+}
+
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray []DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchInput
+
+func (DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return o
+}
+
+// The name of the cookie attribute.
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch) *string {
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// The optional value of the cookie attribute.
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch) *string {
+		return v.Value
+	}).(pulumi.StringPtrOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) ToDestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput) Index(i pulumi.IntInput) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		return vs[0].([]DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch)[vs[1].(int)]
+	}).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput)
+}
+
 // Hash based on HTTP cookie.
 type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatch struct {
+	// Additional attributes for the cookie.
+	Attributes []DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch `pulumi:"attributes"`
 	// Name of the cookie.
 	Name *string `pulumi:"name"`
 	// Path to set for the cookie.
@@ -22747,6 +24162,8 @@ type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHash
 
 // Hash based on HTTP cookie.
 type DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchArgs struct {
+	// Additional attributes for the cookie.
+	Attributes DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput `pulumi:"attributes"`
 	// Name of the cookie.
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// Path to set for the cookie.
@@ -22833,6 +24250,13 @@ func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentH
 	}).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchPtrOutput)
 }
 
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchOutput) Attributes() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatch) []DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		return v.Attributes
+	}).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
+}
+
 // Name of the cookie.
 func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatch) *string {
@@ -22876,6 +24300,16 @@ func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentH
 		var ret DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatch
 		return ret
 	}).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchOutput)
+}
+
+// Additional attributes for the cookie.
+func (o DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchPtrOutput) Attributes() DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatch) []DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Attributes
+	}).(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput)
 }
 
 // Name of the cookie.
@@ -27035,6 +28469,324 @@ func (o DestinationRuleSpecTrafficPolicyProxyProtocolPatchPtrOutput) Version() p
 	}).(pulumi.StringPtrOutput)
 }
 
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecTrafficPolicyRetryBudget struct {
+	// Specifies the minimum retry concurrency allowed for the retry budget.
+	MinRetryConcurrency *int `pulumi:"minRetryConcurrency"`
+	// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+	Percent *float64 `pulumi:"percent"`
+}
+
+// DestinationRuleSpecTrafficPolicyRetryBudgetInput is an input type that accepts DestinationRuleSpecTrafficPolicyRetryBudgetArgs and DestinationRuleSpecTrafficPolicyRetryBudgetOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyRetryBudgetInput` via:
+//
+//	DestinationRuleSpecTrafficPolicyRetryBudgetArgs{...}
+type DestinationRuleSpecTrafficPolicyRetryBudgetInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyRetryBudgetOutput() DestinationRuleSpecTrafficPolicyRetryBudgetOutput
+	ToDestinationRuleSpecTrafficPolicyRetryBudgetOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetOutput
+}
+
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecTrafficPolicyRetryBudgetArgs struct {
+	// Specifies the minimum retry concurrency allowed for the retry budget.
+	MinRetryConcurrency pulumi.IntPtrInput `pulumi:"minRetryConcurrency"`
+	// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+	Percent pulumi.Float64PtrInput `pulumi:"percent"`
+}
+
+func (DestinationRuleSpecTrafficPolicyRetryBudgetArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyRetryBudget)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecTrafficPolicyRetryBudgetArgs) ToDestinationRuleSpecTrafficPolicyRetryBudgetOutput() DestinationRuleSpecTrafficPolicyRetryBudgetOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyRetryBudgetOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyRetryBudgetArgs) ToDestinationRuleSpecTrafficPolicyRetryBudgetOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyRetryBudgetOutput)
+}
+
+func (i DestinationRuleSpecTrafficPolicyRetryBudgetArgs) ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyRetryBudgetArgs) ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyRetryBudgetOutput).ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutputWithContext(ctx)
+}
+
+// DestinationRuleSpecTrafficPolicyRetryBudgetPtrInput is an input type that accepts DestinationRuleSpecTrafficPolicyRetryBudgetArgs, DestinationRuleSpecTrafficPolicyRetryBudgetPtr and DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyRetryBudgetPtrInput` via:
+//
+//	        DestinationRuleSpecTrafficPolicyRetryBudgetArgs{...}
+//
+//	or:
+//
+//	        nil
+type DestinationRuleSpecTrafficPolicyRetryBudgetPtrInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput
+	ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput
+}
+
+type destinationRuleSpecTrafficPolicyRetryBudgetPtrType DestinationRuleSpecTrafficPolicyRetryBudgetArgs
+
+func DestinationRuleSpecTrafficPolicyRetryBudgetPtr(v *DestinationRuleSpecTrafficPolicyRetryBudgetArgs) DestinationRuleSpecTrafficPolicyRetryBudgetPtrInput {
+	return (*destinationRuleSpecTrafficPolicyRetryBudgetPtrType)(v)
+}
+
+func (*destinationRuleSpecTrafficPolicyRetryBudgetPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**DestinationRuleSpecTrafficPolicyRetryBudget)(nil)).Elem()
+}
+
+func (i *destinationRuleSpecTrafficPolicyRetryBudgetPtrType) ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutputWithContext(context.Background())
+}
+
+func (i *destinationRuleSpecTrafficPolicyRetryBudgetPtrType) ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput)
+}
+
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecTrafficPolicyRetryBudgetOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyRetryBudgetOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyRetryBudget)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetOutput() DestinationRuleSpecTrafficPolicyRetryBudgetOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput {
+	return o.ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutputWithContext(context.Background())
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v DestinationRuleSpecTrafficPolicyRetryBudget) *DestinationRuleSpecTrafficPolicyRetryBudget {
+		return &v
+	}).(DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput)
+}
+
+// Specifies the minimum retry concurrency allowed for the retry budget.
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetOutput) MinRetryConcurrency() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyRetryBudget) *int { return v.MinRetryConcurrency }).(pulumi.IntPtrOutput)
+}
+
+// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetOutput) Percent() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyRetryBudget) *float64 { return v.Percent }).(pulumi.Float64PtrOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**DestinationRuleSpecTrafficPolicyRetryBudget)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetPtrOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput) Elem() DestinationRuleSpecTrafficPolicyRetryBudgetOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyRetryBudget) DestinationRuleSpecTrafficPolicyRetryBudget {
+		if v != nil {
+			return *v
+		}
+		var ret DestinationRuleSpecTrafficPolicyRetryBudget
+		return ret
+	}).(DestinationRuleSpecTrafficPolicyRetryBudgetOutput)
+}
+
+// Specifies the minimum retry concurrency allowed for the retry budget.
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput) MinRetryConcurrency() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyRetryBudget) *int {
+		if v == nil {
+			return nil
+		}
+		return v.MinRetryConcurrency
+	}).(pulumi.IntPtrOutput)
+}
+
+// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput) Percent() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyRetryBudget) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.Percent
+	}).(pulumi.Float64PtrOutput)
+}
+
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecTrafficPolicyRetryBudgetPatch struct {
+	// Specifies the minimum retry concurrency allowed for the retry budget.
+	MinRetryConcurrency *int `pulumi:"minRetryConcurrency"`
+	// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+	Percent *float64 `pulumi:"percent"`
+}
+
+// DestinationRuleSpecTrafficPolicyRetryBudgetPatchInput is an input type that accepts DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs and DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyRetryBudgetPatchInput` via:
+//
+//	DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs{...}
+type DestinationRuleSpecTrafficPolicyRetryBudgetPatchInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput
+	ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput
+}
+
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs struct {
+	// Specifies the minimum retry concurrency allowed for the retry budget.
+	MinRetryConcurrency pulumi.IntPtrInput `pulumi:"minRetryConcurrency"`
+	// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+	Percent pulumi.Float64PtrInput `pulumi:"percent"`
+}
+
+func (DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyRetryBudgetPatch)(nil)).Elem()
+}
+
+func (i DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput)
+}
+
+func (i DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutputWithContext(context.Background())
+}
+
+func (i DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput).ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutputWithContext(ctx)
+}
+
+// DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrInput is an input type that accepts DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs, DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtr and DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput values.
+// You can construct a concrete instance of `DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrInput` via:
+//
+//	        DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrInput interface {
+	pulumi.Input
+
+	ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput
+	ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutputWithContext(context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput
+}
+
+type destinationRuleSpecTrafficPolicyRetryBudgetPatchPtrType DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs
+
+func DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtr(v *DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs) DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrInput {
+	return (*destinationRuleSpecTrafficPolicyRetryBudgetPatchPtrType)(v)
+}
+
+func (*destinationRuleSpecTrafficPolicyRetryBudgetPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**DestinationRuleSpecTrafficPolicyRetryBudgetPatch)(nil)).Elem()
+}
+
+func (i *destinationRuleSpecTrafficPolicyRetryBudgetPatchPtrType) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput {
+	return i.ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *destinationRuleSpecTrafficPolicyRetryBudgetPatchPtrType) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput)
+}
+
+// Specifies a limit on concurrent retries in relation to the number of active requests.
+type DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*DestinationRuleSpecTrafficPolicyRetryBudgetPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o.ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutputWithContext(context.Background())
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v DestinationRuleSpecTrafficPolicyRetryBudgetPatch) *DestinationRuleSpecTrafficPolicyRetryBudgetPatch {
+		return &v
+	}).(DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput)
+}
+
+// Specifies the minimum retry concurrency allowed for the retry budget.
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput) MinRetryConcurrency() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyRetryBudgetPatch) *int { return v.MinRetryConcurrency }).(pulumi.IntPtrOutput)
+}
+
+// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput) Percent() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v DestinationRuleSpecTrafficPolicyRetryBudgetPatch) *float64 { return v.Percent }).(pulumi.Float64PtrOutput)
+}
+
+type DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**DestinationRuleSpecTrafficPolicyRetryBudgetPatch)(nil)).Elem()
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput() DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput) ToDestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutputWithContext(ctx context.Context) DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput {
+	return o
+}
+
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput) Elem() DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyRetryBudgetPatch) DestinationRuleSpecTrafficPolicyRetryBudgetPatch {
+		if v != nil {
+			return *v
+		}
+		var ret DestinationRuleSpecTrafficPolicyRetryBudgetPatch
+		return ret
+	}).(DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput)
+}
+
+// Specifies the minimum retry concurrency allowed for the retry budget.
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput) MinRetryConcurrency() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyRetryBudgetPatch) *int {
+		if v == nil {
+			return nil
+		}
+		return v.MinRetryConcurrency
+	}).(pulumi.IntPtrOutput)
+}
+
+// Specifies the limit on concurrent retries as a percentage of the sum of active requests and active pending requests.
+func (o DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput) Percent() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *DestinationRuleSpecTrafficPolicyRetryBudgetPatch) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.Percent
+	}).(pulumi.Float64PtrOutput)
+}
+
 // TLS related settings for connections to the upstream service.
 type DestinationRuleSpecTrafficPolicyTls struct {
 	// OPTIONAL: The path to the file containing certificate authority certificates to use in verifying a presented server certificate.
@@ -28875,11 +30627,12 @@ type EnvoyFilterSpecConfigPatchesMatch struct {
 	Cluster *EnvoyFilterSpecConfigPatchesMatchCluster `pulumi:"cluster"`
 	// The specific config generation context to match on.
 	//
-	// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY
+	// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY, WAYPOINT
 	Context            *string                                              `pulumi:"context"`
 	Listener           *EnvoyFilterSpecConfigPatchesMatchListener           `pulumi:"listener"`
 	Proxy              *EnvoyFilterSpecConfigPatchesMatchProxy              `pulumi:"proxy"`
 	RouteConfiguration *EnvoyFilterSpecConfigPatchesMatchRouteConfiguration `pulumi:"routeConfiguration"`
+	Waypoint           *EnvoyFilterSpecConfigPatchesMatchWaypoint           `pulumi:"waypoint"`
 }
 
 // EnvoyFilterSpecConfigPatchesMatchInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchArgs and EnvoyFilterSpecConfigPatchesMatchOutput values.
@@ -28898,11 +30651,12 @@ type EnvoyFilterSpecConfigPatchesMatchArgs struct {
 	Cluster EnvoyFilterSpecConfigPatchesMatchClusterPtrInput `pulumi:"cluster"`
 	// The specific config generation context to match on.
 	//
-	// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY
+	// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY, WAYPOINT
 	Context            pulumi.StringPtrInput                                       `pulumi:"context"`
 	Listener           EnvoyFilterSpecConfigPatchesMatchListenerPtrInput           `pulumi:"listener"`
 	Proxy              EnvoyFilterSpecConfigPatchesMatchProxyPtrInput              `pulumi:"proxy"`
 	RouteConfiguration EnvoyFilterSpecConfigPatchesMatchRouteConfigurationPtrInput `pulumi:"routeConfiguration"`
+	Waypoint           EnvoyFilterSpecConfigPatchesMatchWaypointPtrInput           `pulumi:"waypoint"`
 }
 
 func (EnvoyFilterSpecConfigPatchesMatchArgs) ElementType() reflect.Type {
@@ -28989,7 +30743,7 @@ func (o EnvoyFilterSpecConfigPatchesMatchOutput) Cluster() EnvoyFilterSpecConfig
 
 // The specific config generation context to match on.
 //
-// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY
+// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY, WAYPOINT
 func (o EnvoyFilterSpecConfigPatchesMatchOutput) Context() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatch) *string { return v.Context }).(pulumi.StringPtrOutput)
 }
@@ -29008,6 +30762,12 @@ func (o EnvoyFilterSpecConfigPatchesMatchOutput) RouteConfiguration() EnvoyFilte
 	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatch) *EnvoyFilterSpecConfigPatchesMatchRouteConfiguration {
 		return v.RouteConfiguration
 	}).(EnvoyFilterSpecConfigPatchesMatchRouteConfigurationPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchOutput) Waypoint() EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatch) *EnvoyFilterSpecConfigPatchesMatchWaypoint {
+		return v.Waypoint
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput)
 }
 
 type EnvoyFilterSpecConfigPatchesMatchPtrOutput struct{ *pulumi.OutputState }
@@ -29045,7 +30805,7 @@ func (o EnvoyFilterSpecConfigPatchesMatchPtrOutput) Cluster() EnvoyFilterSpecCon
 
 // The specific config generation context to match on.
 //
-// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY
+// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY, WAYPOINT
 func (o EnvoyFilterSpecConfigPatchesMatchPtrOutput) Context() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatch) *string {
 		if v == nil {
@@ -29080,6 +30840,15 @@ func (o EnvoyFilterSpecConfigPatchesMatchPtrOutput) RouteConfiguration() EnvoyFi
 		}
 		return v.RouteConfiguration
 	}).(EnvoyFilterSpecConfigPatchesMatchRouteConfigurationPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchPtrOutput) Waypoint() EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatch) *EnvoyFilterSpecConfigPatchesMatchWaypoint {
+		if v == nil {
+			return nil
+		}
+		return v.Waypoint
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput)
 }
 
 // Match on envoy cluster attributes.
@@ -30965,11 +32734,12 @@ type EnvoyFilterSpecConfigPatchesMatchPatch struct {
 	Cluster *EnvoyFilterSpecConfigPatchesMatchClusterPatch `pulumi:"cluster"`
 	// The specific config generation context to match on.
 	//
-	// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY
+	// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY, WAYPOINT
 	Context            *string                                                   `pulumi:"context"`
 	Listener           *EnvoyFilterSpecConfigPatchesMatchListenerPatch           `pulumi:"listener"`
 	Proxy              *EnvoyFilterSpecConfigPatchesMatchProxyPatch              `pulumi:"proxy"`
 	RouteConfiguration *EnvoyFilterSpecConfigPatchesMatchRouteConfigurationPatch `pulumi:"routeConfiguration"`
+	Waypoint           *EnvoyFilterSpecConfigPatchesMatchWaypointPatch           `pulumi:"waypoint"`
 }
 
 // EnvoyFilterSpecConfigPatchesMatchPatchInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchPatchArgs and EnvoyFilterSpecConfigPatchesMatchPatchOutput values.
@@ -30988,11 +32758,12 @@ type EnvoyFilterSpecConfigPatchesMatchPatchArgs struct {
 	Cluster EnvoyFilterSpecConfigPatchesMatchClusterPatchPtrInput `pulumi:"cluster"`
 	// The specific config generation context to match on.
 	//
-	// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY
+	// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY, WAYPOINT
 	Context            pulumi.StringPtrInput                                            `pulumi:"context"`
 	Listener           EnvoyFilterSpecConfigPatchesMatchListenerPatchPtrInput           `pulumi:"listener"`
 	Proxy              EnvoyFilterSpecConfigPatchesMatchProxyPatchPtrInput              `pulumi:"proxy"`
 	RouteConfiguration EnvoyFilterSpecConfigPatchesMatchRouteConfigurationPatchPtrInput `pulumi:"routeConfiguration"`
+	Waypoint           EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrInput           `pulumi:"waypoint"`
 }
 
 func (EnvoyFilterSpecConfigPatchesMatchPatchArgs) ElementType() reflect.Type {
@@ -31030,7 +32801,7 @@ func (o EnvoyFilterSpecConfigPatchesMatchPatchOutput) Cluster() EnvoyFilterSpecC
 
 // The specific config generation context to match on.
 //
-// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY
+// Valid Options: ANY, SIDECAR_INBOUND, SIDECAR_OUTBOUND, GATEWAY, WAYPOINT
 func (o EnvoyFilterSpecConfigPatchesMatchPatchOutput) Context() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchPatch) *string { return v.Context }).(pulumi.StringPtrOutput)
 }
@@ -31051,6 +32822,12 @@ func (o EnvoyFilterSpecConfigPatchesMatchPatchOutput) RouteConfiguration() Envoy
 	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchPatch) *EnvoyFilterSpecConfigPatchesMatchRouteConfigurationPatch {
 		return v.RouteConfiguration
 	}).(EnvoyFilterSpecConfigPatchesMatchRouteConfigurationPatchPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchPatchOutput) Waypoint() EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchPatch) *EnvoyFilterSpecConfigPatchesMatchWaypointPatch {
+		return v.Waypoint
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput)
 }
 
 // Match on properties associated with a proxy.
@@ -32478,6 +34255,1222 @@ func (o EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePatchPtrOut
 // The Route objects generated by default are named as default.
 func (o EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePatchPtrOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypoint struct {
+	Filter *EnvoyFilterSpecConfigPatchesMatchWaypointFilter `pulumi:"filter"`
+	// The service port to match on.
+	PortNumber *int                                            `pulumi:"portNumber"`
+	Route      *EnvoyFilterSpecConfigPatchesMatchWaypointRoute `pulumi:"route"`
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointArgs and EnvoyFilterSpecConfigPatchesMatchWaypointOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointInput` via:
+//
+//	EnvoyFilterSpecConfigPatchesMatchWaypointArgs{...}
+type EnvoyFilterSpecConfigPatchesMatchWaypointInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointOutput() EnvoyFilterSpecConfigPatchesMatchWaypointOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointOutput
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointArgs struct {
+	Filter EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrInput `pulumi:"filter"`
+	// The service port to match on.
+	PortNumber pulumi.IntPtrInput                                     `pulumi:"portNumber"`
+	Route      EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrInput `pulumi:"route"`
+}
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypoint)(nil)).Elem()
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointOutput() EnvoyFilterSpecConfigPatchesMatchWaypointOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointOutput)
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointOutput).ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutputWithContext(ctx)
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointPtrInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointArgs, EnvoyFilterSpecConfigPatchesMatchWaypointPtr and EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointPtrInput` via:
+//
+//	        EnvoyFilterSpecConfigPatchesMatchWaypointArgs{...}
+//
+//	or:
+//
+//	        nil
+type EnvoyFilterSpecConfigPatchesMatchWaypointPtrInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput
+}
+
+type envoyFilterSpecConfigPatchesMatchWaypointPtrType EnvoyFilterSpecConfigPatchesMatchWaypointArgs
+
+func EnvoyFilterSpecConfigPatchesMatchWaypointPtr(v *EnvoyFilterSpecConfigPatchesMatchWaypointArgs) EnvoyFilterSpecConfigPatchesMatchWaypointPtrInput {
+	return (*envoyFilterSpecConfigPatchesMatchWaypointPtrType)(v)
+}
+
+func (*envoyFilterSpecConfigPatchesMatchWaypointPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypoint)(nil)).Elem()
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutputWithContext(context.Background())
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypoint)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointOutput() EnvoyFilterSpecConfigPatchesMatchWaypointOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput {
+	return o.ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutputWithContext(context.Background())
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v EnvoyFilterSpecConfigPatchesMatchWaypoint) *EnvoyFilterSpecConfigPatchesMatchWaypoint {
+		return &v
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointOutput) Filter() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypoint) *EnvoyFilterSpecConfigPatchesMatchWaypointFilter {
+		return v.Filter
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput)
+}
+
+// The service port to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointOutput) PortNumber() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypoint) *int { return v.PortNumber }).(pulumi.IntPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointOutput) Route() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypoint) *EnvoyFilterSpecConfigPatchesMatchWaypointRoute {
+		return v.Route
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypoint)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput) Elem() EnvoyFilterSpecConfigPatchesMatchWaypointOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypoint) EnvoyFilterSpecConfigPatchesMatchWaypoint {
+		if v != nil {
+			return *v
+		}
+		var ret EnvoyFilterSpecConfigPatchesMatchWaypoint
+		return ret
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput) Filter() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypoint) *EnvoyFilterSpecConfigPatchesMatchWaypointFilter {
+		if v == nil {
+			return nil
+		}
+		return v.Filter
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput)
+}
+
+// The service port to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput) PortNumber() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypoint) *int {
+		if v == nil {
+			return nil
+		}
+		return v.PortNumber
+	}).(pulumi.IntPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput) Route() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypoint) *EnvoyFilterSpecConfigPatchesMatchWaypointRoute {
+		if v == nil {
+			return nil
+		}
+		return v.Route
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput)
+}
+
+// The name of a specific filter to apply the patch to.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilter struct {
+	// The filter name to match on.
+	Name      *string                                                   `pulumi:"name"`
+	SubFilter *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter `pulumi:"subFilter"`
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointFilterInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs and EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointFilterInput` via:
+//
+//	EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs{...}
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput
+}
+
+// The name of a specific filter to apply the patch to.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs struct {
+	// The filter name to match on.
+	Name      pulumi.StringPtrInput                                            `pulumi:"name"`
+	SubFilter EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrInput `pulumi:"subFilter"`
+}
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilter)(nil)).Elem()
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput)
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput).ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutputWithContext(ctx)
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs, EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtr and EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrInput` via:
+//
+//	        EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs{...}
+//
+//	or:
+//
+//	        nil
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput
+}
+
+type envoyFilterSpecConfigPatchesMatchWaypointFilterPtrType EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs
+
+func EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtr(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrInput {
+	return (*envoyFilterSpecConfigPatchesMatchWaypointFilterPtrType)(v)
+}
+
+func (*envoyFilterSpecConfigPatchesMatchWaypointFilterPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointFilter)(nil)).Elem()
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointFilterPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutputWithContext(context.Background())
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointFilterPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput)
+}
+
+// The name of a specific filter to apply the patch to.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilter)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput {
+	return o.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutputWithContext(context.Background())
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v EnvoyFilterSpecConfigPatchesMatchWaypointFilter) *EnvoyFilterSpecConfigPatchesMatchWaypointFilter {
+		return &v
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput)
+}
+
+// The filter name to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointFilter) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput) SubFilter() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointFilter) *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter {
+		return v.SubFilter
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointFilter)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput) Elem() EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilter) EnvoyFilterSpecConfigPatchesMatchWaypointFilter {
+		if v != nil {
+			return *v
+		}
+		var ret EnvoyFilterSpecConfigPatchesMatchWaypointFilter
+		return ret
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput)
+}
+
+// The filter name to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilter) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput) SubFilter() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilter) *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter {
+		if v == nil {
+			return nil
+		}
+		return v.SubFilter
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput)
+}
+
+// The name of a specific filter to apply the patch to.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch struct {
+	// The filter name to match on.
+	Name      *string                                                        `pulumi:"name"`
+	SubFilter *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch `pulumi:"subFilter"`
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs and EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchInput` via:
+//
+//	EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs{...}
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput
+}
+
+// The name of a specific filter to apply the patch to.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs struct {
+	// The filter name to match on.
+	Name      pulumi.StringPtrInput                                                 `pulumi:"name"`
+	SubFilter EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrInput `pulumi:"subFilter"`
+}
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch)(nil)).Elem()
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput)
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput).ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutputWithContext(ctx)
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs, EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtr and EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrInput` via:
+//
+//	        EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput
+}
+
+type envoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrType EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs
+
+func EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtr(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrInput {
+	return (*envoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrType)(v)
+}
+
+func (*envoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch)(nil)).Elem()
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput)
+}
+
+// The name of a specific filter to apply the patch to.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput {
+	return o.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutputWithContext(context.Background())
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch) *EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch {
+		return &v
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput)
+}
+
+// The filter name to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput) SubFilter() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch) *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch {
+		return v.SubFilter
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput) Elem() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch) EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch {
+		if v != nil {
+			return *v
+		}
+		var ret EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch
+		return ret
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput)
+}
+
+// The filter name to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput) SubFilter() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch) *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch {
+		if v == nil {
+			return nil
+		}
+		return v.SubFilter
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput)
+}
+
+// The next level filter within this filter to match on.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter struct {
+	// The filter name to match on.
+	Name *string `pulumi:"name"`
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs and EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterInput` via:
+//
+//	EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs{...}
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput
+}
+
+// The next level filter within this filter to match on.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs struct {
+	// The filter name to match on.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter)(nil)).Elem()
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput)
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput).ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutputWithContext(ctx)
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs, EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtr and EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrInput` via:
+//
+//	        EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs{...}
+//
+//	or:
+//
+//	        nil
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput
+}
+
+type envoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrType EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs
+
+func EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtr(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrInput {
+	return (*envoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrType)(v)
+}
+
+func (*envoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter)(nil)).Elem()
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutputWithContext(context.Background())
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput)
+}
+
+// The next level filter within this filter to match on.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput {
+	return o.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutputWithContext(context.Background())
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter) *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter {
+		return &v
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput)
+}
+
+// The filter name to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput) Elem() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter {
+		if v != nil {
+			return *v
+		}
+		var ret EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter
+		return ret
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput)
+}
+
+// The filter name to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilter) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// The next level filter within this filter to match on.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch struct {
+	// The filter name to match on.
+	Name *string `pulumi:"name"`
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs and EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchInput` via:
+//
+//	EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs{...}
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput
+}
+
+// The next level filter within this filter to match on.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs struct {
+	// The filter name to match on.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch)(nil)).Elem()
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput)
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput).ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutputWithContext(ctx)
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs, EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtr and EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrInput` via:
+//
+//	        EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput
+}
+
+type envoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrType EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs
+
+func EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtr(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrInput {
+	return (*envoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrType)(v)
+}
+
+func (*envoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch)(nil)).Elem()
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput)
+}
+
+// The next level filter within this filter to match on.
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput {
+	return o.ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutputWithContext(context.Background())
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch) *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch {
+		return &v
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput)
+}
+
+// The filter name to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput) Elem() EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch) EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch {
+		if v != nil {
+			return *v
+		}
+		var ret EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch
+		return ret
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput)
+}
+
+// The filter name to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointPatch struct {
+	Filter *EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch `pulumi:"filter"`
+	// The service port to match on.
+	PortNumber *int                                                 `pulumi:"portNumber"`
+	Route      *EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch `pulumi:"route"`
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointPatchInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs and EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointPatchInput` via:
+//
+//	EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs{...}
+type EnvoyFilterSpecConfigPatchesMatchWaypointPatchInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs struct {
+	Filter EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrInput `pulumi:"filter"`
+	// The service port to match on.
+	PortNumber pulumi.IntPtrInput                                          `pulumi:"portNumber"`
+	Route      EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrInput `pulumi:"route"`
+}
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointPatch)(nil)).Elem()
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput)
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput).ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutputWithContext(ctx)
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs, EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtr and EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrInput` via:
+//
+//	        EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput
+}
+
+type envoyFilterSpecConfigPatchesMatchWaypointPatchPtrType EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs
+
+func EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtr(v *EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs) EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrInput {
+	return (*envoyFilterSpecConfigPatchesMatchWaypointPatchPtrType)(v)
+}
+
+func (*envoyFilterSpecConfigPatchesMatchWaypointPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointPatch)(nil)).Elem()
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointPatchPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointPatchPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointPatch)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput {
+	return o.ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutputWithContext(context.Background())
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v EnvoyFilterSpecConfigPatchesMatchWaypointPatch) *EnvoyFilterSpecConfigPatchesMatchWaypointPatch {
+		return &v
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput) Filter() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointPatch) *EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch {
+		return v.Filter
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput)
+}
+
+// The service port to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput) PortNumber() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointPatch) *int { return v.PortNumber }).(pulumi.IntPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput) Route() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointPatch) *EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch {
+		return v.Route
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointPatch)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput) Elem() EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointPatch) EnvoyFilterSpecConfigPatchesMatchWaypointPatch {
+		if v != nil {
+			return *v
+		}
+		var ret EnvoyFilterSpecConfigPatchesMatchWaypointPatch
+		return ret
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput) Filter() EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointPatch) *EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Filter
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput)
+}
+
+// The service port to match on.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput) PortNumber() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointPatch) *int {
+		if v == nil {
+			return nil
+		}
+		return v.PortNumber
+	}).(pulumi.IntPtrOutput)
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput) Route() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointPatch) *EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch {
+		if v == nil {
+			return nil
+		}
+		return v.Route
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput)
+}
+
+// Match a specific route.
+type EnvoyFilterSpecConfigPatchesMatchWaypointRoute struct {
+	// The Route objects generated by default are named as default.
+	Name *string `pulumi:"name"`
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointRouteInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs and EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointRouteInput` via:
+//
+//	EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs{...}
+type EnvoyFilterSpecConfigPatchesMatchWaypointRouteInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointRouteOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput
+}
+
+// Match a specific route.
+type EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs struct {
+	// The Route objects generated by default are named as default.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointRoute)(nil)).Elem()
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointRouteOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointRouteOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput)
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput).ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutputWithContext(ctx)
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs, EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtr and EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrInput` via:
+//
+//	        EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs{...}
+//
+//	or:
+//
+//	        nil
+type EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput
+}
+
+type envoyFilterSpecConfigPatchesMatchWaypointRoutePtrType EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs
+
+func EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtr(v *EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrInput {
+	return (*envoyFilterSpecConfigPatchesMatchWaypointRoutePtrType)(v)
+}
+
+func (*envoyFilterSpecConfigPatchesMatchWaypointRoutePtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointRoute)(nil)).Elem()
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointRoutePtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutputWithContext(context.Background())
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointRoutePtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput)
+}
+
+// Match a specific route.
+type EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointRoute)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRouteOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput {
+	return o.ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutputWithContext(context.Background())
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v EnvoyFilterSpecConfigPatchesMatchWaypointRoute) *EnvoyFilterSpecConfigPatchesMatchWaypointRoute {
+		return &v
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput)
+}
+
+// The Route objects generated by default are named as default.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointRoute) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointRoute)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput) Elem() EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointRoute) EnvoyFilterSpecConfigPatchesMatchWaypointRoute {
+		if v != nil {
+			return *v
+		}
+		var ret EnvoyFilterSpecConfigPatchesMatchWaypointRoute
+		return ret
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput)
+}
+
+// The Route objects generated by default are named as default.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointRoute) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// Match a specific route.
+type EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch struct {
+	// The Route objects generated by default are named as default.
+	Name *string `pulumi:"name"`
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs and EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchInput` via:
+//
+//	EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs{...}
+type EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput
+}
+
+// Match a specific route.
+type EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs struct {
+	// The Route objects generated by default are named as default.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch)(nil)).Elem()
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput)
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutputWithContext(context.Background())
+}
+
+func (i EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput).ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutputWithContext(ctx)
+}
+
+// EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrInput is an input type that accepts EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs, EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtr and EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput values.
+// You can construct a concrete instance of `EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrInput` via:
+//
+//	        EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrInput interface {
+	pulumi.Input
+
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput
+	ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutputWithContext(context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput
+}
+
+type envoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrType EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs
+
+func EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtr(v *EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrInput {
+	return (*envoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrType)(v)
+}
+
+func (*envoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch)(nil)).Elem()
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput {
+	return i.ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutputWithContext(context.Background())
+}
+
+func (i *envoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrType) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput)
+}
+
+// Match a specific route.
+type EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput {
+	return o.ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutputWithContext(context.Background())
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch) *EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch {
+		return &v
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput)
+}
+
+// The Route objects generated by default are named as default.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+type EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput struct{ *pulumi.OutputState }
+
+func (EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch)(nil)).Elem()
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput) ToEnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutputWithContext(ctx context.Context) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput {
+	return o
+}
+
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput) Elem() EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch) EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch {
+		if v != nil {
+			return *v
+		}
+		var ret EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch
+		return ret
+	}).(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput)
+}
+
+// The Route objects generated by default are named as default.
+func (o EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatch) *string {
 		if v == nil {
 			return nil
 		}
@@ -34793,6 +37786,8 @@ func (o GatewaySpecServersPortPatchPtrOutput) TargetPort() pulumi.IntPtrOutput {
 
 // Set of TLS related options that govern the server's behavior.
 type GatewaySpecServersTls struct {
+	// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+	CaCertCredentialName *string `pulumi:"caCertCredentialName"`
 	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates *string `pulumi:"caCertificates"`
 	// OPTIONAL: The path to the file containing the certificate revocation list (CRL) to use in verifying a presented client side certificate.
@@ -34823,7 +37818,7 @@ type GatewaySpecServersTls struct {
 	ServerCertificate *string `pulumi:"serverCertificate"`
 	// A list of alternate names to verify the subject identity in the certificate presented by the client.
 	SubjectAltNames []string `pulumi:"subjectAltNames"`
-	// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+	// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 	TlsCertificates []GatewaySpecServersTlsTlsCertificates `pulumi:"tlsCertificates"`
 	// An optional list of hex-encoded SHA-256 hashes of the authorized client certificates.
 	VerifyCertificateHash []string `pulumi:"verifyCertificateHash"`
@@ -34844,6 +37839,8 @@ type GatewaySpecServersTlsInput interface {
 
 // Set of TLS related options that govern the server's behavior.
 type GatewaySpecServersTlsArgs struct {
+	// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+	CaCertCredentialName pulumi.StringPtrInput `pulumi:"caCertCredentialName"`
 	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates pulumi.StringPtrInput `pulumi:"caCertificates"`
 	// OPTIONAL: The path to the file containing the certificate revocation list (CRL) to use in verifying a presented client side certificate.
@@ -34874,7 +37871,7 @@ type GatewaySpecServersTlsArgs struct {
 	ServerCertificate pulumi.StringPtrInput `pulumi:"serverCertificate"`
 	// A list of alternate names to verify the subject identity in the certificate presented by the client.
 	SubjectAltNames pulumi.StringArrayInput `pulumi:"subjectAltNames"`
-	// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+	// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 	TlsCertificates GatewaySpecServersTlsTlsCertificatesArrayInput `pulumi:"tlsCertificates"`
 	// An optional list of hex-encoded SHA-256 hashes of the authorized client certificates.
 	VerifyCertificateHash pulumi.StringArrayInput `pulumi:"verifyCertificateHash"`
@@ -34960,6 +37957,11 @@ func (o GatewaySpecServersTlsOutput) ToGatewaySpecServersTlsPtrOutputWithContext
 	}).(GatewaySpecServersTlsPtrOutput)
 }
 
+// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+func (o GatewaySpecServersTlsOutput) CaCertCredentialName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v GatewaySpecServersTls) *string { return v.CaCertCredentialName }).(pulumi.StringPtrOutput)
+}
+
 // REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 func (o GatewaySpecServersTlsOutput) CaCertificates() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v GatewaySpecServersTls) *string { return v.CaCertificates }).(pulumi.StringPtrOutput)
@@ -35026,7 +38028,7 @@ func (o GatewaySpecServersTlsOutput) SubjectAltNames() pulumi.StringArrayOutput 
 	return o.ApplyT(func(v GatewaySpecServersTls) []string { return v.SubjectAltNames }).(pulumi.StringArrayOutput)
 }
 
-// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 func (o GatewaySpecServersTlsOutput) TlsCertificates() GatewaySpecServersTlsTlsCertificatesArrayOutput {
 	return o.ApplyT(func(v GatewaySpecServersTls) []GatewaySpecServersTlsTlsCertificates { return v.TlsCertificates }).(GatewaySpecServersTlsTlsCertificatesArrayOutput)
 }
@@ -35063,6 +38065,16 @@ func (o GatewaySpecServersTlsPtrOutput) Elem() GatewaySpecServersTlsOutput {
 		var ret GatewaySpecServersTls
 		return ret
 	}).(GatewaySpecServersTlsOutput)
+}
+
+// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+func (o GatewaySpecServersTlsPtrOutput) CaCertCredentialName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *GatewaySpecServersTls) *string {
+		if v == nil {
+			return nil
+		}
+		return v.CaCertCredentialName
+	}).(pulumi.StringPtrOutput)
 }
 
 // REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
@@ -35191,7 +38203,7 @@ func (o GatewaySpecServersTlsPtrOutput) SubjectAltNames() pulumi.StringArrayOutp
 	}).(pulumi.StringArrayOutput)
 }
 
-// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 func (o GatewaySpecServersTlsPtrOutput) TlsCertificates() GatewaySpecServersTlsTlsCertificatesArrayOutput {
 	return o.ApplyT(func(v *GatewaySpecServersTls) []GatewaySpecServersTlsTlsCertificates {
 		if v == nil {
@@ -35223,6 +38235,8 @@ func (o GatewaySpecServersTlsPtrOutput) VerifyCertificateSpki() pulumi.StringArr
 
 // Set of TLS related options that govern the server's behavior.
 type GatewaySpecServersTlsPatch struct {
+	// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+	CaCertCredentialName *string `pulumi:"caCertCredentialName"`
 	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates *string `pulumi:"caCertificates"`
 	// OPTIONAL: The path to the file containing the certificate revocation list (CRL) to use in verifying a presented client side certificate.
@@ -35253,7 +38267,7 @@ type GatewaySpecServersTlsPatch struct {
 	ServerCertificate *string `pulumi:"serverCertificate"`
 	// A list of alternate names to verify the subject identity in the certificate presented by the client.
 	SubjectAltNames []string `pulumi:"subjectAltNames"`
-	// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+	// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 	TlsCertificates []GatewaySpecServersTlsTlsCertificatesPatch `pulumi:"tlsCertificates"`
 	// An optional list of hex-encoded SHA-256 hashes of the authorized client certificates.
 	VerifyCertificateHash []string `pulumi:"verifyCertificateHash"`
@@ -35274,6 +38288,8 @@ type GatewaySpecServersTlsPatchInput interface {
 
 // Set of TLS related options that govern the server's behavior.
 type GatewaySpecServersTlsPatchArgs struct {
+	// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+	CaCertCredentialName pulumi.StringPtrInput `pulumi:"caCertCredentialName"`
 	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates pulumi.StringPtrInput `pulumi:"caCertificates"`
 	// OPTIONAL: The path to the file containing the certificate revocation list (CRL) to use in verifying a presented client side certificate.
@@ -35304,7 +38320,7 @@ type GatewaySpecServersTlsPatchArgs struct {
 	ServerCertificate pulumi.StringPtrInput `pulumi:"serverCertificate"`
 	// A list of alternate names to verify the subject identity in the certificate presented by the client.
 	SubjectAltNames pulumi.StringArrayInput `pulumi:"subjectAltNames"`
-	// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+	// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 	TlsCertificates GatewaySpecServersTlsTlsCertificatesPatchArrayInput `pulumi:"tlsCertificates"`
 	// An optional list of hex-encoded SHA-256 hashes of the authorized client certificates.
 	VerifyCertificateHash pulumi.StringArrayInput `pulumi:"verifyCertificateHash"`
@@ -35390,6 +38406,11 @@ func (o GatewaySpecServersTlsPatchOutput) ToGatewaySpecServersTlsPatchPtrOutputW
 	}).(GatewaySpecServersTlsPatchPtrOutput)
 }
 
+// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+func (o GatewaySpecServersTlsPatchOutput) CaCertCredentialName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v GatewaySpecServersTlsPatch) *string { return v.CaCertCredentialName }).(pulumi.StringPtrOutput)
+}
+
 // REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 func (o GatewaySpecServersTlsPatchOutput) CaCertificates() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v GatewaySpecServersTlsPatch) *string { return v.CaCertificates }).(pulumi.StringPtrOutput)
@@ -35456,7 +38477,7 @@ func (o GatewaySpecServersTlsPatchOutput) SubjectAltNames() pulumi.StringArrayOu
 	return o.ApplyT(func(v GatewaySpecServersTlsPatch) []string { return v.SubjectAltNames }).(pulumi.StringArrayOutput)
 }
 
-// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 func (o GatewaySpecServersTlsPatchOutput) TlsCertificates() GatewaySpecServersTlsTlsCertificatesPatchArrayOutput {
 	return o.ApplyT(func(v GatewaySpecServersTlsPatch) []GatewaySpecServersTlsTlsCertificatesPatch {
 		return v.TlsCertificates
@@ -35495,6 +38516,16 @@ func (o GatewaySpecServersTlsPatchPtrOutput) Elem() GatewaySpecServersTlsPatchOu
 		var ret GatewaySpecServersTlsPatch
 		return ret
 	}).(GatewaySpecServersTlsPatchOutput)
+}
+
+// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+func (o GatewaySpecServersTlsPatchPtrOutput) CaCertCredentialName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *GatewaySpecServersTlsPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.CaCertCredentialName
+	}).(pulumi.StringPtrOutput)
 }
 
 // REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
@@ -35623,7 +38654,7 @@ func (o GatewaySpecServersTlsPatchPtrOutput) SubjectAltNames() pulumi.StringArra
 	}).(pulumi.StringArrayOutput)
 }
 
-// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 func (o GatewaySpecServersTlsPatchPtrOutput) TlsCertificates() GatewaySpecServersTlsTlsCertificatesPatchArrayOutput {
 	return o.ApplyT(func(v *GatewaySpecServersTlsPatch) []GatewaySpecServersTlsTlsCertificatesPatch {
 		if v == nil {
@@ -35654,7 +38685,6 @@ func (o GatewaySpecServersTlsPatchPtrOutput) VerifyCertificateSpki() pulumi.Stri
 }
 
 type GatewaySpecServersTlsTlsCertificates struct {
-	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates *string `pulumi:"caCertificates"`
 	// REQUIRED if mode is `SIMPLE` or `MUTUAL`.
 	PrivateKey *string `pulumi:"privateKey"`
@@ -35674,7 +38704,6 @@ type GatewaySpecServersTlsTlsCertificatesInput interface {
 }
 
 type GatewaySpecServersTlsTlsCertificatesArgs struct {
-	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates pulumi.StringPtrInput `pulumi:"caCertificates"`
 	// REQUIRED if mode is `SIMPLE` or `MUTUAL`.
 	PrivateKey pulumi.StringPtrInput `pulumi:"privateKey"`
@@ -35733,7 +38762,6 @@ func (o GatewaySpecServersTlsTlsCertificatesOutput) ToGatewaySpecServersTlsTlsCe
 	return o
 }
 
-// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 func (o GatewaySpecServersTlsTlsCertificatesOutput) CaCertificates() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v GatewaySpecServersTlsTlsCertificates) *string { return v.CaCertificates }).(pulumi.StringPtrOutput)
 }
@@ -35769,7 +38797,6 @@ func (o GatewaySpecServersTlsTlsCertificatesArrayOutput) Index(i pulumi.IntInput
 }
 
 type GatewaySpecServersTlsTlsCertificatesPatch struct {
-	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates *string `pulumi:"caCertificates"`
 	// REQUIRED if mode is `SIMPLE` or `MUTUAL`.
 	PrivateKey *string `pulumi:"privateKey"`
@@ -35789,7 +38816,6 @@ type GatewaySpecServersTlsTlsCertificatesPatchInput interface {
 }
 
 type GatewaySpecServersTlsTlsCertificatesPatchArgs struct {
-	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates pulumi.StringPtrInput `pulumi:"caCertificates"`
 	// REQUIRED if mode is `SIMPLE` or `MUTUAL`.
 	PrivateKey pulumi.StringPtrInput `pulumi:"privateKey"`
@@ -35848,7 +38874,6 @@ func (o GatewaySpecServersTlsTlsCertificatesPatchOutput) ToGatewaySpecServersTls
 	return o
 }
 
-// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 func (o GatewaySpecServersTlsTlsCertificatesPatchOutput) CaCertificates() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v GatewaySpecServersTlsTlsCertificatesPatch) *string { return v.CaCertificates }).(pulumi.StringPtrOutput)
 }
@@ -36192,7 +39217,7 @@ type ServiceEntrySpec struct {
 	Ports []ServiceEntrySpecPorts `pulumi:"ports"`
 	// Service resolution mode for the hosts.
 	//
-	// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN
+	// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN, DYNAMIC_DNS
 	Resolution *string `pulumi:"resolution"`
 	// If specified, the proxy will verify that the server certificate's subject alternate name matches one of the specified values.
 	SubjectAltNames  []string                          `pulumi:"subjectAltNames"`
@@ -36228,7 +39253,7 @@ type ServiceEntrySpecArgs struct {
 	Ports ServiceEntrySpecPortsArrayInput `pulumi:"ports"`
 	// Service resolution mode for the hosts.
 	//
-	// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN
+	// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN, DYNAMIC_DNS
 	Resolution pulumi.StringPtrInput `pulumi:"resolution"`
 	// If specified, the proxy will verify that the server certificate's subject alternate name matches one of the specified values.
 	SubjectAltNames  pulumi.StringArrayInput                  `pulumi:"subjectAltNames"`
@@ -36347,7 +39372,7 @@ func (o ServiceEntrySpecOutput) Ports() ServiceEntrySpecPortsArrayOutput {
 
 // Service resolution mode for the hosts.
 //
-// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN
+// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN, DYNAMIC_DNS
 func (o ServiceEntrySpecOutput) Resolution() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ServiceEntrySpec) *string { return v.Resolution }).(pulumi.StringPtrOutput)
 }
@@ -36449,7 +39474,7 @@ func (o ServiceEntrySpecPtrOutput) Ports() ServiceEntrySpecPortsArrayOutput {
 
 // Service resolution mode for the hosts.
 //
-// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN
+// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN, DYNAMIC_DNS
 func (o ServiceEntrySpecPtrOutput) Resolution() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *ServiceEntrySpec) *string {
 		if v == nil {
@@ -36798,7 +39823,7 @@ type ServiceEntrySpecPatch struct {
 	Ports []ServiceEntrySpecPortsPatch `pulumi:"ports"`
 	// Service resolution mode for the hosts.
 	//
-	// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN
+	// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN, DYNAMIC_DNS
 	Resolution *string `pulumi:"resolution"`
 	// If specified, the proxy will verify that the server certificate's subject alternate name matches one of the specified values.
 	SubjectAltNames  []string                               `pulumi:"subjectAltNames"`
@@ -36834,7 +39859,7 @@ type ServiceEntrySpecPatchArgs struct {
 	Ports ServiceEntrySpecPortsPatchArrayInput `pulumi:"ports"`
 	// Service resolution mode for the hosts.
 	//
-	// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN
+	// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN, DYNAMIC_DNS
 	Resolution pulumi.StringPtrInput `pulumi:"resolution"`
 	// If specified, the proxy will verify that the server certificate's subject alternate name matches one of the specified values.
 	SubjectAltNames  pulumi.StringArrayInput                       `pulumi:"subjectAltNames"`
@@ -36953,7 +39978,7 @@ func (o ServiceEntrySpecPatchOutput) Ports() ServiceEntrySpecPortsPatchArrayOutp
 
 // Service resolution mode for the hosts.
 //
-// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN
+// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN, DYNAMIC_DNS
 func (o ServiceEntrySpecPatchOutput) Resolution() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ServiceEntrySpecPatch) *string { return v.Resolution }).(pulumi.StringPtrOutput)
 }
@@ -37055,7 +40080,7 @@ func (o ServiceEntrySpecPatchPtrOutput) Ports() ServiceEntrySpecPortsPatchArrayO
 
 // Service resolution mode for the hosts.
 //
-// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN
+// Valid Options: NONE, STATIC, DNS, DNS_ROUND_ROBIN, DYNAMIC_DNS
 func (o ServiceEntrySpecPatchPtrOutput) Resolution() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *ServiceEntrySpecPatch) *string {
 		if v == nil {
@@ -42713,6 +45738,8 @@ func (o SidecarSpecIngressPortPatchPtrOutput) TargetPort() pulumi.IntPtrOutput {
 
 // Set of TLS related options that will enable TLS termination on the sidecar for requests originating from outside the mesh.
 type SidecarSpecIngressTls struct {
+	// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+	CaCertCredentialName *string `pulumi:"caCertCredentialName"`
 	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates *string `pulumi:"caCertificates"`
 	// OPTIONAL: The path to the file containing the certificate revocation list (CRL) to use in verifying a presented client side certificate.
@@ -42743,7 +45770,7 @@ type SidecarSpecIngressTls struct {
 	ServerCertificate *string `pulumi:"serverCertificate"`
 	// A list of alternate names to verify the subject identity in the certificate presented by the client.
 	SubjectAltNames []string `pulumi:"subjectAltNames"`
-	// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+	// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 	TlsCertificates []SidecarSpecIngressTlsTlsCertificates `pulumi:"tlsCertificates"`
 	// An optional list of hex-encoded SHA-256 hashes of the authorized client certificates.
 	VerifyCertificateHash []string `pulumi:"verifyCertificateHash"`
@@ -42764,6 +45791,8 @@ type SidecarSpecIngressTlsInput interface {
 
 // Set of TLS related options that will enable TLS termination on the sidecar for requests originating from outside the mesh.
 type SidecarSpecIngressTlsArgs struct {
+	// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+	CaCertCredentialName pulumi.StringPtrInput `pulumi:"caCertCredentialName"`
 	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates pulumi.StringPtrInput `pulumi:"caCertificates"`
 	// OPTIONAL: The path to the file containing the certificate revocation list (CRL) to use in verifying a presented client side certificate.
@@ -42794,7 +45823,7 @@ type SidecarSpecIngressTlsArgs struct {
 	ServerCertificate pulumi.StringPtrInput `pulumi:"serverCertificate"`
 	// A list of alternate names to verify the subject identity in the certificate presented by the client.
 	SubjectAltNames pulumi.StringArrayInput `pulumi:"subjectAltNames"`
-	// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+	// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 	TlsCertificates SidecarSpecIngressTlsTlsCertificatesArrayInput `pulumi:"tlsCertificates"`
 	// An optional list of hex-encoded SHA-256 hashes of the authorized client certificates.
 	VerifyCertificateHash pulumi.StringArrayInput `pulumi:"verifyCertificateHash"`
@@ -42880,6 +45909,11 @@ func (o SidecarSpecIngressTlsOutput) ToSidecarSpecIngressTlsPtrOutputWithContext
 	}).(SidecarSpecIngressTlsPtrOutput)
 }
 
+// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+func (o SidecarSpecIngressTlsOutput) CaCertCredentialName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v SidecarSpecIngressTls) *string { return v.CaCertCredentialName }).(pulumi.StringPtrOutput)
+}
+
 // REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 func (o SidecarSpecIngressTlsOutput) CaCertificates() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v SidecarSpecIngressTls) *string { return v.CaCertificates }).(pulumi.StringPtrOutput)
@@ -42946,7 +45980,7 @@ func (o SidecarSpecIngressTlsOutput) SubjectAltNames() pulumi.StringArrayOutput 
 	return o.ApplyT(func(v SidecarSpecIngressTls) []string { return v.SubjectAltNames }).(pulumi.StringArrayOutput)
 }
 
-// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 func (o SidecarSpecIngressTlsOutput) TlsCertificates() SidecarSpecIngressTlsTlsCertificatesArrayOutput {
 	return o.ApplyT(func(v SidecarSpecIngressTls) []SidecarSpecIngressTlsTlsCertificates { return v.TlsCertificates }).(SidecarSpecIngressTlsTlsCertificatesArrayOutput)
 }
@@ -42983,6 +46017,16 @@ func (o SidecarSpecIngressTlsPtrOutput) Elem() SidecarSpecIngressTlsOutput {
 		var ret SidecarSpecIngressTls
 		return ret
 	}).(SidecarSpecIngressTlsOutput)
+}
+
+// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+func (o SidecarSpecIngressTlsPtrOutput) CaCertCredentialName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *SidecarSpecIngressTls) *string {
+		if v == nil {
+			return nil
+		}
+		return v.CaCertCredentialName
+	}).(pulumi.StringPtrOutput)
 }
 
 // REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
@@ -43111,7 +46155,7 @@ func (o SidecarSpecIngressTlsPtrOutput) SubjectAltNames() pulumi.StringArrayOutp
 	}).(pulumi.StringArrayOutput)
 }
 
-// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 func (o SidecarSpecIngressTlsPtrOutput) TlsCertificates() SidecarSpecIngressTlsTlsCertificatesArrayOutput {
 	return o.ApplyT(func(v *SidecarSpecIngressTls) []SidecarSpecIngressTlsTlsCertificates {
 		if v == nil {
@@ -43143,6 +46187,8 @@ func (o SidecarSpecIngressTlsPtrOutput) VerifyCertificateSpki() pulumi.StringArr
 
 // Set of TLS related options that will enable TLS termination on the sidecar for requests originating from outside the mesh.
 type SidecarSpecIngressTlsPatch struct {
+	// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+	CaCertCredentialName *string `pulumi:"caCertCredentialName"`
 	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates *string `pulumi:"caCertificates"`
 	// OPTIONAL: The path to the file containing the certificate revocation list (CRL) to use in verifying a presented client side certificate.
@@ -43173,7 +46219,7 @@ type SidecarSpecIngressTlsPatch struct {
 	ServerCertificate *string `pulumi:"serverCertificate"`
 	// A list of alternate names to verify the subject identity in the certificate presented by the client.
 	SubjectAltNames []string `pulumi:"subjectAltNames"`
-	// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+	// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 	TlsCertificates []SidecarSpecIngressTlsTlsCertificatesPatch `pulumi:"tlsCertificates"`
 	// An optional list of hex-encoded SHA-256 hashes of the authorized client certificates.
 	VerifyCertificateHash []string `pulumi:"verifyCertificateHash"`
@@ -43194,6 +46240,8 @@ type SidecarSpecIngressTlsPatchInput interface {
 
 // Set of TLS related options that will enable TLS termination on the sidecar for requests originating from outside the mesh.
 type SidecarSpecIngressTlsPatchArgs struct {
+	// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+	CaCertCredentialName pulumi.StringPtrInput `pulumi:"caCertCredentialName"`
 	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates pulumi.StringPtrInput `pulumi:"caCertificates"`
 	// OPTIONAL: The path to the file containing the certificate revocation list (CRL) to use in verifying a presented client side certificate.
@@ -43224,7 +46272,7 @@ type SidecarSpecIngressTlsPatchArgs struct {
 	ServerCertificate pulumi.StringPtrInput `pulumi:"serverCertificate"`
 	// A list of alternate names to verify the subject identity in the certificate presented by the client.
 	SubjectAltNames pulumi.StringArrayInput `pulumi:"subjectAltNames"`
-	// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+	// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 	TlsCertificates SidecarSpecIngressTlsTlsCertificatesPatchArrayInput `pulumi:"tlsCertificates"`
 	// An optional list of hex-encoded SHA-256 hashes of the authorized client certificates.
 	VerifyCertificateHash pulumi.StringArrayInput `pulumi:"verifyCertificateHash"`
@@ -43310,6 +46358,11 @@ func (o SidecarSpecIngressTlsPatchOutput) ToSidecarSpecIngressTlsPatchPtrOutputW
 	}).(SidecarSpecIngressTlsPatchPtrOutput)
 }
 
+// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+func (o SidecarSpecIngressTlsPatchOutput) CaCertCredentialName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v SidecarSpecIngressTlsPatch) *string { return v.CaCertCredentialName }).(pulumi.StringPtrOutput)
+}
+
 // REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 func (o SidecarSpecIngressTlsPatchOutput) CaCertificates() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v SidecarSpecIngressTlsPatch) *string { return v.CaCertificates }).(pulumi.StringPtrOutput)
@@ -43376,7 +46429,7 @@ func (o SidecarSpecIngressTlsPatchOutput) SubjectAltNames() pulumi.StringArrayOu
 	return o.ApplyT(func(v SidecarSpecIngressTlsPatch) []string { return v.SubjectAltNames }).(pulumi.StringArrayOutput)
 }
 
-// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 func (o SidecarSpecIngressTlsPatchOutput) TlsCertificates() SidecarSpecIngressTlsTlsCertificatesPatchArrayOutput {
 	return o.ApplyT(func(v SidecarSpecIngressTlsPatch) []SidecarSpecIngressTlsTlsCertificatesPatch {
 		return v.TlsCertificates
@@ -43415,6 +46468,16 @@ func (o SidecarSpecIngressTlsPatchPtrOutput) Elem() SidecarSpecIngressTlsPatchOu
 		var ret SidecarSpecIngressTlsPatch
 		return ret
 	}).(SidecarSpecIngressTlsPatchOutput)
+}
+
+// For mutual TLS, the name of the secret or the configmap that holds CA certificates.
+func (o SidecarSpecIngressTlsPatchPtrOutput) CaCertCredentialName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *SidecarSpecIngressTlsPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.CaCertCredentialName
+	}).(pulumi.StringPtrOutput)
 }
 
 // REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
@@ -43543,7 +46606,7 @@ func (o SidecarSpecIngressTlsPatchPtrOutput) SubjectAltNames() pulumi.StringArra
 	}).(pulumi.StringArrayOutput)
 }
 
-// Only one of `server_certificate`, `private_key`, `ca_certificates` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
+// Only one of `server_certificate`, `private_key` or `credential_name` or `credential_names` or `tls_certificates` should be specified.
 func (o SidecarSpecIngressTlsPatchPtrOutput) TlsCertificates() SidecarSpecIngressTlsTlsCertificatesPatchArrayOutput {
 	return o.ApplyT(func(v *SidecarSpecIngressTlsPatch) []SidecarSpecIngressTlsTlsCertificatesPatch {
 		if v == nil {
@@ -43574,7 +46637,6 @@ func (o SidecarSpecIngressTlsPatchPtrOutput) VerifyCertificateSpki() pulumi.Stri
 }
 
 type SidecarSpecIngressTlsTlsCertificates struct {
-	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates *string `pulumi:"caCertificates"`
 	// REQUIRED if mode is `SIMPLE` or `MUTUAL`.
 	PrivateKey *string `pulumi:"privateKey"`
@@ -43594,7 +46656,6 @@ type SidecarSpecIngressTlsTlsCertificatesInput interface {
 }
 
 type SidecarSpecIngressTlsTlsCertificatesArgs struct {
-	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates pulumi.StringPtrInput `pulumi:"caCertificates"`
 	// REQUIRED if mode is `SIMPLE` or `MUTUAL`.
 	PrivateKey pulumi.StringPtrInput `pulumi:"privateKey"`
@@ -43653,7 +46714,6 @@ func (o SidecarSpecIngressTlsTlsCertificatesOutput) ToSidecarSpecIngressTlsTlsCe
 	return o
 }
 
-// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 func (o SidecarSpecIngressTlsTlsCertificatesOutput) CaCertificates() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v SidecarSpecIngressTlsTlsCertificates) *string { return v.CaCertificates }).(pulumi.StringPtrOutput)
 }
@@ -43689,7 +46749,6 @@ func (o SidecarSpecIngressTlsTlsCertificatesArrayOutput) Index(i pulumi.IntInput
 }
 
 type SidecarSpecIngressTlsTlsCertificatesPatch struct {
-	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates *string `pulumi:"caCertificates"`
 	// REQUIRED if mode is `SIMPLE` or `MUTUAL`.
 	PrivateKey *string `pulumi:"privateKey"`
@@ -43709,7 +46768,6 @@ type SidecarSpecIngressTlsTlsCertificatesPatchInput interface {
 }
 
 type SidecarSpecIngressTlsTlsCertificatesPatchArgs struct {
-	// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 	CaCertificates pulumi.StringPtrInput `pulumi:"caCertificates"`
 	// REQUIRED if mode is `SIMPLE` or `MUTUAL`.
 	PrivateKey pulumi.StringPtrInput `pulumi:"privateKey"`
@@ -43768,7 +46826,6 @@ func (o SidecarSpecIngressTlsTlsCertificatesPatchOutput) ToSidecarSpecIngressTls
 	return o
 }
 
-// REQUIRED if mode is `MUTUAL` or `OPTIONAL_MUTUAL`.
 func (o SidecarSpecIngressTlsTlsCertificatesPatchOutput) CaCertificates() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v SidecarSpecIngressTlsTlsCertificatesPatch) *string { return v.CaCertificates }).(pulumi.StringPtrOutput)
 }
@@ -64845,6 +67902,10 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashPtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchPtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashMaglevInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashMaglevArgs{})
@@ -64905,6 +67966,10 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashPtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchPtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashMaglevInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashMaglevArgs{})
@@ -64953,6 +68018,10 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatchInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatchPtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyTlsInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyTlsArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyTlsPtrInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyTlsArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecSubsetsTrafficPolicyTlsPatchInput)(nil)).Elem(), DestinationRuleSpecSubsetsTrafficPolicyTlsPatchArgs{})
@@ -64985,6 +68054,10 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashPtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchPtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashMaglevInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashMaglevArgs{})
@@ -65045,6 +68118,10 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashPtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchPtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashMaglevInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashMaglevArgs{})
@@ -65093,6 +68170,10 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyProxyProtocolPtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyProxyProtocolArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyProxyProtocolPatchInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyProxyProtocolPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyProxyProtocolPatchPtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyProxyProtocolPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyRetryBudgetInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyRetryBudgetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyRetryBudgetPtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyRetryBudgetArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyRetryBudgetPatchInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyRetryBudgetPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyTlsInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyTlsArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyTlsPtrInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyTlsArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*DestinationRuleSpecTrafficPolicyTlsPatchInput)(nil)).Elem(), DestinationRuleSpecTrafficPolicyTlsPatchArgs{})
@@ -65152,6 +68233,22 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRouteArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePatchInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePatchPtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointPtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointPatchInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointRouteInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesPatchInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesPatchPtrInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*EnvoyFilterSpecConfigPatchesPatchArrayInput)(nil)).Elem(), EnvoyFilterSpecConfigPatchesPatchArray{})
@@ -65566,6 +68663,10 @@ func init() {
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashMaglevOutput{})
@@ -65626,6 +68727,10 @@ func init() {
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePtrOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashMaglevOutput{})
@@ -65674,6 +68779,10 @@ func init() {
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatchOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyProxyProtocolPatchPtrOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPatchPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyTlsOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyTlsPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecSubsetsTrafficPolicyTlsPatchOutput{})
@@ -65706,6 +68815,10 @@ func init() {
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePtrOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArrayOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookiePatchPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashMaglevOutput{})
@@ -65766,6 +68879,10 @@ func init() {
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePtrOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArrayOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesPatchArrayOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookiePatchPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashMaglevOutput{})
@@ -65814,6 +68931,10 @@ func init() {
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyProxyProtocolPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyProxyProtocolPatchOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyProxyProtocolPatchPtrOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyRetryBudgetOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyRetryBudgetPtrOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyRetryBudgetPatchOutput{})
+	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyRetryBudgetPatchPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyTlsOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyTlsPtrOutput{})
 	pulumi.RegisterOutputType(DestinationRuleSpecTrafficPolicyTlsPatchOutput{})
@@ -65873,6 +68994,22 @@ func init() {
 	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePtrOutput{})
 	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePatchOutput{})
 	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchRouteConfigurationVhostRoutePatchPtrOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointPtrOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointFilterOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPtrOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointFilterPatchPtrOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPtrOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterPatchPtrOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointPatchOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointPatchPtrOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointRouteOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePtrOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchOutput{})
+	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesMatchWaypointRoutePatchPtrOutput{})
 	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesPatchOutput{})
 	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesPatchPtrOutput{})
 	pulumi.RegisterOutputType(EnvoyFilterSpecConfigPatchesPatchArrayOutput{})

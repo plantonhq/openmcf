@@ -413,6 +413,27 @@ Based on scenario:
   schema default, so the catalog row declares those knobs config-only and
   `yaml_body`/`yaml_body_parsed` write-normalized — the first post-import
   plan re-asserting the module's rendered manifest is a server-side no-op.
+- **When a module declares SEVERAL resources of one type whose ID
+  placeholders carry different values** (a control-plane module installing
+  multiple Helm releases — each release's `{release_name}` is a different
+  constant), scope the import-map declarations per Terraform logical
+  resource name via `tofu_resource_name`: the declaration scoped to the
+  address's logical name wins, unscoped declarations are the fallback, and
+  the offline conformance guard rejects a scope that names no real module
+  resource. Same discipline for module-owned multi-document bundles: key the
+  `kubectl_manifest` `for_each` by each document's OWN NAME (never the split
+  index — positional keys are not identity and cannot feed an import ID), so
+  `from_address_key` derives the `{name}` placeholder blind and state
+  addresses survive bundle reorderings.
+- **Helm cannot adopt CRDs that already exist without its ownership
+  metadata**: a chart that templates CRDs fails to install onto a cluster
+  where another tool (or a CRDs-only installer kind) already applied them
+  ("invalid ownership metadata"). When a component family carries BOTH a
+  CRDs-only installer kind and a full install kind, the full kind must apply
+  the CRD bundle ITSELF (server-side apply, module-owned, outside the Helm
+  release — exclude the chart's copies, e.g. istio base's
+  `base.excludedCRDs`) so both kinds co-own the CRDs and the CRDs-only →
+  full-install migration is a plain redeploy instead of a hard conflict.
 - **When an engine provider cannot express a spec field, fail the plan — never
   silently drop it**: alongside the `PARITY-EXCEPTION:` twin comments, add a
   Terraform `lifecycle { precondition }` on the resource that rejects a set

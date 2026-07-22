@@ -1,25 +1,32 @@
+# Stack outputs — identical names and derivations in the Pulumi module's
+# outputs.go / main.go exports.
+
 output "namespace" {
-  description = "The namespace where Istio control plane is deployed (istio-system)."
-  value       = local.system_namespace
+  description = "Namespace the Istio control plane is installed in"
+  value       = local.namespace
 }
 
-output "service" {
-  description = "The name of the istiod service."
-  value       = local.istiod_release_name
+output "istiod_service_name" {
+  description = "Name of the istiod Service — the discovery address data-plane proxies connect to"
+  value       = local.istiod_service_name
 }
 
-output "port_forward_command" {
-  description = "Command to setup port-forwarding to access Istio control plane from local machine."
-  value       = local.port_forward_command
+output "revision" {
+  description = "The control-plane revision installed (\"default\" when no revision is named)"
+  value       = local.revision
 }
 
-output "kube_endpoint" {
-  description = "Kubernetes endpoint to connect to istiod from within the cluster."
-  value       = local.kube_endpoint
+output "gateway_class_name" {
+  description = "Name of the GatewayClass istiod serves — create a KubernetesGateway with this class and istiod provisions the gateway deployment"
+  value       = "istio"
 }
 
-output "ingress_endpoint" {
-  description = "Ingress endpoint for the Istio gateway."
-  value       = local.ingress_endpoint
+output "trust_domain" {
+  description = "The mesh's trust domain — the prefix of principal strings in authorization policies"
+  value       = local.trust_domain
 }
 
+output "dataplane_mode" {
+  description = "The data plane mode the mesh was installed with (\"sidecar\" or \"ambient\")"
+  value       = local.dataplane_mode
+}

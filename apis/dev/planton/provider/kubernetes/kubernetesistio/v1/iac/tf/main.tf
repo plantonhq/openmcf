@@ -1,175 +1,166 @@
-##############################################
-# main.tf
+# KubernetesIstio Terraform module.
 #
-# Main orchestration file for deploying Istio
-# service mesh on a Kubernetes cluster.
+# Installs the Istio control plane from the official Helm charts as real Helm
+# releases, in upstream's own order:
 #
-# This module installs Istio using the official
-# Helm charts with three separate releases:
-#  1. istio/base - CRDs and base resources
-#  2. istiod - Control plane (pilot)
-#  3. istio-gateway - Ingress gateway
+#   CRDs (module-owned, server-side apply)
+#   -> base (validation plumbing) -> istiod (the control plane)
+#   -> [ambient or cni.enabled] istio-cni (node agent)
+#   -> [ambient] ztunnel (per-node L4 proxy)
 #
-# The module follows Istio's recommended Helm-based
-# installation approach for production deployments.
+# The CRDs deliberately apply OUTSIDE the base release (the chart installs
+# them with base.excludedCRDs covering the whole bundle): Helm refuses to
+# adopt CRDs that already exist without ITS ownership metadata, so a cluster
+# running the CRDs-only KubernetesIstioBaseCrds kind could never upgrade to
+# the full mesh if the chart owned them — server-side-applied CRDs are
+# co-ownable by both kinds, making that migration a plain redeploy.
 #
-# Resources Created:
-#  1. Kubernetes Namespace (istio-system)
-#  2. Kubernetes Namespace (istio-ingress)
-#  3. Helm Release (istio base)
-#  4. Helm Release (istiod control plane)
-#  5. Helm Release (istio ingress gateway)
+# The typed spec renders into per-chart values (locals.*_typed_values); each
+# release's helm_values escape hatch is passed as a SECOND values document,
+# which the provider merges over the first with Helm -f semantics — the exact
+# semantic twin of the Pulumi module's build*Values + mergeMaps.
 #
-# For more information see:
-#  - examples.md for usage examples
-#  - README.md for component documentation
-#  - ../docs/README.md for deployment patterns
-##############################################
+# Deliberately NO gateway release: istiod implements the Kubernetes Gateway
+# API, so north-south gateways are composed from KubernetesGateway resources
+# (gateway_class_name: istio) and istiod provisions their deployments itself.
 
-##############################################
-# 1. Create Istio System Namespace
-#
-# The istio-system namespace hosts the Istio
-# control plane components (istiod).
-#
-# Only created if var.spec.create_namespace is true.
-##############################################
-resource "kubernetes_namespace" "istio_system" {
+# The optional installation namespace. Created before the releases; deleted
+# with the resource.
+resource "kubernetes_namespace_v1" "istio" {
   count = var.spec.create_namespace ? 1 : 0
 
   metadata {
-    name   = local.system_namespace
-    labels = local.final_labels
+    name   = local.namespace
+    labels = local.labels
   }
 }
 
-##############################################
-# 2. Create Istio Ingress Namespace
-#
-# The istio-ingress namespace hosts the Istio
-# ingress gateway for handling external traffic.
-#
-# Only created if var.spec.create_namespace is true.
-##############################################
-resource "kubernetes_namespace" "istio_ingress" {
-  count = var.spec.create_namespace ? 1 : 0
+# The Istio CRDs, module-owned (never Helm-owned — see the header). The
+# bundle version is pinned to spec.version so the installed CRD schema
+# matches the control plane and the typed Istio kinds' generated SDK.
+data "http" "istio_crds" {
+  url = local.crd_bundle_url
 
-  metadata {
-    name   = local.gateway_namespace
-    labels = local.final_labels
+  request_headers = {
+    Accept = "application/yaml"
   }
 }
 
-##############################################
-# 3. Deploy Istio Base via Helm
-#
-# Installs Istio base resources including CRDs
-# from the official Istio Helm repository.
-#
-# This must be installed before istiod.
-#
-# Helm release name uses {metadata.name}-base to
-# avoid conflicts when multiple instances share a namespace.
-##############################################
-resource "helm_release" "istio_base" {
-  name       = local.base_release_name
-  namespace  = local.system_namespace
-  repository = local.helm_repo
-  chart      = local.base_chart_name
-  version    = local.chart_version
+resource "kubectl_manifest" "istio_crds" {
+  # Keyed by each CRD's OWN NAME (never the split index): the name is the
+  # document's identity, so state addresses stay stable across bundle
+  # reorderings AND the address key feeds the composed import ID blind
+  # (from_address_key in the import map).
+  for_each = {
+    for doc in split("---", data.http.istio_crds.response_body) :
+    yamldecode(doc).metadata.name => doc
+    if trimspace(doc) != "" && can(yamldecode(doc).metadata.name)
+  }
 
+  yaml_body = each.value
+
+  server_side_apply = true
+  force_conflicts   = true
+}
+
+# base: the default-revision validation-webhook plumbing (CRDs excluded —
+# module-owned above).
+resource "helm_release" "base" {
+  name       = "istio-base"
+  repository = local.helm_chart_repo
+  chart      = "base"
+  version    = local.version
+  namespace  = local.namespace
+
+  # The module owns namespace creation (create_namespace flag).
   create_namespace = false
-  atomic           = true
-  cleanup_on_fail  = true
-  wait_for_jobs    = true
-  timeout          = 180
+
+  wait            = true
+  atomic          = true
+  cleanup_on_fail = true
+  timeout         = 300
+
+  values = concat(
+    [yamlencode(local.base_typed_values)],
+    try(var.spec.helm_values.base, "") != "" ? [var.spec.helm_values.base] : []
+  )
+
+  depends_on = [kubernetes_namespace_v1.istio, kubectl_manifest.istio_crds]
 }
 
-##############################################
-# 4. Deploy Istiod (Control Plane) via Helm
-#
-# Installs the Istio control plane (istiod) which
-# includes:
-#  - Pilot (traffic management)
-#  - Citadel (certificate management)
-#  - Galley (configuration validation)
-#
-# Resource limits are configured from the spec.
-#
-# Helm release name uses {metadata.name}-istiod to
-# avoid conflicts when multiple instances share a namespace.
-##############################################
+# istiod: the control plane. Waiting for readiness is the whole promise — a
+# control plane whose webhooks and discovery service are not serving rejects
+# every mesh-config apply and every injection.
 resource "helm_release" "istiod" {
   name       = local.istiod_release_name
-  namespace  = local.system_namespace
-  repository = local.helm_repo
-  chart      = local.istiod_chart_name
-  version    = local.chart_version
+  repository = local.helm_chart_repo
+  chart      = "istiod"
+  version    = local.version
+  namespace  = local.namespace
 
   create_namespace = false
-  atomic           = true
-  cleanup_on_fail  = true
-  wait_for_jobs    = true
-  timeout          = 180
 
-  # Configure pilot (istiod) resources from spec.
-  # helm provider v3 expects `set` as a list-of-objects attribute (not nested blocks).
-  set = [
-    {
-      name  = "pilot.resources.requests.cpu"
-      value = var.spec.container.resources.requests.cpu
-    },
-    {
-      name  = "pilot.resources.requests.memory"
-      value = var.spec.container.resources.requests.memory
-    },
-    {
-      name  = "pilot.resources.limits.cpu"
-      value = var.spec.container.resources.limits.cpu
-    },
-    {
-      name  = "pilot.resources.limits.memory"
-      value = var.spec.container.resources.limits.memory
-    },
-  ]
+  wait            = true
+  atomic          = true
+  cleanup_on_fail = true
+  timeout         = 600
 
-  depends_on = [helm_release.istio_base]
+  values = concat(
+    [yamlencode(local.istiod_typed_values)],
+    try(var.spec.helm_values.istiod, "") != "" ? [var.spec.helm_values.istiod] : []
+  )
+
+  depends_on = [helm_release.base]
 }
 
-##############################################
-# 5. Deploy Istio Ingress Gateway via Helm
-#
-# Installs the Istio ingress gateway for handling
-# external traffic entering the service mesh.
-#
-# Configured as ClusterIP by default (can be
-# exposed via LoadBalancer or other ingress).
-#
-# Helm release name uses {metadata.name}-gateway to
-# avoid conflicts when multiple instances share a namespace.
-##############################################
-resource "helm_release" "istio_gateway" {
-  name       = local.gateway_release_name
-  namespace  = local.gateway_namespace
-  repository = local.helm_repo
-  chart      = local.gateway_chart_name
-  version    = local.chart_version
+# istio-cni: the node agent DaemonSet. Always installed in ambient mode (it is
+# how traffic reaches ztunnel); opt-in in sidecar mode (replaces the injected
+# privileged init-container).
+resource "helm_release" "cni" {
+  count = local.install_cni ? 1 : 0
+
+  name       = "istio-cni"
+  repository = local.helm_chart_repo
+  chart      = "cni"
+  version    = local.version
+  namespace  = local.namespace
 
   create_namespace = false
-  atomic           = true
-  cleanup_on_fail  = true
-  wait_for_jobs    = true
-  timeout          = 180
 
-  # Configure gateway service type.
-  # helm provider v3 expects `set` as a list-of-objects attribute (not nested blocks).
-  set = [
-    {
-      name  = "service.type"
-      value = "ClusterIP"
-    },
-  ]
+  wait            = true
+  atomic          = true
+  cleanup_on_fail = true
+  timeout         = 600
+
+  values = concat(
+    [yamlencode(local.cni_typed_values)],
+    try(var.spec.helm_values.cni, "") != "" ? [var.spec.helm_values.cni] : []
+  )
 
   depends_on = [helm_release.istiod]
 }
 
+# ztunnel: the ambient per-node L4 proxy DaemonSet.
+resource "helm_release" "ztunnel" {
+  count = local.ambient ? 1 : 0
+
+  name       = "ztunnel"
+  repository = local.helm_chart_repo
+  chart      = "ztunnel"
+  version    = local.version
+  namespace  = local.namespace
+
+  create_namespace = false
+
+  wait            = true
+  atomic          = true
+  cleanup_on_fail = true
+  timeout         = 600
+
+  values = concat(
+    [yamlencode(local.ztunnel_typed_values)],
+    try(var.spec.helm_values.ztunnel, "") != "" ? [var.spec.helm_values.ztunnel] : []
+  )
+
+  depends_on = [helm_release.istiod]
+}

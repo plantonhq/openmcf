@@ -43,6 +43,66 @@ func httpsPort() *KubernetesServiceEntryPort {
 	return &KubernetesServiceEntryPort{Number: 443, Name: "https", Protocol: ptr("TLS")}
 }
 
+var _ = ginkgo.Describe("KubernetesServiceEntry DYNAMIC_DNS rules", func() {
+	var input *KubernetesServiceEntry
+
+	// A valid DYNAMIC_DNS entry: wildcard hosts, HTTP-family ports, no
+	// addresses, no endpoints (mirrors the istiod webhook's contract).
+	ginkgo.BeforeEach(func() {
+		input = &KubernetesServiceEntry{
+			ApiVersion: "kubernetes.planton.dev/v1",
+			Kind:       "KubernetesServiceEntry",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "dynamic-dns-egress",
+			},
+			Spec: &KubernetesServiceEntrySpec{
+				Namespace:  literal("default"),
+				Hosts:      []string{"*.example.com"},
+				Resolution: ptr("DYNAMIC_DNS"),
+				Location:   ptr("MESH_EXTERNAL"),
+				Ports: []*KubernetesServiceEntryPort{
+					{Number: 443, Name: "https", Protocol: ptr("TLS")},
+				},
+			},
+		}
+	})
+
+	ginkgo.It("accepts the valid dynamic-DNS forward-proxy shape", func() {
+		gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a non-wildcard host", func() {
+		input.Spec.Hosts = []string{"api.example.com"}
+		gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects addresses — destinations derive from the wildcard hosts", func() {
+		input.Spec.Addresses = []string{"240.0.0.1"}
+		gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects endpoints — destination IPs resolve from the requested hostname", func() {
+		input.Spec.Endpoints = []*KubernetesServiceEntryEndpoint{
+			{Address: ptr("10.0.0.1")},
+		}
+		gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a TCP port — only HTTP, TLS, GRPC, and HTTP2 are supported", func() {
+		input.Spec.Ports = []*KubernetesServiceEntryPort{
+			{Number: 5432, Name: "postgres", Protocol: ptr("TCP")},
+		}
+		gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a port with no protocol (defaults to TCP semantics)", func() {
+		input.Spec.Ports = []*KubernetesServiceEntryPort{
+			{Number: 443, Name: "https"},
+		}
+		gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+	})
+})
+
 var _ = ginkgo.Describe("KubernetesServiceEntry Validation Tests", func() {
 	var input *KubernetesServiceEntry
 

@@ -2,7 +2,7 @@
 
 This document captures the deployment landscape, the modeling rationale, and the fidelity
 decisions behind the `KubernetesEnvoyFilter` Planton component (kind 867). It is the deepest
-Istio component by nesting (twelve component-local match/patch messages) and the only one
+Istio component by nesting (sixteen component-local match/patch messages) and the only one
 still served at `networking/v1alpha3`.
 
 ## 1. What EnvoyFilter is
@@ -21,10 +21,10 @@ graduating common uses (CORS, ext_authz, rate limiting) onto first-class typed A
 
 ## 2. Source of truth and version
 
-Translated proto-to-proto from the upstream `istio.io/api` clone pinned to tag **1.26.8**
+Translated proto-to-proto from the upstream `istio.io/api` clone pinned to tag **1.30.3**
 (`networking/v1alpha3/envoy_filter.proto`). The local clone is authoritative; no specs are
 pulled from the internet. The crd2pulumi typed SDK and the CRDs installed by
-`KubernetesIstioBaseCrds` are likewise generated from Istio `release-1.26`, so the proto, the
+`KubernetesIstioBaseCrds` are likewise generated from Istio tag `1.30.3`, so the proto, the
 typed Pulumi resource (package `networking/v1alpha3`), and the cluster CRD all agree.
 
 **Version distinction (do not conflate):** the Planton kind's own API version is `v1`
@@ -44,9 +44,9 @@ ordering).
 |----------|---------|-------|
 | `workloadSelector` (`networking.v1alpha3.WorkloadSelector`) | `workload_selector` (`KubernetesIstioApiNetworkingWorkloadSelector`) | Shared type -- same upstream message ServiceEntry uses; identical CRD constraints. |
 | `targetRefs` (`type.v1beta1.PolicyTargetReference`) | `target_refs` (`KubernetesIstioApiPolicyTargetReference`) | Shared type -- same upstream message RequestAuthentication uses; max 16. |
-| `configPatches` (`EnvoyConfigObjectPatch`) | `config_patches` (`KubernetesEnvoyFilterConfigPatch`) | 12 nested component-local messages; see below. |
+| `configPatches` (`EnvoyConfigObjectPatch`) | `config_patches` (`KubernetesEnvoyFilterConfigPatch`) | 16 nested component-local messages; see below. |
 | `priority` (`int32`) | `priority` (`optional int32`) | Unset => upstream default 0. |
-| `EnvoyConfigObjectMatch.object_types` (proto `oneof`) | three sibling fields + at-most-one CEL | Flattened; see below. |
+| `EnvoyConfigObjectMatch.object_types` (proto `oneof`) | four sibling fields + at-most-one CEL | Flattened; see below. |
 | `Patch.value` (`google.protobuf.Struct`) | `value` (`google.protobuf.Struct`) | Free-form, kept as Struct. |
 | `ApplyTo`/`PatchContext`/`Operation`/`FilterClass`/`Action` enums | closed-set `optional string` | UPPERCASE string + `in`, not proto enums. |
 
@@ -65,14 +65,23 @@ EnvoyFilter reuses both shared Istio types rather than redefining them:
 ### The `object_types` oneof (modeled without a discriminator)
 
 `EnvoyConfigObjectMatch` carries a proto `oneof object_types { listener | route_configuration |
-cluster }`. The oneof is flattened to sibling message fields. It is modeled as three **optional
-sibling fields with no `match_type` discriminator** -- the same shape the crd2pulumi SDK uses,
-and the same choice made for structural attachment forks (selector vs target_refs,
+cluster | waypoint }`. The oneof is flattened to sibling message fields. It is modeled as four
+**optional sibling fields with no `match_type` discriminator** -- the same shape the crd2pulumi
+SDK uses, and the same choice made for structural attachment forks (selector vs target_refs,
 workload_selector vs endpoints); discriminators are reserved for same-type value unions (e.g.
 `KubernetesIstioApiStringMatch`'s EXACT/PREFIX/REGEX). Because flattening loses the proto oneof's
 implicit at-most-one guarantee -- and the generated CRD does **not** re-encode it as an
 XValidation -- the rule is restored as a message-level CEL. This preserves upstream semantics; it
 is not extra validation.
+
+### Waypoint patching (ambient mesh)
+
+The `WAYPOINT` patch context and the `match.waypoint` object target ambient waypoint
+proxies: `waypoint.filter` names a specific filter (optionally a `sub_filter` within it)
+in the waypoint's filter chain, `waypoint.port_number` (1-65535) matches a service port,
+and `waypoint.route.name` matches a named route (the default generated Route objects are
+named `default`). Waypoint proxies require `target_refs` attachment; selector-based
+EnvoyFilters are ignored for waypoints.
 
 ### Enum case / external standard
 
@@ -103,7 +112,7 @@ not CRD `XValidation`, and the fidelity contract is the CRD's validated surface.
 | Upstream intent | Planton CEL | Origin |
 |-----------------|-------------|--------|
 | `oneof(workloadSelector, targetRefs)` | `!(has(this.workload_selector) && size(this.target_refs) > 0)` | CRD XValidation. |
-| object_types at most one | three pairwise `!(has(a) && has(b))` clauses over listener/route_configuration/cluster | Restores the flattened proto `oneof`. |
+| object_types at most one | a counting `(has(a)?1:0) + ... <= 1` expression over listener/route_configuration/cluster/waypoint | Restores the flattened proto `oneof`. |
 | `targetRefs` <= 16 | `repeated.max_items = 16` | Upstream `+kubebuilder:validation:MaxItems`. |
 | port numbers 1-65535 | `uint32 {gte:1, lte:65535}` on `port_number`/`destination_port` | Upstream port semantics. |
 | selector value no-wildcard; target_ref no cross-namespace | inherited from the shared types | Upstream CRD CEL. |
@@ -123,12 +132,18 @@ not CRD `XValidation`, and the fidelity contract is the CRD's validated surface.
 
 - **`namespace`** is the one true foreign key: `StringValueOrRef` -> `KubernetesNamespace`
   (`spec.name`). Literal or `valueFrom`; creates a real DAG edge.
-- **`workload_selector.labels`** and **`target_refs`** are plain runtime references, NOT foreign
-  keys. istiod matches selectors against pod labels and resolves target refs against the cluster
-  at runtime; neither creates an automatic DAG edge. An infra-chart author who needs ordering
-  (e.g. an EnvoyFilter that patches a Gateway's listeners) declares it on
-  `metadata.relationships` (`depends_on` -> KubernetesGateway / KubernetesDeployment /
-  KubernetesService). See the component README's "Composing in Infra Charts" section.
+- **`target_refs[].name`** is also a foreign key: `StringValueOrRef` defaulting to a
+  `KubernetesGateway` reference (`status.outputs.gateway_name`), since the dominant target for
+  attached EnvoyFilters is a Gateway. Wiring it with `valueFrom` gives the chart a real
+  dependency edge from the EnvoyFilter to the gateway it patches. When the target is a
+  Service, a ServiceEntry, or any resource not managed as a Planton kind, the literal name is
+  passed with `value:` -- istiod resolves group/kind/name against the cluster at runtime
+  either way.
+- **`workload_selector.labels`** is a plain label match, NOT a foreign key. istiod matches it
+  against pod labels at runtime; it creates no automatic DAG edge. An infra-chart author who
+  needs ordering after the selected workloads declares it on `metadata.relationships`
+  (`depends_on` -> KubernetesDeployment). See the component README's "Composing in Infra
+  Charts" section.
 - **Outputs** export the honest `envoy_filter_name` + `namespace`; an EnvoyFilter is a
   config-patch resource with no controller-reconciled status worth surfacing.
 
@@ -145,14 +160,13 @@ Both engines are feature-equal and emit the same `networking.istio.io/v1alpha3` 
   helper (`map`->`pulumi.Map`, slice->`pulumi.Array`, scalars->typed inputs) -- the SDK types
   `value` as `pulumi.MapInput`, and the repo has no generic `pulumi.ToMap`, so the recursive
   converter is the robust path and preserves arbitrary nesting.
-- **Terraform** uses `kubernetes_manifest` with a fully-typed `variable "spec"` and a deeply
-  null-pruned `locals.tf`. Each list element and nested block is assembled with `merge()` and
-  read through a `?:` guard (HCL `&&` does not short-circuit), so only the fields the user set
-  reach the manifest. Snake_case spec fields map to the CRD's camelCase (`applyTo`,
-  `routeConfiguration`, `filterChain`, `subFilter`, `proxyVersion`, `portNumber`,
-  `transportProtocol`, `applicationProtocols`, `destinationPort`, `domainName`, `filterClass`,
-  `targetRefs`, `workloadSelector`). The free-form `patch.value` is typed `optional(any)` and
-  passes through unmodified.
+- **Terraform** uses `kubectl_manifest` (alekc/kubectl) applied server-side, with a
+  pass-through `variable "spec"` typed `any`: the platform's proto-to-tfvars converter emits
+  the manifest-shaped (camelCase, null-pruned) spec with `StringValueOrRef` foreign keys
+  (`namespace`, `target_refs[].name`) resolved to literal strings, so the module hands it to
+  the cluster verbatim -- including the free-form `patch.value`, which passes through
+  unmodified. `locals.tf` only strips the Planton `namespace` key (which maps to
+  `metadata.namespace`) and renders the identity labels.
 
 ## 6. E2E
 
@@ -178,4 +192,4 @@ separate follow-up project.
 ## References
 
 - [Istio EnvoyFilter reference](https://istio.io/latest/docs/reference/config/networking/envoy-filter/)
-- Upstream proto: `istio.io/api` `networking/v1alpha3/envoy_filter.proto` @ `1.26.8`
+- Upstream proto: `istio.io/api` `networking/v1alpha3/envoy_filter.proto` @ `1.30.3`

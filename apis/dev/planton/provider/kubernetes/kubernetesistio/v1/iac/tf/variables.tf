@@ -1,61 +1,115 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name = string,
-    id = optional(string),
-    org = optional(string),
-    env = optional(string),
-    labels = optional(map(string)),
-    tags = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
-
 variable "spec" {
-  description = "spec"
+  description = "KubernetesIstio specification"
   type = object({
-    # Kubernetes namespace to install the component.
-    namespace = string
-
-    # Flag to indicate if the namespace should be created
-    create_namespace = bool
-
-    # Istio version to deploy (full patch, e.g. "1.26.8"). Drives the Helm chart
-    # version. If null, falls back to the module default. Istio supports only
-    # sequential single-minor upgrades; pin an existing mesh's current version here
-    # before redeploying to avoid an unsupported multi-minor jump.
-    version = optional(string)
-
-    # The container specifications for the Istio control plane deployment.
-    container = object({
-
-      # The CPU and memory resources allocated to the Istio control plane container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-    })
-
+    namespace        = string
+    create_namespace = optional(bool, false)
+    version          = optional(string)
+    revision         = optional(string)
+    dataplane_mode   = optional(string)
+    istiod = optional(object({
+      replicas = optional(number)
+      autoscale = optional(object({
+        enabled                        = optional(bool)
+        min_replicas                   = optional(number)
+        max_replicas                   = optional(number)
+        target_cpu_utilization_percent = optional(number)
+      }))
+      resources = optional(object({
+        limits = optional(object({
+          cpu    = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu    = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+      log_level             = optional(string)
+      pod_disruption_budget = optional(bool)
+      priority_class_name   = optional(string, "")
+      node_selector         = optional(map(string), {})
+      tolerations = optional(list(object({
+        key                = optional(string, "")
+        operator           = optional(string, "")
+        value              = optional(string, "")
+        effect             = optional(string, "")
+        toleration_seconds = optional(number)
+      })), [])
+    }))
+    mesh_config = optional(object({
+      trust_domain                 = optional(string)
+      outbound_traffic_policy_mode = optional(string)
+      access_log_file              = optional(string, "")
+      cluster_name                 = optional(string, "")
+      network                      = optional(string, "")
+      mesh_id                      = optional(string, "")
+      enable_prometheus_merge      = optional(bool)
+    }))
+    proxy = optional(object({
+      resources = optional(object({
+        limits = optional(object({
+          cpu    = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu    = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+      log_level      = optional(string)
+      auto_inject    = optional(string)
+      cluster_domain = optional(string)
+    }))
+    sidecar_injector = optional(object({
+      enable_namespaces_by_default = optional(bool, false)
+      rewrite_app_http_probe       = optional(bool)
+    }))
+    cni = optional(object({
+      enabled            = optional(bool, false)
+      exclude_namespaces = optional(list(string), [])
+      cni_bin_dir        = optional(string)
+      cni_conf_dir       = optional(string)
+      chained            = optional(bool)
+    }))
+    ztunnel = optional(object({
+      resources = optional(object({
+        limits = optional(object({
+          cpu    = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu    = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+      log_level = optional(string)
+    }))
+    gateway_defaults = optional(object({
+      service_type = optional(string)
+    }))
+    images = optional(object({
+      hub                = optional(string, "")
+      variant            = optional(string)
+      image_pull_secrets = optional(list(string), [])
+    }))
+    helm_values = optional(object({
+      base    = optional(string, "")
+      istiod  = optional(string, "")
+      cni     = optional(string, "")
+      ztunnel = optional(string, "")
+    }))
   })
 }

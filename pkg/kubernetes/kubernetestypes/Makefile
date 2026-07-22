@@ -8,8 +8,8 @@ go_build_dir=pkg
 gateway_apis=v1.6.1
 
 #https://github.com/istio/istio/tree/master/manifests/charts/base/crds
-#https://github.com/istio/istio/tree/release-1.26
-istio_release=release-1.26
+#https://github.com/istio/istio/tree/1.30.3
+istio_release=1.30.3
 
 #https://github.com/cert-manager/cert-manager/tree/master/deploy/crds
 #https://github.com/cert-manager/cert-manager/tree/release-1.15

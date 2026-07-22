@@ -40,11 +40,11 @@ func valueFrom(kind cloudresourcekind.CloudResourceKind, name, fieldPath string)
 func ptr[T any](v T) *T { return &v }
 
 // targetRef returns a same-namespace PolicyTargetReference (namespace left empty,
-// as upstream requires in the 1.26 line).
+// as upstream requires in the 1.30 line).
 func targetRef(kind, name string) *kubernetes.KubernetesIstioApiPolicyTargetReference {
 	return &kubernetes.KubernetesIstioApiPolicyTargetReference{
 		Kind: kind,
-		Name: name,
+		Name: literal(name),
 	}
 }
 
@@ -257,7 +257,7 @@ var _ = ginkgo.Describe("KubernetesAuthorizationPolicy Validation Tests", func()
 		ginkgo.Context("without a kind", func() {
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.TargetRefs = []*kubernetes.KubernetesIstioApiPolicyTargetReference{
-					{Name: "edge-gateway"},
+					{Name: literal("edge-gateway")},
 				}
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
@@ -272,9 +272,14 @@ var _ = ginkgo.Describe("KubernetesAuthorizationPolicy Validation Tests", func()
 			})
 		})
 
-		ginkgo.Context("with a name exceeding the length bound", func() {
+		ginkgo.Context("with a missing name", func() {
 			ginkgo.It("should return a validation error", func() {
-				ref := targetRef("Gateway", strings.Repeat("a", 254))
+				// name is a StringValueOrRef foreign key: requiredness is presence of
+				// the reference. Upstream's 253-char name bound is enforced by the
+				// API server at apply (a StringValueOrRef carries no length bound —
+				// the same posture as every other foreign key in the catalog).
+				ref := targetRef("Gateway", "edge-gateway")
+				ref.Name = nil
 				input.Spec.TargetRefs = []*kubernetes.KubernetesIstioApiPolicyTargetReference{ref}
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})

@@ -15,7 +15,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 //
 // 100% fidelity with the upstream istio.io/api RequestAuthentication
 // (security/v1beta1/request_authentication.proto, served as security.istio.io/v1),
-// pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly
+// pinned to the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly
 // after the Planton namespaced envelope (namespace); there is no
 // nested `request_authentication` sub-message.
 //
@@ -85,11 +85,11 @@ message KubernetesRequestAuthenticationSpec {
 // does not preserve upstream's field-number gaps).
 message KubernetesRequestAuthenticationJwtRule {
   // The issuer that issued the JWT (the `iss` claim). A JWT with a different issuer
-  // is rejected. Required. Example: `https://foobar.auth0.com`.
-  string issuer = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string = {min_len: 1}
-  ];
+  // is rejected. Example: `https://foobar.auth0.com`. May be omitted only when
+  // `jwks_uri` is set (at least one of the two is required — enforced below,
+  // mirroring the istiod webhook's "issuer or jwksUri must be non-empty" rejection);
+  // issuer-less rules validate any issuer against the fixed key set.
+  optional string issuer = 1 [(buf.validate.field).string = {min_len: 1}];
 
   // The JWT audiences (`aud` claim) allowed to access. A JWT carrying any of these
   // audiences is accepted; when empty, the workload's service name is accepted.
@@ -158,12 +158,30 @@ message KubernetesRequestAuthenticationJwtRule {
     expression: "this == '' || duration(this) >= duration('1ms')"
   }];
 
+  // JWT claim names whose string values should be treated as SPACE-DELIMITED lists
+  // (the OAuth2 `scope` claim convention, e.g. "read write admin") when matched by
+  // authorization policies and claim-to-header operations. Upstream allows up to 64.
+  repeated string space_delimited_claims = 12 [(buf.validate.field).repeated = {
+    max_items: 64
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
   // jwks_uri and jwks are two ways to supply the verification key set; upstream
   // permits at most one. Mirrors the upstream JWTRule XValidation rule.
   option (buf.validate.message).cel = {
     id: "request_authentication_jwt_rule.jwks_uri_xor_jwks"
     message: "at most one of jwks_uri or jwks may be set"
     expression: "!(has(this.jwks_uri) && has(this.jwks))"
+  };
+
+  // The verifier needs an issuer to discover keys from, or an explicit key-set URI.
+  // Mirrors the istiod webhook rejection "issuer or jwksUri must be non-empty".
+  option (buf.validate.message).cel = {
+    id: "request_authentication_jwt_rule.issuer_or_jwks_uri"
+    message: "at least one of issuer or jwks_uri must be set — without either, the verifier has no way to locate the signing keys"
+    expression: "has(this.issuer) || has(this.jwks_uri)"
   };
 }
 

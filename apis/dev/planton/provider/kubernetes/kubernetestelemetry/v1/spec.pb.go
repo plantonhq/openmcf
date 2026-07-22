@@ -30,7 +30,7 @@ const (
 //
 // 100% fidelity with the upstream istio.io/api Telemetry
 // (telemetry/v1alpha1/telemetry.proto, served as telemetry.istio.io/v1), pinned to
-// the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
+// the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly after the
 // Planton namespaced envelope (namespace); there is no nested
 // `telemetry` sub-message.
 //
@@ -192,8 +192,14 @@ type KubernetesTelemetryTracing struct {
 	// channel); carried for full fidelity since the CRD accepts it. Faithful to the
 	// upstream `google.protobuf.BoolValue` (optional scalar).
 	UseRequestIdForTraceSampling *bool `protobuf:"varint,7,opt,name=use_request_id_for_trace_sampling,json=useRequestIdForTraceSampling,proto3,oneof" json:"use_request_id_for_trace_sampling,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// When true, trace context headers (`traceparent`/`tracestate` for W3C,
+	// `X-B3-*` for Zipkin) are NOT propagated in forwarded requests — spans still
+	// report locally but downstream services start fresh traces. Defaults to false
+	// (context propagates). Faithful to the upstream `google.protobuf.BoolValue`
+	// (optional scalar).
+	DisableContextPropagation *bool `protobuf:"varint,8,opt,name=disable_context_propagation,json=disableContextPropagation,proto3,oneof" json:"disable_context_propagation,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *KubernetesTelemetryTracing) Reset() {
@@ -275,6 +281,13 @@ func (x *KubernetesTelemetryTracing) GetUseRequestIdForTraceSampling() bool {
 	return false
 }
 
+func (x *KubernetesTelemetryTracing) GetDisableContextPropagation() bool {
+	if x != nil && x.DisableContextPropagation != nil {
+		return *x.DisableContextPropagation
+	}
+	return false
+}
+
 // KubernetesTelemetryTracingSelector narrows a tracing rule to a traffic direction.
 // Faithful to the upstream Telemetry.Tracing.TracingSelector message.
 type KubernetesTelemetryTracingSelector struct {
@@ -330,10 +343,10 @@ func (x *KubernetesTelemetryTracingSelector) GetMode() string {
 }
 
 // KubernetesTelemetryCustomTag adds one custom tag to a trace span from exactly one
-// source. Istio models this as a `oneof { literal, environment, header }`; Planton
-// keeps each member as an optional sibling field with an "at most one" rule, 1:1 with
-// the CRD JSON (the upstream CRD itself models this as an OpenAPI `oneOf`, not a
-// discriminator). Faithful to the upstream Telemetry.Tracing.CustomTag message.
+// source. Istio models this as a `oneof { literal, environment, header, formatter }`;
+// Planton keeps each member as an optional sibling field with an "at most one" rule,
+// 1:1 with the CRD JSON (the upstream CRD itself models this as an OpenAPI `oneOf`,
+// not a discriminator). Faithful to the upstream Telemetry.Tracing.CustomTag message.
 type KubernetesTelemetryCustomTag struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Adds the same hard-coded value to each span.
@@ -341,7 +354,11 @@ type KubernetesTelemetryCustomTag struct {
 	// Adds the value of an environment variable (read by the sidecar) to each span.
 	Environment *KubernetesTelemetryCustomTagEnvironment `protobuf:"bytes,2,opt,name=environment,proto3" json:"environment,omitempty"`
 	// Adds the value of a request header to each span.
-	Header        *KubernetesTelemetryCustomTagRequestHeader `protobuf:"bytes,3,opt,name=header,proto3" json:"header,omitempty"`
+	Header *KubernetesTelemetryCustomTagRequestHeader `protobuf:"bytes,3,opt,name=header,proto3" json:"header,omitempty"`
+	// Adds a value computed by an access-log substitution formatter expression
+	// (e.g. `%PROTOCOL%`, `%REQ(:path)%` — the same command operators HTTP access
+	// logging uses), evaluated per request.
+	Formatter     *KubernetesTelemetryCustomTagFormatter `protobuf:"bytes,4,opt,name=formatter,proto3" json:"formatter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -393,6 +410,13 @@ func (x *KubernetesTelemetryCustomTag) GetEnvironment() *KubernetesTelemetryCust
 func (x *KubernetesTelemetryCustomTag) GetHeader() *KubernetesTelemetryCustomTagRequestHeader {
 	if x != nil {
 		return x.Header
+	}
+	return nil
+}
+
+func (x *KubernetesTelemetryCustomTag) GetFormatter() *KubernetesTelemetryCustomTagFormatter {
+	if x != nil {
+		return x.Formatter
 	}
 	return nil
 }
@@ -555,6 +579,55 @@ func (x *KubernetesTelemetryCustomTagRequestHeader) GetDefaultValue() string {
 	return ""
 }
 
+// KubernetesTelemetryCustomTagFormatter supplies a custom tag from an access-log
+// substitution formatter expression. Faithful to the upstream
+// Telemetry.Tracing.CustomTag Formatter member.
+type KubernetesTelemetryCustomTagFormatter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The formatter expression to evaluate (same command operators as HTTP access
+	// logging, e.g. `%PROTOCOL%`, `%REQ(:authority)%`). Required.
+	Value         string `protobuf:"bytes,1,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTelemetryCustomTagFormatter) Reset() {
+	*x = KubernetesTelemetryCustomTagFormatter{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTelemetryCustomTagFormatter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTelemetryCustomTagFormatter) ProtoMessage() {}
+
+func (x *KubernetesTelemetryCustomTagFormatter) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTelemetryCustomTagFormatter.ProtoReflect.Descriptor instead.
+func (*KubernetesTelemetryCustomTagFormatter) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesTelemetryCustomTagFormatter) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
 // KubernetesTelemetryProviderRef binds a telemetry rule to a named provider declared
 // in the mesh's MeshConfig extension providers. Faithful to the upstream
 // Telemetry.ProviderRef message; reused by tracing, metrics, and access logging.
@@ -568,7 +641,7 @@ type KubernetesTelemetryProviderRef struct {
 
 func (x *KubernetesTelemetryProviderRef) Reset() {
 	*x = KubernetesTelemetryProviderRef{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -580,7 +653,7 @@ func (x *KubernetesTelemetryProviderRef) String() string {
 func (*KubernetesTelemetryProviderRef) ProtoMessage() {}
 
 func (x *KubernetesTelemetryProviderRef) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -593,7 +666,7 @@ func (x *KubernetesTelemetryProviderRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesTelemetryProviderRef.ProtoReflect.Descriptor instead.
 func (*KubernetesTelemetryProviderRef) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *KubernetesTelemetryProviderRef) GetName() string {
@@ -615,8 +688,9 @@ type KubernetesTelemetryMetrics struct {
 	// specific matches first.
 	Overrides []*KubernetesTelemetryMetricsOverride `protobuf:"bytes,2,rep,name=overrides,proto3" json:"overrides,omitempty"`
 	// The interval between TCP metrics reports. Defaults to `5s` upstream. Modeled as a
-	// duration string (DD-008); must be a valid duration of at least 1ms, mirroring the
-	// upstream CRD XValidation `duration(self) >= duration('1ms')`.
+	// duration string (the catalog's convention for every upstream Duration field);
+	// must be a valid duration of at least 1ms, mirroring the upstream CRD XValidation
+	// `duration(self) >= duration('1ms')`.
 	ReportingInterval *string `protobuf:"bytes,3,opt,name=reporting_interval,json=reportingInterval,proto3,oneof" json:"reporting_interval,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
@@ -624,7 +698,7 @@ type KubernetesTelemetryMetrics struct {
 
 func (x *KubernetesTelemetryMetrics) Reset() {
 	*x = KubernetesTelemetryMetrics{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -636,7 +710,7 @@ func (x *KubernetesTelemetryMetrics) String() string {
 func (*KubernetesTelemetryMetrics) ProtoMessage() {}
 
 func (x *KubernetesTelemetryMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -649,7 +723,7 @@ func (x *KubernetesTelemetryMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesTelemetryMetrics.ProtoReflect.Descriptor instead.
 func (*KubernetesTelemetryMetrics) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *KubernetesTelemetryMetrics) GetProviders() []*KubernetesTelemetryProviderRef {
@@ -695,7 +769,7 @@ type KubernetesTelemetryMetricsOverride struct {
 
 func (x *KubernetesTelemetryMetricsOverride) Reset() {
 	*x = KubernetesTelemetryMetricsOverride{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -707,7 +781,7 @@ func (x *KubernetesTelemetryMetricsOverride) String() string {
 func (*KubernetesTelemetryMetricsOverride) ProtoMessage() {}
 
 func (x *KubernetesTelemetryMetricsOverride) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -720,7 +794,7 @@ func (x *KubernetesTelemetryMetricsOverride) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use KubernetesTelemetryMetricsOverride.ProtoReflect.Descriptor instead.
 func (*KubernetesTelemetryMetricsOverride) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *KubernetesTelemetryMetricsOverride) GetMatch() *KubernetesTelemetryMetricSelector {
@@ -779,7 +853,7 @@ type KubernetesTelemetryMetricSelector struct {
 
 func (x *KubernetesTelemetryMetricSelector) Reset() {
 	*x = KubernetesTelemetryMetricSelector{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -791,7 +865,7 @@ func (x *KubernetesTelemetryMetricSelector) String() string {
 func (*KubernetesTelemetryMetricSelector) ProtoMessage() {}
 
 func (x *KubernetesTelemetryMetricSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -804,7 +878,7 @@ func (x *KubernetesTelemetryMetricSelector) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use KubernetesTelemetryMetricSelector.ProtoReflect.Descriptor instead.
 func (*KubernetesTelemetryMetricSelector) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{10}
+	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *KubernetesTelemetryMetricSelector) GetMetric() string {
@@ -850,7 +924,7 @@ type KubernetesTelemetryTagOverride struct {
 
 func (x *KubernetesTelemetryTagOverride) Reset() {
 	*x = KubernetesTelemetryTagOverride{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -862,7 +936,7 @@ func (x *KubernetesTelemetryTagOverride) String() string {
 func (*KubernetesTelemetryTagOverride) ProtoMessage() {}
 
 func (x *KubernetesTelemetryTagOverride) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -875,7 +949,7 @@ func (x *KubernetesTelemetryTagOverride) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesTelemetryTagOverride.ProtoReflect.Descriptor instead.
 func (*KubernetesTelemetryTagOverride) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{11}
+	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *KubernetesTelemetryTagOverride) GetOperation() string {
@@ -916,7 +990,7 @@ type KubernetesTelemetryAccessLogging struct {
 
 func (x *KubernetesTelemetryAccessLogging) Reset() {
 	*x = KubernetesTelemetryAccessLogging{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -928,7 +1002,7 @@ func (x *KubernetesTelemetryAccessLogging) String() string {
 func (*KubernetesTelemetryAccessLogging) ProtoMessage() {}
 
 func (x *KubernetesTelemetryAccessLogging) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -941,7 +1015,7 @@ func (x *KubernetesTelemetryAccessLogging) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesTelemetryAccessLogging.ProtoReflect.Descriptor instead.
 func (*KubernetesTelemetryAccessLogging) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{12}
+	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *KubernetesTelemetryAccessLogging) GetMatch() *KubernetesTelemetryAccessLoggingSelector {
@@ -987,7 +1061,7 @@ type KubernetesTelemetryAccessLoggingSelector struct {
 
 func (x *KubernetesTelemetryAccessLoggingSelector) Reset() {
 	*x = KubernetesTelemetryAccessLoggingSelector{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[13]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -999,7 +1073,7 @@ func (x *KubernetesTelemetryAccessLoggingSelector) String() string {
 func (*KubernetesTelemetryAccessLoggingSelector) ProtoMessage() {}
 
 func (x *KubernetesTelemetryAccessLoggingSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[13]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1012,7 +1086,7 @@ func (x *KubernetesTelemetryAccessLoggingSelector) ProtoReflect() protoreflect.M
 
 // Deprecated: Use KubernetesTelemetryAccessLoggingSelector.ProtoReflect.Descriptor instead.
 func (*KubernetesTelemetryAccessLoggingSelector) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{13}
+	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *KubernetesTelemetryAccessLoggingSelector) GetMode() string {
@@ -1036,7 +1110,7 @@ type KubernetesTelemetryAccessLoggingFilter struct {
 
 func (x *KubernetesTelemetryAccessLoggingFilter) Reset() {
 	*x = KubernetesTelemetryAccessLoggingFilter{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[14]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1048,7 +1122,7 @@ func (x *KubernetesTelemetryAccessLoggingFilter) String() string {
 func (*KubernetesTelemetryAccessLoggingFilter) ProtoMessage() {}
 
 func (x *KubernetesTelemetryAccessLoggingFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[14]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1061,7 +1135,7 @@ func (x *KubernetesTelemetryAccessLoggingFilter) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use KubernetesTelemetryAccessLoggingFilter.ProtoReflect.Descriptor instead.
 func (*KubernetesTelemetryAccessLoggingFilter) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{14}
+	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *KubernetesTelemetryAccessLoggingFilter) GetExpression() string {
@@ -1084,7 +1158,7 @@ const file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_raw
 	"\atracing\x18\x05 \x03(\v2R.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracingR\atracing\x12l\n" +
 	"\ametrics\x18\x06 \x03(\v2R.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsR\ametrics\x12\x7f\n" +
 	"\x0eaccess_logging\x18\a \x03(\v2X.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLoggingR\raccessLogging:\x93\x01\xbaH\x8f\x01\x1a\x8c\x01\n" +
-	"\"telemetry.selector_xor_target_refs\x121at most one of selector or target_refs may be set\x1a3!(has(this.selector) && size(this.target_refs) > 0)\"\xac\a\n" +
+	"\"telemetry.selector_xor_target_refs\x121at most one of selector or target_refs may be set\x1a3!(has(this.selector) && size(this.target_refs) > 0)\"\x91\b\n" +
 	"\x1aKubernetesTelemetryTracing\x12p\n" +
 	"\x05match\x18\x01 \x01(\v2Z.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracingSelectorR\x05match\x12t\n" +
 	"\tproviders\x18\x02 \x03(\v2V.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryProviderRefR\tproviders\x12Z\n" +
@@ -1093,22 +1167,25 @@ const file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_raw
 	"\vcustom_tags\x18\x05 \x03(\v2b.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.CustomTagsEntryR\n" +
 	"customTags\x12/\n" +
 	"\x11enable_istio_tags\x18\x06 \x01(\bH\x02R\x0fenableIstioTags\x88\x01\x01\x12L\n" +
-	"!use_request_id_for_trace_sampling\x18\a \x01(\bH\x03R\x1cuseRequestIdForTraceSampling\x88\x01\x01\x1a\x93\x01\n" +
+	"!use_request_id_for_trace_sampling\x18\a \x01(\bH\x03R\x1cuseRequestIdForTraceSampling\x88\x01\x01\x12C\n" +
+	"\x1bdisable_context_propagation\x18\b \x01(\bH\x04R\x19disableContextPropagation\x88\x01\x01\x1a\x93\x01\n" +
 	"\x0fCustomTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12j\n" +
 	"\x05value\x18\x02 \x01(\v2T.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagR\x05value:\x028\x01B\x1d\n" +
 	"\x1b_random_sampling_percentageB\x19\n" +
 	"\x17_disable_span_reportingB\x14\n" +
 	"\x12_enable_istio_tagsB$\n" +
-	"\"_use_request_id_for_trace_sampling\"p\n" +
+	"\"_use_request_id_for_trace_samplingB\x1e\n" +
+	"\x1c_disable_context_propagation\"p\n" +
 	"\"KubernetesTelemetryTracingSelector\x12A\n" +
 	"\x04mode\x18\x01 \x01(\tB(\xbaH%r#R\x11CLIENT_AND_SERVERR\x06CLIENTR\x06SERVERH\x00R\x04mode\x88\x01\x01B\a\n" +
-	"\x05_mode\"\xe3\x04\n" +
+	"\x05_mode\"\x8b\x06\n" +
 	"\x1cKubernetesTelemetryCustomTag\x12u\n" +
 	"\aliteral\x18\x01 \x01(\v2[.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagLiteralR\aliteral\x12\x81\x01\n" +
 	"\venvironment\x18\x02 \x01(\v2_.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagEnvironmentR\venvironment\x12y\n" +
-	"\x06header\x18\x03 \x01(\v2a.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagRequestHeaderR\x06header:\xcc\x01\xbaH\xc8\x01\x1a\xc5\x01\n" +
-	"'telemetry_custom_tag.at_most_one_source\x129at most one of literal, environment, or header may be set\x1a_(has(this.literal) ? 1 : 0) + (has(this.environment) ? 1 : 0) + (has(this.header) ? 1 : 0) <= 1\"G\n" +
+	"\x06header\x18\x03 \x01(\v2a.dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagRequestHeaderR\x06header\x12{\n" +
+	"\tformatter\x18\x04 \x01(\v2].dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagFormatterR\tformatter:\xf7\x01\xbaH\xf3\x01\x1a\xf0\x01\n" +
+	"'telemetry_custom_tag.at_most_one_source\x12Dat most one of literal, environment, header, or formatter may be set\x1a\x7f(has(this.literal) ? 1 : 0) + (has(this.environment) ? 1 : 0) + (has(this.header) ? 1 : 0) + (has(this.formatter) ? 1 : 0) <= 1\"G\n" +
 	"#KubernetesTelemetryCustomTagLiteral\x12 \n" +
 	"\x05value\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05value\"n\n" +
@@ -1119,7 +1196,10 @@ const file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_raw
 	")KubernetesTelemetryCustomTagRequestHeader\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12#\n" +
-	"\rdefault_value\x18\x02 \x01(\tR\fdefaultValue\"@\n" +
+	"\rdefault_value\x18\x02 \x01(\tR\fdefaultValue\"I\n" +
+	"%KubernetesTelemetryCustomTagFormatter\x12 \n" +
+	"\x05value\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05value\"@\n" +
 	"\x1eKubernetesTelemetryProviderRef\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\"\x87\x04\n" +
@@ -1180,7 +1260,7 @@ func file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawD
 	return file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_goTypes = []any{
 	(*KubernetesTelemetrySpec)(nil),                   // 0: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec
 	(*KubernetesTelemetryTracing)(nil),                // 1: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing
@@ -1189,47 +1269,49 @@ var file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_goTyp
 	(*KubernetesTelemetryCustomTagLiteral)(nil),       // 4: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagLiteral
 	(*KubernetesTelemetryCustomTagEnvironment)(nil),   // 5: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagEnvironment
 	(*KubernetesTelemetryCustomTagRequestHeader)(nil), // 6: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagRequestHeader
-	(*KubernetesTelemetryProviderRef)(nil),            // 7: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryProviderRef
-	(*KubernetesTelemetryMetrics)(nil),                // 8: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetrics
-	(*KubernetesTelemetryMetricsOverride)(nil),        // 9: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride
-	(*KubernetesTelemetryMetricSelector)(nil),         // 10: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricSelector
-	(*KubernetesTelemetryTagOverride)(nil),            // 11: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTagOverride
-	(*KubernetesTelemetryAccessLogging)(nil),          // 12: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLogging
-	(*KubernetesTelemetryAccessLoggingSelector)(nil),  // 13: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLoggingSelector
-	(*KubernetesTelemetryAccessLoggingFilter)(nil),    // 14: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLoggingFilter
-	nil,                         // 15: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.CustomTagsEntry
-	nil,                         // 16: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride.TagOverridesEntry
-	(*v1.StringValueOrRef)(nil), // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil),      // 18: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	(*kubernetes.KubernetesIstioApiPolicyTargetReference)(nil), // 19: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
+	(*KubernetesTelemetryCustomTagFormatter)(nil),     // 7: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagFormatter
+	(*KubernetesTelemetryProviderRef)(nil),            // 8: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryProviderRef
+	(*KubernetesTelemetryMetrics)(nil),                // 9: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetrics
+	(*KubernetesTelemetryMetricsOverride)(nil),        // 10: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride
+	(*KubernetesTelemetryMetricSelector)(nil),         // 11: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricSelector
+	(*KubernetesTelemetryTagOverride)(nil),            // 12: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTagOverride
+	(*KubernetesTelemetryAccessLogging)(nil),          // 13: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLogging
+	(*KubernetesTelemetryAccessLoggingSelector)(nil),  // 14: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLoggingSelector
+	(*KubernetesTelemetryAccessLoggingFilter)(nil),    // 15: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLoggingFilter
+	nil,                         // 16: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.CustomTagsEntry
+	nil,                         // 17: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride.TagOverridesEntry
+	(*v1.StringValueOrRef)(nil), // 18: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil),      // 19: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	(*kubernetes.KubernetesIstioApiPolicyTargetReference)(nil), // 20: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
 }
 var file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_depIdxs = []int32{
-	17, // 0: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	18, // 1: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	19, // 2: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.target_refs:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
+	18, // 0: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 1: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	20, // 2: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.target_refs:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
 	1,  // 3: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.tracing:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing
-	8,  // 4: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.metrics:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetrics
-	12, // 5: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.access_logging:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLogging
+	9,  // 4: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.metrics:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetrics
+	13, // 5: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.access_logging:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLogging
 	2,  // 6: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.match:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracingSelector
-	7,  // 7: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.providers:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryProviderRef
-	15, // 8: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.custom_tags:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.CustomTagsEntry
+	8,  // 7: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.providers:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryProviderRef
+	16, // 8: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.custom_tags:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.CustomTagsEntry
 	4,  // 9: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTag.literal:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagLiteral
 	5,  // 10: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTag.environment:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagEnvironment
 	6,  // 11: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTag.header:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagRequestHeader
-	7,  // 12: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetrics.providers:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryProviderRef
-	9,  // 13: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetrics.overrides:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride
-	10, // 14: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride.match:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricSelector
-	16, // 15: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride.tag_overrides:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride.TagOverridesEntry
-	13, // 16: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLogging.match:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLoggingSelector
-	7,  // 17: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLogging.providers:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryProviderRef
-	14, // 18: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLogging.filter:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLoggingFilter
-	3,  // 19: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.CustomTagsEntry.value:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTag
-	11, // 20: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride.TagOverridesEntry.value:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTagOverride
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	7,  // 12: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTag.formatter:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTagFormatter
+	8,  // 13: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetrics.providers:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryProviderRef
+	10, // 14: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetrics.overrides:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride
+	11, // 15: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride.match:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricSelector
+	17, // 16: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride.tag_overrides:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride.TagOverridesEntry
+	14, // 17: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLogging.match:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLoggingSelector
+	8,  // 18: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLogging.providers:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryProviderRef
+	15, // 19: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLogging.filter:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryAccessLoggingFilter
+	3,  // 20: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTracing.CustomTagsEntry.value:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryCustomTag
+	12, // 21: dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryMetricsOverride.TagOverridesEntry.value:type_name -> dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetryTagOverride
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_init() }
@@ -1239,19 +1321,19 @@ func file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_init
 	}
 	file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[11].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_msgTypes[14].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetestelemetry_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

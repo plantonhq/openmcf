@@ -23,6 +23,16 @@ exists for composed IDs whose provider rejects a trailing delimiter:
 `apiVersion//kind//name//namespace` and cluster-scoped CRs as the 3-part
 `apiVersion//kind//name`, never with a trailing `//`.
 
+When a module declares SEVERAL resources of one type whose ID placeholders
+carry different values (a control-plane module installing multiple Helm
+releases — each release's `{release_name}` is a different constant), a value
+declaration can be scoped to one Terraform logical resource name via
+`tofu_resource_name`. At resolve time the declaration scoped to the address's
+logical name wins; addresses without a scoped declaration fall back to the
+unscoped declaration of the same placeholder. The offline conformance guard
+rejects a scope that names no real module resource (a typo'd scope would
+otherwise silently fall back and import the wrong resource).
+
 Both are proto-backed KRM documents (`iac.planton.dev/v1`, protos under
 `apis/dev/planton/iac/`), parsed through `pkg/protobufyaml` like the E2E
 profiles.
@@ -125,6 +135,14 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kubernetesclustersecretstore` | 2026-07-22, fake-backend scenario (cluster-scoped 3-part composed ID) | same `kubectl_manifest` tolerances; the conditional `<name>-credentials` Secret derives via `from_address_key` / `from_metadata_name_suffix` — the fake backend declares no credentials, so that recipe is offline-validated only |
 | `kubernetessecretstore` | 2026-07-22, fake-backend scenario | same as `kubernetesclustersecretstore` |
 | `kubernetesexternalsecret` | 2026-07-22, both scenarios (incl. the real sync-loop fixture chain) | same `kubectl_manifest` tolerances |
+| `kubernetesistio` | 2026-07-22, minimal + ambient scenarios (20 resources: FOUR `tofu_resource_name`-scoped Helm releases incl. the ambient cni/ztunnel pair, 15 module-owned CRDs blind-derived via `from_address_key` — the module keys each `kubectl_manifest` by the CRD's own name — and the created namespace) | `helm_release` install-time attributes (config-only, see the catalog row) + `kubectl_manifest` tolerances |
+| `kubernetesdestinationrule` | 2026-07-22, minimal scenario | same `kubectl_manifest` tolerances |
+| `kubernetesserviceentry` | 2026-07-22, minimal scenario | same `kubectl_manifest` tolerances |
+| `kubernetespeerauthentication` | 2026-07-22, minimal scenario | same `kubectl_manifest` tolerances |
+| `kubernetesrequestauthentication` | 2026-07-22, minimal scenario | same `kubectl_manifest` tolerances |
+| `kubernetesauthorizationpolicy` | 2026-07-22, minimal + behavioral-deny scenarios (re-imported alongside a live mesh) | same `kubectl_manifest` tolerances |
+| `kubernetestelemetry` | 2026-07-22, minimal scenario | same `kubectl_manifest` tolerances |
+| `kubernetesenvoyfilter` | 2026-07-22, minimal scenario | same `kubectl_manifest` tolerances |
 
 Kinds where an import map is **deliberately not applicable** (recorded so
 absence is never mistaken for an oversight):
@@ -133,6 +151,7 @@ absence is never mistaken for an oversight):
 |-----------|-------------------|
 | `kubernetesmanifest` | The kind's state is arbitrary user YAML — there is no per-kind resource schema for a blind round-trip oracle to compare against; each deployment's resource set is defined by the manifest itself. Adopting existing raw resources is done by pasting their YAML into `spec.manifest_yaml` and applying (server-side apply takes ownership of unmanaged fields). |
 | `kubernetesgatewayapicrds` (and other multi-document CRD-bundle installers) | The module applies a fetched multi-document bundle with one `kubectl_manifest` per document, keyed by the SPLIT INDEX — a positional key, never identity. The composed import ID needs each document's own apiVersion/kind/name triple, and no single derivation can honestly feed three placeholders per positional address. Adopting an existing CRD install is done by applying over it (server-side apply with force_conflicts takes ownership). |
+| `kubernetesistiobasecrds` | Same multi-document CRD-bundle class as `kubernetesgatewayapicrds` — the istio/base CRD bundle applies one `kubectl_manifest` per split document, positionally keyed. |
 
 ## Adding a kind
 

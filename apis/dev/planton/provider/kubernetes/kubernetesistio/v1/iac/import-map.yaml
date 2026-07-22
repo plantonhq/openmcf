@@ -1,0 +1,72 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesistio
+spec:
+  # The control plane installs as up to FOUR Helm releases in one namespace —
+  # base ("istio-base"), istiod ("istiod" or "istiod-<revision>"), and in
+  # ambient mode istio-cni ("istio-cni") and ztunnel ("ztunnel") — plus the
+  # optional anchor namespace. Because several helm_release resources share
+  # one id_format, {release_name} is declared PER Terraform logical resource
+  # via tofu_resource_name scoping; {release_namespace} is the same for all.
+  values:
+    - name: release_name
+      tofu_resource_name: base
+      derivations:
+        - literal: istio-base
+      where_to_find: >-
+        Always "istio-base" — the module fixes the base release name (one
+        control plane per cluster). Confirm with `helm list -n <namespace>`.
+    - name: release_name
+      tofu_resource_name: istiod
+      derivations:
+        - from_stack_output: istiod_service_name
+      where_to_find: >-
+        "istiod" for the default revision, "istiod-<revision>" for a named
+        revision — `helm list -n <namespace>` (NAME column).
+    - name: release_name
+      tofu_resource_name: cni
+      derivations:
+        - literal: istio-cni
+      where_to_find: >-
+        Always "istio-cni" — installed in ambient mode or when cni.enabled.
+    - name: release_name
+      tofu_resource_name: ztunnel
+      derivations:
+        - literal: ztunnel
+      where_to_find: Always "ztunnel" — installed in ambient mode only.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "istio-system".
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    # The module-owned CRD bundle (one kubectl_manifest per CRD, keyed by the
+    # CRD's own name). The composed import ID's constants are literals; the
+    # name rides the enumerated address's for_each key.
+    - name: api_version
+      derivations:
+        - literal: apiextensions.k8s.io/v1
+      where_to_find: Always "apiextensions.k8s.io/v1" — the CRD API group/version.
+    - name: kind
+      derivations:
+        - literal: CustomResourceDefinition
+      where_to_find: Always "CustomResourceDefinition".
+    - name: name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The CRD's metadata.name (e.g. "destinationrules.networking.istio.io")
+        — the module keys each kubectl_manifest instance by exactly it.
+    - name: namespace
+      where_to_find: >-
+        Not applicable — CustomResourceDefinitions are cluster-scoped, so the
+        composed import ID has no namespace segment (the optional
+        [//{namespace}] group drops).

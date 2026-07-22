@@ -1,5 +1,4 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
+name: kubernetes-authorization-policy
 runtime:
   name: go
 description: Pulumi module that provisions an Istio AuthorizationPolicy from a KubernetesAuthorizationPolicy manifest.

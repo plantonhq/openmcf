@@ -1,6 +1,6 @@
 # KubernetesPeerAuthentication Terraform Module
 
-Creates a namespaced Istio `PeerAuthentication` via the `kubernetes_manifest`
+Creates a namespaced Istio `PeerAuthentication` via the `kubectl_manifest`
 resource. The Istio CRDs must already be installed on the target cluster (see
 `KubernetesIstioBaseCrds`), a running istiod is required to enforce the policy in
 the data plane (see `KubernetesIstio`), and the target namespace must exist (see

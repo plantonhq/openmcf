@@ -45,8 +45,12 @@ func createDestinationRule(
 	// The typed resource's Spec field is a PtrInput satisfied by the Args value itself
 	// (not the SpecPtr() wrapper, which marshals to the wrong element type); assigned
 	// directly below, mirroring the sibling Istio components.
+	//
+	// host is a StringValueOrRef foreign key (default: a KubernetesService's
+	// in-cluster FQDN output); the platform resolves valueFrom references before
+	// the module runs, so GetValue() always carries the literal host here.
 	drSpec := istionetworkingv1.DestinationRuleSpecArgs{
-		Host: pulumi.String(spec.GetHost()),
+		Host: pulumi.String(spec.GetHost().GetValue()),
 	}
 
 	if exportTo := spec.GetExportTo(); len(exportTo) > 0 {

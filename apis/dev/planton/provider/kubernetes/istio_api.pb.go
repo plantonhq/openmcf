@@ -8,6 +8,7 @@ package kubernetes
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -267,19 +268,13 @@ func (x *KubernetesIstioApiStringMatch) GetValue() string {
 // `istio.type.v1beta1.PolicyTargetReference`. Consumers: RequestAuthentication,
 // AuthorizationPolicy, and Telemetry.
 //
-// Infra-chart composability: a target reference is a PLAIN cross-resource reference, not
-// an Planton foreign key (StringValueOrRef). istiod resolves `group`/`kind`/`name`
-// against the cluster at runtime, so it creates NO automatic DAG edge. In an infra
-// chart, order the policy after the resource it targets via metadata.relationships,
-// e.g. (`uses` -> KubernetesGateway / KubernetesService / KubernetesServiceEntry):
-//
-//	metadata:
-//	  relationships:
-//	    - kind: KubernetesGateway
-//	      name: "{{ values.gateway }}"
-//	      type: depends_on
-//
-// See the consuming component's "Composing in Infra Charts" docs.
+// Infra-chart composability: `name` is a foreign key. The dominant target for these
+// policies is a Gateway (ingress authn/authz/telemetry), so the name defaults to a
+// KubernetesGateway reference — wiring it with valueFrom gives the chart a real
+// dependency edge from the policy to the gateway it protects. When the target is a
+// Service, a ServiceEntry, or any resource not managed as a Planton kind, pass the
+// literal name with `value:` (istiod resolves group/kind/name against the cluster at
+// runtime either way).
 type KubernetesIstioApiPolicyTargetReference struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Group of the target resource. Empty for the core API group (Services). Faithful
@@ -287,10 +282,14 @@ type KubernetesIstioApiPolicyTargetReference struct {
 	Group string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
 	// Kind of the target resource (e.g. Gateway, Service, ServiceEntry). Required.
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
-	// Name of the target resource. Required.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Name of the target resource. Required. Defaults to a KubernetesGateway foreign
+	// key (the policy attaches to a Gateway API Gateway) — in an infra chart, wire it
+	// with valueFrom so the policy deploys after its gateway. For other target kinds,
+	// pass the literal name with `value:`. Upstream bounds the name at 253 characters;
+	// the API server enforces that at apply (a StringValueOrRef carries no bound).
+	Name *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Namespace of the target resource. Cross-namespace attachment is not supported
-	// upstream in the 1.26 line, so this must be empty (the target is resolved in the
+	// upstream in the 1.30 line, so this must be empty (the target is resolved in the
 	// policy's own namespace). Mirrors the upstream XValidation rule
 	// "cross namespace referencing is not currently supported".
 	Namespace     string `protobuf:"bytes,4,opt,name=namespace,proto3" json:"namespace,omitempty"`
@@ -342,11 +341,11 @@ func (x *KubernetesIstioApiPolicyTargetReference) GetKind() string {
 	return ""
 }
 
-func (x *KubernetesIstioApiPolicyTargetReference) GetName() string {
+func (x *KubernetesIstioApiPolicyTargetReference) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesIstioApiPolicyTargetReference) GetNamespace() string {
@@ -360,7 +359,7 @@ var File_dev_planton_provider_kubernetes_istio_api_proto protoreflect.FileDescri
 
 const file_dev_planton_provider_kubernetes_istio_api_proto_rawDesc = "" +
 	"\n" +
-	"/dev/planton/provider/kubernetes/istio_api.proto\x12\x1fdev.planton.provider.kubernetes\x1a\x1bbuf/validate/validate.proto\"\x96\x05\n" +
+	"/dev/planton/provider/kubernetes/istio_api.proto\x12\x1fdev.planton.provider.kubernetes\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x96\x05\n" +
 	"\"KubernetesIstioApiWorkloadSelector\x12\xaf\x04\n" +
 	"\fmatch_labels\x18\x01 \x03(\v2T.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector.MatchLabelsEntryB\xb5\x03\xbaH\xb1\x03\xba\x01x\n" +
 	"3istio_workload_selector.match_labels_keys_non_empty\x12%label selector keys must not be empty\x1a\x1athis.all(k, k.size() != 0)\xba\x01\x8c\x01\n" +
@@ -380,12 +379,11 @@ const file_dev_planton_provider_kubernetes_istio_api_proto_rawDesc = "" +
 	"\x1dKubernetesIstioApiStringMatch\x12:\n" +
 	"\n" +
 	"match_type\x18\x01 \x01(\tB\x1b\xbaH\x18r\x16R\x05EXACTR\x06PREFIXR\x05REGEXR\tmatchType\x12\x1d\n" +
-	"\x05value\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05value\"\xb5\x03\n" +
+	"\x05value\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x05value\"\x86\x04\n" +
 	"'KubernetesIstioApiPolicyTargetReference\x12d\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\x05group\x12G\n" +
-	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12!\n" +
-	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12\xb7\x01\n" +
+	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12r\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x06\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04name\x12\xb7\x01\n" +
 	"\tnamespace\x18\x04 \x01(\tB\x98\x01\xbaH\x94\x01\xba\x01\x90\x01\n" +
 	"0istio_policy_target_reference.no_cross_namespace\x12Jcross-namespace target references are not supported; leave namespace empty\x1a\x10this.size() == 0R\tnamespaceB\x97\x02\n" +
 	"#com.dev.planton.provider.kubernetesB\rIstioApiProtoP\x01ZAgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes\xa2\x02\x04DPPK\xaa\x02\x1fDev.Planton.Provider.Kubernetes\xca\x02\x1fDev\\Planton\\Provider\\Kubernetes\xe2\x02+Dev\\Planton\\Provider\\Kubernetes\\GPBMetadata\xea\x02\"Dev::Planton::Provider::Kubernetesb\x06proto3"
@@ -409,17 +407,19 @@ var file_dev_planton_provider_kubernetes_istio_api_proto_goTypes = []any{
 	(*KubernetesIstioApiPortSelector)(nil),               // 2: dev.planton.provider.kubernetes.KubernetesIstioApiPortSelector
 	(*KubernetesIstioApiStringMatch)(nil),                // 3: dev.planton.provider.kubernetes.KubernetesIstioApiStringMatch
 	(*KubernetesIstioApiPolicyTargetReference)(nil),      // 4: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
-	nil, // 5: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector.MatchLabelsEntry
-	nil, // 6: dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector.LabelsEntry
+	nil,                         // 5: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector.MatchLabelsEntry
+	nil,                         // 6: dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector.LabelsEntry
+	(*v1.StringValueOrRef)(nil), // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_istio_api_proto_depIdxs = []int32{
 	5, // 0: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector.match_labels:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector.MatchLabelsEntry
 	6, // 1: dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector.labels:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector.LabelsEntry
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	7, // 2: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_istio_api_proto_init() }

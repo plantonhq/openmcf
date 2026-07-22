@@ -133,7 +133,7 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	accountArnParts := accountLevelArnParts(tc.FlatOutputs)
 
 	for _, address := range addresses {
-		resourceType, _, instanceKey, parsed := importmap.ParseTofuAddress(address)
+		resourceType, logicalName, instanceKey, parsed := importmap.ParseTofuAddress(address)
 		if !parsed {
 			return errors.Errorf("address %q is not mappable (module-nested?)", address)
 		}
@@ -146,6 +146,7 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 			Spec:         spec,
 			StackOutputs: tc.FlatOutputs,
 			AddressKey:   instanceKey,
+			LogicalName:  logicalName,
 			ArnParts:     accountArnParts,
 		})
 		// Only required placeholders abort the blind import -- optional

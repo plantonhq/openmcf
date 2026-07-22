@@ -50,7 +50,10 @@ automatically.
 | Placeholder | Description |
 |-------------|-------------|
 | `<namespace>` | Namespace the rule is created in (e.g. `bookinfo`). |
-| `<service-host>` | The service registry host to protect (e.g. `reviews.bookinfo.svc.cluster.local`). |
+
+The `host` value is an example registry host to protect -- replace it with your own
+service's FQDN, or wire it with `valueFrom` to a `KubernetesService` so the rule follows
+the Service it shapes.
 
 Pair this with a `ServiceEntry` if the host is external, and a `VirtualService` if you need
 to route across subsets.

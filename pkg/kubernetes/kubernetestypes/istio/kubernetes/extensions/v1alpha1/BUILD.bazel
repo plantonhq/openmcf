@@ -5,6 +5,9 @@ go_library(
     srcs = [
         "init.go",
         "pulumiTypes.go",
+        "trafficExtension.go",
+        "trafficExtensionList.go",
+        "trafficExtensionPatch.go",
         "wasmPlugin.go",
         "wasmPluginList.go",
         "wasmPluginPatch.go",

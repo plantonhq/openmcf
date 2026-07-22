@@ -35,4 +35,6 @@ a non-mesh client probes directly.
 |-------------|-------------|
 | `<namespace>` | Namespace the workload runs in (e.g. `finance`). |
 | `<workload>` | Value of the `app` label selecting the workload's pods (e.g. `finance`). |
-| `<plaintext-port>` | Workload port to keep plaintext (e.g. `8080`). Quote it -- map keys are strings. |
+
+The `port_level_mtls` key (`"8080"` in the example) is the workload port to keep
+plaintext -- replace it with your own port, and keep it quoted (map keys are strings).

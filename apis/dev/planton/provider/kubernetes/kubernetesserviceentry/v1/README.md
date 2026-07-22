@@ -24,6 +24,10 @@ services) treat it as part of the mesh.
 - **DNS** -- resolve the hosts (or endpoint addresses) via DNS, asynchronously.
 - **DNS_ROUND_ROBIN** -- like DNS, but pins to the first resolved IP per new
   connection (best for large web-scale services); at most one endpoint.
+- **DYNAMIC_DNS** -- resolve the *actual* requested hostname at request time (a
+  dynamic forward proxy for wildcard hosts). Every host must be wildcarded (e.g.
+  `*.example.com`), `addresses` and `endpoints` must be empty, and only HTTP-family
+  (`HTTP`/`HTTP2`/`GRPC`) and `TLS` port protocols are supported -- all validated.
 
 `endpoints` (static IPs/hosts) and `workload_selector` (in-mesh pods/VMs by label)
 are mutually exclusive. `endpoints` cannot be used with NONE resolution. CIDR
@@ -84,7 +88,7 @@ planton apply -f serviceentry.yaml
 | `addresses` | list | Virtual IPs or CIDR prefixes. CIDR is allowed only with NONE/STATIC resolution. |
 | `ports` | list | Exposed ports (`number`, `name`, `protocol`, `target_port`). `name` and `number` must each be unique. |
 | `location` | string | `MESH_EXTERNAL` (default) or `MESH_INTERNAL`. |
-| `resolution` | string | `NONE` (default), `STATIC`, `DNS`, or `DNS_ROUND_ROBIN`. |
+| `resolution` | string | `NONE` (default), `STATIC`, `DNS`, `DNS_ROUND_ROBIN`, or `DYNAMIC_DNS` (wildcard hosts only; no addresses/endpoints; HTTP-family/TLS ports only). |
 | `endpoints` | list | Static backing endpoints (see below). Mutually exclusive with `workload_selector`; not allowed with NONE; at most one with DNS_ROUND_ROBIN. |
 | `export_to` | list | Namespaces the service is visible to (`.` = same namespace, `*` = all). Default all. |
 | `subject_alt_names` | list | SANs verified on the server certificate when originating TLS. |

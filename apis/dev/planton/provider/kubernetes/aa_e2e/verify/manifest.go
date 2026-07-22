@@ -123,6 +123,23 @@ func manifestNestedSpecString(manifestPath, parent, key string) string {
 	return value
 }
 
+// manifestSpecFirstString reads the first element of a repeated string spec
+// field (protojson camelCase key), returning "" when absent or empty — for
+// scenarios that key a behavioral probe off a list value (e.g. an
+// HTTPRoute's first hostname).
+func manifestSpecFirstString(manifestPath, key string) (string, error) {
+	spec := manifestSpecMap(manifestPath)
+	if spec == nil {
+		return "", nil
+	}
+	list, ok := spec[key].([]interface{})
+	if !ok || len(list) == 0 {
+		return "", nil
+	}
+	value, _ := list[0].(string)
+	return value, nil
+}
+
 // manifestSpecInt reads one integer spec field (protojson camelCase key),
 // returning the fallback when absent or not numeric.
 func manifestSpecInt(manifestPath, key string, fallback int64) int64 {

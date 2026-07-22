@@ -20,11 +20,20 @@ import (
 
 // GenerateManifestModule returns the complete iac/tf module (filename -> HCL
 // content) for a Kubernetes-CRD-projection kind. The module is a thin
-// kubernetes_manifest passthrough: variable "spec" is typed `any` and handed
-// verbatim to the CR, because the proto->tfvars converter
+// kubectl_manifest (alekc/kubectl) passthrough: variable "spec" is typed `any`
+// and handed verbatim to the CR, because the proto->tfvars converter
 // (ProtoToManifestTFVars) already emits the manifest-shaped, camelCase,
-// null-pruned spec. This removes the snake->camel / null-prune / oneOf locals.tf
-// that every CRD module previously hand-wrote.
+// null-pruned spec (with StringValueOrRef foreign keys resolved to literal
+// strings). This removes the snake->camel / null-prune / oneOf locals.tf that
+// every CRD module previously hand-wrote.
+//
+// kubectl_manifest rather than the hashicorp provider's kubernetes_manifest,
+// deliberately: kubernetes_manifest fetches the CR's OpenAPI type from the live
+// cluster at PLAN time, so a CR could never be planned before its CRDs are
+// installed — which breaks single-run infra charts (CRD installer + CRs
+// together) and makes offline plan proofs impossible. kubectl_manifest renders
+// from yaml_body with no plan-time cluster dependency, applies server-side, and
+// supports import (apiVersion//kind//name[//namespace]).
 //
 // The kind is passed explicitly (rather than read from msg) because callers
 // generate from an empty message instance whose `kind` field is unset; msg is
@@ -55,9 +64,10 @@ func GenerateManifestModule(kind cloudresourcekind.CloudResourceKind, msg proto.
 	label := kebabFromPascal(crdKind)
 
 	files := map[string]string{
-		"provider.tf":  manifestProviderTF(),
+		"provider.tf":  manifestProviderTF(kind.String()),
+		"backend.tf":   manifestBackendTF(),
 		"variables.tf": manifestVariablesTF(apiVersion, crdKind),
-		"locals.tf":    manifestLocalsTF(label, nsJSONName, namespaced),
+		"locals.tf":    manifestLocalsTF(kind.String(), nsJSONName, namespaced),
 		"main.tf":      manifestMainTF(strings.ReplaceAll(label, "-", "_"), apiVersion, crdKind, nsJSONName, namespaced),
 	}
 
@@ -107,21 +117,41 @@ func namespaceForeignKeyJSONName(specMsg protoreflect.MessageDescriptor) (string
 	return "", false
 }
 
-func manifestProviderTF() string {
-	// Pin the provider source and version range so a generated module is
-	// self-contained: without required_providers, Terraform silently falls
-	// back to an unconstrained hashicorp/kubernetes, and provider upgrades
-	// would ripple through every module unpinned.
-	return `terraform {
+func manifestProviderTF(kindName string) string {
+	// Pin the provider source and version floor so a generated module is
+	// self-contained: without required_providers, Terraform would silently
+	// fall back to an unconstrained default, and provider upgrades would
+	// ripple through every module unpinned.
+	return fmt.Sprintf(`# Provider requirements for the %s module.
+#
+# kubectl (alekc/kubectl) applies the CR: unlike the hashicorp kubernetes
+# provider's kubernetes_manifest resource, kubectl_manifest needs no cluster
+# connection at plan time, so the CR can be planned before its CRDs exist
+# (single-run infra charts, offline plan proofs). This module creates no other
+# Kubernetes objects, so kubectl is its only provider.
+#
+# The provider is configured by the calling workspace/environment (the same
+# kubeconfig environment contract).
+
+terraform {
+  required_version = ">= 1.0"
+
   required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.35"
+    kubectl = {
+      source  = "alekc/kubectl"
+      version = ">= 2.0"
     }
   }
 }
 
-provider "kubernetes" {
+provider "kubectl" {
+}
+`, kindName)
+}
+
+func manifestBackendTF() string {
+	return `terraform {
+  backend "local" {}
 }
 `
 }
@@ -132,47 +162,68 @@ func manifestModuleHeader(apiVersion, crdKind string) string {
 # Thin projection of the %s %q custom resource.
 #
 # The proto->tfvars converter emits the manifest-shaped (camelCase, null-pruned)
-# spec, so this module hands it to kubernetes_manifest verbatim -- no snake->camel,
-# null-prune, or oneOf logic. variable "spec" is typed 'any' because the apiserver
-# plus Planton protovalidate are the schema authority; re-encoding the CRD schema
-# as HCL types would only reintroduce the pruning this design removes.
+# spec with StringValueOrRef foreign keys resolved to literal strings, so this
+# module hands it to kubectl_manifest verbatim -- no snake->camel, null-prune,
+# or oneOf logic. variable "spec" is typed 'any' because the apiserver plus
+# Planton protovalidate are the schema authority; re-encoding the CRD schema as
+# HCL types would only reintroduce the pruning this design removes.
 `, apiVersion, crdKind)
 }
 
 func manifestVariablesTF(apiVersion, crdKind string) string {
-	// Both metadata and spec are typed `any`. This is a pure passthrough module:
-	// the orchestrator supplies a validated manifest, and re-encoding either the
-	// CloudResourceMetadata envelope or the CRD spec as HCL types would only
-	// reintroduce the optional/null friction this design eliminates. The module
-	// reads only var.metadata.name.
+	// The spec is typed `any` (pure passthrough — re-encoding the CRD spec as
+	// HCL types would only reintroduce the optional/null friction this design
+	// eliminates), but metadata is a typed OBJECT with defaulted optional
+	// attributes: the module's identity labels read metadata.id/org/env, and a
+	// tfvars document carrying only `name` (the common case) would make those
+	// attribute reads FAIL on `any` — HCL's && evaluates both operands, so
+	// even a null-guarded read errors when the attribute does not exist at
+	// all. Optional-with-default gives every read a value.
 	var b strings.Builder
 	b.WriteString(manifestModuleHeader(apiVersion, crdKind))
 	b.WriteString("\n")
 	b.WriteString("variable \"metadata\" {\n")
-	b.WriteString("  description = \"Planton resource metadata (name, labels, ...). Passed through; only name is read.\"\n")
-	b.WriteString("  type        = any\n")
+	b.WriteString("  description = \"Cloud resource metadata (name plus the optional Planton identity attributes the module renders as labels).\"\n")
+	b.WriteString("  type = object({\n")
+	b.WriteString("    name        = string\n")
+	b.WriteString("    id          = optional(string, \"\")\n")
+	b.WriteString("    org         = optional(string, \"\")\n")
+	b.WriteString("    env         = optional(string, \"\")\n")
+	b.WriteString("    labels      = optional(map(string), {})\n")
+	b.WriteString("    annotations = optional(map(string), {})\n")
+	b.WriteString("    tags        = optional(list(string), [])\n")
+	b.WriteString("  })\n")
 	b.WriteString("}\n\n")
 	b.WriteString("variable \"spec\" {\n")
 	fmt.Fprintf(&b, "  description = %q\n",
-		fmt.Sprintf("Spec for the %s %q custom resource, passed through verbatim to kubernetes_manifest. Typed 'any': the apiserver and Planton protovalidate are the schema authority.", apiVersion, crdKind))
+		fmt.Sprintf("Spec for the %s %q custom resource, passed through verbatim to kubectl_manifest. Typed 'any': the apiserver and Planton protovalidate are the schema authority.", apiVersion, crdKind))
 	b.WriteString("  type        = any\n")
 	b.WriteString("}\n")
 	return b.String()
 }
 
-func manifestLocalsTF(label, nsJSONName string, namespaced bool) string {
+func manifestLocalsTF(kindName, nsJSONName string, namespaced bool) string {
 	var b strings.Builder
 	b.WriteString("locals {\n")
+	b.WriteString("  # Planton identity labels — the planton.ai/* convention, identical to the\n")
+	b.WriteString("  # Pulumi module's label set (twin discipline). Conditional entries use the\n")
+	b.WriteString("  # null-prune idiom: heterogeneous conditional merges fail HCL type\n")
+	b.WriteString("  # unification when sibling entries infer as different object types.\n")
 	b.WriteString("  labels = {\n")
-	fmt.Fprintf(&b, "    \"app.kubernetes.io/name\"       = %q\n", label)
-	b.WriteString("    \"app.kubernetes.io/instance\"   = var.metadata.name\n")
-	b.WriteString("    \"app.kubernetes.io/managed-by\" = \"planton\"\n")
-	fmt.Fprintf(&b, "    \"app.kubernetes.io/component\"  = %q\n", label)
+	b.WriteString("    for k, v in {\n")
+	b.WriteString("      \"planton.ai/resource\"      = \"true\"\n")
+	b.WriteString("      \"planton.ai/resource-name\" = var.metadata.name\n")
+	fmt.Fprintf(&b, "      \"planton.ai/resource-kind\" = %q\n", kindName)
+	b.WriteString("      \"planton.ai/resource-id\"   = (var.metadata.id != null && var.metadata.id != \"\") ? var.metadata.id : null\n")
+	b.WriteString("      \"planton.ai/organization\"  = (var.metadata.org != null && var.metadata.org != \"\") ? var.metadata.org : null\n")
+	b.WriteString("      \"planton.ai/environment\"   = (var.metadata.env != null && var.metadata.env != \"\") ? var.metadata.env : null\n")
+	b.WriteString("    } : k => v if v != null\n")
 	b.WriteString("  }\n\n")
 	if namespaced {
 		fmt.Fprintf(&b, "  # The CR spec is var.spec minus the Planton %q foreign key, which maps to\n", nsJSONName)
 		b.WriteString("  # metadata.namespace rather than into the CR spec. The converter already emits\n")
-		b.WriteString("  # camelCase, null-pruned keys, so no other transformation is needed.\n")
+		b.WriteString("  # camelCase, null-pruned keys with StringValueOrRef foreign keys resolved to\n")
+		b.WriteString("  # literal strings, so no other transformation is needed.\n")
 		fmt.Fprintf(&b, "  manifest_spec = { for k, v in var.spec : k => v if k != %q }\n", nsJSONName)
 	} else {
 		b.WriteString("  # Cluster-scoped CR: the converter already emits camelCase, null-pruned keys,\n")
@@ -197,17 +248,22 @@ func manifestMainTF(resourceName, apiVersion, crdKind, nsJSONName string, namesp
       labels = local.labels
     }`
 	}
-	return fmt.Sprintf(`resource "kubernetes_manifest" %q {
-  manifest = {
+	return fmt.Sprintf(`# Applies the %s custom resource through kubectl_manifest (alekc/kubectl):
+# no plan-time cluster dependency (plannable before the CRDs exist), applied
+# server-side. No wait, deliberately: the CR is configuration its controller
+# consumes; applying it server-side-validated is the whole contract. Pulumi
+# equivalent: the typed CR without await annotations.
+resource "kubectl_manifest" %q {
+  yaml_body = yamlencode({
     apiVersion = %q
     kind       = %q
-
 %s
-
     spec = local.manifest_spec
-  }
+  })
+
+  server_side_apply = true
 }
-`, resourceName, apiVersion, crdKind, metadata)
+`, crdKind, resourceName, apiVersion, crdKind, metadata)
 }
 
 func manifestOutputsTF(md, specMsg protoreflect.MessageDescriptor, crdKind, nsJSONName string, namespaced bool) (string, error) {

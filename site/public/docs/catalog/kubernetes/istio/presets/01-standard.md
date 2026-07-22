@@ -1,6 +1,6 @@
 ---
-title: "Standard Istio Service Mesh"
-description: "This preset deploys the Istio control plane (istiod) with recommended default resources. Istio provides mTLS, traffic management, observability, and security for service-to-service communication."
+title: "Standard Istio Mesh (Sidecar)"
+description: "This preset installs the Istio control plane with the classic sidecar data plane and chart-default sizing. istiod autoscales via the chart's HPA (min 1 / max 5 at 80% CPU)."
 type: "preset"
 rank: "01"
 presetSlug: "01-standard"
@@ -11,22 +11,26 @@ icon: "package"
 order: 1
 ---
 
-# Standard Istio Service Mesh
+# Standard Istio Mesh (Sidecar)
 
-This preset deploys the Istio control plane (istiod) with recommended default resources. Istio provides mTLS, traffic management, observability, and security for service-to-service communication.
+This preset installs the Istio control plane with the classic sidecar data plane and chart-default sizing. istiod autoscales via the chart's HPA (min 1 / max 5 at 80% CPU).
 
 ## When to Use
 
-- You need mTLS between services without application-level TLS
-- You want traffic management features (canary deployments, traffic splitting, retries, circuit breaking)
-- You need service mesh observability (distributed tracing, traffic metrics)
+- You want mTLS, traffic policy, and mesh observability with the most mature, widely deployed data plane architecture
+- You are starting a mesh and have no reason to deviate from defaults
 
 ## Key Configuration Choices
 
-- **Namespace** (`istio-system`) -- the standard namespace for Istio components
-- **Default resources** -- sufficient for the istiod control plane; data plane (sidecar) resources are configured per namespace
-- **Sidecar injection** -- enable per namespace by adding the `istio-injection: enabled` label (see KubernetesNamespace preset 03-istio-enabled)
+- **Sidecar mode** (`dataplaneMode: sidecar`) — namespaces opt in to injection with the `istio-injection=enabled` label; pods created after that get a proxy container
+- **Namespace** (`istio-system`) — the conventional control-plane namespace, created by the resource
+- **Chart-default sizing** — the HPA owns istiod's replica count; proxy defaults apply per injected pod
 
 ## Placeholders to Replace
 
-No placeholders -- this preset is directly deployable with sensible defaults.
+No placeholders — this preset is directly deployable with sensible defaults.
+
+## Related Presets
+
+- **02-ambient** — sidecar-less data plane (per-node ztunnel + optional waypoints)
+- **03-production-sidecar** — production hardening: HA istiod, egress lockdown, node-level CNI agent

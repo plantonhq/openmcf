@@ -21,14 +21,14 @@ workload sees). ServiceEntry is the only one of the three that *adds* destinatio
 ## 2. Source of truth and version
 
 Translated proto-to-proto from the upstream `istio.io/api` clone pinned to tag
-**1.26.8** (`networking/v1alpha3/service_entry.proto`; the `v1` CRD is a type alias of
+**1.30.3** (`networking/v1alpha3/service_entry.proto`; the `v1` CRD is a type alias of
 `v1alpha3`). The local clone is authoritative; no specs are pulled from the internet.
 The crd2pulumi typed SDK and the CRDs installed by `KubernetesIstioBaseCrds` are
-likewise generated from Istio `release-1.26`, so the proto, the typed Pulumi resource,
+likewise generated from Istio tag `1.30.3`, so the proto, the typed Pulumi resource,
 and the cluster CRD all agree on the schema.
 
 ServiceEntry has **no** `google.protobuf.Duration`, no wrapper types, and **no proto
-`oneof`**. It also has **no `credential_name`/TLS field** in 1.26.8 (that lives on
+`oneof`**. It also has **no `credential_name`/TLS field** (that lives on
 DestinationRule).
 
 ## 3. Planton spec shape (fidelity decisions)
@@ -72,7 +72,8 @@ Each consumer must re-confirm its own CRD's selector constraints before reusing 
 
 `location` and `resolution` are closed-set `optional string` fields validated by the
 protovalidate `string.in` rule with the UPPERCASE upstream constants
-(`MESH_EXTERNAL`/`MESH_INTERNAL`; `NONE`/`STATIC`/`DNS`/`DNS_ROUND_ROBIN`) -- not proto
+(`MESH_EXTERNAL`/`MESH_INTERNAL`;
+`NONE`/`STATIC`/`DNS`/`DNS_ROUND_ROBIN`/`DYNAMIC_DNS`) -- not proto
 enums (which would change CEL string-comparison semantics). `protocol` is modeled the
 same way against the documented set `HTTP|HTTPS|GRPC|HTTP2|MONGO|TCP|TLS`. Leaving any
 of them unset omits the field from the CR, so istiod's own default
@@ -92,6 +93,7 @@ validated outcome. Unset `resolution` is treated as its upstream default `NONE`.
 | CIDR addresses require NONE/STATIC | `(!has(this.resolution) \|\| this.resolution in ['NONE','STATIC']) \|\| !this.addresses.exists(a, a.contains('/'))` |
 | NONE forbids endpoints | `!((!has(this.resolution) \|\| this.resolution == 'NONE') && size(this.endpoints) > 0)` |
 | DNS_ROUND_ROBIN <= 1 endpoint | `!(has(this.resolution) && this.resolution == 'DNS_ROUND_ROBIN' && size(this.endpoints) > 1)` |
+| DYNAMIC_DNS: wildcard hosts, no addresses, no endpoints, HTTP-family/TLS ports | four `service_entry.dynamic_dns_*` rules guarded on `this.resolution == 'DYNAMIC_DNS'` (mirror the istiod validating webhook, which rejects at apply time what the CRD schema alone cannot express) |
 | ports: unique `number` / unique `name` | `this.ports.all(p1, this.ports.exists_one(p2, p1.number == p2.number))` (and `.name`) |
 | endpoint: address-or-network; UDS no ports | message-level CEL on the endpoint; UDS path/dir shape as field CEL on `address` |
 
@@ -103,6 +105,7 @@ validated outcome. Unset `resolution` is treated as its upstream default `NONE`.
 | `service_entry.cidr_addresses_require_none_or_static` (message-level) | Upstream CIDR/resolution XValidation. |
 | `service_entry.none_resolution_forbids_endpoints` (message-level) | Upstream NONE/endpoints XValidation. |
 | `service_entry.dns_round_robin_single_endpoint` (message-level) | Upstream DNS_ROUND_ROBIN XValidation. |
+| `service_entry.dynamic_dns_{wildcard_hosts,no_addresses,no_endpoints,http_family_ports}` (message-level) | istiod validating-webhook rules for DYNAMIC_DNS (dynamic DNS forward-proxying derives destinations purely from wildcard hosts, so literal hosts, virtual addresses, and static endpoints are contradictions; only HTTP/HTTP2/GRPC/TLS port protocols are supported). |
 | `service_entry.port_{numbers,names}_unique` (message-level) | Upstream list-map + duplicate-number XValidation. |
 | `hosts` required / max 256 / no bare `*`; `addresses` max 256, len <= 64 | Upstream field markers. |
 | port `number`/`target_port` 1-65535; `name` required; `protocol` closed set | Upstream field markers + documented protocol MUST. |
@@ -137,12 +140,13 @@ Both engines are feature-equal and emit the same `networking.istio.io/v1`
   optional `location`/`resolution` scalars are attached only when present. Proto
   `uint32` port numbers/weights are cast to the SDK's `int` inputs, and the endpoint
   `map<string,uint32>` ports become a `pulumi.IntMap`.
-- **Terraform** uses `kubernetes_manifest` with a fully-typed `variable "spec"` and a
-  null-pruned `locals.tf`. Each list element is assembled with `merge()` so only the
-  fields the user set reach the manifest; the nested `workload_selector` is read
-  through a `?:` guard (HCL `&&` does not short-circuit). Snake_case spec fields map to
-  the CRD's camelCase (`targetPort`, `serviceAccount`, `subjectAltNames`, `exportTo`,
-  `workloadSelector`).
+- **Terraform** uses `kubectl_manifest` (alekc/kubectl) applied server-side, with a
+  pass-through `variable "spec"` typed `any`: the platform's proto-to-tfvars converter
+  emits the manifest-shaped (camelCase, null-pruned) spec with `StringValueOrRef`
+  foreign keys resolved to literal strings, so the module hands it to the cluster
+  verbatim -- no snake-to-camel mapping, null-pruning, or `oneOf` logic in HCL.
+  `locals.tf` only strips the Planton `namespace` key (which maps to
+  `metadata.namespace`) and renders the identity labels.
 
 ## 6. E2E
 
@@ -169,4 +173,4 @@ separate follow-up project.
 
 - [Istio ServiceEntry reference](https://istio.io/latest/docs/reference/config/networking/service-entry/)
 - [Istio egress / accessing external services task](https://istio.io/latest/docs/tasks/traffic-management/egress/egress-control/)
-- Upstream proto: `istio.io/api` `networking/v1alpha3/service_entry.proto` @ `1.26.8`
+- Upstream proto: `istio.io/api` `networking/v1alpha3/service_entry.proto` @ `1.30.3`

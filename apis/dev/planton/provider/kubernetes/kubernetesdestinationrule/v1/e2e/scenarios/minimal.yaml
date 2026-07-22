@@ -5,7 +5,8 @@ metadata:
 spec:
   namespace:
     value: default
-  host: reviews.default.svc.cluster.local
+  host:
+    value: reviews.default.svc.cluster.local
   traffic_policy:
     load_balancer:
       simple: LEAST_REQUEST

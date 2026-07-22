@@ -14,7 +14,7 @@ spec:
       match:
         context: SIDECAR_INBOUND
         proxy:
-          proxy_version: "^1\\.26.*"
+          proxy_version: "^1\\.30.*"
         listener:
           port_number: 8080
           filter_chain:
@@ -42,3 +42,18 @@ spec:
         operation: MERGE
         value:
           connect_timeout: 5s
+    - apply_to: HTTP_FILTER
+      match:
+        context: WAYPOINT
+        waypoint:
+          port_number: 8080
+          filter:
+            name: envoy.filters.network.http_connection_manager
+            sub_filter:
+              name: envoy.filters.http.router
+      patch:
+        operation: INSERT_BEFORE
+        value:
+          name: envoy.filters.http.cors
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors

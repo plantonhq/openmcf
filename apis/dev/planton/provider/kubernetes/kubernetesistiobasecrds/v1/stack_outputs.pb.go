@@ -25,7 +25,7 @@ const (
 // installation.
 type KubernetesIstioBaseCrdsStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Istio release the CRDs were installed from (the pinned SDK ref, e.g. "release-1.26").
+	// Istio release the CRDs were installed from (the pinned SDK tag, e.g. "1.30.3").
 	InstalledRelease string `protobuf:"bytes,1,opt,name=installed_release,json=installedRelease,proto3" json:"installed_release,omitempty"`
 	// Full URL of the istio/base CRD bundle that was applied -- the authoritative record
 	// of exactly what landed on the cluster.

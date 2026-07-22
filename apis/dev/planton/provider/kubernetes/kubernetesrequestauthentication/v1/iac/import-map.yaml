@@ -1,0 +1,32 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesrequestauthentication
+spec:
+  # One kubectl_manifest applying the Istio RequestAuthentication CR. The composed import ID
+  # is apiVersion//kind//name//namespace — apiVersion and kind are constants
+  # of this module (it renders exactly one GVK), declared as literals.
+  values:
+    - name: api_version
+      derivations:
+        - literal: security.istio.io/v1
+      where_to_find: >-
+        Always "security.istio.io/v1" — the module pins the served version.
+    - name: kind
+      derivations:
+        - literal: RequestAuthentication
+      where_to_find: Always "RequestAuthentication" — the CR kind this module applies.
+    - name: name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: request_authentication_name
+      where_to_find: >-
+        The RequestAuthentication's metadata.name (equals the Planton resource name) —
+        `kubectl get requestauthentications -A` (NAME column).
+    - name: namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        The namespace the resource lives in — `kubectl get requestauthentications -A`
+        (NAMESPACE column).

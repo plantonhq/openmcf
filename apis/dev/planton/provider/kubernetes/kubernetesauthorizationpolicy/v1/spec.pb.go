@@ -31,7 +31,7 @@ const (
 //
 // 100% fidelity with the upstream istio.io/api AuthorizationPolicy
 // (security/v1beta1/authorization_policy.proto, served as security.istio.io/v1),
-// pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly
+// pinned to the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly
 // after the Planton namespaced envelope (namespace); there is no
 // nested `authorization_policy` sub-message.
 //
@@ -386,8 +386,14 @@ type KubernetesAuthorizationPolicySource struct {
 	RemoteIpBlocks []string `protobuf:"bytes,11,rep,name=remote_ip_blocks,json=remoteIpBlocks,proto3" json:"remote_ip_blocks,omitempty"`
 	// Negative match of remote IP blocks.
 	NotRemoteIpBlocks []string `protobuf:"bytes,12,rep,name=not_remote_ip_blocks,json=notRemoteIpBlocks,proto3" json:"not_remote_ip_blocks,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Trust domains of the peer identity (the mesh's identity root, e.g.
+	// `cluster.local`) — matches any workload in the listed trust domains without
+	// enumerating principals. Requires mTLS. If empty, any trust domain matches.
+	TrustDomains []string `protobuf:"bytes,13,rep,name=trust_domains,json=trustDomains,proto3" json:"trust_domains,omitempty"`
+	// Negative match of trust domains.
+	NotTrustDomains []string `protobuf:"bytes,14,rep,name=not_trust_domains,json=notTrustDomains,proto3" json:"not_trust_domains,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *KubernetesAuthorizationPolicySource) Reset() {
@@ -500,6 +506,20 @@ func (x *KubernetesAuthorizationPolicySource) GetRemoteIpBlocks() []string {
 func (x *KubernetesAuthorizationPolicySource) GetNotRemoteIpBlocks() []string {
 	if x != nil {
 		return x.NotRemoteIpBlocks
+	}
+	return nil
+}
+
+func (x *KubernetesAuthorizationPolicySource) GetTrustDomains() []string {
+	if x != nil {
+		return x.TrustDomains
+	}
+	return nil
+}
+
+func (x *KubernetesAuthorizationPolicySource) GetNotTrustDomains() []string {
+	if x != nil {
+		return x.NotTrustDomains
 	}
 	return nil
 }
@@ -760,7 +780,7 @@ const file_dev_planton_provider_kubernetes_kubernetesauthorizationpolicy_v1_spec
 	"%KubernetesAuthorizationPolicyRuleFrom\x12}\n" +
 	"\x06source\x18\x01 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySourceR\x06source\"\xae\x01\n" +
 	"#KubernetesAuthorizationPolicyRuleTo\x12\x86\x01\n" +
-	"\toperation\x18\x01 \x01(\v2h.dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyOperationR\toperation\"\xc5\a\n" +
+	"\toperation\x18\x01 \x01(\v2h.dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicyOperationR\toperation\"\x96\b\n" +
 	"#KubernetesAuthorizationPolicySource\x12\x1e\n" +
 	"\n" +
 	"principals\x18\x01 \x03(\tR\n" +
@@ -778,7 +798,9 @@ const file_dev_planton_provider_kubernetes_kubernetesauthorizationpolicy_v1_spec
 	"\rnot_ip_blocks\x18\n" +
 	" \x03(\tR\vnotIpBlocks\x12(\n" +
 	"\x10remote_ip_blocks\x18\v \x03(\tR\x0eremoteIpBlocks\x12/\n" +
-	"\x14not_remote_ip_blocks\x18\f \x03(\tR\x11notRemoteIpBlocks:\x8f\x03\xbaH\x8b\x03\x1a\x88\x03\n" +
+	"\x14not_remote_ip_blocks\x18\f \x03(\tR\x11notRemoteIpBlocks\x12#\n" +
+	"\rtrust_domains\x18\r \x03(\tR\ftrustDomains\x12*\n" +
+	"\x11not_trust_domains\x18\x0e \x03(\tR\x0fnotTrustDomains:\x8f\x03\xbaH\x8b\x03\x1a\x88\x03\n" +
 	"6authorization_policy_source.service_accounts_exclusive\x12{service_accounts/not_service_accounts cannot be set together with principals, not_principals, namespaces, or not_namespaces\x1a\xd0\x01(size(this.service_accounts) > 0 || size(this.not_service_accounts) > 0) ? (size(this.principals) == 0 && size(this.not_principals) == 0 && size(this.namespaces) == 0 && size(this.not_namespaces) == 0) : true\"\xfc\x01\n" +
 	"&KubernetesAuthorizationPolicyOperation\x12\x14\n" +
 	"\x05hosts\x18\x01 \x03(\tR\x05hosts\x12\x1b\n" +

@@ -55,9 +55,12 @@ func createRequestAuthentication(
 	if targetRefs := spec.GetTargetRefs(); len(targetRefs) > 0 {
 		refs := istiosecurityv1.RequestAuthenticationSpecTargetRefsArray{}
 		for _, ref := range targetRefs {
+			// name is a StringValueOrRef foreign key (default: a KubernetesGateway's
+			// name output); the platform resolves valueFrom references before the
+			// module runs, so GetValue() always carries the literal name here.
 			refArgs := istiosecurityv1.RequestAuthenticationSpecTargetRefsArgs{
 				Kind: pulumi.String(ref.GetKind()),
-				Name: pulumi.String(ref.GetName()),
+				Name: pulumi.String(ref.GetName().GetValue()),
 			}
 			if ref.GetGroup() != "" {
 				refArgs.Group = pulumi.String(ref.GetGroup())
@@ -97,10 +100,13 @@ func createRequestAuthentication(
 // distinguishes unset from empty), so unset fields are omitted from the CR and
 // upstream defaults apply.
 func buildJwtRuleArgs(rule *kubernetesrequestauthenticationv1.KubernetesRequestAuthenticationJwtRule) istiosecurityv1.RequestAuthenticationSpecJwtRulesArgs {
-	args := istiosecurityv1.RequestAuthenticationSpecJwtRulesArgs{
-		Issuer: pulumi.String(rule.GetIssuer()),
-	}
+	args := istiosecurityv1.RequestAuthenticationSpecJwtRulesArgs{}
 
+	// issuer is optional upstream since jwks_uri alone locates the keys; the spec
+	// enforces at least one of the two, so an absent issuer is a valid rule.
+	if rule.Issuer != nil {
+		args.Issuer = pulumi.String(rule.GetIssuer())
+	}
 	if len(rule.GetAudiences()) > 0 {
 		args.Audiences = pulumi.ToStringArray(rule.GetAudiences())
 	}
@@ -147,6 +153,9 @@ func buildJwtRuleArgs(rule *kubernetesrequestauthenticationv1.KubernetesRequestA
 	}
 	if rule.Timeout != nil {
 		args.Timeout = pulumi.String(rule.GetTimeout())
+	}
+	if len(rule.GetSpaceDelimitedClaims()) > 0 {
+		args.SpaceDelimitedClaims = pulumi.ToStringArray(rule.GetSpaceDelimitedClaims())
 	}
 
 	return args

@@ -30,6 +30,16 @@ message ImportValue {
   // Exactly where a user finds this value in the provider's console/CLI --
   // shown whenever the platform must ask instead of derive.
   string where_to_find = 3;
+  // Scopes this declaration to addresses of ONE Terraform logical resource
+  // name (the `istiod` in `helm_release.istiod`). Needed when a module
+  // declares SEVERAL resources of the same type whose ID placeholders carry
+  // different values -- e.g. a control-plane module installing multiple Helm
+  // releases: each release's `{release_name}` is a different constant. A
+  // scoped declaration wins over an unscoped one for its resource; addresses
+  // with no scoped declaration fall back to the unscoped declaration of the
+  // same placeholder name. Leave empty (the common case) when the component
+  // has at most one resource per type.
+  string tofu_resource_name = 4;
 }
 
 // ImportValueDerivation is a single way to derive a placeholder value

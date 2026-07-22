@@ -89,9 +89,19 @@ type ImportValue struct {
 	Derivations []*ImportValueDerivation `protobuf:"bytes,2,rep,name=derivations,proto3" json:"derivations,omitempty"`
 	// Exactly where a user finds this value in the provider's console/CLI --
 	// shown whenever the platform must ask instead of derive.
-	WhereToFind   string `protobuf:"bytes,3,opt,name=where_to_find,json=whereToFind,proto3" json:"where_to_find,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	WhereToFind string `protobuf:"bytes,3,opt,name=where_to_find,json=whereToFind,proto3" json:"where_to_find,omitempty"`
+	// Scopes this declaration to addresses of ONE Terraform logical resource
+	// name (the `istiod` in `helm_release.istiod`). Needed when a module
+	// declares SEVERAL resources of the same type whose ID placeholders carry
+	// different values -- e.g. a control-plane module installing multiple Helm
+	// releases: each release's `{release_name}` is a different constant. A
+	// scoped declaration wins over an unscoped one for its resource; addresses
+	// with no scoped declaration fall back to the unscoped declaration of the
+	// same placeholder name. Leave empty (the common case) when the component
+	// has at most one resource per type.
+	TofuResourceName string `protobuf:"bytes,4,opt,name=tofu_resource_name,json=tofuResourceName,proto3" json:"tofu_resource_name,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ImportValue) Reset() {
@@ -141,6 +151,13 @@ func (x *ImportValue) GetDerivations() []*ImportValueDerivation {
 func (x *ImportValue) GetWhereToFind() string {
 	if x != nil {
 		return x.WhereToFind
+	}
+	return ""
+}
+
+func (x *ImportValue) GetTofuResourceName() string {
+	if x != nil {
+		return x.TofuResourceName
 	}
 	return ""
 }
@@ -340,11 +357,12 @@ const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"0dev/planton/iac/componentimportmap/v1/spec.proto\x12%dev.planton.iac.componentimportmap.v1\"d\n" +
 	"\x16ComponentImportMapSpec\x12J\n" +
-	"\x06values\x18\x01 \x03(\v22.dev.planton.iac.componentimportmap.v1.ImportValueR\x06values\"\xa5\x01\n" +
+	"\x06values\x18\x01 \x03(\v22.dev.planton.iac.componentimportmap.v1.ImportValueR\x06values\"\xd3\x01\n" +
 	"\vImportValue\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12^\n" +
 	"\vderivations\x18\x02 \x03(\v2<.dev.planton.iac.componentimportmap.v1.ImportValueDerivationR\vderivations\x12\"\n" +
-	"\rwhere_to_find\x18\x03 \x01(\tR\vwhereToFind\"\xd4\x02\n" +
+	"\rwhere_to_find\x18\x03 \x01(\tR\vwhereToFind\x12,\n" +
+	"\x12tofu_resource_name\x18\x04 \x01(\tR\x10tofuResourceName\"\xd4\x02\n" +
 	"\x15ImportValueDerivation\x12.\n" +
 	"\x12from_metadata_name\x18\x01 \x01(\bH\x00R\x10fromMetadataName\x12(\n" +
 	"\x0ffrom_spec_field\x18\x02 \x01(\tH\x00R\rfromSpecField\x12,\n" +

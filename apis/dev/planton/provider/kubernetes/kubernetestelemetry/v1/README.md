@@ -63,8 +63,8 @@ planton apply -f telemetry.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `selector.match_labels` | map | Pods/VMs (by label) this config applies to. Matched by istiod; not a foreign key. Mutually exclusive with `target_refs`. |
-| `target_refs` | list | Attach to specific resources (Gateway/Service/ServiceEntry) instead of a label selector. Max 16. Mutually exclusive with `selector`. |
-| `tracing` | list | Tracing behavior: `match`, `providers`, `random_sampling_percentage`, `disable_span_reporting`, `custom_tags`, `enable_istio_tags`. |
+| `target_refs` | list | Attach to specific resources (Gateway/Service/ServiceEntry) instead of a label selector. Max 16. Mutually exclusive with `selector`. Each `name` is a foreign key defaulting to a `KubernetesGateway` reference; pass literals with `value:`. |
+| `tracing` | list | Tracing behavior: `match`, `providers`, `random_sampling_percentage`, `disable_span_reporting`, `disable_context_propagation`, `custom_tags`, `enable_istio_tags`. |
 | `metrics` | list | Metrics behavior: `providers`, `overrides` (per-metric enable/disable + tag dimensions), `reporting_interval`. |
 | `access_logging` | list | Access-log behavior: `match`, `providers`, `disabled`, `filter` (CEL). |
 
@@ -76,7 +76,8 @@ planton apply -f telemetry.yaml
 | `providers[].name` | string | Tracing provider(s) from MeshConfig (e.g. `zipkin`). |
 | `random_sampling_percentage` | number | 0.00-100.00 (0.01% increments). |
 | `disable_span_reporting` | bool | Stop reporting spans (context propagation continues). |
-| `custom_tags` | map | Tag name -> one of `literal`, `environment`, or `header`. |
+| `disable_context_propagation` | bool | Stop propagating trace-context headers (`traceparent`/`tracestate`, `X-B3-*`) in forwarded requests; spans still report locally, downstream services start fresh traces. |
+| `custom_tags` | map | Tag name -> one of `literal`, `environment`, `header`, or `formatter` (an access-log substitution formatter expression, e.g. `%PROTOCOL%`). |
 | `enable_istio_tags` | bool | Include Istio-specific span tags (default true). |
 
 ### `metrics[]`
@@ -148,10 +149,35 @@ spec:
 ## Composing in Infra Charts
 
 `namespace` is a `StringValueOrRef`, so it can reference a `KubernetesNamespace` output via
-`valueFrom`. The `selector.match_labels` and `target_refs` are **not** foreign keys --
-istiod resolves them at runtime, so they create no automatic DAG edge. To order this
-Telemetry relative to the workloads or gateways it observes, declare the dependency on
-`metadata.relationships`:
+`valueFrom`. Each `target_refs[].name` is also a foreign key: it defaults to a
+`KubernetesGateway` reference (`status.outputs.gateway_name`), so wiring it with
+`valueFrom` gives the chart a real dependency edge from the Telemetry to the gateway it
+observes:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: edge-ns
+      fieldPath: spec.name
+  target_refs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: edge-gateway
+          fieldPath: status.outputs.gateway_name
+  tracing:
+    - random_sampling_percentage: 10
+```
+
+When the target is a Service, a ServiceEntry, or any resource not managed as a Planton
+kind, pass the literal name with `value:`. `selector.match_labels` is a plain label
+match, not a foreign key -- istiod resolves it at runtime, so it creates no automatic
+DAG edge. To order this Telemetry relative to the workloads it observes, declare the
+dependency on `metadata.relationships`:
 
 ```yaml
 metadata:

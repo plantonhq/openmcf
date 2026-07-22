@@ -16,7 +16,7 @@ import "google/protobuf/struct.proto";
 // 100% fidelity with the upstream istio.io/api EnvoyFilter
 // (networking/v1alpha3/envoy_filter.proto, served as networking.istio.io/v1alpha3 — this
 // is the only typed Istio API component still on v1alpha3; it has NOT graduated to v1),
-// pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after
+// pinned to the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly after
 // the Planton namespaced envelope (namespace); there is no nested
 // `envoy_filter` sub-message.
 //
@@ -134,28 +134,29 @@ message KubernetesEnvoyFilterConfigPatch {
 // KubernetesEnvoyFilterEnvoyConfigObjectMatch is one or more conditions to be met before a
 // patch is applied. Faithful to the upstream EnvoyConfigObjectMatch.
 //
-// The upstream `oneof object_types { listener | route_configuration | cluster }` is flattened
-// into three sibling message fields. Because flattening loses the proto `oneof`'s
-// implicit at-most-one guarantee (and the generated CRD does not re-encode it as an
-// XValidation), the rule is restored here as a message-level CEL — this preserves upstream
-// semantics, it is not extra validation.
+// The upstream `oneof object_types { listener | route_configuration | cluster | waypoint }`
+// is flattened into four sibling message fields. Because flattening loses the proto
+// `oneof`'s implicit at-most-one guarantee (and the generated CRD does not re-encode it as
+// an XValidation), the rule is restored here as a message-level CEL — this preserves
+// upstream semantics, it is not extra validation.
 message KubernetesEnvoyFilterEnvoyConfigObjectMatch {
   option (buf.validate.message).cel = {
     id: "envoy_filter_match.object_types_at_most_one"
-    message: "at most one of listener, route_configuration, or cluster may be set"
-    expression: "!(has(this.listener) && has(this.route_configuration)) && !(has(this.listener) && has(this.cluster)) && !(has(this.route_configuration) && has(this.cluster))"
+    message: "at most one of listener, route_configuration, cluster, or waypoint may be set"
+    expression: "(has(this.listener) ? 1 : 0) + (has(this.route_configuration) ? 1 : 0) + (has(this.cluster) ? 1 : 0) + (has(this.waypoint) ? 1 : 0) <= 1"
   };
 
   // The config-generation context to match on: istiod generates Envoy config in the context
-  // of a gateway, inbound sidecar traffic, or outbound sidecar traffic. Unset matches ANY
-  // (all listeners/routes/clusters in both sidecars and gateways) upstream. external standard
-  // exception — matches the Istio EnvoyFilter.PatchContext enum.
+  // of a gateway, inbound sidecar traffic, outbound sidecar traffic, or an ambient waypoint
+  // proxy. Unset matches ANY (all objects in sidecars, gateways, and waypoints) upstream.
+  // external standard exception — matches the Istio EnvoyFilter.PatchContext enum.
   optional string context = 1 [(buf.validate.field).string = {
     in: [
       "ANY",
       "SIDECAR_INBOUND",
       "SIDECAR_OUTBOUND",
-      "GATEWAY"
+      "GATEWAY",
+      "WAYPOINT"
     ]
   }];
 
@@ -170,6 +171,52 @@ message KubernetesEnvoyFilterEnvoyConfigObjectMatch {
 
   // Match on Envoy cluster attributes.
   KubernetesEnvoyFilterClusterMatch cluster = 5;
+
+  // Match on ambient waypoint-proxy attributes (a filter within the waypoint's
+  // filter chain, a service port, or a named route).
+  KubernetesEnvoyFilterWaypointMatch waypoint = 6;
+}
+
+// KubernetesEnvoyFilterWaypointMatch matches conditions on an ambient waypoint proxy's
+// generated configuration. Faithful to the upstream EnvoyFilter waypoint match member.
+message KubernetesEnvoyFilterWaypointMatch {
+  // The name of a specific filter (optionally a sub-filter within it) to apply the
+  // patch to.
+  KubernetesEnvoyFilterWaypointFilterMatch filter = 1;
+
+  // The service port to match on (1-65535).
+  optional uint32 port_number = 2 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 65535
+  }];
+
+  // Match a specific route by name (the default generated Route objects are named
+  // `default`).
+  KubernetesEnvoyFilterWaypointRouteMatch route = 3;
+}
+
+// KubernetesEnvoyFilterWaypointFilterMatch names a filter (and optionally the next-level
+// sub-filter) within the waypoint's filter chain.
+message KubernetesEnvoyFilterWaypointFilterMatch {
+  // The filter name to match on.
+  optional string name = 1;
+
+  // The next-level filter within this filter to match on.
+  KubernetesEnvoyFilterWaypointSubFilterMatch sub_filter = 2;
+}
+
+// KubernetesEnvoyFilterWaypointSubFilterMatch names the next-level filter within a
+// matched waypoint filter.
+message KubernetesEnvoyFilterWaypointSubFilterMatch {
+  // The filter name to match on.
+  optional string name = 1;
+}
+
+// KubernetesEnvoyFilterWaypointRouteMatch matches a specific route within the waypoint's
+// generated route configuration.
+message KubernetesEnvoyFilterWaypointRouteMatch {
+  // The route name to match on (default generated Route objects are named `default`).
+  optional string name = 1;
 }
 
 // KubernetesEnvoyFilterProxyMatch matches one or more properties of the proxy. Faithful to

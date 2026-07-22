@@ -1,5 +1,4 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
+name: kubernetes-envoy-filter
 runtime:
   name: go
 description: Pulumi module that provisions an Istio EnvoyFilter from a KubernetesEnvoyFilter manifest.

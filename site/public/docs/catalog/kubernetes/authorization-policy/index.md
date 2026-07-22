@@ -59,7 +59,7 @@ planton apply -f authorizationpolicy.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `selector.match_labels` | map | Pod labels selecting target workloads; omit for namespace-wide scope. Mutually exclusive with `target_refs`. |
-| `target_refs` | list | Gateway / Service / ServiceEntry resources to bind to; required for waypoints. Mutually exclusive with `selector`. |
+| `target_refs` | list | Gateway / Service / ServiceEntry resources to bind to; required for waypoints. Mutually exclusive with `selector`. Each `name` is a foreign key defaulting to a `KubernetesGateway` reference; pass literals with `value:`. |
 | `rules` | list | Match rules: `from` (source), `to` (operation), `when` (conditions). |
 | `action` | string | `ALLOW` (default), `DENY`, `AUDIT`, or `CUSTOM`. |
 | `provider.name` | string | MeshConfig extension provider for the CUSTOM action. |

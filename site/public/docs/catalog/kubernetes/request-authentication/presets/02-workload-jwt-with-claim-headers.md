@@ -50,6 +50,7 @@ backend as an HTTP header the application can read.
 |-------------|-------------|
 | `<namespace>` | Namespace the workload runs in (e.g. `finance`). |
 | `<workload>` | Value of the `app` label selecting the workload's pods (e.g. `finance`). |
-| `<issuer-url>` | The token issuer, matching the `iss` claim. |
-| `<jwks-url>` | The issuer's JWKS endpoint. |
 | `<audience>` | The required `aud` claim value for this workload (e.g. `finance-api.example.com`). |
+
+The `issuer` and `jwks_uri` values are literal examples -- replace them with your own
+identity provider's issuer (matching the token's `iss` claim) and JWKS endpoint.

@@ -407,7 +407,17 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 		return DependencyState{}, errors.Errorf("dependency %q pulumi module not found at %s", dep.KindSlug, moduleDir)
 	}
 
-	stackLabel := "dep-" + dep.KindSlug
+	manifestName, err := manifestMetadataName(dep.ManifestPath)
+	if err != nil {
+		return DependencyState{}, errors.Wrapf(err, "failed to read manifest name for dependency %q", dep.KindSlug)
+	}
+
+	// The stack label carries the MANIFEST name, not just the kind slug: a
+	// scenario may chain several extra-instance fixtures of one kind (e.g. a
+	// meshed client and backend, both KubernetesDeployment), and kind-only
+	// labels would make the second fixture's `pulumi up` land on the first
+	// fixture's stack — silently REPLACING it instead of adding an instance.
+	stackLabel := "dep-" + dep.KindSlug + "-" + manifestName
 	if docIndex > 0 {
 		stackLabel = fmt.Sprintf("%s-%d", stackLabel, docIndex)
 	}
@@ -416,13 +426,8 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 		stackName = stackName[:50]
 	}
 
-	fmt.Printf("  [deps] Deploying dependency %s...\n", dep.KindSlug)
+	fmt.Printf("  [deps] Deploying dependency %s (%s)...\n", dep.KindSlug, manifestName)
 	start := time.Now()
-
-	manifestName, err := manifestMetadataName(dep.ManifestPath)
-	if err != nil {
-		return DependencyState{}, errors.Wrapf(err, "failed to read manifest name for dependency %q", dep.KindSlug)
-	}
 
 	stackInputPath, err := BuildStackInput(dep.ManifestPath, moduleDir)
 	if err != nil {

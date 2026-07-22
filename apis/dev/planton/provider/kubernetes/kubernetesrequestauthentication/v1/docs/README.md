@@ -20,10 +20,10 @@ authentication, pair it with an AuthorizationPolicy that requires `requestPrinci
 ## 2. Source of truth and version
 
 Translated proto-to-proto from the upstream `istio.io/api` clone pinned to tag
-**1.26.8** (`security/v1beta1/request_authentication.proto`). The local clone is
+**1.30.3** (`security/v1beta1/request_authentication.proto`). The local clone is
 authoritative; no specs are pulled from the internet. The crd2pulumi typed
 SDK and the CRDs installed by `KubernetesIstioBaseCrds` are likewise generated from
-Istio `release-1.26`, so the proto, the typed Pulumi resource, and the cluster CRD
+Istio tag `1.30.3`, so the proto, the typed Pulumi resource, and the cluster CRD
 all agree on the schema.
 
 This component uses a repeated `jwt_rules` list with nested repeated `from_headers`
@@ -56,6 +56,22 @@ omitted means "match every workload in the namespace", which is valid. So this i
 (`!(has(this.selector) && size(this.target_refs) > 0)`) over the two public fields.
 The hidden singular `targetRef` is not modeled.
 
+### Issuer is optional when `jwks_uri` locates the keys
+
+`jwt_rules[].issuer` is `optional`: a rule may omit it when `jwks_uri` is set, in
+which case tokens from any issuer are validated against the fixed key set. At least
+one of `issuer` or `jwks_uri` must be present -- without either, the verifier has no
+way to locate the signing keys. This mirrors the istiod webhook rejection "issuer or
+jwksUri must be non-empty" and is enforced by the message-level CEL
+`request_authentication_jwt_rule.issuer_or_jwks_uri`.
+
+### Space-delimited claims
+
+`jwt_rules[].space_delimited_claims` lists up to 64 claim names whose string values
+are treated as SPACE-delimited lists (the OAuth2 `scope` claim convention, e.g.
+`"read write admin"`) when matched by authorization policies and claim-to-header
+operations.
+
 ### Durations are strings
 
 `JWTRule.timeout` is a `google.protobuf.Duration` upstream. It is modeled as an
@@ -75,6 +91,7 @@ is re-expressed with portable CEL primitives that preserve the validated outcome
 |-----------------|-------------|
 | `oneof(selector, targetRef, targetRefs)` | `!(has(this.selector) && size(this.target_refs) > 0)` |
 | `oneof(jwksUri, jwks)` | `!(has(this.jwks_uri) && has(this.jwks))` |
+| istiod webhook: "issuer or jwksUri must be non-empty" | `has(this.issuer) \|\| has(this.jwks_uri)` |
 | `url(self).getScheme() in ['http','https']` | `this == '' \|\| this.startsWith('http://') \|\| this.startsWith('https://')` |
 | `duration(self) >= duration('1ms')` | same (`duration()` is supported) |
 
@@ -82,8 +99,9 @@ is re-expressed with portable CEL primitives that preserve the validated outcome
 
 No closed-enum fields here (unlike PeerAuthentication's `mtls.mode`); the only
 constrained scalars are issuer/header patterns and the jwks_uri scheme. The shared
-`KubernetesIstioApiPolicyTargetReference` carries upstream's group/kind/name patterns
-and the "cross-namespace not supported" CEL (`namespace` must be empty in 1.26).
+`KubernetesIstioApiPolicyTargetReference` carries upstream's group/kind patterns
+and the "cross-namespace not supported" CEL (`namespace` must be empty; the target is
+resolved in the policy's own namespace).
 
 ### Validation rules (each has accept + reject coverage in `spec_test.go`)
 
@@ -93,7 +111,8 @@ and the "cross-namespace not supported" CEL (`namespace` must be empty in 1.26).
 | `request_authentication_jwt_rule.jwks_uri_xor_jwks` (message-level) | Upstream jwks_uri/jwks XValidation. |
 | `request_authentication_jwt_rule.jwks_uri_scheme` | Upstream jwks_uri URL-scheme XValidation. |
 | `request_authentication_jwt_rule.timeout_min` | Upstream timeout `>= 1ms` XValidation. |
-| `issuer` non-empty, `from_headers[].name` non-empty, `output_claim_to_headers[].{header,claim}` (header pattern `^[-_A-Za-z0-9]+$`) | Upstream field constraints. |
+| `request_authentication_jwt_rule.issuer_or_jwks_uri` (message-level) | istiod webhook "issuer or jwksUri must be non-empty" rejection. |
+| `issuer` non-empty when set, `from_headers[].name` non-empty, `output_claim_to_headers[].{header,claim}` (header pattern `^[-_A-Za-z0-9]+$`), `space_delimited_claims` max 64 / non-empty items | Upstream field constraints. |
 | `target_refs` max 16; `KubernetesIstioApiPolicyTargetReference` group/kind/name patterns + no-cross-namespace | Upstream PolicyTargetReference + kubebuilder MaxItems. |
 | selector `match_labels` non-empty keys / no-wildcard keys / no-wildcard values | Shared `istio_api.proto` WorkloadSelector. |
 
@@ -102,14 +121,20 @@ and the "cross-namespace not supported" CEL (`namespace` must be empty in 1.26).
 - **`namespace`** is the one true foreign key: `StringValueOrRef` ->
   `KubernetesNamespace` (`spec.name`). Literal or `valueFrom`; creates a real DAG
   edge.
-- **`selector.match_labels`** and **`target_refs`** are plain runtime references, NOT
-  foreign keys. istiod resolves them against the cluster at runtime; neither creates
-  an automatic DAG edge. Wrapping them in `StringValueOrRef` would break upstream
-  fidelity (a label map / a multi-field reference, not a scalar) and distort the
-  typed CRD shape. An infra-chart author who needs ordering must declare it on
-  `metadata.relationships` (`uses`/`depends_on` -> KubernetesDeployment /
-  KubernetesGateway / KubernetesService / KubernetesServiceEntry). See the
-  component README's "Composing in Infra Charts" section.
+- **`target_refs[].name`** is also a foreign key: `StringValueOrRef` defaulting to a
+  `KubernetesGateway` reference (`status.outputs.gateway_name`), since the dominant
+  target for these policies is a Gateway (ingress authn). Wiring it with `valueFrom`
+  gives the chart a real dependency edge from the policy to the gateway it protects.
+  When the target is a Service, a ServiceEntry, or any resource not managed as a
+  Planton kind, the literal name is passed with `value:` -- istiod resolves
+  group/kind/name against the cluster at runtime either way.
+- **`selector.match_labels`** is a plain label match, NOT a foreign key. istiod
+  matches it against pod labels at runtime; it creates no automatic DAG edge.
+  Wrapping it in `StringValueOrRef` would break upstream fidelity (a label map, not
+  a scalar) and distort the typed CRD shape. An infra-chart author who needs
+  ordering after the selected workloads must declare it on `metadata.relationships`
+  (`depends_on` -> KubernetesDeployment). See the component README's "Composing in
+  Infra Charts" section.
 
 ## 5. IaC implementation
 
@@ -124,11 +149,13 @@ Both engines are feature-equal and emit the same `security.istio.io/v1`
   `output_claim_to_headers`, `selector`, and `target_refs` are only attached when
   present; optional scalar fields use the proto3 `optional` pointer to distinguish
   unset from empty.
-- **Terraform** uses `kubernetes_manifest` with a fully-typed `variable "spec"` and a
-  null-pruned `locals.tf`. Each list element is assembled with `merge()` so only the
-  fields the user set reach the manifest; nested optionals are read through `?:`
-  guards (HCL `&&` does not short-circuit). Snake_case spec fields map to the CRD's
-  camelCase (`jwksUri`, `fromHeaders`, `outputClaimToHeaders`, `targetRefs`).
+- **Terraform** uses `kubectl_manifest` (alekc/kubectl) applied server-side, with a
+  pass-through `variable "spec"` typed `any`: the platform's proto-to-tfvars
+  converter emits the manifest-shaped (camelCase, null-pruned) spec with
+  `StringValueOrRef` foreign keys (`namespace`, `target_refs[].name`) resolved to
+  literal strings, so the module hands it to the cluster verbatim. `locals.tf` only
+  strips the Planton `namespace` key (which maps to `metadata.namespace`) and
+  renders the identity labels.
 
 ## 6. E2E
 
@@ -154,4 +181,4 @@ separate follow-up project.
 
 - [Istio RequestAuthentication reference](https://istio.io/latest/docs/reference/config/security/request_authentication/)
 - [Istio JWT / end-user authentication task](https://istio.io/latest/docs/tasks/security/authentication/authn-policy/#end-user-authentication)
-- Upstream proto: `istio.io/api` `security/v1beta1/request_authentication.proto` @ `1.26.8`
+- Upstream proto: `istio.io/api` `security/v1beta1/request_authentication.proto` @ `1.30.3`

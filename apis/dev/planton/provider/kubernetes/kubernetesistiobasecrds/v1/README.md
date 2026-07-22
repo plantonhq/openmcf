@@ -3,7 +3,16 @@
 Installs the **Istio CRDs** (the `istio/base` Custom Resource Definitions) on a target
 Kubernetes cluster — **CRDs only, no istiod and no controller**.
 
-This is the lightweight prerequisite for the typed Istio API components:
+## When NOT to Use This
+
+**If you want a running mesh, use KubernetesIstio instead.** That component owns
+everything, CRDs included — deploying both on one cluster is unnecessary (though safe:
+both apply the CRDs via server-side apply, so they co-own rather than conflict).
+
+## When to Use This
+
+This is the lightweight prerequisite for the typed Istio API components on clusters that
+use the Istio policy/config APIs **without running a mesh**:
 
 - `KubernetesDestinationRule`
 - `KubernetesServiceEntry`
@@ -13,23 +22,30 @@ This is the lightweight prerequisite for the typed Istio API components:
 - `KubernetesTelemetry`
 - `KubernetesEnvoyFilter`
 
-Each of those kinds declares `prerequisites: [KubernetesIstioBaseCrds]`, so the platform
-(and the E2E harness) installs these CRDs before applying any Istio custom resource.
+Those kinds only need the CRDs present so their objects can be applied and server-side
+validated — they do not need a control plane. Each declares this component as its
+prerequisite. It is the Istio analog of `KubernetesGatewayApiCrds` for the Gateway API
+family.
 
-It is the Istio analog of `KubernetesGatewayApiCrds` for the Gateway API family.
+## Upgrade Path to a Full Mesh
 
-## Why there is no `version` field
+When a mesh is later wanted on a CRDs-only cluster, deploy `KubernetesIstio` — a plain
+redeploy. Both kinds apply the CRDs via **server-side apply** (never Helm-owned), so the
+full-mesh install reconciles the existing CRDs in place instead of fighting over
+ownership. From that point `KubernetesIstio` owns everything, CRDs included.
 
-The installed CRD schema is **pinned** to the Istio version this Planton release's typed
-SDK was generated against (`pkg/kubernetes/kubernetestypes/Makefile` `istio_release`, and
-the IaC module's `IstioRelease` constant). The typed custom resources are frozen to that
-SDK version, so a user-selectable CRD version would be incoherent — a mismatched CRD set
-would silently prune or reject fields. To move the Istio version, bump the SDK pin and
-this component's constant together (they carry a cross-reference breadcrumb).
+## Why There Is No `version` Field
 
-> If you want to run the **full Istio mesh** (istiod + ingress gateway), use
-> `KubernetesIstio` (kind 825) instead — that component is a Helm install with a
-> user-facing `version` field. `KubernetesIstioBaseCrds` installs only the CRDs.
+The installed CRD schema is **pinned** to the Istio version the typed SDK was generated
+against. The typed custom resources are frozen to that schema, so a user-selectable CRD
+version would be incoherent — a mismatched CRD set would silently prune or reject
+fields. The pin is a build-time constant in both IaC modules, moved in lockstep with the
+SDK pin.
+
+The pin is always an exact release **tag** (e.g. `1.30.3`), never a release branch: a
+branch ref moves as patches land, so the same deployed resource would install different
+CRD schemas at different times — tag pinning keeps installs reproducible and exactly
+matched to the generated SDK.
 
 ## Example
 
@@ -41,10 +57,10 @@ metadata:
 spec: {}
 ```
 
-## What gets installed
+## What Gets Installed
 
-The upstream `istio/base` `crd-all.gen.yaml` bundle for the pinned release, which contains
-the `networking.istio.io`, `security.istio.io`, and `telemetry.istio.io` (and related)
+The upstream `istio/base` `crd-all.gen.yaml` bundle at the pinned tag, containing the
+`networking.istio.io`, `security.istio.io`, and `telemetry.istio.io` (and related)
 CustomResourceDefinitions.
 
 ## IaC

@@ -50,7 +50,7 @@ var _ = ginkgo.Describe("KubernetesDestinationRule Validation Tests", func() {
 			},
 			Spec: &KubernetesDestinationRuleSpec{
 				Namespace: literal("default"),
-				Host:      "reviews.prod.svc.cluster.local",
+				Host:      literal("reviews.prod.svc.cluster.local"),
 			},
 		}
 	})
@@ -214,7 +214,7 @@ var _ = ginkgo.Describe("KubernetesDestinationRule Validation Tests", func() {
 
 		ginkgo.Context("without a host", func() {
 			ginkgo.It("should return a validation error", func() {
-				input.Spec.Host = ""
+				input.Spec.Host = nil
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
 		})
@@ -445,6 +445,55 @@ var _ = ginkgo.Describe("KubernetesDestinationRule Validation Tests", func() {
 				}
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
+		})
+
+		ginkgo.Context("with a cookie attribute missing its name", func() {
+			ginkgo.It("should return a validation error", func() {
+				input.Spec.TrafficPolicy = &KubernetesDestinationRuleTrafficPolicy{
+					LoadBalancer: &KubernetesDestinationRuleLoadBalancerSettings{
+						ConsistentHash: &KubernetesDestinationRuleConsistentHashLb{
+							HttpCookie: &KubernetesDestinationRuleHttpCookie{
+								Name:       "session",
+								Attributes: []*KubernetesDestinationRuleHttpCookieAttribute{{Value: ptr("Strict")}},
+							},
+						},
+					},
+				}
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+			})
+		})
+	})
+
+	ginkgo.Describe("When a retry budget is configured", func() {
+		ginkgo.It("accepts percent and min_retry_concurrency", func() {
+			input.Spec.TrafficPolicy = &KubernetesDestinationRuleTrafficPolicy{
+				RetryBudget: &KubernetesDestinationRuleRetryBudget{
+					Percent:             ptr(20.0),
+					MinRetryConcurrency: ptr(uint32(3)),
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a value-less cookie attribute (e.g. Secure)", func() {
+			input.Spec.TrafficPolicy = &KubernetesDestinationRuleTrafficPolicy{
+				LoadBalancer: &KubernetesDestinationRuleLoadBalancerSettings{
+					ConsistentHash: &KubernetesDestinationRuleConsistentHashLb{
+						HttpCookie: &KubernetesDestinationRuleHttpCookie{
+							Name:       "session",
+							Attributes: []*KubernetesDestinationRuleHttpCookieAttribute{{Name: "Secure"}},
+						},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a percent above 100", func() {
+			input.Spec.TrafficPolicy = &KubernetesDestinationRuleTrafficPolicy{
+				RetryBudget: &KubernetesDestinationRuleRetryBudget{Percent: ptr(101.0)},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 	})
 

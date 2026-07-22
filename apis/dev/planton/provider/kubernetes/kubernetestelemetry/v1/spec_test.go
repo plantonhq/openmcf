@@ -39,11 +39,11 @@ func valueFrom(kind cloudresourcekind.CloudResourceKind, name, fieldPath string)
 func ptr[T any](v T) *T { return &v }
 
 // targetRef returns a same-namespace PolicyTargetReference (namespace left empty,
-// as upstream requires in the 1.26 line).
+// as upstream requires in the 1.30 line).
 func targetRef(kind, name string) *kubernetes.KubernetesIstioApiPolicyTargetReference {
 	return &kubernetes.KubernetesIstioApiPolicyTargetReference{
 		Kind: kind,
-		Name: name,
+		Name: literal(name),
 	}
 }
 
@@ -260,7 +260,7 @@ var _ = ginkgo.Describe("KubernetesTelemetry Validation Tests", func() {
 		ginkgo.Context("without a kind", func() {
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.TargetRefs = []*kubernetes.KubernetesIstioApiPolicyTargetReference{
-					{Name: "edge-gateway"},
+					{Name: literal("edge-gateway")},
 				}
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
@@ -320,6 +320,47 @@ var _ = ginkgo.Describe("KubernetesTelemetry Validation Tests", func() {
 					},
 				}}
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when formatter is combined with literal", func() {
+				input.Spec.Tracing = []*KubernetesTelemetryTracing{{
+					CustomTags: map[string]*KubernetesTelemetryCustomTag{
+						"bad": {
+							Literal:   &KubernetesTelemetryCustomTagLiteral{Value: "foo"},
+							Formatter: &KubernetesTelemetryCustomTagFormatter{Value: "%PROTOCOL%"},
+						},
+					},
+				}}
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a formatter source", func() {
+			ginkgo.It("should accept a formatter expression tag", func() {
+				input.Spec.Tracing = []*KubernetesTelemetryTracing{{
+					CustomTags: map[string]*KubernetesTelemetryCustomTag{
+						"proto": {Formatter: &KubernetesTelemetryCustomTagFormatter{Value: "%PROTOCOL%"}},
+					},
+				}}
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a formatter with an empty expression", func() {
+				input.Spec.Tracing = []*KubernetesTelemetryTracing{{
+					CustomTags: map[string]*KubernetesTelemetryCustomTag{
+						"proto": {Formatter: &KubernetesTelemetryCustomTagFormatter{Value: ""}},
+					},
+				}}
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with tracing context-propagation control", func() {
+			ginkgo.It("should accept disable_context_propagation", func() {
+				input.Spec.Tracing = []*KubernetesTelemetryTracing{{
+					DisableContextPropagation: ptr(true),
+				}}
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 			})
 		})
 

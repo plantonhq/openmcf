@@ -68,9 +68,12 @@ func createEnvoyFilter(
 	if targetRefs := spec.GetTargetRefs(); len(targetRefs) > 0 {
 		refArgs := istionetworkingv1alpha3.EnvoyFilterSpecTargetRefsArray{}
 		for _, ref := range targetRefs {
+			// name is a StringValueOrRef foreign key (default: a KubernetesGateway's
+			// name output); the platform resolves valueFrom references before the
+			// module runs, so GetValue() always carries the literal name here.
 			args := istionetworkingv1alpha3.EnvoyFilterSpecTargetRefsArgs{
 				Kind: pulumi.String(ref.GetKind()),
-				Name: pulumi.String(ref.GetName()),
+				Name: pulumi.String(ref.GetName().GetValue()),
 			}
 			if ref.GetGroup() != "" {
 				args.Group = pulumi.String(ref.GetGroup())
@@ -139,6 +142,36 @@ func buildMatchArgs(match *kubernetesenvoyfilterv1.KubernetesEnvoyFilterEnvoyCon
 	}
 	if cluster := match.GetCluster(); cluster != nil {
 		args.Cluster = buildClusterMatchArgs(cluster)
+	}
+	if waypoint := match.GetWaypoint(); waypoint != nil {
+		args.Waypoint = buildWaypointMatchArgs(waypoint)
+	}
+	return args
+}
+
+// buildWaypointMatchArgs maps the ambient waypoint match arm (a filter within the
+// waypoint's chain, a service port, or a named route) to the typed SDK args.
+func buildWaypointMatchArgs(waypoint *kubernetesenvoyfilterv1.KubernetesEnvoyFilterWaypointMatch) istionetworkingv1alpha3.EnvoyFilterSpecConfigPatchesMatchWaypointArgs {
+	args := istionetworkingv1alpha3.EnvoyFilterSpecConfigPatchesMatchWaypointArgs{}
+	if filter := waypoint.GetFilter(); filter != nil {
+		filterArgs := istionetworkingv1alpha3.EnvoyFilterSpecConfigPatchesMatchWaypointFilterArgs{}
+		if filter.Name != nil {
+			filterArgs.Name = pulumi.String(filter.GetName())
+		}
+		if sub := filter.GetSubFilter(); sub != nil && sub.Name != nil {
+			filterArgs.SubFilter = istionetworkingv1alpha3.EnvoyFilterSpecConfigPatchesMatchWaypointFilterSubFilterArgs{
+				Name: pulumi.String(sub.GetName()),
+			}
+		}
+		args.Filter = filterArgs
+	}
+	if waypoint.PortNumber != nil {
+		args.PortNumber = pulumi.Int(int(waypoint.GetPortNumber()))
+	}
+	if route := waypoint.GetRoute(); route != nil && route.Name != nil {
+		args.Route = istionetworkingv1alpha3.EnvoyFilterSpecConfigPatchesMatchWaypointRouteArgs{
+			Name: pulumi.String(route.GetName()),
+		}
 	}
 	return args
 }

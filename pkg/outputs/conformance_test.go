@@ -630,6 +630,104 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"reference_grant_name", "namespace"},
 		},
 		{
+			// KubernetesIstio: the control-plane handles downstream resources
+			// compose against — the GatewayClass name (KubernetesGateway seam),
+			// the trust domain (AuthorizationPolicy principals), the istiod
+			// discovery Service, and the data plane mode — from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesIstio",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesIstio,
+			rawOutputs: map[string]interface{}{
+				"namespace":           "istio-system",
+				"istiod_service_name": "istiod",
+				"revision":            "default",
+				"gateway_class_name":  "istio",
+				"trust_domain":        "cluster.local",
+				"dataplane_mode":      "sidecar",
+			},
+			mustPopulate: []string{
+				"namespace", "istiod_service_name", "revision",
+				"gateway_class_name", "trust_domain", "dataplane_mode",
+			},
+		},
+		{
+			// KubernetesIstioBaseCrds: the installed-release record from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesIstioBaseCrds",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesIstioBaseCrds,
+			rawOutputs: map[string]interface{}{
+				"installed_release":      "1.30.3",
+				"installed_manifest_url": "https://raw.githubusercontent.com/istio/istio/1.30.3/manifests/charts/base/files/crd-all.gen.yaml",
+			},
+			mustPopulate: []string{"installed_release", "installed_manifest_url"},
+		},
+		{
+			// KubernetesDestinationRule: CR identity from both engines must
+			// land on the StackOutputs proto (the typed Istio CR kinds share
+			// this shape).
+			name: "KubernetesDestinationRule",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesDestinationRule,
+			rawOutputs: map[string]interface{}{
+				"destination_rule_name": "reviews-circuit-breaker",
+				"namespace":             "team-alpha",
+			},
+			mustPopulate: []string{"destination_rule_name", "namespace"},
+		},
+		{
+			name: "KubernetesServiceEntry",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesServiceEntry,
+			rawOutputs: map[string]interface{}{
+				"service_entry_name": "external-api",
+				"namespace":          "team-alpha",
+			},
+			mustPopulate: []string{"service_entry_name", "namespace"},
+		},
+		{
+			name: "KubernetesPeerAuthentication",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPeerAuthentication,
+			rawOutputs: map[string]interface{}{
+				"peer_authentication_name": "namespace-strict-mtls",
+				"namespace":                "team-alpha",
+			},
+			mustPopulate: []string{"peer_authentication_name", "namespace"},
+		},
+		{
+			name: "KubernetesRequestAuthentication",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesRequestAuthentication,
+			rawOutputs: map[string]interface{}{
+				"request_authentication_name": "jwt-auth",
+				"namespace":                   "team-alpha",
+			},
+			mustPopulate: []string{"request_authentication_name", "namespace"},
+		},
+		{
+			name: "KubernetesAuthorizationPolicy",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesAuthorizationPolicy,
+			rawOutputs: map[string]interface{}{
+				"authorization_policy_name": "require-jwt",
+				"namespace":                 "team-alpha",
+			},
+			mustPopulate: []string{"authorization_policy_name", "namespace"},
+		},
+		{
+			name: "KubernetesTelemetry",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesTelemetry,
+			rawOutputs: map[string]interface{}{
+				"telemetry_name": "mesh-default-tracing",
+				"namespace":      "istio-system",
+			},
+			mustPopulate: []string{"telemetry_name", "namespace"},
+		},
+		{
+			name: "KubernetesEnvoyFilter",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesEnvoyFilter,
+			rawOutputs: map[string]interface{}{
+				"envoy_filter_name": "grpc-web-cors",
+				"namespace":         "istio-system",
+			},
+			mustPopulate: []string{"envoy_filter_name", "namespace"},
+		},
+		{
 			// KubernetesManifest: the anchor namespace + the applied-resource
 			// inventory (a repeated string derived from the input YAML) from
 			// both engines must land on the StackOutputs proto.

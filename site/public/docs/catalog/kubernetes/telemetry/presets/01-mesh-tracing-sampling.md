@@ -46,5 +46,7 @@ sample rate and tags declaratively.
 | Placeholder | Description |
 |-------------|-------------|
 | `<root-namespace>` | The Istio root/config namespace (usually `istio-system`). |
-| `<sample-percentage>` | Trace sample rate, e.g. `10`. |
-| `<tag-value>` | A literal value to stamp on every span (e.g. your cluster name). |
+
+The `random_sampling_percentage` (`10.0`) and the `cluster` tag's literal value
+(`prod-cluster`) are example values -- replace them with your own sample rate and
+span-tag value (e.g. your cluster name).

@@ -1,3 +1,6 @@
+# The default posture: sidecar data plane, chart-managed istiod autoscaling.
+# The verifier asserts istiod Available + the Istio CRDs Established — the
+# preconditions every mesh-config apply and every injection depends on.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIstio
 metadata:
@@ -6,11 +9,3 @@ spec:
   namespace:
     value: istio-system
   create_namespace: true
-  container:
-    resources:
-      requests:
-        cpu: "50m"
-        memory: "100Mi"
-      limits:
-        cpu: "500m"
-        memory: "512Mi"

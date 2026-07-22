@@ -63,8 +63,6 @@ var helmTier2Kinds = map[string]bool{
 	"kuberneteslocust":   true,
 	"kubernetessignoz":   true,
 	"kuberneteskeycloak": true,
-	// Tier 4 Helm applications with configurable namespace
-	"kubernetesistio": true,
 }
 
 // crdInstallKinds maps manifest kind values (lowercased) to their expected CRD
@@ -128,7 +126,7 @@ var gatewayApiKinds = map[string]gatewayApiCustomResource{
 
 // istioApiKinds maps manifest kind values (lowercased) to the fully-qualified
 // kubectl resource (plural.group) for the typed Istio API deployment components
-// (861-867). Like the Gateway API kinds, these components do not run pods;
+// (852-858). Like the Gateway API kinds, these components do not run pods;
 // verification confirms the CR itself exists after apply and is gone after
 // destroy. The Istio CRDs are installed by the KubernetesIstioBaseCrds registry
 // prerequisite before the component applies. All seven Istio kinds are
@@ -340,6 +338,22 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			SecretName: secretName,
 		}, nil
 
+	// Istio control-plane installation: istiod Available + the Istio CRDs
+	// Established; ambient scenarios additionally require the istio-cni and
+	// ztunnel DaemonSets fully ready. The istiod name carries the revision
+	// suffix when the scenario names one.
+	case "kubernetesistio":
+		istiodName := "istiod"
+		if revision, _ := manifestSpecString(manifestPath, "revision"); revision != "" {
+			istiodName = "istiod-" + revision
+		}
+		dataplaneMode, _ := manifestSpecString(manifestPath, "dataplaneMode")
+		return &IstioInstallVerifier{
+			Namespace:  info.Namespace,
+			IstiodName: istiodName,
+			Ambient:    dataplaneMode == "ambient",
+		}, nil
+
 	// ExternalDNS installation: the controller Deployment must be Available
 	// (fullname pinned to metadata.name — multi-instance per cluster is
 	// first-class, so the release's own Deployment is the contract, not the
@@ -449,6 +463,20 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 				CRDNames:      crdNames,
 			}, nil
 		}
+		// HTTPRoute: scenarios that install a real Gateway API implementation
+		// (KubernetesIstio prerequisite) get the behavioral verifier — the
+		// route Accepted, its Gateway Programmed, and a live request routed
+		// through the auto-provisioned gateway. Scenarios without it keep the
+		// object as the verifiable contract.
+		if component == "kuberneteshttproute" && manifestHasPrerequisite(manifestPath, "KubernetesIstio") {
+			hostname, _ := manifestSpecFirstString(manifestPath, "hostnames")
+			return &GatewayRoutingBehavioralVerifier{
+				Namespace:   info.Namespace,
+				RouteName:   info.Name,
+				GatewayName: "e2e-istio-gw",
+				Hostname:    hostname,
+			}, nil
+		}
 		if gw, ok := gatewayApiKinds[component]; ok {
 			namespace := info.Namespace
 			if gw.clusterScoped {
@@ -458,6 +486,19 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 				Namespace: namespace,
 				Kind:      gw.resource,
 				Name:      info.Name,
+			}, nil
+		}
+		// AuthorizationPolicy: scenarios that install a real mesh
+		// (KubernetesIstio prerequisite) get the behavioral verifier — a
+		// meshed client's request must actually be DENIED (403) and succeed
+		// again once the policy is destroyed. Scenarios without it keep the
+		// object as the verifiable contract.
+		if component == "kubernetesauthorizationpolicy" && manifestHasPrerequisite(manifestPath, "KubernetesIstio") {
+			return &AuthzDenyBehavioralVerifier{
+				Namespace:        info.Namespace,
+				PolicyName:       info.Name,
+				ClientDeployment: "e2e-authz-client",
+				BackendURL:       "http://e2e-authz-backend." + info.Namespace + ".svc.cluster.local/",
 			}, nil
 		}
 		if resource, ok := istioApiKinds[component]; ok {

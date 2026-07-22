@@ -14,7 +14,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 //
 // 100% fidelity with the upstream istio.io/api ServiceEntry
 // (networking/v1alpha3/service_entry.proto, served as networking.istio.io/v1), pinned to
-// the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
+// the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly after the
 // Planton namespaced envelope (namespace); there is no nested
 // `service_entry` sub-message.
 //
@@ -46,6 +46,30 @@ message KubernetesServiceEntrySpec {
     id: "service_entry.dns_round_robin_single_endpoint"
     message: "DNS_ROUND_ROBIN resolution allows at most one endpoint"
     expression: "!(has(this.resolution) && this.resolution == 'DNS_ROUND_ROBIN' && size(this.endpoints) > 1)"
+  };
+  // The four DYNAMIC_DNS rules below mirror the istiod validating webhook (which
+  // rejects at apply time what the CRD schema alone cannot express): dynamic DNS
+  // forward-proxying derives destinations purely from wildcard hosts, so literal
+  // hosts, virtual addresses, and static endpoints are all contradictions.
+  option (buf.validate.message).cel = {
+    id: "service_entry.dynamic_dns_wildcard_hosts"
+    message: "every host must be wildcarded (e.g. '*.example.com') when resolution is DYNAMIC_DNS"
+    expression: "!(has(this.resolution) && this.resolution == 'DYNAMIC_DNS') || this.hosts.all(h, h.startsWith('*'))"
+  };
+  option (buf.validate.message).cel = {
+    id: "service_entry.dynamic_dns_no_addresses"
+    message: "addresses cannot be set when resolution is DYNAMIC_DNS — destinations are derived from the wildcard hosts"
+    expression: "!(has(this.resolution) && this.resolution == 'DYNAMIC_DNS') || size(this.addresses) == 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "service_entry.dynamic_dns_no_endpoints"
+    message: "endpoints cannot be set when resolution is DYNAMIC_DNS — destination IPs are resolved from the requested hostname"
+    expression: "!(has(this.resolution) && this.resolution == 'DYNAMIC_DNS') || size(this.endpoints) == 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "service_entry.dynamic_dns_http_family_ports"
+    message: "only HTTP, TLS, GRPC, and HTTP2 port protocols are supported when resolution is DYNAMIC_DNS"
+    expression: "!(has(this.resolution) && this.resolution == 'DYNAMIC_DNS') || this.ports.all(p, has(p.protocol) && (p.protocol == 'HTTP' || p.protocol == 'TLS' || p.protocol == 'GRPC' || p.protocol == 'HTTP2'))"
   };
   option (buf.validate.message).cel = {
     id: "service_entry.port_numbers_unique"
@@ -113,13 +137,17 @@ message KubernetesServiceEntrySpec {
   // How the sidecar/proxy resolves the service's endpoint IPs. Unset defaults to NONE
   // upstream. NONE forwards to the original destination IP (no endpoints); STATIC uses the
   // IPs in `endpoints`; DNS resolves the hosts (or endpoint addresses) asynchronously;
-  // DNS_ROUND_ROBIN is like DNS but pins to the first resolved IP per new connection.
+  // DNS_ROUND_ROBIN is like DNS but pins to the first resolved IP per new connection;
+  // DYNAMIC_DNS resolves the ACTUAL requested hostname at request time (a dynamic
+  // forward proxy for wildcard hosts — HTTP-family and TLS ports only, no addresses
+  // or endpoints; enforced above, mirroring the istiod webhook).
   optional string resolution = 7 [(buf.validate.field).string = {
     in: [
       "NONE",
       "STATIC",
       "DNS",
-      "DNS_ROUND_ROBIN"
+      "DNS_ROUND_ROBIN",
+      "DYNAMIC_DNS"
     ]
   }];
 

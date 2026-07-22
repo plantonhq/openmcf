@@ -3,14 +3,11 @@ kind: KubernetesIstio
 metadata:
   name: my-istio
 spec:
+  # Control-plane namespace ("istio-system" by convention).
   namespace:
     value: istio-system
   createNamespace: true
-  container:
-    resources:
-      requests:
-        cpu: 50m
-        memory: 100Mi
-      limits:
-        cpu: 1000m
-        memory: 1Gi
+  # Classic sidecar data plane (the default): namespaces opt in to injection
+  # with the istio-injection=enabled label.
+  dataplaneMode: sidecar
+  # istiod autoscales via the chart's HPA by default (min 1 / max 5 at 80% CPU).

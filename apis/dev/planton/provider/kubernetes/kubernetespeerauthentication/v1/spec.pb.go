@@ -30,7 +30,7 @@ const (
 //
 // 100% fidelity with the upstream istio.io/api PeerAuthentication
 // (security/v1beta1/peer_authentication.proto, served as security.istio.io/v1),
-// pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened
+// pinned to the 1.30 line (tag 1.30.3). Upstream spec fields are flattened
 // directly after the Planton namespaced envelope (namespace);
 // there is no nested `peer_authentication` sub-message.
 //

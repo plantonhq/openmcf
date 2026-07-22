@@ -51,6 +51,22 @@ var kubernetesTier1Components = []string{
 	"kubernetesudproute",
 	"kubernetestlsroute",
 	"kubernetesreferencegrant",
+	// Istio family. KubernetesIstio installs the control plane (istiod + the
+	// Istio CRDs, plus cni + ztunnel in ambient mode); KubernetesIstioBaseCrds
+	// installs the CRDs-only bundle the seven typed CR kinds declare as a
+	// registry prerequisite. The httproute behavioral-routing scenario and the
+	// authorizationpolicy behavioral-deny scenario chain KubernetesIstio as a
+	// fixture — istiod is the catalog's first in-catalog Gateway API
+	// implementation, so live routing and live L7 enforcement are proven here.
+	"kubernetesistio",
+	"kubernetesistiobasecrds",
+	"kubernetespeerauthentication",
+	"kubernetesrequestauthentication",
+	"kubernetesauthorizationpolicy",
+	"kubernetesserviceentry",
+	"kubernetesdestinationrule",
+	"kubernetesenvoyfilter",
+	"kubernetestelemetry",
 }
 
 // Kubernetes Tier 3 components: operator-dependent. Each declares its operator
@@ -80,21 +96,6 @@ var kubernetesTier4Components = []string{
 	"kubernetesrookcephoperator",
 	"kubernetestekton",
 	"kubernetestektonoperator",
-	"kubernetesistio",
-	// Istio base CRDs installer: the CRDs-only prerequisite for the typed
-	// Istio API components; analog of kubernetesgatewayapicrds.
-	"kubernetesistiobasecrds",
-	// Istio API deployment components. Each declares
-	// KubernetesIstioBaseCrds as a registry prerequisite, which the harness
-	// installs (istio/base CRDs, no istiod) before applying the scenario.
-	// Verification asserts the typed Istio CR exists.
-	"kubernetespeerauthentication",
-	"kubernetesrequestauthentication",
-	"kubernetesauthorizationpolicy",
-	"kubernetesserviceentry",
-	"kubernetesdestinationrule",
-	"kubernetesenvoyfilter",
-	"kubernetestelemetry",
 }
 
 // Kubernetes Tier 2 components: Helm-based, self-contained chart installs.
@@ -501,6 +502,9 @@ func TestKubernetesTekton_Terraform(t *testing.T) {
 func TestKubernetesIstioBaseCrds_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesistiobasecrds", "terraform")
 }
+func TestKubernetesIstio_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesistio", "terraform")
+}
 
 // ─── Gateway API Pulumi ─────────────────────────────────────────────────────
 // Each kind declares KubernetesGatewayApiCrds as a registry prerequisite, which
@@ -565,10 +569,11 @@ func TestKubernetesListenerSet_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteslistenerset", "terraform")
 }
 
-// ─── Istio API Pulumi (861-867) ─────────────────────────────────────────────
+// ─── Istio API Pulumi (852-858) ─────────────────────────────────────────────
 // Each kind declares KubernetesIstioBaseCrds as a registry prerequisite, which
 // the harness installs (istio/base CRDs, no istiod) before the scenario applies.
-// Verification asserts the typed Istio CR exists.
+// Verification asserts the typed Istio CR exists (object-grade); the
+// authorizationpolicy behavioral-deny scenario additionally chains a real mesh.
 
 func TestKubernetesPeerAuthentication_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetespeerauthentication", "pulumi")
@@ -598,7 +603,7 @@ func TestKubernetesTelemetry_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestelemetry", "pulumi")
 }
 
-// ─── Istio API Terraform (861-867) ──────────────────────────────────────────
+// ─── Istio API Terraform (852-858) ──────────────────────────────────────────
 
 func TestKubernetesPeerAuthentication_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetespeerauthentication", "terraform")

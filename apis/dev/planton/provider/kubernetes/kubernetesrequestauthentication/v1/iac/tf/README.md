@@ -1,6 +1,6 @@
 # KubernetesRequestAuthentication Terraform Module
 
-Creates a namespaced Istio `RequestAuthentication` via the `kubernetes_manifest`
+Creates a namespaced Istio `RequestAuthentication` via the `kubectl_manifest`
 resource. The Istio CRDs must already be installed on the target cluster (see
 `KubernetesIstioBaseCrds`), a running istiod is required to enforce the policy in the
 data plane (see `KubernetesIstio`), and the target namespace must exist (see
@@ -23,12 +23,12 @@ terraform apply -var-file=terraform.tfvars.json
 
 ## Inputs
 
-See `variables.tf` for the full variable specification. `namespace` is a plain
-string: the platform resolves its `StringValueOrRef` foreign key to a literal before
-Terraform runs. `selector.match_labels` and `target_refs` are plain references (not
-foreign keys), and are mutually exclusive. `jwt_rules` and all of their nested
-optional fields are null-pruned, so unset fields are omitted from the manifest and
-upstream defaults flow through.
+See `variables.tf` for the variable specification. `variable "spec"` is typed `any`
+and passed through verbatim: the platform resolves the `StringValueOrRef` foreign
+keys (`namespace`, `target_refs[].name`) to literal strings before Terraform runs,
+and emits the manifest-shaped (camelCase, null-pruned) spec, so unset fields are
+omitted from the manifest and upstream defaults flow through. `selector` and
+`target_refs` are mutually exclusive.
 
 ## Outputs
 

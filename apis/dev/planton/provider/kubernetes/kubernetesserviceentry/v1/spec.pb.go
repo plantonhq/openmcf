@@ -32,7 +32,7 @@ const (
 //
 // 100% fidelity with the upstream istio.io/api ServiceEntry
 // (networking/v1alpha3/service_entry.proto, served as networking.istio.io/v1), pinned to
-// the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
+// the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly after the
 // Planton namespaced envelope (namespace); there is no nested
 // `service_entry` sub-message.
 //
@@ -66,7 +66,10 @@ type KubernetesServiceEntrySpec struct {
 	// How the sidecar/proxy resolves the service's endpoint IPs. Unset defaults to NONE
 	// upstream. NONE forwards to the original destination IP (no endpoints); STATIC uses the
 	// IPs in `endpoints`; DNS resolves the hosts (or endpoint addresses) asynchronously;
-	// DNS_ROUND_ROBIN is like DNS but pins to the first resolved IP per new connection.
+	// DNS_ROUND_ROBIN is like DNS but pins to the first resolved IP per new connection;
+	// DYNAMIC_DNS resolves the ACTUAL requested hostname at request time (a dynamic
+	// forward proxy for wildcard hosts — HTTP-family and TLS ports only, no addresses
+	// or endpoints; enforced above, mirroring the istiod webhook).
 	Resolution *string `protobuf:"bytes,7,opt,name=resolution,proto3,oneof" json:"resolution,omitempty"`
 	// Static endpoints backing the service. Mutually exclusive with `workload_selector`
 	// (enforced above). Not permitted with NONE resolution; at most one with
@@ -392,26 +395,30 @@ var File_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto pr
 
 const file_dev_planton_provider_kubernetes_kubernetesserviceentry_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/kubernetes/kubernetesserviceentry/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesserviceentry.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8a\x10\n" +
+	"Ddev/planton/provider/kubernetes/kubernetesserviceentry/v1/spec.proto\x129dev.planton.provider.kubernetes.kubernetesserviceentry.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbd\x18\n" +
 	"\x1aKubernetesServiceEntrySpec\x12j\n" +
 	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x81\x01\n" +
 	"\x05hosts\x18\x03 \x03(\tBk\xbaHh\x92\x01e\b\x01\x10\x80\x02\"^\xba\x01W\n" +
 	"$service_entry_host.not_bare_wildcard\x12\"host cannot be a bare wildcard '*'\x1a\vthis != '*'r\x02\x10\x01R\x05hosts\x12-\n" +
 	"\taddresses\x18\x04 \x03(\tB\x0f\xbaH\f\x92\x01\t\x10\x80\x02\"\x04r\x02\x18@R\taddresses\x12v\n" +
 	"\x05ports\x18\x05 \x03(\v2U.dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryPortB\t\xbaH\x06\x92\x01\x03\x10\x80\x02R\x05ports\x12D\n" +
-	"\blocation\x18\x06 \x01(\tB#\xbaH r\x1eR\rMESH_EXTERNALR\rMESH_INTERNALH\x00R\blocation\x88\x01\x01\x12N\n" +
+	"\blocation\x18\x06 \x01(\tB#\xbaH r\x1eR\rMESH_EXTERNALR\rMESH_INTERNALH\x00R\blocation\x88\x01\x01\x12[\n" +
 	"\n" +
-	"resolution\x18\a \x01(\tB)\xbaH&r$R\x04NONER\x06STATICR\x03DNSR\x0fDNS_ROUND_ROBINH\x01R\n" +
+	"resolution\x18\a \x01(\tB6\xbaH3r1R\x04NONER\x06STATICR\x03DNSR\x0fDNS_ROUND_ROBINR\vDYNAMIC_DNSH\x01R\n" +
 	"resolution\x88\x01\x01\x12\x82\x01\n" +
 	"\tendpoints\x18\b \x03(\v2Y.dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesServiceEntryEndpointB\t\xbaH\x06\x92\x01\x03\x10\x80 R\tendpoints\x12\x1b\n" +
 	"\texport_to\x18\t \x03(\tR\bexportTo\x12*\n" +
 	"\x11subject_alt_names\x18\n" +
 	" \x03(\tR\x0fsubjectAltNames\x12z\n" +
-	"\x11workload_selector\x18\v \x01(\v2M.dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelectorR\x10workloadSelector:\xd8\b\xbaH\xd4\b\x1a\xa5\x01\n" +
+	"\x11workload_selector\x18\v \x01(\v2M.dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelectorR\x10workloadSelector:\xfe\x10\xbaH\xfa\x10\x1a\xa5\x01\n" +
 	"-service_entry.workload_selector_xor_endpoints\x128at most one of workload_selector or endpoints may be set\x1a:!(has(this.workload_selector) && size(this.endpoints) > 0)\x1a\xf8\x01\n" +
 	"3service_entry.cidr_addresses_require_none_or_static\x12=CIDR addresses are allowed only for NONE or STATIC resolution\x1a\x81\x01(!has(this.resolution) || this.resolution == 'NONE' || this.resolution == 'STATIC') || !this.addresses.exists(a, a.contains('/'))\x1a\xb7\x01\n" +
 	"/service_entry.none_resolution_forbids_endpoints\x12/endpoints cannot be set when resolution is NONE\x1aS!((!has(this.resolution) || this.resolution == 'NONE') && size(this.endpoints) > 0)\x1a\xc4\x01\n" +
-	"-service_entry.dns_round_robin_single_endpoint\x126DNS_ROUND_ROBIN resolution allows at most one endpoint\x1a[!(has(this.resolution) && this.resolution == 'DNS_ROUND_ROBIN' && size(this.endpoints) > 1)\x1a\x99\x01\n" +
+	"-service_entry.dns_round_robin_single_endpoint\x126DNS_ROUND_ROBIN resolution allows at most one endpoint\x1a[!(has(this.resolution) && this.resolution == 'DNS_ROUND_ROBIN' && size(this.endpoints) > 1)\x1a\xe4\x01\n" +
+	"(service_entry.dynamic_dns_wildcard_hosts\x12Severy host must be wildcarded (e.g. '*.example.com') when resolution is DYNAMIC_DNS\x1ac!(has(this.resolution) && this.resolution == 'DYNAMIC_DNS') || this.hosts.all(h, h.startsWith('*'))\x1a\xef\x01\n" +
+	"&service_entry.dynamic_dns_no_addresses\x12kaddresses cannot be set when resolution is DYNAMIC_DNS — destinations are derived from the wildcard hosts\x1aX!(has(this.resolution) && this.resolution == 'DYNAMIC_DNS') || size(this.addresses) == 0\x1a\xf7\x01\n" +
+	"&service_entry.dynamic_dns_no_endpoints\x12sendpoints cannot be set when resolution is DYNAMIC_DNS — destination IPs are resolved from the requested hostname\x1aX!(has(this.resolution) && this.resolution == 'DYNAMIC_DNS') || size(this.endpoints) == 0\x1a\xd0\x02\n" +
+	"+service_entry.dynamic_dns_http_family_ports\x12[only HTTP, TLS, GRPC, and HTTP2 port protocols are supported when resolution is DYNAMIC_DNS\x1a\xc3\x01!(has(this.resolution) && this.resolution == 'DYNAMIC_DNS') || this.ports.all(p, has(p.protocol) && (p.protocol == 'HTTP' || p.protocol == 'TLS' || p.protocol == 'GRPC' || p.protocol == 'HTTP2'))\x1a\x99\x01\n" +
 	"!service_entry.port_numbers_unique\x12-port number cannot be duplicated across ports\x1aEthis.ports.all(p1, this.ports.exists_one(p2, p1.number == p2.number))\x1a\x91\x01\n" +
 	"\x1fservice_entry.port_names_unique\x12+port name cannot be duplicated across ports\x1aAthis.ports.all(p1, this.ports.exists_one(p2, p1.name == p2.name))B\v\n" +
 	"\t_locationB\r\n" +

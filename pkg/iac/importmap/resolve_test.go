@@ -207,3 +207,46 @@ func TestResolveValues(t *testing.T) {
 		t.Errorf("unresolved = %v, want [association_id]", unresolved)
 	}
 }
+
+func TestResolveValues_TofuResourceNameScoping(t *testing.T) {
+	// A module with SEVERAL resources of one type whose placeholder carries a
+	// different value per resource (a control-plane module installing multiple
+	// Helm releases): the declaration scoped to the address's logical name
+	// wins; addresses without a scoped declaration fall back to the unscoped
+	// one; scoped declarations for OTHER resources are never consulted.
+	m := &componentv1.ComponentImportMap{
+		Spec: &componentv1.ComponentImportMapSpec{
+			Values: []*componentv1.ImportValue{
+				{
+					Name: "release_name",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_Literal{Literal: "istio-base"}},
+					},
+				},
+				{
+					Name:             "release_name",
+					TofuResourceName: "istiod",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromStackOutput{FromStackOutput: "istiod_service_name"}},
+					},
+				},
+			},
+		},
+	}
+
+	outputs := map[string]string{"istiod_service_name": "istiod"}
+
+	// Scoped address: the istiod declaration wins.
+	resolved, unresolved := ResolveValues(m, []string{"release_name"},
+		ResolveContext{StackOutputs: outputs, LogicalName: "istiod"})
+	if len(unresolved) != 0 || resolved["release_name"] != "istiod" {
+		t.Errorf("scoped: resolved = %v, unresolved = %v; want release_name=istiod", resolved, unresolved)
+	}
+
+	// Unscoped address: falls back to the unscoped declaration.
+	resolved, unresolved = ResolveValues(m, []string{"release_name"},
+		ResolveContext{StackOutputs: outputs, LogicalName: "base"})
+	if len(unresolved) != 0 || resolved["release_name"] != "istio-base" {
+		t.Errorf("fallback: resolved = %v, unresolved = %v; want release_name=istio-base", resolved, unresolved)
+	}
+}

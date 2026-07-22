@@ -41,7 +41,8 @@ metadata:
 spec:
   namespace:
     value: bookinfo
-  host: reviews.bookinfo.svc.cluster.local
+  host:
+    value: reviews.bookinfo.svc.cluster.local
   traffic_policy:
     load_balancer:
       simple: LEAST_REQUEST
@@ -58,13 +59,13 @@ planton apply -f destinationrule.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `namespace` | reference | Namespace the DestinationRule is created in. |
-| `host` | string | Registry host the rule applies to. For short names, istiod resolves relative to this rule's namespace -- prefer FQDNs. |
+| `host` | reference | Registry host the rule applies to. A foreign key defaulting to a `KubernetesService` reference that resolves to the Service's in-cluster FQDN; pass literals with `value:`. For short names, istiod resolves relative to this rule's namespace -- prefer FQDNs. |
 
 ### Optional Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `traffic_policy` | object | Load balancing, connection pool, outlier detection, TLS, per-port overrides, tunnel, PROXY protocol. |
+| `traffic_policy` | object | Load balancing, connection pool, outlier detection, TLS, per-port overrides, tunnel, PROXY protocol, retry budget. |
 | `subsets` | list | Named subsets (`name`, `labels`, per-subset `traffic_policy`). |
 | `export_to` | list | Namespaces the rule is visible to (`.` = same namespace, `*` = all). Default all. |
 | `workload_selector.match_labels` | map | Pods/VMs (by label) the rule applies to. Matched by istiod; not a foreign key. |
@@ -73,13 +74,14 @@ planton apply -f destinationrule.yaml
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `load_balancer` | object | `simple` (`LEAST_CONN`/`RANDOM`/`PASSTHROUGH`/`ROUND_ROBIN`/`LEAST_REQUEST`) **or** `consistent_hash`; plus `locality_lb_setting` and `warmup`. |
+| `load_balancer` | object | `simple` (`LEAST_CONN`/`RANDOM`/`PASSTHROUGH`/`ROUND_ROBIN`/`LEAST_REQUEST`) **or** `consistent_hash`; plus `locality_lb_setting` and `warmup`. A consistent-hash `http_cookie` can carry `attributes` (name/value pairs set on the generated cookie, e.g. `SameSite=Strict` or the value-less `Secure`). |
 | `connection_pool` | object | `tcp` (max connections, timeouts, keepalive) and `http` (pending/active requests, retries, h2 upgrade). |
 | `outlier_detection` | object | Circuit breaking: consecutive 5xx / gateway / local-origin errors, sweep `interval`, `base_ejection_time`, ejection/health percentages. |
 | `tls` | object | Client TLS the sidecar originates: `mode`, cert paths or `credential_name`, `sni`, SANs, CRL. |
 | `port_level_settings` | list | Per-port overrides (`port.number` + the four blocks above). Fully overrides the destination-level settings for that port. |
 | `tunnel` | object | Tunnel TCP/TLS over `CONNECT`/`POST` to a `target_host:target_port`. |
 | `proxy_protocol` | object | Upstream PROXY protocol `version` (`V1`/`V2`). |
+| `retry_budget` | object | Bounds concurrent retries relative to active requests: `percent` (0-100, upstream default 20) of the sum of active and pending requests, with `min_retry_concurrency` (upstream default 3) as the floor. Applies at the destination and subset levels, not in `port_level_settings`. |
 
 Durations (`connect_timeout`, `interval`, `base_ejection_time`, cookie `ttl`, ...) are
 strings like `10s`, `1.5s`, `2h45m`; the ones upstream documents as ">= 1ms" are
@@ -93,7 +95,8 @@ validated as such.
 spec:
   namespace:
     value: bookinfo
-  host: reviews.bookinfo.svc.cluster.local
+  host:
+    value: reviews.bookinfo.svc.cluster.local
   traffic_policy:
     load_balancer:
       simple: LEAST_REQUEST
@@ -115,7 +118,8 @@ spec:
 spec:
   namespace:
     value: egress
-  host: external-db.example.com
+  host:
+    value: external-db.example.com
   workload_selector:
     match_labels:
       app: db-client
@@ -132,7 +136,8 @@ spec:
 spec:
   namespace:
     value: bookinfo
-  host: reviews.bookinfo.svc.cluster.local
+  host:
+    value: reviews.bookinfo.svc.cluster.local
   subsets:
     - name: v1
       labels:
@@ -147,12 +152,36 @@ spec:
 
 ## Composing in Infra Charts
 
-`namespace` is a `StringValueOrRef`, so it can reference a `KubernetesNamespace` output
-via `valueFrom`. The `host`, `workload_selector.match_labels`, and TLS `credential_name`
-are **not** foreign keys -- istiod/Envoy resolve them at runtime, so they create no
-automatic DAG edge. To order this DestinationRule relative to the resources it depends on
-(the service it configures, the secret holding its client certs, or the workloads it
-selects), declare the dependency on `metadata.relationships`:
+`namespace` and `host` are `StringValueOrRef` foreign keys. `namespace` references a
+`KubernetesNamespace` output via `valueFrom`. `host` defaults to a `KubernetesService`
+reference that resolves to the Service's in-cluster FQDN
+(`status.outputs.kube_endpoint`) -- wiring it with `valueFrom` gives the chart a real
+dependency edge, so this DestinationRule deploys after the Service whose traffic it
+shapes and can never drift from the Service's actual name:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: bookinfo-ns
+      fieldPath: spec.name
+  host:
+    valueFrom:
+      kind: KubernetesService
+      name: reviews
+      fieldPath: status.outputs.kube_endpoint
+  traffic_policy:
+    load_balancer:
+      simple: LEAST_REQUEST
+```
+
+For hosts that are not Planton-managed Services (a ServiceEntry host, an external FQDN,
+a wildcard), pass the literal with `value:`. The `workload_selector.match_labels` and TLS
+`credential_name` are **not** foreign keys -- istiod/Envoy resolve them at runtime, so
+they create no automatic DAG edge. To order this DestinationRule relative to the secret
+holding its client certs or the workloads it selects, declare the dependency on
+`metadata.relationships`:
 
 ```yaml
 metadata:
@@ -161,16 +190,14 @@ metadata:
     - kind: KubernetesSecret
       name: db-client-cert
       type: uses
-    - kind: KubernetesService
-      name: external-db
-      type: depends_on
 spec:
   namespace:
     valueFrom:
       kind: KubernetesNamespace
       name: egress-ns
       fieldPath: spec.name
-  host: external-db.example.com
+  host:
+    value: external-db.example.com
   traffic_policy:
     tls:
       mode: MUTUAL

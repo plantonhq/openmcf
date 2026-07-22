@@ -113,6 +113,17 @@ func buildTrafficPolicy(p *dr.KubernetesDestinationRuleTrafficPolicy) istio.Dest
 		PortLevelSettings: plsArray(p.GetPortLevelSettings()),
 		Tunnel:            tpTunnel(p.GetTunnel()),
 		ProxyProtocol:     tpProxyProtocol(p.GetProxyProtocol()),
+		RetryBudget:       tpRetryBudget(p.GetRetryBudget()),
+	}
+}
+
+func tpRetryBudget(p *dr.KubernetesDestinationRuleRetryBudget) istio.DestinationRuleSpecTrafficPolicyRetryBudgetPtrInput {
+	if p == nil {
+		return nil
+	}
+	return istio.DestinationRuleSpecTrafficPolicyRetryBudgetArgs{
+		Percent:             optFloat(p.Percent),
+		MinRetryConcurrency: optU32(p.MinRetryConcurrency),
 	}
 }
 
@@ -148,11 +159,22 @@ func tpHttpCookie(p *dr.KubernetesDestinationRuleHttpCookie) istio.DestinationRu
 	if p == nil {
 		return nil
 	}
-	return istio.DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieArgs{
+	args := istio.DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieArgs{
 		Name: pulumi.String(p.GetName()),
 		Path: optStr(p.Path),
 		Ttl:  optStr(p.Ttl),
 	}
+	if attrs := p.GetAttributes(); len(attrs) > 0 {
+		arr := istio.DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray{}
+		for _, a := range attrs {
+			arr = append(arr, istio.DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs{
+				Name:  pulumi.String(a.GetName()),
+				Value: optStr(a.Value),
+			})
+		}
+		args.Attributes = arr
+	}
+	return args
 }
 
 func tpRingHash(p *dr.KubernetesDestinationRuleRingHash) istio.DestinationRuleSpecTrafficPolicyLoadBalancerConsistentHashRingHashPtrInput {
@@ -376,11 +398,22 @@ func plsHttpCookie(p *dr.KubernetesDestinationRuleHttpCookie) istio.DestinationR
 	if p == nil {
 		return nil
 	}
-	return istio.DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieArgs{
+	args := istio.DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieArgs{
 		Name: pulumi.String(p.GetName()),
 		Path: optStr(p.Path),
 		Ttl:  optStr(p.Ttl),
 	}
+	if attrs := p.GetAttributes(); len(attrs) > 0 {
+		arr := istio.DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray{}
+		for _, a := range attrs {
+			arr = append(arr, istio.DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs{
+				Name:  pulumi.String(a.GetName()),
+				Value: optStr(a.Value),
+			})
+		}
+		args.Attributes = arr
+	}
+	return args
 }
 
 func plsRingHash(p *dr.KubernetesDestinationRuleRingHash) istio.DestinationRuleSpecTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashRingHashPtrInput {
@@ -542,6 +575,17 @@ func buildSubsetTrafficPolicy(p *dr.KubernetesDestinationRuleTrafficPolicy) isti
 		PortLevelSettings: subPlsArray(p.GetPortLevelSettings()),
 		Tunnel:            subTunnel(p.GetTunnel()),
 		ProxyProtocol:     subProxyProtocol(p.GetProxyProtocol()),
+		RetryBudget:       subRetryBudget(p.GetRetryBudget()),
+	}
+}
+
+func subRetryBudget(p *dr.KubernetesDestinationRuleRetryBudget) istio.DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetPtrInput {
+	if p == nil {
+		return nil
+	}
+	return istio.DestinationRuleSpecSubsetsTrafficPolicyRetryBudgetArgs{
+		Percent:             optFloat(p.Percent),
+		MinRetryConcurrency: optU32(p.MinRetryConcurrency),
 	}
 }
 
@@ -577,11 +621,22 @@ func subHttpCookie(p *dr.KubernetesDestinationRuleHttpCookie) istio.DestinationR
 	if p == nil {
 		return nil
 	}
-	return istio.DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieArgs{
+	args := istio.DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieArgs{
 		Name: pulumi.String(p.GetName()),
 		Path: optStr(p.Path),
 		Ttl:  optStr(p.Ttl),
 	}
+	if attrs := p.GetAttributes(); len(attrs) > 0 {
+		arr := istio.DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArray{}
+		for _, a := range attrs {
+			arr = append(arr, istio.DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashHttpCookieAttributesArgs{
+				Name:  pulumi.String(a.GetName()),
+				Value: optStr(a.Value),
+			})
+		}
+		args.Attributes = arr
+	}
+	return args
 }
 
 func subRingHash(p *dr.KubernetesDestinationRuleRingHash) istio.DestinationRuleSpecSubsetsTrafficPolicyLoadBalancerConsistentHashRingHashPtrInput {
@@ -805,11 +860,22 @@ func subPlsHttpCookie(p *dr.KubernetesDestinationRuleHttpCookie) istio.Destinati
 	if p == nil {
 		return nil
 	}
-	return istio.DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieArgs{
+	args := istio.DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieArgs{
 		Name: pulumi.String(p.GetName()),
 		Path: optStr(p.Path),
 		Ttl:  optStr(p.Ttl),
 	}
+	if attrs := p.GetAttributes(); len(attrs) > 0 {
+		arr := istio.DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArray{}
+		for _, a := range attrs {
+			arr = append(arr, istio.DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashHttpCookieAttributesArgs{
+				Name:  pulumi.String(a.GetName()),
+				Value: optStr(a.Value),
+			})
+		}
+		args.Attributes = arr
+	}
+	return args
 }
 
 func subPlsRingHash(p *dr.KubernetesDestinationRuleRingHash) istio.DestinationRuleSpecSubsetsTrafficPolicyPortLevelSettingsLoadBalancerConsistentHashRingHashPtrInput {
