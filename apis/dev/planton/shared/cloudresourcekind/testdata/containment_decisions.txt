@@ -44,6 +44,7 @@ contained dev.planton.provider.aws.awsdocumentdb.v1.AwsDocumentDbSpec.subnet_ids
 contained dev.planton.provider.aws.awsec2instance.v1.AwsEc2InstanceSecondaryNetworkInterface.subnet_id -> AwsSubnet
 contained dev.planton.provider.aws.awsec2instance.v1.AwsEc2InstanceSpec.subnet_id -> AwsSubnet
 contained dev.planton.provider.aws.awsecsservice.v1.AwsEcsServiceSpec.cluster_arn -> AwsEcsCluster
+contained dev.planton.provider.aws.awsefsaccesspoint.v1.AwsEfsAccessPointSpec.file_system_id -> AwsElasticFileSystem
 contained dev.planton.provider.aws.awsegressonlyinternetgateway.v1.AwsEgressOnlyInternetGatewaySpec.vpc_id -> AwsVpc
 contained dev.planton.provider.aws.awseksaccessentry.v1.AwsEksAccessEntrySpec.cluster_name -> AwsEksCluster
 contained dev.planton.provider.aws.awseksaddon.v1.AwsEksAddonSpec.cluster_name -> AwsEksCluster
@@ -54,6 +55,7 @@ contained dev.planton.provider.aws.awseksnodegroup.v1.AwsEksNodeGroupSpec.cluste
 contained dev.planton.provider.aws.awseksnodegroup.v1.AwsEksNodeGroupSpec.subnet_ids -> AwsSubnet
 contained dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemMountTarget.subnet_id -> AwsSubnet
 contained dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeRuleSpec.event_bus_name -> AwsEventBridgeBus
+contained dev.planton.provider.aws.awsfsxdatarepositoryassociation.v1.AwsFsxDataRepositoryAssociationSpec.file_system_id -> AwsFsxLustreFileSystem
 contained dev.planton.provider.aws.awsfsxlustrefilesystem.v1.AwsFsxLustreFileSystemSpec.subnet_id -> AwsSubnet
 contained dev.planton.provider.aws.awsfsxontapfilesystem.v1.AwsFsxOntapFileSystemSpec.preferred_subnet_id -> AwsSubnet
 contained dev.planton.provider.aws.awsfsxontapfilesystem.v1.AwsFsxOntapFileSystemSpec.subnet_ids -> AwsSubnet
@@ -80,6 +82,7 @@ contained dev.planton.provider.aws.awsrdscluster.v1.AwsRdsClusterSpec.subnet_ids
 contained dev.planton.provider.aws.awsrdsinstance.v1.AwsRdsInstanceSpec.subnet_ids -> AwsSubnet
 contained dev.planton.provider.aws.awsrediselasticache.v1.AwsRedisElasticacheSpec.subnet_ids -> AwsSubnet
 contained dev.planton.provider.aws.awsredshiftcluster.v1.AwsRedshiftClusterSpec.subnet_ids -> AwsSubnet
+contained dev.planton.provider.aws.awsredshiftserverlessworkgroup.v1.AwsRedshiftServerlessWorkgroupSpec.namespace_name -> AwsRedshiftServerlessNamespace
 contained dev.planton.provider.aws.awsredshiftserverlessworkgroup.v1.AwsRedshiftServerlessWorkgroupSpec.subnet_ids -> AwsSubnet
 contained dev.planton.provider.aws.awsroute53dnsrecord.v1.AwsRoute53DnsRecordSpec.zone_id -> AwsRoute53Zone
 contained dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainSpec.subnet_ids -> AwsSubnet
@@ -137,6 +140,7 @@ contained dev.planton.provider.azure.azureeventhubauthorizationrule.v1.AzureEven
 contained dev.planton.provider.azure.azureeventhubcluster.v1.AzureEventHubClusterSpec.resource_group -> AzureResourceGroup
 contained dev.planton.provider.azure.azureeventhubconsumergroup.v1.AzureEventHubConsumerGroupSpec.event_hub_id -> AzureEventHub
 contained dev.planton.provider.azure.azureeventhubdisasterrecoveryconfig.v1.AzureEventHubDisasterRecoveryConfigSpec.primary_namespace_id -> AzureEventHubNamespace
+contained dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceSpec.dedicated_cluster_id -> AzureEventHubCluster
 contained dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceSpec.resource_group -> AzureResourceGroup
 contained dev.planton.provider.azure.azureeventhubnamespacecustomermanagedkey.v1.AzureEventHubNamespaceCustomerManagedKeySpec.eventhub_namespace_id -> AzureEventHubNamespace
 contained dev.planton.provider.azure.azureeventhubschemagroup.v1.AzureEventHubSchemaGroupSpec.namespace_id -> AzureEventHubNamespace
@@ -149,6 +153,7 @@ contained dev.planton.provider.azure.azurefrontdoorendpoint.v1.AzureFrontDoorEnd
 contained dev.planton.provider.azure.azurefrontdoorfirewallpolicy.v1.AzureFrontDoorFirewallPolicySpec.resource_group -> AzureResourceGroup
 contained dev.planton.provider.azure.azurefrontdoororigingroup.v1.AzureFrontDoorOriginGroupSpec.profile_id -> AzureFrontDoorProfile
 contained dev.planton.provider.azure.azurefrontdoorprofile.v1.AzureFrontDoorProfileSpec.resource_group -> AzureResourceGroup
+contained dev.planton.provider.azure.azurefrontdoorroute.v1.AzureFrontDoorRouteSpec.endpoint_id -> AzureFrontDoorEndpoint
 contained dev.planton.provider.azure.azurefrontdoorruleset.v1.AzureFrontDoorRuleSetSpec.profile_id -> AzureFrontDoorProfile
 contained dev.planton.provider.azure.azurefrontdoorsecret.v1.AzureFrontDoorSecretSpec.profile_id -> AzureFrontDoorProfile
 contained dev.planton.provider.azure.azurefrontdoorsecuritypolicy.v1.AzureFrontDoorSecurityPolicySpec.profile_id -> AzureFrontDoorProfile
@@ -233,6 +238,7 @@ contained dev.planton.provider.cloudflare.cloudflareloadbalancer.v1.CloudflareLo
 contained dev.planton.provider.cloudflare.cloudflareruleset.v1.CloudflareRulesetSpec.zone_id -> CloudflareDnsZone
 contained dev.planton.provider.cloudflare.cloudflarezerotrustaccessapplication.v1.CloudflareZeroTrustAccessApplicationSpec.zone_id -> CloudflareDnsZone
 contained dev.planton.provider.cloudflare.cloudflarezerotrustaccessgroup.v1.CloudflareZeroTrustAccessGroupSpec.zone_id -> CloudflareDnsZone
+contained dev.planton.provider.cloudflare.cloudflarezerotrusttunnelroute.v1.CloudflareZeroTrustTunnelRouteSpec.virtual_network_id -> CloudflareZeroTrustTunnelVirtualNetwork
 contained dev.planton.provider.digitalocean.digitaloceandatabasecluster.v1.DigitalOceanDatabaseClusterSpec.vpc -> DigitalOceanVpc
 contained dev.planton.provider.digitalocean.digitaloceandnsrecord.v1.DigitalOceanDnsRecordSpec.domain -> DigitalOceanDnsZone
 contained dev.planton.provider.digitalocean.digitaloceandroplet.v1.DigitalOceanDropletSpec.vpc -> DigitalOceanVpc
@@ -338,6 +344,7 @@ contained dev.planton.provider.gcp.gcpserviceconnectionpolicy.v1.GcpServiceConne
 contained dev.planton.provider.gcp.gcpserviceconnectionpolicy.v1.GcpServiceConnectionPolicySpec.project_id -> GcpProject
 contained dev.planton.provider.gcp.gcpservicenetworkingconnection.v1.GcpServiceNetworkingConnectionSpec.network -> GcpVpcNetwork
 contained dev.planton.provider.gcp.gcpservicenetworkingconnection.v1.GcpServiceNetworkingConnectionSpec.project_id -> GcpProject
+contained dev.planton.provider.gcp.gcpspannerbackupschedule.v1.GcpSpannerBackupScheduleSpec.database -> GcpSpannerDatabase
 contained dev.planton.provider.gcp.gcpspannerbackupschedule.v1.GcpSpannerBackupScheduleSpec.instance -> GcpSpannerInstance
 contained dev.planton.provider.gcp.gcpspannerbackupschedule.v1.GcpSpannerBackupScheduleSpec.project_id -> GcpProject
 contained dev.planton.provider.gcp.gcpspannerdatabase.v1.GcpSpannerDatabaseSpec.instance -> GcpSpannerInstance
@@ -360,6 +367,7 @@ contained dev.planton.provider.gcp.gcpvertexainotebook.v1.GcpVertexAiNotebookSpe
 contained dev.planton.provider.gcp.gcpvpcnetwork.v1.GcpVpcNetworkSpec.project_id -> GcpProject
 contained dev.planton.provider.gcp.gcpworkloadidentitypool.v1.GcpWorkloadIdentityPoolSpec.project_id -> GcpProject
 contained dev.planton.provider.gcp.gcpworkloadidentitypoolprovider.v1.GcpWorkloadIdentityPoolProviderSpec.project_id -> GcpProject
+contained dev.planton.provider.gcp.gcpworkloadidentitypoolprovider.v1.GcpWorkloadIdentityPoolProviderSpec.workload_identity_pool_id -> GcpWorkloadIdentityPool
 contained dev.planton.provider.hetznercloud.hetznercloudloadbalancer.v1.HetznerCloudLoadBalancerSpec.NetworkAttachment.network_id -> HetznerCloudNetwork
 contained dev.planton.provider.hetznercloud.hetznercloudserver.v1.HetznerCloudServerSpec.NetworkAttachment.network_id -> HetznerCloudNetwork
 contained dev.planton.provider.kubernetes.kubernetesaltinityoperator.v1.KubernetesAltinityOperatorSpec.namespace -> KubernetesNamespace
@@ -520,9 +528,12 @@ exempt    dev.planton.provider.alicloud.alicloudprivatednszone.v1.AliCloudPrivat
 exempt    dev.planton.provider.alicloud.alicloudsaeapplication.v1.AliCloudSaeApplicationSpec.vpc_id -> AliCloudVpc
 exempt    dev.planton.provider.alicloud.alicloudsaeapplication.v1.AliCloudSaeApplicationSpec.vswitch_id -> AliCloudVswitch
 exempt    dev.planton.provider.aws.awsalb.v1.AwsAlbDns.route53_zone_id -> AwsRoute53Zone
+exempt    dev.planton.provider.aws.awsbatchjobdefinition.v1.AwsBatchJobDefinitionEfsVolume.file_system_id -> AwsElasticFileSystem
 exempt    dev.planton.provider.aws.awscertmanagercert.v1.AwsCertManagerCertSpec.route53_hosted_zone_id -> AwsRoute53Zone
 exempt    dev.planton.provider.aws.awsclientvpn.v1.AwsClientVpnRoute.target_subnet_id -> AwsSubnet
 exempt    dev.planton.provider.aws.awsecsservice.v1.AwsEcsServiceNetwork.subnets -> AwsSubnet
+exempt    dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionEfsVolume.file_system_id -> AwsElasticFileSystem
+exempt    dev.planton.provider.aws.awselasticfilesystem.v1.AwsElasticFileSystemReplication.destination_file_system_id -> AwsElasticFileSystem
 exempt    dev.planton.provider.aws.awseventbridgerule.v1.AwsEventBridgeEcsNetworkConfiguration.subnets -> AwsSubnet
 exempt    dev.planton.provider.aws.awsfsxontapfilesystem.v1.AwsFsxOntapFileSystemSpec.route_table_ids -> AwsSubnet
 exempt    dev.planton.provider.aws.awsfsxopenzfsfilesystem.v1.AwsFsxOpenzfsFileSystemSpec.route_table_ids -> AwsSubnet
@@ -538,6 +549,7 @@ exempt    dev.planton.provider.aws.awslblistenerrule.v1.AwsLbListenerRuleActionA
 exempt    dev.planton.provider.aws.awsnlb.v1.AwsNlbDns.route53_zone_id -> AwsRoute53Zone
 exempt    dev.planton.provider.aws.awsopensearchdomain.v1.AwsOpenSearchDomainCognitoOptions.user_pool_id -> AwsCognitoUserPool
 exempt    dev.planton.provider.aws.awsroute53zone.v1.AwsRoute53ZoneVpcAssociation.vpc_id -> AwsVpc
+exempt    dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainEfsFileSystemConfig.file_system_id -> AwsElasticFileSystem
 exempt    dev.planton.provider.aws.awssesconfigurationset.v1.AwsSesConfigurationSetEventDestination.event_bus -> AwsEventBridgeBus
 exempt    dev.planton.provider.aws.awsvpcendpoint.v1.AwsVpcEndpointSpec.route_table_ids -> AwsSubnet
 exempt    dev.planton.provider.azure.azureakscluster.v1.AzureAksClusterServiceMeshCertificateAuthority.key_vault_id -> AzureKeyVault
@@ -551,6 +563,7 @@ exempt    dev.planton.provider.azure.azureeventhubdisasterrecoveryconfig.v1.Azur
 exempt    dev.planton.provider.azure.azureeventhubnamespace.v1.AzureEventHubNamespaceVirtualNetworkRule.subnet_id -> AzureSubnet
 exempt    dev.planton.provider.azure.azurefederatedidentitycredential.v1.AzureFederatedIdentityCredentialSpec.issuer -> AzureAksCluster
 exempt    dev.planton.provider.azure.azurefrontdoorcustomdomain.v1.AzureFrontDoorCustomDomainSpec.dns_zone_id -> AzureDnsZone
+exempt    dev.planton.provider.azure.azurefrontdoorsecuritypolicy.v1.AzureFrontDoorSecurityPolicySpec.domain_ids -> AzureFrontDoorEndpoint
 exempt    dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestriction.virtual_network_subnet_id -> AzureSubnet
 exempt    dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppIpRestrictionHeaders.x_azure_fdid -> AzureFrontDoorProfile
 exempt    dev.planton.provider.azure.azurefunctionapp.v1.AzureFunctionAppSpec.storage_account_access_key -> AzureStorageAccount

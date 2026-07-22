@@ -542,12 +542,12 @@ const file_dev_planton_provider_aws_awselasticfilesystem_v1_spec_proto_rawDesc =
 	"\fipv6_address\x18\x04 \x01(\tR\vipv6Address:\xcc\x04\xbaH\xc8\x04\x1a\xc3\x01\n" +
 	"\x15ip_address_type_valid\x12Jip_address_type must be 'IPV4_ONLY', 'IPV6_ONLY', or 'DUAL_STACK' when set\x1a^this.ip_address_type == '' || this.ip_address_type in ['IPV4_ONLY', 'IPV6_ONLY', 'DUAL_STACK']\x1a\xc2\x01\n" +
 	"\x1dipv4_address_not_on_ipv6_only\x12cip_address cannot be set when ip_address_type is 'IPV6_ONLY' (the mount target has no IPv4 address)\x1a<this.ip_address == '' || this.ip_address_type != 'IPV6_ONLY'\x1a\xba\x01\n" +
-	"\x1fipv6_address_requires_ipv6_type\x12Gipv6_address requires ip_address_type to be 'IPV6_ONLY' or 'DUAL_STACK'\x1aNthis.ipv6_address == '' || this.ip_address_type in ['IPV6_ONLY', 'DUAL_STACK']\"\x94\x05\n" +
+	"\x1fipv6_address_requires_ipv6_type\x12Gipv6_address requires ip_address_type to be 'IPV6_ONLY' or 'DUAL_STACK'\x1aNthis.ipv6_address == '' || this.ip_address_type in ['IPV6_ONLY', 'DUAL_STACK']\"\x98\x05\n" +
 	"\x1fAwsElasticFileSystemReplication\x12-\n" +
 	"\x12destination_region\x18\x01 \x01(\tR\x11destinationRegion\x12K\n" +
 	"\"destination_availability_zone_name\x18\x02 \x01(\tR\x1fdestinationAvailabilityZoneName\x12\x88\x01\n" +
-	"\x16destination_kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x13destinationKmsKeyId\x12\x97\x01\n" +
-	"\x1adestination_file_system_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_idR\x17destinationFileSystemId:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
+	"\x16destination_kms_key_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\x13destinationKmsKeyId\x12\x9b\x01\n" +
+	"\x1adestination_file_system_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\x17destinationFileSystemId:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
 	" replication_destination_required\x12Tat least one of destination_region or destination_availability_zone_name is required\x1aNthis.destination_region != '' || this.destination_availability_zone_name != ''B\x93\x03\n" +
 	"4com.dev.planton.provider.aws.awselasticfilesystem.v1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awselasticfilesystem/v1;awselasticfilesystemv1\xa2\x02\x05DPPAA\xaa\x020Dev.Planton.Provider.Aws.Awselasticfilesystem.V1\xca\x020Dev\\Planton\\Provider\\Aws\\Awselasticfilesystem\\V1\xe2\x02<Dev\\Planton\\Provider\\Aws\\Awselasticfilesystem\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Aws::Awselasticfilesystem::V1b\x06proto3"
 

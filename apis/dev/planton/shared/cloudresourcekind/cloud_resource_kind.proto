@@ -491,6 +491,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "rsns"
+    container_kind: true
   }];
   // The namespace is a genuine prerequisite: a workgroup attaches to
   // exactly one namespace by name at create time, so its composed E2E
@@ -603,6 +604,7 @@ enum CloudResourceKind {
       AwsSubnet,
       AwsSecurityGroup
     ]
+    container_kind: true
   }];
 
   // AwsElasticFileSystem is a prerequisite because an access point is created
@@ -620,6 +622,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awsfxl"
     prerequisites: [AwsSubnet]
+    container_kind: true
   }];
 
   AwsFsxOpenzfsFileSystem = 292 [(kind_meta) = {
@@ -1729,6 +1732,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azfde"
     prerequisites: [AzureFrontDoorProfile]
+    container_kind: true
   }];
   // AzureFrontDoorProfile is a prerequisite because an origin group is an
   // ARM child of a referenced profile.
@@ -1957,6 +1961,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azehclu"
     prerequisites: [AzureResourceGroup]
+    container_kind: true
   }];
   AzureEventHubNamespaceCustomerManagedKey = 523 [(kind_meta) = {
     provider: azure
@@ -2258,6 +2263,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpspdb"
     prerequisites: [GcpSpannerInstance]
+    container_kind: true
   }];
   GcpBigtableInstance = 635 [(kind_meta) = {
     provider: gcp
@@ -2497,6 +2503,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpwip"
+    container_kind: true
   }];
   GcpWorkloadIdentityPoolProvider = 702 [(kind_meta) = {
     provider: gcp
@@ -3259,6 +3266,7 @@ enum CloudResourceKind {
     provider: cloudflare
     version: v1
     id_prefix: "cfztvn"
+    container_kind: true
   }];
   CloudflareZeroTrustTunnelRoute = 1819 [(kind_meta) = {
     provider: cloudflare
@@ -3703,6 +3711,7 @@ enum CloudResourceKind {
     provider: alicloud
     version: v1
     id_prefix: "acdz"
+    container_kind: true
   }];
 
   AliCloudDnsRecord = 3041 [(kind_meta) = {
@@ -3715,6 +3724,7 @@ enum CloudResourceKind {
     provider: alicloud
     version: v1
     id_prefix: "acdpz"
+    container_kind: true
   }];
 
   // --- Storage ---
@@ -4171,5 +4181,6 @@ enum CloudResourceKind {
     provider: hetzner_cloud
     version: v1
     id_prefix: "hcdns"
+    container_kind: true
   }];
 }
