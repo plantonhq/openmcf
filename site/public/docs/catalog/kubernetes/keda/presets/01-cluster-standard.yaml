@@ -1,0 +1,13 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKeda
+metadata:
+  name: keda
+spec:
+  namespace:
+    value: keda # upstream convention
+  createNamespace: true # the module creates (and owns) the namespace
+  crds:
+    install: true # spec default — the release ships the CRDs
+    # spec default — uninstalling the release keeps the CRDs, so every
+    # ScaledObject/ScaledJob/TriggerAuthentication in the cluster survives.
+    keepOnUninstall: true

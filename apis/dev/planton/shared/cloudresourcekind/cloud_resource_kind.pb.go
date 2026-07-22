@@ -912,20 +912,23 @@ const (
 	CloudResourceKind_KubernetesUdpRoute           CloudResourceKind = 847
 	CloudResourceKind_KubernetesTlsRoute           CloudResourceKind = 848
 	CloudResourceKind_KubernetesReferenceGrant     CloudResourceKind = 849
-	CloudResourceKind_KubernetesIstioBaseCrds      CloudResourceKind = 850
-	CloudResourceKind_KubernetesIstio              CloudResourceKind = 851
+	CloudResourceKind_KubernetesBackendTlsPolicy   CloudResourceKind = 850
+	CloudResourceKind_KubernetesIstioBaseCrds      CloudResourceKind = 851
+	CloudResourceKind_KubernetesIstio              CloudResourceKind = 852
 	// Istio API components (mesh traffic policy, security, telemetry). The seven typed
-	// resources below (852–858) require the Istio CRDs on the cluster, provided by the
-	// lightweight CRDs-only KubernetesIstioBaseCrds (850) — NOT the full mesh
-	// KubernetesIstio (851).
-	CloudResourceKind_KubernetesDestinationRule       CloudResourceKind = 852
-	CloudResourceKind_KubernetesServiceEntry          CloudResourceKind = 853
-	CloudResourceKind_KubernetesPeerAuthentication    CloudResourceKind = 854
-	CloudResourceKind_KubernetesRequestAuthentication CloudResourceKind = 855
-	CloudResourceKind_KubernetesAuthorizationPolicy   CloudResourceKind = 856
-	CloudResourceKind_KubernetesTelemetry             CloudResourceKind = 857
-	CloudResourceKind_KubernetesEnvoyFilter           CloudResourceKind = 858
-	CloudResourceKind_KubernetesMetricsServer         CloudResourceKind = 859
+	// resources below (853–859) require the Istio CRDs on the cluster, provided by the
+	// lightweight CRDs-only KubernetesIstioBaseCrds (851) — NOT the full mesh
+	// KubernetesIstio (852).
+	CloudResourceKind_KubernetesDestinationRule       CloudResourceKind = 853
+	CloudResourceKind_KubernetesServiceEntry          CloudResourceKind = 854
+	CloudResourceKind_KubernetesPeerAuthentication    CloudResourceKind = 855
+	CloudResourceKind_KubernetesRequestAuthentication CloudResourceKind = 856
+	CloudResourceKind_KubernetesAuthorizationPolicy   CloudResourceKind = 857
+	CloudResourceKind_KubernetesTelemetry             CloudResourceKind = 858
+	CloudResourceKind_KubernetesEnvoyFilter           CloudResourceKind = 859
+	CloudResourceKind_KubernetesMetricsServer         CloudResourceKind = 860
+	CloudResourceKind_KubernetesCilium                CloudResourceKind = 861
+	CloudResourceKind_KubernetesKeda                  CloudResourceKind = 862
 	// 870–889: Kubernetes observability
 	CloudResourceKind_KubernetesPrometheus CloudResourceKind = 870
 	CloudResourceKind_KubernetesGrafana    CloudResourceKind = 871
@@ -1513,16 +1516,19 @@ var (
 		847:  "KubernetesUdpRoute",
 		848:  "KubernetesTlsRoute",
 		849:  "KubernetesReferenceGrant",
-		850:  "KubernetesIstioBaseCrds",
-		851:  "KubernetesIstio",
-		852:  "KubernetesDestinationRule",
-		853:  "KubernetesServiceEntry",
-		854:  "KubernetesPeerAuthentication",
-		855:  "KubernetesRequestAuthentication",
-		856:  "KubernetesAuthorizationPolicy",
-		857:  "KubernetesTelemetry",
-		858:  "KubernetesEnvoyFilter",
-		859:  "KubernetesMetricsServer",
+		850:  "KubernetesBackendTlsPolicy",
+		851:  "KubernetesIstioBaseCrds",
+		852:  "KubernetesIstio",
+		853:  "KubernetesDestinationRule",
+		854:  "KubernetesServiceEntry",
+		855:  "KubernetesPeerAuthentication",
+		856:  "KubernetesRequestAuthentication",
+		857:  "KubernetesAuthorizationPolicy",
+		858:  "KubernetesTelemetry",
+		859:  "KubernetesEnvoyFilter",
+		860:  "KubernetesMetricsServer",
+		861:  "KubernetesCilium",
+		862:  "KubernetesKeda",
 		870:  "KubernetesPrometheus",
 		871:  "KubernetesGrafana",
 		872:  "KubernetesSignoz",
@@ -2094,16 +2100,19 @@ var (
 		"KubernetesUdpRoute":                             847,
 		"KubernetesTlsRoute":                             848,
 		"KubernetesReferenceGrant":                       849,
-		"KubernetesIstioBaseCrds":                        850,
-		"KubernetesIstio":                                851,
-		"KubernetesDestinationRule":                      852,
-		"KubernetesServiceEntry":                         853,
-		"KubernetesPeerAuthentication":                   854,
-		"KubernetesRequestAuthentication":                855,
-		"KubernetesAuthorizationPolicy":                  856,
-		"KubernetesTelemetry":                            857,
-		"KubernetesEnvoyFilter":                          858,
-		"KubernetesMetricsServer":                        859,
+		"KubernetesBackendTlsPolicy":                     850,
+		"KubernetesIstioBaseCrds":                        851,
+		"KubernetesIstio":                                852,
+		"KubernetesDestinationRule":                      853,
+		"KubernetesServiceEntry":                         854,
+		"KubernetesPeerAuthentication":                   855,
+		"KubernetesRequestAuthentication":                856,
+		"KubernetesAuthorizationPolicy":                  857,
+		"KubernetesTelemetry":                            858,
+		"KubernetesEnvoyFilter":                          859,
+		"KubernetesMetricsServer":                        860,
+		"KubernetesCilium":                               861,
+		"KubernetesKeda":                                 862,
 		"KubernetesPrometheus":                           870,
 		"KubernetesGrafana":                              871,
 		"KubernetesSignoz":                               872,
@@ -2579,7 +2588,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xc5\xda\x01\n" +
+	"\x02v1\x10\x01*\x80\xdc\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2962,25 +2971,29 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x12KubernetesTlsRoute\x10\xd0\x06\x1a@\xa2\xf7\x04<\b\x13\x10\x01\"\bk8stlsrt:\x02\xc8\x06B(\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\bTLSRoute\x12f\n" +
 	"\x18KubernetesReferenceGrant\x10\xd1\x06\x1aG\xa2\xf7\x04C\b\x13\x10\x01\"\tk8srefgrt:\x02\xc8\x06B.\n" +
-	"\x1cgateway.networking.k8s.io/v1\x12\x0eReferenceGrant\x122\n" +
-	"\x17KubernetesIstioBaseCrds\x10\xd2\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\n" +
+	"\x1cgateway.networking.k8s.io/v1\x12\x0eReferenceGrant\x12h\n" +
+	"\x1aKubernetesBackendTlsPolicy\x10\xd2\x06\x1aG\xa2\xf7\x04C\b\x13\x10\x01\"\ak8sbtls:\x02\xc8\x06B0\n" +
+	"\x1cgateway.networking.k8s.io/v1\x12\x10BackendTLSPolicy\x122\n" +
+	"\x17KubernetesIstioBaseCrds\x10\xd3\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\n" +
 	"k8sistcrds\x12&\n" +
-	"\x0fKubernetesIstio\x10\xd3\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sist\x12^\n" +
-	"\x19KubernetesDestinationRule\x10\xd4\x06\x1a>\xa2\xf7\x04:\b\x13\x10\x01\"\x05k8sdr:\x02\xd2\x06B)\n" +
+	"\x0fKubernetesIstio\x10\xd4\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sist\x12^\n" +
+	"\x19KubernetesDestinationRule\x10\xd5\x06\x1a>\xa2\xf7\x04:\b\x13\x10\x01\"\x05k8sdr:\x02\xd3\x06B)\n" +
 	"\x16networking.istio.io/v1\x12\x0fDestinationRule\x12X\n" +
-	"\x16KubernetesServiceEntry\x10\xd5\x06\x1a;\xa2\xf7\x047\b\x13\x10\x01\"\x05k8sse:\x02\xd2\x06B&\n" +
+	"\x16KubernetesServiceEntry\x10\xd6\x06\x1a;\xa2\xf7\x047\b\x13\x10\x01\"\x05k8sse:\x02\xd3\x06B&\n" +
 	"\x16networking.istio.io/v1\x12\fServiceEntry\x12b\n" +
-	"\x1cKubernetesPeerAuthentication\x10\xd6\x06\x1a?\xa2\xf7\x04;\b\x13\x10\x01\"\x05k8spa:\x02\xd2\x06B*\n" +
+	"\x1cKubernetesPeerAuthentication\x10\xd7\x06\x1a?\xa2\xf7\x04;\b\x13\x10\x01\"\x05k8spa:\x02\xd3\x06B*\n" +
 	"\x14security.istio.io/v1\x12\x12PeerAuthentication\x12h\n" +
-	"\x1fKubernetesRequestAuthentication\x10\xd7\x06\x1aB\xa2\xf7\x04>\b\x13\x10\x01\"\x05k8sra:\x02\xd2\x06B-\n" +
+	"\x1fKubernetesRequestAuthentication\x10\xd8\x06\x1aB\xa2\xf7\x04>\b\x13\x10\x01\"\x05k8sra:\x02\xd3\x06B-\n" +
 	"\x14security.istio.io/v1\x12\x15RequestAuthentication\x12g\n" +
-	"\x1dKubernetesAuthorizationPolicy\x10\xd8\x06\x1aC\xa2\xf7\x04?\b\x13\x10\x01\"\bk8sauthz:\x02\xd2\x06B+\n" +
+	"\x1dKubernetesAuthorizationPolicy\x10\xd9\x06\x1aC\xa2\xf7\x04?\b\x13\x10\x01\"\bk8sauthz:\x02\xd3\x06B+\n" +
 	"\x14security.istio.io/v1\x12\x13AuthorizationPolicy\x12R\n" +
-	"\x13KubernetesTelemetry\x10\xd9\x06\x1a8\xa2\xf7\x044\b\x13\x10\x01\"\x06k8stel:\x02\xd2\x06B\"\n" +
+	"\x13KubernetesTelemetry\x10\xda\x06\x1a8\xa2\xf7\x044\b\x13\x10\x01\"\x06k8stel:\x02\xd3\x06B\"\n" +
 	"\x15telemetry.istio.io/v1\x12\tTelemetry\x12\\\n" +
-	"\x15KubernetesEnvoyFilter\x10\xda\x06\x1a@\xa2\xf7\x04<\b\x13\x10\x01\"\x05k8sef:\x02\xd2\x06B+\n" +
+	"\x15KubernetesEnvoyFilter\x10\xdb\x06\x1a@\xa2\xf7\x04<\b\x13\x10\x01\"\x05k8sef:\x02\xd3\x06B+\n" +
 	"\x1cnetworking.istio.io/v1alpha3\x12\vEnvoyFilter\x121\n" +
-	"\x17KubernetesMetricsServer\x10\xdb\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8smetsrv\x12,\n" +
+	"\x17KubernetesMetricsServer\x10\xdc\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8smetsrv\x12'\n" +
+	"\x10KubernetesCilium\x10\xdd\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scil\x12&\n" +
+	"\x0eKubernetesKeda\x10\xde\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8skeda\x12,\n" +
 	"\x14KubernetesPrometheus\x10\xe6\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sprom\x12(\n" +
 	"\x11KubernetesGrafana\x10\xe7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sgfn\x12'\n" +
 	"\x10KubernetesSignoz\x10\xe8\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssgz\x12(\n" +

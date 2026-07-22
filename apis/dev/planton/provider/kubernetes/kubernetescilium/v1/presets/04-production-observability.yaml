@@ -1,0 +1,43 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesCilium
+metadata:
+  name: cilium
+spec:
+  namespace:
+    value: kube-system # upstream convention — the agent is cluster infrastructure
+  createNamespace: false # kube-system always exists
+  hubble:
+    enabled: true # spec default — made explicit: the observability layer hinges on it
+    relay: true # cluster-wide flow aggregation for the UI and hubble CLI
+    ui: true # service-map web console (requires relay — CEL-enforced)
+    metrics:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - http
+  prometheus:
+    enabled: true # agent + operator /metrics endpoints
+    # Requires the Prometheus operator CRDs on the cluster — the release
+    # FAILS to install without them.
+    serviceMonitor: true
+  encryption:
+    enabled: true
+    type: wireguard # kernel WireGuard, automatic key management — the low-friction choice
+  bandwidthManager:
+    enabled: true # enforce pod egress-bandwidth annotations in eBPF
+  policyEnforcementMode: default # enforce only where policies select pods (spec default)
+  operator:
+    replicas: 2 # chart-default HA — leader-elected, spread by pod anti-affinity
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  agentResources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 1Gi

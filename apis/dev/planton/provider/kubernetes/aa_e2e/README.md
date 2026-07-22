@@ -22,6 +22,46 @@ kubeconfig path, not the cluster's origin. Every test still deploys, verifies,
 destroys, and verifies cleanup of its own resources — only the cluster outlives
 the run.
 
+## Cluster Profiles
+
+Some scenarios need a cluster the default kind cluster cannot be: a Cilium
+lane needs a cluster created WITHOUT a CNI (kindnet already owns pod
+networking on the default cluster), and a NetworkPolicy enforcement proof
+needs a CNI that actually enforces. A scenario opts into such a cluster by
+annotation:
+
+```yaml
+metadata:
+  annotations:
+    planton.dev/e2e-cluster-profile: "cilium-cni"
+```
+
+| Profile | Cluster | Purpose |
+|---------|---------|---------|
+| (absent) | the default shared cluster | everything else |
+| `cilium-cni` | `<base>-cilium`, single-node, `disableDefaultCNI: true` | Cilium-as-primary-CNI lanes; NetworkPolicy behavioral enforcement |
+
+Mechanics, all verified against the framework's own contracts:
+
+- The test entrypoints route each scenario to its profile's harness at the
+  single choke point where a scenario binds to a cluster, constructing the
+  profile cluster LAZILY (runs that touch no profiled scenario never pay for
+  it). Profile clusters are persistent, exactly like the default cluster.
+- Both engines read cluster credentials through the process `KUBECONFIG`
+  (Pulumi directly; the Terraform lane forwards it to `KUBE_CONFIG_PATH` per
+  scenario), and scenarios within one test process run strictly serially —
+  activating the kubeconfig per scenario is therefore race-free. Cross-
+  terminal parallelism is separate processes with separate environments.
+- A CNI-less cluster's nodes are NotReady BY DESIGN until the CNI installs,
+  so the profile's create path waits on API-server readiness instead of
+  kind's node gate; the NotReady→Ready transition is asserted by the Cilium
+  install verifier as part of the proof.
+- Profiles are ignored in the external-cluster lane — the batched real
+  cluster is assumed suitable for every scenario in its batch.
+- Unknown profile values fail the scenario loudly (never a silent
+  wrong-cluster run). Lanes that target the same profile cluster serialize
+  exactly like lanes sharing the default cluster.
+
 ## Why `aa_e2e`?
 
 Every cloud provider in Planton can have an E2E harness colocated alongside

@@ -2819,21 +2819,31 @@ enum CloudResourceKind {
       kind: "ReferenceGrant"
     }
   }];
-  KubernetesIstioBaseCrds = 850 [(kind_meta) = {
+  KubernetesBackendTlsPolicy = 850 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sbtls"
+    prerequisites: [KubernetesGatewayApiCrds]
+    kubernetes_manifest_projection: {
+      api_version: "gateway.networking.k8s.io/v1"
+      kind: "BackendTLSPolicy"
+    }
+  }];
+  KubernetesIstioBaseCrds = 851 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sistcrds"
   }];
-  KubernetesIstio = 851 [(kind_meta) = {
+  KubernetesIstio = 852 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sist"
   }];
   // Istio API components (mesh traffic policy, security, telemetry). The seven typed
-  // resources below (852–858) require the Istio CRDs on the cluster, provided by the
-  // lightweight CRDs-only KubernetesIstioBaseCrds (850) — NOT the full mesh
-  // KubernetesIstio (851).
-  KubernetesDestinationRule = 852 [(kind_meta) = {
+  // resources below (853–859) require the Istio CRDs on the cluster, provided by the
+  // lightweight CRDs-only KubernetesIstioBaseCrds (851) — NOT the full mesh
+  // KubernetesIstio (852).
+  KubernetesDestinationRule = 853 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sdr"
@@ -2843,7 +2853,7 @@ enum CloudResourceKind {
       kind: "DestinationRule"
     }
   }];
-  KubernetesServiceEntry = 853 [(kind_meta) = {
+  KubernetesServiceEntry = 854 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sse"
@@ -2853,7 +2863,7 @@ enum CloudResourceKind {
       kind: "ServiceEntry"
     }
   }];
-  KubernetesPeerAuthentication = 854 [(kind_meta) = {
+  KubernetesPeerAuthentication = 855 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8spa"
@@ -2863,7 +2873,7 @@ enum CloudResourceKind {
       kind: "PeerAuthentication"
     }
   }];
-  KubernetesRequestAuthentication = 855 [(kind_meta) = {
+  KubernetesRequestAuthentication = 856 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sra"
@@ -2873,7 +2883,7 @@ enum CloudResourceKind {
       kind: "RequestAuthentication"
     }
   }];
-  KubernetesAuthorizationPolicy = 856 [(kind_meta) = {
+  KubernetesAuthorizationPolicy = 857 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sauthz"
@@ -2883,7 +2893,7 @@ enum CloudResourceKind {
       kind: "AuthorizationPolicy"
     }
   }];
-  KubernetesTelemetry = 857 [(kind_meta) = {
+  KubernetesTelemetry = 858 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stel"
@@ -2893,7 +2903,7 @@ enum CloudResourceKind {
       kind: "Telemetry"
     }
   }];
-  KubernetesEnvoyFilter = 858 [(kind_meta) = {
+  KubernetesEnvoyFilter = 859 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sef"
@@ -2903,10 +2913,20 @@ enum CloudResourceKind {
       kind: "EnvoyFilter"
     }
   }];
-  KubernetesMetricsServer = 859 [(kind_meta) = {
+  KubernetesMetricsServer = 860 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8smetsrv"
+  }];
+  KubernetesCilium = 861 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8scil"
+  }];
+  KubernetesKeda = 862 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skeda"
   }];
   // 870–889: Kubernetes observability
   KubernetesPrometheus = 870 [(kind_meta) = {

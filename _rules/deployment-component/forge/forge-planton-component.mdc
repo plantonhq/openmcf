@@ -496,7 +496,40 @@ The Kubernetes analog: kind-cluster lanes for DISJOINT components may run in
 parallel, but lanes must serialize whenever one lane's component is another
 lane's prerequisite fixture, or the component is a cluster singleton (a fixed
 release name / cluster-scoped APIService or CRDs) — the two runs contend for
-one identity. And never kill a lane mid-install to "free" the cluster: an
+one identity.
+
+**Kubernetes cluster profiles: scenarios that need a cluster the default kind
+cluster cannot be.** Some components change what the CLUSTER ITSELF is — a CNI
+must install onto a cluster created WITHOUT a default CNI, and behavioral
+proofs that depend on such a component (NetworkPolicy enforcement needs an
+enforcing CNI) inherit the requirement. The harness supports this via the
+`planton.dev/e2e-cluster-profile` scenario annotation: the test entrypoints
+route the annotated scenario to a dedicated persistent kind cluster built for
+that profile, created lazily on first use (see the aa_e2e README for the
+profile table and mechanics). Rules when designing lanes around a profile:
+the profile cluster is typically single-node, so chart defaults sized for HA
+(a 2-replica anti-affine operator) can never fully schedule — scenario
+manifests must size those knobs to the topology or the atomic install waits
+forever; a CNI-less cluster's nodes are NotReady BY DESIGN until the CNI
+component installs, so never gate the profile's creation on node readiness —
+assert the NotReady→Ready transition in the component's install verifier
+instead, where it becomes part of the proof; and behavioral scenarios that
+merely CONSUME the profile component declare it a scenario-level prerequisite
+(annotation), never a registry prerequisite — the component under test
+deploys fine without it on ordinary clusters.
+
+**Behavioral proofs whose driver CR is served by the component under test are
+VERIFIER-OWNED.** Scenario fixtures deploy BEFORE the component under test, so
+a fixture cannot carry a custom resource whose CRD the component itself
+installs (a KEDA ScaledObject, an operator's workload CR) — and chaining a
+second instance of the component to fix the ordering trips its
+fixed-release-name singleton. The honest shape: fixtures carry only what needs
+nothing from the component (a plain target Deployment); the behavioral
+verifier applies the driver CR via kubectl AFTER the install assertions pass,
+asserts the behavior, and deletes what it applied in a defer — active cluster
+interaction is established verifier grain (`kubectl top` gates, live curl
+probes), and verifier-owned cleanup keeps a failed assertion from leaking a CR
+that blocks later lanes. And never kill a lane mid-install to "free" the cluster: an
 interrupted Helm install orphans its release in `pending-install` state, which
 blocks every later install of the same name with a misleading name-in-use
 error. Sweep with `helm uninstall <release> -n <namespace>` (plus the fixture

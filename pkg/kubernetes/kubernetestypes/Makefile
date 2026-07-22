@@ -74,7 +74,8 @@ gen-gateway-apis:
 	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_tlsroutes.yaml \
 	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_tcproutes.yaml \
 	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_udproutes.yaml \
-	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_listenersets.yaml
+	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_listenersets.yaml \
+	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_backendtlspolicies.yaml
 
 .PHONY: gen-istio
 gen-istio:

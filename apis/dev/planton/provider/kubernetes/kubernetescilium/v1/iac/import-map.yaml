@@ -1,0 +1,29 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetescilium
+spec:
+  # Cilium installs as ONE Helm release whose name is fixed to "cilium"
+  # (the agent DaemonSet, generated CNI configuration, and operator are
+  # cluster singletons — one dataplane per cluster), in the spec's
+  # namespace (kube-system by upstream convention).
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+      where_to_find: >-
+        Always "cilium" — the module fixes the release name.
+        Confirm with `helm list -n <namespace>` (NAME column).
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "kube-system".
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself (kube-system installs never import a namespace).

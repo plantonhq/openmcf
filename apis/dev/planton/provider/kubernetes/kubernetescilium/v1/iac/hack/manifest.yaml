@@ -1,0 +1,82 @@
+# Full-surface test manifest: exercises every typed arm of the spec so the
+# offline plan proofs cover what the live lanes may not. Kind-style posture
+# (primary CNI on a cluster created with disableDefaultCNI +
+# kubeProxyMode none); cloud and cni chaining stay unset — they are
+# mutually-exclusive postures with this one. Not a realistic production
+# shape — see presets for those.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesCilium
+metadata:
+  name: hack-cilium
+spec:
+  namespace:
+    value: kube-system
+  # kube-system always exists — the module must not try to create it.
+  createNamespace: false
+  chartVersion: "1.19.6"
+  clusterName: hack-kind
+  ipam:
+    # kind's control plane already allocates per-node PodCIDRs — use them
+    # (cluster-pool knobs only apply to cluster-pool mode, so they stay
+    # unset here).
+    mode: kubernetes
+  routing:
+    # tunnel mode: the native-routing knobs (ipv4NativeRoutingCidr,
+    # autoDirectNodeRoutes) are CEL-fenced to native mode and stay unset.
+    mode: tunnel
+    tunnelProtocol: vxlan
+  # Replace kube-proxy with eBPF — the cluster is created with
+  # kubeProxyMode none, so the agent needs the API server address before
+  # any service load-balancing exists (the control-plane node's container
+  # name on kind).
+  kubeProxyReplacement: true
+  k8sServiceHost: hack-cilium-control-plane
+  k8sServicePort: 6443
+  hubble:
+    enabled: true
+    relay: true
+    ui: true
+    metrics:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+    # No Prometheus operator CRDs on the hack cluster — the release would
+    # fail to install with a ServiceMonitor.
+    metricsServiceMonitor: false
+  encryption:
+    enabled: true
+    type: wireguard
+    nodeEncryption: true
+  policyEnforcementMode: default
+  # Requires kubeProxyReplacement (set above) and the Gateway API CRDs on
+  # the cluster.
+  gatewayApi: true
+  bandwidthManager:
+    enabled: true
+    bbr: true
+  operator:
+    # Single-node kind cluster: the chart-default 2 replicas cannot both
+    # schedule under pod anti-affinity and the rollout never settles.
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+  agentResources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  prometheus:
+    enabled: true
+    # Same CRD constraint as hubble.metricsServiceMonitor.
+    serviceMonitor: false
+  helmValues: |
+    debug:
+      enabled: false

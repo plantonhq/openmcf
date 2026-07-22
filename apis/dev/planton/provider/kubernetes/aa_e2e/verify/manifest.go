@@ -188,3 +188,33 @@ func manifestHasPrerequisite(manifestPath, kind string) bool {
 	}
 	return false
 }
+
+// manifestHasPrerequisiteSuffix reports whether any e2e-prerequisites entry
+// ends with the given suffix — how a verifier recognizes a MANIFEST-PATH
+// fixture (e.g. a behavioral scenario's scale-target Deployment) without
+// coupling to the repo-relative prefix of the path.
+func manifestHasPrerequisiteSuffix(manifestPath, suffix string) bool {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return false
+	}
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return false
+	}
+	metadata, ok := raw["metadata"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	annotations, ok := metadata["annotations"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	value, _ := annotations["planton.dev/e2e-prerequisites"].(string)
+	for _, entry := range strings.Split(value, ",") {
+		if strings.HasSuffix(strings.TrimSpace(entry), suffix) {
+			return true
+		}
+	}
+	return false
+}

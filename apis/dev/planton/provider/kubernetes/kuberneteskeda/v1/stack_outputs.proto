@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskeda.v1;
+
+// KubernetesKedaStackOutputs captures observable outputs after KEDA is
+// installed on the target cluster.
+message KubernetesKedaStackOutputs {
+  // Namespace KEDA was installed into (the resolved spec.namespace).
+  // ScaledObjects live NEXT TO their workloads, not here — this is where
+  // the engine runs.
+  string namespace = 1;
+
+  // Helm release name — fixed "keda" (one installation per cluster; the
+  // external.metrics.k8s.io APIService is a cluster singleton).
+  string release_name = 2;
+
+  // Name of the operator's Kubernetes service account (the chart's fixed
+  // "keda-operator") — the subject cloud-side keyless bindings (IRSA role
+  // trust policies, GCP WI bindings, Entra federated credentials) are
+  // written against.
+  string operator_service_account_name = 3;
+}

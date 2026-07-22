@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -28,6 +29,16 @@ var (
 	// testHarness is the shared kind cluster harness for all Kubernetes tests.
 	testHarness *kubernetese2e.Harness
 
+	// ciliumHarness is the lazily-created harness for scenarios annotated with
+	// the cilium-cni cluster profile (a dedicated persistent kind cluster with
+	// the default CNI disabled). Nil until the first such scenario runs; runs
+	// that touch no profiled scenario never create the second cluster.
+	ciliumHarness *kubernetese2e.Harness
+
+	// ciliumHarnessMu guards lazy ciliumHarness construction. Scenarios run
+	// serially within a process, but the guard keeps the invariant explicit.
+	ciliumHarnessMu sync.Mutex
+
 	// repoRoot is the absolute path to the planton repository root.
 	repoRoot string
 
@@ -37,6 +48,37 @@ var (
 	// pulumiBackendURL is the file-based backend for Pulumi stacks.
 	pulumiBackendURL string
 )
+
+// harnessForScenario routes a scenario to the cluster its manifest asks for
+// via the planton.dev/e2e-cluster-profile annotation. The default (no
+// annotation) is the shared cluster. In the external-cluster lane profiles
+// are ignored — the batched real cluster is assumed suitable for its batch.
+// Unknown profile values fail loudly rather than silently running on the
+// wrong cluster.
+func harnessForScenario(manifestPath string) (*kubernetese2e.Harness, error) {
+	profile, err := runner.ManifestAnnotation(manifestPath, kubernetese2e.ClusterProfileAnnotation)
+	if err != nil {
+		return nil, fmt.Errorf("reading cluster profile from %s: %w", manifestPath, err)
+	}
+	if profile == "" || testHarness.External() {
+		return testHarness, nil
+	}
+	switch profile {
+	case kubernetese2e.ClusterProfileCiliumCni:
+		ciliumHarnessMu.Lock()
+		defer ciliumHarnessMu.Unlock()
+		if ciliumHarness == nil {
+			h := kubernetese2e.NewCiliumCniHarness(testHarness.ClusterName())
+			if err := h.Setup(context.Background()); err != nil {
+				return nil, fmt.Errorf("setting up %s cluster profile: %w", profile, err)
+			}
+			ciliumHarness = h
+		}
+		return ciliumHarness, nil
+	default:
+		return nil, fmt.Errorf("scenario %s names unknown cluster profile %q", manifestPath, profile)
+	}
+}
 
 func TestMain(m *testing.M) {
 	// Resolve repo root (this file lives at e2e/e2e_test.go)
@@ -82,7 +124,12 @@ func TestMain(m *testing.M) {
 	// Run tests
 	code := m.Run()
 
-	// Teardown kind cluster
+	// Teardown kind cluster(s) — the profile cluster first (created last).
+	if ciliumHarness != nil {
+		if err := ciliumHarness.Teardown(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to tear down cilium profile cluster: %v\n", err)
+		}
+	}
 	if err := testHarness.Teardown(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: failed to delete kind cluster: %v\n", err)
 	}

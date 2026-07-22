@@ -1,0 +1,18 @@
+# Minimal Cilium: primary CNI on the CNI-less profile cluster, kubernetes
+# IPAM (kind allocates PodCIDRs), single operator replica (single-node
+# cluster — the chart's 2-replica default can never fully schedule there).
+# The install verifier asserts the load-bearing transition: nodes go
+# NotReady → Ready as Cilium becomes the cluster's CNI.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesCilium
+metadata:
+  name: e2e-cilium-minimal
+  annotations:
+    planton.dev/e2e-cluster-profile: "cilium-cni"
+spec:
+  namespace:
+    value: kube-system
+  ipam:
+    mode: kubernetes
+  operator:
+    replicas: 1

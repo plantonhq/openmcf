@@ -44,6 +44,57 @@ const (
 	DestroyClusterEnvVar = "PLANTON_E2E_DESTROY_CLUSTER"
 )
 
+// Cluster-profile contract: a scenario manifest may opt OUT of the default
+// shared cluster by naming a profile in its metadata annotations. The test
+// entrypoints route the scenario to a dedicated persistent cluster built for
+// that profile (constructed lazily — runs that touch no profiled scenario
+// never pay for the extra cluster). In the external-cluster lane
+// (PLANTON_E2E_KUBECONFIG) profiles are ignored: the batched real cluster is
+// assumed suitable for every scenario in its batch.
+const (
+	// ClusterProfileAnnotation names the cluster profile a scenario needs.
+	// Absent = the default shared kind cluster.
+	ClusterProfileAnnotation = "planton.dev/e2e-cluster-profile"
+
+	// ClusterProfileCiliumCni is the CNI-less cluster profile: kind is created
+	// with the default CNI disabled so Cilium can install as the PRIMARY CNI —
+	// the posture a real Cilium cluster runs, impossible to reproduce on the
+	// default cluster whose kindnet already owns pod networking. Scenarios on
+	// this profile: the Cilium kind's own lanes and every behavioral scenario
+	// that needs an ENFORCING CNI (NetworkPolicy deny proofs).
+	ClusterProfileCiliumCni = "cilium-cni"
+)
+
+// ciliumKindConfigYAML is the kind cluster configuration for the cilium-cni
+// profile. disableDefaultCNI is the load-bearing line (upstream's own kind
+// guidance): without it kindnet owns /etc/cni/net.d and Cilium could only
+// chain. kube-proxy is deliberately KEPT (default iptables mode) so scenarios
+// that do not enable kube-proxy replacement still have Service routing —
+// kube-proxy-free is a per-scenario Cilium setting, not a cluster property
+// the shared profile should force on every lane.
+const ciliumKindConfigYAML = `kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+networking:
+  disableDefaultCNI: true
+`
+
+// NewCiliumCniHarness builds the harness for the cilium-cni profile: a
+// dedicated persistent kind cluster (default name "<base>-cilium") created
+// WITHOUT a CNI. Node readiness is deliberately NOT awaited at create time —
+// a CNI-less node is NotReady BY DESIGN until Cilium installs, so the create
+// path waits on API-server readiness instead (kind's --wait would time out
+// on the node gate). The NotReady→Ready transition then happens inside the
+// Cilium install itself and is asserted by the install verifier.
+func NewCiliumCniHarness(baseClusterName string) *Harness {
+	return &Harness{
+		clusterName:    baseClusterName + "-cilium",
+		kindConfigYAML: ciliumKindConfigYAML,
+		skipNodeWait:   true,
+	}
+}
+
 // Harness manages the test cluster for Kubernetes E2E tests.
 type Harness struct {
 	clusterName    string
@@ -53,6 +104,16 @@ type Harness struct {
 	// external marks the external-cluster lane: the cluster is provisioned and
 	// owned outside the run; Setup/Teardown must not touch its lifecycle.
 	external bool
+
+	// kindConfigYAML, when non-empty, is written to a temp file and passed to
+	// `kind create cluster --config` (cluster profiles: CNI-less clusters and
+	// other topologies the default cluster cannot express).
+	kindConfigYAML string
+
+	// skipNodeWait drops kind's node-readiness wait at create time and polls
+	// API-server readiness instead. Required for CNI-less profiles, whose
+	// nodes stay NotReady until a CNI installs.
+	skipNodeWait bool
 }
 
 // NewHarness creates a Kubernetes test harness with the given kind cluster name.
@@ -106,7 +167,20 @@ func (h *Harness) Setup(ctx context.Context) error {
 			"create", "cluster",
 			"--name", h.clusterName,
 			"--kubeconfig", h.kubeconfigPath,
-			"--wait", "120s",
+		}
+		if h.skipNodeWait {
+			// CNI-less profile: nodes CANNOT become Ready before a CNI
+			// installs, so kind's node-readiness wait would always time out.
+			// API-server readiness is polled below instead.
+		} else {
+			args = append(args, "--wait", "120s")
+		}
+		if h.kindConfigYAML != "" {
+			configPath := filepath.Join(tmpDir, "kind-config.yaml")
+			if err := os.WriteFile(configPath, []byte(h.kindConfigYAML), 0o600); err != nil {
+				return errors.Wrap(err, "failed to write kind cluster config")
+			}
+			args = append(args, "--config", configPath)
 		}
 
 		cmd := exec.CommandContext(ctx, "kind", args...)
@@ -121,6 +195,12 @@ func (h *Harness) Setup(ctx context.Context) error {
 			return errors.Wrapf(err, "kind create cluster failed: %s", stderr.String())
 		}
 
+		if h.skipNodeWait {
+			if err := h.waitForApiServer(ctx, 2*time.Minute); err != nil {
+				return err
+			}
+		}
+
 		fmt.Printf("  [kind] Cluster %q ready in %s\n", h.clusterName, time.Since(start).Round(time.Second))
 	}
 
@@ -128,6 +208,43 @@ func (h *Harness) Setup(ctx context.Context) error {
 	os.Setenv("KUBECONFIG", h.kubeconfigPath)
 
 	return nil
+}
+
+// waitForApiServer polls the cluster's /readyz endpoint until the API server
+// accepts requests. This is the readiness gate for CNI-less profiles, where
+// node readiness (kind's own --wait gate) is unreachable by design until the
+// CNI component under test installs.
+func (h *Harness) waitForApiServer(ctx context.Context, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		cmd := exec.CommandContext(ctx, "kubectl", "--kubeconfig", h.kubeconfigPath, "get", "--raw", "/readyz")
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err == nil {
+			return nil
+		} else {
+			lastErr = errors.Wrap(err, strings.TrimSpace(stderr.String()))
+		}
+		time.Sleep(3 * time.Second)
+	}
+	return errors.Wrapf(lastErr, "API server for cluster %q not ready within %s", h.clusterName, timeout)
+}
+
+// ActivateKubeconfig points the process-global KUBECONFIG at this harness's
+// cluster. The engines read cluster credentials through the environment
+// (Pulumi's kubernetes provider directly; the Terraform lane forwards it to
+// KUBE_CONFIG_PATH per scenario), and scenarios within one test process run
+// strictly serially — the entrypoints call this before each scenario so
+// multi-cluster runs cannot leak a scenario onto the wrong cluster.
+func (h *Harness) ActivateKubeconfig() {
+	os.Setenv("KUBECONFIG", h.kubeconfigPath)
+}
+
+// External reports whether the harness adopted an externally-owned cluster
+// (PLANTON_E2E_KUBECONFIG lane). Cluster profiles do not apply in that lane.
+func (h *Harness) External() bool {
+	return h.external
 }
 
 // Teardown releases the cluster per lane: external clusters are never touched, and

@@ -25,7 +25,7 @@ var operatorKinds = map[string]bool{
 	"kuberneteselasticoperator":         true,
 	"kubernetesstrimzikafkaoperator":    true,
 	"kuberneteszalandopostgresoperator": true,
-	// Tier 4 operators with configurable namespace (session 010)
+	// Tier 4 operators with configurable namespace
 	"kubernetesgharunnerscalesetcontroller": true,
 	"kubernetesrookcephoperator":            true,
 }
@@ -82,6 +82,7 @@ var crdInstallKinds = map[string][]string{
 		"udproutes.gateway.networking.k8s.io",
 		"tlsroutes.gateway.networking.k8s.io",
 		"referencegrants.gateway.networking.k8s.io",
+		"backendtlspolicies.gateway.networking.k8s.io",
 	},
 	// KubernetesIstioBaseCrds installs the istio/base CRD bundle (no istiod). Verify the
 	// CRDs backing the seven typed Istio components are present.
@@ -113,20 +114,21 @@ type gatewayApiCustomResource struct {
 // gatewayApiKinds maps manifest kind values (lowercased) to their Gateway API
 // custom-resource verification descriptor.
 var gatewayApiKinds = map[string]gatewayApiCustomResource{
-	"kubernetesgatewayclass":   {resource: "gatewayclasses.gateway.networking.k8s.io", clusterScoped: true},
-	"kubernetesgateway":        {resource: "gateways.gateway.networking.k8s.io"},
-	"kuberneteslistenerset":    {resource: "listenersets.gateway.networking.k8s.io"},
-	"kuberneteshttproute":      {resource: "httproutes.gateway.networking.k8s.io"},
-	"kubernetesgrpcroute":      {resource: "grpcroutes.gateway.networking.k8s.io"},
-	"kubernetestcproute":       {resource: "tcproutes.gateway.networking.k8s.io"},
-	"kubernetesudproute":       {resource: "udproutes.gateway.networking.k8s.io"},
-	"kubernetestlsroute":       {resource: "tlsroutes.gateway.networking.k8s.io"},
-	"kubernetesreferencegrant": {resource: "referencegrants.gateway.networking.k8s.io"},
+	"kubernetesgatewayclass":     {resource: "gatewayclasses.gateway.networking.k8s.io", clusterScoped: true},
+	"kubernetesgateway":          {resource: "gateways.gateway.networking.k8s.io"},
+	"kuberneteslistenerset":      {resource: "listenersets.gateway.networking.k8s.io"},
+	"kuberneteshttproute":        {resource: "httproutes.gateway.networking.k8s.io"},
+	"kubernetesgrpcroute":        {resource: "grpcroutes.gateway.networking.k8s.io"},
+	"kubernetestcproute":         {resource: "tcproutes.gateway.networking.k8s.io"},
+	"kubernetesudproute":         {resource: "udproutes.gateway.networking.k8s.io"},
+	"kubernetestlsroute":         {resource: "tlsroutes.gateway.networking.k8s.io"},
+	"kubernetesreferencegrant":   {resource: "referencegrants.gateway.networking.k8s.io"},
+	"kubernetesbackendtlspolicy": {resource: "backendtlspolicies.gateway.networking.k8s.io"},
 }
 
 // istioApiKinds maps manifest kind values (lowercased) to the fully-qualified
 // kubectl resource (plural.group) for the typed Istio API deployment components
-// (852-858). Like the Gateway API kinds, these components do not run pods;
+// (853-859). Like the Gateway API kinds, these components do not run pods;
 // verification confirms the CR itself exists after apply and is gone after
 // destroy. The Istio CRDs are installed by the KubernetesIstioBaseCrds registry
 // prerequisite before the component applies. All seven Istio kinds are
@@ -212,12 +214,41 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 		}, nil
 
 	// A NetworkPolicy has no runtime status of its own (enforcement lives in
-	// the CNI); the object's existence is the verifiable contract.
+	// the CNI); on the default cluster the object's existence is the
+	// verifiable contract. Scenarios that run with an ENFORCING CNI (the
+	// KubernetesCilium prerequisite, on the cilium-cni cluster profile) get
+	// the behavioral verifier — traffic actually blocked while the policy
+	// exists and flowing again after destroy.
 	case "kubernetesnetworkpolicy":
+		if manifestHasPrerequisite(manifestPath, "KubernetesCilium") {
+			return &NetworkPolicyDenyBehavioralVerifier{
+				Namespace:        info.Namespace,
+				PolicyName:       info.Name,
+				ClientDeployment: "e2e-netpol-client",
+				BackendURL:       "http://e2e-netpol-backend." + info.Namespace + ".svc.cluster.local/",
+			}, nil
+		}
 		return &ResourceExistenceVerifier{
 			Namespace: info.Namespace,
 			Kind:      "networkpolicy",
 			Name:      info.Name,
+		}, nil
+
+	// Cilium: the dataplane install proof — agent rolled out, operator
+	// available, and every node Ready (on the CNI-less profile the
+	// NotReady→Ready transition is the proof Cilium became the CNI).
+	case "kubernetescilium":
+		return &CiliumInstallVerifier{
+			Namespace: info.Namespace,
+		}, nil
+
+	// KEDA: install proof up to the external-metrics APIService; the
+	// behavioral-scaling scenario (recognized by its scale-target fixture)
+	// additionally proves a real cron-driven scale-up.
+	case "kuberneteskeda":
+		return &KedaInstallVerifier{
+			Namespace:  info.Namespace,
+			Behavioral: manifestHasPrerequisiteSuffix(manifestPath, "fixture-scale-target.yaml"),
 		}, nil
 
 	// A claim under a WaitForFirstConsumer StorageClass is correctly Pending

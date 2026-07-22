@@ -3,6 +3,9 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "gateway",
     srcs = [
+        "backendTLSPolicy.go",
+        "backendTLSPolicyList.go",
+        "backendTLSPolicyPatch.go",
         "gateway.go",
         "gatewayClass.go",
         "gatewayClassList.go",

@@ -523,6 +523,53 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesCilium: install identity + the fixed-name component
+			// handles (hubble relay/ui Services, the "cilium" GatewayClass)
+			// from both engines must land on the StackOutputs proto.
+			name: "KubernetesCilium",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesCilium,
+			rawOutputs: map[string]interface{}{
+				"namespace":                 "kube-system",
+				"release_name":              "cilium",
+				"cluster_name":              "prod-east",
+				"hubble_relay_service_name": "hubble-relay",
+				"hubble_ui_service_name":    "hubble-ui",
+				"gateway_class_name":        "cilium",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "cluster_name",
+				"hubble_relay_service_name", "hubble_ui_service_name", "gateway_class_name",
+			},
+		},
+		{
+			// KubernetesKeda: install identity + the operator service-account
+			// handle keyless cloud bindings are written against, from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesKeda",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKeda,
+			rawOutputs: map[string]interface{}{
+				"namespace":                     "keda",
+				"release_name":                  "keda",
+				"operator_service_account_name": "keda-operator",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "operator_service_account_name",
+			},
+		},
+		{
+			// KubernetesBackendTlsPolicy: the created CR's identity from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesBackendTlsPolicy",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesBackendTlsPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_name": "payments-backend-tls",
+				"namespace":   "payments",
+			},
+			mustPopulate: []string{
+				"policy_name", "namespace",
+			},
+		},
+		{
 			// KubernetesGatewayApiCrds: install identity (version, channel,
 			// manifest URL) from both engines must land on the StackOutputs proto.
 			name: "KubernetesGatewayApiCrds",

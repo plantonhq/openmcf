@@ -421,8 +421,10 @@ import (
 	kubernetesaltinityoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesaltinityoperator/v1"
 	kubernetesargocdv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesargocd/v1"
 	kubernetesauthorizationpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesauthorizationpolicy/v1"
+	kubernetesbackendtlspolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesbackendtlspolicy/v1"
 	kubernetescertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescertificate/v1"
 	kubernetescertmanagerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescertmanager/v1"
+	kubernetesciliumv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescilium/v1"
 	kubernetesclickhousev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclickhouse/v1"
 	kubernetesclusterissuerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclusterissuer/v1"
 	kubernetesclustersecretstorev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclustersecretstore/v1"
@@ -456,6 +458,7 @@ import (
 	kubernetesjenkinsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjenkins/v1"
 	kubernetesjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjob/v1"
 	kuberneteskafkav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskafka/v1"
+	kuberneteskedav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeda/v1"
 	kuberneteskeycloakv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeycloak/v1"
 	kuberneteslistenersetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteslistenerset/v1"
 	kuberneteslocustv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteslocust/v1"
@@ -1050,8 +1053,10 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesAltinityOperator:            &kubernetesaltinityoperatorv1.KubernetesAltinityOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesArgocd:                      &kubernetesargocdv1.KubernetesArgocd{},
 	cloudresourcekind.CloudResourceKind_KubernetesAuthorizationPolicy:         &kubernetesauthorizationpolicyv1.KubernetesAuthorizationPolicy{},
+	cloudresourcekind.CloudResourceKind_KubernetesBackendTlsPolicy:            &kubernetesbackendtlspolicyv1.KubernetesBackendTlsPolicy{},
 	cloudresourcekind.CloudResourceKind_KubernetesCertManager:                 &kubernetescertmanagerv1.KubernetesCertManager{},
 	cloudresourcekind.CloudResourceKind_KubernetesCertificate:                 &kubernetescertificatev1.KubernetesCertificate{},
+	cloudresourcekind.CloudResourceKind_KubernetesCilium:                      &kubernetesciliumv1.KubernetesCilium{},
 	cloudresourcekind.CloudResourceKind_KubernetesClickHouse:                  &kubernetesclickhousev1.KubernetesClickHouse{},
 	cloudresourcekind.CloudResourceKind_KubernetesClusterIssuer:               &kubernetesclusterissuerv1.KubernetesClusterIssuer{},
 	cloudresourcekind.CloudResourceKind_KubernetesClusterSecretStore:          &kubernetesclustersecretstorev1.KubernetesClusterSecretStore{},
@@ -1085,6 +1090,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesJenkins:                     &kubernetesjenkinsv1.KubernetesJenkins{},
 	cloudresourcekind.CloudResourceKind_KubernetesJob:                         &kubernetesjobv1.KubernetesJob{},
 	cloudresourcekind.CloudResourceKind_KubernetesKafka:                       &kuberneteskafkav1.KubernetesKafka{},
+	cloudresourcekind.CloudResourceKind_KubernetesKeda:                        &kuberneteskedav1.KubernetesKeda{},
 	cloudresourcekind.CloudResourceKind_KubernetesKeycloak:                    &kuberneteskeycloakv1.KubernetesKeycloak{},
 	cloudresourcekind.CloudResourceKind_KubernetesListenerSet:                 &kuberneteslistenersetv1.KubernetesListenerSet{},
 	cloudresourcekind.CloudResourceKind_KubernetesLocust:                      &kuberneteslocustv1.KubernetesLocust{},

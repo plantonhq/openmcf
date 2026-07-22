@@ -1,0 +1,19 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKeda
+metadata:
+  name: keda
+spec:
+  namespace:
+    value: keda # upstream convention
+  createNamespace: true # the module creates (and owns) the namespace
+  podIdentity:
+    awsIrsa:
+      enabled: true
+      # IAM role KEDA's service account assumes so scalers read
+      # SQS/CloudWatch/Kinesis without stored keys. The role's trust policy
+      # must allow the cluster's OIDC provider and KEDA's service account.
+      roleArn: arn:aws:iam::111111111111:role/keda-scalers
+  webhooks:
+    # Reject ScaledObject applies when the validation webhook is
+    # unreachable — misconfigured scalers never make it into the cluster.
+    failurePolicy: Fail

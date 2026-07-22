@@ -95,11 +95,14 @@ type KubernetesIstioSpec struct {
 	// *
 	// istiod (control-plane) tuning: sizing, autoscaling, scheduling, logging.
 	//
-	// CRD note: the base release installs the Istio CRDs (DestinationRule,
-	// AuthorizationPolicy, ...) and upstream bakes the Helm keep policy into
-	// every CRD, so uninstalling this component always KEEPS the CRDs (and the
-	// mesh configuration objects behind them) — removing them is a deliberate
-	// manual act, exactly upstream's posture.
+	// CRD note: the module applies the Istio CRDs (DestinationRule,
+	// AuthorizationPolicy, ...) itself via server-side apply, OUTSIDE the Helm
+	// release — never Helm-owned. Helm-owned CRDs cannot be adopted from an
+	// existing install, so a cluster running the CRDs-only
+	// KubernetesIstioBaseCrds could never upgrade to the full mesh; module-
+	// owned CRDs are co-ownable by both kinds, making that migration a plain
+	// redeploy. Destroying this component removes the CRDs with everything
+	// else (standard engine semantics — mesh configuration objects cascade).
 	Istiod *KubernetesIstioIstiod `protobuf:"bytes,6,opt,name=istiod,proto3" json:"istiod,omitempty"`
 	// *
 	// Mesh-wide runtime configuration (MeshConfig): trust domain, outbound traffic

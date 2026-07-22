@@ -1,0 +1,3 @@
+name: kubernetes-keda
+runtime: go
+description: KEDA installation from the official Helm chart — event-driven autoscaling on real-world signals (queue depth, stream lag, cron, cloud metrics) with scale-to-zero

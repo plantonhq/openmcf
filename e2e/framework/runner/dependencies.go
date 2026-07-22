@@ -649,6 +649,15 @@ func manifestKindSlug(manifestPath string) (string, error) {
 	return strings.ToLower(kind.String()), nil
 }
 
+// ManifestAnnotation reads a single metadata annotation from a KRM manifest,
+// returning "" when the annotation (or the annotations map) is absent. The
+// exported form serves the test entrypoints' scenario-routing needs (e.g.
+// per-scenario cluster-profile selection) without duplicating manifest
+// parsing outside the framework.
+func ManifestAnnotation(manifestPath, key string) (string, error) {
+	return manifestAnnotation(manifestPath, key)
+}
+
 // manifestAnnotation reads a single metadata annotation from a KRM manifest,
 // returning "" when the annotation (or the annotations map) is absent.
 func manifestAnnotation(manifestPath, key string) (string, error) {

@@ -3,6 +3,9 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "v1alpha3",
     srcs = [
+        "backendTLSPolicy.go",
+        "backendTLSPolicyList.go",
+        "backendTLSPolicyPatch.go",
         "init.go",
         "pulumiTypes.go",
         "tlsroute.go",

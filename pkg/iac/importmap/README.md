@@ -143,6 +143,9 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kubernetesauthorizationpolicy` | 2026-07-22, minimal + behavioral-deny scenarios (re-imported alongside a live mesh) | same `kubectl_manifest` tolerances |
 | `kubernetestelemetry` | 2026-07-22, minimal scenario | same `kubectl_manifest` tolerances |
 | `kubernetesenvoyfilter` | 2026-07-22, minimal scenario | same `kubectl_manifest` tolerances |
+| `kubernetescilium` | 2026-07-23, both scenarios on the cilium-cni cluster profile (Helm release; kube-system installs import no namespace) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kuberneteskeda` | 2026-07-23, both scenarios (Helm release + created namespace; behavioral-scaling re-imports with the live scale-target fixture present) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetesbackendtlspolicy` | 2026-07-23, all 3 scenarios (4-part namespaced composed ID; composed-target resolves the Service-fixture FK) | same `kubectl_manifest` tolerances |
 
 Kinds where an import map is **deliberately not applicable** (recorded so
 absence is never mistaken for an oversight):

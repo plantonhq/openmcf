@@ -1,0 +1,34 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesBackendTlsPolicy
+metadata:
+  name: my-backend-tls
+spec:
+  namespace:
+    # The policy can only target Services in ITS OWN namespace — create it
+    # where the backend Service lives.
+    value: <backend-namespace>
+  targetRefs:
+    - group: "" # Services live in the core API group — empty but present
+      kind: Service
+      # Foreign key to the Planton-managed backend Service: the policy
+      # deploys after the Service it secures. Use `value:` for a literal
+      # name when the Service is not Planton-managed.
+      name:
+        valueFrom:
+          kind: KubernetesService
+          name: <backend-service-resource>
+          fieldPath: status.outputs.service_name
+  validation:
+    caCertificateRefs:
+      # Core shape: ONE ConfigMap carrying the PEM CA bundle in a key named
+      # `ca.crt` — exactly what a cert-manager CA chain materializes.
+      - group: "" # ConfigMaps live in the core API group — empty but present
+        kind: ConfigMap
+        name:
+          valueFrom:
+            kind: KubernetesConfigMap
+            name: <ca-bundle-configmap-resource>
+            fieldPath: status.outputs.configmap_name
+    # Sent as SNI and, with no subjectAltNames, the identity the backend
+    # certificate must prove.
+    hostname: backend.internal.example.com

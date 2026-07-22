@@ -215,6 +215,14 @@ func TestKubernetesMetricsServer_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesmetricsserver", "pulumi")
 }
 
+func TestKubernetesCilium_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescilium", "pulumi")
+}
+
+func TestKubernetesKeda_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskeda", "pulumi")
+}
+
 // ─── Tier 1 Terraform ───────────────────────────────────────────────────────
 
 func TestKubernetesNamespace_Terraform(t *testing.T) {
@@ -312,6 +320,14 @@ func TestKubernetesIngressNginx_Terraform(t *testing.T) {
 }
 func TestKubernetesMetricsServer_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesmetricsserver", "terraform")
+}
+
+func TestKubernetesCilium_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescilium", "terraform")
+}
+
+func TestKubernetesKeda_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskeda", "terraform")
 }
 
 // ─── Tier 2 Pulumi (Helm-based) ─────────────────────────────────────────────
@@ -532,6 +548,10 @@ func TestKubernetesTlsRoute_Pulumi(t *testing.T) {
 func TestKubernetesReferenceGrant_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesreferencegrant", "pulumi")
 }
+
+func TestKubernetesBackendTlsPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesbackendtlspolicy", "pulumi")
+}
 func TestKubernetesUdpRoute_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesudproute", "pulumi")
 }
@@ -562,6 +582,10 @@ func TestKubernetesTlsRoute_Terraform(t *testing.T) {
 func TestKubernetesReferenceGrant_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesreferencegrant", "terraform")
 }
+
+func TestKubernetesBackendTlsPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesbackendtlspolicy", "terraform")
+}
 func TestKubernetesUdpRoute_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesudproute", "terraform")
 }
@@ -569,7 +593,7 @@ func TestKubernetesListenerSet_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteslistenerset", "terraform")
 }
 
-// ─── Istio API Pulumi (852-858) ─────────────────────────────────────────────
+// ─── Istio API Pulumi (853-859) ─────────────────────────────────────────────
 // Each kind declares KubernetesIstioBaseCrds as a registry prerequisite, which
 // the harness installs (istio/base CRDs, no istiod) before the scenario applies.
 // Verification asserts the typed Istio CR exists (object-grade); the
@@ -603,7 +627,7 @@ func TestKubernetesTelemetry_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestelemetry", "pulumi")
 }
 
-// ─── Istio API Terraform (852-858) ──────────────────────────────────────────
+// ─── Istio API Terraform (853-859) ──────────────────────────────────────────
 
 func TestKubernetesPeerAuthentication_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetespeerauthentication", "terraform")
@@ -687,6 +711,17 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenario discovery.TestScenario) {
 	t.Helper()
 
+	// Route the scenario to the cluster its manifest asks for (the
+	// e2e-cluster-profile annotation; default = the shared cluster) and point
+	// the process KUBECONFIG at it. Both engines read cluster credentials
+	// through the environment and scenarios run serially within a process, so
+	// activating per scenario is what keeps multi-cluster runs race-free.
+	scenarioHarness, err := harnessForScenario(scenario.ManifestPath)
+	if err != nil {
+		t.Fatalf("failed to resolve cluster for scenario %s/%s: %v", component, scenario.Name, err)
+	}
+	scenarioHarness.ActivateKubeconfig()
+
 	tc := &provider.ComponentTestContext{
 		Component:    component,
 		Provider:     "kubernetes",
@@ -713,7 +748,7 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 	}
 
 	ctx := context.Background()
-	result := runner.RunComponentTest(ctx, tc, testHarness)
+	result := runner.RunComponentTest(ctx, tc, scenarioHarness)
 
 	for _, phase := range result.Phases {
 		status := "PASS"
