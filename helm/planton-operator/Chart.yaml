@@ -2,7 +2,7 @@ apiVersion: v2
 name: planton-operator
 description: Kubernetes operator that deploys the full Planton stack via a PlantonPlatform CRD
 type: application
-version: 0.6.0
+version: 0.7.0
 # appVersion is the operator image tag this chart deploys. The operator image is
 # built in the platform repo and published to ghcr.io/plantonhq/planton/operator;
 # keep this pinned to a known-good published tag (bump deliberately when a new

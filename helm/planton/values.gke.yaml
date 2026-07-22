@@ -40,3 +40,10 @@ platform:
     # runner:
     #   serviceAccountAnnotations:
     #     iam.gke.io/gcp-service-account: planton-runner@my-project.iam.gserviceaccount.com
+
+    # -- Secrets work with zero values: the bundled secrets manager deploys
+    # by default (initialized, unsealed, registered as the default secret
+    # store). Opt out only if you accept losing pasted-credential storage
+    # and keyless connections:
+    # vault:
+    #   enabled: false

@@ -43,8 +43,12 @@ platform:
     #   serviceAccountAnnotations:
     #     eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/planton-runner
 
-    # -- Keep platform secrets in AWS Secrets Manager (pod identity + a KMS
-    # key; the control plane's ServiceAccount needs its own IRSA role):
+    # -- Secrets work with zero values: the bundled secrets manager deploys
+    # by default, initialized and registered as the default secret store.
+    # To keep platform secrets in AWS Secrets Manager instead (pod identity
+    # + a KMS key; the control plane's ServiceAccount needs its own IRSA
+    # role) declare the backend -- the bundled vault still runs underneath,
+    # serving the platform's own signing and encryption keys:
     # controlPlane:
     #   serviceAccountAnnotations:
     #     eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/planton-control-plane

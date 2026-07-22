@@ -2,8 +2,10 @@
 #
 # One `helm install` deploys the Planton operator AND a PlantonPlatform
 # resource with proven defaults: the built-in front door (console + API +
-# sign-in over one kubectl port-forward), the bundled identity server, and
-# the in-cluster runner. No value below is required.
+# sign-in over one kubectl port-forward), the bundled identity server, the
+# bundled secrets manager (OpenBAO -- initialized, unsealed, and registered
+# as the org's default secret store), and the in-cluster runner. No value
+# below is required.
 #
 # See README.md for full documentation and the per-cloud values files
 # (values.eks.yaml, values.gke.yaml, ...) for publishing at your own URL.
@@ -42,3 +44,6 @@ platform:
     # runner:
     #   serviceAccountAnnotations:
     #     eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/planton-runner
+    # vault:                  # the bundled secrets manager, deployed by default;
+    #   enabled: false        #   opting out loses pasted-credential storage and
+    #                         #   keyless connections (see README "Secrets")

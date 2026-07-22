@@ -32,6 +32,10 @@ databases). When PHASE shows Ready:
   https://github.com/plantonhq/planton/tree/main/helm/planton
 {{- end }}
 
+Secrets work out of the box: the bundled secrets manager ships initialized
+and registered as the default secret store (the chart README's "Secrets"
+section covers bringing your own instead).
+
 If a component has trouble, its status names the problem and the fix:
 
   kubectl get plantonplatform {{ .Values.platform.name }} -n {{ .Release.Namespace }} -o jsonpath='{.status.components}' | jq

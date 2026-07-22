@@ -127,6 +127,18 @@ rules:
       - update
       - watch
   - apiGroups:
+      - cert-manager.io
+    resources:
+      # Read-only: cert-manager owns the Certificate objects (the operator
+      # only annotates the Ingress). Reading them lets the ingress status
+      # gate on ACTUAL issuance and relay the issuer's own reason -- instead
+      # of advertising an HTTPS door that answers with a placeholder cert.
+      - certificates
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - networking.k8s.io
     resources:
       - ingressclasses
