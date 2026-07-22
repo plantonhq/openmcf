@@ -459,6 +459,7 @@ import (
 	kuberneteskeycloakv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeycloak/v1"
 	kuberneteslocustv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteslocust/v1"
 	kubernetesmanifestv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmanifest/v1"
+	kubernetesmetricsserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmetricsserver/v1"
 	kubernetesmongodbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmongodb/v1"
 	kubernetesnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnamespace/v1"
 	kubernetesnatsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnats/v1"
@@ -1085,6 +1086,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesKeycloak:                    &kuberneteskeycloakv1.KubernetesKeycloak{},
 	cloudresourcekind.CloudResourceKind_KubernetesLocust:                      &kuberneteslocustv1.KubernetesLocust{},
 	cloudresourcekind.CloudResourceKind_KubernetesManifest:                    &kubernetesmanifestv1.KubernetesManifest{},
+	cloudresourcekind.CloudResourceKind_KubernetesMetricsServer:               &kubernetesmetricsserverv1.KubernetesMetricsServer{},
 	cloudresourcekind.CloudResourceKind_KubernetesMongodb:                     &kubernetesmongodbv1.KubernetesMongodb{},
 	cloudresourcekind.CloudResourceKind_KubernetesNamespace:                   &kubernetesnamespacev1.KubernetesNamespace{},
 	cloudresourcekind.CloudResourceKind_KubernetesNats:                        &kubernetesnatsv1.KubernetesNats{},

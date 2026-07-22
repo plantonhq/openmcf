@@ -358,7 +358,11 @@ Based on scenario:
   alternatives are both broken, each with a different failure mode:
   `cond ? {…} : {}` ternaries pass `terraform validate` but fail at PLAN
   with "inconsistent conditional result types" whenever the branches carry
-  different attribute sets; and `merge(concat(cond ? [{…}] : [], …)...)`
+  different attribute sets — and a CHAINED per-arm ternary
+  (`t == "a" ? {…} : t == "b" ? {…} : null`) selecting between differently
+  shaped objects is the same failure wearing a oneof costume: render ONE
+  object literal carrying every arm's keys (each key gated on its arm,
+  `null` otherwise) and null-prune it; and `merge(concat(cond ? [{…}] : [], …)...)`
   silently UNIFIES primitive-only sibling objects into `map(string)` — the
   ternary converts each tuple to a list, and concat's element-type
   unification then coerces numbers and booleans to strings

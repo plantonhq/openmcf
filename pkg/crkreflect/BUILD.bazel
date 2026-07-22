@@ -475,6 +475,7 @@ go_library(
         "//apis/dev/planton/provider/kubernetes/kuberneteskeycloak/v1:kuberneteskeycloak",
         "//apis/dev/planton/provider/kubernetes/kuberneteslocust/v1:kuberneteslocust",
         "//apis/dev/planton/provider/kubernetes/kubernetesmanifest/v1:kubernetesmanifest",
+        "//apis/dev/planton/provider/kubernetes/kubernetesmetricsserver/v1:kubernetesmetricsserver",
         "//apis/dev/planton/provider/kubernetes/kubernetesmongodb/v1:kubernetesmongodb",
         "//apis/dev/planton/provider/kubernetes/kubernetesnamespace/v1:kubernetesnamespace",
         "//apis/dev/planton/provider/kubernetes/kubernetesnats/v1:kubernetesnats",

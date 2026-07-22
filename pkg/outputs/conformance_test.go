@@ -485,6 +485,44 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesIngressNginx: install identity + the composition
+			// handles (IngressClass name for KubernetesIngress routing,
+			// controller Service names for DNS/traffic wiring, LB address
+			// once the host cloud provisions it) from both engines must
+			// land on the StackOutputs proto.
+			name: "KubernetesIngressNginx",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesIngressNginx,
+			rawOutputs: map[string]interface{}{
+				"namespace":               "ingress-nginx",
+				"release_name":            "ingress-nginx",
+				"ingress_class_name":      "nginx",
+				"controller_service_name": "ingress-nginx-controller",
+				"internal_service_name":   "",
+				"load_balancer_ip":        "203.0.113.10",
+				"load_balancer_hostname":  "",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "ingress_class_name",
+				"controller_service_name", "load_balancer_ip",
+			},
+		},
+		{
+			// KubernetesMetricsServer: install identity + the APIService /
+			// Service handles the metrics pipeline registers, from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesMetricsServer",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesMetricsServer,
+			rawOutputs: map[string]interface{}{
+				"namespace":        "kube-system",
+				"release_name":     "metrics-server",
+				"service_name":     "metrics-server",
+				"api_service_name": "v1beta1.metrics.k8s.io",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_name", "api_service_name",
+			},
+		},
+		{
 			// KubernetesManifest: the anchor namespace + the applied-resource
 			// inventory (a repeated string derived from the input YAML) from
 			// both engines must land on the StackOutputs proto.

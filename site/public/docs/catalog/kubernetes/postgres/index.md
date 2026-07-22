@@ -230,4 +230,4 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — pre-create a namespace to reference via `valueFrom`
 - [KubernetesRedis](/docs/catalog/kubernetes/redis) — deploy Redis alongside PostgreSQL for caching
-- [KubernetesIngress](/docs/catalog/kubernetes/ingress-nginx) — ingress controller for HTTP traffic (PostgreSQL uses LoadBalancer directly)
+- [KubernetesIngress](/docs/catalog/kubernetes/kubernetesingressnginx) — ingress controller for HTTP traffic (PostgreSQL uses LoadBalancer directly)

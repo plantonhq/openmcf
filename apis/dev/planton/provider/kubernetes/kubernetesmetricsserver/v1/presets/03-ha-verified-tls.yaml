@@ -1,0 +1,21 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMetricsServer
+metadata:
+  name: metrics-server
+spec:
+  namespace:
+    value: kube-system
+  createNamespace: false
+  replicas: 2
+  podDisruptionBudget: true
+  apiService:
+    insecureSkipTlsVerify: false
+  tls:
+    type: cert_manager
+    certManagerIssuer:
+      kind: cluster_issuer
+      name:
+        valueFrom:
+          kind: KubernetesClusterIssuer
+          name: "<your-cluster-issuer>"
+          fieldPath: status.outputs.cluster_issuer_name

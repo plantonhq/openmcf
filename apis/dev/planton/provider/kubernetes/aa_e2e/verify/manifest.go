@@ -6,6 +6,7 @@ package verify
 
 import (
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -88,4 +89,85 @@ func manifestSpecString(manifestPath, key string) (string, error) {
 		return "", errors.Errorf("manifest %s spec.%s is missing or not a string", manifestPath, key)
 	}
 	return value, nil
+}
+
+// manifestSpecMap reads the manifest's spec block, tolerating every error
+// with a nil return — for verifier construction that has usable defaults
+// when a detail is absent.
+func manifestSpecMap(manifestPath string) map[string]interface{} {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil
+	}
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+	spec, _ := raw["spec"].(map[string]interface{})
+	return spec
+}
+
+// manifestNestedSpecString reads spec.<parent>.<key> (protojson camelCase
+// keys), returning "" when absent — for optional nested details with
+// defaults (e.g. an ingress-nginx instance's class name).
+func manifestNestedSpecString(manifestPath, parent, key string) string {
+	spec := manifestSpecMap(manifestPath)
+	if spec == nil {
+		return ""
+	}
+	nested, ok := spec[parent].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	value, _ := nested[key].(string)
+	return value
+}
+
+// manifestSpecInt reads one integer spec field (protojson camelCase key),
+// returning the fallback when absent or not numeric.
+func manifestSpecInt(manifestPath, key string, fallback int64) int64 {
+	spec := manifestSpecMap(manifestPath)
+	if spec == nil {
+		return fallback
+	}
+	switch v := spec[key].(type) {
+	case int:
+		return int64(v)
+	case int64:
+		return v
+	case float64:
+		return int64(v)
+	default:
+		return fallback
+	}
+}
+
+// manifestHasPrerequisite reports whether the manifest's e2e-prerequisites
+// annotation names the given kind — how a scenario signals it runs with a
+// fixture (e.g. an HPA scenario that installs metrics-server and can
+// therefore be verified behaviorally).
+func manifestHasPrerequisite(manifestPath, kind string) bool {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return false
+	}
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return false
+	}
+	metadata, ok := raw["metadata"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	annotations, ok := metadata["annotations"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	value, _ := annotations["planton.dev/e2e-prerequisites"].(string)
+	for _, entry := range strings.Split(value, ",") {
+		if strings.TrimSpace(entry) == kind {
+			return true
+		}
+	}
+	return false
 }

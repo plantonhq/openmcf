@@ -492,6 +492,16 @@ runs in the same account collide on IAM role names and subnet CIDRs and both
 fail their DEPENDENCIES-UP phase. Batch a family's runs one after another; the
 time saved by parallelism is an illusion here.
 
+The Kubernetes analog: kind-cluster lanes for DISJOINT components may run in
+parallel, but lanes must serialize whenever one lane's component is another
+lane's prerequisite fixture, or the component is a cluster singleton (a fixed
+release name / cluster-scoped APIService or CRDs) — the two runs contend for
+one identity. And never kill a lane mid-install to "free" the cluster: an
+interrupted Helm install orphans its release in `pending-install` state, which
+blocks every later install of the same name with a misleading name-in-use
+error. Sweep with `helm uninstall <release> -n <namespace>` (plus the fixture
+namespaces) before re-running.
+
 **Isolate the run from OTHER suites on the same machine.** Serial-within-your-
 provider is not enough when a different provider's E2E suite runs concurrently
 on the same machine (multiple agents share these workstations): the suites

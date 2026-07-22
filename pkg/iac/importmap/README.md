@@ -98,6 +98,8 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kuberneteshelmrelease` | 2026-07-22, all 3 scenarios (HTTPS repo, OCI registry, values-override) | `helm_release` install-time attributes (repository, values/set/set_sensitive, lifecycle knobs — Helm does not persist how a release was installed; provider-documented, declared config-only). Computed attributes the plan marks wholly after-unknown (id, metadata) are pruned by the oracle itself, not declared. |
 | `kubernetesexternaldns` | 2026-07-22, all 3 scenarios (Helm release + created namespace; the credential-Secret arms are exercised offline by the hack manifest — the kind lanes run credential-less by design) | `helm_release` install-time attributes (config-only, see the catalog row) |
 | `kubernetesexternalsecretsoperator` | 2026-07-22, both scenarios (Helm release + created namespace) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetesingressnginx` | 2026-07-22, all 3 scenarios (Helm release + created namespace; multi-instance scenario re-imports alongside a live sibling controller) | `helm_release` install-time attributes (config-only, see the catalog row); the module's controller-Service data source is a read, not an imported resource |
+| `kubernetesmetricsserver` | 2026-07-22, both scenarios (Helm release + created namespace) | `helm_release` install-time attributes (config-only, see the catalog row) |
 
 Kinds where an import map is **deliberately not applicable** (recorded so
 absence is never mistaken for an oversight):

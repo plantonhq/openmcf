@@ -923,6 +923,7 @@ const (
 	CloudResourceKind_KubernetesAuthorizationPolicy   CloudResourceKind = 854
 	CloudResourceKind_KubernetesTelemetry             CloudResourceKind = 855
 	CloudResourceKind_KubernetesEnvoyFilter           CloudResourceKind = 856
+	CloudResourceKind_KubernetesMetricsServer         CloudResourceKind = 857
 	// 870–889: Kubernetes observability
 	CloudResourceKind_KubernetesPrometheus CloudResourceKind = 870
 	CloudResourceKind_KubernetesGrafana    CloudResourceKind = 871
@@ -1517,6 +1518,7 @@ var (
 		854:  "KubernetesAuthorizationPolicy",
 		855:  "KubernetesTelemetry",
 		856:  "KubernetesEnvoyFilter",
+		857:  "KubernetesMetricsServer",
 		870:  "KubernetesPrometheus",
 		871:  "KubernetesGrafana",
 		872:  "KubernetesSignoz",
@@ -2095,6 +2097,7 @@ var (
 		"KubernetesAuthorizationPolicy":                  854,
 		"KubernetesTelemetry":                            855,
 		"KubernetesEnvoyFilter":                          856,
+		"KubernetesMetricsServer":                        857,
 		"KubernetesPrometheus":                           870,
 		"KubernetesGrafana":                              871,
 		"KubernetesSignoz":                               872,
@@ -2570,7 +2573,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xdf\xd8\x01\n" +
+	"\x02v1\x10\x01*\x92\xd9\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2966,7 +2969,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x13KubernetesTelemetry\x10\xd7\x06\x1a8\xa2\xf7\x044\b\x13\x10\x01\"\x06k8stel:\x02\xd0\x06B\"\n" +
 	"\x15telemetry.istio.io/v1\x12\tTelemetry\x12\\\n" +
 	"\x15KubernetesEnvoyFilter\x10\xd8\x06\x1a@\xa2\xf7\x04<\b\x13\x10\x01\"\x05k8sef:\x02\xd0\x06B+\n" +
-	"\x1cnetworking.istio.io/v1alpha3\x12\vEnvoyFilter\x12,\n" +
+	"\x1cnetworking.istio.io/v1alpha3\x12\vEnvoyFilter\x121\n" +
+	"\x17KubernetesMetricsServer\x10\xd9\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8smetsrv\x12,\n" +
 	"\x14KubernetesPrometheus\x10\xe6\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sprom\x12(\n" +
 	"\x11KubernetesGrafana\x10\xe7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sgfn\x12'\n" +
 	"\x10KubernetesSignoz\x10\xe8\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssgz\x12(\n" +

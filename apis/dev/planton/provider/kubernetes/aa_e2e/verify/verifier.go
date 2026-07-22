@@ -63,9 +63,8 @@ var helmTier2Kinds = map[string]bool{
 	"kuberneteslocust":   true,
 	"kubernetessignoz":   true,
 	"kuberneteskeycloak": true,
-	// Tier 4 Helm applications with configurable namespace (session 010)
-	"kubernetesingressnginx": true,
-	"kubernetesistio":        true,
+	// Tier 4 Helm applications with configurable namespace
+	"kubernetesistio": true,
 }
 
 // crdInstallKinds maps manifest kind values (lowercased) to their expected CRD
@@ -255,9 +254,18 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Name:      info.Name,
 		}, nil
 
-	// Scaling BEHAVIOR needs a metrics source (kind has no metrics-server);
-	// the object is the verifiable contract on the kind lane.
+	// Scaling BEHAVIOR needs a metrics source. Scenarios that install
+	// metrics-server (declared in the e2e-prerequisites annotation) get the
+	// behavioral verifier — ScalingActive + an actual scale-up; scenarios
+	// without it keep the object as the verifiable contract.
 	case "kuberneteshorizontalpodautoscaler":
+		if manifestHasPrerequisite(manifestPath, "KubernetesMetricsServer") {
+			return &HpaBehavioralVerifier{
+				Namespace:   info.Namespace,
+				Name:        info.Name,
+				MinReplicas: manifestSpecInt(manifestPath, "minReplicas", 1),
+			}, nil
+		}
 		return &ResourceExistenceVerifier{
 			Namespace: info.Namespace,
 			Kind:      "hpa",
@@ -368,6 +376,28 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Name:       info.Name,
 			Namespace:  info.Namespace,
 			SecretName: secretName,
+		}, nil
+
+	// ingress-nginx installation: controller Deployment Available + the
+	// instance's IngressClass present. Fullname pinned to metadata.name —
+	// multiple controllers per cluster are first-class, so the release's
+	// own objects are the contract, not the namespace.
+	case "kubernetesingressnginx":
+		className := manifestNestedSpecString(manifestPath, "ingressClass", "name")
+		if className == "" {
+			className = "nginx"
+		}
+		return &IngressNginxInstallVerifier{
+			Namespace:        info.Namespace,
+			ComponentName:    info.Name,
+			IngressClassName: className,
+		}, nil
+
+	// metrics-server installation, verified to METRIC FLOW (Deployment
+	// Available + APIService Available + kubectl top returning values).
+	case "kubernetesmetricsserver":
+		return &MetricsServerInstallVerifier{
+			Namespace: info.Namespace,
 		}, nil
 
 	case "kubernetesmanifest":

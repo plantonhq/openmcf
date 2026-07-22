@@ -4,113 +4,119 @@ import (
 	"github.com/pkg/errors"
 	kubernetesingressnginxv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesingressnginx/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
-	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
+	kubernetescorev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources creates all Pulumi resources for the Ingress‑Nginx add‑on.
-func Resources(ctx *pulumi.Context,
-	stackInput *kubernetesingressnginxv1.KubernetesIngressNginxStackInput) error {
-
+// Resources installs the ingress-nginx controller from the official Helm
+// chart as a real Helm release. The typed spec renders into chart values
+// (values.go); the helm_values escape hatch merges last with Helm -f
+// semantics — the exact semantic twin of the Terraform module's
+// helm_release with values = [typed, helm_values].
+//
+// The release is named after metadata.name (NOT a fixed chart name):
+// multiple controller instances per cluster — public + internal traffic
+// splits, each owning its own IngressClass — are a first-class upstream
+// pattern.
+func Resources(ctx *pulumi.Context, stackInput *kubernetesingressnginxv1.KubernetesIngressNginxStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	// Build Kubernetes provider from the target‑cluster credential
-	kubeProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
-		ctx, stackInput.ProviderConfig, "kubernetes")
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
+		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to set up kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
-	spec := stackInput.Target.Spec
-
-	// Build service annotations based on cluster flavour + internal/external flag
-	var serviceAnnotations map[string]string
-	if gke := spec.GetGke(); gke != nil {
-		if spec.Internal {
-			serviceAnnotations = map[string]string{
-				"cloud.google.com/load-balancer-type": "internal",
-			}
-		} else {
-			serviceAnnotations = map[string]string{
-				"cloud.google.com/load-balancer-type": "external",
-			}
-		}
-	} else if eks := spec.GetEks(); eks != nil {
-		if spec.Internal {
-			serviceAnnotations = map[string]string{
-				"service.beta.kubernetes.io/aws-load-balancer-scheme": "internal",
-			}
-		} else {
-			serviceAnnotations = map[string]string{
-				"service.beta.kubernetes.io/aws-load-balancer-scheme": "internet-facing",
-			}
-		}
-		_ = eks // mute unused‑var if eks has no fields accessed here
-	} else if aks := spec.GetAks(); aks != nil {
-		if spec.Internal {
-			serviceAnnotations = map[string]string{
-				"service.beta.kubernetes.io/azure-load-balancer-internal": "true",
-			}
-		}
-		_ = aks
-	}
-
-	// ---------------------------------------------------------------------
-	// Namespace - conditionally create based on create_namespace flag
-	// ---------------------------------------------------------------------
-	createdNamespace, err := namespace(ctx, stackInput, locals, kubeProvider)
+	// ------------------------------ namespace ----------------------------
+	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	var namespaceDeps []pulumi.ResourceOption
+	var releaseDeps []pulumi.ResourceOption
 	if createdNamespace != nil {
-		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+		releaseDeps = append(releaseDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
 	}
 
-	// ---------------------------------------------------------------------
-	// Helm chart
-	// ---------------------------------------------------------------------
-	// Build values dynamically so that annotations are only set when needed
-	serviceVals := pulumi.Map{
-		"type": pulumi.String("LoadBalancer"),
-	}
-	if len(serviceAnnotations) > 0 {
-		serviceVals["annotations"] = pulumi.ToStringMap(serviceAnnotations)
-	}
-
-	values := pulumi.Map{
-		"controller": pulumi.Map{
-			"service":                  serviceVals,
-			"ingressClassResource":     pulumi.Map{"default": pulumi.Bool(true)},
-			"watchIngressWithoutClass": pulumi.Bool(true),
-		},
-	}
-
-	helmOpts := append([]pulumi.ResourceOption{
-		pulumi.Provider(kubeProvider),
-	}, namespaceDeps...)
-
-	_, err = helm.NewRelease(ctx, locals.ReleaseName,
-		&helm.ReleaseArgs{
-			Name:            pulumi.String(locals.ReleaseName),
-			Namespace:       pulumi.String(locals.Namespace),
-			Chart:           pulumi.String(vars.HelmChartName),
-			Version:         pulumi.String(locals.ChartVersion),
-			CreateNamespace: pulumi.Bool(false),
-			Atomic:          pulumi.Bool(true),
-			CleanupOnFail:   pulumi.Bool(true),
-			WaitForJobs:     pulumi.Bool(true),
-			Timeout:         pulumi.Int(180),
-			Values:          values,
-			RepositoryOpts: helm.RepositoryOptsArgs{
-				Repo: pulumi.String(vars.HelmChartRepo),
-			},
-		},
-		helmOpts...)
+	// ------------------------------ helm release --------------------------
+	mergedValues, err := buildHelmValues(locals)
 	if err != nil {
-		return errors.Wrap(err, "failed to install kubernetes-ingress-nginx helm release")
+		return errors.Wrap(err, "failed to build helm values")
 	}
+
+	releaseArgs := &helmv3.ReleaseArgs{
+		Name:      pulumi.String(locals.ReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		Chart:     pulumi.String(vars.HelmChartName),
+		Version:   pulumi.String(locals.ChartVersion),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(vars.HelmChartRepo),
+		},
+		Values: pulumi.ToMap(mergedValues),
+		// The module owns namespace creation (create_namespace flag).
+		CreateNamespace: pulumi.Bool(false),
+		// Wait for the release's resources to become ready — a controller
+		// that never starts (bad image, unschedulable pod, webhook certgen
+		// failure) should fail THIS deploy, not the first Ingress. Helm's
+		// readiness check on a LoadBalancer-type Service also waits for
+		// the cloud LB address, so on clusters WITHOUT a cloud LB
+		// controller (kind, bare metal) a LoadBalancer service type times
+		// out loudly here — deliberate: use node_port/host access on such
+		// clusters, and the failure names the real problem instead of
+		// leaving a silently Pending entry point.
+		Atomic:        pulumi.Bool(true),
+		CleanupOnFail: pulumi.Bool(true),
+		Timeout:       pulumi.Int(300),
+	}
+
+	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, releaseDeps...)
+
+	createdRelease, err := helmv3.NewRelease(ctx, locals.ReleaseName, releaseArgs, opts...)
+	if err != nil {
+		return errors.Wrap(err, "failed to install ingress-nginx helm release")
+	}
+
+	// ---------------------- load-balancer address read ----------------------
+	// For LoadBalancer-type services the release wait above guarantees the
+	// address exists by the time we read it. The read is skipped entirely
+	// for node_port/cluster_ip (there is no LB status to read) — those
+	// deploys export empty address outputs by design. Reads run through the
+	// provider's read path (no awaiters), so this never blocks.
+	loadBalancerIp := pulumi.String("").ToStringOutput()
+	loadBalancerHostname := pulumi.String("").ToStringOutput()
+	if locals.Spec.GetService().GetType() == kubernetesingressnginxv1.KubernetesIngressNginxServiceType_load_balancer {
+		controllerService, err := kubernetescorev1.GetService(ctx,
+			locals.ControllerServiceName,
+			pulumi.ID(locals.Namespace+"/"+locals.ControllerServiceName),
+			nil,
+			pulumi.Provider(kubernetesProvider),
+			pulumi.DependsOn([]pulumi.Resource{createdRelease}))
+		if err != nil {
+			return errors.Wrap(err, "failed to read controller service for load-balancer address")
+		}
+		ingress := controllerService.Status.LoadBalancer().Ingress()
+		loadBalancerIp = ingress.Index(pulumi.Int(0)).Ip().ApplyT(func(v *string) string {
+			if v == nil {
+				return ""
+			}
+			return *v
+		}).(pulumi.StringOutput)
+		loadBalancerHostname = ingress.Index(pulumi.Int(0)).Hostname().ApplyT(func(v *string) string {
+			if v == nil {
+				return ""
+			}
+			return *v
+		}).(pulumi.StringOutput)
+	}
+
+	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	ctx.Export(OpReleaseName, pulumi.String(locals.ReleaseName))
+	ctx.Export(OpIngressClassName, pulumi.String(locals.IngressClassName))
+	ctx.Export(OpControllerServiceName, pulumi.String(locals.ControllerServiceName))
+	ctx.Export(OpInternalServiceName, pulumi.String(locals.InternalServiceName))
+	ctx.Export(OpLoadBalancerIp, loadBalancerIp)
+	ctx.Export(OpLoadBalancerHostname, loadBalancerHostname)
 
 	return nil
 }

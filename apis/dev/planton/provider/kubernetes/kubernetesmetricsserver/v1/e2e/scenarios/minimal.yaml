@@ -1,0 +1,15 @@
+# Chart-default install in a dedicated namespace. kubelet_insecure_tls is
+# the one knob every self-signed-kubelet cluster needs (kind, the E2E lane,
+# is exactly that) — without it metrics-server never becomes ready and the
+# atomic install fails loudly, by design. The verifier asserts all the way
+# to metric flow: Deployment Available, APIService Available, and
+# `kubectl top nodes` returning real values.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMetricsServer
+metadata:
+  name: e2e-metsrv-minimal
+spec:
+  namespace:
+    value: metrics-server
+  createNamespace: true
+  kubeletInsecureTls: true

@@ -3,11 +3,11 @@ kind: ComponentE2EProfile
 metadata:
   name: kubernetesingressnginx
 spec:
-  tier: 4
-  status: deferred
-  deferred_reason: "admission webhook + LoadBalancer timeout on kind"
+  tier: 1
+  status: green
   validated_provisioners:
     - pulumi
+    - terraform
   limitations:
-    - "LoadBalancer stays Pending on kind"
-  timeout_minutes: 15
+    - "LoadBalancer service type needs a cloud LB controller — kind lanes run node_port; real LB provisioning rides the batched real-cluster lanes"
+  timeout_minutes: 20

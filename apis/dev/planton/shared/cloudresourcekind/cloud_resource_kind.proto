@@ -2883,6 +2883,11 @@ enum CloudResourceKind {
       kind: "EnvoyFilter"
     }
   }];
+  KubernetesMetricsServer = 857 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8smetsrv"
+  }];
   // 870–889: Kubernetes observability
   KubernetesPrometheus = 870 [(kind_meta) = {
     provider: kubernetes

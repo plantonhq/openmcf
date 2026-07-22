@@ -1,0 +1,30 @@
+# Extra-instance fixture for the behavioral-scaling scenario: a Deployment
+# whose container deterministically burns CPU (a busy loop, capped by its
+# limit at 400m against a 50m request = ~800% utilization), so an HPA with
+# a 50% CPU target MUST scale it up once metric values flow. Deployed via
+# the scenario's manifest-path prerequisite.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesDeployment
+metadata:
+  name: e2e-hpa-burner
+spec:
+  namespace:
+    value: e2e-hpa-behavioral-ns
+  create_namespace: true
+  version: main
+  container:
+    app:
+      image:
+        repo: busybox
+        tag: "1.36"
+      command:
+        - sh
+        - -c
+        - "while true; do :; done"
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "16Mi"
+        limits:
+          cpu: "400m"
+          memory: "32Mi"

@@ -1,196 +1,85 @@
-# Kubernetes Ingress Nginx
+# KubernetesIngressNginx
 
-Deploys the ingress-nginx controller on Kubernetes using the upstream Helm chart (default version 4.11.1), with provider-specific load balancer configuration for GKE, EKS, and AKS, optional internal load balancer mode, configurable chart version, and optional namespace creation.
+Installs the ingress-nginx controller — the cluster's HTTP(S) entry point —
+from the official Helm chart, with a typed spec over the chart's meaningful
+configuration surface. Multiple controllers per cluster (public + internal
+traffic splits) are first-class: each instance owns its own IngressClass,
+and everything from release naming to leader election derives from
+`metadata.name`, so instances never collide.
 
 ## What Gets Created
 
-When you deploy a KubernetesIngressNginx resource, Planton provisions:
-
-- **Namespace** — created only when `createNamespace` is `true`
-- **Helm Release (ingress-nginx)** — deploys the ingress-nginx controller from `https://kubernetes.github.io/kubernetes-ingress-nginx`, pinned to the specified `chartVersion` (default 4.11.1), with atomic rollback enabled, cleanup on failure, wait-for-jobs, and a 180-second timeout; the controller service is set to type `LoadBalancer` with the default ingress class enabled and `watchIngressWithoutClass` turned on
-- **Load Balancer Annotations** — provider-specific annotations applied to the controller service based on the selected provider config (`gke`, `eks`, or `aks`) and the `internal` flag
+- **Namespace** (optional) — the installation namespace, created and owned
+  when `create_namespace` is set
+- **Helm Release** — the ingress-nginx controller (Deployment or DaemonSet,
+  Services, IngressClass, RBAC, admission webhook, and optionally the
+  default backend), named after `metadata.name` so multiple instances
+  coexist per cluster
+- **Cloud Load Balancer** (indirect) — with the default `load_balancer`
+  service type, the host cloud provisions the entry LB, shaped entirely by
+  `service.annotations`
 
 ## Prerequisites
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, or set `createNamespace` to `true`
-- **Cloud provider load balancer support** — the target cluster must support `LoadBalancer`-type services (GKE, EKS, AKS, or equivalent)
-- **Static IP / subnet resources** pre-created if referencing them in provider-specific configuration (e.g., GKE static IP, EKS subnets)
+- A Kubernetes cluster (EKS, GKE, AKS, or any conformant cluster; on
+  clusters without a cloud LB controller — kind, bare metal — use
+  `node_port` or host access instead of `load_balancer`)
+- For `autoscaling`: metrics-server on the cluster
+- For `metrics.service_monitor`: the Prometheus operator CRDs (the release
+  fails to install without them)
+
+## Common Postures
+
+- **AWS NLB public entry** — `load_balancer` + the NLB annotations
+  (`aws-load-balancer-type: external`, `nlb-target-type: ip`),
+  `external_traffic_policy: local` to preserve client source IPs
+- **Internal-only controller** — a second instance with its own class
+  (e.g. `nginx-internal`) and the cloud's internal-LB annotation
+- **Single controller, dual LB** — `service.internal.enabled` adds the
+  chart's second, internal Service in front of the same pods (requires at
+  least one annotation — the internal-LB annotation is what makes it
+  internal)
+- **Bare metal / edge** — `controller_kind: daemon_set` with `host_ports`
+  (or `host_network`) and a `node_port` service
+- **Cluster-wide default TLS** — `default_tls_certificate` referencing a
+  KubernetesCertificate's secret output (the cert-manager seam)
 
 ## Quick Start
 
-Create a file `ingress-nginx.yaml`:
-
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIngressNginx
 metadata:
-  name: my-ingress
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesIngressNginx.my-ingress
-spec:
-  namespace: ingress-nginx
-  createNamespace: true
-```
-
-Deploy:
-
-```shell
-planton apply -f ingress-nginx.yaml
-```
-
-This creates an ingress-nginx controller in the `ingress-nginx` namespace with the default chart version (4.11.1), an external `LoadBalancer` service, the default ingress class enabled, and no provider-specific annotations.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `string` | Kubernetes namespace for the ingress-nginx deployment. Accepts a literal string or a `valueFrom` reference to a KubernetesNamespace resource (see `spec.name` on the referenced resource). | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying the Helm release. |
-| `chartVersion` | `string` | `4.11.1` | Upstream ingress-nginx Helm chart version tag. |
-| `internal` | `bool` | `false` | When `true`, configures the controller service with an internal load balancer. The default (`false`) produces an external load balancer. |
-| `gke.staticIpName` | `string` | — | Name of a pre-existing reserved static IP address to assign to the GKE load balancer. |
-| `gke.subnetworkSelfLink` | `string` | — | Subnetwork self-link for internal load balancers on GKE. |
-| `eks.additionalSecurityGroupIds` | `string[]` | — | Security group IDs to attach to the AWS load balancer in addition to the controller-managed group. Each entry accepts a literal string or a `valueFrom` reference to an AwsSecurityGroup resource. |
-| `eks.subnetIds` | `string[]` | — | Subnet IDs where the ELB/NLB should be placed. Leave empty to let AWS select subnets automatically. Each entry accepts a literal string or a `valueFrom` reference to an AwsVpc resource. |
-| `eks.irsaRoleArnOverride` | `string` | — | Existing IAM role ARN for IRSA. If empty, the stack can auto-create and wire up a role. |
-| `aks.managedIdentityClientId` | `string` | — | Client ID of a user-assigned managed identity for Azure Workload Identity binding on the controller ServiceAccount. |
-| `aks.publicIpName` | `string` | — | Name of a pre-existing Azure public IP resource to reuse for the load balancer. |
-
-> **Note on `valueFrom`:** Fields of type `StringValueOrRef` (such as `namespace`, `eks.additionalSecurityGroupIds`, and `eks.subnetIds`) accept either a literal string value or a `valueFrom` block that references another Planton resource's output field. See the [Foreign Key References](#using-foreign-key-references) example below.
-
-## Examples
-
-### External Load Balancer on GKE with Static IP
-
-Deploy ingress-nginx on a GKE cluster using a reserved static IP for the external load balancer:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesIngressNginx
-metadata:
-  name: gke-external
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesIngressNginx.gke-external
-spec:
-  namespace: ingress-nginx
-  createNamespace: true
-  chartVersion: "4.11.1"
-  gke:
-    staticIpName: prod-ingress-ip
-```
-
-### Internal Load Balancer on EKS
-
-Deploy an internal-only ingress-nginx controller on EKS, pinned to specific subnets and with additional security groups:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesIngressNginx
-metadata:
-  name: eks-internal
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesIngressNginx.eks-internal
-spec:
-  namespace: ingress-system
-  createNamespace: true
-  internal: true
-  eks:
-    additionalSecurityGroupIds:
-      - sg-0123456789abcdef0
-      - sg-abcdef0123456789a
-    subnetIds:
-      - subnet-aaa111
-      - subnet-bbb222
-```
-
-### AKS with Managed Identity
-
-Deploy ingress-nginx on AKS with Azure Workload Identity and a pre-existing public IP:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesIngressNginx
-metadata:
-  name: aks-ingress
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesIngressNginx.aks-ingress
-spec:
-  namespace: ingress-nginx
-  createNamespace: true
-  aks:
-    managedIdentityClientId: 12345678-abcd-efgh-ijkl-123456789abc
-    publicIpName: prod-ingress-pip
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed namespace and EKS security groups from other resources instead of hardcoding values:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesIngressNginx
-metadata:
-  name: platform-ingress
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesIngressNginx.platform-ingress
+  name: ingress-nginx
 spec:
   namespace:
-    valueFrom:
-      kind: KubernetesNamespace
-      name: platform-namespace
-      field: spec.name
-  createNamespace: false
-  internal: true
-  eks:
-    additionalSecurityGroupIds:
-      - valueFrom:
-          kind: AwsSecurityGroup
-          name: ingress-sg
-          fieldPath: status.outputs.security_group_id
-    subnetIds:
-      - valueFrom:
-          kind: AwsSubnet
-          name: platform-public-subnet-a
-          fieldPath: status.outputs.subnet_id
+    value: ingress-nginx
+  createNamespace: true
+  ingressClass:
+    name: nginx
+    isDefaultClass: true
+  replicas: 2
+  service:
+    externalTrafficPolicy: local
 ```
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+|---|---|
+| `namespace` | Installation namespace |
+| `release_name` | Helm release name (equals `metadata.name`) |
+| `ingress_class_name` | The IngressClass this controller owns — what KubernetesIngress resources reference |
+| `controller_service_name` | The controller's external Service (`<name>-controller`) |
+| `internal_service_name` | The internal Service (when `service.internal.enabled`) |
+| `load_balancer_ip` | External IP of the cloud LB (GCP/Azure populate an IP) |
+| `load_balancer_hostname` | External hostname of the cloud LB (AWS populates a DNS name) |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where ingress-nginx is deployed |
-| `release_name` | `string` | Helm release name (matches `metadata.name`) |
-| `service_name` | `string` | Kubernetes Service name for the ingress-nginx controller (format: `{name}-controller`) |
-| `service_type` | `string` | Service type, typically `LoadBalancer` |
+## Next Steps
 
-## Related Components
-
-- [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — provides the target namespace via `valueFrom` reference
-- [KubernetesHelmRelease](/docs/catalog/kubernetes/kuberneteshelmrelease) — alternative for deploying arbitrary Helm charts when the ingress-nginx component does not cover your use case
-- [KubernetesDeployment](/docs/catalog/kubernetes/kubernetesdeployment) — application workloads that use Ingress resources routed through the ingress-nginx controller
-- [KubernetesService](/docs/catalog/kubernetes/kubernetesservice) — backend services exposed via Ingress rules
+Create **KubernetesIngress** resources referencing this controller's
+`ingress_class_name` output to route traffic. Pair with
+**KubernetesExternalDns** to publish DNS records for the load balancer's
+address, and with the **cert-manager** kinds (KubernetesCertManager,
+issuers, KubernetesCertificate) for TLS — including the
+`default_tls_certificate` wildcard default.
