@@ -1,0 +1,46 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesexternaldns
+spec:
+  # ExternalDNS installs as one Helm release NAMED AFTER metadata.name —
+  # multiple instances per cluster (one per DNS provider / zone set,
+  # separated by TXT owner IDs) are a first-class pattern, so nothing here
+  # is a fixed chart name. The optional credential Secret's suffix depends
+  # on which provider arm is configured.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "external-dns".
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    - name: secret_name
+      where_to_find: >-
+        `kubectl get secrets -n <namespace>` — present only when the
+        configured provider declares static credentials, named
+        "<metadata.name>-cloudflare-credentials" (Cloudflare),
+        "<metadata.name>-aws-credentials" (AWS static keys),
+        "<metadata.name>-gcp-credentials" (GCP key), or
+        "<metadata.name>-azure-config" (Azure — always present on the
+        azure_dns arm, it carries the rendered azure.json).
+    - name: secret_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.

@@ -1,0 +1,12 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesExternalSecretsOperator
+metadata:
+  name: my-external-secrets-operator
+spec:
+  namespace:
+    value: external-secrets
+  createNamespace: true
+  workloadIdentity:
+    eks:
+      roleArn:
+        value: '<external-secrets-irsa-role-arn>'

@@ -3,9 +3,12 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "verify",
     srcs = [
+        "certmanager.go",
         "config_group.go",
         "crd_install.go",
         "crd_workload.go",
+        "externaldns.go",
+        "externalsecrets.go",
         "generic.go",
         "helm.go",
         "job.go",
@@ -23,5 +26,6 @@ go_library(
     deps = [
         "@com_github_pkg_errors//:errors",
         "@in_gopkg_yaml_v3//:yaml_v3",
+        "@io_k8s_sigs_yaml//:yaml",
     ],
 )

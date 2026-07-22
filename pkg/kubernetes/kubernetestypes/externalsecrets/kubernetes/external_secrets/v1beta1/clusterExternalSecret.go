@@ -12,7 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// ClusterExternalSecret is the Schema for the clusterexternalsecrets API.
+// ClusterExternalSecret is the schema for the clusterexternalsecrets API.
 type ClusterExternalSecret struct {
 	pulumi.CustomResourceState
 
@@ -35,6 +35,12 @@ func NewClusterExternalSecret(ctx *pulumi.Context,
 
 	args.ApiVersion = pulumi.StringPtr("external-secrets.io/v1beta1")
 	args.Kind = pulumi.StringPtr("ClusterExternalSecret")
+	aliases := pulumi.Aliases([]pulumi.Alias{
+		{
+			Type: pulumi.String("kubernetes:external-secrets.io/v1:ClusterExternalSecret"),
+		},
+	})
+	opts = append(opts, aliases)
 	opts = utilities.PkgResourceDefaultOpts(opts)
 	var resource ClusterExternalSecret
 	err := ctx.RegisterResource("kubernetes:external-secrets.io/v1beta1:ClusterExternalSecret", name, args, &resource, opts...)

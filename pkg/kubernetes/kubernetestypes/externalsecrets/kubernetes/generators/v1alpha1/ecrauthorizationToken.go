@@ -12,8 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// ECRAuthorizationTokenSpec uses the GetAuthorizationToken API to retrieve an
-// authorization token.
+// ECRAuthorizationToken uses the GetAuthorizationToken API to retrieve an authorization token.
 // The authorization token is valid for 12 hours.
 // The authorizationToken returned is a base64 encoded string that can be decoded
 // and used in a docker login command to authenticate to a registry.

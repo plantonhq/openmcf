@@ -2543,7 +2543,7 @@ enum CloudResourceKind {
   }];
 
   // 800–999: Kubernetes resources, organized in family sub-bands
-  // (830–859 also hosts CNI/autoscaling/DR addons; 930–949 reserved for
+  // (830–869 also hosts CNI/autoscaling/DR addons; 930–949 reserved for
   // analytics & ML; 990–999 reserved for growth)
   // 800–829: Kubernetes building blocks (core API primitives)
   KubernetesNamespace = 800 [(kind_meta) = {
@@ -2660,7 +2660,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8shpa"
   }];
-  // 830–859: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh)
+  // 830–869: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh, CNI/autoscaling/DR)
   KubernetesCertManager = 830 [(kind_meta) = {
     provider: kubernetes
     version: v1
@@ -2692,22 +2692,44 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8sextdns"
   }];
-  KubernetesExternalSecrets = 835 [(kind_meta) = {
+  KubernetesExternalSecretsOperator = 835 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sextsec"
   }];
-  KubernetesIngressNginx = 836 [(kind_meta) = {
+  // KubernetesExternalSecretsOperator is a prerequisite for the three
+  // external-secrets CR kinds below: ClusterSecretStore/SecretStore/
+  // ExternalSecret are external-secrets custom resources — without the
+  // operator and its CRDs they cannot be applied.
+  KubernetesClusterSecretStore = 836 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8scss"
+    prerequisites: [KubernetesExternalSecretsOperator]
+  }];
+  KubernetesSecretStore = 837 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssst"
+    prerequisites: [KubernetesExternalSecretsOperator]
+  }];
+  KubernetesExternalSecret = 838 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sxsec"
+    prerequisites: [KubernetesExternalSecretsOperator]
+  }];
+  KubernetesIngressNginx = 839 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sngx"
   }];
-  KubernetesGatewayApiCrds = 837 [(kind_meta) = {
+  KubernetesGatewayApiCrds = 840 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgwcrds"
   }];
-  KubernetesGatewayClass = 838 [(kind_meta) = {
+  KubernetesGatewayClass = 841 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgwc"
@@ -2717,7 +2739,7 @@ enum CloudResourceKind {
       kind: "GatewayClass"
     }
   }];
-  KubernetesGateway = 839 [(kind_meta) = {
+  KubernetesGateway = 842 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgw"
@@ -2727,7 +2749,7 @@ enum CloudResourceKind {
       kind: "Gateway"
     }
   }];
-  KubernetesHttpRoute = 840 [(kind_meta) = {
+  KubernetesHttpRoute = 843 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8shrt"
@@ -2737,7 +2759,7 @@ enum CloudResourceKind {
       kind: "HTTPRoute"
     }
   }];
-  KubernetesGrpcRoute = 841 [(kind_meta) = {
+  KubernetesGrpcRoute = 844 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgrt"
@@ -2747,7 +2769,7 @@ enum CloudResourceKind {
       kind: "GRPCRoute"
     }
   }];
-  KubernetesTcpRoute = 842 [(kind_meta) = {
+  KubernetesTcpRoute = 845 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8strt"
@@ -2757,7 +2779,7 @@ enum CloudResourceKind {
       kind: "TCPRoute"
     }
   }];
-  KubernetesTlsRoute = 843 [(kind_meta) = {
+  KubernetesTlsRoute = 846 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stlsrt"
@@ -2767,7 +2789,7 @@ enum CloudResourceKind {
       kind: "TLSRoute"
     }
   }];
-  KubernetesReferenceGrant = 844 [(kind_meta) = {
+  KubernetesReferenceGrant = 847 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8srefgrt"
@@ -2777,21 +2799,21 @@ enum CloudResourceKind {
       kind: "ReferenceGrant"
     }
   }];
-  KubernetesIstioBaseCrds = 845 [(kind_meta) = {
+  KubernetesIstioBaseCrds = 848 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sistcrds"
   }];
-  KubernetesIstio = 846 [(kind_meta) = {
+  KubernetesIstio = 849 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sist"
   }];
   // Istio API components (mesh traffic policy, security, telemetry). The seven typed
-  // resources below (847–853) require the Istio CRDs on the cluster, provided by the
-  // lightweight CRDs-only KubernetesIstioBaseCrds (845) — NOT the full mesh
-  // KubernetesIstio (846).
-  KubernetesDestinationRule = 847 [(kind_meta) = {
+  // resources below (850–856) require the Istio CRDs on the cluster, provided by the
+  // lightweight CRDs-only KubernetesIstioBaseCrds (848) — NOT the full mesh
+  // KubernetesIstio (849).
+  KubernetesDestinationRule = 850 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sdr"
@@ -2801,7 +2823,7 @@ enum CloudResourceKind {
       kind: "DestinationRule"
     }
   }];
-  KubernetesServiceEntry = 848 [(kind_meta) = {
+  KubernetesServiceEntry = 851 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sse"
@@ -2811,7 +2833,7 @@ enum CloudResourceKind {
       kind: "ServiceEntry"
     }
   }];
-  KubernetesPeerAuthentication = 849 [(kind_meta) = {
+  KubernetesPeerAuthentication = 852 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8spa"
@@ -2821,7 +2843,7 @@ enum CloudResourceKind {
       kind: "PeerAuthentication"
     }
   }];
-  KubernetesRequestAuthentication = 850 [(kind_meta) = {
+  KubernetesRequestAuthentication = 853 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sra"
@@ -2831,7 +2853,7 @@ enum CloudResourceKind {
       kind: "RequestAuthentication"
     }
   }];
-  KubernetesAuthorizationPolicy = 851 [(kind_meta) = {
+  KubernetesAuthorizationPolicy = 854 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sauthz"
@@ -2841,7 +2863,7 @@ enum CloudResourceKind {
       kind: "AuthorizationPolicy"
     }
   }];
-  KubernetesTelemetry = 852 [(kind_meta) = {
+  KubernetesTelemetry = 855 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stel"
@@ -2851,7 +2873,7 @@ enum CloudResourceKind {
       kind: "Telemetry"
     }
   }];
-  KubernetesEnvoyFilter = 853 [(kind_meta) = {
+  KubernetesEnvoyFilter = 856 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sef"
@@ -2861,34 +2883,34 @@ enum CloudResourceKind {
       kind: "EnvoyFilter"
     }
   }];
-  // 860–879: Kubernetes observability
-  KubernetesPrometheus = 860 [(kind_meta) = {
+  // 870–889: Kubernetes observability
+  KubernetesPrometheus = 870 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sprom"
   }];
-  KubernetesGrafana = 861 [(kind_meta) = {
+  KubernetesGrafana = 871 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgfn"
   }];
-  KubernetesSignoz = 862 [(kind_meta) = {
+  KubernetesSignoz = 872 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8ssgz"
   }];
-  // 880–899: Kubernetes security, policy, and identity
-  KubernetesKeycloak = 880 [(kind_meta) = {
+  // 890–899: Kubernetes security, policy, and identity
+  KubernetesKeycloak = 890 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8skc"
   }];
-  KubernetesOpenBao = 881 [(kind_meta) = {
+  KubernetesOpenBao = 891 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sbao"
   }];
-  KubernetesOpenFga = 882 [(kind_meta) = {
+  KubernetesOpenFga = 892 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sfga"

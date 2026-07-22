@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "certmanagerissuer",
+    srcs = ["spec.go"],
+    importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/certmanagerissuer",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//apis/dev/planton/provider/kubernetes",
+        "@com_github_pkg_errors//:errors",
+        "@io_k8s_sigs_yaml//:yaml",
+    ],
+)

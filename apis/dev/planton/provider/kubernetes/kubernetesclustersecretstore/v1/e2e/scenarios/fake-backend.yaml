@@ -1,0 +1,33 @@
+# A cluster-scoped store over ESO's built-in fake backend, fenced to specific
+# namespaces — the full in-cluster machinery live: the operator fixture
+# (registry prerequisite) admits and reconciles the store, the secrets
+# namespace resolves through the foreign-key reference to the operator
+# fixture's output, and the verifier requires the Ready condition, which ESO
+# only grants after validating the backend connection. The cloud backends
+# (AWS/GCP/Azure/Vault) differ only in the provider block this scenario
+# swaps out — their live reads ride the real-cluster lanes.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesClusterSecretStore
+metadata:
+  name: e2e-css-fake
+spec:
+  secretsNamespace:
+    valueFrom:
+      name: e2e-eso-prereq
+  config:
+    fake:
+      data:
+        - key: shared-token
+          value: e2e-shared-token-value
+        - key: pinned-entry
+          value: e2e-versioned-value
+          version: v2
+    refreshInterval: 1m
+    retry:
+      maxRetries: 3
+      retryInterval: 10s
+  conditions:
+    - namespaces:
+        - default
+    - namespaceRegexes:
+        - "^e2e-.*"

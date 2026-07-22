@@ -17,6 +17,7 @@ go_library(
         "issuerList.go",
         "issuerPatch.go",
         "pulumiTypes.go",
+        "pulumiTypes1.go",
     ],
     importpath = "github.com/plantonhq/planton/pkg/kubernetes/kubernetestypes/certmanager/kubernetes/cert_manager/v1",
     visibility = ["//visibility:public"],

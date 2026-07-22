@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesclustersecretstore.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/external_secrets_store.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+/**
+ * **KubernetesClusterSecretStoreSpec** creates a CLUSTER-scoped External
+ * Secrets Operator store — one backend connection (AWS Secrets Manager, GCP
+ * Secret Manager, Azure Key Vault, Vault/OpenBao, ...) that ExternalSecret
+ * resources in ANY namespace may sync from. The ClusterSecretStore is named
+ * after `metadata.name`; ExternalSecrets reference it by that name with
+ * kind ClusterSecretStore.
+ *
+ * Use the cluster grain for platform-wide backends every team shares
+ * (optionally fenced with `conditions`); use KubernetesSecretStore for a
+ * connection that belongs to ONE namespace/team. Requires the External
+ * Secrets Operator on the cluster (KubernetesExternalSecretsOperator).
+ */
+message KubernetesClusterSecretStoreSpec {
+  /**
+   * Namespace where credential Secrets this store declares (static keys,
+   * tokens) are materialized — cluster-scoped stores read their referenced
+   * Secrets from an explicit namespace, and the operator's install namespace
+   * is the convention. Accepts a literal namespace name or a reference to a
+   * KubernetesExternalSecretsOperator resource's output.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secrets_namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesExternalSecretsOperator,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.namespace"
+  ];
+
+  /**
+   * The backend connection and its configuration — which external system
+   * holds the secrets and how ESO authenticates to it.
+   */
+  dev.planton.provider.kubernetes.ExternalSecretsStoreConfig config = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Restrict WHICH namespaces may sync from this store. Every ExternalSecret
+   * in a namespace matching ANY condition is allowed; with no conditions,
+   * every namespace is. The multi-tenancy fence: a store holding production
+   * credentials should not be readable from every dev namespace.
+   */
+  repeated KubernetesClusterSecretStoreCondition conditions = 3;
+}
+
+/**
+ * One namespace-selection condition. Within a condition, the three selection
+ * modes are alternatives (set any that apply; they union).
+ */
+message KubernetesClusterSecretStoreCondition {
+  /**
+   * Allow namespaces by exact name.
+   */
+  repeated string namespaces = 1 [(buf.validate.field).repeated.items.string.pattern = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"];
+
+  /**
+   * Allow namespaces whose labels match this selector.
+   */
+  map<string, string> namespace_label_selector = 2;
+
+  /**
+   * Allow namespaces whose NAME matches any of these regular expressions
+   * (e.g. "^team-a-.*").
+   */
+  repeated string namespace_regexes = 3;
+
+  option (buf.validate.message).cel = {
+    id: "cssc.condition_not_empty"
+    message: "A condition must select something — set namespaces, namespace_label_selector, or namespace_regexes"
+    expression: "size(this.namespaces) > 0 || size(this.namespace_label_selector) > 0 || size(this.namespace_regexes) > 0"
+  };
+}

@@ -24,9 +24,11 @@ strimzi_operator_release=release-0.42.x
 #https://github.com/zalando/postgres-operator/tree/v1.12.2
 zalando_operator_release=v1.12.2
 
-#https://github.com/external-secrets/external-secrets/blob/v0.9.20/deploy/crds/bundle.yaml
-#https://github.com/external-secrets/external-secrets/tree/v0.9.20
-external_secrets_release=v0.9.20
+#https://github.com/external-secrets/external-secrets/blob/v2.8.0/deploy/crds/bundle.yaml
+#https://github.com/external-secrets/external-secrets/tree/v2.8.0
+#Note: the bundle carries the served external-secrets.io/v1 versions plus
+#unserved v1beta1 blocks and the generators.external-secrets.io v1alpha1 CRDs.
+external_secrets_release=v2.8.0
 
 #https://raw.githubusercontent.com/elastic/cloud-on-k8s/v2.14.0/deploy/eck-operator/charts/eck-operator-crds/templates/all-crds.yaml
 elastic_operator_release=v2.14.0

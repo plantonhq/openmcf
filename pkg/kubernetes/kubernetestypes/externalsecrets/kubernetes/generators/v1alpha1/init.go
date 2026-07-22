@@ -27,6 +27,24 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 		r = &ACRAccessTokenList{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:ACRAccessTokenPatch":
 		r = &ACRAccessTokenPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:BeyondtrustWorkloadCredentialsDynamicSecret":
+		r = &BeyondtrustWorkloadCredentialsDynamicSecret{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:BeyondtrustWorkloadCredentialsDynamicSecretList":
+		r = &BeyondtrustWorkloadCredentialsDynamicSecretList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:BeyondtrustWorkloadCredentialsDynamicSecretPatch":
+		r = &BeyondtrustWorkloadCredentialsDynamicSecretPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:CloudsmithAccessToken":
+		r = &CloudsmithAccessToken{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:CloudsmithAccessTokenList":
+		r = &CloudsmithAccessTokenList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:CloudsmithAccessTokenPatch":
+		r = &CloudsmithAccessTokenPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:ClusterGenerator":
+		r = &ClusterGenerator{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:ClusterGeneratorList":
+		r = &ClusterGeneratorList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:ClusterGeneratorPatch":
+		r = &ClusterGeneratorPatch{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:ECRAuthorizationToken":
 		r = &ECRAuthorizationToken{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:ECRAuthorizationTokenList":
@@ -45,18 +63,66 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 		r = &GCRAccessTokenList{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:GCRAccessTokenPatch":
 		r = &GCRAccessTokenPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:GeneratorState":
+		r = &GeneratorState{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:GeneratorStateList":
+		r = &GeneratorStateList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:GeneratorStatePatch":
+		r = &GeneratorStatePatch{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:GithubAccessToken":
 		r = &GithubAccessToken{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:GithubAccessTokenList":
 		r = &GithubAccessTokenList{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:GithubAccessTokenPatch":
 		r = &GithubAccessTokenPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:GitlabDeployToken":
+		r = &GitlabDeployToken{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:GitlabDeployTokenList":
+		r = &GitlabDeployTokenList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:GitlabDeployTokenPatch":
+		r = &GitlabDeployTokenPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:Grafana":
+		r = &Grafana{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:GrafanaList":
+		r = &GrafanaList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:GrafanaPatch":
+		r = &GrafanaPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:MFA":
+		r = &MFA{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:MFAList":
+		r = &MFAList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:MFAPatch":
+		r = &MFAPatch{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:Password":
 		r = &Password{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:PasswordList":
 		r = &PasswordList{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:PasswordPatch":
 		r = &PasswordPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:QuayAccessToken":
+		r = &QuayAccessToken{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:QuayAccessTokenList":
+		r = &QuayAccessTokenList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:QuayAccessTokenPatch":
+		r = &QuayAccessTokenPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:SSHKey":
+		r = &SSHKey{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:SSHKeyList":
+		r = &SSHKeyList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:SSHKeyPatch":
+		r = &SSHKeyPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:STSSessionToken":
+		r = &STSSessionToken{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:STSSessionTokenList":
+		r = &STSSessionTokenList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:STSSessionTokenPatch":
+		r = &STSSessionTokenPatch{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:UUID":
+		r = &UUID{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:UUIDList":
+		r = &UUIDList{}
+	case "kubernetes:generators.external-secrets.io/v1alpha1:UUIDPatch":
+		r = &UUIDPatch{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:VaultDynamicSecret":
 		r = &VaultDynamicSecret{}
 	case "kubernetes:generators.external-secrets.io/v1alpha1:VaultDynamicSecretList":

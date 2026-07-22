@@ -18,6 +18,7 @@ import (
 // Conflicts will result in an error by default, but can be forced using the "pulumi.com/patchForce" annotation. See the
 // [Server-Side Apply Docs](https://www.pulumi.com/registry/packages/kubernetes/how-to-guides/managing-resources-with-server-side-apply/) for
 // additional information about using Server-Side Apply to manage Kubernetes resources with Pulumi.
+// VaultDynamicSecret represents a generator that can create dynamic secrets from HashiCorp Vault.
 type VaultDynamicSecretPatch struct {
 	pulumi.CustomResourceState
 

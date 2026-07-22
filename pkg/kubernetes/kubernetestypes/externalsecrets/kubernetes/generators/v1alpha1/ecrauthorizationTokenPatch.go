@@ -18,8 +18,7 @@ import (
 // Conflicts will result in an error by default, but can be forced using the "pulumi.com/patchForce" annotation. See the
 // [Server-Side Apply Docs](https://www.pulumi.com/registry/packages/kubernetes/how-to-guides/managing-resources-with-server-side-apply/) for
 // additional information about using Server-Side Apply to manage Kubernetes resources with Pulumi.
-// ECRAuthorizationTokenSpec uses the GetAuthorizationToken API to retrieve an
-// authorization token.
+// ECRAuthorizationToken uses the GetAuthorizationToken API to retrieve an authorization token.
 // The authorization token is valid for 12 hours.
 // The authorizationToken returned is a base64 encoded string that can be decoded
 // and used in a docker login command to authenticate to a registry.

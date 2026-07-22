@@ -215,4 +215,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace via `valueFrom` reference
 - [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — application deployments that send metrics to Prometheus
 - [KubernetesIngressNginx](/docs/catalog/kubernetes/ingress-nginx) — ingress controller for routing external traffic to the Prometheus web UI
-- [KubernetesExternalDns](/docs/catalog/kubernetes/external-dns) — manages DNS records for the ingress hostname
+- [KubernetesExternalDns](/docs/catalog/kubernetes/kubernetesexternaldns) — manages DNS records for the ingress hostname

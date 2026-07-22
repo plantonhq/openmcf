@@ -6,6 +6,7 @@ go_library(
         "cert_manager_issuer.pb.go",
         "cli_help.go",
         "container_env.pb.go",
+        "external_secrets_store.pb.go",
         "gateway_api.pb.go",
         "istio_api.pb.go",
         "kubernetes.pb.go",

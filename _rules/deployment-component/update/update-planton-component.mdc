@@ -369,6 +369,16 @@ Based on scenario:
   holds only same-typed strings (identity labels, secret data), plain
   merge with `cond ? {k = v} : {}` is safe — the hazard is mixed primitive
   types.
+- **Pin Helm charts against the CHART REPOSITORY INDEX, never the vendored
+  Chart.yaml at an app tag**: chart releases are cut separately from
+  application releases, so the `Chart.yaml` inside an upstream repo at app
+  tag vX.Y.Z routinely still declares the PREVIOUS chart version (and the
+  served chart for app vX.Y.Z may not exist yet). A module that pins the
+  vendored number installs an older chart than the one designed against —
+  and every offline gate stays green because the version is just a string.
+  Verify what the repository actually serves
+  (`curl <repo-url>/index.yaml`, match the entry's `appVersion`) and pin
+  THAT chart version in the spec default and both modules' fallbacks.
 - **Custom resources apply through `kubectl_manifest` (alekc/kubectl), not
   the hashicorp provider's `kubernetes_manifest`**: `kubernetes_manifest`
   requires a reachable cluster AND the CRD's OpenAPI schema at PLAN time,

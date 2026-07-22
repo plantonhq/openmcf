@@ -1,7 +1,7 @@
 package module
 
 const (
-	OpNamespace   = "namespace"
-	OpReleaseName = "release_name"
-	OpSolverSa    = "solver_sa"
+	OpNamespace          = "namespace"
+	OpReleaseName        = "release_name"
+	OpServiceAccountName = "service_account_name"
 )

@@ -1,0 +1,3 @@
+name: kubernetes-secret-store
+runtime: go
+description: Namespaced External Secrets Operator store with typed multi-backend configuration and declared-credential materialization

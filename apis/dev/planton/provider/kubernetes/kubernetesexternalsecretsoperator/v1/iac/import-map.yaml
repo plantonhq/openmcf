@@ -1,0 +1,29 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesexternalsecretsoperator
+spec:
+  # The External Secrets Operator installs as ONE Helm release whose name is
+  # fixed to "external-secrets" (one installation per cluster is an upstream
+  # architectural constraint — cluster-scoped CRDs and webhook
+  # configuration), in the spec's namespace.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+      where_to_find: >-
+        Always "external-secrets" — the module fixes the release name to the
+        chart name. Confirm with `helm list -n <namespace>` (NAME column).
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "external-secrets".
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

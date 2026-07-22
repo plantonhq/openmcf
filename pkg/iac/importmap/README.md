@@ -96,6 +96,8 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kuberneteshorizontalpodautoscaler` | 2026-07-22, all 3 scenarios (incl. the composed Deployment target fixture) | — |
 | `kubernetescertmanager` | 2026-07-22, both scenarios (Helm release + created namespace) | `helm_release` install-time attributes (config-only, see the catalog row) |
 | `kuberneteshelmrelease` | 2026-07-22, all 3 scenarios (HTTPS repo, OCI registry, values-override) | `helm_release` install-time attributes (repository, values/set/set_sensitive, lifecycle knobs — Helm does not persist how a release was installed; provider-documented, declared config-only). Computed attributes the plan marks wholly after-unknown (id, metadata) are pruned by the oracle itself, not declared. |
+| `kubernetesexternaldns` | 2026-07-22, all 3 scenarios (Helm release + created namespace; the credential-Secret arms are exercised offline by the hack manifest — the kind lanes run credential-less by design) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetesexternalsecretsoperator` | 2026-07-22, both scenarios (Helm release + created namespace) | `helm_release` install-time attributes (config-only, see the catalog row) |
 
 Kinds where an import map is **deliberately not applicable** (recorded so
 absence is never mistaken for an oversight):
@@ -103,7 +105,7 @@ absence is never mistaken for an oversight):
 | Component | Why no import map |
 |-----------|-------------------|
 | `kubernetesmanifest` | The kind's state is arbitrary user YAML — there is no per-kind resource schema for a blind round-trip oracle to compare against; each deployment's resource set is defined by the manifest itself. Adopting existing raw resources is done by pasting their YAML into `spec.manifest_yaml` and applying (server-side apply takes ownership of unmanaged fields). |
-| `kubernetesclusterissuer`, `kubernetesissuer`, `kubernetescertificate` | Deliberately deferred, not skipped: these kinds apply typed CRs through `kubectl_manifest`, whose importer takes a COMPOSED ID (`apiVersion//kind//name[//namespace]`). The provider catalog's id_format vocabulary has no composed-segments derivation yet, so an authored map could not be honestly proven. Author these maps together with the catalog uplift when the next `kubectl_manifest`-backed kinds land. |
+| `kubernetesclusterissuer`, `kubernetesissuer`, `kubernetescertificate`, `kubernetesclustersecretstore`, `kubernetessecretstore`, `kubernetesexternalsecret` | Deliberately deferred, not skipped: these kinds apply typed CRs through `kubectl_manifest`, whose importer takes a COMPOSED ID (`apiVersion//kind//name[//namespace]`). The provider catalog's id_format vocabulary has no composed-segments derivation yet, so an authored map could not be honestly proven. Author these maps together with the catalog uplift when the next `kubectl_manifest`-backed kinds land (the store kinds also carry a conditional credential Secret whose name derives as `<metadata.name>-credentials`). |
 
 ## Adding a kind
 

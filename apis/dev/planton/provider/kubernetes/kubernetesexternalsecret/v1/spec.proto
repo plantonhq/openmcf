@@ -1,0 +1,369 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesexternalsecret.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesExternalSecretSpec** declares ONE secret sync: the External
+ * Secrets Operator reads the referenced entries from a store's backend (AWS
+ * Secrets Manager, GCP Secret Manager, Azure Key Vault, Vault/OpenBao, ...)
+ * and materializes them as a Kubernetes Secret in this namespace, refreshing
+ * on the configured interval. Workloads then consume the materialized Secret
+ * exactly like any other (env valueFrom, volume mounts) — the external system
+ * stays the single source of truth and the cluster never stores the value
+ * anywhere else.
+ *
+ * The store connection is a separate first-class resource
+ * (KubernetesSecretStore / KubernetesClusterSecretStore); this resource picks
+ * WHAT to sync — explicit entries via `data`, and/or bulk pulls via
+ * `data_from`. Requires the External Secrets Operator on the cluster
+ * (KubernetesExternalSecretsOperator).
+ */
+message KubernetesExternalSecretSpec {
+  /**
+   * Namespace the ExternalSecret (and the Secret it materializes) lives in.
+   * Accepts a literal namespace name or a reference to a KubernetesNamespace
+   * resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * The store this secret syncs from.
+   */
+  KubernetesExternalSecretStoreRef store_ref = 2 [(buf.validate.field).required = true];
+
+  /**
+   * How often ESO re-reads the backend and refreshes the Secret (Go
+   * duration). Upstream default: "1h". "0s" = fetch exactly once (pair with
+   * refresh_policy CreatedOnce for immutable bootstrap secrets).
+   */
+  optional string refresh_interval = 3 [
+    (dev.planton.shared.options.default) = "1h",
+    (buf.validate.field).string.pattern = "^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$"
+  ];
+
+  /**
+   * When the Secret is (re)synced. Empty = upstream behavior (periodic per
+   * refresh_interval).
+   * "CreatedOnce": create once, never touch again (drift stays).
+   * "Periodic": sync on the interval (the standard posture).
+   * "OnChange": sync only when this ExternalSecret's spec changes.
+   */
+  optional string refresh_policy = 4 [(buf.validate.field).string = {
+    in: [
+      "",
+      "CreatedOnce",
+      "Periodic",
+      "OnChange"
+    ]
+  }];
+
+  /**
+   * The Kubernetes Secret to materialize. Empty = a Secret named after this
+   * resource with default policies (owned, retained on delete).
+   */
+  KubernetesExternalSecretTarget target = 5;
+
+  /**
+   * Explicit entries: each maps one backend key (or one property within it)
+   * to one key of the materialized Secret. The precise, reviewable form —
+   * prefer it for application credentials.
+   */
+  repeated KubernetesExternalSecretData data = 6;
+
+  /**
+   * Bulk pulls: each extracts ALL properties of one backend entry — or finds
+   * every entry matching a name pattern / tags — into the materialized
+   * Secret. For structured entries (a JSON document of related credentials)
+   * and fleet patterns; `rewrite` reshapes the resulting keys.
+   */
+  repeated KubernetesExternalSecretDataFrom data_from = 7;
+
+  option (buf.validate.message).cel = {
+    id: "xsec.data_or_data_from"
+    message: "Declare something to sync — at least one data entry or one data_from pull"
+    expression: "size(this.data) > 0 || size(this.data_from) > 0"
+  };
+}
+
+/**
+ * Reference to the store this secret syncs from.
+ */
+message KubernetesExternalSecretStoreRef {
+  /**
+   * Store name. Accepts a literal name or a reference to a
+   * KubernetesSecretStore (default) / KubernetesClusterSecretStore
+   * resource's output — set `kind` to match.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSecretStore,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.store_name"
+  ];
+
+  /**
+   * Store kind: "SecretStore" (namespaced, upstream default) or
+   * "ClusterSecretStore" (cluster-scoped).
+   */
+  optional string kind = 2 [
+    (dev.planton.shared.options.default) = "SecretStore",
+    (buf.validate.field).string = {
+      in: [
+        "SecretStore",
+        "ClusterSecretStore"
+      ]
+    }
+  ];
+}
+
+/**
+ * The Kubernetes Secret to materialize.
+ */
+message KubernetesExternalSecretTarget {
+  /**
+   * Name of the materialized Secret. Empty = this resource's metadata.name.
+   */
+  string name = 1;
+
+  /**
+   * Who owns the Secret's lifecycle.
+   * "Owner" (default): ESO creates it, owns it (ownerReference), and fails
+   *   if an unowned Secret of that name already exists.
+   * "Orphan": ESO creates it but never garbage-collects it.
+   * "Merge": ESO merges synced keys into an EXISTING Secret it does not own
+   *   (fails when absent).
+   * "None": ESO never writes the Secret (paired with generic manifest
+   *   targets via helm-level tooling; niche).
+   */
+  optional string creation_policy = 2 [
+    (dev.planton.shared.options.default) = "Owner",
+    (buf.validate.field).string = {
+      in: [
+        "Owner",
+        "Orphan",
+        "Merge",
+        "None"
+      ]
+    }
+  ];
+
+  /**
+   * What happens to the Secret when this ExternalSecret is deleted or a
+   * synced key disappears from the backend.
+   * "Retain" (upstream default): keep the Secret — the safe posture.
+   * "Delete": delete the Secret with the ExternalSecret (and prune keys
+   *   that vanish from the backend).
+   * "Merge": remove only the keys this ExternalSecret owns.
+   */
+  optional string deletion_policy = 3 [
+    (dev.planton.shared.options.default) = "Retain",
+    (buf.validate.field).string = {
+      in: [
+        "Retain",
+        "Delete",
+        "Merge"
+      ]
+    }
+  ];
+
+  /**
+   * When true, the materialized Secret is marked immutable — consumers get
+   * kubelet-cache stability, but every refresh that would change data FAILS
+   * (immutable Secrets cannot be updated). Pair with refresh_policy
+   * CreatedOnce.
+   */
+  bool immutable = 4;
+
+  /**
+   * Template applied when materializing the Secret — set its type, stamp
+   * metadata, or reshape values.
+   */
+  KubernetesExternalSecretTemplate template = 5;
+}
+
+/**
+ * Template for the materialized Secret.
+ */
+message KubernetesExternalSecretTemplate {
+  /**
+   * Secret type (e.g. "kubernetes.io/dockerconfigjson",
+   * "kubernetes.io/tls"). Empty = "Opaque".
+   */
+  string type = 1;
+
+  /**
+   * How templated data combines with synced data.
+   * "Replace" (upstream default): the template's data REPLACES the synced
+   *   keys — only templated keys land in the Secret.
+   * "Merge": templated keys merge over the synced keys.
+   */
+  optional string merge_policy = 2 [
+    (dev.planton.shared.options.default) = "Replace",
+    (buf.validate.field).string = {
+      in: [
+        "Replace",
+        "Merge"
+      ]
+    }
+  ];
+
+  /**
+   * Labels stamped on the materialized Secret.
+   */
+  map<string, string> labels = 3;
+
+  /**
+   * Annotations stamped on the materialized Secret.
+   */
+  map<string, string> annotations = 4;
+
+  /**
+   * Templated data entries. Values are Go templates over the synced keys —
+   * e.g. reshape a username/password pair into a connection string:
+   * `postgres://{{ .username }}:{{ .password }}@db:5432/app`.
+   */
+  map<string, string> data = 5;
+}
+
+/**
+ * One explicit sync entry.
+ */
+message KubernetesExternalSecretData {
+  /**
+   * Key in the materialized Kubernetes Secret this entry lands in.
+   */
+  string secret_key = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "the KEY NAME within the materialized Secret (e.g. \"password\"), never the secret value itself — values come from the external backend"
+  ];
+
+  /**
+   * Backend entry to read.
+   */
+  KubernetesExternalSecretRemoteRef remote_ref = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * Address of one backend entry.
+ */
+message KubernetesExternalSecretRemoteRef {
+  /**
+   * Backend key — the secret's name/path in the external system (e.g.
+   * "prod/app/database" in AWS Secrets Manager, "secret/data/app" in
+   * Vault v2, the secret name in GCP/Azure).
+   */
+  string key = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Property WITHIN the backend entry when it holds structured data (a JSON
+   * document): e.g. "password" extracts just that field. Empty = the whole
+   * value.
+   */
+  string property = 2;
+
+  /**
+   * Backend version of the entry (e.g. an AWS version stage, a GCP version
+   * number, a Vault v2 version). Empty = latest.
+   */
+  string version = 3;
+
+  /**
+   * Decode the backend value before storing it.
+   * "None" (upstream default): store as-is.
+   * "Base64"/"Base64URL": decode base64(url) — for backends that store
+   *   binary content encoded.
+   * "Auto": decode when the value looks base64-encoded, else store as-is.
+   */
+  optional string decoding_strategy = 4 [
+    (dev.planton.shared.options.default) = "None",
+    (buf.validate.field).string = {
+      in: [
+        "None",
+        "Base64",
+        "Base64URL",
+        "Auto"
+      ]
+    }
+  ];
+}
+
+/**
+ * One bulk pull: extract a structured entry, or find entries by pattern.
+ */
+message KubernetesExternalSecretDataFrom {
+  // Exactly one of extract / find must be set.
+  oneof source {
+    /**
+     * Pull ALL properties of one structured backend entry (a JSON document)
+     * — each property becomes a Secret key.
+     */
+    KubernetesExternalSecretRemoteRef extract = 1;
+
+    /**
+     * Pull EVERY backend entry matching a name pattern and/or tags — each
+     * matched entry becomes a Secret key.
+     */
+    KubernetesExternalSecretFind find = 2;
+  }
+
+  /**
+   * Key rewrites applied to the pulled entries, in order — e.g. strip a
+   * "prod/app/" path prefix so Secret keys are bare names.
+   */
+  repeated KubernetesExternalSecretRewrite rewrite = 3;
+
+  option (buf.validate.message).cel = {
+    id: "xsec.datafrom_source_required"
+    message: "Each data_from pull needs its source — set extract (one structured entry) or find (entries by pattern)"
+    expression: "has(this.extract) || has(this.find)"
+  };
+}
+
+/**
+ * Find backend entries by name pattern and/or tags.
+ */
+message KubernetesExternalSecretFind {
+  /**
+   * Path/prefix to search under (backend-specific semantics).
+   */
+  string path = 1;
+
+  /**
+   * Regular expression matched against backend entry names (e.g.
+   * "^prod-app-.*").
+   */
+  string name_regexp = 2;
+
+  /**
+   * Backend tags/labels the entries must carry (all must match).
+   */
+  map<string, string> tags = 3;
+
+  option (buf.validate.message).cel = {
+    id: "xsec.find_criteria_required"
+    message: "find needs a criterion — set name_regexp and/or tags (path alone only scopes the search)"
+    expression: "this.name_regexp != '' || size(this.tags) > 0"
+  };
+}
+
+/**
+ * One key-rewrite step (regular-expression form).
+ */
+message KubernetesExternalSecretRewrite {
+  /**
+   * Regular expression applied to each pulled key (e.g. "^prod/app/(.*)$").
+   */
+  string source = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Replacement, with capture groups (e.g. "$1").
+   */
+  string target = 2 [(buf.validate.field).required = true];
+}

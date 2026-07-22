@@ -18,7 +18,7 @@ import (
 // Conflicts will result in an error by default, but can be forced using the "pulumi.com/patchForce" annotation. See the
 // [Server-Side Apply Docs](https://www.pulumi.com/registry/packages/kubernetes/how-to-guides/managing-resources-with-server-side-apply/) for
 // additional information about using Server-Side Apply to manage Kubernetes resources with Pulumi.
-// ClusterExternalSecret is the Schema for the clusterexternalsecrets API.
+// ClusterExternalSecret is the schema for the clusterexternalsecrets API.
 type ClusterExternalSecretPatch struct {
 	pulumi.CustomResourceState
 
@@ -41,6 +41,12 @@ func NewClusterExternalSecretPatch(ctx *pulumi.Context,
 
 	args.ApiVersion = pulumi.StringPtr("external-secrets.io/v1beta1")
 	args.Kind = pulumi.StringPtr("ClusterExternalSecret")
+	aliases := pulumi.Aliases([]pulumi.Alias{
+		{
+			Type: pulumi.String("kubernetes:external-secrets.io/v1:ClusterExternalSecretPatch"),
+		},
+	})
+	opts = append(opts, aliases)
 	opts = utilities.PkgResourceDefaultOpts(opts)
 	var resource ClusterExternalSecretPatch
 	err := ctx.RegisterResource("kubernetes:external-secrets.io/v1beta1:ClusterExternalSecretPatch", name, args, &resource, opts...)

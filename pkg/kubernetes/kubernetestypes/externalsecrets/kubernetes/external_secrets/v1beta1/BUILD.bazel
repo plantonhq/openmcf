@@ -15,6 +15,7 @@ go_library(
         "init.go",
         "pulumiTypes.go",
         "pulumiTypes1.go",
+        "pulumiTypes2.go",
         "secretStore.go",
         "secretStoreList.go",
         "secretStorePatch.go",

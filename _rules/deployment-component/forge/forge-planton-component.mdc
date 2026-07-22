@@ -601,6 +601,20 @@ scenario omits permissions so it needs no pre-existing resource server). Add a
 richer scenario (seeding the dependency) when you need live coverage of dependent
 fields.
 
+**Model the upstream's built-in sandbox arm when one exists.** Cloud-talking
+addons (DNS publishers, secret-store operators, ...) cannot prove their
+provider hop on a kind cluster — but many upstreams ship a first-class
+in-process backend for exactly this (a DNS provider that holds records in
+memory, a secret store that serves declared literals). Model it as a typed
+spec arm, documented as sandbox/test-only: users get a safe evaluation arm,
+and the kind-cluster E2E lanes get a FULLY verifiable path (the controller
+runs its real reconcile loop and the verifier can assert end-state, e.g. a
+synced Secret's contents), instead of settling for install-only assertions.
+Also read the controller's error handling before designing credential-less
+lanes: some providers crash-loop on a bad credential (a 4xx at first sync)
+while others log-and-retry — only the latter class supports an
+install-proves-out lane with no real account.
+
 **Soft-delete-reserved identifiers need the `${E2E_RUN_ID}` token.** Some cloud
 resources reserve their user-chosen identifier long after deletion (e.g. GCP
 workload identity pools/providers and KMS key rings hold their IDs through a

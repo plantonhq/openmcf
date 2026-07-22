@@ -298,7 +298,7 @@ This is a lean component -- it creates exactly **one Kubernetes resource**: the 
 
 KubernetesSecret brings type safety, schema validation, and dual-IaC support to the most fundamental sensitive data primitive in Kubernetes. By modeling each secret type as a distinct protobuf message, it eliminates entire categories of misconfiguration errors that plague raw YAML, Terraform, and Pulumi approaches.
 
-The component is intentionally lean -- one resource, five types, clear boundaries. For secrets originating in external stores, use KubernetesExternalSecrets. For secrets provided at deploy time, KubernetesSecret is the right choice.
+The component is intentionally lean -- one resource, five types, clear boundaries. For secrets originating in external backends, use KubernetesExternalSecret (with the operator installed via KubernetesExternalSecretsOperator). For secrets provided at deploy time, KubernetesSecret is the right choice.
 
 ## References
 

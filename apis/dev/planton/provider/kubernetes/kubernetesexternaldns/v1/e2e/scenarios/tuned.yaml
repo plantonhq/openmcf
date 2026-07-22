@@ -1,0 +1,44 @@
+# Full watching/sync surface on the in-memory provider: sources beyond the
+# chart default, sync policy, TXT registry identity, domain filtering,
+# interval/trigger tuning, log format, scheduling and sizing — everything
+# rendered into chart values and proven by a live install. DNS-provider
+# behavior itself (record writes) rides the real-cluster lanes.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesExternalDns
+metadata:
+  name: e2e-edns-tuned
+spec:
+  namespace:
+    value: external-dns
+  createNamespace: true
+  inMemory:
+    zones:
+      - example.org
+      - example.com
+  sources:
+    - service
+    - ingress
+    - crd
+  policy: sync
+  txtOwnerId: e2e-tuned
+  txtPrefix: edns-
+  domainFilters:
+    - example.org
+    - example.com
+  excludeDomains:
+    - internal.example.org
+  managedRecordTypes:
+    - A
+    - AAAA
+    - CNAME
+  interval: 30s
+  triggerLoopOnEvent: true
+  logLevel: debug
+  logFormat: json
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

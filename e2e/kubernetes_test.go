@@ -30,6 +30,11 @@ var kubernetesTier1Components = []string{
 	"kubernetesdaemonset",
 	"kubernetesmanifest",
 	"kuberneteshelmrelease",
+	"kubernetesexternaldns",
+	"kubernetesexternalsecretsoperator",
+	"kubernetesclustersecretstore",
+	"kubernetessecretstore",
+	"kubernetesexternalsecret",
 }
 
 // Kubernetes Tier 3 components: operator-dependent. Each declares its operator
@@ -60,7 +65,6 @@ var kubernetesTier4Components = []string{
 	"kubernetesgatewayapicrds",
 	"kubernetesgharunnerscalesetcontroller",
 	"kubernetesrookcephoperator",
-	"kubernetesexternalsecrets",
 	"kubernetesingressnginx",
 	"kubernetestekton",
 	"kubernetestektonoperator",
@@ -136,6 +140,11 @@ func TestKubernetesCertManager_Pulumi(t *testing.T) { runAllScenariosForComponen
 func TestKubernetesClusterIssuer_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesclusterissuer", "pulumi") }
 func TestKubernetesIssuer_Pulumi(t *testing.T)     { runAllScenariosForComponent(t, "kubernetesissuer", "pulumi") }
 func TestKubernetesCertificate_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetescertificate", "pulumi") }
+func TestKubernetesExternalDns_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesexternaldns", "pulumi") }
+func TestKubernetesExternalSecretsOperator_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesexternalsecretsoperator", "pulumi") }
+func TestKubernetesClusterSecretStore_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesclustersecretstore", "pulumi") }
+func TestKubernetesSecretStore_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetessecretstore", "pulumi") }
+func TestKubernetesExternalSecret_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesexternalsecret", "pulumi") }
 
 // ─── Tier 1 Terraform ───────────────────────────────────────────────────────
 
@@ -164,6 +173,11 @@ func TestKubernetesCertManager_Terraform(t *testing.T) { runAllScenariosForCompo
 func TestKubernetesClusterIssuer_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesclusterissuer", "terraform") }
 func TestKubernetesIssuer_Terraform(t *testing.T)     { runAllScenariosForComponent(t, "kubernetesissuer", "terraform") }
 func TestKubernetesCertificate_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetescertificate", "terraform") }
+func TestKubernetesExternalDns_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesexternaldns", "terraform") }
+func TestKubernetesExternalSecretsOperator_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesexternalsecretsoperator", "terraform") }
+func TestKubernetesClusterSecretStore_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesclustersecretstore", "terraform") }
+func TestKubernetesSecretStore_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetessecretstore", "terraform") }
+func TestKubernetesExternalSecret_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesexternalsecret", "terraform") }
 
 // ─── Tier 2 Pulumi (Helm-based) ─────────────────────────────────────────────
 
@@ -223,7 +237,6 @@ func TestKubernetesAltinityOperator_Pulumi(t *testing.T)           { runAllScena
 func TestKubernetesGatewayApiCrds_Pulumi(t *testing.T)             { runAllScenariosForComponent(t, "kubernetesgatewayapicrds", "pulumi") }
 func TestKubernetesGhaRunnerScaleSetController_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesgharunnerscalesetcontroller", "pulumi") }
 func TestKubernetesRookCephOperator_Pulumi(t *testing.T)           { runAllScenariosForComponent(t, "kubernetesrookcephoperator", "pulumi") }
-func TestKubernetesExternalSecrets_Pulumi(t *testing.T)            { runAllScenariosForComponent(t, "kubernetesexternalsecrets", "pulumi") }
 func TestKubernetesIngressNginx_Pulumi(t *testing.T)               { runAllScenariosForComponent(t, "kubernetesingressnginx", "pulumi") }
 func TestKubernetesTekton_Pulumi(t *testing.T)                     { runAllScenariosForComponent(t, "kubernetestekton", "pulumi") }
 func TestKubernetesTektonOperator_Pulumi(t *testing.T)             { runAllScenariosForComponent(t, "kubernetestektonoperator", "pulumi") }
@@ -239,7 +252,6 @@ func TestKubernetesAltinityOperator_Terraform(t *testing.T)           { runAllSc
 func TestKubernetesGatewayApiCrds_Terraform(t *testing.T)             { runAllScenariosForComponent(t, "kubernetesgatewayapicrds", "terraform") }
 func TestKubernetesGhaRunnerScaleSetController_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesgharunnerscalesetcontroller", "terraform") }
 func TestKubernetesRookCephOperator_Terraform(t *testing.T)           { runAllScenariosForComponent(t, "kubernetesrookcephoperator", "terraform") }
-func TestKubernetesExternalSecrets_Terraform(t *testing.T)            { runAllScenariosForComponent(t, "kubernetesexternalsecrets", "terraform") }
 func TestKubernetesTekton_Terraform(t *testing.T)                     { runAllScenariosForComponent(t, "kubernetestekton", "terraform") }
 func TestKubernetesIstioBaseCrds_Terraform(t *testing.T)             { runAllScenariosForComponent(t, "kubernetesistiobasecrds", "terraform") }
 

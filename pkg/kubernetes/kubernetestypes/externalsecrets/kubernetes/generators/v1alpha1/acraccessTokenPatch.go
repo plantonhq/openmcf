@@ -18,7 +18,7 @@ import (
 // Conflicts will result in an error by default, but can be forced using the "pulumi.com/patchForce" annotation. See the
 // [Server-Side Apply Docs](https://www.pulumi.com/registry/packages/kubernetes/how-to-guides/managing-resources-with-server-side-apply/) for
 // additional information about using Server-Side Apply to manage Kubernetes resources with Pulumi.
-// ACRAccessToken returns a Azure Container Registry token
+// ACRAccessToken returns an Azure Container Registry token
 // that can be used for pushing/pulling images.
 // Note: by default it will return an ACR Refresh Token with full access
 // (depending on the identity).

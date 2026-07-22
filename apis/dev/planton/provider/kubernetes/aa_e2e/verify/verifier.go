@@ -26,7 +26,6 @@ var operatorKinds = map[string]bool{
 	"kubernetesstrimzikafkaoperator":    true,
 	"kuberneteszalandopostgresoperator": true,
 	// Tier 4 operators with configurable namespace (session 010)
-	"kubernetesexternalsecrets":             true,
 	"kubernetesgharunnerscalesetcontroller": true,
 	"kubernetesrookcephoperator":            true,
 }
@@ -318,6 +317,54 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			return nil, err
 		}
 		return &CertificateVerifier{
+			Name:       info.Name,
+			Namespace:  info.Namespace,
+			SecretName: secretName,
+		}, nil
+
+	// ExternalDNS installation: the controller Deployment must be Available
+	// (fullname pinned to metadata.name — multi-instance per cluster is
+	// first-class, so the release's own Deployment is the contract, not the
+	// namespace).
+	case "kubernetesexternaldns":
+		return &ExternalDnsInstallVerifier{
+			Namespace:     info.Namespace,
+			ComponentName: info.Name,
+		}, nil
+
+	// External Secrets Operator installation: the three component
+	// Deployments must be Available and the core CRDs Established — the
+	// preconditions every SecretStore/ExternalSecret apply depends on.
+	case "kubernetesexternalsecretsoperator":
+		return &ExternalSecretsOperatorInstallVerifier{
+			Namespace:     info.Namespace,
+			ComponentName: info.Name,
+		}, nil
+
+	// Stores with in-cluster backends (the fake provider) reach Ready with
+	// no external dependency, so Ready is the verifiable contract on the
+	// kind cluster. ClusterSecretStore is cluster-scoped (no namespace).
+	case "kubernetesclustersecretstore":
+		return &SecretStoreVerifier{
+			Kind: "clustersecretstore",
+			Name: info.Name,
+		}, nil
+
+	case "kubernetessecretstore":
+		return &SecretStoreVerifier{
+			Kind:      "secretstore",
+			Name:      info.Name,
+			Namespace: info.Namespace,
+		}, nil
+
+	// Real sync proof: Ready condition + synced data present in the
+	// materialized Secret.
+	case "kubernetesexternalsecret":
+		secretName, err := externalSecretTargetName(manifestPath)
+		if err != nil {
+			return nil, err
+		}
+		return &ExternalSecretSyncVerifier{
 			Name:       info.Name,
 			Namespace:  info.Namespace,
 			SecretName: secretName,

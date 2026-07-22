@@ -12,7 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// ExternalSecret is the Schema for the external-secrets API.
+// ExternalSecret is the schema for the external-secrets API.
 type ExternalSecret struct {
 	pulumi.CustomResourceState
 
@@ -37,7 +37,7 @@ func NewExternalSecret(ctx *pulumi.Context,
 	args.Kind = pulumi.StringPtr("ExternalSecret")
 	aliases := pulumi.Aliases([]pulumi.Alias{
 		{
-			Type: pulumi.String("kubernetes:external-secrets.io/v1alpha1:ExternalSecret"),
+			Type: pulumi.String("kubernetes:external-secrets.io/v1:ExternalSecret"),
 		},
 	})
 	opts = append(opts, aliases)

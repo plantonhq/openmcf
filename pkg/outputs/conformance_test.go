@@ -412,6 +412,79 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesExternalDns: the install identity plus the controller
+			// ServiceAccount name — the subject cloud-side keyless bindings
+			// (IRSA trust policy, GKE WI member, Azure federated credential)
+			// reference together with the namespace.
+			name: "KubernetesExternalDns",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesExternalDns,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "external-dns",
+				"release_name":         "external-dns-cloudflare",
+				"service_account_name": "external-dns-cloudflare",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_account_name",
+			},
+		},
+		{
+			// KubernetesExternalSecretsOperator: install identity + the two
+			// composition seams (controller ServiceAccount for ambient cloud
+			// identity, the namespace where ClusterSecretStore credentials
+			// live) from both engines must land on the StackOutputs proto.
+			name: "KubernetesExternalSecretsOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesExternalSecretsOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":                  "external-secrets",
+				"release_name":               "external-secrets",
+				"controller_service_account": "external-secrets",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "controller_service_account",
+			},
+		},
+		{
+			// KubernetesClusterSecretStore: the store handle ExternalSecrets
+			// reference (kind ClusterSecretStore) plus the credential-secret
+			// home namespace.
+			name: "KubernetesClusterSecretStore",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesClusterSecretStore,
+			rawOutputs: map[string]interface{}{
+				"store_name":        "aws-prod",
+				"secrets_namespace": "external-secrets",
+			},
+			mustPopulate: []string{
+				"store_name", "secrets_namespace",
+			},
+		},
+		{
+			// KubernetesSecretStore: the namespaced store handle
+			// same-namespace ExternalSecrets reference.
+			name: "KubernetesSecretStore",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSecretStore,
+			rawOutputs: map[string]interface{}{
+				"store_name": "team-a-gcp",
+				"namespace":  "team-a",
+			},
+			mustPopulate: []string{
+				"store_name", "namespace",
+			},
+		},
+		{
+			// KubernetesExternalSecret: the materialized Secret handle every
+			// workload consumer (env valueFrom, volume secretName) wires to.
+			name: "KubernetesExternalSecret",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesExternalSecret,
+			rawOutputs: map[string]interface{}{
+				"external_secret_name": "app-db-credentials",
+				"namespace":            "team-a",
+				"secret_name":          "app-db-credentials",
+			},
+			mustPopulate: []string{
+				"external_secret_name", "namespace", "secret_name",
+			},
+		},
+		{
 			// KubernetesManifest: the anchor namespace + the applied-resource
 			// inventory (a repeated string derived from the input YAML) from
 			// both engines must land on the StackOutputs proto.
@@ -3571,21 +3644,6 @@ func TestStackOutputsConformance(t *testing.T) {
 				"security_group_id_for_domain_boundary", "single_sign_on_application_arn",
 				"single_sign_on_managed_application_instance_id",
 			},
-		},
-		{
-			// Guards the externaldns tofu module's output rename to solver_sa: the
-			// module previously emitted "service_account_name", which does not flatten
-			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the
-			// Pulumi module already exported "solver_sa"). Both engines now emit the
-			// same three outputs.
-			name: "KubernetesExternalDns",
-			kind: cloudresourcekind.CloudResourceKind_KubernetesExternalDns,
-			rawOutputs: map[string]interface{}{
-				"namespace":    "external-dns",
-				"release_name": "gosilver-in-external-dns",
-				"solver_sa":    "gosilver-in-external-dns",
-			},
-			mustPopulate: []string{"namespace", "release_name", "solver_sa"},
 		},
 		{
 			// CloudflareR2Bucket: both engines emit the same outputs -- bucket name,

@@ -425,6 +425,7 @@ import (
 	kubernetescertmanagerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescertmanager/v1"
 	kubernetesclickhousev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclickhouse/v1"
 	kubernetesclusterissuerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclusterissuer/v1"
+	kubernetesclustersecretstorev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclustersecretstore/v1"
 	kubernetesconfigmapv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesconfigmap/v1"
 	kubernetescronjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescronjob/v1"
 	kubernetesdaemonsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdaemonset/v1"
@@ -434,7 +435,8 @@ import (
 	kuberneteselasticsearchv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteselasticsearch/v1"
 	kubernetesenvoyfilterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesenvoyfilter/v1"
 	kubernetesexternaldnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternaldns/v1"
-	kubernetesexternalsecretsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternalsecrets/v1"
+	kubernetesexternalsecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternalsecret/v1"
+	kubernetesexternalsecretsoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternalsecretsoperator/v1"
 	kubernetesgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgateway/v1"
 	kubernetesgatewayapicrdsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1"
 	kubernetesgatewayclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatewayclass/v1"
@@ -481,6 +483,7 @@ import (
 	kubernetesrookcephclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrookcephcluster/v1"
 	kubernetesrookcephoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrookcephoperator/v1"
 	kubernetessecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessecret/v1"
+	kubernetessecretstorev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessecretstore/v1"
 	kubernetesservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesservice/v1"
 	kubernetesserviceaccountv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesserviceaccount/v1"
 	kubernetesserviceentryv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesserviceentry/v1"
@@ -1048,6 +1051,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesCertificate:                 &kubernetescertificatev1.KubernetesCertificate{},
 	cloudresourcekind.CloudResourceKind_KubernetesClickHouse:                  &kubernetesclickhousev1.KubernetesClickHouse{},
 	cloudresourcekind.CloudResourceKind_KubernetesClusterIssuer:               &kubernetesclusterissuerv1.KubernetesClusterIssuer{},
+	cloudresourcekind.CloudResourceKind_KubernetesClusterSecretStore:          &kubernetesclustersecretstorev1.KubernetesClusterSecretStore{},
 	cloudresourcekind.CloudResourceKind_KubernetesConfigMap:                   &kubernetesconfigmapv1.KubernetesConfigMap{},
 	cloudresourcekind.CloudResourceKind_KubernetesCronJob:                     &kubernetescronjobv1.KubernetesCronJob{},
 	cloudresourcekind.CloudResourceKind_KubernetesDaemonSet:                   &kubernetesdaemonsetv1.KubernetesDaemonSet{},
@@ -1057,7 +1061,8 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesElasticsearch:               &kuberneteselasticsearchv1.KubernetesElasticsearch{},
 	cloudresourcekind.CloudResourceKind_KubernetesEnvoyFilter:                 &kubernetesenvoyfilterv1.KubernetesEnvoyFilter{},
 	cloudresourcekind.CloudResourceKind_KubernetesExternalDns:                 &kubernetesexternaldnsv1.KubernetesExternalDns{},
-	cloudresourcekind.CloudResourceKind_KubernetesExternalSecrets:             &kubernetesexternalsecretsv1.KubernetesExternalSecrets{},
+	cloudresourcekind.CloudResourceKind_KubernetesExternalSecret:              &kubernetesexternalsecretv1.KubernetesExternalSecret{},
+	cloudresourcekind.CloudResourceKind_KubernetesExternalSecretsOperator:     &kubernetesexternalsecretsoperatorv1.KubernetesExternalSecretsOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesGateway:                     &kubernetesgatewayv1.KubernetesGateway{},
 	cloudresourcekind.CloudResourceKind_KubernetesGatewayApiCrds:              &kubernetesgatewayapicrdsv1.KubernetesGatewayApiCrds{},
 	cloudresourcekind.CloudResourceKind_KubernetesGatewayClass:                &kubernetesgatewayclassv1.KubernetesGatewayClass{},
@@ -1104,6 +1109,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesRookCephCluster:             &kubernetesrookcephclusterv1.KubernetesRookCephCluster{},
 	cloudresourcekind.CloudResourceKind_KubernetesRookCephOperator:            &kubernetesrookcephoperatorv1.KubernetesRookCephOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesSecret:                      &kubernetessecretv1.KubernetesSecret{},
+	cloudresourcekind.CloudResourceKind_KubernetesSecretStore:                 &kubernetessecretstorev1.KubernetesSecretStore{},
 	cloudresourcekind.CloudResourceKind_KubernetesService:                     &kubernetesservicev1.KubernetesService{},
 	cloudresourcekind.CloudResourceKind_KubernetesServiceAccount:              &kubernetesserviceaccountv1.KubernetesServiceAccount{},
 	cloudresourcekind.CloudResourceKind_KubernetesServiceEntry:                &kubernetesserviceentryv1.KubernetesServiceEntry{},
