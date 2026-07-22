@@ -1,0 +1,59 @@
+# =============================================================================
+# Contributor License Agreement Gate (ADVISORY)
+# =============================================================================
+# Asks every external contributor to sign CLA.md once, via a PR comment; the
+# signature is recorded in-repo at .github/cla/v1/signatures.json on main.
+# The CLA preserves the project's long-term stewardship options (see CLA.md);
+# collecting signatures from the very first external PR is what keeps those
+# options open forever.
+#
+# ADVISORY MODE: `continue-on-error: true` below keeps an unsigned PR from
+# showing a failing check while the bot's comment does the asking. To make the
+# gate BLOCKING (only after the CLA text has attorney sign-off):
+#   1. remove the `continue-on-error` line, and
+#   2. mark this workflow's check as required on main in repo settings.
+#
+# SECURITY: this workflow runs on pull_request_target with write permissions,
+# so it never checks out or executes PR code (there is no checkout step at
+# all — the standard contributor-assistant pattern), and the action is pinned
+# to an exact tag rather than the repo's usual major-version pins.
+#
+# SIGNATURE VERSIONING: a signature binds the signer to the CLA text as it
+# stood when signed. If the text materially changes (e.g. after attorney
+# review), bump CLA.md's version and the v1 path below to v2 — contributors
+# re-sign against the new text and the v1 record is preserved.
+# =============================================================================
+
+name: cla
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, closed, synchronize]
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - name: CLA assistant
+        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the Planton Contributor License Agreement (CLA.md) and I hereby sign the CLA.') || github.event_name == 'pull_request_target'
+        uses: contributor-assistant/github-action@v2.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          path-to-signatures: '.github/cla/v1/signatures.json'
+          path-to-document: 'https://github.com/plantonhq/planton/blob/main/CLA.md'
+          branch: 'main'
+          allowlist: 'swarupdonepudi,Satish-Lakhani,mohanpedala,whysosuresh,bot*,*[bot]'
+          custom-pr-sign-comment: 'I have read the Planton Contributor License Agreement (CLA.md) and I hereby sign the CLA.'
+          create-file-commit-message: 'chore(legal): create CLA signature record'
+          signed-commit-message: 'chore(legal): $contributorName signed the CLA in $owner/$repo#$pullRequest'

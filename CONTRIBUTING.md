@@ -99,6 +99,13 @@ Two files travel with the project wherever it goes: [LICENSE](LICENSE) and
 [NOTICE](NOTICE) (the attribution every redistribution carries). For use of the
 Planton name and logo, see [TRADEMARKS.md](TRADEMARKS.md).
 
+On your first pull request, the CLA bot will ask you to sign the
+[Contributor License Agreement](CLA.md) — a one-time comment on the PR. The
+CLA is what lets the project be stewarded for the long term (its grants are
+spelled out in [CLA.md](CLA.md)); your signature is recorded in this
+repository, and you keep every right to use your own contributions however
+you wish.
+
 ## Community and Support
 
 We encourage you to join our community and contribute to the project:
