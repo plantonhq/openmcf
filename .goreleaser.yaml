@@ -35,10 +35,14 @@ archives:
     # cover NOTICE, and Apache-2.0 §4(d) requires the NOTICE to accompany every
     # redistribution of the work — our own release archives included. This list
     # mirrors the defaults exactly and adds NOTICE.
+    # NOTE: unlike goreleaser's internal defaults, EXPLICIT globs fail the
+    # release when they match nothing — the changelog entry must stay a
+    # wildcard because the file on disk is CHANGELOG.md (a bare "CHANGELOG"
+    # pattern failed the v0.3.12 release at the archiving step).
     files:
       - "LICENSE*"
       - "README*"
-      - "CHANGELOG"
+      - "CHANGELOG*"
       - "NOTICE"
 
 checksum:
