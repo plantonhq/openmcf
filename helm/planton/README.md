@@ -179,3 +179,7 @@ the cluster is gone:
 ```bash
 kubectl delete crd plantonplatforms.planton.ai
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

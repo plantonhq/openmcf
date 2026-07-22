@@ -167,3 +167,7 @@ helm upgrade my-runner oci://ghcr.io/plantonhq/charts/planton-runner \
 ```bash
 helm uninstall my-runner --namespace planton-runner
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

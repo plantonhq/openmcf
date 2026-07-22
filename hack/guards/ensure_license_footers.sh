@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Guard: every component README (apis/dev/planton/**/<component>/v1/README.md)
-# and every infra chart README (charts/<provider>/<name>/README.md) must end
-# with the canonical license footer.
+# Guard: every component README (apis/dev/planton/**/<component>/v1/README.md),
+# every infra chart README (charts/<provider>/<name>/README.md), and every helm
+# chart README (helm/<chart>/README.md) must end with the canonical license
+# footer.
 #
 # WHY THIS EXISTS
 # The realistic unit of copying for this catalog is one component directory,
@@ -41,6 +42,8 @@ done < <(
   find apis/dev/planton -path '*/v1/README.md' 2>/dev/null
   # Infra chart READMEs: charts/<provider>/<name>/README.md exactly.
   find charts -mindepth 3 -maxdepth 3 -name README.md 2>/dev/null
+  # Helm chart READMEs: helm/<chart>/README.md — published distribution surfaces.
+  find helm -mindepth 2 -maxdepth 2 -name README.md 2>/dev/null
 )
 
 if (( ${#missing[@]} > 0 )); then
