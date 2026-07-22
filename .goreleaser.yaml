@@ -31,6 +31,15 @@ archives:
       - goos: windows
         formats:
           - zip
+    # goreleaser's default inclusion globs (LICENSE*, README*, CHANGELOG) do not
+    # cover NOTICE, and Apache-2.0 §4(d) requires the NOTICE to accompany every
+    # redistribution of the work — our own release archives included. This list
+    # mirrors the defaults exactly and adds NOTICE.
+    files:
+      - "LICENSE*"
+      - "README*"
+      - "CHANGELOG"
+      - "NOTICE"
 
 checksum:
   name_template: "cli_{{ .Version }}_checksums.txt"

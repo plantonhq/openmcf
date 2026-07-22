@@ -132,7 +132,12 @@ jobs:
             echo "Progress: ${COMPLETED}/${TOTAL} (${REMAINING} remaining)"
             echo "----------------------------------------"
             
-            if (cd "${TF_PATH}" && zip -r "${GITHUB_WORKSPACE}/${ARTIFACT_NAME}" .); then
+            # Apache-2.0 §4(d): LICENSE and NOTICE must accompany every
+            # redistribution, and a module zip is a standalone redistribution of
+            # that component. Both land at the zip root; terraform ignores
+            # non-.tf files, so consumers are unaffected.
+            if (cd "${TF_PATH}" && zip -r "${GITHUB_WORKSPACE}/${ARTIFACT_NAME}" .) \
+              && zip -j "${GITHUB_WORKSPACE}/${ARTIFACT_NAME}" LICENSE NOTICE; then
               
               ZIP_SIZE=$(ls -lh "${ARTIFACT_NAME}" | awk '{print $5}')
               echo "Created: ${ARTIFACT_NAME} (${ZIP_SIZE})"
