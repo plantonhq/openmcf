@@ -94,3 +94,7 @@ spec:
 - `tags` is the only field that updates in place
 - An ASG can only be referenced by network interfaces in the **same
   region**
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

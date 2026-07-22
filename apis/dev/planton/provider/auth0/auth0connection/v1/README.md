@@ -112,3 +112,7 @@ planton apply --manifest auth0-connection.yaml \
 - [Examples](./examples.md) - Complete working examples for all connection types
 - [Research Documentation](./docs/README.md) - In-depth analysis of Auth0 connection landscape
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

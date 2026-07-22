@@ -90,3 +90,7 @@ spec:
   not standard region names
 - Setting `validation_rules.ssl_cert_remaining_lifetime` also enables the
   SSL check
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

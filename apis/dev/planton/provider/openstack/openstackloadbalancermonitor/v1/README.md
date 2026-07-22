@@ -83,3 +83,7 @@ planton apply --manifest monitor.yaml -p openstack-creds.yaml
 - **CEL validation**: Setting HTTP fields on non-HTTP monitors is rejected at the API level.
 - **max_retries_down**: Defaults to the same value as max_retries when not set.
 - **Admin state**: Set admin_state_up false to stop health checking without deleting the monitor.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

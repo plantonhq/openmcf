@@ -98,3 +98,7 @@ spec:
   the chicken-and-egg
 - Changing the identity from a user-assigned flavor to system-assigned
   replaces the set
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

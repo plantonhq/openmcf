@@ -72,3 +72,7 @@ every fleet definition -- lets you:
 - `launch_template_arn`: ARN, for IAM policies that scope ec2:RunInstances to approved templates
 - `latest_version`: newest version number
 - `default_version`: version consumers referencing `$Default` launch from
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

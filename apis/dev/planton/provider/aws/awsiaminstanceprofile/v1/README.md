@@ -47,3 +47,7 @@ first-class component keeps the identity graph honest. It lets you:
 - `instance_profile_name`: friendly name (launch templates take the profile by name)
 - `instance_profile_id`: stable unique ID AWS assigns to the profile
 - `role_name`: name of the IAM role the profile carries
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

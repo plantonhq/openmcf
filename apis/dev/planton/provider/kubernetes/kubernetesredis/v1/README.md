@@ -59,3 +59,7 @@ Deploying Redis in a Kubernetes environment can be complex, especially when deal
 - **High Availability**: By defining replicas and resource limits, Redis instances can be highly available and resilient.
 - **Data Reliability**: With persistence enabled, Redis data is backed up to a persistent volume, ensuring that data is not lost during restarts or failures.
 - **Secure Access**: Securely configure ingress rules to control access to Redis services.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

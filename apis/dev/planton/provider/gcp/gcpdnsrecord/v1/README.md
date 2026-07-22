@@ -111,3 +111,7 @@ planton tofu apply --manifest dns-record.yaml
   endpoints.
 - **GcpAddress** / **GcpVpcNetwork**: the VIPs and networks referenced by
   health-checked internal load balancer targets.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

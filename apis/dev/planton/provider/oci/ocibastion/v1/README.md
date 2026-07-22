@@ -38,3 +38,7 @@ Private subnets in OCI do not have internet-reachable IPs. Operators need a way 
 - **Freeform tags** — automatically populated from `metadata.labels`, including `resource_kind`, `resource_id`, `organization`, and `environment`.
 - **Audit trail** — OCI Bastion sessions are logged in the OCI Audit service for compliance.
 - **Network isolation** — the bastion endpoint lives inside the target subnet; no public IP is exposed.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

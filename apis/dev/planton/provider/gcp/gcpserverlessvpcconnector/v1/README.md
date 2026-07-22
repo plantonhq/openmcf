@@ -107,3 +107,7 @@ The legacy throughput-based scaling fields (`min_throughput`/`max_throughput`) a
 - [GcpCloudFunction](/docs/catalog/gcp/gcpcloudfunction) — attaches by `vpcConnector` reference
 - [GcpCloudRun](/docs/catalog/gcp/gcpcloudrun) / [GcpCloudRunJob](/docs/catalog/gcp/gcpcloudrunjob) — attach by reference, or use Direct VPC egress instead
 - [GcpVpcNetwork](/docs/catalog/gcp/gcpvpcnetwork), [GcpSubnetwork](/docs/catalog/gcp/gcpsubnetwork) — the placement targets
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

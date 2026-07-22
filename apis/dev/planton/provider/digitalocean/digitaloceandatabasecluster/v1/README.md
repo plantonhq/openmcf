@@ -385,3 +385,7 @@ For issues, questions, or contributions, refer to the [Planton documentation](ht
 ---
 
 **TL;DR**: Use node_count ≥ 2 for production HA. Always deploy in VPC. Enable PgBouncer for PostgreSQL. Plan storage growth upfront (no autoscaling).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

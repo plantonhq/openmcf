@@ -66,3 +66,7 @@ autoScalingConfigurationArn:
 
 - **The account default-configuration setter** (`aws_apprunner_default_auto_scaling_configuration_version`): an account-level regional singleton PUT, not a graph resource; services that want a specific posture should reference it explicitly.
 - **Per-kind tags**: identity tags derive from metadata; custom user tags are a platform-wide concern.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

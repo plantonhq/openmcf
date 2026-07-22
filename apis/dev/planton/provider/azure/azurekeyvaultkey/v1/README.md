@@ -114,3 +114,7 @@ spec:
 - Once `expiration_date` is set, it cannot be fully unset on the
   underlying key even across delete/recreate (Azure restores purged
   names' state)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

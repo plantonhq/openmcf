@@ -73,3 +73,7 @@ through referenced roles and the exported OIDC issuer -- lets you:
 - `cluster_arn`: cluster ARN (IAM policies, access entries)
 - `name`: cluster name (what node groups reference)
 - `platform_version`: EKS platform revision (e.g. `eks.12`)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

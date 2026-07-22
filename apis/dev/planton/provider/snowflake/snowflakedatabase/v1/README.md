@@ -150,3 +150,7 @@ Configured with task auto-retry, managed warehouses, and failure handling for ET
 - Task Management: https://docs.snowflake.com/en/user-guide/tasks-intro
 - Terraform Provider: https://registry.terraform.io/providers/Snowflake-Labs/snowflake/latest
 - Pulumi Provider: https://www.pulumi.com/registry/packages/snowflake/
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

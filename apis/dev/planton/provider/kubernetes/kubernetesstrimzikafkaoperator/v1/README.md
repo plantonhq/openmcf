@@ -163,3 +163,7 @@ The operator runs in `strimzi-kafka-operator` namespace and watches ALL namespac
 Strimzi: Apache License 2.0  
 This module: Part of Planton
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

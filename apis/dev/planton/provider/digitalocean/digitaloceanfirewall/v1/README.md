@@ -365,3 +365,7 @@ For issues, questions, or contributions, refer to the [Planton documentation](ht
 ---
 
 **TL;DR**: Use tag-based targeting for production. Compose firewalls by role (management, web-tier, db-tier). Remember the "double firewall" trap—Cloud Firewall (network edge) and host firewall (`ufw`) are independent. Use Load Balancer UIDs for public services, never expose management ports to `0.0.0.0/0`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

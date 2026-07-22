@@ -273,3 +273,7 @@ Network ingress is composed, never embedded: the environment attaches the refere
 - [MWAA Environment Class Sizing](https://docs.aws.amazon.com/mwaa/latest/userguide/environment-class.html)
 - [MWAA Pricing](https://aws.amazon.com/managed-workflows-for-apache-airflow/pricing/)
 - [Apache Airflow Documentation](https://airflow.apache.org/docs/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

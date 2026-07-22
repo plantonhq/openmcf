@@ -65,3 +65,7 @@ At least one VPC attachment is required. Without it, the zone has no resolver sc
 - **AliCloudVpc** -- VPCs that this private zone attaches to
 - **AliCloudDnsZone** -- for public DNS domains (separate from private zones)
 - **AliCloudDnsRecord** -- for public DNS records (separate from private zone records)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

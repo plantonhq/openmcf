@@ -144,3 +144,7 @@ before the push subscription — Pub/Sub validates both at create time.
   catalog deliberately does not model today.
 - **Deleting the stream deletes its backlog.** Messages live in
   subscriptions; the BigQuery sink (when on) is the only durable copy.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

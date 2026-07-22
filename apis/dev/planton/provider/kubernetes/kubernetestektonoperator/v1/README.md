@@ -257,3 +257,7 @@ For issues, questions, or contributions:
 - **GitHub**: [plantonhq/planton](https://github.com/plantonhq/planton)
 - **Tekton Documentation**: [Tekton Docs](https://tekton.dev/docs/)
 - **Tekton Operator**: [Tekton Operator GitHub](https://github.com/tektoncd/operator)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

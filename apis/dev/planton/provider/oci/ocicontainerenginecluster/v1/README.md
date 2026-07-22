@@ -86,3 +86,7 @@ This resource provides complete support for production-grade OKE cluster deploym
 - **Freeform Tagging**: Standard Planton labels applied as OCI freeform tags for resource management, cost tracking, and compliance.
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations producing identical outputs.
 - **Infra-Chart Composability**: Designed to compose with OciCompartment, OciVcn, OciSubnet, OciSecurityGroup, and OciContainerEngineNodePool via `StringValueOrRef`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

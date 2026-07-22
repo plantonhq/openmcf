@@ -105,3 +105,7 @@ This creates a Spot Debian 12 VM on the default network with an ephemeral extern
 | `cpu_platform` | CPU platform the instance landed on |
 
 See the [presets](presets/) for remixable starting points and [docs/README.md](docs/README.md) for the deep dive.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -81,3 +81,7 @@ Avoid overlapping CIDR blocks between VSwitches in the same VPC.
 - **AliCloudApplicationLoadBalancer** -- ALB load balancers spanning this VSwitch
 - **AliCloudNetworkLoadBalancer** -- NLB load balancers spanning this VSwitch
 - **AliCloudNasFileSystem** -- NAS mount targets in this VSwitch
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

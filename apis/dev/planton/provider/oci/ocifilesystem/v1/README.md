@@ -45,3 +45,7 @@ OCI File Storage provides NFS-compatible managed file systems for workloads that
 - **NSG integration** — associate network security groups with the mount target to control NFS traffic at port level (2049/TCP, 111/TCP).
 - **Identity squashing** — `root_squash` and `all_squash` modes remap client UIDs/GIDs to limit NFS client privileges on the server.
 - **Statfs tuning** — `maxFsStatBytes` and `maxFsStatFiles` control what NFS clients see for available capacity, useful for quota enforcement at the NFS protocol level.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

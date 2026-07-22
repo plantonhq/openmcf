@@ -126,3 +126,7 @@ For comprehensive deployment guidance, architecture patterns, and best practices
 - [Workers KV Pricing](https://developers.cloudflare.com/workers/platform/pricing/#workers-kv)
 - [Wrangler CLI KV Commands](https://developers.cloudflare.com/workers/wrangler/commands/#kv)
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -203,3 +203,7 @@ spec:
 ```
 
 The deprecated field will continue to work for backward compatibility but will be removed in v2.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

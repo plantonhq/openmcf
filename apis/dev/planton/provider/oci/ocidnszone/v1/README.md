@@ -42,3 +42,7 @@ OCI DNS provides managed authoritative DNS with full support for public and priv
 - **Freeform tags** — automatically populated from `metadata.labels`, including `resource_kind`, `resource_id`, `organization`, and `environment`.
 - **Nameserver output** — OCI-assigned authoritative nameservers exported for registrar configuration.
 - **DNSSEC** — OCI-managed key generation and rotation for signed zones.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

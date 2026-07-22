@@ -73,3 +73,7 @@ spec:
 - [Flows and triggers](https://auth0.com/docs/customize/actions/flows-and-triggers)
 - [Manage dependencies](https://auth0.com/docs/customize/actions/manage-dependencies)
 - [Action coding guidelines](https://auth0.com/docs/customize/actions/action-coding-guidelines)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

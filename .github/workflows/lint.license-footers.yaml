@@ -1,0 +1,48 @@
+# =============================================================================
+# License Footer Guard
+# =============================================================================
+# Fails the PR if any component README (apis/dev/planton/**/<component>/v1/
+# README.md) or infra chart README (charts/<provider>/<name>/README.md) does
+# not end with the canonical license footer:
+#
+#   © Planton. Licensed under [Apache-2.0](<absolute URL to LICENSE>).
+#
+# The realistic unit of copying for this catalog is one component directory,
+# and the repo-root LICENSE does not travel with a copied directory -- the
+# component's README does. The footer is the attribution that travels; its
+# link is an absolute URL so the pointer survives copies, zips, and forks.
+# Components are forged continuously, so the invariant lives in CI, not in
+# anyone's memory. See hack/guards/ensure_license_footers.sh for the contract.
+# =============================================================================
+
+name: lint.license-footers
+
+on:
+  pull_request:
+    paths:
+      - 'apis/dev/planton/**'
+      - 'charts/**'
+      - 'hack/guards/ensure_license_footers.sh'
+      - '.github/workflows/lint.license-footers.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'apis/dev/planton/**'
+      - 'charts/**'
+      - 'hack/guards/ensure_license_footers.sh'
+      - '.github/workflows/lint.license-footers.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  license-footers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify license footers
+        run: bash ./hack/guards/ensure_license_footers.sh

@@ -100,3 +100,7 @@ spec:
   defaultRouteTableAssociation: false
   defaultRouteTablePropagation: false
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

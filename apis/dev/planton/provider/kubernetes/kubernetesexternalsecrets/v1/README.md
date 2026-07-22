@@ -289,3 +289,7 @@ This creates a Kubernetes Secret named `app-secrets` with data from `prod-db-pas
 
 For issues, questions, or contributions, see the main [Planton repository](https://github.com/plantonhq/planton).
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

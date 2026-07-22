@@ -127,3 +127,7 @@ spec:
 - Switching authorization modes on a live vault requires
   Microsoft.Authorization write permission (Owner / User Access
   Administrator) on the vault.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

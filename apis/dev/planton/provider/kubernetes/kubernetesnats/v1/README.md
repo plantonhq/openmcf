@@ -64,3 +64,7 @@ spec:
 
 Leverage the **NatsKubernetes** component to rapidly deploy robust, secure, and highly available NATS clusters within
 your Planton multi-cloud strategy, enabling efficient and secure message-driven architectures.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

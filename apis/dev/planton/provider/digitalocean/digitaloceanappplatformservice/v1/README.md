@@ -241,3 +241,7 @@ For issues and questions:
 - [App Spec Reference](https://docs.digitalocean.com/products/app-platform/reference/app-spec/)
 - [Buildpack Documentation](https://docs.digitalocean.com/products/app-platform/languages-frameworks/)
 - [Planton API Docs](https://buf.build/planton/apis/docs)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

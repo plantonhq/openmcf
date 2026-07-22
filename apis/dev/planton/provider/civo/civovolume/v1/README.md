@@ -438,3 +438,7 @@ spec:
 
 - **v1**: Initial release with volume provisioning, region selection, size configuration, and filesystem type field
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

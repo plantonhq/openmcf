@@ -114,4 +114,4 @@ If your team is standardized on ≥ 1.10 and uses the bucket outside Planton, se
 
 ---
 
-© Planton. Licensed under [Apache-2.0](../../../LICENSE).
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

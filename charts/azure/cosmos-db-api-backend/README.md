@@ -85,3 +85,7 @@ Design decisions worth knowing:
 - **Narrow the grant** — the assignment's `scope` accepts a literal database (`{account-id}/dbs/{db}`) or container (`.../colls/{container}`) path when one identity should not see everything.
 - **Tune the indexing posture** — the container indexes everything except `_etag` (Azure's default, stated explicitly). Write-heavy payload subtrees belong in `excludedPaths`; composite indexes serve multi-property ORDER BY.
 - **Point-in-time restore** — continuous backup restores to any second in the last 7 days (`CONTINUOUS_30_DAYS` is a one-field upgrade). Restores create a NEW account — plan the DNS/endpoint swap as part of the drill.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

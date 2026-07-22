@@ -26,3 +26,7 @@ Planton provisions via the Pulumi or Terraform module in `iac/`, both implementi
 - DocumentDB developer guide: https://docs.aws.amazon.com/documentdb/latest/developerguide/what-is.html
 - DocumentDB Serverless: https://docs.aws.amazon.com/documentdb/latest/developerguide/docdb-serverless.html
 - Secrets Manager integration: https://docs.aws.amazon.com/documentdb/latest/developerguide/secrets-manager.html
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

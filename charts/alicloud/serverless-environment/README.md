@@ -74,3 +74,7 @@ Layer 2:  ┌──┴──────────┴────────�
 | FC Function | ~30 seconds |
 | SAE Application | ~3-5 minutes |
 | **Total** | **~5 minutes** |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

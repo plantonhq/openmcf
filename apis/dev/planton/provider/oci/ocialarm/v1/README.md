@@ -43,3 +43,7 @@ OCI Monitoring evaluates metrics emitted by OCI services and custom applications
 - **Freeform tags** — automatically populated from `metadata.labels`.
 - **Repeat notifications** — configurable re-notification frequency while alarm remains in FIRING state.
 - **Dynamic variables** — notification body, summary, and title support runtime variable substitution for contextual alerts.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

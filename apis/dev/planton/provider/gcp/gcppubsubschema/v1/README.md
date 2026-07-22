@@ -90,3 +90,7 @@ schemaSettings:
 
 - [Pub/Sub schemas](https://cloud.google.com/pubsub/docs/schemas)
 - [Schemas REST API](https://cloud.google.com/pubsub/docs/reference/rest/v1/projects.schemas)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

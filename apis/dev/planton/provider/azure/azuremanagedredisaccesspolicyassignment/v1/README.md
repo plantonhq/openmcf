@@ -51,3 +51,7 @@ grants.
 
 - [Design research](docs/README.md) -- field mapping, the grant-class verdict
 - [Presets](presets/) -- workload identity grant, human operator grant
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

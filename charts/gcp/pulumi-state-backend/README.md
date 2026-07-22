@@ -132,3 +132,7 @@ resource pins to it automatically.
 - **Costs**: versioned noncurrent objects and soft-deleted objects are
   billed at normal storage rates; the lifecycle cap and the 7-day
   soft-delete window keep both bounded.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

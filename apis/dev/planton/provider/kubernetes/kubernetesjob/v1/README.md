@@ -99,3 +99,7 @@ planton pulumi up --manifest job.yaml
 - [KubernetesCronJob](../kubernetescronjob/v1/README.md) - For scheduled recurring jobs
 - [KubernetesDeployment](../kubernetesdeployment/v1/README.md) - For long-running services
 - [KubernetesStatefulSet](../kubernetesstatefulset/v1/README.md) - For stateful applications
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

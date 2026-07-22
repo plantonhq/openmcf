@@ -74,3 +74,7 @@ Deploying microservices to Kubernetes can be a complex task involving numerous c
 - **Multi-Environment Deployments**: Deploy microservices consistently across different environments with environment-specific configurations.
 - **Microservice Updates and Rollbacks**: Easily update microservices to new versions or roll back to previous ones by changing the version specification.
 - **Resource Optimization**: Adjust resource allocations and scaling policies to optimize cost and performance based on usage patterns.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

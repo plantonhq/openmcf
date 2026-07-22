@@ -89,3 +89,7 @@ After deploying the Percona Operator, you can:
 4. Set up automated backups and point-in-time recovery
 5. Monitor operator and cluster health through Kubernetes tools
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

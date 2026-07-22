@@ -26,3 +26,7 @@ Planton provisions via the Pulumi or Terraform module in `iac/`, both implementi
 - RDS user guide: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Welcome.html
 - Blue/Green Deployments: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/blue-green-deployments.html
 - Read replicas: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ReadRepl.html
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

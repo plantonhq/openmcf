@@ -105,3 +105,7 @@ DDoS-protected starting points.
   inside it**
 - Address-space blocks can be added and removed live, but a block that
   subnets are carved from cannot shrink below them
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

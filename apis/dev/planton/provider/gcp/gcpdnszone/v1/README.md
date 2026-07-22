@@ -37,3 +37,7 @@ Managing DNS zones in GCP involves visibility modes, VPC bindings, DNSSEC, forwa
 - **Safe composition:** Zone-only scope avoids authoritative IAM and record-set conflicts
 - **Full managed-zone floor:** Matches released `google_dns_managed_zone` capabilities
 - **Consistent engines:** Terraform and Pulumi both enable `dns.googleapis.com` before create
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

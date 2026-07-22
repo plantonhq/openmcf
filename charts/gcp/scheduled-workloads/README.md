@@ -105,3 +105,7 @@ from the same value.
 - **The queue's name is deliberately permanent:** deleting the queue
   reserves its ID for up to 7 days, so treat `queue_name` as a decision,
   not a label.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

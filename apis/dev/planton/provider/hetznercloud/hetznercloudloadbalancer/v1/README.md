@@ -147,3 +147,7 @@ No components currently reference the load balancer's outputs. The load balancer
 - [Pulumi hcloud.LoadBalancerService Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/loadbalancerservice/)
 - [Pulumi hcloud.LoadBalancerTarget Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/loadbalancertarget/)
 - [Pulumi hcloud.LoadBalancerNetwork Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/loadbalancernetwork/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

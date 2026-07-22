@@ -60,3 +60,7 @@ The key difference is OCI's route distribution model. AWS TGW uses a simpler ass
 - **Subnet-Level Route Import**: Import individual subnet CIDRs instead of aggregate VCN CIDRs for finer routing granularity.
 - **Freeform Tagging**: Standard Planton labels applied as OCI freeform tags on the DRG and all attachments.
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations producing identical resource topology and outputs.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

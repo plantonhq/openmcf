@@ -141,3 +141,7 @@ foundations.
   for Pub/Sub's own agent) — inside a single-purpose analytics project
   this bounds cleanly; per-dataset scoping would need resource-scoped
   BigQuery IAM, which the catalog deliberately does not model today.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -97,3 +97,7 @@ typically lands in under 30.
   per-network links, registration off) as private endpoints arrive; and
   when on-premises connectivity comes, land the gateway in the hub --
   the spokes' routing already assumes nothing bypasses the firewall.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

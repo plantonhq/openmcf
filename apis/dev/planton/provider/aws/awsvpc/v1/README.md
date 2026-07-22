@@ -50,3 +50,7 @@ object. It lets you:
 - **Consistency**: identical behavior across Terraform and Pulumi.
 - **Correctness**: cross-field validation mirrors what AWS itself enforces, so
   invalid IP configurations are caught before deployment.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

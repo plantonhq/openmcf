@@ -73,3 +73,7 @@ At least one of `cidrIp` or `sourceSecurityGroupId` should be specified per rule
 - **AliCloudVpc** -- the VPC this security group belongs to
 - **AliCloudEcsInstance** -- ECS instances associated with this security group
 - **AliCloudAckManagedCluster** -- ACK worker nodes can use this security group
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

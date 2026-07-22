@@ -56,3 +56,7 @@ This component handles fresh-creation scenarios only (`source=NONE`). Clone and 
 | Maintenance control | Configure `maintenanceWindowDetails` with `custom_preference`, patching mode, and schedule |
 | Diagnostic telemetry | Enable via `dataCollectionOptions` sub-fields |
 | Storage performance | Set `storageVolumePerformanceMode: high_performance` for lower latency |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

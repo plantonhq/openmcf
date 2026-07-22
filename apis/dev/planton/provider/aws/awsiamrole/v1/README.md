@@ -45,3 +45,7 @@ The trust policy controls **who** can assume the role, while permissions policie
 - Policy evaluation logic: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html
 - Confused deputy problem: https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html
 - Research documentation: [docs/README.md](docs/README.md)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

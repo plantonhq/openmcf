@@ -89,3 +89,7 @@ so a pool wires backends into the resource graph.
 
 - `CloudflareLoadBalancerMonitor` — referenced by `monitor`.
 - `CloudflareLoadBalancer` — selects this pool.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

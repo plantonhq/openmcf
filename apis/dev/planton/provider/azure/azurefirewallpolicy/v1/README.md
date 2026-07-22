@@ -121,3 +121,7 @@ spec:
 - TLS inspection needs: PREMIUM sku + `identity` (user-assigned) +
   Key Vault secret read access ("Key Vault Secrets User") for that
   identity on the referenced certificate's secret
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

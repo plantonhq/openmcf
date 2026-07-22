@@ -75,3 +75,7 @@ spec:
 ```
 
 See [docs/README.md](docs/README.md) for routing semantics and the fairness model.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

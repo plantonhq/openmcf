@@ -107,3 +107,7 @@ Cross-region replication with Replication Time Control to a versioned destinatio
 - [Lifecycle management](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html)
 - [Replication](https://docs.aws.amazon.com/AmazonS3/latest/userguide/replication.html)
 - [Object Lock](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

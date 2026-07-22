@@ -129,3 +129,7 @@ Attribute mapping is **optional**. When omitted, AWS applies default mappings ba
 
 - [AwsCognitoUserPool](../../awscognitouserpool/v1/README.md) — parent resource; must be created first
 - [AwsCognitoUserPoolClient](../../awscognitouserpoolclient/v1/README.md) — list this provider (by reference to its `provider_name` output) in `supportedIdentityProviders` to enable federated sign-in
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

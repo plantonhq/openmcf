@@ -135,3 +135,7 @@ This component creates the file system and configures its root volume. **Not inc
 
 - **Child volumes** (`aws_fsx_openzfs_volume`) — a separate composable resource surface
 - **Snapshots** (`aws_fsx_openzfs_snapshot`) — point-in-time operations, not declarative infrastructure
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

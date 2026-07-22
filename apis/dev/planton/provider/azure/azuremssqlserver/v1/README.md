@@ -88,3 +88,7 @@ Server={fqdn},1433;Database={database};User ID={admin};Password={password};Encry
 - **AzureSubnet** -- subnets admitted via service-endpoint rules
 - **AzureUserAssignedIdentity** -- the TDE unwrap identity / Entra administrator principal
 - **AzureKeyVaultKey** -- the customer-managed TDE key
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -70,3 +70,7 @@ No other components in the current catalog directly reference `HetznerCloudFloat
 - [Terraform hcloud_rdns Resource](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/rdns)
 - [Pulumi hcloud.FloatingIp Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/floatingip/)
 - [Pulumi hcloud.Rdns Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/rdns/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

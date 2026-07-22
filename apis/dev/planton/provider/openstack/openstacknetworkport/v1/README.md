@@ -55,3 +55,7 @@ An OpenStack Neutron port provides stable network identity (MAC address, fixed I
 - `OpenStackFloatingIp.spec.port_id` -- Built-in floating IP association
 - `OpenStackFloatingIpAssociate.spec.port_id` -- DAG-visible floating IP association
 - `OpenStackInstance.spec.networks[].port` -- Instance network attachment (future)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

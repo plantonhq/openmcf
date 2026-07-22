@@ -50,3 +50,7 @@ Deploying applications using Helm charts on Kubernetes can be complex due to var
 - **Flexibility**: Customize Helm chart deployments to meet specific application requirements without compromising on best practices.
 - **Enhanced Productivity**: Streamlines the deployment process, allowing teams to focus on developing features rather than managing deployments.
 - **Centralized Management**: Provides a single interface to manage Helm releases across multiple environments and clusters.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

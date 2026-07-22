@@ -79,3 +79,7 @@ Layer 4:  ┌──────────────┴───────�
 | ACK Cluster | ~8-12 minutes |
 | Node Pool | ~5-8 minutes |
 | **Total** | **~15-20 minutes** |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

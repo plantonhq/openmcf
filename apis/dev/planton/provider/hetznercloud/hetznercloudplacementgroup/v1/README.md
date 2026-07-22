@@ -53,3 +53,7 @@ None. `HetznerCloudPlacementGroup` is a root resource with no foreign key depend
 - [Hetzner Cloud Placement Groups Documentation](https://docs.hetzner.cloud/#placement-groups)
 - [Terraform hcloud_placement_group Resource](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/placement_group)
 - [Pulumi hcloud.PlacementGroup Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/placementgroup/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

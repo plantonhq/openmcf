@@ -59,3 +59,7 @@ spec:
 ```
 
 After deployment, configure the four `name_servers` outputs at the domain's registrar to make the zone authoritative.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

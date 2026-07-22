@@ -51,3 +51,7 @@ This resource provides complete support for production-grade compartment managem
 - **Freeform Tagging**: Standard Planton labels applied as OCI freeform tags for resource management, cost tracking, and compliance.
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations producing identical outputs.
 - **Foreign Key Composability**: Designed as the Layer 0 foundation that every downstream OCI component references via `StringValueOrRef` for the `compartmentId` output.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

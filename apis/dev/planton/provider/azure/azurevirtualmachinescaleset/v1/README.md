@@ -36,3 +36,7 @@ Future updates will include:
 - **First-Class Dedicated Host Groups and Capacity Reservations**: Placement references currently take plain ARM IDs; dedicated kinds will make them referenceable
 - **Referenceable Application Gateway Pools**: Application Gateway pool memberships currently take plain ARM IDs; they become referenceable once the Application Gateway exports per-pool IDs
 - **Comprehensive Documentation**: Expanded guidance for image lifecycle management with Shared Image Galleries
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

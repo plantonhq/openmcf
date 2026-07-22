@@ -238,3 +238,7 @@ spec:
 
 For issues, questions, or contributions, see the main [Planton repository](https://github.com/plantonhq/planton).
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

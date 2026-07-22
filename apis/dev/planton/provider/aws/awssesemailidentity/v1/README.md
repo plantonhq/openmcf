@@ -59,3 +59,7 @@ spec:
 
 - [AwsSesConfigurationSet](../awssesconfigurationset/v1/README.md) — The default sending rules and event destinations this identity opts into.
 - `AwsRoute53DnsRecord` — Publishes the DKIM CNAMEs and the MAIL FROM domain's MX/SPF records.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

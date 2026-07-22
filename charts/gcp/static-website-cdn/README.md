@@ -130,3 +130,7 @@ public buckets — this chart's origin is deliberately public-read.
 - **Cost**: the origin and serving pieces are cents; real cost follows
   egress, and the CDN makes that cheaper — cache hits bill at CDN egress
   rates (lower than bucket egress) and compression shrinks both.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

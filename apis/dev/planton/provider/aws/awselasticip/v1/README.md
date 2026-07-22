@@ -99,3 +99,7 @@ spec:
 - **Customer-owned IP pool** — AWS Outpost only, <1% adoption.
 - **PTR record management** — Separate AWS resource, niche use case.
 - **`domain` field** — Hardcoded to `"vpc"` (EC2-Classic is deprecated).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

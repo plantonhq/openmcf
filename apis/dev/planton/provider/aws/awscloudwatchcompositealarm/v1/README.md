@@ -63,3 +63,7 @@ The rule addresses alarms by their CloudWatch names. `AwsCloudwatchAlarm` resour
 
 - **Rule-expression parsing/validation** — The rule grammar is validated by the CloudWatch API at deploy time; the spec validates length only. Alarm references inside the expression compose by name, not by `StringValueOrRef` (the same class as metric-math expression variables).
 - **Tags** — Identity tags derive from `metadata`; custom user tags are a platform-wide concern.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

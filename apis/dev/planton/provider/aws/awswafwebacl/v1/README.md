@@ -81,3 +81,7 @@ Each rule consumes Web ACL Capacity Units. The total must not exceed 5,000 WCUs 
 The Terraform module unrolls the statement tree to three levels of AND/OR/NOT nesting. Deeper trees fail the plan with an explicit precondition — extend the module or flatten with `customStatement` if you need more.
 
 See [docs/README.md](docs/README.md) for the full field reference and [catalog-page.md](catalog-page.md) for deployment examples.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

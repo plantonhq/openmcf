@@ -70,3 +70,7 @@ This chart provisions a **production-ready Kubernetes environment on Oracle Clou
 │  └─────────────────────┘  └───────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

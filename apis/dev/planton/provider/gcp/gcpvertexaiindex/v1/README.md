@@ -52,3 +52,7 @@ User-defined `labels` organize the index for cost attribution and ownership; the
 - **streaming-tree-ah** -- Near-real-time index with tree-AH search
 - **batch-from-gcs** -- Bulk-built index from Cloud Storage embeddings
 - **brute-force-eval** -- Exact-search index for recall evaluation
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

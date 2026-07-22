@@ -42,3 +42,7 @@ A DNS record maps a host record (subdomain) to a value within a parent domain ho
 
 - **AliCloudDnsZone** -- registers the parent domain in Alidns (prerequisite for records)
 - **AliCloudPrivateDnsZone** -- for private DNS resolution within a VPC (separate from public Alidns)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -85,3 +85,7 @@ This component is implemented with both Pulumi (Go) and Terraform (HCL) with ful
 - **Port security**: When omitted, the OpenStack deployment's default applies (typically `true`). Set explicitly only when you need to override the deployment default.
 - **DNS integration**: Requires the `dns-integration` Neutron extension. The `dns_domain` must end with a dot (e.g., `"my-domain.example.com."`).
 - **MTU**: For VXLAN overlay networks, 1450 is common. For standard Ethernet, 1500. For jumbo frames, 9000.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

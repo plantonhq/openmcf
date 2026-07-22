@@ -135,3 +135,7 @@ All dependents reference the server's `server_id` output via `StringValueOrRef`.
 - [Pulumi hcloud.Server Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/server/)
 - [Pulumi hcloud.Rdns Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/rdns/)
 - [Hetzner Cloud Cloud-Init Documentation](https://docs.hetzner.cloud/#servers-create-a-server)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

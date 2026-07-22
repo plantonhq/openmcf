@@ -53,3 +53,7 @@ spec:
 
 - `CloudflareListItem` — an entry written into this list.
 - `CloudflareRuleset` — references lists from rule expressions and `from_list`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

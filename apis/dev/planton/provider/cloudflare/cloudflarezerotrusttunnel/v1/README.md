@@ -67,3 +67,7 @@ spec:
   `CloudflareZeroTrustAccessApplication`'s `aud` output in `originRequest.access.audTag`.
 - Run the connector with `status.outputs.tunnel_token`
   (`cloudflared tunnel run --token <token>`).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

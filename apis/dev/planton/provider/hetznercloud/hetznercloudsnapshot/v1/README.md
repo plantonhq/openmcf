@@ -64,3 +64,7 @@ The `snapshot_id` output is the Hetzner Cloud image ID that can be used as a ser
 - [Hetzner Cloud Images Documentation](https://docs.hetzner.cloud/#images)
 - [Terraform hcloud_snapshot Resource](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/snapshot)
 - [Pulumi hcloud.Snapshot Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/snapshot/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

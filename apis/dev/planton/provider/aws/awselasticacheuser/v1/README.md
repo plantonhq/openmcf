@@ -67,3 +67,7 @@ Per-application cache credentials deserve a first-class, composable node:
   (marked sensitive) for both engines; write-only password fields are a
   Terraform-provider convenience with no protobuf equivalent and are not
   modeled.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

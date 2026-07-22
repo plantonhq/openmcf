@@ -102,3 +102,7 @@ All deferred features can be added as new optional fields without breaking chang
 - [Scaleway Instance Types and Pricing](https://www.scaleway.com/en/pricing/?tags=compute)
 - [Terraform scaleway_instance_server Resource](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/instance_server)
 - [Scaleway Cloud-Init Guide](https://www.scaleway.com/en/docs/compute/instances/how-to/use-cloud-init/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

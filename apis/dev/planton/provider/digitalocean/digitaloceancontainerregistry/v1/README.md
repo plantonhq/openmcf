@@ -291,3 +291,7 @@ For issues, questions, or contributions, refer to the [Planton documentation](ht
 ---
 
 **TL;DR**: Use STARTER tier for dev/test, PROFESSIONAL for production. Enable garbage collection to avoid surprise bills. Co-locate with DOKS for fastest image pulls.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

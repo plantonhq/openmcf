@@ -40,3 +40,7 @@ See [catalog-page.md](catalog-page.md) for the full configuration reference, or 
 - [AliCloudSecurityGroup](../alicloudsecuritygroup/v1/) — Network access rules
 - [AliCloudContainerRegistry](../alicloudcontainerregistry/v1/) — Private image registry
 - [AliCloudFunction](../alicloudfunction/v1/) — Alternative serverless compute (event-driven)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

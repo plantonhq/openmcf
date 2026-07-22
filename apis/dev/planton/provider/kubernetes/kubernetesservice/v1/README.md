@@ -89,3 +89,7 @@ spec:
 
 - [Examples](examples.md) -- Complete, copy-paste ready examples for all service types
 - [Research Documentation](docs/README.md) -- Deep dive into Kubernetes Service landscape and design decisions
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

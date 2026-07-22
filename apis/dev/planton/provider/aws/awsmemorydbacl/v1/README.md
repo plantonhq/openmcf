@@ -52,3 +52,7 @@ edit, not a cluster change:
 - **A standalone membership/association kind**: AWS has no such resource —
   membership is a property of the ACL — and per-edge glue kinds are never
   modeled; membership folds into `userNames` as references.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

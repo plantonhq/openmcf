@@ -137,3 +137,7 @@ Redshift Spectrum) resolves the same tables through the same Glue catalog.
 - **Watch the workgroup metrics.** `publishCloudwatchMetricsEnabled` emits
   per-query scan volume — alarm on aggregate daily scan bytes to catch
   cost drift before the invoice does.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

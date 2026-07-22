@@ -344,3 +344,7 @@ For issues with:
 
 The Apache Solr Operator is licensed under Apache License 2.0. This component (KubernetesSolrOperator) is part of Planton and follows Planton's licensing terms.
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

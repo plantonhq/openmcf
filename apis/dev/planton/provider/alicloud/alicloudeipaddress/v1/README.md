@@ -67,3 +67,7 @@ Both `internetChargeType` and `isp` are immutable after creation (changing them 
 - **AliCloudApplicationLoadBalancer** -- uses EIPs for internet-facing load balancers
 - **AliCloudNetworkLoadBalancer** -- uses EIPs for internet-facing L4 load balancers
 - **AliCloudVpnGateway** -- uses an EIP for the VPN gateway public endpoint
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

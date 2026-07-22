@@ -62,3 +62,7 @@ a `metadata.relationships` `depends_on` edge in an infra chart.
 
 - `CloudflareCustomHostnameFallbackOrigin` — the zone's default origin (prerequisite).
 - `CloudflareDnsZone` — the SaaS zone.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

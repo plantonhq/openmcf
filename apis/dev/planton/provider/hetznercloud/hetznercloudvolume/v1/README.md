@@ -88,3 +88,7 @@ No other Planton components currently reference `HetznerCloudVolume` outputs. Th
 - [Terraform hcloud_volume_attachment Resource](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/volume_attachment)
 - [Pulumi hcloud.Volume Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/volume/)
 - [Pulumi hcloud.VolumeAttachment Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/volumeattachment/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -66,3 +66,7 @@ None. `HetznerCloudPrimaryIp` is a foundation resource with no foreign key depen
 - [Terraform hcloud_rdns Resource](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/rdns)
 - [Pulumi hcloud.PrimaryIp Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/primaryip/)
 - [Pulumi hcloud.Rdns Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/rdns/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -148,3 +148,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 - [Cloud NAT overview](https://cloud.google.com/nat/docs/overview)
 - [Routers API Reference](https://cloud.google.com/compute/docs/reference/rest/v1/routers)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

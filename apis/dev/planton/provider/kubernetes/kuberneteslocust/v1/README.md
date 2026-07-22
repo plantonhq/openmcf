@@ -70,3 +70,7 @@ Running distributed load tests using Locust in Kubernetes environments can be co
 - **Customizability**: Enables custom load test scripts, library files, and Python package dependencies to suit specific test cases.
 - **Resource Optimization**: Provides precise control over resource allocation for containers, optimizing performance and cost.
 - **Flexibility**: Supports advanced ingress configurations and external access to the Locust web interface.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -56,3 +56,7 @@ RBAC attachment deserves its own composable node between users and caches:
   modeled as the group's `user_ids` list — the association resource has no
   independent lifecycle and is deliberately not used; updates happen in place
   on the group.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

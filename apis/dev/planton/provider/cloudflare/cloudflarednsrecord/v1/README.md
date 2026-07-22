@@ -179,3 +179,7 @@ This component supports both Pulumi (default) and Terraform, producing identical
 ## License
 
 This component is part of Planton and follows the same license.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

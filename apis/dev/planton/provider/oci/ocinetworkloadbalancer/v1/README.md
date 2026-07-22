@@ -64,3 +64,7 @@ This resource provides complete support for production-grade NLB deployments, in
 - **Backup Backends**: Active-standby topologies where backup backends activate only during primary backend failures.
 - **Freeform Tagging**: Standard Planton labels applied as OCI freeform tags for resource management and cost tracking.
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations producing identical resource topology and outputs.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

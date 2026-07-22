@@ -42,3 +42,7 @@ Provide a declarative, YAML-driven interface for creating Redis-compatible cache
 - **Horizontal scaling** — sharded mode distributes keys across shards. Increase `shardCount` to scale capacity and throughput.
 - **Network isolation** — subnet placement combined with NSGs restricts access to authorized resources only.
 - **Observability** — cluster OCID, primary/replica FQDNs, and primary IP are exported as stack outputs for integration with monitoring and DNS configuration.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -93,3 +93,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 ## Additional Resources
 
 - [Creating and managing databases](https://cloud.google.com/sql/docs/postgres/create-manage-databases)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

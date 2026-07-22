@@ -62,3 +62,7 @@ spec:
 ## Related components
 
 - `CloudflareDnsZone` — the zone the certificate is ordered for.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

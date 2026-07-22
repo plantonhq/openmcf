@@ -39,3 +39,7 @@ OCI Streaming is a Kafka-compatible managed event-streaming service for real-tim
 - **KMS encryption** — customer-managed keys for encryption at rest across all streams in the pool.
 - **Private endpoints** — restricts access to streams from within the specified subnet only.
 - **Kafka bootstrap servers** — output provides the connection string for Kafka clients.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

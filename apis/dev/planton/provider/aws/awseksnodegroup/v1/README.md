@@ -67,3 +67,7 @@ node lets you:
 - `asg_name`: the EC2 Auto Scaling group AWS manages behind the pool
 - `remote_access_sg_id`: the SSH security group AWS creates when remote
   access is enabled without explicit source groups (empty otherwise)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

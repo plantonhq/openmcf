@@ -98,3 +98,7 @@ spec:
   correct for virtually every alert
 - Scopes, criteria, actions, description, `enabled`, and `tags` update in
   place
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

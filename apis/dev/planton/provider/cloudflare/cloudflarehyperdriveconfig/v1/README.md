@@ -77,3 +77,7 @@ returns them.
 
 - `CloudflareWorker` — binds this config via `hyperdrive_configs`.
 - `CloudflareD1Database` — Cloudflare-native serverless SQL (no Hyperdrive needed).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

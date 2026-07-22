@@ -53,3 +53,7 @@ spec:
 ```
 
 The managed-certificate flow: this binding deploys certificate-less, then a managed certificate for `app.example.com` attaches automatically once issued.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

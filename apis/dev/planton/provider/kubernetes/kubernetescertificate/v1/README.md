@@ -125,3 +125,7 @@ Step 4: KubernetesCertificate (issuerRef → CA Issuer)
 - **KubernetesClusterIssuer** -- creates ACME ClusterIssuers for public TLS
 - **KubernetesIssuer** -- creates namespace-scoped Issuers (SelfSigned, CA)
 - **KubernetesCertManager** -- installs the cert-manager controller (prerequisite)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

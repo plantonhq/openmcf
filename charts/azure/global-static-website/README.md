@@ -71,3 +71,7 @@ longer once NS delegation propagates.
 - **Smoke test** the `*.azurefd.net` endpoint before DNS propagates.
 - **Natural next steps**: enable WAF, turn on `apex_alias_enabled`, or
   add a CDN purge workflow for cache-busted deployments.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

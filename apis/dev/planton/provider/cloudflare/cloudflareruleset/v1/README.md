@@ -229,3 +229,7 @@ Example: `not (http.request.uri.path starts_with "/static" or http.request.uri.p
 
 - **CloudflareDnsZone** — Manage the DNS zone that this ruleset applies to
 - **CloudflareDnsRecord** — Manage DNS records (must be proxied for rulesets to take effect)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

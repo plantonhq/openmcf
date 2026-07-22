@@ -92,3 +92,7 @@ planton pulumi up --manifest httproute.yaml
 - [`KubernetesGatewayClass`](../../kubernetesgatewayclass/v1/README.md) -- the controller class.
 - [`KubernetesGatewayApiCrds`](../../kubernetesgatewayapicrds/v1/README.md) -- installs the CRDs.
 - [`KubernetesNamespace`](../../kubernetesnamespace/v1/README.md) -- the target namespace.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

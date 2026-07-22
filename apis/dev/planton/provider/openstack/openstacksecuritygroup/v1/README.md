@@ -81,3 +81,7 @@ This component's `security_group_id` output is referenced by:
 
 - `openstack.networking.SecGroup`
 - `openstack.networking.SecGroupRule` (inline rules, one per rule)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

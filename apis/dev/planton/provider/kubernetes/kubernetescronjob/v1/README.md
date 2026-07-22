@@ -35,3 +35,7 @@ Deploying cron-jobs to Kubernetes can be a complex task involving numerous confi
 - **Reduced Complexity**: Developers and DevOps teams can manage cron-job deployments without dealing with intricate Kubernetes configurations directly.
 - **Scalability**: Built-in support for autoscaling ensures that cron-jobs can handle varying loads efficiently.
 - **Security**: Securely manage sensitive information like credentials and secrets within the deployment specifications.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

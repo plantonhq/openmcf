@@ -72,3 +72,7 @@ The KubernetesManifest API resource aims to:
 | **Flexibility** | Maximum | High | Medium |
 | **Abstraction** | None | Some | High |
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

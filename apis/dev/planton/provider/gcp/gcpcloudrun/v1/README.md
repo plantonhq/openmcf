@@ -66,3 +66,7 @@ Custom domains compose rather than embed: a serverless network endpoint group (`
 
 - [Cloud Run Documentation](https://cloud.google.com/run/docs)
 - [Cloud Run Admin API v2](https://cloud.google.com/run/docs/reference/rest/v2/projects.locations.services)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

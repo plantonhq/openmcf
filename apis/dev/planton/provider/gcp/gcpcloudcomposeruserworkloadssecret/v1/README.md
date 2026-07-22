@@ -95,3 +95,7 @@ See [`iac/pulumi/README.md`](iac/pulumi/README.md).
 See [`iac/tf/README.md`](iac/tf/README.md).
 
 For copy-paste ready manifests, see the [presets](presets/).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

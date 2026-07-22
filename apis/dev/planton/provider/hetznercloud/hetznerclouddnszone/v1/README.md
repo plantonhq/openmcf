@@ -103,3 +103,7 @@ In infra-chart compositions, DNS zones typically consume outputs from other comp
 - [Terraform hcloud_zone_rrset Resource](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/zone_rrset)
 - [Pulumi hcloud.Zone Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/zone/)
 - [Pulumi hcloud.ZoneRrset Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/zonerrset/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

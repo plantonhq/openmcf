@@ -195,3 +195,7 @@ After deployment, the following outputs are available in `status.outputs`:
 - OpenSearch Project: https://opensearch.org/
 - Instance types: https://docs.aws.amazon.com/opensearch-service/latest/developerguide/supported-instance-types.html
 - Best practices: https://docs.aws.amazon.com/opensearch-service/latest/developerguide/bp.html
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

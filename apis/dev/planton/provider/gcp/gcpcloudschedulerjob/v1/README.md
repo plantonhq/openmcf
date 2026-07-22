@@ -56,3 +56,7 @@ Use GcpCloudSchedulerJob when you need:
 - [GcpCloudTasksQueue](/docs/catalog/gcp/cloud-tasks-queue) -- Asynchronous task dispatch (not cron-based)
 - [GcpCloudRun](/docs/catalog/gcp/cloud-run) -- Common HTTP target for scheduled jobs
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) -- Identity for OIDC/OAuth authentication
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -246,3 +246,7 @@ See [iac/tf/README.md](./iac/tf/README.md) for Terraform-based deployment.
 - [S3 API Compatibility](https://docs.digitalocean.com/products/spaces/reference/s3-compatibility/)
 - [Spaces CDN](https://docs.digitalocean.com/products/spaces/how-to/enable-cdn/)
 - [Research Documentation](./docs/README.md) - Deep dive into deployment methods
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

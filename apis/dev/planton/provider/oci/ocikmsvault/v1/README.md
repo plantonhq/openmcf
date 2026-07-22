@@ -36,3 +36,7 @@ KMS vaults are the foundation of OCI's encryption infrastructure. Every encrypti
 - **Freeform tags** — automatically populated from `metadata.labels`, including `resource_kind`, `resource_id`, `organization`, and `environment`.
 - **Dedicated HSM isolation** — `virtual_private` vaults provide cryptographic isolation and higher throughput limits for production workloads.
 - **BYOK/EKMS** — `external` vaults enable compliance scenarios where keys must never leave a customer-controlled HSM.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

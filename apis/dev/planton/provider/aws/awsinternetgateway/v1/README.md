@@ -40,3 +40,7 @@ This resource makes the internet gateway a first-class, independently composable
 - **Consistent resource-identity tagging** applied to the gateway.
 - **Infrastructure as Code** with full Pulumi (Go) and Terraform (HCL) implementations producing identical outputs.
 - **Composability** as a foundational building block referenced by `AwsSubnet` routes via `StringValueOrRef`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

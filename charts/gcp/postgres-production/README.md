@@ -117,3 +117,7 @@ them; every other ordering falls out of the references.
 - **REGIONAL requires backups by GCP's own contract** — this chart keeps
   backups on unconditionally, so flipping `availability_type` between
   ZONAL and REGIONAL is always valid.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

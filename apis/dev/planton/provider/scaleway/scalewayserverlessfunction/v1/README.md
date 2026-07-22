@@ -164,3 +164,7 @@ Custom domain binding is handled by creating ScalewayDnsRecord CNAME records poi
 - [Terraform: scaleway_function_namespace](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/function_namespace)
 - [Terraform: scaleway_function_cron](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/function_cron)
 - [Pulumi: scaleway.functions.Function](https://www.pulumi.com/registry/packages/scaleway/api-docs/functions/function/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

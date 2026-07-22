@@ -65,3 +65,7 @@ None. `HetznerCloudNetwork` is a foundation resource with no foreign key depende
 - [Terraform hcloud_network_route Resource](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/network_route)
 - [Pulumi hcloud.Network Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/network/)
 - [Pulumi hcloud.NetworkSubnet Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/networksubnet/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

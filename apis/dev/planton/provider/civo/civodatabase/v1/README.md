@@ -360,3 +360,7 @@ For questions, issues, or feature requests related to Planton, visit the [Planto
 
 For Civo-specific questions, consult the [Civo documentation](https://www.civo.com/docs) or [Civo support](https://www.civo.com/support).
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

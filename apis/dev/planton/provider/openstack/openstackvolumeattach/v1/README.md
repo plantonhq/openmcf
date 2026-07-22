@@ -37,3 +37,7 @@ This follows the same join-resource pattern as `OpenStackRouterInterface` (Route
 
 - `instance_id` -> `OpenStackInstance.status.outputs.instance_id` (required)
 - `volume_id` -> `OpenStackVolume.status.outputs.volume_id` (required)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

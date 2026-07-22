@@ -103,3 +103,7 @@ For STANDARD_HA, GCP automatically places the primary and replica in different z
 
 - [Memorystore for Redis Documentation](https://cloud.google.com/memorystore/docs/redis)
 - [Redis Instance REST API](https://cloud.google.com/memorystore/docs/redis/reference/rest/v1/projects.locations.instances)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

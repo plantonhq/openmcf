@@ -226,3 +226,7 @@ After deploying Istio:
 
 For comprehensive examples, see [examples.md](examples.md).
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

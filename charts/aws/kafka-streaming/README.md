@@ -156,3 +156,7 @@ settles — per-topic IAM is MSK's whole authorization story, use it.
 - **Schema management**: pair the cluster with AWS Glue Schema Registry
   (client-side config, no infrastructure) before the topic count grows
   past what tribal knowledge can carry.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

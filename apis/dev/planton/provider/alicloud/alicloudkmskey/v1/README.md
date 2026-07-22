@@ -69,3 +69,7 @@ KMS keys are never deleted immediately. When a deletion is requested, the key en
 - **AliCloudRdsInstance** -- uses a KMS key for Transparent Data Encryption (TDE)
 - **AliCloudStorageBucket** -- uses a KMS key for Server-Side Encryption (SSE-KMS)
 - **AliCloudEcsInstance** -- uses a KMS key for disk encryption
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

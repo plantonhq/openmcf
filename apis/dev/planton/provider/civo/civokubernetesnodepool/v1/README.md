@@ -391,3 +391,7 @@ kubectl describe node <node-name>
 - `CivoVpc` - Network for cluster
 - `CivoFirewall` - Secure cluster access
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

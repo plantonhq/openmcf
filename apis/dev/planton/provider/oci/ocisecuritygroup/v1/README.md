@@ -59,3 +59,7 @@ This resource provides complete support for production-grade NSG deployments, in
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations producing identical resource topology and outputs.
 - **Proto Validation**: Required fields, port range constraints, and the 120-rule limit are validated at the schema level before deployment.
 - **Infra-Chart Composability**: Designed as a security building block that downstream resources reference via `StringValueOrRef` for the NSG OCID.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

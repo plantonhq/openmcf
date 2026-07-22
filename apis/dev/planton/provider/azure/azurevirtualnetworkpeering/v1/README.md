@@ -106,3 +106,7 @@ A working pair requires a second resource with local and remote swapped
   sides exist
 - `use_remote_gateways` cannot combine with global (cross-region) peering, and
   only one peering per network may set it
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

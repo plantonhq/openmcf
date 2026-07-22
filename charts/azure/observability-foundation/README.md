@@ -94,3 +94,7 @@ Everything in this chart provisions in under five minutes.
   webhook receivers when an incident tool arrives; and once workloads
   multiply, split per-team action groups -- alert rules are the volatile
   edge, groups are the stable routing nodes.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

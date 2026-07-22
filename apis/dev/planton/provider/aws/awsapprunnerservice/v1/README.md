@@ -146,3 +146,7 @@ The per-domain records surface in `status.outputs.custom_domains` and compose di
 - Auto scaling: https://docs.aws.amazon.com/apprunner/latest/dg/manage-autoscaling.html
 - Health checks: https://docs.aws.amazon.com/apprunner/latest/dg/manage-configure-healthcheck.html
 - Custom domains: https://docs.aws.amazon.com/apprunner/latest/dg/manage-custom-domains.html
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

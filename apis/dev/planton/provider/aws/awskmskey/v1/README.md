@@ -38,3 +38,7 @@ The Planton CLI validates the manifest, generates stack inputs, and invokes IaC 
 - [Key types](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#master_keys)
 - [Key rotation](https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html)
 - [Catalog page](catalog-page.md)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

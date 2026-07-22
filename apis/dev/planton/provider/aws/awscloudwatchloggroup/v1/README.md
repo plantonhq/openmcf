@@ -164,3 +164,7 @@ spec:
 - **Query definitions and account policies** — Account-scoped operational tooling, not group shape.
 - **`skip_destroy`** — Retaining a resource on destroy contradicts honest lifecycle management; protection needs are served by `deletionProtectionEnabled`.
 - **`name_prefix`** — Planton derives the name from `metadata.name`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

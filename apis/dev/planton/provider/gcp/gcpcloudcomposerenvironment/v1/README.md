@@ -96,3 +96,7 @@ For copy-paste ready manifests, see the [presets](presets/).
 - [Cloud Composer Documentation](https://cloud.google.com/composer/docs)
 - [Composer Versioning Overview](https://cloud.google.com/composer/docs/concepts/versioning/composer-versioning-overview)
 - [Apache Airflow Documentation](https://airflow.apache.org/docs/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

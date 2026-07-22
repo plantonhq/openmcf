@@ -229,3 +229,7 @@ authorizers:
 - **Cognito Identity Pools** (`cognitoidentity` service): a separate product surface (AWS-credential federation); composes later as its own kind.
 - **Legacy top-level verification message fields**: the `verificationMessageTemplate` block is the one honest spelling (the provider keeps both in sync).
 - **Per-kind tags**: identity tags derive from metadata; custom user tags are a platform-wide concern.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

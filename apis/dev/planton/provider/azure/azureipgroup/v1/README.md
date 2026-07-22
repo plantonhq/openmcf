@@ -108,3 +108,7 @@ spec:
   and holds at most **5,000 entries** (Azure Firewall limits)
 - An **empty group is legal** -- a placeholder anchor rules can reference
   before the address plan is final
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

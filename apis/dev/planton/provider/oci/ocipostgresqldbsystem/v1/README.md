@@ -121,3 +121,7 @@ When `secretVersion` is omitted, the latest version is used.
 | `adminUsername` | Administrator username |
 
 These outputs can be referenced by downstream components via `valueFrom`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -67,3 +67,7 @@ manifest validation).
 - **AwsS3Bucket** — Storage layer for data referenced by Glue tables
 - **AwsKmsKey** — Encryption for data at rest in S3 (referenced by table definitions)
 - **AwsRedshiftCluster** — Redshift Spectrum queries the Glue catalog for external tables
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

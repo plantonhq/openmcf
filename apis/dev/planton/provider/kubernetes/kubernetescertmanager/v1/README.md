@@ -106,3 +106,7 @@ spec:
 - **KubernetesClusterIssuer** -- creates ClusterIssuers for specific DNS domains
 - **KubernetesIngressNginx** -- ingress controller that uses ClusterIssuers for TLS
 - **KubernetesExternalDns** -- DNS record management for ingress hostnames
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

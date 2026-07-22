@@ -28,3 +28,7 @@ Planton provisions via the Pulumi or Terraform module in `iac/`, both implementi
 - Neptune user guide: https://docs.aws.amazon.com/neptune/latest/userguide/intro.html
 - Neptune Serverless: https://docs.aws.amazon.com/neptune/latest/userguide/neptune-serverless.html
 - IAM database authentication: https://docs.aws.amazon.com/neptune/latest/userguide/iam-auth.html
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

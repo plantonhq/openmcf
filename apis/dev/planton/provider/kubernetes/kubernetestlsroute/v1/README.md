@@ -167,3 +167,7 @@ KubernetesCertManager -> KubernetesClusterIssuer -> KubernetesCertificate
 - [Kubernetes HTTP Route](kuberneteshttproute)
 - [Kubernetes Gateway API CRDs](kubernetesgatewayapicrds)
 - [Kubernetes Namespace](kubernetesnamespace)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

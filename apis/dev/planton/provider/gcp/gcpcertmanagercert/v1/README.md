@@ -106,3 +106,7 @@ planton tofu apply --manifest certificate.yaml
 - **GcpTargetHttpsProxy** — consumes the certificate by name
 - **GcpManagedSslCertificate** / **GcpSslCertificate** — the classic
   compute certificate kinds
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

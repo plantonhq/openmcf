@@ -222,3 +222,7 @@ spec:
 - [NGINX Ingress Controller Helm Chart](https://github.com/kubernetes/ingress-nginx/tree/main/charts/ingress-nginx)
 - [Kubernetes Ingress Documentation](https://kubernetes.io/docs/concepts/services-networking/ingress/)
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

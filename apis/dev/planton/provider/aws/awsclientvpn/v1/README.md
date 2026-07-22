@@ -83,3 +83,7 @@ every network the gateway routes to, without per-subnet associations.
   transport protocol — only the port value set (443/1194) is validated.
 - **A `status` output**: the provider exposes no endpoint status
   attribute; deployment state is the deploy's own success signal.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

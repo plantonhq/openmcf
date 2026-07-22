@@ -51,3 +51,7 @@ role -- lets one definition serve an entire architecture. It lets you:
 - `policy_arn`: ARN of the managed policy (what attachments and boundaries reference)
 - `policy_id`: stable unique ID AWS assigns to the policy
 - `policy_name`: friendly name of the policy
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

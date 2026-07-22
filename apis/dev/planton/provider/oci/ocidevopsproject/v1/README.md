@@ -34,3 +34,7 @@ OCI DevOps is a managed CI/CD platform that builds, tests, and deploys software 
 
 - **Freeform tags** — automatically populated from `metadata.labels`, including `resource_kind`, `resource_id`, `organization`, and `environment`.
 - **Namespace output** — the project namespace is exported for use in container registry and artifact paths.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

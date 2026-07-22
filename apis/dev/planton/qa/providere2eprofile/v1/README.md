@@ -58,3 +58,7 @@ The provider profile sets defaults. Individual components can override
 `cost_class` in their own profile when they are more expensive than typical
 components in the same provider (e.g., an EKS cluster component in the AWS
 provider).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

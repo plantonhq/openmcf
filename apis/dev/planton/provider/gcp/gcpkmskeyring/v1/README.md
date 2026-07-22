@@ -92,3 +92,7 @@ Run `gcloud kms locations list` for the full list.
 - [Cloud KMS Overview](https://cloud.google.com/kms/docs/overview)
 - [Creating Key Rings](https://cloud.google.com/kms/docs/create-key-ring)
 - [KMS Locations](https://cloud.google.com/kms/docs/locations)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

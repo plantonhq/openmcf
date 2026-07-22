@@ -87,3 +87,7 @@ This resource provides complete support for production-grade OKE node pool deplo
 - **Freeform Tagging**: Standard Planton labels applied as OCI freeform tags on both the node pool resource and its node config for resource management, cost tracking, and compliance.
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations producing identical outputs.
 - **Infra-Chart Composability**: Designed to compose with OciContainerEngineCluster (upstream dependency), OciCompartment, OciSubnet, and OciSecurityGroup via `StringValueOrRef`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

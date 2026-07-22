@@ -40,3 +40,7 @@ DNS record sets are the fundamental building blocks of DNS configuration. Each r
 
 - **Atomic updates** — prevents partial DNS states that could cause routing issues during updates.
 - **Zone reference via valueFrom** — enables composability with OciDnsZone in infra charts.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

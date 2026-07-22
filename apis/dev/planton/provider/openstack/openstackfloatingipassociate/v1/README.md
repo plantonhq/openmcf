@@ -55,3 +55,7 @@ OpenStackFloatingIpAssociate (this component)
         |
 OpenStackNetworkPort (provides network endpoint)
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

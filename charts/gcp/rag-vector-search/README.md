@@ -119,3 +119,7 @@ reference — an index's contents URI is a plain string in GCP's API.
 - **JWT auth is defense in depth,** not a substitute for IAM: with it
   on, private queries need both network reachability and a token issued
   by the query identity with the `<corpus_name>` audience.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

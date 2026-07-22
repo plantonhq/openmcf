@@ -113,3 +113,7 @@ Use GcpPubSubSubscription when you need to:
 - [GcpGcsBucket](/docs/catalog/gcp/cloud-storage-bucket) -- Target bucket for Cloud Storage delivery
 - [GcpServiceAccount](/docs/catalog/gcp/service-account) -- Writer/invoker identities for push, BigQuery, and Cloud Storage delivery
 - [GcpProject](/docs/catalog/gcp/project) -- Parent GCP project
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

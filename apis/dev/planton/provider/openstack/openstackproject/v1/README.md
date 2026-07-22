@@ -50,3 +50,7 @@ See [examples.md](examples.md) for YAML manifests.
 ## Pulumi Resource
 
 `openstack.identity.Project`
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

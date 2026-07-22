@@ -61,3 +61,7 @@ requires `field` and `value`; an `all` matcher requires neither.
 - `CloudflareEmailRoutingZone` — must enable Email Routing on the zone first.
 - `CloudflareEmailRoutingAddress` — the verified destinations a rule forwards to.
 - `CloudflareWorker` — an Email Worker a rule can hand messages to.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

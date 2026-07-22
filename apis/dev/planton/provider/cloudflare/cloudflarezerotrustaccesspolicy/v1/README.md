@@ -72,3 +72,7 @@ The access-rule variants are the same set documented on `CloudflareZeroTrustAcce
 
 - `CloudflareZeroTrustAccessGroup` — reusable rule bundles referenced here.
 - `CloudflareZeroTrustAccessApplication` — binds policies to a protected resource.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

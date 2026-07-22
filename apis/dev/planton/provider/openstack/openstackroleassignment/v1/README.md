@@ -30,3 +30,7 @@ Role assignments are the fundamental authorization mechanism in OpenStack. They 
 ## Pulumi Resource
 
 `openstack.identity.RoleAssignment`
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

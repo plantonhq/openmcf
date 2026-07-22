@@ -115,3 +115,7 @@ See: https://github.com/tektoncd/pipeline/releases
 See: https://github.com/tektoncd/dashboard/releases
 
 Use `"latest"` for the most recent stable release, or pin to a specific version (e.g., `"v0.65.2"`).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

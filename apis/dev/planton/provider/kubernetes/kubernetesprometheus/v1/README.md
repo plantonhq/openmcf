@@ -81,3 +81,7 @@ spec:
 - **Scalability**: The ability to define replicas and autoscale resources ensures that Prometheus can handle varying workloads and scale as needed.
 - **Data Persistence**: Ensures that critical monitoring data is stored persistently and is accessible between pod restarts, reducing data loss risks.
 - **Secure Access**: Enables easy setup of secure ingress rules to expose Prometheus to authorized users or systems.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

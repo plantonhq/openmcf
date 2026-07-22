@@ -60,3 +60,7 @@ the key never leaves your control and `private_key` is empty.
 
 - `CloudflareDnsRecord` / `CloudflareDnsZone` — the proxied hostnames this cert
   secures on the Cloudflare-to-origin hop.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

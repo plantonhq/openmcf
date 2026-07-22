@@ -84,3 +84,7 @@ The referenced `kafka-broker-sg` carries the ingress rule for port 9098 (e.g. fr
 ## Client IAM permissions
 
 Serverless MSK authorizes every client action through IAM. A producing/consuming workload needs a policy over the cluster, topic, and group resources, for example `kafka-cluster:Connect`, `kafka-cluster:CreateTopic`, `kafka-cluster:WriteData`, `kafka-cluster:ReadData`, and `kafka-cluster:AlterGroup` scoped to this cluster's ARN (exported as `cluster_arn`).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

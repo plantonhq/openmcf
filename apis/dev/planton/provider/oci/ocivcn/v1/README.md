@@ -55,3 +55,7 @@ This resource provides complete support for production-grade VCN deployments, in
 - **Freeform Tagging**: Standard Planton labels applied as OCI freeform tags for resource management, cost tracking, and compliance.
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations producing identical outputs.
 - **Infra-Chart Composability**: Designed as a Layer 0 foundation that downstream resources reference via `StringValueOrRef` for the VCN ID, gateway IDs, and default resource IDs.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

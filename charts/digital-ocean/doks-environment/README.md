@@ -16,3 +16,7 @@ value is documented in [`values.yaml`](values.yaml).
   `values.yaml`; enable only what each environment requires.
 - Cross-resource references are wired with `valueFrom`, so the templates rarely
   need direct edits.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

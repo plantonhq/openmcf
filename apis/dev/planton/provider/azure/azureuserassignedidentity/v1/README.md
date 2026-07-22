@@ -121,3 +121,7 @@ Resources that reference this identity:
 - [Azure Managed Identities overview](https://learn.microsoft.com/en-us/entra/identity/managed-identities-azure-resources/overview)
 - [Azure RBAC built-in roles](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles)
 - Research documentation: [docs/README.md](docs/README.md)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

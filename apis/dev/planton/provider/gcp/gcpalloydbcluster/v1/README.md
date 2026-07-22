@@ -65,3 +65,7 @@ See [examples.md](examples.md) for copy-paste ready YAML manifests.
 
 - [Research & design documentation](docs/README.md) — Architecture, backup strategies, CMEK, best practices
 - [Terraform module](iac/tf/README.md) — Terraform implementation details
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

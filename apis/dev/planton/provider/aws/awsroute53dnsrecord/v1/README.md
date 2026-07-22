@@ -140,3 +140,7 @@ planton pulumi up --manifest dns-record.yaml
 - **AwsAlb**: Application Load Balancers (common alias targets with value_from support)
 - **AwsCertManagerCert**: SSL/TLS certificates for your domains
 - **AwsCloudFront**: CloudFront distributions (common alias targets)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

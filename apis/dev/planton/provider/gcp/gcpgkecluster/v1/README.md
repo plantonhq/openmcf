@@ -69,3 +69,7 @@ Clusters are always VPC-native (alias IP): pods and services draw from secondary
 
 - [GKE Documentation](https://cloud.google.com/kubernetes-engine/docs)
 - [Clusters REST API](https://cloud.google.com/kubernetes-engine/docs/reference/rest/v1/projects.locations.clusters)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

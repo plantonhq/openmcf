@@ -69,3 +69,7 @@ referenced `AwsLbTargetGroup` nodes -- lets you:
 
 - `autoscaling_group_name`: group name (CloudWatch dimensions, ECS capacity providers, CLI)
 - `autoscaling_group_arn`: group ARN (IAM policies, EventBridge rules)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

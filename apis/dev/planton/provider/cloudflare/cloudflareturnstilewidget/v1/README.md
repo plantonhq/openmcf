@@ -59,3 +59,7 @@ rather than embedding it in plaintext.
 
 - `CloudflareWorker` — a Worker that validates Turnstile tokens server-side using
   the `secret` output.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

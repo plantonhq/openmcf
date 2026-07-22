@@ -44,3 +44,7 @@ A DNS domain is the top-level container for DNS records in Alibaba Cloud's Alidn
 
 - **AliCloudDnsRecord** -- creates DNS records (A, AAAA, CNAME, MX, TXT, etc.) within this domain
 - **AliCloudPrivateDnsZone** -- for private DNS resolution within a VPC (separate from public Alidns)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

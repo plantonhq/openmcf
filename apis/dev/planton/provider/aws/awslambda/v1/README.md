@@ -86,3 +86,7 @@ Planton does **not** auto-create a CloudWatch log group, execution IAM role, or 
 - [Container images](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html)
 - [VPC configuration](https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html)
 - [Catalog page](catalog-page.md)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -87,3 +87,7 @@ spec:
 ```
 
 See [docs/README.md](docs/README.md) for the underlying concepts and [AwsElasticFileSystem](../../awselasticfilesystem/v1/README.md) for the file system itself.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

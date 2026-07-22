@@ -77,3 +77,7 @@ Design decisions worth knowing:
 - **Guest telemetry** — install the Azure Monitor agent through cloud-init to add syslog and in-guest metrics to the workspace; the platform metrics flowing already cover CPU, disk, and network from the host's view.
 - **Autoscale** — the CPU alert tells a human; when the signal is trusted, add an autoscale setting against the scale set so Azure acts on it directly (manage it alongside the chart, then fold it in).
 - **Zone drills** — with three zones and three instances, killing one instance simulates a zone loss: the probe pulls it from rotation and the tier keeps serving. Run that drill before production depends on it.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

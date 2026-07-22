@@ -73,3 +73,7 @@ planton apply -f task-definition.yaml
 Both a Pulumi module and a Terraform/OpenTofu module implement this
 component at full behavioral parity; the provisioner is an execution
 detail.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

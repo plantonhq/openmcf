@@ -126,3 +126,7 @@ storage too; switching to PHYSICAL is allowed once every 14 days.
 - [GcpKmsKey](../gcpkmskey/v1/) -- CMEK encryption key for dataset encryption
 - [GcpProject](../gcpproject/v1/) -- Parent GCP project
 - [GcpGcsBucket](../gcpgcsbucket/v1/) -- Often paired for data lake architectures
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

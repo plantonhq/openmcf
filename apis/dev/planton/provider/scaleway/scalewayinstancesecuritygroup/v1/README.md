@@ -117,3 +117,7 @@ spec:
 - [Scaleway Security Groups Documentation](https://www.scaleway.com/en/docs/compute/instances/how-to/use-security-groups/)
 - [Terraform: scaleway_instance_security_group](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/instance_security_group)
 - [Pulumi: instance.SecurityGroup](https://www.pulumi.com/registry/packages/scaleway/api-docs/instance/securitygroup/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

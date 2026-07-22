@@ -47,3 +47,7 @@ API Gateway is OCI's managed service for exposing APIs to external or internal c
 - **TLS termination** — optional OCI Certificates service integration for HTTPS.
 - **JWT validation** — offloads token verification from backend services.
 - **Rate limiting** — protects backends from traffic spikes.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

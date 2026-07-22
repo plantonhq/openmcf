@@ -36,3 +36,7 @@ Future updates will include:
 - **Webhooks**: Push/delete event notifications for downstream automation
 - **Cache Rules**: Pull-through caching of upstream registries (Docker Hub, MCR)
 - **ACR Tasks**: Cloud-native image builds and scheduled maintenance jobs
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

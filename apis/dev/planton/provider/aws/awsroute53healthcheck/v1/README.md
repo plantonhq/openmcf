@@ -37,3 +37,7 @@ Calculated checks aggregate up to 256 child health checks and report healthy whe
 - `AwsRoute53DnsRecord.health_check_id` references this resource's `health_check_id` output — failover PRIMARY records, health-aware weighted members, and multivalue answers all compose through it.
 - A calculated check's `child_health_checks` reference other health checks' IDs, building service-level health from endpoint-level probes.
 - CLOUDWATCH_METRIC checks compose with `AwsCloudwatchAlarm` by alarm name and region.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

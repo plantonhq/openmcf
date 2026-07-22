@@ -80,3 +80,7 @@ The Grafana Kubernetes component provides flexible namespace management through 
 - You're deploying multiple components into a shared namespace
 - You have existing namespace policies or quotas that should not be modified
 - You want to preserve the namespace when the component is destroyed
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

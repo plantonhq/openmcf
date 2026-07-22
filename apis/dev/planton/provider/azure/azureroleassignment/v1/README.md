@@ -116,3 +116,7 @@ The deploying credential needs `Microsoft.Authorization/roleAssignments/write`
 at the target scope -- typically via Owner, User Access Administrator, or Role
 Based Access Control Administrator. Contributor alone is NOT sufficient (it
 manages resources, not authorization).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

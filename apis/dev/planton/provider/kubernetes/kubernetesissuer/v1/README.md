@@ -84,3 +84,7 @@ The Issuer Kubernetes resource is named after `metadata.name`. This differs from
 - **KubernetesCertManager** -- installs the cert-manager controller (prerequisite)
 - **KubernetesClusterIssuer** -- cluster-scoped ACME issuer for DNS-01 challenges
 - **KubernetesCertificate** -- creates Certificate resources that reference this Issuer
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

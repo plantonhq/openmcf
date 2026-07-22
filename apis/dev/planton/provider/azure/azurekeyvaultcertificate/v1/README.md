@@ -124,3 +124,7 @@ spec:
 - A deleted certificate's name stays reserved for the vault's soft-delete
   retention window unless purged (the IaC engines purge on destroy by
   default)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

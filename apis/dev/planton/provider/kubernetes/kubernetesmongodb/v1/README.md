@@ -68,3 +68,7 @@ Deploying MongoDB on Kubernetes involves complex configurations, including resou
 - **Microservices Architecture**: Use MongoDB in a microservices environment where each service may require its own database instance.
 - **Data Persistence and Backups**: Ensure data durability and facilitate backup strategies by enabling persistence.
 - **Development and Testing Environments**: Quickly spin up MongoDB instances for development or testing purposes with environment-specific configurations.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

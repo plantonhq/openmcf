@@ -77,3 +77,7 @@ frontend (public IP | private address) + port
 - **AzureNetworkInterface** / **AzureVirtualMachineScaleSet** -- backend
   pool members (joined member-side)
 - **AzureAksCluster** -- AGIC references the gateway by ID
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

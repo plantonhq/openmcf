@@ -71,3 +71,7 @@ Deploying stateful applications to Kubernetes requires careful consideration of 
 - **Caching Systems**: Redis, Memcached with persistence.
 - **Search Engines**: Elasticsearch, Solr clusters.
 - **Any Application Requiring**: Stable network identity or persistent storage.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

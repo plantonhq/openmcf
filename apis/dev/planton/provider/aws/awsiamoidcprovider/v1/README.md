@@ -51,3 +51,7 @@ Point `spec.url` at an `AwsEksCluster` reference and the issuer URL flows throug
 - AssumeRoleWithWebIdentity: https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRoleWithWebIdentity.html
 - Obtaining the root CA thumbprint: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc_verify-thumbprint.html
 - Research documentation: [docs/README.md](docs/README.md)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

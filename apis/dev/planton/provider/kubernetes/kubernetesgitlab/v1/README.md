@@ -83,3 +83,7 @@ spec:
 - **Resource Optimization**: Enables precise control over resource allocation for containers, optimizing performance and cost.
 - **Flexibility**: Customize GitLab configurations to meet specific project requirements without compromising best practices.
 - **Enhanced Collaboration**: Provides a centralized platform for code hosting, CI/CD, and project management, improving team collaboration and productivity.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

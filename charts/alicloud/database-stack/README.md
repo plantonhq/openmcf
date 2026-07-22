@@ -75,3 +75,7 @@ Self-contained database environment with VPC networking, private DNS, and toggle
 | MongoDB Instance | ~8-12 minutes |
 | **Total (RDS only)** | **~12 minutes** |
 | **Total (all engines)** | **~15 minutes** (parallel) |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

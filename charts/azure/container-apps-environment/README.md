@@ -81,3 +81,7 @@ Everything authenticates as one user-assigned identity: the Dapr sidecars publis
 - **Split identities**: when app permissions diverge, mint an identity per app and narrow each grant (queue-scoped instead of namespace-scoped).
 - **Dedicated compute**: declare `workload_profiles` on the environment (D/E families, GPU) and pin heavy apps to them with `workload_profile_name` — note that going from zero profiles to some replaces the environment.
 - **Premium messaging**: raise the namespace SKU to PREMIUM for dedicated capacity, CMK, and VNet network rules — an in-place change.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

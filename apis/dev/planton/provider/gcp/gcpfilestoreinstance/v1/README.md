@@ -93,3 +93,7 @@ This creates a 2.5 TiB SSD-backed NFS server named `my-nfs` (from `metadata.name
 | `etag` | Server-specified ETag guarding concurrent updates |
 
 See the [presets](presets/) for remixable starting points and [docs/README.md](docs/README.md) for the deep dive.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

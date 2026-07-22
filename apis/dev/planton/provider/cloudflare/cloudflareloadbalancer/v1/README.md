@@ -146,3 +146,7 @@ whole traffic path is expressible as a dependency graph.
 - `CloudflareLoadBalancerPool` — referenced by `defaultPools`/`fallbackPool`/geo maps.
 - `CloudflareLoadBalancerMonitor` — referenced by a pool's `monitor`.
 - `CloudflareDnsZone` — provides `zoneId`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

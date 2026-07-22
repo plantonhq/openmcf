@@ -57,3 +57,7 @@ Set `aliases` plus `viewerCertificate` with the ACM arm (a `StringValueOrRef` to
 ## Deliberately Not Modeled (candidate kinds on demand)
 
 Cache/origin-request/response-headers policies, CloudFront Functions, key groups and public keys (signed URLs), VPC origins, real-time log configurations, field-level encryption profiles, continuous-deployment policies, the multi-tenant distribution family, anycast IP lists, and mTLS trust stores each have independent lifecycles and are candidate first-class kinds. The spec carries their IDs/ARNs today, so future kinds compose with zero rework.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

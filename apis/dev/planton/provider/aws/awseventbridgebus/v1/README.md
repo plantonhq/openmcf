@@ -87,3 +87,7 @@ The API enforces these validations:
 - [EventBridge Encryption](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-encryption-at-rest.html)
 - [EventBridge Dead-Letter Queues](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html)
 - [Partner Event Sources](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-saas.html)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

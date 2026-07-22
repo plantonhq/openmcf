@@ -84,3 +84,7 @@ spec:
 
 - `CloudflareZeroTrustAccessPolicy` — the decisions attached here.
 - `CloudflareZeroTrustAccessGroup` — reusable rule bundles referenced by policies.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

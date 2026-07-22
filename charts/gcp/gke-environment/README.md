@@ -144,3 +144,7 @@ roles plus `roles/iam.serviceAccountAdmin` (node identity),
   region); a regional control plane bills the standard cluster fee; NAT
   bills hourly + per-GiB processed; Autopilot swaps node billing for
   per-pod billing.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

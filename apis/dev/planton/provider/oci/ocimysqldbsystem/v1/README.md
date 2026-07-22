@@ -57,3 +57,7 @@ Provide a declarative, version-controlled way to provision MySQL HeatWave DB Sys
 | REST API | `rest` | MySQL Router REST API |
 | Customer Contacts | `customerContacts` | Up to 10 notification emails |
 | Auto-Expand Storage | `dataStorage.isAutoExpandStorageEnabled` | Automatic volume growth |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

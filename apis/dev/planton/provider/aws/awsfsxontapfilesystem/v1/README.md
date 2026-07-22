@@ -128,3 +128,7 @@ Data-access endpoints (NFS/SMB/iSCSI DNS names) live on the SVM, not the file sy
 - **02-single-az-production** — KMS encryption, backups, admin access
 - **03-multi-az-high-availability** — MULTI_AZ_2 with floating endpoints
 - **04-single-az-scale-out** — 4 HA pairs, 6 GB/s aggregate, provisioned IOPS
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

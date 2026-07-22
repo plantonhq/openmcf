@@ -45,3 +45,7 @@ Block Volumes are OCI's primary persistent block storage for compute instances �
 - **KMS encryption** — customer-managed keys for encryption at rest when regulatory requirements exceed Oracle-managed defaults.
 - **Cross-region replication** — asynchronous replicas for RPO-based disaster recovery across OCI regions.
 - **Backup scheduling** — backup policy assignment automates daily/weekly/monthly backups per Oracle-defined or custom policies.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

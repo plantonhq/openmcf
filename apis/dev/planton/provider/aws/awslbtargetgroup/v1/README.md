@@ -74,3 +74,7 @@ definition -- lets you:
 - `target_group_arn`: ARN of the target group (what listeners, rules, ECS services, and ASGs reference)
 - `target_group_name`: friendly name of the group (metadata.name, truncated to AWS's 32-character limit when necessary)
 - `arn_suffix`: ARN suffix used as the TargetGroup dimension in CloudWatch metrics
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -89,3 +89,7 @@ See [examples.md](examples.md) for copy-paste ready YAML manifests.
 ## Further Reading
 
 - [Research & design documentation](docs/README.md) — Architecture, replication, scaling, CMEK, best practices
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

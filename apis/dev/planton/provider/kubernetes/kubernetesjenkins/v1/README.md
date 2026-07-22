@@ -67,3 +67,7 @@ Deploying Jenkins on Kubernetes involves complex configurations, including conta
 - **Multi-Environment Deployments**: Consistently deploy Jenkins across different environments with environment-specific configurations.
 - **Resource Optimization**: Adjust resource allocations for Jenkins to optimize performance and cost based on usage patterns.
 - **Custom Jenkins Configurations**: Utilize Helm values to customize Jenkins installations, including plugins, security settings, and more.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

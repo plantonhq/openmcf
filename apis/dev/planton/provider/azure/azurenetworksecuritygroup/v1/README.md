@@ -115,3 +115,7 @@ AzureVirtualNetwork (VNet)
 
 The NSG-to-subnet association is created by the infra chart, not by this component.
 This keeps the NSG lifecycle independent of any particular subnet.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

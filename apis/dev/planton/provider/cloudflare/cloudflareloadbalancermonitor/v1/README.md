@@ -68,3 +68,7 @@ spec:
 
 - `CloudflareLoadBalancerPool` — references this monitor via `monitor`.
 - `CloudflareLoadBalancer` — selects pools health-checked by this monitor.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

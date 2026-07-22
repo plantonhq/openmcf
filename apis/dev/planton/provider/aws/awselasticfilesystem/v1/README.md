@@ -202,3 +202,7 @@ The following fields require **resource replacement** if changed. Plan them upfr
 - **`creation_token` as a field** — the token is pinned to `metadata.name` by both engines (it is the idempotency key, not configuration).
 
 See [docs/README.md](docs/README.md) for architecture details and integration patterns.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

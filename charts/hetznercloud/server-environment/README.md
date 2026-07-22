@@ -47,3 +47,7 @@ Network ─┐
 SSH Key ──┼─→ Server ──→ Volume (optional)
 Firewall ─┘
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

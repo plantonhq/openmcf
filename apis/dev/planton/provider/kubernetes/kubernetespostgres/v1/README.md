@@ -105,3 +105,7 @@ Deploying and managing PostgreSQL databases in Kubernetes can be complex due to 
 - **Automated Backups**: Continuous backup to R2/S3 with configurable schedules, ensuring data protection without manual intervention.
 - **Disaster Recovery Ready**: Restore databases across clusters from backup files alone, enabling recovery even when source cluster is completely destroyed.
 - **Operator Flexibility**: Technology-agnostic restore design works across different PostgreSQL operators without API changes.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

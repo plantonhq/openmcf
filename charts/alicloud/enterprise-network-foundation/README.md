@@ -64,3 +64,7 @@ Multi-AZ VPC networking foundation with NAT gateway, security groups, and option
 | CEN (if enabled) | ~1 minute |
 | **Total (core)** | **~3 minutes** |
 | **Total (with VPN + CEN)** | **~8 minutes** |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

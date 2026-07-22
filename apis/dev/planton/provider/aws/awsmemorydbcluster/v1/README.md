@@ -192,3 +192,7 @@ After deployment, the following outputs are available in `status.outputs`:
 - [AwsKmsKey](/docs/catalog/aws/kms-key) — provides a customer-managed encryption key
 - [AwsSnsTopic](/docs/catalog/aws/sns-topic) — receives cluster event notifications
 - [AwsRedisElasticache](/docs/catalog/aws/redis-elasticache) — ephemeral caching alternative when durability is not required
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

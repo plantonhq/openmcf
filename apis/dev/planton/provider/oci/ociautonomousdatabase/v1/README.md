@@ -80,3 +80,7 @@ Enable `isLocalDataGuardEnabled` to provision an automatic standby in a differen
 - Set `autonomousMaintenanceScheduleType` to control when patches are applied (`early` or `regular`).
 - Add `customerContacts` for email notifications about maintenance windows and critical alerts.
 - Configure `backupRetentionPeriodInDays` to control automatic backup retention.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

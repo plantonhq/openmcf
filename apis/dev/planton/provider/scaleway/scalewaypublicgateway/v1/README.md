@@ -93,3 +93,7 @@ This resource provides complete support for production-grade gateway deployments
 - **Automatic Labeling**: Standard Planton labels applied as Scaleway tags for resource management and cost allocation.
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations.
 - **Infra-Chart Composability**: Designed as a Layer 2 edge resource that references the Layer 1 Private Network via `StringValueOrRef` and exports outputs for diagnostics and DNS configuration.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

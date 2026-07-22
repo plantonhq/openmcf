@@ -126,3 +126,7 @@ itself after the grant. See `docs/README.md` for the full pattern (DD-009).
 - [Kubernetes TLS Route](kubernetestlsroute)
 - [Kubernetes Gateway API CRDs](kubernetesgatewayapicrds)
 - [Kubernetes Namespace](kubernetesnamespace)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

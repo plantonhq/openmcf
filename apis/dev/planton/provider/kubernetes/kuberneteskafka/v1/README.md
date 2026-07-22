@@ -77,3 +77,7 @@ This flexibility allows integration with existing namespace management practices
 - **Microservices Communication**: Use Kafka as a messaging backbone for microservices architecture.
 - **Event Sourcing and CQRS**: Implement event-driven systems requiring reliable message storage and retrieval.
 - **Log Aggregation**: Collect and manage logs from various services in a centralized Kafka cluster.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

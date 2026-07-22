@@ -59,3 +59,7 @@ None. The provider's consumer resource has two registration inputs (`name` and `
 - **AwsKinesisStream** — The parent stream this consumer registers with
 - **AwsLambda** — Can be configured with a consumer ARN for enhanced fan-out event source mapping
 - **AwsIamRole** — Provides `kinesis:SubscribeToShard` and `kinesis:DescribeStreamConsumer` permissions
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -80,3 +80,7 @@ Design decisions worth knowing:
 - **Finer-grained directories** — the chart owns each zone's ROOT ACL; per-project directories inside a zone get their own ACLs via SDKs or Storage Explorer, inheriting the DEFAULT entries automatically.
 - **Rotate the CMK** — create a new key version; the versionless reference picks it up. Add a vault rotation policy to make it scheduled.
 - **Network hardening** — for a private-only lake, add `networkRules` (default DENY + allowed subnets) or a private endpoint per the Cosmos chart's pattern; analytics engines then need VNet paths (private endpoints or service endpoints) to reach the dfs endpoint.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

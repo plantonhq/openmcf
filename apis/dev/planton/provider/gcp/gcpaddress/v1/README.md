@@ -119,3 +119,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 - [Reserving a Static External IP Address](https://cloud.google.com/compute/docs/ip-addresses/reserve-static-external-ip-address)
 - [Regional Addresses API Reference](https://cloud.google.com/compute/docs/reference/rest/v1/addresses)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

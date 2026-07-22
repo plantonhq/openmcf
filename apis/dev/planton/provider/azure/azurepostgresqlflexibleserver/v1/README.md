@@ -103,3 +103,7 @@ set), `delegated_subnet_id`, `geo_redundant_backup_enabled`,
 - **AzurePrivateEndpoint** -- alternative private connectivity (Private Link)
 - **AzureUserAssignedIdentity** -- CMK unwrap identity / Entra administrators
 - **AzureKeyVaultKey** -- the customer-managed encryption key
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -124,3 +124,7 @@ spec:
   with a BASIC policy
 - **Classic inline rule collections are deliberately not modeled** --
   policy-based management is Azure's direction; ARM rejects mixing them
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

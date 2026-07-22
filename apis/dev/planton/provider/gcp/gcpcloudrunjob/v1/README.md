@@ -117,3 +117,7 @@ gcloud run jobs execute my-etl --region us-central1
 - [01-batch-etl-basic](presets/01-batch-etl-basic.yaml) — single-task nightly ETL
 - [02-parallel-vpc-cleanup](presets/02-parallel-vpc-cleanup.yaml) — parallel workers with VPC + secrets
 - [03-gpu-batch-inference](presets/03-gpu-batch-inference.yaml) — GPU map-reduce inference
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

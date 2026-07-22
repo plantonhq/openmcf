@@ -99,3 +99,7 @@ Scaleway DNS does not support: DNSSEC, traffic routing policies (geo, weighted, 
 - [Scaleway Domains and DNS](https://www.scaleway.com/en/docs/network/domains-and-dns/)
 - [Terraform: scaleway_domain_record](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/domain_record)
 - [Pulumi: scaleway.domain.Record](https://www.pulumi.com/registry/packages/scaleway/api-docs/domain/record/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

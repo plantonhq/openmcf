@@ -71,3 +71,7 @@ database (ARM's contract).
 - **AzureMssqlElasticPool** -- pooled compute (`elastic_pool_id`)
 - **AzureUserAssignedIdentity** -- the database-scoped CMK unwrap identity
 - **AzureKeyVaultKey** -- the database-scoped TDE key (versioned `key_id`)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

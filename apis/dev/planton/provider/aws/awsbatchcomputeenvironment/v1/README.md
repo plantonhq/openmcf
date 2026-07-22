@@ -112,3 +112,7 @@ spec:
 ```
 
 See [docs/README.md](docs/README.md) for the family architecture and update-semantics deep dive.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -161,3 +161,7 @@ Step Functions serves as the orchestration layer in event-driven and serverless 
 - **Aliases** (`aws_sfn_alias`): Weighted traffic routing between published versions -- a deployment-orchestration surface that composes later through the exported `state_machine_version_arn`. Deferred until pulled by real demand.
 - **Activities** (`aws_sfn_activity`): The legacy worker-polling integration pattern; modern workflows use direct service integrations or Lambda. Deferred.
 - **Name prefix**: Planton derives resource names from metadata.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

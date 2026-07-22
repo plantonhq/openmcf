@@ -79,3 +79,7 @@ The `certificate_id` output is the primary integration point. Load balancers ref
 - [Terraform hcloud_managed_certificate Resource](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/managed_certificate)
 - [Pulumi hcloud.UploadedCertificate Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/uploadedcertificate/)
 - [Pulumi hcloud.ManagedCertificate Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/managedcertificate/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

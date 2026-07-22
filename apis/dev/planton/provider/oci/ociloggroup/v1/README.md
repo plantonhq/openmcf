@@ -41,3 +41,7 @@ OCI Logging provides centralized log management for both OCI service logs and cu
 - **Freeform tags** — automatically populated on both the log group and all logs from `metadata.labels`.
 - **Per-log retention** — each log can have its own retention period, enabling cost optimization for different log types.
 - **Service log auto-collection** — zero-code log collection from supported OCI services.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

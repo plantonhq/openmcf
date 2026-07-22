@@ -137,3 +137,7 @@ spec:
 - **AwsVpc** — VPC for network isolation (referenced by `subnetIds`)
 - **AwsSecurityGroup** — Security groups for access control (referenced by `securityGroupIds`)
 - **AwsSnsTopic** — SNS topics for event notifications (referenced by `notificationTopicArn`)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

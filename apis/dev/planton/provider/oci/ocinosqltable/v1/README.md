@@ -40,3 +40,7 @@ OCI NoSQL Database is a fully managed, serverless database service. This compone
 - **Schema evolution** — Use `ALTER TABLE` DDL statements to add columns. Column removal and type changes are restricted by OCI NoSQL. Always append new columns; do not reorder existing ones.
 - **Index planning** — Plan indexes at table design time. Adding an index to a large table is an online operation but can take time. Removing or changing an index requires recreation.
 - **Tag propagation** — All metadata labels, plus `resource`, `resource_kind`, `resource_id`, `organization`, and `environment` tags, are applied as freeform tags. OCI limits freeform tags to 10 per resource by default; ensure label count stays within this limit.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

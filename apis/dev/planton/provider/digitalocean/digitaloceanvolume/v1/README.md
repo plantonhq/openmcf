@@ -34,3 +34,7 @@ As this resource is currently in a partial implementation phase, future updates 
 - **Enhanced Security Features**: Integration with Azure Active Directory and security policies for cluster management.
 - **Monitoring and Logging**: Improved support for cluster monitoring and logging using Azure Monitor and other tools.
 - **Comprehensive Documentation**: Expanded usage examples, best practices, and troubleshooting guides.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

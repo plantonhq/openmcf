@@ -435,3 +435,7 @@ For issues, questions, or contributions:
 - Consult the [architecture documentation](./docs/README.md) for design decisions
 - Review the [Pulumi implementation](./iac/pulumi/) for customization options
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

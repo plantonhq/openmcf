@@ -28,3 +28,7 @@ Planton provisions via the Pulumi or Terraform module in `iac/`, both implementi
 - Redshift management guide: https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html
 - RA3 node types and managed storage: https://docs.aws.amazon.com/redshift/latest/mgmt/working-with-clusters.html
 - Managed admin passwords: https://docs.aws.amazon.com/redshift/latest/mgmt/redshift-secrets-manager-integration.html
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

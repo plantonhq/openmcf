@@ -101,3 +101,7 @@ planton pulumi up --manifest gateway.yaml
 - [`KubernetesGatewayClass`](../kubernetesgatewayclass/) -- defines the controller class this Gateway references.
 - [`KubernetesCertificate`](../kubernetescertificate/) -- provisions the TLS Secret HTTPS listeners reference.
 - [`KubernetesNamespace`](../kubernetesnamespace/) -- the namespace the Gateway is created in.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -50,3 +50,7 @@ This resource makes the subnet a first-class, independently composable building 
 - **Consistent resource-identity tagging** applied to the subnet and any created route table.
 - **Infrastructure as Code** with full Pulumi (Go) and Terraform (HCL) implementations producing identical outputs.
 - **Composability** as a foundational building block referenced by downstream resources via `StringValueOrRef`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

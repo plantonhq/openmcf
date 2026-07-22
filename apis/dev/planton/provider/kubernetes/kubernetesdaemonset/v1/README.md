@@ -103,3 +103,7 @@ spec:
       max_unavailable: "1"
 ```
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

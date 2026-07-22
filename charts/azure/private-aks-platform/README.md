@@ -114,3 +114,7 @@ typically lands in under 25.
   applications multiply; and take the registry and vault private with
   `AzurePrivateEndpoint`s once the network has private DNS zones for
   them.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

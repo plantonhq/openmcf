@@ -239,3 +239,7 @@ For more comprehensive examples, see [`examples.md`](examples.md), including:
 ## Support
 
 For issues, questions, or contributions, please refer to the Planton documentation or open an issue in the repository.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

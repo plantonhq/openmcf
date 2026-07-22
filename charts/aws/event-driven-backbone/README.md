@@ -154,3 +154,7 @@ After 5 failed receives, a message moves to the DLQ and the alarm pages.
 - **Cross-account producers.** Grant a producer account `PutEvents` on
   the bus by setting the bus's `resourcePolicy` — the backbone then
   spans team boundaries with the same delivery guarantees.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

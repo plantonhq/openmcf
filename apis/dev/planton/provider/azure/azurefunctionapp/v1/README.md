@@ -161,3 +161,7 @@ spec:
 ## Further Reading
 
 - [docs/README.md](./docs/README.md) -- Comprehensive research and design documentation
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

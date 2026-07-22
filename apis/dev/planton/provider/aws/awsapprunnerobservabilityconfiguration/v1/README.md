@@ -64,3 +64,7 @@ The service's `instanceRoleArn` role needs X-Ray write permissions (the AWS-mana
 ## Deliberately Omitted
 
 - **Per-kind tags**: identity tags derive from metadata; custom user tags are a platform-wide concern.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

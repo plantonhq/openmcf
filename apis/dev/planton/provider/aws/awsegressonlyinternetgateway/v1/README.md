@@ -40,3 +40,7 @@ This resource makes the egress-only internet gateway a first-class, independentl
 - **Consistent resource-identity tagging** applied to the gateway.
 - **Infrastructure as Code** with full Pulumi (Go) and Terraform (HCL) implementations producing identical outputs.
 - **Composability** as a foundational building block referenced by `AwsSubnet` IPv6 routes via `StringValueOrRef`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

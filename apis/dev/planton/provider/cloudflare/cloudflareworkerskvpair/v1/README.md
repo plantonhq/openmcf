@@ -59,3 +59,7 @@ binding or Cloudflare Secrets Store, both of which are secret-by-default.
 
 - `CloudflareKvNamespace` — the container this entry is written into.
 - `CloudflareWorker` — binds the namespace via `kv_namespaces` to read entries.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

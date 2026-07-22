@@ -81,3 +81,7 @@ This component is implemented with both Pulumi (Go) and Terraform (HCL) with ful
 
 - **Terraform resource**: `openstack_compute_keypair_v2`
 - **Pulumi resource**: `openstack.compute.Keypair`
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

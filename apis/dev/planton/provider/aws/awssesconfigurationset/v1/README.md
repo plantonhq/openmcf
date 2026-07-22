@@ -57,3 +57,7 @@ spec:
 ## Related Components
 
 - [AwsSesEmailIdentity](../awssesemailidentity/v1/README.md) — References a configuration set as its default sending rules.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
