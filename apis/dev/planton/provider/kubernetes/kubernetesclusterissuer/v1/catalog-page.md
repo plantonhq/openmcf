@@ -1,16 +1,16 @@
 # KubernetesClusterIssuer
 
-Creates a cert-manager ClusterIssuer for automated ACME TLS certificate issuance via DNS-01 challenges. Each instance manages one ClusterIssuer for one DNS domain.
+Creates one cert-manager ClusterIssuer — a cluster-wide certificate signing authority that Certificates in ANY namespace can request from. Full signing-backend surface: ACME (Let's Encrypt and friends, HTTP-01 + DNS-01 across nine providers), CA, self-signed, and Vault.
 
 ## What Gets Created
 
-- **ClusterIssuer** -- cert-manager ClusterIssuer CR named after the DNS domain
-- **Cloudflare Secret** (Cloudflare only) -- Kubernetes Secret containing the API token in the cert-manager namespace
+- **ClusterIssuer** — named after the resource; the name Certificates and `cert-manager.io/cluster-issuer` annotations reference
+- **Credential Secrets** — API tokens and static keys declared in the spec are materialized as Secrets in cert-manager's cluster-resource namespace (never hand-created)
 
 ## Prerequisites
 
-- cert-manager installed on the cluster (via KubernetesCertManager)
-- For GCP/AWS/Azure: workload identity configured on the cert-manager ServiceAccount
+- cert-manager on the cluster (**KubernetesCertManager**)
+- For keyless Route53/Cloud DNS/Azure DNS: workload identity configured on the cert-manager controller
 
 ## Quick Start
 
@@ -18,25 +18,28 @@ Creates a cert-manager ClusterIssuer for automated ACME TLS certificate issuance
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClusterIssuer
 metadata:
-  name: my-cluster-issuer
+  name: letsencrypt-production
 spec:
   certManagerNamespace:
     value: cert-manager
-  dnsDomain: example.com
-  acme:
-    email: admin@example.com
-  cloudflare:
-    apiToken: "<your-cloudflare-api-token>"
+  config:
+    acme:
+      email: platform@example.com
+      solvers:
+        - dns01:
+            cloudflare:
+              apiToken:
+                token: <cloudflare-api-token>
 ```
 
 ## Stack Outputs
 
 | Output | Description |
-|--------|-------------|
-| `cluster_issuer_name` | Name of the ClusterIssuer (equals `dns_domain`) |
-| `acme_account_key_secret_name` | ACME account private key Secret name |
+|---|---|
+| `cluster_issuer_name` | The issuer handle Certificates reference |
+| `secrets_namespace` | Where credential Secrets were materialized |
+| `acme_account_key_secret_name` | ACME account key Secret (empty for non-ACME) |
 
-## Related Components
+## Next Steps
 
-- **KubernetesCertManager** -- installs the cert-manager controller
-- **KubernetesIngressNginx** -- ingress controller that uses ClusterIssuers for TLS
+Create **KubernetesCertificate** resources referencing this issuer's `cluster_issuer_name` output.

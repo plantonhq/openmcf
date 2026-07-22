@@ -25,14 +25,21 @@ const (
 // cert-manager installation.
 type KubernetesCertManagerStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes namespace where cert-manager was deployed.
+	// Kubernetes namespace cert-manager was installed into.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Helm release name.
 	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
-	// Name of the cert-manager controller ServiceAccount.
+	// Name of the cert-manager controller ServiceAccount — the identity to
+	// bind on the cloud side for keyless DNS-01 (IRSA trust policy subject,
+	// GKE Workload Identity member, Azure federated credential subject).
 	ServiceAccountName string `protobuf:"bytes,3,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Namespace cert-manager reads Secrets from for cluster-scoped resources
+	// (the resolved cluster-resource namespace: spec.cluster_resource_namespace
+	// when set, otherwise the installation namespace). KubernetesClusterIssuer
+	// resources materialize their credential Secrets here.
+	ClusterResourceNamespace string `protobuf:"bytes,4,opt,name=cluster_resource_namespace,json=clusterResourceNamespace,proto3" json:"cluster_resource_namespace,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *KubernetesCertManagerStackOutputs) Reset() {
@@ -86,15 +93,23 @@ func (x *KubernetesCertManagerStackOutputs) GetServiceAccountName() string {
 	return ""
 }
 
+func (x *KubernetesCertManagerStackOutputs) GetClusterResourceNamespace() string {
+	if x != nil {
+		return x.ClusterResourceNamespace
+	}
+	return ""
+}
+
 var File_dev_planton_provider_kubernetes_kubernetescertmanager_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ldev/planton/provider/kubernetes/kubernetescertmanager/v1/stack_outputs.proto\x128dev.planton.provider.kubernetes.kubernetescertmanager.v1\"\x96\x01\n" +
+	"Ldev/planton/provider/kubernetes/kubernetescertmanager/v1/stack_outputs.proto\x128dev.planton.provider.kubernetes.kubernetescertmanager.v1\"\xd4\x01\n" +
 	"!KubernetesCertManagerStackOutputs\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
 	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x120\n" +
-	"\x14service_account_name\x18\x03 \x01(\tR\x12serviceAccountNameB\xcc\x03\n" +
+	"\x14service_account_name\x18\x03 \x01(\tR\x12serviceAccountName\x12<\n" +
+	"\x1acluster_resource_namespace\x18\x04 \x01(\tR\x18clusterResourceNamespaceB\xcc\x03\n" +
 	"<com.dev.planton.provider.kubernetes.kubernetescertmanager.v1B\x11StackOutputsProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescertmanager/v1;kubernetescertmanagerv1\xa2\x02\x05DPPKK\xaa\x028Dev.Planton.Provider.Kubernetes.Kubernetescertmanager.V1\xca\x028Dev\\Planton\\Provider\\Kubernetes\\Kubernetescertmanager\\V1\xe2\x02DDev\\Planton\\Provider\\Kubernetes\\Kubernetescertmanager\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Kubernetes::Kubernetescertmanager::V1b\x06proto3"
 
 var (

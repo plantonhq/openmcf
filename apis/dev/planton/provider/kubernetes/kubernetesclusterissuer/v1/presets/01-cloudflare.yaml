@@ -1,13 +1,15 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClusterIssuer
 metadata:
-  name: my-cluster-issuer
+  name: letsencrypt-production
 spec:
   certManagerNamespace:
     value: cert-manager
-  dnsDomain: "<your-domain.com>"
-  acme:
-    email: "<your-acme-email@example.com>"
-    server: https://acme-v02.api.letsencrypt.org/directory  # default from spec
-  cloudflare:
-    apiToken: "<your-cloudflare-api-token>"
+  config:
+    acme:
+      email: "<your-email@example.com>"
+      solvers:
+        - dns01:
+            cloudflare:
+              apiToken:
+                token: "<cloudflare-api-token>"

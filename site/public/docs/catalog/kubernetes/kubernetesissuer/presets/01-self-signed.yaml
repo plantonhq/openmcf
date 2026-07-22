@@ -5,4 +5,5 @@ metadata:
 spec:
   namespace:
     value: "<your-namespace>"
-  selfSigned: {}
+  config:
+    selfSigned: {}

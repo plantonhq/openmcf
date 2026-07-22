@@ -4,17 +4,17 @@
       "name": "Tier 1 Pulumi",
       "tier": 1,
       "engine": "pulumi",
-      "timeout": 435,
-      "run_regex": "Test(KubernetesConfigMap|KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesHelmRelease|KubernetesHorizontalPodAutoscaler|KubernetesIngress|KubernetesJob|KubernetesManifest|KubernetesNamespace|KubernetesNetworkPolicy|KubernetesPersistentVolumeClaim|KubernetesPodDisruptionBudget|KubernetesPriorityClass|KubernetesRbac|KubernetesResourceQuota|KubernetesSecret|KubernetesService|KubernetesServiceAccount|KubernetesStatefulSet|KubernetesStorageClass)_Pulumi",
-      "component_count": 21
+      "timeout": 515,
+      "run_regex": "Test(KubernetesCertificate|KubernetesCertManager|KubernetesClusterIssuer|KubernetesConfigMap|KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesHelmRelease|KubernetesHorizontalPodAutoscaler|KubernetesIngress|KubernetesIssuer|KubernetesJob|KubernetesManifest|KubernetesNamespace|KubernetesNetworkPolicy|KubernetesPersistentVolumeClaim|KubernetesPodDisruptionBudget|KubernetesPriorityClass|KubernetesRbac|KubernetesResourceQuota|KubernetesSecret|KubernetesService|KubernetesServiceAccount|KubernetesStatefulSet|KubernetesStorageClass)_Pulumi",
+      "component_count": 25
     },
     {
       "name": "Tier 1 Terraform",
       "tier": 1,
       "engine": "terraform",
-      "timeout": 435,
-      "run_regex": "Test(KubernetesConfigMap|KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesHelmRelease|KubernetesHorizontalPodAutoscaler|KubernetesIngress|KubernetesJob|KubernetesManifest|KubernetesNamespace|KubernetesNetworkPolicy|KubernetesPersistentVolumeClaim|KubernetesPodDisruptionBudget|KubernetesPriorityClass|KubernetesRbac|KubernetesResourceQuota|KubernetesSecret|KubernetesService|KubernetesServiceAccount|KubernetesStatefulSet|KubernetesStorageClass)_Terraform",
-      "component_count": 21
+      "timeout": 515,
+      "run_regex": "Test(KubernetesCertificate|KubernetesCertManager|KubernetesClusterIssuer|KubernetesConfigMap|KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesHelmRelease|KubernetesHorizontalPodAutoscaler|KubernetesIngress|KubernetesIssuer|KubernetesJob|KubernetesManifest|KubernetesNamespace|KubernetesNetworkPolicy|KubernetesPersistentVolumeClaim|KubernetesPodDisruptionBudget|KubernetesPriorityClass|KubernetesRbac|KubernetesResourceQuota|KubernetesSecret|KubernetesService|KubernetesServiceAccount|KubernetesStatefulSet|KubernetesStorageClass)_Terraform",
+      "component_count": 25
     },
     {
       "name": "Tier 2 Pulumi",

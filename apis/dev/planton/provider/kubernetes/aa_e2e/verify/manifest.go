@@ -64,3 +64,28 @@ func ParseManifestInfo(manifestPath string) (*ManifestInfo, error) {
 
 	return info, nil
 }
+
+// manifestSpecString reads one scalar spec field (protojson camelCase key)
+// from a manifest — for verifiers that need a spec detail beyond the
+// kind/name/namespace triple (e.g. a Certificate's target Secret name).
+func manifestSpecString(manifestPath, key string) (string, error) {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to read manifest %s", manifestPath)
+	}
+
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return "", errors.Wrapf(err, "failed to parse manifest YAML %s", manifestPath)
+	}
+
+	spec, ok := raw["spec"].(map[string]interface{})
+	if !ok {
+		return "", errors.Errorf("manifest %s has no spec block", manifestPath)
+	}
+	value, ok := spec[key].(string)
+	if !ok || value == "" {
+		return "", errors.Errorf("manifest %s spec.%s is missing or not a string", manifestPath, key)
+	}
+	return value, nil
+}

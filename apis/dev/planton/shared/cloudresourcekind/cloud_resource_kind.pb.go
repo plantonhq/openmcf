@@ -885,7 +885,10 @@ const (
 	CloudResourceKind_KubernetesPodDisruptionBudget     CloudResourceKind = 819
 	CloudResourceKind_KubernetesHorizontalPodAutoscaler CloudResourceKind = 820
 	// 830–859: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh)
-	CloudResourceKind_KubernetesCertManager     CloudResourceKind = 830
+	CloudResourceKind_KubernetesCertManager CloudResourceKind = 830
+	// KubernetesCertManager is a prerequisite for the three cert-manager CR
+	// kinds below: ClusterIssuer/Issuer/Certificate are cert-manager custom
+	// resources — without the controller and its CRDs they cannot be applied.
 	CloudResourceKind_KubernetesClusterIssuer   CloudResourceKind = 831
 	CloudResourceKind_KubernetesIssuer          CloudResourceKind = 832
 	CloudResourceKind_KubernetesCertificate     CloudResourceKind = 833
@@ -2554,7 +2557,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xaa\xd7\x01\n" +
+	"\x02v1\x10\x01*\xb6\xd7\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2909,10 +2912,10 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x17KubernetesPriorityClass\x10\xb2\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8spc\x124\n" +
 	"\x1dKubernetesPodDisruptionBudget\x10\xb3\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8spdb\x128\n" +
 	"!KubernetesHorizontalPodAutoscaler\x10\xb4\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8shpa\x12+\n" +
-	"\x15KubernetesCertManager\x10\xbe\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8scm\x12-\n" +
-	"\x17KubernetesClusterIssuer\x10\xbf\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8sci\x12'\n" +
-	"\x10KubernetesIssuer\x10\xc0\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8siss\x12,\n" +
-	"\x15KubernetesCertificate\x10\xc1\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scrt\x12/\n" +
+	"\x15KubernetesCertManager\x10\xbe\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8scm\x121\n" +
+	"\x17KubernetesClusterIssuer\x10\xbf\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8sci:\x02\xbe\x06\x12+\n" +
+	"\x10KubernetesIssuer\x10\xc0\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8siss:\x02\xbe\x06\x120\n" +
+	"\x15KubernetesCertificate\x10\xc1\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8scrt:\x02\xbe\x06\x12/\n" +
 	"\x15KubernetesExternalDns\x10\xc2\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sextdns\x123\n" +
 	"\x19KubernetesExternalSecrets\x10\xc3\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sextsec\x12-\n" +
 	"\x16KubernetesIngressNginx\x10\xc4\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sngx\x122\n" +

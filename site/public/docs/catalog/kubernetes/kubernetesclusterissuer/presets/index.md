@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "ClusterIssuer with AWS Route53"
     excerpt: "This preset creates a ClusterIssuer that uses AWS Route53 for ACME DNS-01 certificate challenges. Authentication uses IAM Roles for Service Accounts (IRSA), so no AWS access keys are stored in the..."
+  - slug: "04-vault"
+    rank: "04"
+    title: "Vault PKI ClusterIssuer"
+    excerpt: "This preset signs certificates through a HashiCorp Vault (or OpenBao) PKI secrets engine using the Kubernetes auth method — the keyless path: Vault validates a ServiceAccount token instead of holding..."
 ---
 
 # KubernetesClusterIssuer Presets

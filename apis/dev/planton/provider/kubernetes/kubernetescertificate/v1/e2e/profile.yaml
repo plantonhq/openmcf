@@ -3,9 +3,9 @@ kind: ComponentE2EProfile
 metadata:
   name: kubernetescertificate
 spec:
-  tier: 4
-  status: skip
-  deferred_reason: "requires a configured Issuer or ClusterIssuer on the target cluster"
+  tier: 1
+  status: green
   validated_provisioners:
     - pulumi
-  timeout_minutes: 10
+    - terraform
+  timeout_minutes: 20

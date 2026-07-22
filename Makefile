@@ -235,7 +235,7 @@ e2e-test-kubernetes:  ## Run all Kubernetes E2E tests -- Tier 1 + Tier 2 + Tier 
 
 .PHONY: e2e-test-kubernetes-tier1
 e2e-test-kubernetes-tier1:  ## Run Kubernetes Tier 1 (native K8s) E2E tests only
-	go test -tags=e2e -timeout=60m -v -count=1 -run "Test(KubernetesNamespace|KubernetesConfigMap|KubernetesServiceAccount|KubernetesRbac|KubernetesDeployment|KubernetesStatefulSet|KubernetesSecret|KubernetesService|KubernetesIngress|KubernetesNetworkPolicy|KubernetesCronJob|KubernetesJob|KubernetesDaemonSet|KubernetesManifest|KubernetesHelmRelease|KubernetesPersistentVolumeClaim|KubernetesStorageClass|KubernetesResourceQuota|KubernetesPriorityClass|KubernetesPodDisruptionBudget|KubernetesHorizontalPodAutoscaler)_" ./e2e/
+	go test -tags=e2e -timeout=60m -v -count=1 -run "Test(KubernetesNamespace|KubernetesConfigMap|KubernetesServiceAccount|KubernetesRbac|KubernetesDeployment|KubernetesStatefulSet|KubernetesSecret|KubernetesService|KubernetesIngress|KubernetesNetworkPolicy|KubernetesCronJob|KubernetesJob|KubernetesDaemonSet|KubernetesManifest|KubernetesHelmRelease|KubernetesPersistentVolumeClaim|KubernetesStorageClass|KubernetesResourceQuota|KubernetesPriorityClass|KubernetesPodDisruptionBudget|KubernetesHorizontalPodAutoscaler|KubernetesCertManager|KubernetesClusterIssuer|KubernetesIssuer|KubernetesCertificate)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier2
 e2e-test-kubernetes-tier2:  ## Run Kubernetes Tier 2 (Helm-based) E2E tests only

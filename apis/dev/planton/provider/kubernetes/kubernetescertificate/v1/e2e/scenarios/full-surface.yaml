@@ -1,0 +1,51 @@
+# Full request surface issued live: subject attributes, multiple SAN types,
+# ECDSA key with PKCS#8 encoding, explicit usages, keystore outputs, and
+# additional output formats — every requested attribute flows through a real
+# issuance from the self-signed ClusterIssuer fixture into the Secret.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesCertificate
+metadata:
+  name: e2e-cert-full
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesClusterIssuer"
+spec:
+  namespace:
+    value: default
+  secretName: e2e-cert-full-tls
+  issuerRef:
+    clusterIssuer:
+      name:
+        valueFrom:
+          name: e2e-clusterissuer-fixture
+  dnsNames:
+    - full.e2e.example.com
+    - alt.e2e.example.com
+  ipAddresses:
+    - 10.96.0.99
+  commonName: full.e2e.example.com
+  subject:
+    organizations:
+      - Planton E2E
+    countries:
+      - US
+  duration: 720h
+  renewBefore: 240h
+  privateKey:
+    algorithm: ecdsa
+    size: 256
+    encoding: pkcs8
+    rotationPolicy: always
+  usages:
+    - digital signature
+    - server auth
+  keystores:
+    pkcs12:
+      create: true
+      password: e2e-keystore-password
+      profile: modern2023
+  additionalOutputFormats:
+    - type: combined_pem
+  secretTemplate:
+    labels:
+      e2e: "true"
+  revisionHistoryLimit: 2

@@ -1,175 +1,97 @@
 package module
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	kubernetesclusterissuerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclusterissuer/v1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/certmanagerissuer"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
-	certmanagerv1 "github.com/plantonhq/planton/pkg/kubernetes/kubernetestypes/certmanager/kubernetes/cert_manager/v1"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
+	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Resources creates one cert-manager ClusterIssuer plus the credential
+// Secrets its configuration needs.
+//
+// The CR spec is rendered by the shared certmanagerissuer builder — the SAME
+// builder the KubernetesIssuer module uses, because upstream ClusterIssuer
+// and Issuer share an identical spec and the two Planton kinds share the
+// CertManagerIssuerConfig proto. One builder means the two kinds can never
+// drift. (The typed crd2pulumi ClusterIssuer/Issuer args are two disjoint
+// generated type trees for the same schema — using them here would force two
+// divergent copies of this whole mapping. cert-manager's validating webhook
+// checks the applied spec strictly, and the kind-cluster E2E lanes exercise
+// every arm live, so shape errors still fail loudly.)
+//
+// Credential Secrets land in cert-manager's cluster-resource namespace —
+// the ONLY namespace cert-manager reads Secrets from for cluster-scoped
+// resources.
+//
+// Neither engine waits for the issuer to reach Ready: readiness depends on
+// external reachability (the ACME server, Vault, DNS) that is not part of
+// applying the resource — the same never-block-on-a-controller posture as
+// Ingress. Terraform equivalent: kubectl_manifest without a wait_for block.
 func Resources(ctx *pulumi.Context, stackInput *kubernetesclusterissuerv1.KubernetesClusterIssuerStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	kubeProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
 		ctx, stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to set up kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
-	spec := stackInput.Target.Spec
-
-	var clusterIssuerDeps []pulumi.Resource
-
-	if cf := spec.GetCloudflare(); cf != nil {
-		secret, err := createCloudflareSecret(ctx, kubeProvider, locals, cf)
-		if err != nil {
-			return errors.Wrap(err, "failed to create cloudflare secret")
-		}
-		clusterIssuerDeps = append(clusterIssuerDeps, secret)
-	}
-
-	if err := createClusterIssuer(ctx, kubeProvider, locals, spec, clusterIssuerDeps); err != nil {
-		return errors.Wrap(err, "failed to create cluster issuer")
-	}
-
-	ctx.Export(OpClusterIssuerName, pulumi.String(locals.DnsDomain))
-	ctx.Export(OpAcmeAccountKeySecretName, pulumi.String(locals.AcmeAccountKeySecretName))
-
-	return nil
-}
-
-func createCloudflareSecret(
-	ctx *pulumi.Context,
-	kubeProvider *kubernetes.Provider,
-	locals *Locals,
-	cf *kubernetesclusterissuerv1.CloudflareDnsSolver,
-) (*corev1.Secret, error) {
-	return corev1.NewSecret(ctx, locals.CloudflareSecretName,
-		&corev1.SecretArgs{
-			Metadata: &metav1.ObjectMetaArgs{
-				Name:      pulumi.String(locals.CloudflareSecretName),
-				Namespace: pulumi.String(locals.CertManagerNamespace),
-			},
-			StringData: pulumi.StringMap{
-				"api-token": pulumi.String(cf.ApiToken),
-			},
-		},
-		pulumi.Provider(kubeProvider))
-}
-
-// createClusterIssuer creates a cert-manager ClusterIssuer using the typed
-// crd2pulumi SDK (certmanagerv1.NewClusterIssuer). This provides compile-time
-// type safety for the full ACME/DNS01 solver configuration hierarchy,
-// consistent with how all other cert-manager resources in Planton (15+
-// components using NewCertificate) use the typed SDK.
-//
-// Previously this function used apiextensionsv1.NewCustomResource with
-// untyped OtherFields maps. The typed approach catches field name and
-// structure errors at compile time rather than at deployment time.
-func createClusterIssuer(
-	ctx *pulumi.Context,
-	kubeProvider *kubernetes.Provider,
-	locals *Locals,
-	spec *kubernetesclusterissuerv1.KubernetesClusterIssuerSpec,
-	deps []pulumi.Resource,
-) error {
-	dns01Config, err := buildDns01SolverConfig(spec, locals)
+	result, err := certmanagerissuer.BuildSpec(locals.ClusterIssuerName, stackInput.Target.Spec.Config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to build cluster issuer spec")
 	}
 
-	opts := []pulumi.ResourceOption{pulumi.Provider(kubeProvider)}
-	if len(deps) > 0 {
-		opts = append(opts, pulumi.DependsOn(deps))
-	}
-
-	// Metadata uses value ObjectMetaArgs (not pointer), matching the pattern
-	// established by all 17 ingress components that use certmanagerv1.NewCertificate.
-	_, err = certmanagerv1.NewClusterIssuer(ctx, locals.DnsDomain,
-		&certmanagerv1.ClusterIssuerArgs{
-			Metadata: metav1.ObjectMetaArgs{
-				Name: pulumi.String(locals.DnsDomain),
-			},
-			Spec: certmanagerv1.ClusterIssuerSpecArgs{
-				Acme: certmanagerv1.ClusterIssuerSpecAcmeArgs{
-					Email:  pulumi.String(spec.Acme.Email),
-					Server: pulumi.String(spec.Acme.GetServer()),
-					PrivateKeySecretRef: certmanagerv1.ClusterIssuerSpecAcmePrivateKeySecretRefArgs{
-						Name: pulumi.String(locals.AcmeAccountKeySecretName),
-					},
-					Solvers: certmanagerv1.ClusterIssuerSpecAcmeSolversArray{
-						certmanagerv1.ClusterIssuerSpecAcmeSolversArgs{
-							Dns01: dns01Config,
-						},
-					},
+	// Credential Secrets first; the CR depends on them so cert-manager
+	// never observes an issuer whose secretRefs dangle.
+	var secretResources []pulumi.Resource
+	for _, credential := range result.Secrets {
+		createdSecret, err := corev1.NewSecret(ctx, credential.Name,
+			&corev1.SecretArgs{
+				Metadata: &metav1.ObjectMetaArgs{
+					Name:      pulumi.String(credential.Name),
+					Namespace: pulumi.String(locals.SecretsNamespace),
+					Labels:    pulumi.ToStringMap(locals.Labels),
 				},
+				StringData: pulumi.ToSecret(pulumi.ToStringMap(credential.Data)).(pulumi.StringMapOutput),
+			},
+			pulumi.Provider(kubernetesProvider))
+		if err != nil {
+			return errors.Wrapf(err, "failed to create credential secret %s", credential.Name)
+		}
+		secretResources = append(secretResources, createdSecret)
+	}
+
+	opts := []pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}
+	if len(secretResources) > 0 {
+		opts = append(opts, pulumi.DependsOn(secretResources))
+	}
+
+	_, err = apiextensions.NewCustomResource(ctx, locals.ClusterIssuerName,
+		&apiextensions.CustomResourceArgs{
+			ApiVersion: pulumi.String("cert-manager.io/v1"),
+			Kind:       pulumi.String("ClusterIssuer"),
+			Metadata: &metav1.ObjectMetaArgs{
+				Name:   pulumi.String(locals.ClusterIssuerName),
+				Labels: pulumi.ToStringMap(locals.Labels),
+			},
+			OtherFields: kubernetes.UntypedArgs{
+				"spec": result.Spec,
 			},
 		},
 		opts...)
-
-	return err
-}
-
-// buildDns01SolverConfig maps the proto provider oneof to the typed
-// cert-manager DNS01 solver configuration. Each provider branch populates
-// only the fields that cert-manager needs for that DNS provider.
-//
-// All four providers use DNS-01 challenges (not HTTP-01), so the return type
-// is the DNS01-specific args struct which the caller wraps in a
-// ClusterIssuerSpecAcmeSolversArgs.
-//
-// crd2pulumi field naming follows the cert-manager CRD's JSON field names,
-// which differ from both the proto field names and Go conventions:
-//   - CloudDNS, not CloudDns (CRD JSON: "cloudDNS")
-//   - AzureDNS, not AzureDns (CRD JSON: "azureDNS")
-//   - SubscriptionID, not SubscriptionId (CRD JSON: "subscriptionID")
-//   - ResourceGroupName, not ResourceGroup (CRD JSON: "resourceGroupName")
-func buildDns01SolverConfig(
-	spec *kubernetesclusterissuerv1.KubernetesClusterIssuerSpec,
-	locals *Locals,
-) (certmanagerv1.ClusterIssuerSpecAcmeSolversDns01Args, error) {
-	if gcp := spec.GetGcpCloudDns(); gcp != nil {
-		return certmanagerv1.ClusterIssuerSpecAcmeSolversDns01Args{
-			CloudDNS: certmanagerv1.ClusterIssuerSpecAcmeSolversDns01CloudDNSArgs{
-				Project: pulumi.String(gcp.ProjectId),
-			},
-		}, nil
+	if err != nil {
+		return errors.Wrap(err, "failed to create cluster issuer")
 	}
 
-	if aws := spec.GetAwsRoute53(); aws != nil {
-		return certmanagerv1.ClusterIssuerSpecAcmeSolversDns01Args{
-			Route53: certmanagerv1.ClusterIssuerSpecAcmeSolversDns01Route53Args{
-				Region: pulumi.String(aws.Region),
-			},
-		}, nil
-	}
+	ctx.Export(OpClusterIssuerName, pulumi.String(locals.ClusterIssuerName))
+	ctx.Export(OpSecretsNamespace, pulumi.String(locals.SecretsNamespace))
+	ctx.Export(OpAcmeAccountKeySecretName, pulumi.String(result.AcmeAccountKeySecretName))
 
-	if azure := spec.GetAzureDns(); azure != nil {
-		return certmanagerv1.ClusterIssuerSpecAcmeSolversDns01Args{
-			AzureDNS: certmanagerv1.ClusterIssuerSpecAcmeSolversDns01AzureDNSArgs{
-				SubscriptionID:    pulumi.String(azure.SubscriptionId),
-				ResourceGroupName: pulumi.String(azure.ResourceGroup),
-			},
-		}, nil
-	}
-
-	if spec.GetCloudflare() != nil {
-		return certmanagerv1.ClusterIssuerSpecAcmeSolversDns01Args{
-			Cloudflare: certmanagerv1.ClusterIssuerSpecAcmeSolversDns01CloudflareArgs{
-				ApiTokenSecretRef: certmanagerv1.ClusterIssuerSpecAcmeSolversDns01CloudflareApiTokenSecretRefArgs{
-					Name: pulumi.String(locals.CloudflareSecretName),
-					Key:  pulumi.String("api-token"),
-				},
-			},
-		}, nil
-	}
-
-	return certmanagerv1.ClusterIssuerSpecAcmeSolversDns01Args{},
-		fmt.Errorf("no DNS provider configured -- spec.provider oneof must have exactly one branch set (cloudflare, gcp_cloud_dns, aws_route53, or azure_dns)")
+	return nil
 }

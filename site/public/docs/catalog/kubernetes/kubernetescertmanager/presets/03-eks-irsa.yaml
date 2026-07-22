@@ -1,11 +1,12 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCertManager
 metadata:
-  name: my-cert-manager
+  name: cert-manager
 spec:
   namespace:
     value: cert-manager
   createNamespace: true
   workloadIdentity:
     eks:
-      roleArn: "<your-irsa-role-arn>"
+      roleArn:
+        value: "arn:aws:iam::<account-id>:role/<cert-manager-dns01-role>"

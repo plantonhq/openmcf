@@ -1,0 +1,15 @@
+# Dependency-install profile for an Issuer.
+#
+# Deployed (via the prerequisite graph) when a KubernetesCertificate fixture
+# needs a namespace-scoped signer. Self-signed backend in the default
+# namespace: Ready with zero external dependencies. cert-manager itself
+# chains in through this kind's own `prerequisites: [KubernetesCertManager]`.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesIssuer
+metadata:
+  name: e2e-issuer-fixture
+spec:
+  namespace:
+    value: default
+  config:
+    selfSigned: {}

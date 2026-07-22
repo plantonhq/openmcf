@@ -10,4 +10,7 @@ message KubernetesIssuerStackOutputs {
   // Issuer resource name (equals metadata.name).
   // Use in Certificate issuerRef.name when issuerRef.kind=Issuer.
   string issuer_name = 2;
+  // Name of the ACME account private key Secret cert-manager creates in the
+  // Issuer's namespace. Empty for non-ACME backends.
+  string acme_account_key_secret_name = 3;
 }

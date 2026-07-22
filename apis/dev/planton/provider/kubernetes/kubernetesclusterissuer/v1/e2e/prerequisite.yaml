@@ -1,0 +1,16 @@
+# Dependency-install profile for a ClusterIssuer.
+#
+# The E2E harness deploys this (via KubernetesCertificate scenarios that
+# resolve their issuer through a foreign-key reference) after cert-manager
+# itself (the registry prerequisite graph chains through this kind's own
+# `prerequisites: [KubernetesCertManager]`). Self-signed backend: reaches
+# Ready with zero external dependencies — the universal in-cluster fixture.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesClusterIssuer
+metadata:
+  name: e2e-clusterissuer-fixture
+spec:
+  certManagerNamespace:
+    value: cert-manager
+  config:
+    selfSigned: {}

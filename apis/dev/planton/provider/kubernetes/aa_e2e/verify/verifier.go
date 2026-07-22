@@ -285,6 +285,44 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Name:      info.Name,
 		}, nil
 
+	// cert-manager installation: the three component Deployments must be
+	// Available and the core CRDs Established — the preconditions every
+	// Issuer/Certificate apply depends on.
+	case "kubernetescertmanager":
+		return &CertManagerInstallVerifier{
+			Namespace:     info.Namespace,
+			ComponentName: info.Name,
+		}, nil
+
+	// Issuers with in-cluster backends (self-signed, CA) reach Ready with
+	// no external dependency, so Ready is the verifiable contract on the
+	// kind cluster. ClusterIssuer is cluster-scoped (no namespace).
+	case "kubernetesclusterissuer":
+		return &IssuerVerifier{
+			Kind: "clusterissuer",
+			Name: info.Name,
+		}, nil
+
+	case "kubernetesissuer":
+		return &IssuerVerifier{
+			Kind:      "issuer",
+			Name:      info.Name,
+			Namespace: info.Namespace,
+		}, nil
+
+	// Real issuance proof: Ready condition + signed material present in the
+	// target TLS Secret.
+	case "kubernetescertificate":
+		secretName, err := manifestSpecString(manifestPath, "secretName")
+		if err != nil {
+			return nil, err
+		}
+		return &CertificateVerifier{
+			Name:       info.Name,
+			Namespace:  info.Namespace,
+			SecretName: secretName,
+		}, nil
+
 	case "kubernetesmanifest":
 		return &ConfigGroupVerifier{
 			Namespace:    info.Namespace,

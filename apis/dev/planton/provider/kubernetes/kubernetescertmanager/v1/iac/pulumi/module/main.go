@@ -4,26 +4,31 @@ import (
 	"github.com/pkg/errors"
 	kubernetescertmanagerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescertmanager/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
-	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
-	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
-	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Resources installs cert-manager from the official Helm chart as a real
+// Helm release. The typed spec renders into chart values (values.go); the
+// helm_values escape hatch merges last with Helm -f semantics — the exact
+// semantic twin of the Terraform module's helm_release with
+// values = [typed, helm_values].
+//
+// The chart owns ALL of cert-manager's Kubernetes objects, including the
+// controller ServiceAccount (serviceAccount.create stays true; the workload
+// identity annotation rides serviceAccount.annotations). The module itself
+// creates only the optional anchor namespace.
 func Resources(ctx *pulumi.Context, stackInput *kubernetescertmanagerv1.KubernetesCertManagerStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	kubeProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
-		ctx, stackInput.ProviderConfig, "kubernetes")
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
+		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to set up kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
-	spec := stackInput.Target.Spec
-
-	chartVersion := spec.GetHelmChartVersion()
-
-	createdNamespace, err := namespace(ctx, stackInput, locals, kubeProvider)
+	// ------------------------------ namespace ----------------------------
+	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
 	}
@@ -33,81 +38,45 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetescertmanagerv1.Kubernet
 		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
 	}
 
-	annotations := pulumi.StringMap{}
-	if wi := spec.WorkloadIdentity; wi != nil {
-		if gke := wi.GetGke(); gke != nil {
-			annotations["iam.gke.io/gcp-service-account"] = pulumi.String(gke.ServiceAccountEmail)
-		} else if eks := wi.GetEks(); eks != nil {
-			annotations["eks.amazonaws.com/role-arn"] = pulumi.String(eks.RoleArn)
-		} else if aks := wi.GetAks(); aks != nil {
-			annotations["azure.workload.identity/client-id"] = pulumi.String(aks.ClientId)
-		}
-	}
-
-	saOpts := append([]pulumi.ResourceOption{pulumi.Provider(kubeProvider)}, namespaceDeps...)
-	_, err = corev1.NewServiceAccount(ctx, locals.ServiceAccountName,
-		&corev1.ServiceAccountArgs{
-			Metadata: &metav1.ObjectMetaArgs{
-				Name:        pulumi.String(locals.ServiceAccountName),
-				Namespace:   pulumi.String(locals.Namespace),
-				Annotations: annotations,
-			},
-		},
-		saOpts...)
+	// ------------------------------ helm release --------------------------
+	mergedValues, err := buildHelmValues(locals)
 	if err != nil {
-		return errors.Wrap(err, "failed to create service account")
+		return errors.Wrap(err, "failed to build helm values")
 	}
 
-	helmValues := pulumi.Map{
-		"installCRDs": pulumi.Bool(true),
-		"serviceAccount": pulumi.Map{
-			"create": pulumi.Bool(false),
-			"name":   pulumi.String(locals.ServiceAccountName),
+	releaseArgs := &helmv3.ReleaseArgs{
+		Name:      pulumi.String(locals.ReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		Chart:     pulumi.String(vars.HelmChartName),
+		Version:   pulumi.String(locals.ChartVersion),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(vars.HelmChartRepo),
 		},
-		"extraArgs": pulumi.Array{
-			pulumi.String("--dns01-recursive-nameservers-only"),
-			pulumi.String("--dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53"),
-		},
+		Values: pulumi.ToMap(mergedValues),
+		// The module owns namespace creation (create_namespace flag).
+		CreateNamespace: pulumi.Bool(false),
+		// Wait for the whole install to be ready — including the
+		// startupapicheck hook Job that proves the webhook actually
+		// serves. A cert-manager whose webhook is not ready rejects
+		// every Issuer/Certificate apply, so a premature "success"
+		// would just move the failure downstream.
+		Atomic:        pulumi.Bool(true),
+		CleanupOnFail: pulumi.Bool(true),
+		WaitForJobs:   pulumi.Bool(true),
+		Timeout:       pulumi.Int(600),
 	}
 
-	certManagerVersion := spec.GetKubernetesCertManagerVersion()
-	if certManagerVersion != "" {
-		helmValues["image"] = pulumi.Map{
-			"tag": pulumi.String(certManagerVersion),
-		}
-	}
+	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, namespaceDeps...)
 
-	if spec.SkipInstallSelfSignedIssuer {
-		helmValues["startupapicheck"] = pulumi.Map{
-			"enabled": pulumi.Bool(false),
-		}
-	}
-
-	helmOpts := append([]pulumi.ResourceOption{pulumi.Provider(kubeProvider)}, namespaceDeps...)
-	_, err = helm.NewRelease(ctx, "cert-manager",
-		&helm.ReleaseArgs{
-			Name:            pulumi.String(vars.HelmChartName),
-			Namespace:       pulumi.String(locals.Namespace),
-			Chart:           pulumi.String(vars.HelmChartName),
-			Version:         pulumi.String(chartVersion),
-			CreateNamespace: pulumi.Bool(false),
-			Atomic:          pulumi.Bool(true),
-			CleanupOnFail:   pulumi.Bool(true),
-			WaitForJobs:     pulumi.Bool(true),
-			Timeout:         pulumi.Int(180),
-			Values:          helmValues,
-			RepositoryOpts: helm.RepositoryOptsArgs{
-				Repo: pulumi.String(vars.HelmChartRepo),
-			},
-		},
-		helmOpts...)
+	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, releaseArgs, opts...)
 	if err != nil {
 		return errors.Wrap(err, "failed to install cert-manager helm release")
 	}
 
 	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-	ctx.Export(OpReleaseName, pulumi.String(vars.HelmChartName))
+	ctx.Export(OpReleaseName, pulumi.String(locals.ReleaseName))
 	ctx.Export(OpServiceAccountName, pulumi.String(locals.ServiceAccountName))
+	ctx.Export(OpClusterResourceNamespace, pulumi.String(locals.ClusterResourceNamespace))
 
 	return nil
 }

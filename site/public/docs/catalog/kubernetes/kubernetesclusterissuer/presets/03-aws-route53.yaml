@@ -1,12 +1,14 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClusterIssuer
 metadata:
-  name: my-cluster-issuer
+  name: letsencrypt-production
 spec:
   certManagerNamespace:
     value: cert-manager
-  dnsDomain: "<your-domain.com>"
-  acme:
-    email: "<your-acme-email@example.com>"
-  awsRoute53:
-    region: "<your-aws-region>"
+  config:
+    acme:
+      email: "<your-email@example.com>"
+      solvers:
+        - dns01:
+            route53:
+              region: "<aws-region>"

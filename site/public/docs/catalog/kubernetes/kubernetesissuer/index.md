@@ -8,17 +8,16 @@ componentName: "kubernetesissuer"
 
 # KubernetesIssuer
 
-Creates a namespace-scoped cert-manager Issuer for CA or self-signed certificate signing. Each instance manages one Issuer in one namespace.
+Creates one cert-manager Issuer — a NAMESPACE-scoped certificate signing authority. Identical signing capabilities to KubernetesClusterIssuer (ACME, CA, self-signed, Vault); the namespace scope keeps a team's CA keypair and DNS credentials readable only inside the team's namespace.
 
 ## What Gets Created
 
-- **Issuer** -- cert-manager Issuer CR in the specified namespace (CA or SelfSigned mode)
+- **Issuer** — named after the resource, in `spec.namespace`
+- **Credential Secrets** — credentials declared in the spec, materialized in the Issuer's own namespace
 
 ## Prerequisites
 
-- cert-manager installed on the cluster (via KubernetesCertManager)
-- Target namespace must already exist
-- For CA mode: a Secret with CA keypair (`tls.crt` + `tls.key`) in the same namespace
+- cert-manager on the cluster (**KubernetesCertManager**)
 
 ## Quick Start
 
@@ -26,22 +25,22 @@ Creates a namespace-scoped cert-manager Issuer for CA or self-signed certificate
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesIssuer
 metadata:
-  name: selfsigned-issuer
+  name: team-a-selfsigned
 spec:
   namespace:
-    value: cert-manager
-  selfSigned: {}
+    value: team-a
+  config:
+    selfSigned: {}
 ```
 
 ## Stack Outputs
 
 | Output | Description |
-|--------|-------------|
-| `namespace` | Namespace where the Issuer was created |
-| `issuer_name` | Name of the Issuer (equals `metadata.name`) |
+|---|---|
+| `namespace` | The Issuer's namespace |
+| `issuer_name` | The issuer handle same-namespace Certificates reference |
+| `acme_account_key_secret_name` | ACME account key Secret (empty for non-ACME) |
 
-## Related Components
+## Next Steps
 
-- **KubernetesCertManager** -- installs the cert-manager controller
-- **KubernetesClusterIssuer** -- cluster-scoped ACME issuer for DNS-01 challenges
-- **KubernetesCertificate** -- creates Certificates that reference this Issuer
+The internal-PKI bootstrap: this self-signed Issuer signs a root CA **KubernetesCertificate** (`isCa: true`), whose Secret then powers a `ca`-backed Issuer for leaf certificates.

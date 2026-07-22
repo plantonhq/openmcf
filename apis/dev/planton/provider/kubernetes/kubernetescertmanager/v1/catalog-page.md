@@ -1,16 +1,16 @@
 # KubernetesCertManager
 
-Installs the cert-manager controller on a Kubernetes cluster for automated TLS certificate management. Handles Helm deployment, CRDs, and optional workload identity configuration.
+Installs cert-manager — the cluster's certificate machinery — from the official Helm chart, with a typed spec over the chart's meaningful configuration surface and keyless cloud-DNS identity built in. One installation per cluster serves every issuer and certificate.
 
 ## What Gets Created
 
-- **Namespace** (optional) -- target namespace for cert-manager
-- **ServiceAccount** -- with optional workload identity annotations
-- **Helm Release** -- cert-manager chart with CRDs and DNS resolver configuration
+- **Namespace** (optional) — the installation namespace, created and owned when `create_namespace` is set
+- **Helm Release** — cert-manager controller, webhook, and cainjector, with CRDs installed by default and kept on uninstall (certificate data is never cascade-deleted)
 
 ## Prerequisites
 
-- A Kubernetes cluster (GKE, EKS, AKS, or any conformant cluster)
+- A Kubernetes cluster (GKE, EKS, AKS, kind, or any conformant cluster)
+- For keyless DNS-01: the cloud-side identity half (IAM role / GCP service account / Azure managed identity) — composable in the same infra chart
 
 ## Quick Start
 
@@ -18,7 +18,7 @@ Installs the cert-manager controller on a Kubernetes cluster for automated TLS c
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCertManager
 metadata:
-  name: my-cert-manager
+  name: cert-manager
 spec:
   namespace:
     value: cert-manager
@@ -28,12 +28,12 @@ spec:
 ## Stack Outputs
 
 | Output | Description |
-|--------|-------------|
-| `namespace` | Namespace where cert-manager was deployed |
-| `release_name` | Helm release name |
-| `service_account_name` | Controller ServiceAccount name |
+|---|---|
+| `namespace` | Installation namespace |
+| `release_name` | Helm release name (always `cert-manager`) |
+| `service_account_name` | Controller ServiceAccount — bind this identity cloud-side for keyless DNS-01 |
+| `cluster_resource_namespace` | Where ClusterIssuer credential Secrets live |
 
-## Related Components
+## Next Steps
 
-- **KubernetesClusterIssuer** -- creates ClusterIssuers (deploy after cert-manager)
-- **KubernetesIngressNginx** -- ingress controller that uses ClusterIssuers for TLS
+Create a **KubernetesClusterIssuer** (or namespace-scoped **KubernetesIssuer**) to define who signs certificates, then **KubernetesCertificate** resources for the certificates themselves.

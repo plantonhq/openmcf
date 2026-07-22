@@ -5,6 +5,7 @@ metadata:
 spec:
   namespace:
     value: "<your-namespace>"
-  ca:
-    caSecretName:
-      value: "<your-ca-secret-name>"
+  config:
+    ca:
+      caSecretName:
+        value: "<ca-secret-name>"

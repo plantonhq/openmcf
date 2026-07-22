@@ -1,86 +1,38 @@
-# KubernetesIssuer
+# Kubernetes Issuer
 
-> Namespace-scoped cert-manager Issuer for CA and self-signed certificate signing
+## When NOT to Use This
+
+**When one signing authority should serve the whole cluster, use KubernetesClusterIssuer instead.** An Issuer is namespace-scoped: only Certificates in the same namespace can use it, and every Secret it needs must live in that namespace. That scope is the feature — but for the platform-wide "letsencrypt-production" that every team requests certificates from, a ClusterIssuer is the right grain.
 
 ## Overview
 
-KubernetesIssuer creates a cert-manager [Issuer](https://cert-manager.io/docs/concepts/issuer/) in a specific namespace for CA or self-signed certificate signing. Unlike ClusterIssuer (which is cluster-scoped and uses ACME DNS-01 challenges), an Issuer is namespace-scoped and supports simpler signing modes.
+**KubernetesIssuer** creates one cert-manager Issuer — a namespace-scoped certificate authority front-end, named after the resource (`metadata.name`). The signing configuration is IDENTICAL to KubernetesClusterIssuer (the config message is shared; upstream defines the two kinds with the same spec): ACME at full depth, CA, self-signed, and Vault backends, with the same declared-credential model (values in the spec, Secrets materialized by the modules — here in the Issuer's own namespace).
 
-This component supports two issuer types:
+**The namespace scope is the point:**
 
-- **CA** -- signs certificates using a CA keypair stored in a Kubernetes Secret (typically created by a KubernetesCertificate with `is_ca=true`)
-- **SelfSigned** -- issues self-signed certificates, commonly used to bootstrap a CA chain or for development/testing
+- A team's CA keypair and DNS credentials stay readable only inside the team's namespace, instead of being trusted cluster-wide
+- The standard internal-PKI bootstrap lives entirely in one namespace: a `self_signed` Issuer → a root CA KubernetesCertificate (`is_ca: true`) → a `ca` Issuer signing with that root's Secret (reference the certificate's `status.outputs.secret_name` — the FK default)
+- A team-owned ACME issuer keeps its DNS token in the team namespace
 
-## Prerequisites
+## Deploys never block on readiness
 
-- **cert-manager must be installed** on the target cluster (via KubernetesCertManager or manually)
-- The target namespace must already exist on the cluster
-- For CA mode: a Kubernetes Secret containing `tls.crt` and `tls.key` must exist in the same namespace
+Same posture as KubernetesClusterIssuer: readiness depends on external reachability that is not part of applying the resource; neither engine waits.
 
-## Quick Start
+## Essential Configuration Fields
 
-### Self-Signed Issuer (simplest)
+### Required
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesIssuer
-metadata:
-  name: selfsigned-issuer
-spec:
-  namespace:
-    value: cert-manager
-  selfSigned: {}
-```
-
-### CA Issuer
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesIssuer
-metadata:
-  name: my-ca-issuer
-spec:
-  namespace:
-    value: my-namespace
-  ca:
-    caSecretName:
-      value: my-ca-keypair
-```
-
-### Deploy
-
-```bash
-planton pulumi up --manifest issuer.yaml --stack org/project/env
-```
-
-## How It Works
-
-1. The module reads the `issuer_type` oneof from the spec to determine CA or SelfSigned mode
-2. Creates a single namespace-scoped cert-manager Issuer CR in the specified namespace
-3. For CA mode, the Issuer references a Kubernetes Secret containing the CA keypair (`tls.crt` + `tls.key`)
-4. For SelfSigned mode, no external dependencies are needed
-
-## Naming Convention
-
-The Issuer Kubernetes resource is named after `metadata.name`. This differs from KubernetesClusterIssuer (which uses `dns_domain` as the name) because namespace-scoped Issuers don't follow the ingress-domain convention.
-
-## Configuration Reference
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `namespace` | StringValueOrRef | Yes | Namespace where the Issuer will be created |
-| `ca.caSecretName` | StringValueOrRef | If CA | Secret containing CA certificate and private key |
-| `selfSigned` | object | If SelfSigned | Empty object to select self-signed mode |
+- **`spec.namespace`**: the Issuer's namespace — also where its credential Secrets and its Certificates must live
+- **`spec.config`**: exactly one backend (`acme` / `ca` / `self_signed` / `vault`)
 
 ## Stack Outputs
 
-| Output | Description |
-|--------|-------------|
-| `namespace` | Namespace where the Issuer was created |
-| `issuer_name` | Name of the created Issuer (equals `metadata.name`) |
+| Output | Purpose |
+|---|---|
+| `namespace` | The Issuer's namespace |
+| `issuer_name` | The handle same-namespace Certificates reference |
+| `acme_account_key_secret_name` | ACME account key Secret (empty for non-ACME backends) |
 
-## Related Components
+## Composing in Infra Charts
 
-- **KubernetesCertManager** -- installs the cert-manager controller (prerequisite)
-- **KubernetesClusterIssuer** -- cluster-scoped ACME issuer for DNS-01 challenges
-- **KubernetesCertificate** -- creates Certificate resources that reference this Issuer
+The CA-chain composition is the signature pattern: self-signed Issuer, root CA Certificate referencing it, CA Issuer referencing the root's Secret output, leaf Certificates referencing the CA Issuer — all four resources in one chart, all wiring through exported outputs.

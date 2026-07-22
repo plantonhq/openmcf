@@ -32,3 +32,4 @@ module "issuer" {
 |------|-------------|
 | `namespace` | Namespace where the Issuer was created |
 | `issuer_name` | Name of the created Issuer |
+| `acme_account_key_secret_name` | ACME account key Secret name (empty for non-ACME backends) |

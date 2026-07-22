@@ -132,6 +132,10 @@ func TestKubernetesResourceQuota_Pulumi(t *testing.T) { runAllScenariosForCompon
 func TestKubernetesPriorityClass_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetespriorityclass", "pulumi") }
 func TestKubernetesPodDisruptionBudget_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetespoddisruptionbudget", "pulumi") }
 func TestKubernetesHorizontalPodAutoscaler_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kuberneteshorizontalpodautoscaler", "pulumi") }
+func TestKubernetesCertManager_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetescertmanager", "pulumi") }
+func TestKubernetesClusterIssuer_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesclusterissuer", "pulumi") }
+func TestKubernetesIssuer_Pulumi(t *testing.T)     { runAllScenariosForComponent(t, "kubernetesissuer", "pulumi") }
+func TestKubernetesCertificate_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetescertificate", "pulumi") }
 
 // ─── Tier 1 Terraform ───────────────────────────────────────────────────────
 
@@ -156,6 +160,10 @@ func TestKubernetesResourceQuota_Terraform(t *testing.T) { runAllScenariosForCom
 func TestKubernetesPriorityClass_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetespriorityclass", "terraform") }
 func TestKubernetesPodDisruptionBudget_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetespoddisruptionbudget", "terraform") }
 func TestKubernetesHorizontalPodAutoscaler_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kuberneteshorizontalpodautoscaler", "terraform") }
+func TestKubernetesCertManager_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetescertmanager", "terraform") }
+func TestKubernetesClusterIssuer_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesclusterissuer", "terraform") }
+func TestKubernetesIssuer_Terraform(t *testing.T)     { runAllScenariosForComponent(t, "kubernetesissuer", "terraform") }
+func TestKubernetesCertificate_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetescertificate", "terraform") }
 
 // ─── Tier 2 Pulumi (Helm-based) ─────────────────────────────────────────────
 

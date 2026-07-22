@@ -10,7 +10,7 @@ istio_release=release-1.26
 
 #https://github.com/cert-manager/cert-manager/tree/master/deploy/crds
 #https://github.com/cert-manager/cert-manager/tree/release-1.15
-cert_manager_release=release-1.15
+cert_manager_release=v1.20.3
 
 #https://github.com/apache/solr-operator/tree/v0.8.1/helm/solr-operator/crds
 #https://github.com/apache/solr-operator/releases/tag/v0.8.1
@@ -73,14 +73,17 @@ gen-gateway-apis:
 gen-istio:
 	crd2pulumi --force --goPath=istio https://raw.githubusercontent.com/istio/istio/${istio_release}/manifests/charts/base/files/crd-all.gen.yaml
 
+# cert-manager renamed its CRD files from crd-<kind>.yaml to
+# <group>_<plural>.yaml starting with the v1.16 release line — keep the file
+# names below in sync with the pinned release's deploy/crds/ directory.
 .PHONY: gen-cert-manager
 gen-cert-manager:
-	crd2pulumi --force --goPath=certmanager https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/crd-certificates.yaml \
-		https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/crd-certificaterequests.yaml \
-		https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/crd-challenges.yaml \
-		https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/crd-clusterissuers.yaml \
-		https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/crd-issuers.yaml \
-		https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/crd-orders.yaml
+	crd2pulumi --force --goPath=certmanager https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/cert-manager.io_certificates.yaml \
+		https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/cert-manager.io_certificaterequests.yaml \
+		https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/acme.cert-manager.io_challenges.yaml \
+		https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/cert-manager.io_clusterissuers.yaml \
+		https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/cert-manager.io_issuers.yaml \
+		https://raw.githubusercontent.com/cert-manager/cert-manager/${cert_manager_release}/deploy/crds/acme.cert-manager.io_orders.yaml
 
 .PHONY: gen-solr-operator
 gen-solr-operator:

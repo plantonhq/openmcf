@@ -1,133 +1,53 @@
-# KubernetesClusterIssuer
+# Kubernetes Cluster Issuer
 
-> Declarative ACME ClusterIssuer management for cert-manager on any Kubernetes cluster
+## When NOT to Use This
+
+**When a namespace should own its signing authority, use KubernetesIssuer instead.** A ClusterIssuer is cluster-wide: every namespace can request certificates from it, and its credentials live in cert-manager's cluster-resource namespace. A namespace-scoped Issuer keeps a team's CA keypair or DNS credentials readable only inside that team's namespace. The signing capabilities are identical — scope is the only difference, and the deciding factor.
 
 ## Overview
 
-KubernetesClusterIssuer creates a cert-manager [ClusterIssuer](https://cert-manager.io/docs/concepts/issuer/) for a single DNS domain using ACME DNS-01 challenges. Each instance manages one ClusterIssuer, keeping certificate authority configuration independent from the cert-manager controller installation.
+**KubernetesClusterIssuer** creates one cert-manager ClusterIssuer — a cluster-scoped certificate authority front-end. The issuer is named after the resource (`metadata.name`); Certificates select it by that name, and ingress-shim annotations (`cert-manager.io/cluster-issuer: <name>`) use the same name.
 
-This component is designed to work alongside **KubernetesCertManager**, which installs the cert-manager controller and optionally configures workload identity for cloud DNS authentication. While KubernetesCertManager handles the controller lifecycle, KubernetesClusterIssuer handles the issuer lifecycle -- allowing you to add, remove, or reconfigure issuers without touching the controller.
+Four signing backends cover the full upstream surface (the config is shared with KubernetesIssuer, so the two kinds can never drift):
 
-## Prerequisites
+| Backend | Signs with | Typical use |
+|---|---|---|
+| `acme` | A public CA speaking ACME | Public TLS — Let's Encrypt, ZeroSSL, Google CA |
+| `ca` | A CA keypair in a Kubernetes Secret | Internal PKI, service mTLS |
+| `self_signed` | The certificate's own key | Bootstrapping a root CA; dev/test |
+| `vault` | Vault/OpenBao PKI engine | Centralized enterprise PKI |
 
-- **cert-manager must be installed** on the target cluster (via KubernetesCertManager or manually)
-- For GCP Cloud DNS, AWS Route53, or Azure DNS providers: the cert-manager ServiceAccount must be configured with the appropriate workload identity (done via KubernetesCertManager's `workload_identity` config)
-- For Cloudflare: no workload identity needed -- this component creates the API token Secret directly
+**ACME at full depth**: multiple solvers with selectors (`dns_zones` / `dns_names` / `match_labels` — most specific wins), HTTP-01 through an Ingress class or Gateway API HTTPRoute, DNS-01 across nine providers (Cloudflare, Route53, Azure DNS, Google Cloud DNS, DigitalOcean, RFC 2136, acme-dns, Akamai, and the `webhook` extension point for everything else), External Account Binding for CAs that require it, certificate profiles, and preferred chains.
 
-## Quick Start
+**Credentials are declared, not pre-provisioned**: wherever upstream expects a `secretRef` to a hand-created Secret, the spec takes the credential VALUE (marked sensitive). The modules materialize each credential as a Kubernetes Secret (named `<resource-name>-<purpose>`) in cert-manager's cluster-resource namespace and wire the CR's secretRef to it — identically on both engines.
 
-### Cloudflare DNS
+**Keyless where the platform allows it**: Route53, Cloud DNS, and Azure DNS solvers with no static credentials authenticate through the identity configured on the KubernetesCertManager controller (`workload_identity`) — no long-lived DNS credentials on the cluster at all.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesClusterIssuer
-metadata:
-  name: example-com-issuer
-spec:
-  certManagerNamespace:
-    value: cert-manager
-  dnsDomain: example.com
-  acme:
-    email: admin@example.com
-  cloudflare:
-    apiToken: "<your-cloudflare-api-token>"
-```
+## Deploys never block on readiness
 
-### GCP Cloud DNS
+Issuer readiness depends on external reachability (the ACME server, Vault, DNS) that is not part of applying the resource. Neither engine waits for Ready — the same posture as Ingress never blocking on a controller. Check `kubectl get clusterissuer` (or compose consumers through references, which is what infra charts do).
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesClusterIssuer
-metadata:
-  name: example-com-issuer
-spec:
-  certManagerNamespace:
-    value: cert-manager
-  dnsDomain: example.com
-  acme:
-    email: admin@example.com
-  gcpCloudDns:
-    projectId: my-gcp-project
-```
+## Essential Configuration Fields
 
-### Deploy
+### Required
 
-```bash
-planton pulumi up --manifest cluster-issuer.yaml --stack org/project/env
-```
+- **`spec.cert_manager_namespace`**: where credential Secrets are materialized — reference a KubernetesCertManager's `status.outputs.cluster_resource_namespace` (its FK default) or supply the literal namespace
+- **`spec.config`**: exactly one backend
 
-## How It Works
+### ACME quick reference
 
-1. **Cloudflare provider**: Creates a Kubernetes Secret in the cert-manager namespace containing the API token, then creates a ClusterIssuer referencing that secret
-2. **GCP/AWS/Azure providers**: Creates only the ClusterIssuer CR -- authentication is handled by workload identity on the cert-manager ServiceAccount (configured via KubernetesCertManager)
-3. The ClusterIssuer is named after the `dns_domain` value (e.g., `example.com`), matching the convention all Planton ingress components use to derive issuer names from hostnames
-
-## Naming Convention
-
-The ClusterIssuer Kubernetes resource is named after the `dns_domain` field. This is critical because all Planton ingress-enabled components (KubernetesDeployment, KubernetesArgocd, KubernetesKafka, etc.) derive the issuer name from the ingress hostname by stripping the first label:
-
-```
-Ingress hostname: argocd.example.com
-Derived issuer:   example.com  (matches dns_domain)
-```
-
-## Multiple Domains
-
-Create one KubernetesClusterIssuer per domain:
-
-```yaml
-# example.com
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesClusterIssuer
-metadata:
-  name: example-com
-spec:
-  certManagerNamespace:
-    value: cert-manager
-  dnsDomain: example.com
-  acme:
-    email: admin@example.com
-  cloudflare:
-    apiToken: "<token>"
----
-# internal.example.net
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesClusterIssuer
-metadata:
-  name: internal-example-net
-spec:
-  certManagerNamespace:
-    value: cert-manager
-  dnsDomain: internal.example.net
-  acme:
-    email: admin@example.com
-  gcpCloudDns:
-    projectId: my-project
-```
-
-## Configuration Reference
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `certManagerNamespace` | StringValueOrRef | Yes | Namespace where cert-manager is installed |
-| `dnsDomain` | string | Yes | DNS domain for the ClusterIssuer (becomes the k8s resource name) |
-| `acme.email` | string | Yes | ACME registration email |
-| `acme.server` | string | No | ACME server URL (default: Let's Encrypt production) |
-| `cloudflare.apiToken` | string | If Cloudflare | Cloudflare API token |
-| `gcpCloudDns.projectId` | string | If GCP | GCP project containing Cloud DNS zone |
-| `awsRoute53.region` | string | If AWS | AWS region for Route53 |
-| `azureDns.subscriptionId` | string | If Azure | Azure subscription ID |
-| `azureDns.resourceGroup` | string | If Azure | Resource group containing DNS zone |
+- `config.acme.email` + at least one solver (an ACME issuer without solvers can never satisfy a challenge — rejected at validation instead of hanging at issuance)
+- Use the Let's Encrypt **staging** server while testing: production rate limits are strict and exhaustible
+- Wildcards need DNS-01; HTTP-01 needs public port-80 reachability
 
 ## Stack Outputs
 
-| Output | Description |
-|--------|-------------|
-| `cluster_issuer_name` | Name of the created ClusterIssuer (equals `dns_domain`) |
-| `acme_account_key_secret_name` | Name of the ACME account key Secret |
+| Output | Purpose |
+|---|---|
+| `cluster_issuer_name` | The handle Certificates and `cert-manager.io/cluster-issuer` annotations reference |
+| `secrets_namespace` | Where this issuer's credential Secrets were materialized |
+| `acme_account_key_secret_name` | ACME account key Secret (empty for non-ACME backends) |
 
-## Related Components
+## Composing in Infra Charts
 
-- **KubernetesCertManager** -- installs the cert-manager controller (prerequisite)
-- **KubernetesIngressNginx** -- ingress controller that uses ClusterIssuers for TLS
-- **KubernetesExternalDns** -- DNS record management for ingress hostnames
+`KubernetesCertManager → KubernetesClusterIssuer → KubernetesCertificate` deploys in one chart run: the issuer references the installation's cluster-resource namespace, certificates reference `status.outputs.cluster_issuer_name`. The cross-cloud pattern (cluster in EKS, DNS in Cloudflare) is one solver block with a Cloudflare token — no cloud identity required.

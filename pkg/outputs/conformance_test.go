@@ -352,6 +352,66 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesCertManager: install identity + the two composition
+			// seams (controller ServiceAccount for cloud identity bindings,
+			// cluster-resource namespace where ClusterIssuer credentials
+			// live) from both engines must land on the StackOutputs proto.
+			name: "KubernetesCertManager",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesCertManager,
+			rawOutputs: map[string]interface{}{
+				"namespace":                  "cert-manager",
+				"release_name":               "cert-manager",
+				"service_account_name":       "cert-manager",
+				"cluster_resource_namespace": "cert-manager",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_account_name", "cluster_resource_namespace",
+			},
+		},
+		{
+			// KubernetesClusterIssuer: the issuer handle Certificates and
+			// ingress-shim annotations reference, plus the ACME account-key
+			// Secret location, from both engines must land on the proto.
+			name: "KubernetesClusterIssuer",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesClusterIssuer,
+			rawOutputs: map[string]interface{}{
+				"cluster_issuer_name":          "letsencrypt-production",
+				"secrets_namespace":            "cert-manager",
+				"acme_account_key_secret_name": "letsencrypt-production-acme-account-key",
+			},
+			mustPopulate: []string{
+				"cluster_issuer_name", "secrets_namespace", "acme_account_key_secret_name",
+			},
+		},
+		{
+			// KubernetesIssuer: the namespace-scoped issuer handle
+			// same-namespace Certificates reference.
+			name: "KubernetesIssuer",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesIssuer,
+			rawOutputs: map[string]interface{}{
+				"namespace":                    "team-a",
+				"issuer_name":                  "team-a-ca",
+				"acme_account_key_secret_name": "",
+			},
+			mustPopulate: []string{
+				"namespace", "issuer_name",
+			},
+		},
+		{
+			// KubernetesCertificate: the TLS Secret handle every consumer
+			// (Ingress, Gateway, CA issuer) references.
+			name: "KubernetesCertificate",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesCertificate,
+			rawOutputs: map[string]interface{}{
+				"namespace":        "team-a",
+				"certificate_name": "api-cert",
+				"secret_name":      "api-cert-tls",
+			},
+			mustPopulate: []string{
+				"namespace", "certificate_name", "secret_name",
+			},
+		},
+		{
 			// KubernetesManifest: the anchor namespace + the applied-resource
 			// inventory (a repeated string derived from the input YAML) from
 			// both engines must land on the StackOutputs proto.

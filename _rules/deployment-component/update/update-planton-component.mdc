@@ -350,6 +350,38 @@ Based on scenario:
   startup until the engine's readiness await times out). Switch on the
   concrete wrapper type (`case *Msg_Value:`) or call the getter on the PARENT
   message (`s.GetValue()`), never an interface assertion on the oneof field.
+- **In Terraform locals that render CR specs or Helm values, assemble
+  conditional objects with the null-prune idiom — never conditional-merge
+  idioms**: write every conditional entry as `key = cond ? value : null`
+  inside ONE object literal and prune with
+  `{ for k, v in {...} : k => v if v != null }`. The two tempting
+  alternatives are both broken, each with a different failure mode:
+  `cond ? {…} : {}` ternaries pass `terraform validate` but fail at PLAN
+  with "inconsistent conditional result types" whenever the branches carry
+  different attribute sets; and `merge(concat(cond ? [{…}] : [], …)...)`
+  silently UNIFIES primitive-only sibling objects into `map(string)` — the
+  ternary converts each tuple to a list, and concat's element-type
+  unification then coerces numbers and booleans to strings
+  (`size: "4096"`, `create: "true"`), which server-side apply rejects (or
+  worse, a chart tolerates) only at deploy time. The null-prune form keeps
+  every value's type because a for-expression over an object literal
+  produces an object, never a unified map. When a leaf map legitimately
+  holds only same-typed strings (identity labels, secret data), plain
+  merge with `cond ? {k = v} : {}` is safe — the hazard is mixed primitive
+  types.
+- **Custom resources apply through `kubectl_manifest` (alekc/kubectl), not
+  the hashicorp provider's `kubernetes_manifest`**: `kubernetes_manifest`
+  requires a reachable cluster AND the CRD's OpenAPI schema at PLAN time,
+  so a CR can never be planned before its operator/CRDs are installed —
+  which breaks single-run infra charts (operator + CR together) and makes
+  offline plan proofs impossible. `kubectl_manifest` renders from
+  `yaml_body` with no plan-time cluster dependency, applies server-side,
+  and supports import (`apiVersion//kind//name[//namespace]`). When a kind's
+  scenarios need the operator present, declare it as a registry
+  prerequisite (`CloudResourceKindMeta.prerequisites`) — the E2E harness
+  deploys prerequisite fixtures automatically, and a fixture manifest can
+  chain further fixtures it references via the
+  `planton.dev/e2e-prerequisites` annotation.
 - **When an engine provider cannot express a spec field, fail the plan — never
   silently drop it**: alongside the `PARITY-EXCEPTION:` twin comments, add a
   Terraform `lifecycle { precondition }` on the resource that rejects a set

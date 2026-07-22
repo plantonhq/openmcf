@@ -2666,20 +2666,26 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8scm"
   }];
+  // KubernetesCertManager is a prerequisite for the three cert-manager CR
+  // kinds below: ClusterIssuer/Issuer/Certificate are cert-manager custom
+  // resources — without the controller and its CRDs they cannot be applied.
   KubernetesClusterIssuer = 831 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sci"
+    prerequisites: [KubernetesCertManager]
   }];
   KubernetesIssuer = 832 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8siss"
+    prerequisites: [KubernetesCertManager]
   }];
   KubernetesCertificate = 833 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8scrt"
+    prerequisites: [KubernetesCertManager]
   }];
   KubernetesExternalDns = 834 [(kind_meta) = {
     provider: kubernetes
