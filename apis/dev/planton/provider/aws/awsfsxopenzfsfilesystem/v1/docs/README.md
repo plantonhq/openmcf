@@ -4,6 +4,8 @@
 
 Amazon FSx for OpenZFS is a fully managed file storage service built on the OpenZFS file system. It provides sub-millisecond latency, up to 10 GB/s throughput, and over 1 million IOPS through standard NFS protocols (NFSv3, NFSv4.0, NFSv4.1, NFSv4.2). Key OpenZFS features include instant snapshots, data cloning, ZSTD/LZ4 compression, and per-user/group quotas.
 
+File system creation is a long-running operation — the Terraform provider's default create timeout is 60 minutes; budget deploy windows accordingly.
+
 ## Terraform Resource Mapping
 
 | Planton Concept | Terraform Resource | Notes |

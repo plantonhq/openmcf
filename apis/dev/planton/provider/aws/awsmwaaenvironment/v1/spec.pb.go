@@ -35,6 +35,11 @@ const (
 // HTTPS (443) ingress for Airflow UI access, and outbound egress -- live on
 // those first-class AwsSecurityGroup nodes where they can be shared, audited,
 // and evolved independently of the environment.
+//
+// Provisioning expectation: environment creation is exceptionally slow --
+// creates commonly run tens of minutes and the provider's default timeouts
+// allow 120 minutes for create and 90 for update/delete. A deploy that
+// appears stalled at the 40-minute mark is normal, not hung.
 type AwsMwaaEnvironmentSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.

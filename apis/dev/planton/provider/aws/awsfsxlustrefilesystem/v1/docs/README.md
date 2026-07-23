@@ -2,6 +2,8 @@
 
 This document provides a deep technical reference for Amazon FSx for Lustre as deployed via the AwsFsxLustreFileSystem API. It covers the Lustre protocol, deployment types, storage capacity rules, throughput models, S3 integration, encryption, backups, metadata IOPS, and integration patterns.
 
+File system creation is a long-running operation — the Terraform provider's default create timeout is 30 minutes; budget deploy windows accordingly.
+
 ---
 
 ## 1. Lustre Protocol Basics
