@@ -4,8 +4,8 @@ description: "Take full control of the cache key with the `http_request_cache_se
 type: "preset"
 rank: "06"
 presetSlug: "06-advanced-cache-key"
-componentSlug: "cloudflareruleset-technical-deep-dive"
-componentTitle: "CloudflareRuleset — Technical Deep Dive"
+componentSlug: "ruleset"
+componentTitle: "Ruleset"
 provider: "cloudflare"
 icon: "package"
 order: 6

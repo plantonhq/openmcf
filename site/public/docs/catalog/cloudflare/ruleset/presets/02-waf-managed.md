@@ -4,8 +4,8 @@ description: "Enable Cloudflare's managed WAF rulesets to protect against common
 type: "preset"
 rank: "02"
 presetSlug: "02-waf-managed"
-componentSlug: "cloudflareruleset-technical-deep-dive"
-componentTitle: "CloudflareRuleset — Technical Deep Dive"
+componentSlug: "ruleset"
+componentTitle: "Ruleset"
 provider: "cloudflare"
 icon: "package"
 order: 2

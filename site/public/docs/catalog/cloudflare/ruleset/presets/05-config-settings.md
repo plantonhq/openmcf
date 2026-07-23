@@ -4,8 +4,8 @@ description: "Override zone settings per request with the `http_config_settings`
 type: "preset"
 rank: "05"
 presetSlug: "05-config-settings"
-componentSlug: "cloudflareruleset-technical-deep-dive"
-componentTitle: "CloudflareRuleset — Technical Deep Dive"
+componentSlug: "ruleset"
+componentTitle: "Ruleset"
 provider: "cloudflare"
 icon: "package"
 order: 5

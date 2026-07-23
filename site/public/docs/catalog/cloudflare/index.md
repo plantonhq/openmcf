@@ -10,7 +10,6 @@ order: 10
 The following CLOUDFLARE resources can be deployed using Planton:
 
 - [Certificate Pack](/docs/catalog/cloudflare/certificate-pack)
-- [CloudflareRuleset — Technical Deep Dive](/docs/catalog/cloudflare/cloudflareruleset-technical-deep-dive)
 - [Custom Hostname (Cloudflare for SaaS)](/docs/catalog/cloudflare/custom-hostname-cloudflare-for-saas)
 - [Custom Hostname Fallback Origin](/docs/catalog/cloudflare/custom-hostname-fallback-origin)
 - [D1 Database](/docs/catalog/cloudflare/d1-database)
@@ -30,6 +29,7 @@ The following CLOUDFLARE resources can be deployed using Planton:
 - [Pages Project](/docs/catalog/cloudflare/pages-project)
 - [Queue](/docs/catalog/cloudflare/queue)
 - [R2 Bucket](/docs/catalog/cloudflare/r2-bucket)
+- [Ruleset](/docs/catalog/cloudflare/ruleset)
 - [Tunnel](/docs/catalog/cloudflare/tunnel)
 - [Tunnel Route](/docs/catalog/cloudflare/tunnel-route)
 - [Tunnel Virtual Network](/docs/catalog/cloudflare/tunnel-virtual-network)

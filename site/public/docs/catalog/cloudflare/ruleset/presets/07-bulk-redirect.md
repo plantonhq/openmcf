@@ -4,8 +4,8 @@ description: "Apply a large set of URL redirects from a reusable Bulk Redirect l
 type: "preset"
 rank: "07"
 presetSlug: "07-bulk-redirect"
-componentSlug: "cloudflareruleset-technical-deep-dive"
-componentTitle: "CloudflareRuleset — Technical Deep Dive"
+componentSlug: "ruleset"
+componentTitle: "Ruleset"
 provider: "cloudflare"
 icon: "package"
 order: 7

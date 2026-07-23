@@ -4,8 +4,8 @@ description: "Route requests to different origin servers based on URL path. The 
 type: "preset"
 rank: "01"
 presetSlug: "01-origin-rule"
-componentSlug: "cloudflareruleset-technical-deep-dive"
-componentTitle: "CloudflareRuleset — Technical Deep Dive"
+componentSlug: "ruleset"
+componentTitle: "Ruleset"
 provider: "cloudflare"
 icon: "package"
 order: 1

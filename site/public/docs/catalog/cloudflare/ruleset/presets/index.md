@@ -1,9 +1,9 @@
 ---
 title: "Presets"
-description: "Ready-to-deploy configuration presets for CloudflareRuleset — Technical Deep Dive"
+description: "Ready-to-deploy configuration presets for Ruleset"
 type: "preset-list"
-componentSlug: "cloudflareruleset-technical-deep-dive"
-componentTitle: "CloudflareRuleset — Technical Deep Dive"
+componentSlug: "ruleset"
+componentTitle: "Ruleset"
 provider: "cloudflare"
 icon: "package"
 order: 200
@@ -38,6 +38,6 @@ presets:
     excerpt: "Apply a large set of URL redirects from a reusable Bulk Redirect list. The list holds the source → target entries (managed independently as `CloudflareListItem` resources), and an account-level..."
 ---
 
-# CloudflareRuleset — Technical Deep Dive Presets
+# Ruleset Presets
 
-Ready-to-deploy configuration presets for CloudflareRuleset — Technical Deep Dive. Each preset is a complete manifest you can copy, customize, and deploy.
+Ready-to-deploy configuration presets for Ruleset. Each preset is a complete manifest you can copy, customize, and deploy.

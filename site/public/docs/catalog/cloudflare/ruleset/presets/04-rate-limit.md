@@ -4,8 +4,8 @@ description: "Throttle abusive traffic with the `http_ratelimit` phase. Each rul
 type: "preset"
 rank: "04"
 presetSlug: "04-rate-limit"
-componentSlug: "cloudflareruleset-technical-deep-dive"
-componentTitle: "CloudflareRuleset — Technical Deep Dive"
+componentSlug: "ruleset"
+componentTitle: "Ruleset"
 provider: "cloudflare"
 icon: "package"
 order: 4
