@@ -39,6 +39,16 @@ const (
 	// kubeconfig of a cluster the harness does not own.
 	ExternalKubeconfigEnvVar = "PLANTON_E2E_KUBECONFIG"
 
+	// ExternalClusterProfileEnvVar declares WHAT the external cluster is (a
+	// cluster-profile name, e.g. "aws-eks"), so profile-annotated scenarios can
+	// be matched to it. Scenarios with no profile annotation always run in the
+	// external lane; a profiled scenario runs only when this declaration equals
+	// its profile and skips (with the reason) otherwise. Without this gate a
+	// batch sweep would run every profiled scenario on the external cluster —
+	// including profiles that would destroy it for later lanes (installing a
+	// primary CNI on a live EKS cluster, for example).
+	ExternalClusterProfileEnvVar = "PLANTON_E2E_CLUSTER_PROFILE"
+
 	// DestroyClusterEnvVar opts INTO deleting the kind cluster at teardown ("1").
 	// The default keeps it running for the next run (persistent local lane).
 	DestroyClusterEnvVar = "PLANTON_E2E_DESTROY_CLUSTER"
@@ -63,6 +73,17 @@ const (
 	// this profile: the Cilium kind's own lanes and every behavioral scenario
 	// that needs an ENFORCING CNI (NetworkPolicy deny proofs).
 	ClusterProfileCiliumCni = "cilium-cni"
+
+	// ClusterProfileAwsEks is a REAL-CLUSTER profile: it names cloud fabric no
+	// local kind cluster can provide (EKS with IRSA-capable OIDC, cloud load
+	// balancers, the EBS CSI driver with volume snapshots, real node groups).
+	// It has no local constructor — on local runs a scenario carrying it skips
+	// with the reason, and it runs when the external-cluster lane declares a
+	// matching profile (PLANTON_E2E_KUBECONFIG + PLANTON_E2E_CLUSTER_PROFILE).
+	// Use it on scenarios of otherwise-locally-green kinds whose assertions
+	// need the real fabric (cloud-LB provisioning, IRSA identity hops,
+	// snapshot-backed storage, node autoscaling).
+	ClusterProfileAwsEks = "aws-eks"
 )
 
 // ciliumKindConfigYAML is the kind cluster configuration for the cilium-cni

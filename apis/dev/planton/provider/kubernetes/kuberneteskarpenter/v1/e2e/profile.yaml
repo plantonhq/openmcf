@@ -4,13 +4,15 @@ metadata:
   name: kuberneteskarpenter
 spec:
   tier: 1
-  status: deferred
-  validated_provisioners: []
+  status: real_cluster
+  validated_provisioners:
+    - pulumi
+    - tofu
   timeout_minutes: 25
   deferred_reason: >-
     The Karpenter controller cannot start off AWS: at startup it resolves the
     region from IMDS, loads AWS credentials, and refreshes EC2 instance-type
     data, and each failure is fatal (verified in the pinned controller
     source) — so a kind-cluster install can never reach readiness. Offline
-    plan proofs cover both engines' full rendering; the live lane rides the
-    batched EKS real-cluster set.
+    plan proofs cover both engines' full rendering; the live lanes run in
+    the batched EKS real-cluster set (the aws-eks cluster profile).

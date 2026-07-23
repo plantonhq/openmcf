@@ -1,19 +1,28 @@
-# Minimal Karpenter for the batched EKS real-cluster lane: CRDs + controller
-# with EKS discovery and IRSA. The cluster name/role are the batch's
-# fixtures (substituted when the real-cluster lane is provisioned — see the
-# deferred profile). Not runnable on kind: the controller requires AWS at
-# startup.
+# Minimal Karpenter on the aws-eks real-cluster profile: CRDs + controller
+# with EKS discovery, IRSA, and the interruption queue. The controller
+# requires AWS at startup (region, credentials, EC2 instance-type data), so
+# no local cluster can run this — the profile routes it to the batched EKS
+# lane, whose bootstrap exports the cluster/role/queue identifiers the
+# environment tokens below reference.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKarpenter
 metadata:
   name: e2e-karpenter-minimal
+  annotations:
+    planton.dev/e2e-cluster-profile: "aws-eks"
 spec:
+  # A dedicated namespace (not upstream's kube-system default): the E2E
+  # cleanup contract asserts namespace absence after destroy, which
+  # kube-system can never satisfy — and the batch's IRSA trust policy binds
+  # to karpenter/karpenter accordingly.
   namespace:
-    value: kube-system
+    value: karpenter
+  create_namespace: true
   cluster:
-    name: planton-e2e-eks
+    name: ${E2E_ENV:PLANTON_E2E_EKS_CLUSTER_NAME}
     eks_control_plane: true
   aws:
-    irsa_role_arn: arn:aws:iam::111111111111:role/planton-e2e-karpenter
+    irsa_role_arn: ${E2E_ENV:PLANTON_E2E_KARPENTER_IRSA_ROLE_ARN}
+    interruption_queue: ${E2E_ENV:PLANTON_E2E_KARPENTER_INTERRUPTION_QUEUE}
   controller:
     replicas: 1

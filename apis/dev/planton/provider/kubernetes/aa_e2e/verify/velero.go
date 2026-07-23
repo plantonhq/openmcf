@@ -46,9 +46,20 @@ type VeleroInstallVerifier struct {
 const (
 	veleroSubjectNamespace = "e2e-velero-subject"
 	veleroSubjectConfigMap = "e2e-velero-subject-marker"
-	veleroBackupName       = "e2e-velero-backup"
-	veleroRestoreName      = "e2e-velero-restore"
 )
+
+// veleroRunNames returns run-unique Backup/Restore names. Backup names are
+// KEYS IN THE OBJECT STORE, not just CR names: on a persistent bucket (the
+// real-cluster lanes) a completed backup's records outlive the CR — deleting
+// the CR never purges the store, the BSL sync even resurrects it — so a
+// SECOND lane reusing a fixed name fails its Backup with "already exists in
+// object storage". The kind lanes never saw this because each lane's MinIO
+// fixture started empty. Unique names make every lane's DR loop
+// self-contained; the TTL on the Backup expires the store residue.
+func veleroRunNames() (backupName, restoreName string) {
+	suffix := time.Now().UnixNano()
+	return fmt.Sprintf("e2e-velero-backup-%d", suffix), fmt.Sprintf("e2e-velero-restore-%d", suffix)
+}
 
 func (v *VeleroInstallVerifier) VerifyExists(ctx context.Context, kubeconfig string) error {
 	fmt.Printf("  [verify] velero installation in namespace %q\n", v.Namespace)
@@ -95,6 +106,7 @@ func (v *VeleroInstallVerifier) VerifyAbsent(ctx context.Context, kubeconfig str
 // the scenario's MinIO fixture.
 func (v *VeleroInstallVerifier) proveBackupRestore(ctx context.Context, kubeconfig string) error {
 	fmt.Printf("  [verify] behavioral backup/restore: %q must survive namespace deletion\n", veleroSubjectConfigMap)
+	veleroBackupName, veleroRestoreName := veleroRunNames()
 
 	// 1. The backup subject: a namespace holding a marker ConfigMap whose
 	//    contents the restore assertion checks byte-for-byte.
@@ -192,6 +204,7 @@ spec:
 // verifier-owned, removed in defers.
 func (v *VeleroInstallVerifier) proveCsiVolumeBackupRestore(ctx context.Context, kubeconfig string) error {
 	fmt.Printf("  [verify] CSI-volume backup/restore: volume data must survive namespace deletion\n")
+	veleroBackupName, veleroRestoreName := veleroRunNames()
 
 	if err := v.kubectl(ctx, kubeconfig, "create", "namespace", veleroSubjectNamespace); err != nil {
 		return errors.Wrap(err, "failed to create backup-subject namespace")

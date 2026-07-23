@@ -179,7 +179,11 @@ locals {
     try(var.spec.aws_route53, null) == null ? [] : concat(
       [for z in try(var.spec.aws_route53.zone_id_filters, []) : "--zone-id-filter=${z}" if z != ""],
       compact([
-        try(var.spec.aws_route53.zone_type, "") != "" ? "--aws-zone-type=${var.spec.aws_route53.zone_type}" : "",
+        # zone_type is an OPTIONAL scalar: unset arrives as null (not ""),
+        # and null passes a `try(x, "") != ""` guard straight into the
+        # template. try(coalesce(x), "") is the null-safe read — coalesce
+        # rejects a lone null/empty, and try turns that rejection into "".
+        try(coalesce(var.spec.aws_route53.zone_type), "") != "" ? "--aws-zone-type=${var.spec.aws_route53.zone_type}" : "",
         try(var.spec.aws_route53.assume_role, "") != "" ? "--aws-assume-role=${var.spec.aws_route53.assume_role}" : "",
         try(var.spec.aws_route53.assume_role_external_id, "") != "" ? "--aws-assume-role-external-id=${var.spec.aws_route53.assume_role_external_id}" : "",
         var.spec.dynamodb_region != "" ? "--dynamodb-region=${var.spec.dynamodb_region}" : "",
@@ -190,7 +194,8 @@ locals {
       ["--google-project=${var.spec.google_cloud_dns.project}"],
       [for z in try(var.spec.google_cloud_dns.zone_id_filters, []) : "--zone-id-filter=${z}" if z != ""],
       compact([
-        try(var.spec.google_cloud_dns.zone_visibility, "") != "" ? "--google-zone-visibility=${var.spec.google_cloud_dns.zone_visibility}" : "",
+        # zone_visibility: same optional-scalar null trap as zone_type above.
+        try(coalesce(var.spec.google_cloud_dns.zone_visibility), "") != "" ? "--google-zone-visibility=${var.spec.google_cloud_dns.zone_visibility}" : "",
       ])
     ),
     try(var.spec.azure_dns, null) == null ? [] : (

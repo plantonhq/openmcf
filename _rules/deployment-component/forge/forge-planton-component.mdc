@@ -450,6 +450,16 @@ chain deploys in resolvable order with no per-consumer wiring. Put the
 annotation on the install manifest that carries the references; consumers of
 that kind inherit the ordering automatically.
 
+**But a MANIFEST-PATH fixture's own file annotations are NOT edges.** The
+recursive annotation walk above applies to KIND install profiles
+(`prerequisite.yaml` / minimal scenarios); a path entry contributes only its
+kind's registry prerequisites. When one path fixture depends on another (a
+ServiceAccount fixture needing a Namespace fixture), list BOTH paths on the
+scenario's annotation in deploy order — path entries deploy exactly in
+listed order. An annotation placed on the path fixture's own file is
+silently ignored, and the failure is live-only (the dependent fixture
+deploys into a namespace that does not exist).
+
 **Multi-instance prerequisites.** A prerequisite install profile
 (`e2e/prerequisite.yaml`) may carry multiple `---`-separated documents of the
 kind when real topologies need more than one instance — e.g. a load balancer
@@ -665,6 +675,59 @@ templates fails the install with Helm's release-ownership error ("exists
 and cannot be imported into the current release"), and the failure is
 live-only — every offline gate passes. When the chart is self-contained
 for the arm, the scenario needs no fixture at all.
+
+**Keep-on-uninstall CRDs pin their Helm release NAMESPACE — scenarios for
+such kinds need a stable, dedicated namespace.** CRDs that survive uninstall
+(`helm.sh/resource-policy: keep`, or a crds/ directory Helm never deletes)
+retain their `meta.helm.sh/release-namespace` ownership annotation. A later
+install of the same release in a DIFFERENT namespace hits the
+release-ownership error on objects that "should not exist" — live-only, and
+easy to trigger by moving a scenario between namespaces. Two corollaries:
+(1) never place a component's E2E scenario in `kube-system` or another
+shared system namespace — the cleanup phase asserts namespace absence,
+which a system namespace can never satisfy (and upstream docs defaulting to
+kube-system are a docs default, not an E2E-compatible one); (2) when
+sweeping kept CRDs manually, enumerate by the `meta.helm.sh/release-name`
+annotation, never by an API-group name grep — CRD bundles routinely span
+groups (Karpenter's fleet CRDs live in karpenter.sh, karpenter.k8s.aws AND
+autoscaling.x-k8s.io), and one missed CRD reproduces the collision.
+
+**Behavioral drivers against PERSISTENT external stores need run-unique
+names.** A verifier-owned driver CR whose name doubles as a key in an
+external store (a Velero Backup's name keys its object-store records) must
+carry a run-unique suffix: on a real, persistent bucket the store copy
+outlives the CR — deleting the CR never purges the store and the location
+sync even resurrects it — so a second lane reusing a fixed name fails with
+"already exists in object storage". Ephemeral in-cluster fixtures (a MinIO
+that dies with the scenario) mask this class completely: the kind lanes
+stay green while every real-cluster lane after the first fails.
+
+**Verifier-owned driver resources keyed in PERSISTENT external stores need
+run-unique names.** A verifier-owned CR whose name doubles as a key in an
+external store that outlives the lane (a Velero Backup's records in the
+object-store bucket, which the BSL sync even resurrects after the CR is
+deleted) can never reuse a fixed name across lanes: the second lane fails
+with an "already exists" that no kind-cluster run reproduces (ephemeral
+fixtures start empty; the real-cluster batch's bucket persists). Derive the
+name per run and let the resource's own TTL expire the store residue.
+
+**Saturation fixtures must not await rollout.** A pressure fixture DESIGNED
+to leave trailing replicas Pending (capacity saturation for preemption or
+autoscaling proofs) deadlocks any deploy that awaits workload readiness —
+set the fixture's skip-await knob and say in the manifest why it is
+load-bearing, or the fixture times out its own deploy on both engines.
+
+**Expanded/resolved manifest copies must keep the scenario's basename.**
+The runner rewrites scenario manifests to temp copies at two points (run-ID/
+environment token expansion and foreign-key reference resolution), and
+verifier dispatch keys behavioral variants off the scenario NAME in the
+manifest path. A randomly named copy silently demotes the scenario to its
+plain verifier — the lane still passes, install-grade, and the behavioral
+claim becomes an overclaim nobody notices. Both rewrite sites preserve the
+basename by contract; any future manifest-rewriting step must do the same,
+and a behavioral lane's proof lines (the verifier's own `[verify]`
+behavioral output) — not its PASS alone — are what a session may cite as
+evidence.
 
 **Soft-delete-reserved identifiers need the `${E2E_RUN_ID}` token.** Some cloud
 resources reserve their user-chosen identifier long after deletion (e.g. GCP

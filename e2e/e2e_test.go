@@ -51,18 +51,39 @@ var (
 
 // harnessForScenario routes a scenario to the cluster its manifest asks for
 // via the planton.dev/e2e-cluster-profile annotation. The default (no
-// annotation) is the shared cluster. In the external-cluster lane profiles
-// are ignored — the batched real cluster is assumed suitable for its batch.
-// Unknown profile values fail loudly rather than silently running on the
-// wrong cluster.
-func harnessForScenario(manifestPath string) (*kubernetese2e.Harness, error) {
+// annotation) is the shared cluster in every lane.
+//
+// Profiled scenarios are matched, never assumed: in the external-cluster lane
+// they run only when the run declares a matching profile for its cluster
+// (PLANTON_E2E_CLUSTER_PROFILE) — a profile names what a scenario would DO to
+// a cluster as much as what it needs from it, and running an unmatched
+// profile on a shared real cluster can destroy it for every later lane
+// (e.g. installing a primary CNI on a live EKS cluster). Locally, profiles
+// with a kind constructor build their dedicated persistent cluster lazily;
+// real-cluster profiles (no local constructor) skip with the reason.
+//
+// A non-empty skip reason means the scenario cannot run in this lane by
+// design; unknown profile values fail loudly rather than silently running on
+// the wrong cluster.
+func harnessForScenario(manifestPath string) (h *kubernetese2e.Harness, skipReason string, err error) {
 	profile, err := runner.ManifestAnnotation(manifestPath, kubernetese2e.ClusterProfileAnnotation)
 	if err != nil {
-		return nil, fmt.Errorf("reading cluster profile from %s: %w", manifestPath, err)
+		return nil, "", fmt.Errorf("reading cluster profile from %s: %w", manifestPath, err)
 	}
-	if profile == "" || testHarness.External() {
-		return testHarness, nil
+	if profile == "" {
+		return testHarness, "", nil
 	}
+
+	if testHarness.External() {
+		declared := os.Getenv(kubernetese2e.ExternalClusterProfileEnvVar)
+		if declared == profile {
+			return testHarness, "", nil
+		}
+		return nil, fmt.Sprintf(
+			"scenario requires cluster profile %q but the external cluster declares %q (set %s to match)",
+			profile, declared, kubernetese2e.ExternalClusterProfileEnvVar), nil
+	}
+
 	switch profile {
 	case kubernetese2e.ClusterProfileCiliumCni:
 		ciliumHarnessMu.Lock()
@@ -70,13 +91,17 @@ func harnessForScenario(manifestPath string) (*kubernetese2e.Harness, error) {
 		if ciliumHarness == nil {
 			h := kubernetese2e.NewCiliumCniHarness(testHarness.ClusterName())
 			if err := h.Setup(context.Background()); err != nil {
-				return nil, fmt.Errorf("setting up %s cluster profile: %w", profile, err)
+				return nil, "", fmt.Errorf("setting up %s cluster profile: %w", profile, err)
 			}
 			ciliumHarness = h
 		}
-		return ciliumHarness, nil
+		return ciliumHarness, "", nil
+	case kubernetese2e.ClusterProfileAwsEks:
+		return nil, fmt.Sprintf(
+			"scenario requires the %q real-cluster profile, which no local cluster can provide — runs in batched real-cluster lanes (%s + %s=%s)",
+			profile, kubernetese2e.ExternalKubeconfigEnvVar, kubernetese2e.ExternalClusterProfileEnvVar, profile), nil
 	default:
-		return nil, fmt.Errorf("scenario %s names unknown cluster profile %q", manifestPath, profile)
+		return nil, "", fmt.Errorf("scenario %s names unknown cluster profile %q", manifestPath, profile)
 	}
 }
 

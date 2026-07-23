@@ -1,0 +1,49 @@
+# The behavioral proof: Karpenter must actually LAUNCH a node. The pool
+# constrains itself to cheap instance types with a tight CPU limit; the
+# behavioral verifier (switched on by this scenario's name) then creates a
+# pending pod that only this pool can satisfy (nodeSelector on the pool's
+# label + a toleration for its taint), asserts a real EC2 node joins the
+# cluster and the pod schedules onto it, deletes the pod, and asserts
+# consolidation reclaims the node — the full provision-and-consolidate
+# loop, with zero stray instances by construction. The driver pod is
+# verifier-owned: the NodePool CRD is installed by the Karpenter
+# prerequisite, and the pod must appear AFTER the pool under test exists.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarpenterNodePool
+metadata:
+  name: e2e-karpenter-nodepool-behavioral
+  annotations:
+    planton.dev/e2e-cluster-profile: "aws-eks"
+    planton.dev/e2e-prerequisites: "KubernetesKarpenterEc2NodeClass"
+spec:
+  template:
+    labels:
+      planton.dev/e2e-karpenter-pool: behavioral
+    taints:
+      # Fences ordinary workloads off the launched node: only the
+      # verifier's tolerating driver pod can land there, so consolidation
+      # after its deletion is deterministic.
+      - key: planton.dev/e2e-karpenter-only
+        value: "true"
+        effect: NoSchedule
+    node_class_ref:
+      name:
+        valueFrom:
+          kind: KubernetesKarpenterEc2NodeClass
+          name: e2e-karpenter-nodeclass-minimal
+          fieldPath: status.outputs.node_class_name
+    requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+          - on-demand
+      - key: node.kubernetes.io/instance-type
+        operator: In
+        values:
+          - t3.medium
+          - t3a.medium
+  disruption:
+    consolidation_policy: WhenEmptyOrUnderutilized
+    consolidate_after: 30s
+  limits:
+    cpu: "4"

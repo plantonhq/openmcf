@@ -159,10 +159,13 @@ spec:
 			"-n", pvcDsNamespace, "--ignore-not-found", "--wait=false")
 	}()
 
-	// Provisioning a clone/restore volume + scheduling: EBS typically lands
-	// in ~1 minute; 5 covers cold paths.
+	// Provisioning timing differs by path: restoring a pre-cut, readyToUse
+	// snapshot lands in ~1 minute, but the EBS driver implements PVC
+	// CLONING as an internal snapshot + restore (verified in the driver
+	// source — EBS has no native volume clone), so the clone path routinely
+	// takes several minutes for even a small volume.
 	if err := kubectlWait(ctx, kubeconfig, "pod", readerName, pvcDsNamespace,
-		"condition=Ready", 5*time.Minute); err != nil {
+		"condition=Ready", 12*time.Minute); err != nil {
 		return errors.Wrap(err, "reader pod never became Ready — data-source provisioning failed")
 	}
 	out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,

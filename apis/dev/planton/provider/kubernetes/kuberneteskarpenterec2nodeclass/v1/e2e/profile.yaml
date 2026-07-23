@@ -4,12 +4,14 @@ metadata:
   name: kuberneteskarpenterec2nodeclass
 spec:
   tier: 1
-  status: deferred
-  validated_provisioners: []
-  timeout_minutes: 20
+  status: real_cluster
+  validated_provisioners:
+    - pulumi
+    - tofu
+  timeout_minutes: 25
   deferred_reason: >-
     The EC2NodeClass CRD is installed by KubernetesKarpenter (the registry
-    prerequisite), whose controller cannot start off AWS — so the kind
+    prerequisite), whose controller cannot start off AWS — so a local kind
     cluster can never serve the karpenter.k8s.aws API group. Offline plan
-    proofs cover both engines' full rendering; object-grade and
-    provisioning lanes ride the batched EKS real-cluster set.
+    proofs cover both engines' full rendering; object-grade lanes run in
+    the batched EKS real-cluster set (the aws-eks cluster profile).

@@ -11,7 +11,7 @@ The harness supports two cluster lanes, selected by environment variables:
 | Lane | Selection | Lifecycle |
 |------|-----------|-----------|
 | kind (default) | — | Persistent: `Setup` reuses a running cluster with the configured name and creates one only when none exists. `Teardown` leaves it running unless `PLANTON_E2E_DESTROY_CLUSTER=1` (set on ephemeral CI runners). |
-| External cluster | `PLANTON_E2E_KUBECONFIG=<path>` | Never touched: the cluster (real EKS/GKE/AKS, batch-provisioned once per test wave and reused) is owned outside the run. |
+| External cluster | `PLANTON_E2E_KUBECONFIG=<path>` (+ `PLANTON_E2E_CLUSTER_PROFILE=<profile>` declaring what the cluster IS) | Never touched: the cluster (real EKS/GKE/AKS, batch-provisioned once per test wave and reused) is owned outside the run. Bootstrap/teardown runbooks live under `realcluster/`. |
 
 `PLANTON_E2E_KIND_CLUSTER_NAME` overrides the default kind cluster name
 (`planton-e2e`). The name is stable across runs by design — a run-unique name
@@ -40,6 +40,7 @@ metadata:
 |---------|---------|---------|
 | (absent) | the default shared cluster | everything else |
 | `cilium-cni` | `<base>-cilium`, single-node, `disableDefaultCNI: true` | Cilium-as-primary-CNI lanes; NetworkPolicy behavioral enforcement |
+| `aws-eks` | REAL cluster (no local constructor) — batch-provisioned EKS via `realcluster/aws-eks/` | Cloud-LB provisioning, IRSA identity hops, snapshot-capable CSI storage, real node autoscaling |
 
 Mechanics, all verified against the framework's own contracts:
 
@@ -56,8 +57,23 @@ Mechanics, all verified against the framework's own contracts:
   so the profile's create path waits on API-server readiness instead of
   kind's node gate; the NotReady→Ready transition is asserted by the Cilium
   install verifier as part of the proof.
-- Profiles are ignored in the external-cluster lane — the batched real
-  cluster is assumed suitable for every scenario in its batch.
+- Profiled scenarios are MATCHED, never assumed: in the external-cluster
+  lane a profiled scenario runs only when `PLANTON_E2E_CLUSTER_PROFILE`
+  equals its profile and skips (with the reason) otherwise — a profile names
+  what a scenario would DO to a cluster as much as what it needs from it,
+  and running an unmatched profile on a shared real cluster can destroy it
+  for every later lane (installing a primary CNI on a live EKS cluster, for
+  example). Real-cluster profiles (`aws-eks`) have no local constructor and
+  skip with the reason on local runs.
+- Component profiles whose EVERY lane needs a real cluster carry the
+  `real_cluster` status in `e2e/profile.yaml` (the Karpenter family): the
+  entrypoints skip them wherever no external cluster is supplied, and the
+  CI matrix (built from `green`) never schedules them on kind runners.
+- Scenarios restricted to one engine by documented PARITY-EXCEPTION design
+  carry the `planton.dev/e2e-engines` annotation (e.g. the PVC data-source
+  scenarios: the Terraform provider cannot express data sources); the
+  excluded engine's lane skips with the reason instead of failing on its
+  own designed rejection.
 - Unknown profile values fail the scenario loudly (never a silent
   wrong-cluster run). Lanes that target the same profile cluster serialize
   exactly like lanes sharing the default cluster.
@@ -94,6 +110,10 @@ aa_e2e/
     operator.go           -- OperatorComponentVerifier (Tier 4 operators)
     crd_workload.go       -- CRDWorkloadVerifier (Tier 3 operator-dependent CRD workloads)
     helm.go               -- HelmComponentVerifier (Tier 2 Helm-based apps)
+    valkey.go             -- ValkeyVerifier (Valkey install + persistence/replication behavioral proofs)
+    perconamysql.go       -- PxcClusterVerifier (Percona MySQL cluster + Galera durability/backup proofs)
+    perconamongodb.go     -- PsmdbClusterVerifier (Percona MongoDB cluster + failover/backup proofs)
+    perconaoperator.go    -- PsmdbOperatorInstallVerifier / PxcOperatorInstallVerifier (Percona operators)
     generic.go            -- GenericVerifier (fallback, always passes)
 ```
 
@@ -131,6 +151,10 @@ code.
 | `HelmComponentVerifier` | `helm.go` | 2 | Namespace + running pods + services |
 | `OperatorComponentVerifier` | `operator.go` | 4 | Namespace + running pods (no service requirement) |
 | `CRDWorkloadVerifier` | `crd_workload.go` | 3 | Namespace + running pods + services |
+| `ValkeyVerifier` | `valkey.go` | 2 | Valkey workload ready + write Service. Behavioral proofs: persistence (write a marker key, DELETE the pod, read it back after restart) and replication (write through the write Service, read back through the read Service) |
+| `PxcClusterVerifier` | `perconamysql.go` | 3 | PerconaXtraDBCluster in state `ready` + proxy write Service. Behavioral proof: Galera durability (write a marker row through the proxy, DELETE a database node, read it back at full strength). Backup proof: drives a real XtraBackup to `Succeeded` in the declared store |
+| `PsmdbClusterVerifier` | `perconamongodb.go` | 3 | PerconaServerMongoDB in state `ready` + replica-set Service. Behavioral proof: failover durability (majority-write a marker document, DELETE the primary, read it back through the newly elected primary). Backup proof: drives a real PBM backup to `ready` in the declared store |
+| `PsmdbOperatorInstallVerifier` / `PxcOperatorInstallVerifier` | `perconaoperator.go` | 4 | Operator Deployment Available + CRDs Established, for both Percona flavors (MongoDB and MySQL). On destroy, asserts only the Deployment's absence — the CRDs intentionally survive uninstall |
 | `GenericVerifier` | `generic.go` | -- | Always passes (logs a skip message) |
 
 ### Dispatch (`verifier.go`)

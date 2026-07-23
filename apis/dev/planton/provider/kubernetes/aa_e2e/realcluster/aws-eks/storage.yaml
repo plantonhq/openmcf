@@ -1,0 +1,33 @@
+# Batch-cluster storage scaffolding for snapshot-capable lanes.
+#
+# EKS's default gp2 StorageClass rides the in-tree provisioner, which cannot
+# take VolumeSnapshots. The PVC data-source lanes (clone / snapshot restore)
+# and the Velero CSI-snapshot lane need the EBS CSI driver end to end, so the
+# batch applies a gp3 class (WaitForFirstConsumer, expandable) and a
+# VolumeSnapshotClass for it. Scenario manifests reference these by name.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: e2e-gp3
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  # Encryption is load-bearing for the clone lanes, not just posture: the
+  # EBS driver implements PVC cloning via EC2 CopyVolumes, which REFUSES
+  # unencrypted source volumes (api error InvalidParameterValue, verified
+  # live) — an unencrypted class makes clone provisioning categorically
+  # impossible.
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: e2e-ebs-snapclass
+  labels:
+    # Velero discovers the snapshot class for a CSI driver via this label.
+    velero.io/csi-volumesnapshot-class: "true"
+driver: ebs.csi.aws.com
+deletionPolicy: Delete

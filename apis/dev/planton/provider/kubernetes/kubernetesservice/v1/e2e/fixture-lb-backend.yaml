@@ -1,0 +1,30 @@
+# Backend fixture for the aws-load-balancer scenario: a minimal Deployment
+# whose pods carry the app=e2e-lb-backend selector label (the workload
+# kind's own selector contract: app = metadata.name), so the provisioned
+# NLB has real endpoints behind the Service under test.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesDeployment
+metadata:
+  name: e2e-lb-backend
+spec:
+  namespace:
+    value: e2e-svc-lb
+  create_namespace: true
+  version: main
+  container:
+    app:
+      image:
+        repo: nginxinc/nginx-unprivileged
+        tag: "1.27"
+      ports:
+        - name: http
+          container_port: 8080
+          service_port: 80
+          network_protocol: TCP
+      resources:
+        requests:
+          cpu: "25m"
+          memory: "32Mi"
+        limits:
+          cpu: "200m"
+          memory: "128Mi"

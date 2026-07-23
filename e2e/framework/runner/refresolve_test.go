@@ -77,6 +77,30 @@ func TestResolveManifestRefs_ResolvesVpcIdFromPrerequisite(t *testing.T) {
 	}
 }
 
+func TestResolveManifestRefs_KeepsScenarioBasename(t *testing.T) {
+	// Verifier dispatch keys behavioral variants off the scenario name in
+	// the manifest path — the resolved copy must preserve the basename
+	// (a randomly named copy would silently demote reference-carrying
+	// behavioral scenarios to their plain verifiers).
+	dir := t.TempDir()
+	manifestPath := filepath.Join(dir, "behavioral-node-launch.yaml")
+	if err := os.WriteFile(manifestPath, []byte(subnetManifestWithRef), 0600); err != nil {
+		t.Fatalf("failed to write temp manifest: %v", err)
+	}
+
+	depOutputs := singleInstance(cloudresourcekind.CloudResourceKind_AwsVpc, "my-vpc", map[string]interface{}{
+		"vpc_id": "vpc-resolved123",
+	})
+
+	resolvedPath, err := ResolveManifestRefs(manifestPath, depOutputs)
+	if err != nil {
+		t.Fatalf("ResolveManifestRefs failed: %v", err)
+	}
+	if filepath.Base(resolvedPath) != "behavioral-node-launch.yaml" {
+		t.Errorf("resolved copy basename = %q, want %q", filepath.Base(resolvedPath), "behavioral-node-launch.yaml")
+	}
+}
+
 // The sole-instance fallback: a reference whose name matches no deployed
 // instance still resolves when exactly one instance of the kind exists, so
 // scenario manifests are not coupled to the install profile's fixed names.

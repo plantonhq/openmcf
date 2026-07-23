@@ -658,6 +658,34 @@ func ManifestAnnotation(manifestPath, key string) (string, error) {
 	return manifestAnnotation(manifestPath, key)
 }
 
+// ScenarioEnginesAnnotation restricts a scenario to a subset of IaC engines
+// (comma-separated: "pulumi", "terraform"). Absent = both engines, which is
+// the norm and the parity bar. Use it ONLY when a scenario exercises a
+// surface one engine rejects BY DOCUMENTED DESIGN — e.g. a spec arm the
+// Terraform provider cannot express, guarded by a PARITY-EXCEPTION
+// precondition: the scenario proving that arm live is honest about which
+// engine can run it, and the other engine's lane skips with the reason
+// instead of failing on its own designed rejection.
+const ScenarioEnginesAnnotation = "planton.dev/e2e-engines"
+
+// ScenarioSupportsEngine reports whether a scenario runs on the given engine
+// per its ScenarioEnginesAnnotation (absent = every engine).
+func ScenarioSupportsEngine(manifestPath, engine string) (bool, error) {
+	value, err := manifestAnnotation(manifestPath, ScenarioEnginesAnnotation)
+	if err != nil {
+		return false, err
+	}
+	if value == "" {
+		return true, nil
+	}
+	for _, e := range strings.Split(value, ",") {
+		if strings.TrimSpace(e) == engine {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // manifestAnnotation reads a single metadata annotation from a KRM manifest,
 // returning "" when the annotation (or the annotations map) is absent.
 func manifestAnnotation(manifestPath, key string) (string, error) {

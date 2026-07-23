@@ -34,6 +34,9 @@ var (
 	greenStyle = lipgloss.NewStyle().
 			Foreground(colorGreen)
 
+	blueStyle = lipgloss.NewStyle().
+			Foreground(colorBlue)
+
 	yellowStyle = lipgloss.NewStyle().
 			Foreground(colorYellow)
 
@@ -231,11 +234,12 @@ func (m model) View() string {
 
 	b.WriteString("\n")
 	counts := profile.CountByStatus(m.result)
-	b.WriteString(summaryStyle.Render(fmt.Sprintf("  %s %d  %s %d  %s %d  %s %d  ─  %d total",
+	b.WriteString(summaryStyle.Render(fmt.Sprintf("  %s %d  %s %d  %s %d  %s %d  %s %d  ─  %d total",
 		greenStyle.Render("●"), counts.Green,
 		yellowStyle.Render("○"), counts.Deferred,
 		grayStyle.Render("○"), counts.Skip,
 		dimStyle.Render("○"), counts.Stub,
+		blueStyle.Render("◍"), counts.RealCluster,
 		counts.Total,
 	)))
 	b.WriteString("\n\n")
@@ -331,6 +335,8 @@ func formatStatus(s componentv1.ComponentE2EProfileSpec_Status) string {
 		return grayStyle.Render("○ SKIP  ")
 	case componentv1.ComponentE2EProfileSpec_stub:
 		return dimStyle.Render("○ STUB  ")
+	case componentv1.ComponentE2EProfileSpec_real_cluster:
+		return blueStyle.Render("◍ REALCL")
 	default:
 		return dimStyle.Render("? ???   ")
 	}

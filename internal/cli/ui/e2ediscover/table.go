@@ -39,8 +39,8 @@ func RenderTable(w io.Writer, result *profile.DiscoverResult) error {
 
 	fmt.Fprintln(w)
 	counts := profile.CountByStatus(result)
-	fmt.Fprintf(w, "Summary: %d GREEN, %d DEFERRED, %d SKIP, %d STUB (%d total)\n",
-		counts.Green, counts.Deferred, counts.Skip, counts.Stub, counts.Total)
+	fmt.Fprintf(w, "Summary: %d GREEN, %d DEFERRED, %d SKIP, %d STUB, %d REAL-CLUSTER (%d total)\n",
+		counts.Green, counts.Deferred, counts.Skip, counts.Stub, counts.RealCluster, counts.Total)
 
 	return nil
 }
@@ -55,6 +55,8 @@ func statusName(s componentv1.ComponentE2EProfileSpec_Status) string {
 		return "SKIP"
 	case componentv1.ComponentE2EProfileSpec_stub:
 		return "STUB"
+	case componentv1.ComponentE2EProfileSpec_real_cluster:
+		return "REAL-CLUSTER"
 	default:
 		return "UNKNOWN"
 	}

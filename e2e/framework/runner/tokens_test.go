@@ -2,6 +2,7 @@ package runner
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -71,6 +72,77 @@ func TestExpandManifestTokens_ErrorsOnTokenWithoutRunID(t *testing.T) {
 	if _, err := ExpandManifestTokens(src, ""); err == nil {
 		t.Fatal("expected an error when the manifest uses the token but no run id is provided")
 	}
+}
+
+func TestExpandManifestTokens_KeepsScenarioBasename(t *testing.T) {
+	src := writeTempManifest(t, "spec:\n  id: e2e-${E2E_RUN_ID}\n")
+
+	out, err := ExpandManifestTokens(src, "ab12cd34")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Cleanup(func() { os.Remove(out) })
+
+	// Verifier dispatch keys behavioral variants off the scenario name in
+	// the manifest path — the expanded copy must preserve the basename.
+	if filepath.Base(out) != filepath.Base(src) {
+		t.Errorf("expanded copy basename = %q, want %q", filepath.Base(out), filepath.Base(src))
+	}
+}
+
+func TestExpandManifestTokens_ExpandsEnvTokens(t *testing.T) {
+	t.Setenv("PLANTON_E2E_TEST_ROLE_ARN", "arn:aws:iam::123456789012:role/e2e-test")
+	src := writeTempManifest(t, strings.Join([]string{
+		"spec:",
+		"  irsaRoleArn: ${E2E_ENV:PLANTON_E2E_TEST_ROLE_ARN}",
+		"  bucket: e2e-${E2E_RUN_ID}",
+	}, "\n"))
+
+	out, err := ExpandManifestTokens(src, "ab12cd34")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Cleanup(func() { os.Remove(out) })
+
+	expanded, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("failed to read expanded manifest: %v", err)
+	}
+	got := string(expanded)
+	if !strings.Contains(got, "irsaRoleArn: arn:aws:iam::123456789012:role/e2e-test") {
+		t.Errorf("env token was not expanded:\n%s", got)
+	}
+	if !strings.Contains(got, "bucket: e2e-ab12cd34") {
+		t.Errorf("run-id token must still expand alongside env tokens:\n%s", got)
+	}
+}
+
+func TestExpandManifestTokens_ErrorsOnUnsetEnvToken(t *testing.T) {
+	src := writeTempManifest(t, "spec:\n  arn: ${E2E_ENV:PLANTON_E2E_DEFINITELY_UNSET_VAR}\n")
+
+	if _, err := ExpandManifestTokens(src, "ab12cd34"); err == nil {
+		t.Fatal("expected an error when an env token's variable is unset")
+	}
+}
+
+func TestExpandManifestTokens_RejectsNonPrefixedEnvToken(t *testing.T) {
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "leak-me")
+	src := writeTempManifest(t, "spec:\n  arn: ${E2E_ENV:AWS_SECRET_ACCESS_KEY}\n")
+
+	if _, err := ExpandManifestTokens(src, "ab12cd34"); err == nil {
+		t.Fatal("expected an error for env tokens outside the allowed prefix")
+	}
+}
+
+func TestExpandManifestTokens_EnvTokensWithoutRunID(t *testing.T) {
+	t.Setenv("PLANTON_E2E_TEST_VALUE", "some-value")
+	src := writeTempManifest(t, "spec:\n  v: ${E2E_ENV:PLANTON_E2E_TEST_VALUE}\n")
+
+	out, err := ExpandManifestTokens(src, "")
+	if err != nil {
+		t.Fatalf("env-token-only manifests must not require a run id: %v", err)
+	}
+	t.Cleanup(func() { os.Remove(out) })
 }
 
 func TestEngineScopedRunID_DistinctPerEngine(t *testing.T) {

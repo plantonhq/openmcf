@@ -1,0 +1,54 @@
+# Scheduling-pressure fixture for the preemption scenario: a low-priority
+# class and a Deployment of pause pods sized to consume the schedulable CPU
+# of the batch cluster's system nodes (2 × t3.large ≈ 2×1930m allocatable;
+# 8 × 450m pads + system addons leave no room for a 500m pod). The pads are
+# preemption fodder: the verifier's high-priority pod must evict one to
+# schedule. Deployed as raw documents because the pad pods need an explicit
+# priorityClassName referencing the fixture-owned low class.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesManifest
+metadata:
+  name: e2e-pc-pressure
+spec:
+  namespace:
+    value: e2e-pc-pressure
+  create_namespace: true
+  # The pads Deployment is DESIGNED never to become fully available — its
+  # trailing replicas stay Pending because saturation is the fixture's whole
+  # purpose. Awaiting rollout would deadlock the fixture deploy on both
+  # engines, so the apply-and-move-on posture is load-bearing here.
+  skip_await: true
+  manifest_yaml: |
+    apiVersion: scheduling.k8s.io/v1
+    kind: PriorityClass
+    metadata:
+      name: e2e-pc-pad
+    value: 1000
+    globalDefault: false
+    description: Low-priority pad class — preemption fodder for the proof.
+    ---
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: e2e-pc-pads
+      namespace: e2e-pc-pressure
+    spec:
+      replicas: 8
+      selector:
+        matchLabels:
+          app: e2e-pc-pads
+      template:
+        metadata:
+          labels:
+            app: e2e-pc-pads
+        spec:
+          priorityClassName: e2e-pc-pad
+          nodeSelector:
+            planton.dev/e2e-node-role: system
+          containers:
+            - name: pad
+              image: registry.k8s.io/pause:3.10
+              resources:
+                requests:
+                  cpu: 450m
+                  memory: 32Mi

@@ -205,7 +205,7 @@ func MatrixJSON(m *Matrix) (string, error) {
 
 // buildRunRegex constructs a go test -run regex that matches all test functions
 // for the given components and engine. Component names are converted to PascalCase
-// Go test function names (e.g., "kubernetesredis" -> "KubernetesRedis").
+// Go test function names (e.g., "kubernetesvalkey" -> "KubernetesValkey").
 func buildRunRegex(components []string, engine string) string {
 	var parts []string
 	for _, name := range components {
@@ -261,11 +261,12 @@ func capitalize(s string) string {
 
 // StatusCounts tallies components by status.
 type StatusCounts struct {
-	Green    int
-	Deferred int
-	Skip     int
-	Stub     int
-	Total    int
+	Green       int
+	Deferred    int
+	Skip        int
+	Stub        int
+	RealCluster int
+	Total       int
 }
 
 // CountByStatus counts components in the discovery result by their E2E status.
@@ -285,6 +286,8 @@ func CountByStatus(result *DiscoverResult) StatusCounts {
 			sc.Skip++
 		case componentv1.ComponentE2EProfileSpec_stub:
 			sc.Stub++
+		case componentv1.ComponentE2EProfileSpec_real_cluster:
+			sc.RealCluster++
 		}
 	}
 	return sc
