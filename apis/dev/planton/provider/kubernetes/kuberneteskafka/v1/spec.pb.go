@@ -666,7 +666,9 @@ type KubernetesKafkaListener struct {
 	// cloud annotations ride configuration.bootstrap/brokers),
 	// "ingress" (nginx-Ingress-based TLS passthrough — REQUIRES
 	// per-broker hosts and an ingress controller with SSL passthrough
-	// enabled), or
+	// enabled; DEPRECATED upstream in this Strimzi line after the
+	// Ingress NGINX Controller's archiving — prefer loadbalancer or
+	// nodeport for new clusters), or
 	// "route"/"tlsroute" (OpenShift Routes / Gateway API TLSRoutes).
 	Type *string `protobuf:"bytes,3,opt,name=type,proto3,oneof" json:"type,omitempty"`
 	// *

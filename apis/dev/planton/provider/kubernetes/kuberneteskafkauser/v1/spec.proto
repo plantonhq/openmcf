@@ -61,9 +61,13 @@ message KubernetesKafkaUserSpec {
   KubernetesKafkaUserAuthentication authentication = 3;
 
   /**
-   * ACLs for this user — effective only when the cluster's
-   * authorization is `simple`. Without cluster authorization these
-   * are stored but not enforced (every client can do everything).
+   * ACLs for this user — requires the cluster's authorization to be
+   * `simple`. On a cluster WITHOUT simple authorization the user
+   * operator REJECTS the resource outright ("Simple authorization ACL
+   * rules are configured but not supported in the Kafka cluster
+   * configuration", the KafkaUser reports NotReady and no credentials
+   * are generated — verified in the operator source). Declare ACLs
+   * only against clusters that enforce them.
    */
   KubernetesKafkaUserAuthorization authorization = 4;
 

@@ -13,7 +13,9 @@ This preset declares a producer identity: SCRAM-SHA-512 authentication with an o
 - **Prefix ACL** (`patternType: prefix`, name `orders-`) -- one rule covers every current and future topic in the family; switch to `literal` (the default) to pin a single topic
 - **`Write` + `Describe`** -- the canonical producer grant
 - **`Create`** -- lets the producer create missing topics; drop it on clusters where topics are strictly declared (the KubernetesKafkaTopic posture)
-- **`IdempotentWrite`** -- for producers running with idempotence enabled
+- Idempotent producers need no extra grant on modern Kafka -- `Write`
+  on the topic covers them (the legacy `IdempotentWrite` operation
+  applies to the cluster resource, not topics)
 - **ACLs enforced only with cluster-side `simple` authorization** -- declared against a cluster without it, the rules are rejected at reconcile and the resource reports NotReady
 
 ## Values to Adapt

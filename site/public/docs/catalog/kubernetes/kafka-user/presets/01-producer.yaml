@@ -13,7 +13,11 @@ spec:
     # Must match a scram-sha-512 listener on the cluster.
     type: scram-sha-512
   authorization:
-    # Enforced only when the cluster runs simple authorization.
+    # Requires the cluster to run simple authorization — the user
+    # operator REJECTS ACL-bearing users on clusters without it.
+    # Write on the topic is sufficient for idempotent producers on
+    # modern Kafka (the legacy IdempotentWrite grant applies to the
+    # cluster resource, not topics).
     acls:
       - resource:
           type: topic
@@ -23,4 +27,3 @@ spec:
           - Write
           - Describe
           - Create # allows the producer to create missing topics
-          - IdempotentWrite # for producers with enable.idempotence
