@@ -32,7 +32,6 @@ var operatorKinds = map[string]bool{
 // reconciled by their prerequisite operator into pods and services.
 // Verification checks namespace + running pods + at least one service.
 var crdWorkloadKinds = map[string]bool{
-	"kuberneteskafka":         true,
 	"kuberneteselasticsearch": true,
 	"kubernetessolr":          true,
 	"kubernetesclickhouse":    true,
@@ -441,6 +440,64 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Behavioral:    strings.Contains(manifestPath, "behavioral-failover"),
 			BackupProof:   strings.Contains(manifestPath, "with-backup"),
 			BackupStorage: mongodbFirstBackupStorage(spec),
+		}, nil
+
+	// A Strimzi-operator-managed KRaft Kafka cluster: the Kafka resource
+	// Ready + every node pod + the bootstrap Service. The
+	// behavioral-durability scenario (recognized by name) proves
+	// replicated durability through a live broker loss (produce with
+	// acks=all → kill a broker → consume during the outage → full
+	// recovery).
+	case "kuberneteskafka":
+		spec := manifestSpecMap(manifestPath)
+		firstPool, totalNodes := kafkaFirstPool(spec)
+		return &KafkaClusterVerifier{
+			Namespace:     info.Namespace,
+			ClusterName:   info.Name,
+			FirstPoolName: firstPool,
+			TotalNodes:    totalNodes,
+			BootstrapPort: kafkaFirstInternalPort(spec),
+			Durability:    strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// A declared Kafka topic: the KafkaTopic resource Ready (the topic
+	// operator reconciled it) AND kafka-topics --describe on the target
+	// cluster reporting the declared partition count — the reconcile
+	// proof runs on every lane.
+	case "kuberneteskafkatopic":
+		spec := manifestSpecMap(manifestPath)
+		topicName, _ := spec["topicName"].(string)
+		if topicName == "" {
+			// Scenario manifests are written in the proto's snake_case form.
+			topicName, _ = spec["topic_name"].(string)
+		}
+		if topicName == "" {
+			topicName = info.Name
+		}
+		return &KafkaTopicVerifier{
+			Namespace:   info.Namespace,
+			CrName:      info.Name,
+			TopicName:   topicName,
+			ClusterName: kafkaClusterRef(spec),
+			Partitions:  int(manifestSpecInt(manifestPath, "partitions", 0)),
+		}, nil
+
+	// A declared Kafka user: the KafkaUser resource Ready + the
+	// operator-generated credentials Secret. The behavioral-auth
+	// scenario (recognized by name) additionally produces and consumes
+	// AS THE USER through the cluster's scram listener — authentication
+	// and ACL authorization proven on the wire.
+	case "kuberneteskafkauser":
+		spec := manifestSpecMap(manifestPath)
+		aclTopic, aclGroup := kafkaUserAcl(spec)
+		return &KafkaUserVerifier{
+			Namespace:   info.Namespace,
+			Username:    info.Name,
+			ClusterName: kafkaClusterRef(spec),
+			AuthProof:   strings.Contains(manifestPath, "behavioral-auth"),
+			ScramPort:   9094,
+			AclTopic:    aclTopic,
+			AclGroup:    aclGroup,
 		}, nil
 
 	// A Percona-operator-managed MySQL (XtraDB) cluster: the resource in

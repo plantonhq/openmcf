@@ -6,14 +6,35 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
 func TestKubernetesStrimziKafkaOperator(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, "KubernetesStrimziKafkaOperator Suite")
+}
+
+func int32Ptr(i int32) *int32    { return &i }
+func stringPtr(s string) *string { return &s }
+
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+func valueFrom(kind cloudresourcekind.CloudResourceKind, name, fieldPath string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{
+				Kind:      kind,
+				Name:      name,
+				FieldPath: fieldPath,
+			},
+		},
+	}
 }
 
 var _ = ginkgo.Describe("KubernetesStrimziKafkaOperator Validation Tests", func() {
@@ -24,182 +45,89 @@ var _ = ginkgo.Describe("KubernetesStrimziKafkaOperator Validation Tests", func(
 			ApiVersion: "kubernetes.planton.dev/v1",
 			Kind:       "KubernetesStrimziKafkaOperator",
 			Metadata: &shared.CloudResourceMetadata{
-				Name: "test-kafka-operator",
+				Name: "test-strimzi-operator",
 			},
 			Spec: &KubernetesStrimziKafkaOperatorSpec{
-				Namespace: &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-						Value: "strimzi-kafka-operator",
-					},
-				},
-				CreateNamespace: true,
-				Container: &KubernetesStrimziKafkaOperatorSpecContainer{
-					Resources: &kubernetes.ContainerResources{
-						Limits: &kubernetes.CpuMemory{
-							Cpu:    "1000m",
-							Memory: "1Gi",
-						},
-						Requests: &kubernetes.CpuMemory{
-							Cpu:    "50m",
-							Memory: "100Mi",
-						},
-					},
-				},
+				Namespace: literal("strimzi-system"),
 			},
 		}
 	})
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("with all required fields", func() {
-			ginkgo.It("should not return a validation error", func() {
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("minimal spec should not return a validation error (every optional block omitted)", func() {
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with minimal configuration", func() {
-			ginkgo.It("should not return a validation error", func() {
-				minimalInput := &KubernetesStrimziKafkaOperator{
-					ApiVersion: "kubernetes.planton.dev/v1",
-					Kind:       "KubernetesStrimziKafkaOperator",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "minimal-kafka-operator",
-					},
-					Spec: &KubernetesStrimziKafkaOperatorSpec{
-						Namespace: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "strimzi-kafka-operator",
-							},
-						},
-						CreateNamespace: false,
-						Container:       &KubernetesStrimziKafkaOperatorSpecContainer{},
-					},
-				}
-				err := protovalidate.Validate(minimalInput)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("namespace as a reference should be valid", func() {
+			input.Spec.Namespace = valueFrom(cloudresourcekind.CloudResourceKind_KubernetesNamespace, "strimzi-system", "spec.name")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with custom resource limits", func() {
-			ginkgo.It("should not return a validation error", func() {
-				customInput := &KubernetesStrimziKafkaOperator{
-					ApiVersion: "kubernetes.planton.dev/v1",
-					Kind:       "KubernetesStrimziKafkaOperator",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "custom-resources-operator",
-					},
-					Spec: &KubernetesStrimziKafkaOperatorSpec{
-						Namespace: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "strimzi-kafka-operator",
-							},
-						},
-						CreateNamespace: true,
-						Container: &KubernetesStrimziKafkaOperatorSpecContainer{
-							Resources: &kubernetes.ContainerResources{
-								Limits: &kubernetes.CpuMemory{
-									Cpu:    "2000m",
-									Memory: "2Gi",
-								},
-								Requests: &kubernetes.CpuMemory{
-									Cpu:    "100m",
-									Memory: "256Mi",
-								},
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(customInput)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("any_namespace watch scope alone should be valid", func() {
+			input.Spec.Watch = &KubernetesStrimziKafkaOperatorWatch{AnyNamespace: true}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with create_namespace set to true", func() {
-			ginkgo.It("should not return a validation error", func() {
-				createNsInput := &KubernetesStrimziKafkaOperator{
-					ApiVersion: "kubernetes.planton.dev/v1",
-					Kind:       "KubernetesStrimziKafkaOperator",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "create-ns-operator",
-					},
-					Spec: &KubernetesStrimziKafkaOperatorSpec{
-						Namespace: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "strimzi-kafka-operator",
-							},
-						},
-						CreateNamespace: true,
-						Container:       &KubernetesStrimziKafkaOperatorSpecContainer{},
-					},
-				}
-				err := protovalidate.Validate(createNsInput)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("a namespace-fence watch scope alone should be valid", func() {
+			input.Spec.Watch = &KubernetesStrimziKafkaOperatorWatch{Namespaces: []string{"team-a", "team-b"}}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with create_namespace set to false", func() {
-			ginkgo.It("should not return a validation error", func() {
-				noCreateNsInput := &KubernetesStrimziKafkaOperator{
-					ApiVersion: "kubernetes.planton.dev/v1",
-					Kind:       "KubernetesStrimziKafkaOperator",
-					Metadata: &shared.CloudResourceMetadata{
-						Name: "no-create-ns-operator",
-					},
-					Spec: &KubernetesStrimziKafkaOperatorSpec{
-						Namespace: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "strimzi-kafka-operator",
-							},
-						},
-						CreateNamespace: false,
-						Container:       &KubernetesStrimziKafkaOperatorSpecContainer{},
-					},
-				}
-				err := protovalidate.Validate(noCreateNsInput)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("every log level in the operator's vocabulary should be valid", func() {
+			for _, level := range []string{"ERROR", "WARN", "INFO", "DEBUG", "TRACE"} {
+				input.Spec.LogLevel = stringPtr(level)
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			}
+		})
+
+		ginkgo.It("full surface (replicas, intervals, gates, image, scheduling) should be valid", func() {
+			input.Spec.Replicas = int32Ptr(2)
+			input.Spec.FullReconciliationIntervalMs = int32Ptr(180000)
+			input.Spec.OperationTimeoutMs = int32Ptr(420000)
+			input.Spec.FeatureGates = "+SomeGate"
+			input.Spec.KubernetesServiceDnsDomain = stringPtr("cluster.local")
+			input.Spec.Image = &KubernetesStrimziKafkaOperatorImage{
+				Registry:   "mirror.example.com",
+				Repository: "strimzi",
+				Tag:        "1.1.0",
+			}
+			input.Spec.NodeSelector = map[string]string{"kubernetes.io/os": "linux"}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("with incorrect api_version", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.ApiVersion = "wrong-api-version"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("missing namespace should fail (required)", func() {
+			input.Spec.Namespace = nil
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with incorrect kind", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Kind = "WrongKind"
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("any_namespace combined with a namespace fence should fail (spec.watch.any_namespace_xor_namespaces)", func() {
+			input.Spec.Watch = &KubernetesStrimziKafkaOperatorWatch{
+				AnyNamespace: true,
+				Namespaces:   []string{"team-a"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with missing metadata", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Metadata = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("an unknown log level should fail (spec.log_level_enum)", func() {
+			input.Spec.LogLevel = stringPtr("VERBOSE")
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with missing spec", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("zero replicas should fail (replicas gte 1)", func() {
+			input.Spec.Replicas = int32Ptr(0)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with missing container in spec", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.Container = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("a sub-second reconciliation interval should fail (gte 1000ms)", func() {
+			input.Spec.FullReconciliationIntervalMs = int32Ptr(500)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("a sub-second operation timeout should fail (gte 1000ms)", func() {
+			input.Spec.OperationTimeoutMs = int32Ptr(999)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 	})
 })

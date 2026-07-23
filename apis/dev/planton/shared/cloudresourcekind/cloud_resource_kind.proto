@@ -3098,50 +3098,65 @@ enum CloudResourceKind {
     id_prefix: "k8skaf"
     prerequisites: [KubernetesStrimziKafkaOperator]
   }];
-  KubernetesElasticOperator = 909 [(kind_meta) = {
+  KubernetesKafkaTopic = 909 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skaftop"
+    prerequisites: [KubernetesKafka]
+  }];
+  KubernetesKafkaUser = 910 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skafusr"
+    prerequisites: [KubernetesKafka]
+  }];
+  // 911-915: reserved for the Kafka ecosystem family (Connect and its
+  // connectors, MirrorMaker 2, schema registry, console) so the whole
+  // family reads as one contiguous teaching block.
+  KubernetesElasticOperator = 916 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8selaop"
   }];
-  KubernetesElasticsearch = 910 [(kind_meta) = {
+  KubernetesElasticsearch = 917 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8ses"
     prerequisites: [KubernetesElasticOperator]
   }];
-  KubernetesAltinityOperator = 911 [(kind_meta) = {
+  KubernetesAltinityOperator = 918 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8saltop"
   }];
-  KubernetesClickHouse = 912 [(kind_meta) = {
+  KubernetesClickHouse = 919 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sclkhs"
     prerequisites: [KubernetesAltinityOperator]
   }];
-  KubernetesSolrOperator = 913 [(kind_meta) = {
+  KubernetesSolrOperator = 920 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sslrop"
   }];
-  KubernetesSolr = 914 [(kind_meta) = {
+  KubernetesSolr = 921 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8ssolr"
     prerequisites: [KubernetesSolrOperator]
   }];
-  KubernetesNeo4j = 915 [(kind_meta) = {
+  KubernetesNeo4j = 922 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sneo"
   }];
-  KubernetesRookCephOperator = 916 [(kind_meta) = {
+  KubernetesRookCephOperator = 923 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8srookop"
   }];
-  KubernetesRookCephCluster = 917 [(kind_meta) = {
+  KubernetesRookCephCluster = 924 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8srookcl"

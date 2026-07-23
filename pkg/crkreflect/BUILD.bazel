@@ -476,6 +476,8 @@ go_library(
         "//apis/dev/planton/provider/kubernetes/kubernetesjenkins/v1:kubernetesjenkins",
         "//apis/dev/planton/provider/kubernetes/kubernetesjob/v1:kubernetesjob",
         "//apis/dev/planton/provider/kubernetes/kuberneteskafka/v1:kuberneteskafka",
+        "//apis/dev/planton/provider/kubernetes/kuberneteskafkatopic/v1:kuberneteskafkatopic",
+        "//apis/dev/planton/provider/kubernetes/kuberneteskafkauser/v1:kuberneteskafkauser",
         "//apis/dev/planton/provider/kubernetes/kuberneteskarpenter/v1:kuberneteskarpenter",
         "//apis/dev/planton/provider/kubernetes/kuberneteskarpenterec2nodeclass/v1:kuberneteskarpenterec2nodeclass",
         "//apis/dev/planton/provider/kubernetes/kuberneteskarpenternodepool/v1:kuberneteskarpenternodepool",

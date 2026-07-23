@@ -13,7 +13,6 @@ import (
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -26,31 +25,160 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **KubernetesKafkaSpec** defines the configuration for deploying Apache Kafka on a Kubernetes cluster.
-// This message includes specifications for Kafka topics, broker containers, Zookeeper containers, schema registry,
-// ingress settings, and the option to deploy a Kafka UI.
-// By configuring these parameters, you can set up a Kafka cluster tailored to your application's needs, including
-// resource allocation, data persistence, and external access.
+// *
+// **KubernetesKafkaSpec** declares an Apache Kafka cluster on the
+// Strimzi `Kafka` + `KafkaNodePool` custom resources (KRaft mode —
+// Kafka's built-in Raft metadata quorum; ZooKeeper does not exist in
+// this architecture). The Strimzi cluster operator
+// (KubernetesStrimziKafkaOperator) reconciles the rendered resources
+// into brokers, controllers, listeners, certificates, and the
+// per-cluster entity operators.
+//
+// SHAPE: `node_pools` declares the machines (roles, count, storage,
+// sizing) — the cluster cannot exist without at least one pool
+// carrying the `controller` role and one carrying the `broker` role
+// (one dual-role pool satisfies both; the production norm is separate
+// controller and broker pools). `listeners` declares how clients
+// reach the brokers; `config` carries broker configuration the
+// operator does not own.
+//
+// TOPICS AND USERS are first-class resources — declare them with
+// KubernetesKafkaTopic / KubernetesKafkaUser (reconciled by this
+// cluster's entity operators, which `entity_operator` keeps enabled
+// by default). Exposure beyond listeners (Ingress controllers,
+// Gateways) composes from the exported service handles — never
+// embedded here.
+//
+// DURABILITY defaults worth knowing: topic durability is governed by
+// per-topic `replicas` and the cluster's `min.insync.replicas` /
+// `default.replication.factor` entries in `config` — a 3-broker
+// cluster with the recommended entries survives a broker loss without
+// losing acknowledged writes (producers using acks=all).
 type KubernetesKafkaSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// A list of Kafka topics to be created in the Kafka cluster.
-	KafkaTopics []*KafkaTopic `protobuf:"bytes,4,rep,name=kafka_topics,json=kafkaTopics,proto3" json:"kafka_topics,omitempty"`
-	// The specifications for the Kafka broker containers.
-	BrokerContainer *KubernetesKafkaBrokerContainer `protobuf:"bytes,5,opt,name=broker_container,json=brokerContainer,proto3" json:"broker_container,omitempty"`
-	// The specifications for the Zookeeper containers.
-	ZookeeperContainer *KubernetesKafkaZookeeperContainer `protobuf:"bytes,6,opt,name=zookeeper_container,json=zookeeperContainer,proto3" json:"zookeeper_container,omitempty"`
-	// The specifications for the Schema Registry containers.
-	SchemaRegistryContainer *KubernetesKafkaSchemaRegistryContainer `protobuf:"bytes,7,opt,name=schema_registry_container,json=schemaRegistryContainer,proto3" json:"schema_registry_container,omitempty"`
-	// The ingress configuration for the Kafka deployment.
-	Ingress *KubernetesKafkaIngress `protobuf:"bytes,8,opt,name=ingress,proto3" json:"ingress,omitempty"`
-	// A flag to toggle the deployment of the Kafka UI component.
-	IsDeployKafkaUi bool `protobuf:"varint,9,opt,name=is_deploy_kafka_ui,json=isDeployKafkaUi,proto3" json:"is_deploy_kafka_ui,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// *
+	// Namespace for the Kafka cluster. Accepts a literal namespace name
+	// or a reference to a KubernetesNamespace resource. The namespace
+	// must be watched by a Strimzi operator installation, and
+	// KafkaTopic/KafkaUser declarations for this cluster must live in
+	// THIS namespace (their entity operators watch only here).
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the
+	// resource. When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Kafka version to run (e.g. "4.3.0"). Empty = the operator's
+	// default version (the newest the pinned Strimzi release supports).
+	// Upgrades are sequential per Kafka's own rules — set
+	// `metadata_version` deliberately when upgrading (the KRaft metadata
+	// format must never be newer than the oldest running broker
+	// version).
+	KafkaVersion string `protobuf:"bytes,3,opt,name=kafka_version,json=kafkaVersion,proto3" json:"kafka_version,omitempty"`
+	// *
+	// KRaft metadata version (e.g. "4.3-IV0"). Empty = the operator
+	// pins it to the Kafka version's format. During a Kafka version
+	// upgrade, leave this at the OLD version's format until every node
+	// runs the new binaries — the metadata format is a one-way door
+	// (downgrade becomes impossible once bumped).
+	MetadataVersion string `protobuf:"bytes,4,opt,name=metadata_version,json=metadataVersion,proto3" json:"metadata_version,omitempty"`
+	// *
+	// The node pools that make up the cluster. At least one pool must
+	// carry the `controller` role and at least one the `broker` role —
+	// a single dual-role pool (dev shape) satisfies both. Pools are
+	// independently scalable groups of nodes sharing storage shape,
+	// sizing and scheduling; production clusters typically run one
+	// 3-node controller pool and one or more broker pools.
+	NodePools []*KubernetesKafkaNodePool `protobuf:"bytes,5,rep,name=node_pools,json=nodePools,proto3" json:"node_pools,omitempty"`
+	// *
+	// Listeners — how clients reach the brokers. At least one is
+	// required. Names must be unique and ports must be unique across
+	// the list.
+	Listeners []*KubernetesKafkaListener `protobuf:"bytes,6,rep,name=listeners,proto3" json:"listeners,omitempty"`
+	// *
+	// Kafka broker configuration (server.properties entries), e.g.
+	// "default.replication.factor", "min.insync.replicas",
+	// "auto.create.topics.enable". Values are Kafka configuration
+	// strings — write numbers and booleans as strings ("3", "false");
+	// the operator serializes every value into Java properties form.
+	//
+	// The operator OWNS listener, node identity, security and quorum
+	// configuration: entries with the prefixes listeners, advertised.,
+	// broker., listener., host.name, port, inter.broker.listener.name,
+	// sasl., ssl., security., password., log.dir, authorizer.,
+	// super.user, node.id, process.roles, controller. (and the
+	// cruise-control metrics reporter keys) are IGNORED with an
+	// operator log warning, not applied — configure those concerns
+	// through their typed fields instead.
+	Config map[string]string `protobuf:"bytes,7,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Authorization for the whole cluster. Omitted = no authorizer:
+	// every authenticated (or anonymous, on a no-auth listener) client
+	// can do everything. Enable `simple` to enforce the ACLs declared
+	// on KubernetesKafkaUser resources — from that moment, clients
+	// WITHOUT matching ACLs are denied.
+	Authorization *KubernetesKafkaAuthorization `protobuf:"bytes,8,opt,name=authorization,proto3" json:"authorization,omitempty"`
+	// *
+	// The per-cluster entity operators that reconcile KafkaTopic and
+	// KafkaUser resources. Both enabled by default — required for
+	// KubernetesKafkaTopic / KubernetesKafkaUser declarations against
+	// this cluster to have any effect.
+	EntityOperator *KubernetesKafkaEntityOperator `protobuf:"bytes,9,opt,name=entity_operator,json=entityOperator,proto3" json:"entity_operator,omitempty"`
+	// *
+	// Cruise Control — Kafka's partition-rebalancing autopilot. When
+	// enabled, the operator deploys Cruise Control beside the cluster
+	// and `KafkaRebalance` operations (an operational verb, applied
+	// with kubectl or automation — deliberately not a declared
+	// resource) can optimize partition placement. `auto_rebalance`
+	// additionally rebalances automatically when pools scale.
+	CruiseControl *KubernetesKafkaCruiseControl `protobuf:"bytes,10,opt,name=cruise_control,json=cruiseControl,proto3" json:"cruise_control,omitempty"`
+	// *
+	// Kafka Exporter — consumer-lag and topic/partition Prometheus
+	// metrics derived from the cluster's own protocol (the metrics the
+	// JMX exporter cannot see). Deploys a separate exporter pod.
+	KafkaExporter *KubernetesKafkaExporter `protobuf:"bytes,11,opt,name=kafka_exporter,json=kafkaExporter,proto3" json:"kafka_exporter,omitempty"`
+	// *
+	// JMX Prometheus metrics for brokers (and controllers). When
+	// enabled, the module renders the canonical Strimzi
+	// kafka-metrics ConfigMap (the upstream example rules: broker,
+	// network, log and controller metric families) and wires it as the
+	// cluster's metricsConfig — pair with KubernetesKafkaExporter for
+	// consumer-lag visibility.
+	Metrics *KubernetesKafkaMetrics `protobuf:"bytes,12,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	// *
+	// Cluster CA (signs broker certificates). Omitted = the operator
+	// generates and renews the CA (the recommended posture). Configure
+	// validity/renewal windows here; bringing your OWN CA is a
+	// helm-values-class edge deliberately not modeled — the operator
+	// renews self-generated CAs automatically.
+	ClusterCa *KubernetesKafkaCa `protobuf:"bytes,13,opt,name=cluster_ca,json=clusterCa,proto3" json:"cluster_ca,omitempty"`
+	// *
+	// Clients CA (signs KafkaUser TLS client certificates). Same
+	// posture as cluster_ca.
+	ClientsCa *KubernetesKafkaCa `protobuf:"bytes,14,opt,name=clients_ca,json=clientsCa,proto3" json:"clients_ca,omitempty"`
+	// *
+	// Rack awareness: spreads partition replicas across the topology
+	// domains named by this key (e.g. "topology.kubernetes.io/zone")
+	// and enables follower-fetching from the closest replica. Requires
+	// nodes labeled with the key; the operator injects each broker's
+	// rack from its node's label value.
+	Rack *KubernetesKafkaRack `protobuf:"bytes,15,opt,name=rack,proto3" json:"rack,omitempty"`
+	// *
+	// JVM heap for broker/controller nodes (rendered as -Xms/-Xmx).
+	// Empty = Strimzi's dynamic default (a fraction of the container
+	// memory limit). Set both to the SAME value for production —
+	// heap growth causes long GC pauses that look like broker
+	// failures to the controller quorum.
+	Jvm *KubernetesKafkaJvm `protobuf:"bytes,16,opt,name=jvm,proto3" json:"jvm,omitempty"`
+	// *
+	// Maintenance time windows (cron expressions, e.g.
+	// "* * 0-3 ? * SUN") during which the operator performs rolling
+	// updates triggered by certificate renewals. Empty = renewals roll
+	// pods whenever they come due.
+	MaintenanceTimeWindows []string `protobuf:"bytes,17,rep,name=maintenance_time_windows,json=maintenanceTimeWindows,proto3" json:"maintenance_time_windows,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *KubernetesKafkaSpec) Reset() {
@@ -97,495 +225,1849 @@ func (x *KubernetesKafkaSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesKafkaSpec) GetKafkaTopics() []*KafkaTopic {
+func (x *KubernetesKafkaSpec) GetKafkaVersion() string {
 	if x != nil {
-		return x.KafkaTopics
-	}
-	return nil
-}
-
-func (x *KubernetesKafkaSpec) GetBrokerContainer() *KubernetesKafkaBrokerContainer {
-	if x != nil {
-		return x.BrokerContainer
-	}
-	return nil
-}
-
-func (x *KubernetesKafkaSpec) GetZookeeperContainer() *KubernetesKafkaZookeeperContainer {
-	if x != nil {
-		return x.ZookeeperContainer
-	}
-	return nil
-}
-
-func (x *KubernetesKafkaSpec) GetSchemaRegistryContainer() *KubernetesKafkaSchemaRegistryContainer {
-	if x != nil {
-		return x.SchemaRegistryContainer
-	}
-	return nil
-}
-
-func (x *KubernetesKafkaSpec) GetIngress() *KubernetesKafkaIngress {
-	if x != nil {
-		return x.Ingress
-	}
-	return nil
-}
-
-func (x *KubernetesKafkaSpec) GetIsDeployKafkaUi() bool {
-	if x != nil {
-		return x.IsDeployKafkaUi
-	}
-	return false
-}
-
-// *
-// KubernetesKafkaIngress defines ingress configuration for Kafka.
-type KubernetesKafkaIngress struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Flag to enable or disable ingress.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// The full hostname for external access (e.g., "kafka.example.com").
-	// Required when enabled is true.
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesKafkaIngress) Reset() {
-	*x = KubernetesKafkaIngress{}
-	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesKafkaIngress) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesKafkaIngress) ProtoMessage() {}
-
-func (x *KubernetesKafkaIngress) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesKafkaIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesKafkaIngress) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *KubernetesKafkaIngress) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *KubernetesKafkaIngress) GetHostname() string {
-	if x != nil {
-		return x.Hostname
+		return x.KafkaVersion
 	}
 	return ""
 }
 
-// **KubernetesKafkaBrokerContainer** specifies the configuration for the Kafka broker containers.
-// It includes settings such as the number of replicas, resource allocations, and disk size.
-// Proper configuration ensures optimal performance and data reliability for your Kafka brokers.
-type KubernetesKafkaBrokerContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The number of Kafka brokers to deploy.
-	// Defaults to 1 if the client sets the value to 0.
-	// Recommended default value is 1.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to the Kafka broker containers.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// The size of the disk to be attached to each broker instance (e.g., "30Gi").
-	// A default value is set if not provided by the client.
-	DiskSize      string `protobuf:"bytes,3,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesKafkaBrokerContainer) Reset() {
-	*x = KubernetesKafkaBrokerContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesKafkaBrokerContainer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesKafkaBrokerContainer) ProtoMessage() {}
-
-func (x *KubernetesKafkaBrokerContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[2]
+func (x *KubernetesKafkaSpec) GetMetadataVersion() string {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesKafkaBrokerContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesKafkaBrokerContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesKafkaBrokerContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesKafkaBrokerContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-func (x *KubernetesKafkaBrokerContainer) GetDiskSize() string {
-	if x != nil {
-		return x.DiskSize
+		return x.MetadataVersion
 	}
 	return ""
 }
 
-// **KubernetesKafkaZookeeperContainer** specifies the configuration for the Zookeeper containers.
-// Zookeeper is required for Kafka cluster management and coordination.
-// Proper configuration ensures high availability and reliability of your Kafka cluster.
-type KubernetesKafkaZookeeperContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The number of Zookeeper container replicas.
-	// Zookeeper requires at least 3 replicas for high availability (HA) mode.
-	// Zookeeper uses the Raft consensus algorithm; refer to https://raft.github.io/ for more information on how replica
-	// count affects availability.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to the Zookeeper containers.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// The size of the disk to be attached to each Zookeeper instance (e.g., "30Gi").
-	// A default value is set if not provided by the client.
-	DiskSize      string `protobuf:"bytes,3,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesKafkaZookeeperContainer) Reset() {
-	*x = KubernetesKafkaZookeeperContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesKafkaZookeeperContainer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesKafkaZookeeperContainer) ProtoMessage() {}
-
-func (x *KubernetesKafkaZookeeperContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[3]
+func (x *KubernetesKafkaSpec) GetNodePools() []*KubernetesKafkaNodePool {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesKafkaZookeeperContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesKafkaZookeeperContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *KubernetesKafkaZookeeperContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesKafkaZookeeperContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
+		return x.NodePools
 	}
 	return nil
 }
 
-func (x *KubernetesKafkaZookeeperContainer) GetDiskSize() string {
+func (x *KubernetesKafkaSpec) GetListeners() []*KubernetesKafkaListener {
 	if x != nil {
-		return x.DiskSize
-	}
-	return ""
-}
-
-// **KubernetesKafkaSchemaRegistryContainer** specifies the configuration for the Schema Registry containers.
-// The Schema Registry provides a serving layer for your metadata, allowing data producers and consumers to evolve independently.
-type KubernetesKafkaSchemaRegistryContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// A flag to control whether the Schema Registry is created for the Kafka deployment.
-	// Defaults to `false`.
-	IsEnabled bool `protobuf:"varint,1,opt,name=is_enabled,json=isEnabled,proto3" json:"is_enabled,omitempty"`
-	// The number of Schema Registry replicas.
-	// Recommended default value is "1".
-	// This value has no effect if `is_enabled` is set to `false`.
-	Replicas int32 `protobuf:"varint,2,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to the Schema Registry containers.
-	Resources     *kubernetes.ContainerResources `protobuf:"bytes,3,opt,name=resources,proto3" json:"resources,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesKafkaSchemaRegistryContainer) Reset() {
-	*x = KubernetesKafkaSchemaRegistryContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesKafkaSchemaRegistryContainer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesKafkaSchemaRegistryContainer) ProtoMessage() {}
-
-func (x *KubernetesKafkaSchemaRegistryContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesKafkaSchemaRegistryContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesKafkaSchemaRegistryContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *KubernetesKafkaSchemaRegistryContainer) GetIsEnabled() bool {
-	if x != nil {
-		return x.IsEnabled
-	}
-	return false
-}
-
-func (x *KubernetesKafkaSchemaRegistryContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesKafkaSchemaRegistryContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
+		return x.Listeners
 	}
 	return nil
 }
 
-// **KafkaTopic** represents a Kafka topic to be created in the Kafka cluster.
-// It includes configurations such as the topic name, number of partitions, replicas, and additional configurations.
-type KafkaTopic struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the Kafka topic.
-	// Must be between 1 and 249 characters in length.
-	// The name must start and end with an alphanumeric character, can contain alphanumeric characters, '.', '_', and '-'.
-	// Must not contain '..' or non-ASCII characters.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The number of partitions for the topic.
-	// Recommended default is 1.
-	Partitions *int32 `protobuf:"varint,2,opt,name=partitions,proto3,oneof" json:"partitions,omitempty"`
-	// The number of replicas for the topic.
-	// Recommended default is 1.
-	Replicas *int32 `protobuf:"varint,3,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
-	// Additional configuration for the Kafka topic.
-	// If not provided, default values will be set.
-	// For example, the default `delete.policy` is `delete`, but it can be set to `compact`.
-	Config        map[string]string `protobuf:"bytes,4,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KafkaTopic) Reset() {
-	*x = KafkaTopic{}
-	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KafkaTopic) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KafkaTopic) ProtoMessage() {}
-
-func (x *KafkaTopic) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KafkaTopic.ProtoReflect.Descriptor instead.
-func (*KafkaTopic) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *KafkaTopic) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *KafkaTopic) GetPartitions() int32 {
-	if x != nil && x.Partitions != nil {
-		return *x.Partitions
-	}
-	return 0
-}
-
-func (x *KafkaTopic) GetReplicas() int32 {
-	if x != nil && x.Replicas != nil {
-		return *x.Replicas
-	}
-	return 0
-}
-
-func (x *KafkaTopic) GetConfig() map[string]string {
+func (x *KubernetesKafkaSpec) GetConfig() map[string]string {
 	if x != nil {
 		return x.Config
 	}
 	return nil
 }
 
-var file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_extTypes = []protoimpl.ExtensionInfo{
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesKafkaBrokerContainer)(nil),
-		Field:         524001,
-		Name:          "dev.planton.provider.kubernetes.kuberneteskafka.v1.default_broker_container",
-		Tag:           "bytes,524001,opt,name=default_broker_container",
-		Filename:      "dev/planton/provider/kubernetes/kuberneteskafka/v1/spec.proto",
-	},
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesKafkaZookeeperContainer)(nil),
-		Field:         524002,
-		Name:          "dev.planton.provider.kubernetes.kuberneteskafka.v1.default_zookeeper_container",
-		Tag:           "bytes,524002,opt,name=default_zookeeper_container",
-		Filename:      "dev/planton/provider/kubernetes/kuberneteskafka/v1/spec.proto",
-	},
+func (x *KubernetesKafkaSpec) GetAuthorization() *KubernetesKafkaAuthorization {
+	if x != nil {
+		return x.Authorization
+	}
+	return nil
 }
 
-// Extension fields to descriptorpb.FieldOptions.
-var (
-	// optional dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer default_broker_container = 524001;
-	E_DefaultBrokerContainer = &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_extTypes[0]
-	// optional dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer default_zookeeper_container = 524002;
-	E_DefaultZookeeperContainer = &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_extTypes[1]
-)
+func (x *KubernetesKafkaSpec) GetEntityOperator() *KubernetesKafkaEntityOperator {
+	if x != nil {
+		return x.EntityOperator
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaSpec) GetCruiseControl() *KubernetesKafkaCruiseControl {
+	if x != nil {
+		return x.CruiseControl
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaSpec) GetKafkaExporter() *KubernetesKafkaExporter {
+	if x != nil {
+		return x.KafkaExporter
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaSpec) GetMetrics() *KubernetesKafkaMetrics {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaSpec) GetClusterCa() *KubernetesKafkaCa {
+	if x != nil {
+		return x.ClusterCa
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaSpec) GetClientsCa() *KubernetesKafkaCa {
+	if x != nil {
+		return x.ClientsCa
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaSpec) GetRack() *KubernetesKafkaRack {
+	if x != nil {
+		return x.Rack
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaSpec) GetJvm() *KubernetesKafkaJvm {
+	if x != nil {
+		return x.Jvm
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaSpec) GetMaintenanceTimeWindows() []string {
+	if x != nil {
+		return x.MaintenanceTimeWindows
+	}
+	return nil
+}
+
+// *
+// A Kafka node pool — an independently scalable group of nodes
+// sharing roles, storage shape, sizing and scheduling. Rendered as a
+// Strimzi `KafkaNodePool` resource bound to the cluster via the
+// strimzi.io/cluster label.
+type KubernetesKafkaNodePool struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Pool name (e.g. "controller", "broker", "dual-role"). Becomes
+	// part of pod and PVC names.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// *
+	// KRaft roles this pool's nodes carry: "controller" (metadata
+	// quorum member), "broker" (stores and serves data), or both
+	// (dual-role — the dev/small-cluster shape; separate pools are the
+	// production norm so brokers can scale without disturbing the
+	// quorum).
+	Roles []string `protobuf:"bytes,2,rep,name=roles,proto3" json:"roles,omitempty"`
+	// *
+	// Number of nodes in the pool. Controller pools should be an ODD
+	// count (3 for production — the quorum tolerates one controller
+	// loss; 1 only for dev). Broker counts follow capacity; 3 is the
+	// floor for a cluster that survives a broker loss with the
+	// recommended replication settings.
+	Replicas int32 `protobuf:"varint,3,opt,name=replicas,proto3" json:"replicas,omitempty"`
+	// *
+	// Node storage. Kafka is a storage-bound system — persistent
+	// storage is the default and the only production-sane choice.
+	Storage *KubernetesKafkaStorage `protobuf:"bytes,4,opt,name=storage,proto3" json:"storage,omitempty"`
+	// *
+	// CPU/memory for each node in the pool. Empty = no requests/limits
+	// (fine for kind/dev; always set for production — the JVM heap
+	// default derives from the memory limit).
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,5,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Node selector for this pool's pods.
+	NodeSelector map[string]string `protobuf:"bytes,6,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for this pool's pods.
+	Tolerations   []*kubernetes.WorkloadToleration `protobuf:"bytes,7,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaNodePool) Reset() {
+	*x = KubernetesKafkaNodePool{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaNodePool) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaNodePool) ProtoMessage() {}
+
+func (x *KubernetesKafkaNodePool) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaNodePool.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaNodePool) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesKafkaNodePool) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaNodePool) GetRoles() []string {
+	if x != nil {
+		return x.Roles
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaNodePool) GetReplicas() int32 {
+	if x != nil {
+		return x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesKafkaNodePool) GetStorage() *KubernetesKafkaStorage {
+	if x != nil {
+		return x.Storage
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaNodePool) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaNodePool) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaNodePool) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
+// *
+// Node-pool storage. Three shapes: a single persistent volume (the
+// default), ephemeral (emptyDir — data dies with the pod; dev only),
+// or JBOD (multiple persistent volumes per node — the
+// high-throughput shape).
+type KubernetesKafkaStorage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Storage type: "persistent-claim" (default), "ephemeral", or
+	// "jbod".
+	Type *string `protobuf:"bytes,1,opt,name=type,proto3,oneof" json:"type,omitempty"`
+	// *
+	// Volume size for persistent-claim storage (e.g. "100Gi").
+	// Required for persistent-claim; ignored for ephemeral and jbod
+	// (jbod sizes live on each volume).
+	Size string `protobuf:"bytes,2,opt,name=size,proto3" json:"size,omitempty"`
+	// *
+	// StorageClass for persistent-claim storage. Accepts a literal
+	// class name or a reference to a KubernetesStorageClass resource.
+	// Empty = the cluster default class.
+	StorageClass *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// *
+	// Delete the PersistentVolumeClaims when the cluster (or pool) is
+	// deleted. Default false — volumes outlive the cluster so data
+	// survives accidental deletion; true hands the data's lifetime to
+	// the resource's.
+	DeleteClaim bool `protobuf:"varint,4,opt,name=delete_claim,json=deleteClaim,proto3" json:"delete_claim,omitempty"`
+	// *
+	// JBOD volumes (jbod type only): multiple persistent volumes per
+	// node, each a separate disk Kafka stripes log segments across.
+	Volumes       []*KubernetesKafkaStorageVolume `protobuf:"bytes,5,rep,name=volumes,proto3" json:"volumes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaStorage) Reset() {
+	*x = KubernetesKafkaStorage{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaStorage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaStorage) ProtoMessage() {}
+
+func (x *KubernetesKafkaStorage) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaStorage.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaStorage) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesKafkaStorage) GetType() string {
+	if x != nil && x.Type != nil {
+		return *x.Type
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaStorage) GetSize() string {
+	if x != nil {
+		return x.Size
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaStorage) GetStorageClass() *v1.StringValueOrRef {
+	if x != nil {
+		return x.StorageClass
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaStorage) GetDeleteClaim() bool {
+	if x != nil {
+		return x.DeleteClaim
+	}
+	return false
+}
+
+func (x *KubernetesKafkaStorage) GetVolumes() []*KubernetesKafkaStorageVolume {
+	if x != nil {
+		return x.Volumes
+	}
+	return nil
+}
+
+// *
+// One JBOD volume.
+type KubernetesKafkaStorageVolume struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Volume ID, unique within the pool's volume list (0, 1, 2, ...).
+	// IDs are part of the on-disk layout — never renumber existing
+	// volumes.
+	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// *
+	// Volume size (e.g. "500Gi").
+	Size string `protobuf:"bytes,2,opt,name=size,proto3" json:"size,omitempty"`
+	// *
+	// StorageClass for this volume. Empty = the cluster default class.
+	StorageClass *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// *
+	// Delete this volume's PVCs with the cluster. Same semantics as
+	// KubernetesKafkaStorage.delete_claim.
+	DeleteClaim bool `protobuf:"varint,4,opt,name=delete_claim,json=deleteClaim,proto3" json:"delete_claim,omitempty"`
+	// *
+	// Store the KRaft metadata log on this volume (exactly one volume
+	// per pool may carry it; default: the volume with the lowest ID).
+	KraftMetadata bool `protobuf:"varint,5,opt,name=kraft_metadata,json=kraftMetadata,proto3" json:"kraft_metadata,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaStorageVolume) Reset() {
+	*x = KubernetesKafkaStorageVolume{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaStorageVolume) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaStorageVolume) ProtoMessage() {}
+
+func (x *KubernetesKafkaStorageVolume) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaStorageVolume.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaStorageVolume) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesKafkaStorageVolume) GetId() int32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *KubernetesKafkaStorageVolume) GetSize() string {
+	if x != nil {
+		return x.Size
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaStorageVolume) GetStorageClass() *v1.StringValueOrRef {
+	if x != nil {
+		return x.StorageClass
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaStorageVolume) GetDeleteClaim() bool {
+	if x != nil {
+		return x.DeleteClaim
+	}
+	return false
+}
+
+func (x *KubernetesKafkaStorageVolume) GetKraftMetadata() bool {
+	if x != nil {
+		return x.KraftMetadata
+	}
+	return false
+}
+
+// *
+// A Kafka listener.
+type KubernetesKafkaListener struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Listener name — lowercase alphanumerics, at most 11 characters
+	// (it becomes part of service names and certificate SANs).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// *
+	// Listener port, 9092 or above (ports below 9092 are reserved for
+	// Kafka's internal listeners). Must be unique across listeners.
+	Port int32 `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
+	// *
+	// Listener type — how the listener is exposed:
+	// "internal" (in-cluster ClusterIP services, the default),
+	// "cluster-ip" (per-broker ClusterIP services — for custom proxies),
+	// "nodeport" (NodePort services — reachable on node IPs),
+	// "loadbalancer" (one cloud LoadBalancer per broker + bootstrap —
+	// cloud annotations ride configuration.bootstrap/brokers),
+	// "ingress" (nginx-Ingress-based TLS passthrough — REQUIRES
+	// per-broker hosts and an ingress controller with SSL passthrough
+	// enabled), or
+	// "route"/"tlsroute" (OpenShift Routes / Gateway API TLSRoutes).
+	Type *string `protobuf:"bytes,3,opt,name=type,proto3,oneof" json:"type,omitempty"`
+	// *
+	// Enable TLS on this listener. ingress, route and tlsroute
+	// listeners are TLS-passthrough by construction and require true.
+	// Client traffic on tls=false listeners is PLAINTEXT — keep those
+	// internal.
+	Tls bool `protobuf:"varint,4,opt,name=tls,proto3" json:"tls,omitempty"`
+	// *
+	// Client authentication on this listener. Omitted = unauthenticated
+	// (acceptable only for fenced internal listeners).
+	Authentication *KubernetesKafkaListenerAuthentication `protobuf:"bytes,5,opt,name=authentication,proto3" json:"authentication,omitempty"`
+	// *
+	// Type-specific exposure configuration (hosts, cloud annotations,
+	// traffic policy, connection limits).
+	Configuration *KubernetesKafkaListenerConfiguration `protobuf:"bytes,6,opt,name=configuration,proto3" json:"configuration,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaListener) Reset() {
+	*x = KubernetesKafkaListener{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaListener) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaListener) ProtoMessage() {}
+
+func (x *KubernetesKafkaListener) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaListener.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaListener) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesKafkaListener) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListener) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *KubernetesKafkaListener) GetType() string {
+	if x != nil && x.Type != nil {
+		return *x.Type
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListener) GetTls() bool {
+	if x != nil {
+		return x.Tls
+	}
+	return false
+}
+
+func (x *KubernetesKafkaListener) GetAuthentication() *KubernetesKafkaListenerAuthentication {
+	if x != nil {
+		return x.Authentication
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaListener) GetConfiguration() *KubernetesKafkaListenerConfiguration {
+	if x != nil {
+		return x.Configuration
+	}
+	return nil
+}
+
+// *
+// Listener client authentication.
+type KubernetesKafkaListenerAuthentication struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Authentication type:
+	// "tls" (mutual TLS — clients present certificates issued via
+	// KubernetesKafkaUser tls authentication),
+	// "scram-sha-512" (username/password — credentials generated by
+	// KubernetesKafkaUser scram-sha-512 authentication), or
+	// "custom" (bring-your-own SASL mechanism/OAuth — configured
+	// through listener_config; OAuth lost its first-class type in
+	// Strimzi 1.x and routes through custom).
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// *
+	// custom type only: enable SASL on the listener.
+	Sasl bool `protobuf:"varint,2,opt,name=sasl,proto3" json:"sasl,omitempty"`
+	// *
+	// custom type only: the listener's Kafka configuration entries
+	// (rendered under the custom authentication's listenerConfig).
+	// Values are Kafka configuration strings — write numbers and
+	// booleans as strings; the operator serializes them into listener
+	// properties.
+	ListenerConfig map[string]string `protobuf:"bytes,3,rep,name=listener_config,json=listenerConfig,proto3" json:"listener_config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaListenerAuthentication) Reset() {
+	*x = KubernetesKafkaListenerAuthentication{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaListenerAuthentication) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaListenerAuthentication) ProtoMessage() {}
+
+func (x *KubernetesKafkaListenerAuthentication) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaListenerAuthentication.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaListenerAuthentication) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesKafkaListenerAuthentication) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListenerAuthentication) GetSasl() bool {
+	if x != nil {
+		return x.Sasl
+	}
+	return false
+}
+
+func (x *KubernetesKafkaListenerAuthentication) GetListenerConfig() map[string]string {
+	if x != nil {
+		return x.ListenerConfig
+	}
+	return nil
+}
+
+// *
+// Type-specific listener exposure configuration.
+type KubernetesKafkaListenerConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Controller class for exposure: the IngressClass name for ingress
+	// listeners, the LoadBalancerClass for loadbalancer listeners.
+	Class string `protobuf:"bytes,1,opt,name=class,proto3" json:"class,omitempty"`
+	// *
+	// externalTrafficPolicy for loadbalancer/nodeport listeners:
+	// "Local" (preserves client IPs, no extra hop) or "Cluster" (the
+	// Kubernetes default).
+	ExternalTrafficPolicy *string `protobuf:"bytes,2,opt,name=external_traffic_policy,json=externalTrafficPolicy,proto3,oneof" json:"external_traffic_policy,omitempty"`
+	// *
+	// CIDR ranges allowed to reach loadbalancer listeners (rendered as
+	// loadBalancerSourceRanges).
+	LoadBalancerSourceRanges []string `protobuf:"bytes,3,rep,name=load_balancer_source_ranges,json=loadBalancerSourceRanges,proto3" json:"load_balancer_source_ranges,omitempty"`
+	// *
+	// Allocate node ports for loadbalancer listeners. Unset = the
+	// Kubernetes default (true). Set false on clouds routing LB
+	// traffic directly to pods (the ingress-nginx annotation recipes'
+	// companion knob).
+	AllocateLoadBalancerNodePorts *bool `protobuf:"varint,4,opt,name=allocate_load_balancer_node_ports,json=allocateLoadBalancerNodePorts,proto3,oneof" json:"allocate_load_balancer_node_ports,omitempty"`
+	// *
+	// Create the bootstrap service. Unset = true. Disabling is an
+	// advanced shape where clients bootstrap through per-broker
+	// addresses only.
+	CreateBootstrapService *bool `protobuf:"varint,5,opt,name=create_bootstrap_service,json=createBootstrapService,proto3,oneof" json:"create_bootstrap_service,omitempty"`
+	// *
+	// Use the fully-qualified *.svc.<cluster-domain> DNS names in
+	// advertised addresses of internal listeners.
+	UseServiceDnsDomain bool `protobuf:"varint,6,opt,name=use_service_dns_domain,json=useServiceDnsDomain,proto3" json:"use_service_dns_domain,omitempty"`
+	// *
+	// Per-listener client connection cap per broker (Kafka's
+	// max.connections).
+	MaxConnections *int32 `protobuf:"varint,7,opt,name=max_connections,json=maxConnections,proto3,oneof" json:"max_connections,omitempty"`
+	// *
+	// Per-listener new-connection rate cap per broker (Kafka's
+	// max.connection.creation.rate).
+	MaxConnectionCreationRate *int32 `protobuf:"varint,8,opt,name=max_connection_creation_rate,json=maxConnectionCreationRate,proto3,oneof" json:"max_connection_creation_rate,omitempty"`
+	// *
+	// Preferred address type advertised by nodeport listeners:
+	// ExternalDNS, ExternalIP, InternalDNS, InternalIP, or Hostname.
+	PreferredNodePortAddressType *string `protobuf:"bytes,9,opt,name=preferred_node_port_address_type,json=preferredNodePortAddressType,proto3,oneof" json:"preferred_node_port_address_type,omitempty"`
+	// *
+	// Publish broker addresses before readiness (nodeport/loadbalancer
+	// listeners on slow-provisioning clouds).
+	PublishNotReadyAddresses bool `protobuf:"varint,10,opt,name=publish_not_ready_addresses,json=publishNotReadyAddresses,proto3" json:"publish_not_ready_addresses,omitempty"`
+	// *
+	// Serve this listener with a custom server certificate instead of
+	// the operator-generated one (the cert-manager seam: reference a
+	// KubernetesCertificate's secret). The certificate's SANs must
+	// cover the listener's advertised names — the operator does NOT
+	// validate this; clients fail TLS verification at connect time if
+	// they don't.
+	BrokerCertChainAndKey *KubernetesKafkaListenerCertificate `protobuf:"bytes,11,opt,name=broker_cert_chain_and_key,json=brokerCertChainAndKey,proto3" json:"broker_cert_chain_and_key,omitempty"`
+	// *
+	// Bootstrap service/host configuration (ingress/route/tlsroute
+	// hosts, loadbalancer annotations and static IPs, nodeport
+	// overrides).
+	Bootstrap *KubernetesKafkaListenerBootstrap `protobuf:"bytes,12,opt,name=bootstrap,proto3" json:"bootstrap,omitempty"`
+	// *
+	// Per-broker configuration entries — REQUIRED for ingress and
+	// tlsroute listeners (each broker needs its own host).
+	Brokers       []*KubernetesKafkaListenerBroker `protobuf:"bytes,13,rep,name=brokers,proto3" json:"brokers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaListenerConfiguration) Reset() {
+	*x = KubernetesKafkaListenerConfiguration{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaListenerConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaListenerConfiguration) ProtoMessage() {}
+
+func (x *KubernetesKafkaListenerConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaListenerConfiguration.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaListenerConfiguration) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetClass() string {
+	if x != nil {
+		return x.Class
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetExternalTrafficPolicy() string {
+	if x != nil && x.ExternalTrafficPolicy != nil {
+		return *x.ExternalTrafficPolicy
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetLoadBalancerSourceRanges() []string {
+	if x != nil {
+		return x.LoadBalancerSourceRanges
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetAllocateLoadBalancerNodePorts() bool {
+	if x != nil && x.AllocateLoadBalancerNodePorts != nil {
+		return *x.AllocateLoadBalancerNodePorts
+	}
+	return false
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetCreateBootstrapService() bool {
+	if x != nil && x.CreateBootstrapService != nil {
+		return *x.CreateBootstrapService
+	}
+	return false
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetUseServiceDnsDomain() bool {
+	if x != nil {
+		return x.UseServiceDnsDomain
+	}
+	return false
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetMaxConnections() int32 {
+	if x != nil && x.MaxConnections != nil {
+		return *x.MaxConnections
+	}
+	return 0
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetMaxConnectionCreationRate() int32 {
+	if x != nil && x.MaxConnectionCreationRate != nil {
+		return *x.MaxConnectionCreationRate
+	}
+	return 0
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetPreferredNodePortAddressType() string {
+	if x != nil && x.PreferredNodePortAddressType != nil {
+		return *x.PreferredNodePortAddressType
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetPublishNotReadyAddresses() bool {
+	if x != nil {
+		return x.PublishNotReadyAddresses
+	}
+	return false
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetBrokerCertChainAndKey() *KubernetesKafkaListenerCertificate {
+	if x != nil {
+		return x.BrokerCertChainAndKey
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetBootstrap() *KubernetesKafkaListenerBootstrap {
+	if x != nil {
+		return x.Bootstrap
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaListenerConfiguration) GetBrokers() []*KubernetesKafkaListenerBroker {
+	if x != nil {
+		return x.Brokers
+	}
+	return nil
+}
+
+// *
+// Custom listener server certificate (from an existing Secret — the
+// cert-manager composition seam).
+type KubernetesKafkaListenerCertificate struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Name of the Secret holding the certificate. Accepts a literal
+	// name or a reference to a KubernetesCertificate resource's output
+	// secret.
+	SecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// *
+	// Key of the certificate chain within the Secret. cert-manager
+	// writes "tls.crt".
+	Certificate *string `protobuf:"bytes,2,opt,name=certificate,proto3,oneof" json:"certificate,omitempty"`
+	// *
+	// Key of the private key within the Secret. cert-manager writes
+	// "tls.key".
+	Key           *string `protobuf:"bytes,3,opt,name=key,proto3,oneof" json:"key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaListenerCertificate) Reset() {
+	*x = KubernetesKafkaListenerCertificate{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaListenerCertificate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaListenerCertificate) ProtoMessage() {}
+
+func (x *KubernetesKafkaListenerCertificate) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaListenerCertificate.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaListenerCertificate) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesKafkaListenerCertificate) GetSecretName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SecretName
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaListenerCertificate) GetCertificate() string {
+	if x != nil && x.Certificate != nil {
+		return *x.Certificate
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListenerCertificate) GetKey() string {
+	if x != nil && x.Key != nil {
+		return *x.Key
+	}
+	return ""
+}
+
+// *
+// Bootstrap exposure configuration.
+type KubernetesKafkaListenerBootstrap struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Bootstrap host (REQUIRED for ingress and tlsroute listeners;
+	// used for route listeners' host override). This is the DNS name
+	// clients put in bootstrap.servers — point it (and the per-broker
+	// hosts) at the ingress controller's address, e.g. via
+	// KubernetesExternalDns.
+	Host string `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	// *
+	// Additional annotations on the bootstrap service — the cloud
+	// LoadBalancer configuration surface (e.g.
+	// service.beta.kubernetes.io/aws-load-balancer-type: external for
+	// an AWS NLB via the AWS Load Balancer Controller, or
+	// external-dns.alpha.kubernetes.io/hostname for DNS automation).
+	Annotations map[string]string `protobuf:"bytes,2,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Additional labels on the bootstrap service.
+	Labels map[string]string `protobuf:"bytes,3,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Static loadBalancerIP for the bootstrap LoadBalancer (clouds that
+	// support IP reservation; most modern controllers prefer
+	// annotations).
+	LoadBalancerIp string `protobuf:"bytes,4,opt,name=load_balancer_ip,json=loadBalancerIp,proto3" json:"load_balancer_ip,omitempty"`
+	// *
+	// Static node port for the bootstrap NodePort service (30000-32767
+	// on default clusters). Unset = allocated by Kubernetes.
+	NodePort *int32 `protobuf:"varint,5,opt,name=node_port,json=nodePort,proto3,oneof" json:"node_port,omitempty"`
+	// *
+	// Additional SANs to put on the bootstrap certificate (extra DNS
+	// names clients may use).
+	AlternativeNames []string `protobuf:"bytes,6,rep,name=alternative_names,json=alternativeNames,proto3" json:"alternative_names,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaListenerBootstrap) Reset() {
+	*x = KubernetesKafkaListenerBootstrap{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaListenerBootstrap) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaListenerBootstrap) ProtoMessage() {}
+
+func (x *KubernetesKafkaListenerBootstrap) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaListenerBootstrap.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaListenerBootstrap) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *KubernetesKafkaListenerBootstrap) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListenerBootstrap) GetAnnotations() map[string]string {
+	if x != nil {
+		return x.Annotations
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaListenerBootstrap) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaListenerBootstrap) GetLoadBalancerIp() string {
+	if x != nil {
+		return x.LoadBalancerIp
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListenerBootstrap) GetNodePort() int32 {
+	if x != nil && x.NodePort != nil {
+		return *x.NodePort
+	}
+	return 0
+}
+
+func (x *KubernetesKafkaListenerBootstrap) GetAlternativeNames() []string {
+	if x != nil {
+		return x.AlternativeNames
+	}
+	return nil
+}
+
+// *
+// Per-broker exposure configuration.
+type KubernetesKafkaListenerBroker struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Broker (node) ID this entry configures.
+	Broker int32 `protobuf:"varint,1,opt,name=broker,proto3" json:"broker,omitempty"`
+	// *
+	// Broker host (REQUIRED per broker for ingress and tlsroute
+	// listeners — each broker must be individually addressable).
+	Host string `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
+	// *
+	// Override the advertised hostname clients are told to reach THIS
+	// broker on (NAT/proxy topologies).
+	AdvertisedHost string `protobuf:"bytes,3,opt,name=advertised_host,json=advertisedHost,proto3" json:"advertised_host,omitempty"`
+	// *
+	// Override the advertised port.
+	AdvertisedPort *int32 `protobuf:"varint,4,opt,name=advertised_port,json=advertisedPort,proto3,oneof" json:"advertised_port,omitempty"`
+	// *
+	// Additional annotations on this broker's service (same cloud
+	// surface as bootstrap.annotations).
+	Annotations map[string]string `protobuf:"bytes,5,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Additional labels on this broker's service.
+	Labels map[string]string `protobuf:"bytes,6,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Static loadBalancerIP for this broker's LoadBalancer.
+	LoadBalancerIp string `protobuf:"bytes,7,opt,name=load_balancer_ip,json=loadBalancerIp,proto3" json:"load_balancer_ip,omitempty"`
+	// *
+	// Static node port for this broker's NodePort service.
+	NodePort      *int32 `protobuf:"varint,8,opt,name=node_port,json=nodePort,proto3,oneof" json:"node_port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaListenerBroker) Reset() {
+	*x = KubernetesKafkaListenerBroker{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaListenerBroker) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaListenerBroker) ProtoMessage() {}
+
+func (x *KubernetesKafkaListenerBroker) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaListenerBroker.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaListenerBroker) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *KubernetesKafkaListenerBroker) GetBroker() int32 {
+	if x != nil {
+		return x.Broker
+	}
+	return 0
+}
+
+func (x *KubernetesKafkaListenerBroker) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListenerBroker) GetAdvertisedHost() string {
+	if x != nil {
+		return x.AdvertisedHost
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListenerBroker) GetAdvertisedPort() int32 {
+	if x != nil && x.AdvertisedPort != nil {
+		return *x.AdvertisedPort
+	}
+	return 0
+}
+
+func (x *KubernetesKafkaListenerBroker) GetAnnotations() map[string]string {
+	if x != nil {
+		return x.Annotations
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaListenerBroker) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaListenerBroker) GetLoadBalancerIp() string {
+	if x != nil {
+		return x.LoadBalancerIp
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaListenerBroker) GetNodePort() int32 {
+	if x != nil && x.NodePort != nil {
+		return *x.NodePort
+	}
+	return 0
+}
+
+// *
+// Cluster authorization.
+type KubernetesKafkaAuthorization struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Authorizer type: "simple" (Kafka's built-in ACL authorizer —
+	// ACLs come from KubernetesKafkaUser authorization blocks) or
+	// "custom" (bring-your-own authorizer class; Keycloak/OPA lost
+	// their first-class types in Strimzi 1.x and route through
+	// custom).
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// *
+	// Principals with unrestricted access regardless of ACLs, in
+	// Kafka principal form (e.g. "User:CN=my-user" for TLS users,
+	// "User:my-user" for SCRAM users). Include your operational
+	// tooling's principals BEFORE enabling authorization — turning on
+	// an authorizer without super users can lock every client out at
+	// once.
+	SuperUsers []string `protobuf:"bytes,2,rep,name=super_users,json=superUsers,proto3" json:"super_users,omitempty"`
+	// *
+	// custom type only: fully-qualified authorizer class name (must be
+	// on the broker classpath via a custom image).
+	AuthorizerClass string `protobuf:"bytes,3,opt,name=authorizer_class,json=authorizerClass,proto3" json:"authorizer_class,omitempty"`
+	// *
+	// custom type only: whether the custom authorizer supports the
+	// Kafka Admin API for ACL management — required for the user
+	// operator to manage ACLs through it.
+	SupportsAdminApi bool `protobuf:"varint,4,opt,name=supports_admin_api,json=supportsAdminApi,proto3" json:"supports_admin_api,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaAuthorization) Reset() {
+	*x = KubernetesKafkaAuthorization{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaAuthorization) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaAuthorization) ProtoMessage() {}
+
+func (x *KubernetesKafkaAuthorization) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaAuthorization.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaAuthorization) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *KubernetesKafkaAuthorization) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaAuthorization) GetSuperUsers() []string {
+	if x != nil {
+		return x.SuperUsers
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaAuthorization) GetAuthorizerClass() string {
+	if x != nil {
+		return x.AuthorizerClass
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaAuthorization) GetSupportsAdminApi() bool {
+	if x != nil {
+		return x.SupportsAdminApi
+	}
+	return false
+}
+
+// *
+// The per-cluster entity operators.
+type KubernetesKafkaEntityOperator struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Topic operator — reconciles KafkaTopic resources in THIS
+	// cluster's namespace into real topics. Enabled by default;
+	// disabling it makes KubernetesKafkaTopic declarations against
+	// this cluster silently inert.
+	TopicOperatorEnabled *bool `protobuf:"varint,1,opt,name=topic_operator_enabled,json=topicOperatorEnabled,proto3,oneof" json:"topic_operator_enabled,omitempty"`
+	// *
+	// User operator — reconciles KafkaUser resources in THIS cluster's
+	// namespace into authenticated principals + credential Secrets.
+	// Enabled by default; disabling it makes KubernetesKafkaUser
+	// declarations against this cluster silently inert.
+	UserOperatorEnabled *bool `protobuf:"varint,2,opt,name=user_operator_enabled,json=userOperatorEnabled,proto3,oneof" json:"user_operator_enabled,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaEntityOperator) Reset() {
+	*x = KubernetesKafkaEntityOperator{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaEntityOperator) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaEntityOperator) ProtoMessage() {}
+
+func (x *KubernetesKafkaEntityOperator) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaEntityOperator.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaEntityOperator) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *KubernetesKafkaEntityOperator) GetTopicOperatorEnabled() bool {
+	if x != nil && x.TopicOperatorEnabled != nil {
+		return *x.TopicOperatorEnabled
+	}
+	return false
+}
+
+func (x *KubernetesKafkaEntityOperator) GetUserOperatorEnabled() bool {
+	if x != nil && x.UserOperatorEnabled != nil {
+		return *x.UserOperatorEnabled
+	}
+	return false
+}
+
+// *
+// Cruise Control.
+type KubernetesKafkaCruiseControl struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Deploy Cruise Control beside the cluster.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Cruise Control configuration entries (goals, thresholds). Values
+	// are configuration strings — write numbers and booleans as
+	// strings; the operator serializes them. The metrics topic and
+	// bootstrap-server entries are operator-owned and ignored here.
+	Config map[string]string `protobuf:"bytes,2,rep,name=config,proto3" json:"config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Cruise Control container resources.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,3,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Automatic rebalancing on pool scale events: "add-brokers"
+	// rebalances onto newly added brokers, "remove-brokers" drains
+	// brokers before removal. Empty = rebalances only when a
+	// KafkaRebalance is applied manually.
+	AutoRebalanceModes []string `protobuf:"bytes,4,rep,name=auto_rebalance_modes,json=autoRebalanceModes,proto3" json:"auto_rebalance_modes,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaCruiseControl) Reset() {
+	*x = KubernetesKafkaCruiseControl{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaCruiseControl) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaCruiseControl) ProtoMessage() {}
+
+func (x *KubernetesKafkaCruiseControl) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaCruiseControl.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaCruiseControl) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *KubernetesKafkaCruiseControl) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesKafkaCruiseControl) GetConfig() map[string]string {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaCruiseControl) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesKafkaCruiseControl) GetAutoRebalanceModes() []string {
+	if x != nil {
+		return x.AutoRebalanceModes
+	}
+	return nil
+}
+
+// *
+// Kafka Exporter (consumer-lag metrics).
+type KubernetesKafkaExporter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Deploy the exporter.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Regex of consumer groups to export. Empty = the operator default
+	// (".*").
+	GroupRegex string `protobuf:"bytes,2,opt,name=group_regex,json=groupRegex,proto3" json:"group_regex,omitempty"`
+	// *
+	// Regex of topics to export. Empty = the operator default (".*").
+	TopicRegex string `protobuf:"bytes,3,opt,name=topic_regex,json=topicRegex,proto3" json:"topic_regex,omitempty"`
+	// *
+	// Exporter container resources.
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,4,opt,name=resources,proto3" json:"resources,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaExporter) Reset() {
+	*x = KubernetesKafkaExporter{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaExporter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaExporter) ProtoMessage() {}
+
+func (x *KubernetesKafkaExporter) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaExporter.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaExporter) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *KubernetesKafkaExporter) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesKafkaExporter) GetGroupRegex() string {
+	if x != nil {
+		return x.GroupRegex
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaExporter) GetTopicRegex() string {
+	if x != nil {
+		return x.TopicRegex
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaExporter) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+// *
+// JMX Prometheus metrics.
+type KubernetesKafkaMetrics struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Render the canonical Strimzi JMX exporter rules ConfigMap and
+	// enable the metrics endpoint on every broker/controller (port
+	// 9404 inside the pods; scrape with a PodMonitor or annotations
+	// per your Prometheus setup).
+	Enabled       bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaMetrics) Reset() {
+	*x = KubernetesKafkaMetrics{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaMetrics) ProtoMessage() {}
+
+func (x *KubernetesKafkaMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaMetrics.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaMetrics) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *KubernetesKafkaMetrics) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+// *
+// A Strimzi-managed certificate authority's knobs.
+type KubernetesKafkaCa struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// CA certificate validity in days. Operator default: 365.
+	ValidityDays *int32 `protobuf:"varint,1,opt,name=validity_days,json=validityDays,proto3,oneof" json:"validity_days,omitempty"`
+	// *
+	// Days before expiry at which the operator renews the CA (and
+	// rolls certificates during maintenance windows when configured).
+	// Operator default: 30.
+	RenewalDays   *int32 `protobuf:"varint,2,opt,name=renewal_days,json=renewalDays,proto3,oneof" json:"renewal_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaCa) Reset() {
+	*x = KubernetesKafkaCa{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaCa) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaCa) ProtoMessage() {}
+
+func (x *KubernetesKafkaCa) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaCa.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaCa) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *KubernetesKafkaCa) GetValidityDays() int32 {
+	if x != nil && x.ValidityDays != nil {
+		return *x.ValidityDays
+	}
+	return 0
+}
+
+func (x *KubernetesKafkaCa) GetRenewalDays() int32 {
+	if x != nil && x.RenewalDays != nil {
+		return *x.RenewalDays
+	}
+	return 0
+}
+
+// *
+// Rack awareness.
+type KubernetesKafkaRack struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Node label whose value identifies a node's failure domain,
+	// e.g. "topology.kubernetes.io/zone".
+	TopologyKey   string `protobuf:"bytes,1,opt,name=topology_key,json=topologyKey,proto3" json:"topology_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaRack) Reset() {
+	*x = KubernetesKafkaRack{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaRack) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaRack) ProtoMessage() {}
+
+func (x *KubernetesKafkaRack) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaRack.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaRack) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *KubernetesKafkaRack) GetTopologyKey() string {
+	if x != nil {
+		return x.TopologyKey
+	}
+	return ""
+}
+
+// *
+// JVM heap.
+type KubernetesKafkaJvm struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Initial heap (-Xms), e.g. "4g". Set equal to xmx in production.
+	Xms string `protobuf:"bytes,1,opt,name=xms,proto3" json:"xms,omitempty"`
+	// *
+	// Maximum heap (-Xmx), e.g. "4g". Kafka relies on the OS page
+	// cache — heap beyond ~6g rarely helps; give the rest of the
+	// container memory to the page cache instead.
+	Xmx           string `protobuf:"bytes,2,opt,name=xmx,proto3" json:"xmx,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesKafkaJvm) Reset() {
+	*x = KubernetesKafkaJvm{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesKafkaJvm) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesKafkaJvm) ProtoMessage() {}
+
+func (x *KubernetesKafkaJvm) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesKafkaJvm.ProtoReflect.Descriptor instead.
+func (*KubernetesKafkaJvm) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *KubernetesKafkaJvm) GetXms() string {
+	if x != nil {
+		return x.Xms
+	}
+	return ""
+}
+
+func (x *KubernetesKafkaJvm) GetXmx() string {
+	if x != nil {
+		return x.Xmx
+	}
+	return ""
+}
 
 var File_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/kubernetes/kuberneteskafka/v1/spec.proto\x122dev.planton.provider.kubernetes.kuberneteskafka.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xa6\a\n" +
+	"=dev/planton/provider/kubernetes/kuberneteskafka/v1/spec.proto\x122dev.planton.provider.kubernetes.kuberneteskafka.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbb\x15\n" +
 	"\x13KubernetesKafkaSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12a\n" +
-	"\fkafka_topics\x18\x04 \x03(\v2>.dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopicR\vkafkaTopics\x12\xa9\x01\n" +
-	"\x10broker_container\x18\x05 \x01(\v2R.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainerB*\x8a\xee\xff\x01%\b\x01\x12\x1c\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100Mi\x1a\x031GiR\x0fbrokerContainer\x12\xb2\x01\n" +
-	"\x13zookeeper_container\x18\x06 \x01(\v2U.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainerB*\x92\xee\xff\x01%\b\x01\x12\x1c\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100Mi\x1a\x031GiR\x12zookeeperContainer\x12\x96\x01\n" +
-	"\x19schema_registry_container\x18\a \x01(\v2Z.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSchemaRegistryContainerR\x17schemaRegistryContainer\x12d\n" +
-	"\aingress\x18\b \x01(\v2J.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaIngressR\aingress\x125\n" +
-	"\x12is_deploy_kafka_ui\x18\t \x01(\bB\b\x92\xa6\x1d\x04trueR\x0fisDeployKafkaUi\"\xcd\x01\n" +
-	"\x16KubernetesKafkaIngress\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
-	"\x1espec.ingress.hostname.required\x12,hostname is required when ingress is enabled\x1a(!this.enabled || size(this.hostname) > 0\"\xd3\x02\n" +
-	"\x1eKubernetesKafkaBrokerContainer\x12\x1a\n" +
-	"\breplicas\x18\x01 \x01(\x05R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\xc1\x01\n" +
-	"\tdisk_size\x18\x03 \x01(\tB\xa3\x01\xbaH\x9f\x01\xba\x01\x9b\x01\n" +
-	"&spec.broker_container.disk_size.format\x12\x1aDisk size value is invalid\x1aUthis.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$') && size(this) > 0R\bdiskSize\"\xd6\x02\n" +
-	"!KubernetesKafkaZookeeperContainer\x12\x1a\n" +
-	"\breplicas\x18\x01 \x01(\x05R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\xc1\x01\n" +
-	"\tdisk_size\x18\x03 \x01(\tB\xa3\x01\xbaH\x9f\x01\xba\x01\x9b\x01\n" +
-	"&spec.broker_container.disk_size.format\x12\x1aDisk size value is invalid\x1aUthis.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$') && size(this) > 0R\bdiskSize\"\xe0\x01\n" +
-	"&KubernetesKafkaSchemaRegistryContainer\x12\x1d\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12#\n" +
+	"\rkafka_version\x18\x03 \x01(\tR\fkafkaVersion\x12)\n" +
+	"\x10metadata_version\x18\x04 \x01(\tR\x0fmetadataVersion\x12\xf5\x05\n" +
 	"\n" +
-	"is_enabled\x18\x01 \x01(\bR\tisEnabled\x12!\n" +
-	"\breplicas\x18\x02 \x01(\x05B\x05\x92\xa6\x1d\x011R\breplicas\x12t\n" +
-	"\tresources\x18\x03 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100MiR\tresources\"\x86\t\n" +
+	"node_pools\x18\x05 \x03(\v2K.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaNodePoolB\x88\x05\xbaH\x84\x05\xba\x01\x87\x02\n" +
+	"'spec.node_pools.controller_role_present\x12\xa5\x01no node pool carries the controller role — a KRaft cluster cannot form its metadata quorum; add 'controller' to a pool's roles (a single pool may carry both roles)\x1a4this.exists(p, p.roles.exists(r, r == 'controller'))\xba\x01\xfe\x01\n" +
+	"#spec.node_pools.broker_role_present\x12\xa4\x01no node pool carries the broker role — the cluster would have no nodes to store or serve data; add 'broker' to a pool's roles (a single pool may carry both roles)\x1a0this.exists(p, p.roles.exists(r, r == 'broker'))\xba\x01o\n" +
+	"\x1cspec.node_pools.unique_names\x121node pool names must be unique within the cluster\x1a\x1cthis.map(p, p.name).unique()\x92\x01\x02\b\x01R\tnodePools\x12\xd5\x02\n" +
+	"\tlisteners\x18\x06 \x03(\v2K.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerB\xe9\x01\xbaH\xe5\x01\xba\x01m\n" +
+	"\x1bspec.listeners.unique_names\x120listener names must be unique within the cluster\x1a\x1cthis.map(l, l.name).unique()\xba\x01m\n" +
+	"\x1bspec.listeners.unique_ports\x120listener ports must be unique within the cluster\x1a\x1cthis.map(l, l.port).unique()\x92\x01\x02\b\x01R\tlisteners\x12\xad\x02\n" +
+	"\x06config\x18\a \x03(\v2S.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.ConfigEntryB\xbf\x01\x9a\xa6\x1d\x1f\n" +
+	"\x1adefault.replication.factor\x12\x013\x9a\xa6\x1d\x18\n" +
+	"\x13min.insync.replicas\x12\x012\x9a\xa6\x1d%\n" +
+	" offsets.topic.replication.factor\x12\x013\x9a\xa6\x1d-\n" +
+	"(transaction.state.log.replication.factor\x12\x013\x9a\xa6\x1d\"\n" +
+	"\x1dtransaction.state.log.min.isr\x12\x012R\x06config\x12v\n" +
+	"\rauthorization\x18\b \x01(\v2P.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaAuthorizationR\rauthorization\x12z\n" +
+	"\x0fentity_operator\x18\t \x01(\v2Q.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaEntityOperatorR\x0eentityOperator\x12w\n" +
+	"\x0ecruise_control\x18\n" +
+	" \x01(\v2P.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCruiseControlR\rcruiseControl\x12r\n" +
+	"\x0ekafka_exporter\x18\v \x01(\v2K.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaExporterR\rkafkaExporter\x12d\n" +
+	"\ametrics\x18\f \x01(\v2J.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaMetricsR\ametrics\x12d\n" +
 	"\n" +
-	"KafkaTopic\x12\x93\x04\n" +
-	"\x04name\x18\x01 \x01(\tB\xfe\x03\xbaH\xfa\x03\xba\x01e\n" +
-	"\x15topic.name.startswith\x12+Should start with an alphanumeric character\x1a\x1fthis.matches('^[a-zA-Z0-9].*$')\xba\x01v\n" +
-	"\x10topic.name.chars\x12?Only alphanumeric and ('.', '_' and '-') characters are allowed\x1a!this.matches('^[a-zA-Z0-9._-]+$')\xba\x01H\n" +
-	"\x19topic.name.no_double_dots\x12\x15Must not contain '..'\x1a\x14!this.contains('..')\xba\x01^\n" +
-	"\x15topic.name.ascii_only\x12%Must not contain non-ASCII characters\x1a\x1ethis.matches('^[\\x00-\\x7F]+$')\xba\x01`\n" +
-	"\x13topic.name.endswith\x12)Should end with an alphanumeric character\x1a\x1ethis.matches('.*[a-zA-Z0-9]$')\xc8\x01\x01r\x05\x10\x01\x18\xf9\x01R\x04name\x12*\n" +
+	"cluster_ca\x18\r \x01(\v2E.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCaR\tclusterCa\x12d\n" +
 	"\n" +
-	"partitions\x18\x02 \x01(\x05B\x05\x8a\xa6\x1d\x011H\x00R\n" +
-	"partitions\x88\x01\x01\x12&\n" +
-	"\breplicas\x18\x03 \x01(\x05B\x05\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12\xb6\x03\n" +
-	"\x06config\x18\x04 \x03(\v2J.dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic.ConfigEntryB\xd1\x02\x9a\xa6\x1d\x18\n" +
-	"\x0ecleanup.policy\x12\x06delete\x9a\xa6\x1d\x1f\n" +
-	"\x13delete.retention.ms\x12\b86400000\x9a\xa6\x1d\x1c\n" +
-	"\x11max.message.bytes\x12\a2097164\x9a\xa6\x1d:\n" +
-	"#message.timestamp.difference.max.ms\x12\x139223372036854775807\x9a\xa6\x1d$\n" +
-	"\x16message.timestamp.type\x12\n" +
-	"CreateTime\x9a\xa6\x1d\x18\n" +
-	"\x13min.insync.replicas\x12\x011\x9a\xa6\x1d\x15\n" +
-	"\x0fretention.bytes\x12\x02-1\x9a\xa6\x1d\x19\n" +
-	"\fretention.ms\x12\t604800000\x9a\xa6\x1d\x1b\n" +
-	"\rsegment.bytes\x12\n" +
-	"1073741824\x9a\xa6\x1d\x17\n" +
-	"\n" +
-	"segment.ms\x12\t604800000R\x06config\x1a9\n" +
+	"clients_ca\x18\x0e \x01(\v2E.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCaR\tclientsCa\x12[\n" +
+	"\x04rack\x18\x0f \x01(\v2G.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaRackR\x04rack\x12X\n" +
+	"\x03jvm\x18\x10 \x01(\v2F.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaJvmR\x03jvm\x128\n" +
+	"\x18maintenance_time_windows\x18\x11 \x03(\tR\x16maintenanceTimeWindows\x1a9\n" +
 	"\vConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\r\n" +
-	"\v_partitionsB\v\n" +
-	"\t_replicas:\xad\x01\n" +
-	"\x18default_broker_container\x12\x1d.google.protobuf.FieldOptions\x18\xe1\xfd\x1f \x01(\v2R.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainerR\x16defaultBrokerContainer:\xb6\x01\n" +
-	"\x1bdefault_zookeeper_container\x12\x1d.google.protobuf.FieldOptions\x18\xe2\xfd\x1f \x01(\v2U.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainerR\x19defaultZookeeperContainerB\x9a\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xfd\a\n" +
+	"\x17KubernetesKafkaNodePool\x12\xec\x01\n" +
+	"\x04name\x18\x01 \x01(\tB\xd7\x01\xbaH\xd3\x01\xba\x01\xc8\x01\n" +
+	"\x1bspec.node_pools.name.format\x12xpool name must be a lowercase DNS-1123 label (lowercase alphanumerics and '-', starting and ending with an alphanumeric)\x1a/this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')\xc8\x01\x01r\x02\x18?R\x04name\x12\xec\x01\n" +
+	"\x05roles\x18\x02 \x03(\tB\xd5\x01\xbaH\xd1\x01\xba\x01t\n" +
+	"\x1aspec.node_pools.roles.enum\x12*each role must be 'controller' or 'broker'\x1a*this.all(r, r in ['controller', 'broker'])\xba\x01R\n" +
+	"\x1cspec.node_pools.roles.unique\x12#roles must not repeat within a pool\x1a\rthis.unique()\x92\x01\x02\b\x01R\x05roles\x12&\n" +
+	"\breplicas\x18\x03 \x01(\x05B\n" +
+	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\breplicas\x12l\n" +
+	"\astorage\x18\x04 \x01(\v2J.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStorageB\x06\xbaH\x03\xc8\x01\x01R\astorage\x12Q\n" +
+	"\tresources\x18\x05 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\x82\x01\n" +
+	"\rnode_selector\x18\x06 \x03(\v2].dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaNodePool.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\a \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc1\b\n" +
+	"\x16KubernetesKafkaStorage\x12\xca\x01\n" +
+	"\x04type\x18\x01 \x01(\tB\xb0\x01\xbaH\x98\x01\xba\x01\x94\x01\n" +
+	"\x16spec.storage.type_enum\x129storage type must be persistent-claim, ephemeral, or jbod\x1a?this == '' || this in ['persistent-claim', 'ephemeral', 'jbod']\x8a\xa6\x1d\x10persistent-claimH\x00R\x04type\x88\x01\x01\x12\x12\n" +
+	"\x04size\x18\x02 \x01(\tR\x04size\x12o\n" +
+	"\rstorage_class\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12!\n" +
+	"\fdelete_claim\x18\x04 \x01(\bR\vdeleteClaim\x12j\n" +
+	"\avolumes\x18\x05 \x03(\v2P.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStorageVolumeR\avolumes:\xbc\x04\xbaH\xb8\x04\x1a\xbd\x01\n" +
+	"%spec.storage.persistent_requires_size\x127persistent-claim storage requires a size (e.g. \"100Gi\")\x1a[!(!has(this.type) || this.type == '' || this.type == 'persistent-claim') || this.size != ''\x1a\x9e\x01\n" +
+	"\"spec.storage.jbod_requires_volumes\x123jbod storage requires at least one entry in volumes\x1aC!(has(this.type) && this.type == 'jbod') || this.volumes.size() > 0\x1a\xd4\x01\n" +
+	"\"spec.storage.volumes_only_for_jbod\x12ivolumes are only used with the jbod storage type — for a single volume, set size/storage_class directly\x1aCthis.volumes.size() == 0 || (has(this.type) && this.type == 'jbod')B\a\n" +
+	"\x05_type\"\x8e\x02\n" +
+	"\x1cKubernetesKafkaStorageVolume\x12\x17\n" +
+	"\x02id\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x02id\x12\x1a\n" +
+	"\x04size\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04size\x12o\n" +
+	"\rstorage_class\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12!\n" +
+	"\fdelete_claim\x18\x04 \x01(\bR\vdeleteClaim\x12%\n" +
+	"\x0ekraft_metadata\x18\x05 \x01(\bR\rkraftMetadata\"\xdd\f\n" +
+	"\x17KubernetesKafkaListener\x12\x9b\x01\n" +
+	"\x04name\x18\x01 \x01(\tB\x86\x01\xbaH\x82\x01\xba\x01|\n" +
+	"\x1aspec.listeners.name.format\x12<listener name must be 1-11 lowercase alphanumeric characters\x1a this.matches('^[a-z0-9]{1,11}$')\xc8\x01\x01R\x04name\x12#\n" +
+	"\x04port\x18\x02 \x01(\x05B\x0f\xbaH\f\xc8\x01\x01\x1a\a\x18\xff\xff\x03(\x84GR\x04port\x12\x9b\x02\n" +
+	"\x04type\x18\x03 \x01(\tB\x81\x02\xbaH\xf1\x01\xba\x01\xed\x01\n" +
+	"\x18spec.listeners.type_enum\x12clistener type must be one of internal, cluster-ip, nodeport, loadbalancer, ingress, route, tlsroute\x1althis == '' || this in ['internal', 'cluster-ip', 'nodeport', 'loadbalancer', 'ingress', 'route', 'tlsroute']\x8a\xa6\x1d\binternalH\x00R\x04type\x88\x01\x01\x12\x10\n" +
+	"\x03tls\x18\x04 \x01(\bR\x03tls\x12\x81\x01\n" +
+	"\x0eauthentication\x18\x05 \x01(\v2Y.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerAuthenticationR\x0eauthentication\x12~\n" +
+	"\rconfiguration\x18\x06 \x01(\v2X.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerConfigurationR\rconfiguration:\xc1\x06\xbaH\xbd\x06\x1a\xf7\x01\n" +
+	"!spec.listeners.tls_required_types\x12\x81\x01ingress, route and tlsroute listeners are TLS-passthrough and require tls: true (verified: the operator rejects them without TLS)\x1aN!(has(this.type) && this.type in ['ingress', 'route', 'tlsroute']) || this.tls\x1a\xb9\x01\n" +
+	"$spec.listeners.tls_auth_requires_tls\x12Cmutual-TLS client authentication requires tls: true on the listener\x1aL!(has(this.authentication) && this.authentication.type == 'tls') || this.tls\x1a\x84\x03\n" +
+	"%spec.listeners.ingress_requires_hosts\x12\x96\x01ingress listeners require configuration.bootstrap.host and a broker host per broker ID (verified: the operator rejects ingress listeners without them)\x1a\xc1\x01!(has(this.type) && this.type == 'ingress') || (has(this.configuration) && has(this.configuration.bootstrap) && this.configuration.bootstrap.host != '' && this.configuration.brokers.size() > 0)B\a\n" +
+	"\x05_type\"\xca\x03\n" +
+	"%KubernetesKafkaListenerAuthentication\x12\xb0\x01\n" +
+	"\x04type\x18\x01 \x01(\tB\x9b\x01\xbaH\x97\x01\xba\x01\x90\x01\n" +
+	"'spec.listeners.authentication.type_enum\x129authentication type must be tls, scram-sha-512, or custom\x1a*this in ['tls', 'scram-sha-512', 'custom']\xc8\x01\x01R\x04type\x12\x12\n" +
+	"\x04sasl\x18\x02 \x01(\bR\x04sasl\x12\x96\x01\n" +
+	"\x0flistener_config\x18\x03 \x03(\v2m.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerAuthentication.ListenerConfigEntryR\x0elistenerConfig\x1aA\n" +
+	"\x13ListenerConfigEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe2\r\n" +
+	"$KubernetesKafkaListenerConfiguration\x12\x14\n" +
+	"\x05class\x18\x01 \x01(\tR\x05class\x12\xcb\x01\n" +
+	"\x17external_traffic_policy\x18\x02 \x01(\tB\x8d\x01\xbaH\x89\x01\xba\x01\x85\x01\n" +
+	"%spec.listeners.configuration.etp_enum\x120external_traffic_policy must be Local or Cluster\x1a*this == '' || this in ['Local', 'Cluster']H\x00R\x15externalTrafficPolicy\x88\x01\x01\x12=\n" +
+	"\x1bload_balancer_source_ranges\x18\x03 \x03(\tR\x18loadBalancerSourceRanges\x12M\n" +
+	"!allocate_load_balancer_node_ports\x18\x04 \x01(\bH\x01R\x1dallocateLoadBalancerNodePorts\x88\x01\x01\x12=\n" +
+	"\x18create_bootstrap_service\x18\x05 \x01(\bH\x02R\x16createBootstrapService\x88\x01\x01\x123\n" +
+	"\x16use_service_dns_domain\x18\x06 \x01(\bR\x13useServiceDnsDomain\x125\n" +
+	"\x0fmax_connections\x18\a \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x03R\x0emaxConnections\x88\x01\x01\x12M\n" +
+	"\x1cmax_connection_creation_rate\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x04R\x19maxConnectionCreationRate\x88\x01\x01\x12\xc8\x02\n" +
+	" preferred_node_port_address_type\x18\t \x01(\tB\xfa\x01\xbaH\xf6\x01\xba\x01\xf2\x01\n" +
+	"&spec.listeners.configuration.npat_enum\x12jpreferred_node_port_address_type must be one of ExternalDNS, ExternalIP, InternalDNS, InternalIP, Hostname\x1a\\this == '' || this in ['ExternalDNS', 'ExternalIP', 'InternalDNS', 'InternalIP', 'Hostname']H\x05R\x1cpreferredNodePortAddressType\x88\x01\x01\x12=\n" +
+	"\x1bpublish_not_ready_addresses\x18\n" +
+	" \x01(\bR\x18publishNotReadyAddresses\x12\x90\x01\n" +
+	"\x19broker_cert_chain_and_key\x18\v \x01(\v2V.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerCertificateR\x15brokerCertChainAndKey\x12r\n" +
+	"\tbootstrap\x18\f \x01(\v2T.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrapR\tbootstrap\x12\x83\x02\n" +
+	"\abrokers\x18\r \x03(\v2Q.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBrokerB\x95\x01\xbaH\x91\x01\xba\x01\x8d\x01\n" +
+	"/spec.listeners.configuration.brokers.unique_ids\x12:each broker ID may appear at most once in the brokers list\x1a\x1ethis.map(b, b.broker).unique()R\abrokersB\x1a\n" +
+	"\x18_external_traffic_policyB$\n" +
+	"\"_allocate_load_balancer_node_portsB\x1b\n" +
+	"\x19_create_bootstrap_serviceB\x12\n" +
+	"\x10_max_connectionsB\x1f\n" +
+	"\x1d_max_connection_creation_rateB#\n" +
+	"!_preferred_node_port_address_type\"\x94\x02\n" +
+	"\"KubernetesKafkaListenerCertificate\x12~\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"secretName\x122\n" +
+	"\vcertificate\x18\x02 \x01(\tB\v\x8a\xa6\x1d\atls.crtH\x00R\vcertificate\x88\x01\x01\x12\"\n" +
+	"\x03key\x18\x03 \x01(\tB\v\x8a\xa6\x1d\atls.keyH\x01R\x03key\x88\x01\x01B\x0e\n" +
+	"\f_certificateB\x06\n" +
+	"\x04_key\"\xc5\x04\n" +
+	" KubernetesKafkaListenerBootstrap\x12\x12\n" +
+	"\x04host\x18\x01 \x01(\tR\x04host\x12\x87\x01\n" +
+	"\vannotations\x18\x02 \x03(\v2e.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrap.AnnotationsEntryR\vannotations\x12x\n" +
+	"\x06labels\x18\x03 \x03(\v2`.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrap.LabelsEntryR\x06labels\x12(\n" +
+	"\x10load_balancer_ip\x18\x04 \x01(\tR\x0eloadBalancerIp\x12)\n" +
+	"\tnode_port\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\bnodePort\x88\x01\x01\x12+\n" +
+	"\x11alternative_names\x18\x06 \x03(\tR\x10alternativeNames\x1a>\n" +
+	"\x10AnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\f\n" +
+	"\n" +
+	"_node_port\"\xa4\x05\n" +
+	"\x1dKubernetesKafkaListenerBroker\x12\x1f\n" +
+	"\x06broker\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x06broker\x12\x12\n" +
+	"\x04host\x18\x02 \x01(\tR\x04host\x12'\n" +
+	"\x0fadvertised_host\x18\x03 \x01(\tR\x0eadvertisedHost\x125\n" +
+	"\x0fadvertised_port\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\x0eadvertisedPort\x88\x01\x01\x12\x84\x01\n" +
+	"\vannotations\x18\x05 \x03(\v2b.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBroker.AnnotationsEntryR\vannotations\x12u\n" +
+	"\x06labels\x18\x06 \x03(\v2].dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBroker.LabelsEntryR\x06labels\x12(\n" +
+	"\x10load_balancer_ip\x18\a \x01(\tR\x0eloadBalancerIp\x12)\n" +
+	"\tnode_port\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x01R\bnodePort\x88\x01\x01\x1a>\n" +
+	"\x10AnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x12\n" +
+	"\x10_advertised_portB\f\n" +
+	"\n" +
+	"_node_port\"\xba\x05\n" +
+	"\x1cKubernetesKafkaAuthorization\x12\x86\x01\n" +
+	"\x04type\x18\x01 \x01(\tBr\xbaHo\xba\x01i\n" +
+	"\x1cspec.authorization.type_enum\x12+authorization type must be simple or custom\x1a\x1cthis in ['simple', 'custom']\xc8\x01\x01R\x04type\x12\x1f\n" +
+	"\vsuper_users\x18\x02 \x03(\tR\n" +
+	"superUsers\x12)\n" +
+	"\x10authorizer_class\x18\x03 \x01(\tR\x0fauthorizerClass\x12,\n" +
+	"\x12supports_admin_api\x18\x04 \x01(\bR\x10supportsAdminApi:\x96\x03\xbaH\x92\x03\x1a\xc3\x01\n" +
+	"(spec.authorization.custom_requires_class\x12acustom authorization requires authorizer_class (the fully-qualified class name of the authorizer)\x1a4this.type != 'custom' || this.authorizer_class != ''\x1a\xc9\x01\n" +
+	"(spec.authorization.class_only_for_custom\x12gauthorizer_class is only used with custom authorization — simple uses Kafka's built-in ACL authorizer\x1a4this.type == 'custom' || this.authorizer_class == ''\"\xdc\x01\n" +
+	"\x1dKubernetesKafkaEntityOperator\x12C\n" +
+	"\x16topic_operator_enabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x14topicOperatorEnabled\x88\x01\x01\x12A\n" +
+	"\x15user_operator_enabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x13userOperatorEnabled\x88\x01\x01B\x19\n" +
+	"\x17_topic_operator_enabledB\x18\n" +
+	"\x16_user_operator_enabled\"\x9e\x04\n" +
+	"\x1cKubernetesKafkaCruiseControl\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12t\n" +
+	"\x06config\x18\x02 \x03(\v2\\.dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCruiseControl.ConfigEntryR\x06config\x12Q\n" +
+	"\tresources\x18\x03 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\xdf\x01\n" +
+	"\x14auto_rebalance_modes\x18\x04 \x03(\tB\xac\x01\xbaH\xa8\x01\xba\x01\xa4\x01\n" +
+	"-spec.cruise_control.auto_rebalance_modes_enum\x12>each auto-rebalance mode must be add-brokers or remove-brokers\x1a3this.all(m, m in ['add-brokers', 'remove-brokers'])R\x12autoRebalanceModes\x1a9\n" +
+	"\vConfigEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc8\x01\n" +
+	"\x17KubernetesKafkaExporter\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1f\n" +
+	"\vgroup_regex\x18\x02 \x01(\tR\n" +
+	"groupRegex\x12\x1f\n" +
+	"\vtopic_regex\x18\x03 \x01(\tR\n" +
+	"topicRegex\x12Q\n" +
+	"\tresources\x18\x04 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\"2\n" +
+	"\x16KubernetesKafkaMetrics\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\"\x9a\x01\n" +
+	"\x11KubernetesKafkaCa\x121\n" +
+	"\rvalidity_days\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\fvalidityDays\x88\x01\x01\x12/\n" +
+	"\frenewal_days\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x01R\vrenewalDays\x88\x01\x01B\x10\n" +
+	"\x0e_validity_daysB\x0f\n" +
+	"\r_renewal_days\"@\n" +
+	"\x13KubernetesKafkaRack\x12)\n" +
+	"\ftopology_key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vtopologyKey\"8\n" +
+	"\x12KubernetesKafkaJvm\x12\x10\n" +
+	"\x03xms\x18\x01 \x01(\tR\x03xms\x12\x10\n" +
+	"\x03xmx\x18\x02 \x01(\tR\x03xmxB\x9a\x03\n" +
 	"6com.dev.planton.provider.kubernetes.kuberneteskafka.v1B\tSpecProtoP\x01Zfgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskafka/v1;kuberneteskafkav1\xa2\x02\x05DPPKK\xaa\x022Dev.Planton.Provider.Kubernetes.Kuberneteskafka.V1\xca\x022Dev\\Planton\\Provider\\Kubernetes\\Kuberneteskafka\\V1\xe2\x02>Dev\\Planton\\Provider\\Kubernetes\\Kuberneteskafka\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Kubernetes::Kuberneteskafka::V1b\x06proto3"
 
 var (
@@ -600,39 +2082,78 @@ func file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescG
 	return file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_goTypes = []any{
-	(*KubernetesKafkaSpec)(nil),                    // 0: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec
-	(*KubernetesKafkaIngress)(nil),                 // 1: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaIngress
-	(*KubernetesKafkaBrokerContainer)(nil),         // 2: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer
-	(*KubernetesKafkaZookeeperContainer)(nil),      // 3: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer
-	(*KubernetesKafkaSchemaRegistryContainer)(nil), // 4: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSchemaRegistryContainer
-	(*KafkaTopic)(nil),                             // 5: dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic
-	nil,                                            // 6: dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic.ConfigEntry
-	(*v1.StringValueOrRef)(nil),                    // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),          // 8: dev.planton.provider.kubernetes.ContainerResources
-	(*descriptorpb.FieldOptions)(nil),              // 9: google.protobuf.FieldOptions
+	(*KubernetesKafkaSpec)(nil),                   // 0: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec
+	(*KubernetesKafkaNodePool)(nil),               // 1: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaNodePool
+	(*KubernetesKafkaStorage)(nil),                // 2: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStorage
+	(*KubernetesKafkaStorageVolume)(nil),          // 3: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStorageVolume
+	(*KubernetesKafkaListener)(nil),               // 4: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListener
+	(*KubernetesKafkaListenerAuthentication)(nil), // 5: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerAuthentication
+	(*KubernetesKafkaListenerConfiguration)(nil),  // 6: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerConfiguration
+	(*KubernetesKafkaListenerCertificate)(nil),    // 7: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerCertificate
+	(*KubernetesKafkaListenerBootstrap)(nil),      // 8: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrap
+	(*KubernetesKafkaListenerBroker)(nil),         // 9: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBroker
+	(*KubernetesKafkaAuthorization)(nil),          // 10: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaAuthorization
+	(*KubernetesKafkaEntityOperator)(nil),         // 11: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaEntityOperator
+	(*KubernetesKafkaCruiseControl)(nil),          // 12: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCruiseControl
+	(*KubernetesKafkaExporter)(nil),               // 13: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaExporter
+	(*KubernetesKafkaMetrics)(nil),                // 14: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaMetrics
+	(*KubernetesKafkaCa)(nil),                     // 15: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCa
+	(*KubernetesKafkaRack)(nil),                   // 16: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaRack
+	(*KubernetesKafkaJvm)(nil),                    // 17: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaJvm
+	nil,                                           // 18: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.ConfigEntry
+	nil,                                           // 19: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaNodePool.NodeSelectorEntry
+	nil,                                           // 20: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerAuthentication.ListenerConfigEntry
+	nil,                                           // 21: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrap.AnnotationsEntry
+	nil,                                           // 22: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrap.LabelsEntry
+	nil,                                           // 23: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBroker.AnnotationsEntry
+	nil,                                           // 24: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBroker.LabelsEntry
+	nil,                                           // 25: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCruiseControl.ConfigEntry
+	(*v1.StringValueOrRef)(nil),                   // 26: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),         // 27: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),         // 28: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_depIdxs = []int32{
-	7,  // 0: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 1: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.kafka_topics:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic
-	2,  // 2: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.broker_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer
-	3,  // 3: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.zookeeper_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer
-	4,  // 4: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.schema_registry_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSchemaRegistryContainer
-	1,  // 5: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.ingress:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaIngress
-	8,  // 6: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	8,  // 7: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	8,  // 8: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSchemaRegistryContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	6,  // 9: dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic.config:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KafkaTopic.ConfigEntry
-	9,  // 10: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_broker_container:extendee -> google.protobuf.FieldOptions
-	9,  // 11: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_zookeeper_container:extendee -> google.protobuf.FieldOptions
-	2,  // 12: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_broker_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaBrokerContainer
-	3,  // 13: dev.planton.provider.kubernetes.kuberneteskafka.v1.default_zookeeper_container:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaZookeeperContainer
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	12, // [12:14] is the sub-list for extension type_name
-	10, // [10:12] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	26, // 0: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.node_pools:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaNodePool
+	4,  // 2: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.listeners:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListener
+	18, // 3: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.config:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.ConfigEntry
+	10, // 4: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.authorization:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaAuthorization
+	11, // 5: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.entity_operator:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaEntityOperator
+	12, // 6: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.cruise_control:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCruiseControl
+	13, // 7: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.kafka_exporter:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaExporter
+	14, // 8: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.metrics:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaMetrics
+	15, // 9: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.cluster_ca:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCa
+	15, // 10: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.clients_ca:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCa
+	16, // 11: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.rack:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaRack
+	17, // 12: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaSpec.jvm:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaJvm
+	2,  // 13: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaNodePool.storage:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStorage
+	27, // 14: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaNodePool.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	19, // 15: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaNodePool.node_selector:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaNodePool.NodeSelectorEntry
+	28, // 16: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaNodePool.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	26, // 17: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStorage.storage_class:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 18: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStorage.volumes:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStorageVolume
+	26, // 19: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStorageVolume.storage_class:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 20: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListener.authentication:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerAuthentication
+	6,  // 21: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListener.configuration:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerConfiguration
+	20, // 22: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerAuthentication.listener_config:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerAuthentication.ListenerConfigEntry
+	7,  // 23: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerConfiguration.broker_cert_chain_and_key:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerCertificate
+	8,  // 24: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerConfiguration.bootstrap:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrap
+	9,  // 25: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerConfiguration.brokers:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBroker
+	26, // 26: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerCertificate.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 27: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrap.annotations:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrap.AnnotationsEntry
+	22, // 28: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrap.labels:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBootstrap.LabelsEntry
+	23, // 29: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBroker.annotations:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBroker.AnnotationsEntry
+	24, // 30: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBroker.labels:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaListenerBroker.LabelsEntry
+	25, // 31: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCruiseControl.config:type_name -> dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCruiseControl.ConfigEntry
+	27, // 32: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaCruiseControl.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	27, // 33: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaExporter.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	34, // [34:34] is the sub-list for method output_type
+	34, // [34:34] is the sub-list for method input_type
+	34, // [34:34] is the sub-list for extension type_name
+	34, // [34:34] is the sub-list for extension extendee
+	0,  // [0:34] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_init() }
@@ -640,21 +2161,27 @@ func file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_init() {
 	if File_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[11].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
-			NumExtensions: 2,
+			NumMessages:   26,
+			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_depIdxs,
 		MessageInfos:      file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_msgTypes,
-		ExtensionInfos:    file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_extTypes,
 	}.Build()
 	File_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto = out.File
 	file_dev_planton_provider_kubernetes_kuberneteskafka_v1_spec_proto_goTypes = nil

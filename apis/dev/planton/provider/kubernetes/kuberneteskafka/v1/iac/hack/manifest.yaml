@@ -1,0 +1,165 @@
+# Full-surface development manifest: exercises every typed field so the
+# offline plan proofs cover arms the live lanes exclude (external
+# listeners with cloud annotations, jbod storage, Cruise Control,
+# authorization, rack awareness, CA policy). Not a runnable-on-kind shape —
+# the loadbalancer listener and zone-keyed rack need a real cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafka
+metadata:
+  name: kafka-hack
+spec:
+  namespace:
+    value: kafka-hack
+  createNamespace: true
+  kafkaVersion: 4.3.0
+  metadataVersion: 4.3-IV0
+  nodePools:
+    - name: controller
+      roles:
+        - controller
+      replicas: 3
+      storage:
+        size: 10Gi
+        storageClass:
+          value: gp3
+      resources:
+        requests:
+          cpu: 250m
+          memory: 1Gi
+        limits:
+          cpu: "1"
+          memory: 2Gi
+    - name: broker
+      roles:
+        - broker
+      replicas: 3
+      storage:
+        type: jbod
+        volumes:
+          - id: 0
+            size: 100Gi
+            storageClass:
+              value: gp3
+            deleteClaim: false
+            kraftMetadata: true
+          - id: 1
+            size: 100Gi
+            storageClass:
+              value: gp3
+      resources:
+        requests:
+          cpu: 500m
+          memory: 4Gi
+        limits:
+          cpu: "2"
+          memory: 8Gi
+      nodeSelector:
+        workload: kafka
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: kafka
+          effect: NoSchedule
+  listeners:
+    - name: plain
+      port: 9092
+      tls: false
+    - name: scram
+      port: 9094
+      tls: false
+      authentication:
+        type: scram-sha-512
+      configuration:
+        maxConnections: 1000
+        maxConnectionCreationRate: 50
+    - name: external
+      port: 9095
+      type: loadbalancer
+      tls: true
+      authentication:
+        type: tls
+      configuration:
+        externalTrafficPolicy: Local
+        loadBalancerSourceRanges:
+          - 10.0.0.0/8
+        allocateLoadBalancerNodePorts: false
+        createBootstrapService: true
+        publishNotReadyAddresses: false
+        brokerCertChainAndKey:
+          secretName:
+            value: kafka-listener-cert
+          certificate: tls.crt
+          key: tls.key
+        bootstrap:
+          host: kafka.example.com
+          annotations:
+            service.beta.kubernetes.io/aws-load-balancer-type: external
+            external-dns.alpha.kubernetes.io/hostname: kafka.example.com
+          labels:
+            exposure: external
+          alternativeNames:
+            - kafka-alt.example.com
+        brokers:
+          - broker: 0
+            advertisedHost: broker-0.kafka.example.com
+            advertisedPort: 9095
+            annotations:
+              external-dns.alpha.kubernetes.io/hostname: broker-0.kafka.example.com
+          - broker: 1
+            advertisedHost: broker-1.kafka.example.com
+          - broker: 2
+            advertisedHost: broker-2.kafka.example.com
+  config:
+    default.replication.factor: "3"
+    min.insync.replicas: "2"
+    offsets.topic.replication.factor: "3"
+    transaction.state.log.replication.factor: "3"
+    transaction.state.log.min.isr: "2"
+    auto.create.topics.enable: "false"
+  authorization:
+    type: simple
+    superUsers:
+      - User:CN=platform-admin
+  entityOperator:
+    topicOperatorEnabled: true
+    userOperatorEnabled: true
+  cruiseControl:
+    enabled: true
+    config:
+      hard.goals: com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    autoRebalanceModes:
+      - add-brokers
+      - remove-brokers
+  kafkaExporter:
+    enabled: true
+    groupRegex: ".*"
+    topicRegex: ".*"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  metrics:
+    enabled: true
+  clusterCa:
+    validityDays: 730
+    renewalDays: 60
+  clientsCa:
+    validityDays: 365
+    renewalDays: 30
+  rack:
+    topologyKey: topology.kubernetes.io/zone
+  jvm:
+    xms: 2g
+    xmx: 2g
+  maintenanceTimeWindows:
+    - "* * 0-3 ? * SUN"

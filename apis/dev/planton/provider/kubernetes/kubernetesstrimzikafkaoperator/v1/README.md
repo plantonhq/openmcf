@@ -1,168 +1,98 @@
-# KubernetesStrimziKafkaOperator
+# Kubernetes Strimzi Kafka Operator
 
-Deploys the Strimzi Kafka Operator to Kubernetes clusters, enabling declarative management of Apache Kafka clusters through Kubernetes Custom Resources.
+## When NOT to Use This
 
-## Overview
+**This component installs the ENGINE, not a Kafka cluster.** It deploys
+the Strimzi cluster operator — the CNCF project that runs Apache Kafka
+on Kubernetes — the controller that reconciles `Kafka` and
+`KafkaNodePool` custom resources into KRaft-mode Kafka clusters. To get
+an actual Kafka cluster, deploy this first, then declare a
+KubernetesKafka.
 
-Strimzi is the production-standard Kubernetes operator for Apache Kafka. It automates deployment, scaling, configuration, and management of Kafka clusters, topics, and users.
+Also not the right component when:
 
-### Why Strimzi?
+- **You want a Kafka cluster** — that is KubernetesKafka; this
+  component is the operator it requires.
+- **You want topics or users** — those are KubernetesKafkaTopic and
+  KubernetesKafkaUser, reconciled by the per-cluster entity operators
+  that each KubernetesKafka deploys.
+- **You want a managed cloud Kafka** — use the host cloud's managed
+  streaming kinds; this operator is for running Kafka ON the cluster.
+- **You expect ZooKeeper-based clusters** — Strimzi removed ZooKeeper
+  support in 0.46; this operator line is KRaft-only (Kafka's built-in
+  Raft metadata quorum). Clusters still on ZooKeeper must migrate
+  before they can be managed here.
+- **You need a second operator without RBAC coordination** — a second
+  install in the same cluster (watching a disjoint namespace set) must
+  set `create_global_resources: false`: the chart's fixed-name
+  ClusterRoles are owned by the first release, and a second install
+  conflicts on them.
 
-- **CNCF Project**: Production-proven, vendor-neutral, 100% open source (Apache 2.0)
-- **Battle-Tested**: Powers Kafka deployments at Red Hat, Bloomberg, and Fortune 500 companies
-- **Comprehensive**: Manages clusters, topics, users, connectors, bridges via CRDs
-- **GitOps-Native**: Full declarative configuration through Kubernetes resources
+## What It Deploys
 
-### What This Deploys
+One Helm release of the official `strimzi-kafka-operator` chart
+(pinned 1.1.0 — chart and operator versions move together; the SERVED
+index at https://strimzi.io/charts/ governs the version, since the
+Chart.yaml inside the Strimzi source tree carries a build-time
+placeholder), named after `metadata.name`. The release renders the
+operator Deployment, its ServiceAccount, watch-scoped RBAC, and the
+Strimzi CRDs.
 
-The operator itself (NOT Kafka clusters). After deployment, you create Kafka clusters using `Kafka` CRDs.
+### Watch scope decides the deployment topology
 
-## Quick Start
+- **Default (no `watch` block):** the operator watches its OWN
+  namespace only (the chart default — Kafka clusters live beside their
+  operator). KubernetesKafka clusters must be declared in that same
+  namespace.
+- **`watch.any_namespace: true`:** one operator reconciles Kafka
+  clusters in every namespace, with cluster-wide RBAC.
+- **`watch.namespaces: [...]`:** an explicit namespace fence (the
+  installation namespace is always watched in addition).
 
-### Basic Deployment
+The two widened arms are mutually exclusive (validated at the spec) —
+a cluster-wide operator already watches everything.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesStrimziKafkaOperator
-metadata:
-  name: kafka-operator
-spec:
-  namespace:
-    value: "strimzi-kafka-operator"
-  createNamespace: true
-  container:
-    resources:
-      requests:
-        cpu: 50m
-        memory: 100Mi
-      limits:
-        cpu: 1000m
-        memory: 1Gi
-```
+### CRD lifecycle
 
-### Deploy
+The chart ships the Strimzi CRDs (Kafka, KafkaNodePool, KafkaTopic,
+KafkaUser, and the rest of the family) in its Helm-native `crds/`
+directory: installed on first install, never upgraded or deleted by
+Helm. Uninstalling the operator therefore NEVER cascade-deletes the
+Kafka clusters — they simply stop being reconciled until an operator
+returns. The same posture cuts the other way on upgrades: a
+`chart_version` upgrade runs new operator code against the EXISTING
+CRDs — apply the new release's CRDs yourself when an upgrade's release
+notes call for it (Strimzi minor releases regularly add CRD fields).
 
-```bash
-# Pulumi
-cd iac/pulumi && pulumi up
+The operator registers no admission webhooks and creates no
+cluster-scoped singletons at runtime — uninstall leaves nothing
+stranded beyond the deliberately-kept CRDs.
 
-# After operator deploys, create Kafka clusters with Kafka CRDs
-```
+## Configuration Surface
 
-## What Gets Created
+Control-plane sizing (`replicas` — extra replicas are leader-elected
+warm standbys, not reconciliation throughput; `resources`),
+reconciliation timing (`full_reconciliation_interval_ms`,
+`operation_timeout_ms`), logging (`log_level`), Strimzi `feature_gates`,
+the cluster DNS domain (`kubernetes_service_dns_domain`),
+leader election (`leader_election_enabled`), operand policy generation
+(`generate_network_policy`, `generate_pod_disruption_budget`),
+cluster-scoped RBAC ownership (`create_global_resources`), scheduling
+(`node_selector`, `tolerations`), private-registry images (`image` —
+which steers the operator AND every operand image it deploys — and
+`image_pull_secrets`), and the `helm_values` escape hatch (merged last,
+Helm `-f` semantics) on top of the typed surface.
 
-- **Namespace**: `strimzi-kafka-operator` (if `createNamespace: true`)
-- **Operator Deployment**: Watches for Kafka CRDs cluster-wide
-- **CRDs**: Kafka, KafkaTopic, KafkaUser, KafkaConnect, KafkaBridge, KafkaMirrorMaker2
-- **RBAC**: Cluster-wide permissions for operator
+## Outputs
 
-## Post-Installation: Creating Kafka Clusters
+| Output | Meaning |
+|---|---|
+| `namespace` | Namespace the operator runs in |
+| `release_name` | Helm release name (`metadata.name`) |
 
-```yaml
-apiVersion: kafka.strimzi.io/v1beta2
-kind: Kafka
-metadata:
-  name: my-cluster
-  namespace: kafka
-spec:
-  kafka:
-    version: 3.6.0
-    replicas: 3
-    listeners:
-      - name: plain
-        port: 9092
-        type: internal
-        tls: false
-      - name: tls
-        port: 9093
-        type: internal
-        tls: true
-    storage:
-      type: jbod
-      volumes:
-        - id: 0
-          type: persistent-claim
-          size: 100Gi
-          deleteClaim: false
-  zookeeper:
-    replicas: 3
-    storage:
-      type: persistent-claim
-      size: 10Gi
-      deleteClaim: false
-  entityOperator:
-    topicOperator: {}
-    userOperator: {}
-```
-
-## API Reference
-
-### Spec
-
-- **`namespace`** (required): Kubernetes namespace for the operator
-- **`createNamespace`** (optional, default: `false`): Whether to create the namespace
-  - `true`: Module creates the namespace with appropriate labels
-  - `false`: Module assumes namespace already exists (must be pre-created)
-- **`container.resources`**: Operator pod resource limits
-
-### Defaults
-
-```yaml
-createNamespace: false  # Namespace must exist
-container:
-  resources:
-    requests:
-      cpu: "50m"
-      memory: "100Mi"
-    limits:
-      cpu: "1000m"
-      memory: "1Gi"
-```
-
-## Namespace Management
-
-### When to use `createNamespace: true`
-- **Simple deployments**: Let the module manage the full lifecycle
-- **New clusters**: No pre-existing namespace configuration
-- **Isolated operator**: Dedicated namespace for this operator only
-
-### When to use `createNamespace: false`
-- **Pre-configured namespaces**: Namespace has specific ResourceQuotas, NetworkPolicies, or LimitRanges
-- **Shared namespaces**: Multiple operators in the same namespace
-- **GitOps workflows**: Namespace managed by ArgoCD/Flux
-- **Multi-tenant environments**: Namespace lifecycle controlled by platform team
-
-**Note:** The protobuf boolean default is `false`, so you must explicitly set `createNamespace: true` if you want the module to create the namespace.
-
-## Architecture
-
-The operator runs in `strimzi-kafka-operator` namespace and watches ALL namespaces for Kafka CRDs (`watchAnyNamespace: true`). This enables multi-tenant Kafka deployments where teams create Kafka clusters in their own namespaces.
-
-## Resource Requirements
-
-- **Operator**: ~50Mi memory, <100m CPU baseline
-- **Per Kafka Cluster**: Depends on cluster spec (typically 2Gi+ per broker)
-
-## Best Practices
-
-1. **One Operator Per Cluster**: Single operator manages all Kafka clusters
-2. **Namespace Isolation**: Deploy Kafka clusters in separate namespaces
-3. **Resource Planning**: Operator is lightweight; Kafka brokers are resource-intensive
-4. **Monitoring**: Deploy Prometheus + Kafka Exporter for metrics
-5. **TLS**: Enable TLS for production Kafka listeners
-
-## Additional Resources
-
-- **Research Documentation**: [docs/README.md](docs/README.md) - 32KB deep-dive into operator landscape, best practices, and production patterns
-- **Examples**: [examples.md](examples.md) - Practical deployment scenarios
-- **Strimzi Documentation**: https://strimzi.io/documentation/
-- **Pulumi Module**: [iac/pulumi/README.md](iac/pulumi/README.md)
-
-## License
-
-Strimzi: Apache License 2.0  
-This module: Part of Planton
-
+Kafka clusters compose against the CRDs the operator installs — declare
+a [KubernetesKafka](../kuberneteskafka/v1/README.md) with its namespace
+inside the operator's watch scope.
 
 ---
 

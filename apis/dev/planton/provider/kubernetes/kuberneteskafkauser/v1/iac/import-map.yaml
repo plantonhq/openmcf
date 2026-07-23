@@ -1,0 +1,32 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kuberneteskafkauser
+spec:
+  # One kubectl_manifest — the KafkaUser CR, named after metadata.name in
+  # the Kafka cluster's own namespace. The credentials Secret is
+  # OPERATOR-generated (never module-declared), so it is deliberately not
+  # part of the import surface. Everything derives blind.
+  values:
+    - name: api_version
+      derivations:
+        - literal: kafka.strimzi.io/v1
+      where_to_find: Always "kafka.strimzi.io/v1" — the CR's group/version.
+    - name: kind
+      derivations:
+        - literal: KafkaUser
+      where_to_find: Always "KafkaUser" — the CR kind this module applies.
+    - name: name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        The KafkaUser CR's metadata.name (equals the Planton resource name
+        AND the Kafka principal name) — `kubectl get kafkauser -A`
+        (NAME column).
+    - name: namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        The Kafka cluster's namespace (the placement contract) —
+        `kubectl get kafkauser -A` (NAMESPACE column).

@@ -1,0 +1,26 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafkaUser
+metadata:
+  name: order-service-producer
+spec:
+  namespace:
+    value: kafka # MUST be the Kafka cluster's own namespace
+  kafkaCluster:
+    value: my-kafka # the KubernetesKafka resource's metadata.name
+  authentication:
+    # The user operator generates the password into a Secret named
+    # after the user: keys `password` + a ready `sasl.jaas.config`.
+    # Must match a scram-sha-512 listener on the cluster.
+    type: scram-sha-512
+  authorization:
+    # Enforced only when the cluster runs simple authorization.
+    acls:
+      - resource:
+          type: topic
+          name: orders- # every topic starting with "orders-"
+          patternType: prefix
+        operations:
+          - Write
+          - Describe
+          - Create # allows the producer to create missing topics
+          - IdempotentWrite # for producers with enable.idempotence

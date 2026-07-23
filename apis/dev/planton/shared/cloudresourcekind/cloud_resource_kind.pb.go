@@ -952,15 +952,20 @@ const (
 	CloudResourceKind_KubernetesMongodb               CloudResourceKind = 906
 	CloudResourceKind_KubernetesStrimziKafkaOperator  CloudResourceKind = 907
 	CloudResourceKind_KubernetesKafka                 CloudResourceKind = 908
-	CloudResourceKind_KubernetesElasticOperator       CloudResourceKind = 909
-	CloudResourceKind_KubernetesElasticsearch         CloudResourceKind = 910
-	CloudResourceKind_KubernetesAltinityOperator      CloudResourceKind = 911
-	CloudResourceKind_KubernetesClickHouse            CloudResourceKind = 912
-	CloudResourceKind_KubernetesSolrOperator          CloudResourceKind = 913
-	CloudResourceKind_KubernetesSolr                  CloudResourceKind = 914
-	CloudResourceKind_KubernetesNeo4j                 CloudResourceKind = 915
-	CloudResourceKind_KubernetesRookCephOperator      CloudResourceKind = 916
-	CloudResourceKind_KubernetesRookCephCluster       CloudResourceKind = 917
+	CloudResourceKind_KubernetesKafkaTopic            CloudResourceKind = 909
+	CloudResourceKind_KubernetesKafkaUser             CloudResourceKind = 910
+	// 911-915: reserved for the Kafka ecosystem family (Connect and its
+	// connectors, MirrorMaker 2, schema registry, console) so the whole
+	// family reads as one contiguous teaching block.
+	CloudResourceKind_KubernetesElasticOperator  CloudResourceKind = 916
+	CloudResourceKind_KubernetesElasticsearch    CloudResourceKind = 917
+	CloudResourceKind_KubernetesAltinityOperator CloudResourceKind = 918
+	CloudResourceKind_KubernetesClickHouse       CloudResourceKind = 919
+	CloudResourceKind_KubernetesSolrOperator     CloudResourceKind = 920
+	CloudResourceKind_KubernetesSolr             CloudResourceKind = 921
+	CloudResourceKind_KubernetesNeo4j            CloudResourceKind = 922
+	CloudResourceKind_KubernetesRookCephOperator CloudResourceKind = 923
+	CloudResourceKind_KubernetesRookCephCluster  CloudResourceKind = 924
 	// 950–969: Kubernetes GitOps and CI/CD
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 950
 	CloudResourceKind_KubernetesTektonOperator              CloudResourceKind = 951
@@ -1554,15 +1559,17 @@ var (
 		906:  "KubernetesMongodb",
 		907:  "KubernetesStrimziKafkaOperator",
 		908:  "KubernetesKafka",
-		909:  "KubernetesElasticOperator",
-		910:  "KubernetesElasticsearch",
-		911:  "KubernetesAltinityOperator",
-		912:  "KubernetesClickHouse",
-		913:  "KubernetesSolrOperator",
-		914:  "KubernetesSolr",
-		915:  "KubernetesNeo4j",
-		916:  "KubernetesRookCephOperator",
-		917:  "KubernetesRookCephCluster",
+		909:  "KubernetesKafkaTopic",
+		910:  "KubernetesKafkaUser",
+		916:  "KubernetesElasticOperator",
+		917:  "KubernetesElasticsearch",
+		918:  "KubernetesAltinityOperator",
+		919:  "KubernetesClickHouse",
+		920:  "KubernetesSolrOperator",
+		921:  "KubernetesSolr",
+		922:  "KubernetesNeo4j",
+		923:  "KubernetesRookCephOperator",
+		924:  "KubernetesRookCephCluster",
 		950:  "KubernetesArgocd",
 		951:  "KubernetesTektonOperator",
 		952:  "KubernetesTekton",
@@ -2143,15 +2150,17 @@ var (
 		"KubernetesMongodb":                              906,
 		"KubernetesStrimziKafkaOperator":                 907,
 		"KubernetesKafka":                                908,
-		"KubernetesElasticOperator":                      909,
-		"KubernetesElasticsearch":                        910,
-		"KubernetesAltinityOperator":                     911,
-		"KubernetesClickHouse":                           912,
-		"KubernetesSolrOperator":                         913,
-		"KubernetesSolr":                                 914,
-		"KubernetesNeo4j":                                915,
-		"KubernetesRookCephOperator":                     916,
-		"KubernetesRookCephCluster":                      917,
+		"KubernetesKafkaTopic":                           909,
+		"KubernetesKafkaUser":                            910,
+		"KubernetesElasticOperator":                      916,
+		"KubernetesElasticsearch":                        917,
+		"KubernetesAltinityOperator":                     918,
+		"KubernetesClickHouse":                           919,
+		"KubernetesSolrOperator":                         920,
+		"KubernetesSolr":                                 921,
+		"KubernetesNeo4j":                                922,
+		"KubernetesRookCephOperator":                     923,
+		"KubernetesRookCephCluster":                      924,
 		"KubernetesArgocd":                               950,
 		"KubernetesTektonOperator":                       951,
 		"KubernetesTekton":                               952,
@@ -2619,7 +2628,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xa2\xdf\x01\n" +
+	"\x02v1\x10\x01*\x89\xe0\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3046,15 +3055,17 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x11KubernetesMongodb\x10\x8a\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8smdb:\x02\x89\a\x127\n" +
 	"\x1eKubernetesStrimziKafkaOperator\x10\x8b\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sstzop\x12*\n" +
 	"\x0fKubernetesKafka\x10\x8c\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8skaf:\x02\x8b\a\x122\n" +
-	"\x19KubernetesElasticOperator\x10\x8d\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8selaop\x121\n" +
-	"\x17KubernetesElasticsearch\x10\x8e\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\x8d\a\x123\n" +
-	"\x1aKubernetesAltinityOperator\x10\x8f\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8saltop\x121\n" +
-	"\x14KubernetesClickHouse\x10\x90\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sclkhs:\x02\x8f\a\x12/\n" +
-	"\x16KubernetesSolrOperator\x10\x91\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sslrop\x12*\n" +
-	"\x0eKubernetesSolr\x10\x92\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8ssolr:\x02\x91\a\x12&\n" +
-	"\x0fKubernetesNeo4j\x10\x93\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sneo\x124\n" +
-	"\x1aKubernetesRookCephOperator\x10\x94\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookop\x123\n" +
-	"\x19KubernetesRookCephCluster\x10\x95\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookcl\x12(\n" +
+	"\x14KubernetesKafkaTopic\x10\x8d\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skaftop:\x02\x8c\a\x121\n" +
+	"\x13KubernetesKafkaUser\x10\x8e\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafusr:\x02\x8c\a\x122\n" +
+	"\x19KubernetesElasticOperator\x10\x94\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8selaop\x121\n" +
+	"\x17KubernetesElasticsearch\x10\x95\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\x94\a\x123\n" +
+	"\x1aKubernetesAltinityOperator\x10\x96\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8saltop\x121\n" +
+	"\x14KubernetesClickHouse\x10\x97\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sclkhs:\x02\x96\a\x12/\n" +
+	"\x16KubernetesSolrOperator\x10\x98\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sslrop\x12*\n" +
+	"\x0eKubernetesSolr\x10\x99\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8ssolr:\x02\x98\a\x12&\n" +
+	"\x0fKubernetesNeo4j\x10\x9a\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sneo\x124\n" +
+	"\x1aKubernetesRookCephOperator\x10\x9b\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookop\x123\n" +
+	"\x19KubernetesRookCephCluster\x10\x9c\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookcl\x12(\n" +
 	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x122\n" +
 	"\x18KubernetesTektonOperator\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12(\n" +
 	"\x10KubernetesTekton\x10\xb8\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stktn\x12?\n" +

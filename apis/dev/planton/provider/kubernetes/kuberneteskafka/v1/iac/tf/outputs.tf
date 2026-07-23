@@ -1,56 +1,27 @@
+# Stack outputs — flattened onto KubernetesKafkaStackOutputs by the
+# platform. Keep in lockstep with the Pulumi module's exports.
+
 output "namespace" {
-  description = "Namespace in which the Kafka resources are deployed."
+  description = "Kubernetes namespace the Kafka cluster deploys into"
   value       = local.namespace
 }
 
-output "username" {
-  description = "The Kafka admin username."
-  value       = local.admin_username
+output "cluster_name" {
+  description = "Kafka cluster name (metadata.name) — the strimzi.io/cluster binding value for KafkaNodePool/KafkaTopic/KafkaUser resources"
+  value       = local.cluster_name
 }
 
-output "password_secret_name" {
-  description = "The name of the Secret containing the Kafka admin SCRAM-SHA-512 credentials."
-  value       = local.admin_password_secret_name
+output "bootstrap_service_name" {
+  description = "Name of the internal bootstrap Service (<cluster>-kafka-bootstrap)"
+  value       = local.bootstrap_service_name
 }
 
-output "password_secret_key" {
-  description = "The key within the Secret that contains the admin user's password."
-  value       = "password"
+output "internal_bootstrap_endpoint" {
+  description = "In-cluster bootstrap address for the first internal listener (empty when the cluster declares no internal listener)"
+  value       = local.internal_bootstrap_endpoint
 }
 
-output "bootstrap_server_external_hostname" {
-  description = "External hostname for Kafka's bootstrap server (null if ingress is disabled)."
-  value       = local.ingress_external_bootstrap_hostname
-}
-
-output "bootstrap_server_internal_hostname" {
-  description = "Internal hostname for Kafka's bootstrap server (null if ingress is disabled)."
-  value       = local.ingress_internal_bootstrap_hostname
-}
-
-output "schema_registry_external_url" {
-  description = "External URL for the Schema Registry (including 'https://'), or null if not enabled/ingress disabled."
-  value = (
-    local.schema_registry_external_hostname != null
-    ? "https://${local.schema_registry_external_hostname}"
-    : null
-  )
-}
-
-output "schema_registry_internal_url" {
-  description = "Internal URL for the Schema Registry (including 'https://'), or null if not enabled/ingress disabled."
-  value = (
-    local.schema_registry_internal_hostname != null
-    ? "https://${local.schema_registry_internal_hostname}"
-    : null
-  )
-}
-
-output "kafka_ui_external_url" {
-  description = "External URL for the Kafka UI (Kowl), or null if it's not deployed or ingress is disabled."
-  value = (
-    local.kowl_external_hostname != null
-    ? "https://${local.kowl_external_hostname}"
-    : null
-  )
+output "cluster_ca_cert_secret_name" {
+  description = "Name of the Secret holding the cluster CA certificate (<cluster>-cluster-ca-cert, key ca.crt)"
+  value       = local.cluster_ca_cert_secret_name
 }

@@ -135,6 +135,57 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"namespace", "release_name"},
 		},
 		{
+			// KubernetesStrimziKafkaOperator: installation identity handles.
+			name: "KubernetesStrimziKafkaOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesStrimziKafkaOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":    "strimzi-system",
+				"release_name": "strimzi-op",
+			},
+			mustPopulate: []string{"namespace", "release_name"},
+		},
+		{
+			// KubernetesKafka: the Strimzi naming contract — the cluster
+			// binding name, the bootstrap Service, the in-cluster bootstrap
+			// address, and the cluster CA Secret handle.
+			name: "KubernetesKafka",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafka,
+			rawOutputs: map[string]interface{}{
+				"namespace":                   "team-alpha",
+				"cluster_name":                "orders-kafka",
+				"bootstrap_service_name":      "orders-kafka-kafka-bootstrap",
+				"internal_bootstrap_endpoint": "orders-kafka-kafka-bootstrap.team-alpha.svc.cluster.local:9092",
+				"cluster_ca_cert_secret_name": "orders-kafka-cluster-ca-cert",
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "bootstrap_service_name",
+				"internal_bootstrap_endpoint", "cluster_ca_cert_secret_name",
+			},
+		},
+		{
+			// KubernetesKafkaTopic: the topic handle (the KAFKA name, which
+			// may differ from the resource name via spec.topic_name).
+			name: "KubernetesKafkaTopic",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaTopic,
+			rawOutputs: map[string]interface{}{
+				"namespace":  "team-alpha",
+				"topic_name": "orders.v1_events",
+			},
+			mustPopulate: []string{"namespace", "topic_name"},
+		},
+		{
+			// KubernetesKafkaUser: the principal name and the
+			// operator-generated credentials Secret handle.
+			name: "KubernetesKafkaUser",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaUser,
+			rawOutputs: map[string]interface{}{
+				"namespace":   "team-alpha",
+				"username":    "orders-service",
+				"secret_name": "orders-service",
+			},
+			mustPopulate: []string{"namespace", "username", "secret_name"},
+		},
+		{
 			// KubernetesPostgres: the CloudNativePG naming contract — the
 			// three traffic services, the rw endpoint, and the credential
 			// Secret handles (nested objects that flatten to

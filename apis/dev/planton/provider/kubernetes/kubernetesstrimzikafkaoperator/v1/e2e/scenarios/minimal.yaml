@@ -1,16 +1,11 @@
+# The default operator shape: own-namespace watch (the chart default),
+# every tunable left to the chart. Kafka clusters would live beside the
+# operator in this posture.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStrimziKafkaOperator
 metadata:
-  name: e2e-stzop-fix
+  name: e2e-stz-op-minimal
 spec:
   namespace:
-    value: e2e-stzop-fix
+    value: e2e-stz-op-minimal
   create_namespace: true
-  container:
-    resources:
-      limits:
-        cpu: 500m
-        memory: 256Mi
-      requests:
-        cpu: 50m
-        memory: 64Mi

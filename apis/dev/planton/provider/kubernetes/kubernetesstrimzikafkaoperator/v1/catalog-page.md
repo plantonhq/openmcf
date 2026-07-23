@@ -1,177 +1,123 @@
 # Kubernetes Strimzi Kafka Operator
 
-Deploys the Strimzi Kafka Operator on a Kubernetes cluster using the official Strimzi Helm chart (v0.42.0). Strimzi extends Kubernetes with custom resource definitions for managing Apache Kafka clusters, topics, users, connectors, and mirrors. Once installed, the operator watches all namespaces and lets you declaratively create and manage Kafka deployments as native Kubernetes resources.
+Installs the Strimzi cluster operator — the CNCF project that runs
+Apache Kafka on Kubernetes — from the official `strimzi-kafka-operator`
+Helm chart, with a typed spec over the chart's meaningful configuration
+surface. The operator reconciles `Kafka` and `KafkaNodePool` custom
+resources into KRaft-mode Kafka clusters (Kafka's built-in Raft
+metadata quorum — ZooKeeper was removed from Strimzi in 0.46), and its
+per-cluster entity operators reconcile `KafkaTopic` / `KafkaUser`
+resources into real topics and authenticated users. This component
+installs the ENGINE; the Kafka clusters themselves are declared with
+KubernetesKafka resources — one per cluster.
 
 ## What Gets Created
 
-When you deploy a KubernetesStrimziKafkaOperator resource, Planton provisions:
+- **Namespace** (optional) — the installation namespace, created and
+  owned when `create_namespace` is set
+- **Helm Release** (named `metadata.name`) — the operator Deployment,
+  its RBAC, and the Strimzi CRDs (Kafka, KafkaNodePool, KafkaTopic,
+  KafkaUser, and the rest of the family). The CRDs ship in the chart's
+  Helm-native `crds/` directory: installed on first install, never
+  upgraded or deleted by Helm — uninstalling the release NEVER
+  cascade-deletes the Kafka clusters. The same posture means a
+  `chart_version` upgrade runs new operator code against the EXISTING
+  CRDs — apply the new release's CRDs yourself when an upgrade's
+  release notes call for it.
 
-- **Namespace** — created only when `createNamespace` is `true`; defaults to `strimzi-operator` if `namespace` is not specified
-- **Strimzi Helm Release** — the `kubernetes-strimzi-kafka-operator` chart (v0.42.0) from `https://strimzi.io/charts/`, configured with `watchAnyNamespace: true`, which installs:
-  - The Strimzi Cluster Operator Deployment with configurable CPU and memory limits
-  - Custom Resource Definitions (CRDs) for Kafka, KafkaTopic, KafkaUser, KafkaConnect, KafkaMirrorMaker2, KafkaBridge, KafkaRebalance, and KafkaNodePool
-  - ServiceAccount, ClusterRole, and ClusterRoleBinding for operator RBAC
-  - ValidatingWebhookConfiguration for CRD validation
-- **Kubernetes Labels** — standard Planton labels (`resource-kind`, `resource-id`, `organization`, `environment`) are applied to the namespace and propagated to operator resources for consistent metadata
+## Watch Scope
+
+By default the operator watches ITS OWN namespace only (the chart
+default — Kafka clusters live beside their operator). Two knobs widen
+it, mutually exclusive:
+
+- **`watch.any_namespace: true`** — one operator manages Kafka
+  clusters in every namespace (cluster-wide RBAC)
+- **`watch.namespaces: [...]`** — an explicitly fenced set of
+  namespaces (the installation namespace is always watched in
+  addition)
+
+A KubernetesKafka cluster declared in a namespace the operator does
+not watch is silently never reconciled — install the operator in the
+cluster's namespace, or widen the watch.
 
 ## Prerequisites
 
-- **A Kubernetes cluster** with kubectl configured for access
-- **Cluster-admin permissions** to install CRDs and ClusterRoles required by the operator
-- **Kubernetes 1.25+** recommended for full Strimzi 0.42 compatibility
+- A cluster not already running a Strimzi operator with overlapping
+  watch scope — the CRDs and the chart's ClusterRoles are
+  cluster-scoped singletons (a second fenced install needs
+  `create_global_resources: false`)
+- Nothing else: Kafka clusters, topics, and users are concerns of the
+  KubernetesKafka / KubernetesKafkaTopic / KubernetesKafkaUser
+  resources composed on top
 
 ## Quick Start
 
-Create a file `strimzi-operator.yaml`:
-
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesStrimziKafkaOperator
 metadata:
-  name: strimzi
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesStrimziKafkaOperator.strimzi
+  name: strimzi-operator
 spec:
   namespace:
-    value: strimzi-operator
-  createNamespace: true
-  container:
-    resources:
-      limits:
-        cpu: "1000m"
-        memory: "1Gi"
-      requests:
-        cpu: "50m"
-        memory: "100Mi"
+    value: kafka
+  create_namespace: true
 ```
 
-Deploy:
+The operator becomes Available and starts reconciling; KubernetesKafka
+resources declared in the `kafka` namespace turn into running KRaft
+clusters.
 
-```shell
-planton apply -f strimzi-operator.yaml
-```
+## Configuration Surface
 
-This installs the Strimzi Kafka Operator in the `strimzi-operator` namespace with default resource allocations. After deployment, you can create Kafka, KafkaTopic, and KafkaUser custom resources in any namespace.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `StringValueOrRef` | Kubernetes namespace for the operator deployment. Use `value` for a direct string or `valueFrom` to reference a KubernetesNamespace resource. Defaults to `strimzi-operator` when omitted. | Required |
-| `container` | `object` | Container specification for the operator pod, including resource limits and requests. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | Create the namespace before deploying the operator. Set to `true` when the namespace does not already exist. |
-| `container.resources.limits.cpu` | `string` | `"1000m"` | CPU limit for the Strimzi operator container. |
-| `container.resources.limits.memory` | `string` | `"1Gi"` | Memory limit for the Strimzi operator container. |
-| `container.resources.requests.cpu` | `string` | `"50m"` | CPU request for the Strimzi operator container. |
-| `container.resources.requests.memory` | `string` | `"100Mi"` | Memory request for the Strimzi operator container. |
-
-> **Note on `valueFrom`**: The `namespace` field is a `StringValueOrRef` type. You can provide a literal string with `value`, or use `valueFrom` to reference the output of another Planton resource (e.g., a KubernetesNamespace). See the foreign key reference example below.
-
-## Examples
-
-### Minimal Operator Installation
-
-Install the Strimzi Kafka Operator with defaults in the `strimzi-operator` namespace:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesStrimziKafkaOperator
-metadata:
-  name: strimzi
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesStrimziKafkaOperator.strimzi
-spec:
-  namespace:
-    value: strimzi-operator
-  createNamespace: true
-  container: {}
-```
-
-### Operator with Increased Resources
-
-Deploy the operator with higher resource allocations for clusters running many Kafka instances:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesStrimziKafkaOperator
-metadata:
-  name: strimzi-prod
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesStrimziKafkaOperator.strimzi-prod
-spec:
-  namespace:
-    value: strimzi-operator
-  createNamespace: true
-  container:
-    resources:
-      limits:
-        cpu: "2000m"
-        memory: "2Gi"
-      requests:
-        cpu: "500m"
-        memory: "512Mi"
-```
-
-### Operator in a Custom Namespace with Foreign Key Reference
-
-Install the operator in an Planton-managed namespace using a `valueFrom` reference:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesStrimziKafkaOperator
-metadata:
-  name: strimzi-shared
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.KubernetesStrimziKafkaOperator.strimzi-shared
-spec:
-  namespace:
-    valueFrom:
-      kind: KubernetesNamespace
-      name: platform-operators
-      field: spec.name
-  container:
-    resources:
-      limits:
-        cpu: "1000m"
-        memory: "1Gi"
-      requests:
-        cpu: "100m"
-        memory: "256Mi"
-```
+- **`chart_version`** — the chart pin (default `1.1.0`; chart and
+  operator versions move together). Versions must exist as SERVED
+  charts in the repository index (https://strimzi.io/charts/) — the
+  Chart.yaml inside the Strimzi source tree is a build-time
+  placeholder. Remember the CRD posture: upgrades never upgrade CRDs
+- **`replicas`** — operator pods (default 1); extras are
+  leader-elected warm standbys for the OPERATOR itself, not
+  reconciliation throughput
+- **`watch`** — the scope block above
+- **`full_reconciliation_interval_ms`** — the periodic full-repair
+  pass over every watched resource (default 120000 — 2 minutes)
+- **`operation_timeout_ms`** — timeout for internal operations like
+  rolling a pod (default 300000 — 5 minutes); raise on slow storage
+  where broker restarts legitimately exceed it
+- **`log_level`** — ERROR / WARN / INFO (default) / DEBUG / TRACE
+- **`feature_gates`** — Strimzi gates in the operator's own syntax
+  (`+Gate,-OtherGate`); an unknown gate fails operator startup
+- **`kubernetes_service_dns_domain`** — set only on clusters with a
+  non-default DNS domain; a mismatch produces TLS certificates whose
+  SANs don't match the advertised service DNS names
+- **`leader_election_enabled`** — meaningful only with `replicas`
+  above 1
+- **`generate_network_policy` / `generate_pod_disruption_budget`** —
+  the operand policy toggles (both default true)
+- **`create_global_resources`** — set false only for a SECOND operator
+  install; the fixed-name ClusterRoles belong to the first release
+- **`resources`, `node_selector`, `tolerations`,
+  `image_pull_secrets`, `image`** — operator pod placement, sizing,
+  and the image source override — `image` steers EVERY Strimzi image
+  (operator and all operands: Kafka, entity operators, Cruise Control,
+  exporter), the air-gap path
+- **`helm_values`** — escape hatch: extra chart values merged LAST
+  (Helm `-f` semantics) for the surface beyond the typed fields —
+  never the primary interface, never for secrets
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the operator runs in |
+| `release_name` | Helm release name of the operator (equals `metadata.name`) |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where the Strimzi Kafka Operator is deployed |
-| `service` | `string` | Name of the Kubernetes Service for the Strimzi operator (format: `{name}-kubernetes-strimzi-kafka-operator`) |
-| `portForwardCommand` | `string` | Ready-to-run `kubectl port-forward` command for local access to the operator |
-| `kubeEndpoint` | `string` | Cluster-internal endpoint (e.g., `strimzi.strimzi-operator.svc.cluster.local`) |
-| `ingressEndpoint` | `string` | Public endpoint for external access, when configured |
+## Next Steps
 
-## Related Components
-
-- [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — pre-create a namespace to reference via `valueFrom`
-- [KubernetesKafka](/docs/catalog/kubernetes/kuberneteskafka) — deploy Kafka clusters managed by this operator
-- [KubernetesHelmRelease](/docs/catalog/kubernetes/kuberneteshelmrelease) — alternative approach for deploying Helm charts with full value control
+Declare Kafka clusters as KubernetesKafka resources — one per cluster,
+in a namespace the operator watches; the operator reconciles them into
+brokers, controllers, listeners, and certificates, and its per-cluster
+entity operators serve KubernetesKafkaTopic / KubernetesKafkaUser
+declarations. Pin `chart_version` deliberately and upgrade the operator
+on the platform's schedule — removing this component never deletes the
+CRDs or the Kafka clusters behind them.

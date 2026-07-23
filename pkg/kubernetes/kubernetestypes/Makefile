@@ -19,9 +19,15 @@ cert_manager_release=v1.20.3
 #https://github.com/apache/solr-operator/releases/tag/v0.8.1
 solr_operator_release=v0.8.1
 
-#https://github.com/strimzi/strimzi-kafka-operator/tree/main/install/cluster-operator
-#https://github.com/strimzi/strimzi-kafka-operator/tree/release-0.42.x
-strimzi_operator_release=release-0.42.x
+#https://github.com/strimzi/strimzi-kafka-operator/tree/1.1.0/install/cluster-operator
+#Strimzi 1.1.0 (KRaft-only; CRD API v1). No generated types: the Kafka and
+#KafkaTopic CRDs type their `config` objects (and the listener/Cruise Control
+#configuration blocks) with x-kubernetes-preserve-unknown-fields, which
+#crd2pulumi cannot carry faithfully — the Kafka-family modules render their
+#CRs through apiextensions.CustomResource with untyped args instead (see the
+#kuberneteskafka Pulumi module). The pin is recorded for the CRD schemas the
+#specs and modules are designed against.
+strimzi_operator_release=1.1.0
 
 #https://github.com/cloudnative-pg/cloudnative-pg/tree/v1.30.0/config/crd/bases
 #Note: the served operator chart (https://cloudnative-pg.github.io/charts)
@@ -104,19 +110,11 @@ gen-cert-manager:
 gen-solr-operator:
 	crd2pulumi --force --goPath=solroperator https://raw.githubusercontent.com/apache/solr-operator/${solr_operator_release}/helm/solr-operator/crds/crds.yaml
 
-.PHONY: gen-strimzi-operator
-gen-strimzi-operator:
-	crd2pulumi --force --goPath=strimzioperator https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/main/install/cluster-operator/040-Crd-kafka.yaml \
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/041-Crd-kafkaconnect.yaml \
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/042-Crd-strimzipodset.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/043-Crd-kafkatopic.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/044-Crd-kafkauser.yaml \
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/045-Crd-kafkamirrormaker.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/046-Crd-kafkabridge.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/047-Crd-kafkaconnector.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/048-Crd-kafkamirrormaker2.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/049-Crd-kafkarebalance.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/04A-Crd-kafkanodepool.yaml
+#gen-strimzi-operator deliberately retired: the Strimzi CRDs' free-typed
+#config objects (x-kubernetes-preserve-unknown-fields) cannot be carried by
+#crd2pulumi's generated types, so the Kafka-family Pulumi modules render
+#untyped CRs and no generated package exists to regenerate. The pin above
+#records which CRD schemas the specs were designed against.
 
 # Clusters + ScheduledBackups from the operator; the ObjectStore CRD from the
 # Barman Cloud plugin (backups are plugin-based — the operator's in-tree
@@ -164,7 +162,7 @@ gen-nack:
 	crd2pulumi --force --goPath=nack https://raw.githubusercontent.com/nats-io/nack/${nack_release}/deploy/crds.yml
 
 .PHONY: gen
-gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-strimzi-operator gen-external-secrets gen-elastic-operator gen-keycloak gen-altinity-operator gen-nack
+gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-external-secrets gen-elastic-operator gen-keycloak gen-altinity-operator gen-nack
 
 .PHONY: build
 build: clean gen

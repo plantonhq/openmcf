@@ -1,0 +1,3 @@
+name: kubernetes-kafka-topic
+runtime: go
+description: Declarative Kafka topic on the Strimzi KafkaTopic custom resource — reconciled into a real topic by the target cluster's topic operator

@@ -460,6 +460,8 @@ import (
 	kubernetesjenkinsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjenkins/v1"
 	kubernetesjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjob/v1"
 	kuberneteskafkav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskafka/v1"
+	kuberneteskafkatopicv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskafkatopic/v1"
+	kuberneteskafkauserv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskafkauser/v1"
 	kuberneteskarpenterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskarpenter/v1"
 	kuberneteskarpenterec2nodeclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskarpenterec2nodeclass/v1"
 	kuberneteskarpenternodepoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskarpenternodepool/v1"
@@ -1097,6 +1099,8 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesJenkins:                     &kubernetesjenkinsv1.KubernetesJenkins{},
 	cloudresourcekind.CloudResourceKind_KubernetesJob:                         &kubernetesjobv1.KubernetesJob{},
 	cloudresourcekind.CloudResourceKind_KubernetesKafka:                       &kuberneteskafkav1.KubernetesKafka{},
+	cloudresourcekind.CloudResourceKind_KubernetesKafkaTopic:                  &kuberneteskafkatopicv1.KubernetesKafkaTopic{},
+	cloudresourcekind.CloudResourceKind_KubernetesKafkaUser:                   &kuberneteskafkauserv1.KubernetesKafkaUser{},
 	cloudresourcekind.CloudResourceKind_KubernetesKarpenter:                   &kuberneteskarpenterv1.KubernetesKarpenter{},
 	cloudresourcekind.CloudResourceKind_KubernetesKarpenterEc2NodeClass:       &kuberneteskarpenterec2nodeclassv1.KubernetesKarpenterEc2NodeClass{},
 	cloudresourcekind.CloudResourceKind_KubernetesKarpenterNodePool:           &kuberneteskarpenternodepoolv1.KubernetesKarpenterNodePool{},

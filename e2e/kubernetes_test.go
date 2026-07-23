@@ -476,6 +476,12 @@ func TestKubernetesPostgres_Terraform(t *testing.T) {
 func TestKubernetesKafka_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskafka", "pulumi")
 }
+func TestKubernetesKafkaTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkatopic", "pulumi")
+}
+func TestKubernetesKafkaUser_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkauser", "pulumi")
+}
 func TestKubernetesElasticsearch_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteselasticsearch", "pulumi")
 }
@@ -496,6 +502,12 @@ func TestKubernetesClickHouse_Pulumi(t *testing.T) {
 
 func TestKubernetesKafka_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskafka", "terraform")
+}
+func TestKubernetesKafkaTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkatopic", "terraform")
+}
+func TestKubernetesKafkaUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkauser", "terraform")
 }
 func TestKubernetesElasticsearch_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteselasticsearch", "terraform")

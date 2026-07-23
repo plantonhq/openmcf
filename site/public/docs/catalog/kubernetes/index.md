@@ -41,6 +41,8 @@ The following KUBERNETES resources can be deployed using Planton:
 - [Jenkins](/docs/catalog/kubernetes/jenkins)
 - [Job](/docs/catalog/kubernetes/job)
 - [Kafka](/docs/catalog/kubernetes/kafka)
+- [Kafka Topic](/docs/catalog/kubernetes/kafka-topic)
+- [Kafka User](/docs/catalog/kubernetes/kafka-user)
 - [Karpenter](/docs/catalog/kubernetes/karpenter)
 - [Karpenter EC2 Node Class](/docs/catalog/kubernetes/karpenter-ec2-node-class)
 - [Karpenter Node Pool](/docs/catalog/kubernetes/karpenter-node-pool)

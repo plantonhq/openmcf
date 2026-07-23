@@ -1,0 +1,31 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesStrimziKafkaOperator
+metadata:
+  name: strimzi-operator
+spec:
+  namespace:
+    value: strimzi-system
+  create_namespace: true
+  chart_version: "1.1.0"
+  watch:
+    # An explicit namespace fence: the operator reconciles Kafka
+    # clusters ONLY in these namespaces (plus its own installation
+    # namespace, always watched in addition). The namespaces must
+    # already exist. Mutually exclusive with any_namespace.
+    namespaces:
+      - kafka-team-a
+      - kafka-team-b
+  # Tuned reconciliation for a fleet of clusters on slower storage:
+  # a longer full-repair interval (default 120000) trades drift-repair
+  # latency for less reconciliation churn, and a longer operation
+  # timeout (default 300000) keeps legitimate slow broker restarts
+  # from failing whole reconciliations.
+  full_reconciliation_interval_ms: 300000
+  operation_timeout_ms: 600000
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi

@@ -1,178 +1,164 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
-
 variable "spec" {
-  description = "spec"
+  description = "KubernetesKafka specification"
   type = object({
-    # Kubernetes namespace
     namespace = string
-
-    # Flag to indicate if the namespace should be created
     create_namespace = optional(bool, false)
-
-    # A list of Kafka topics to be created in the Kafka cluster.
-    kafka_topics = optional(list(object({
-
-      # The name of the Kafka topic.
-      # Must be between 1 and 249 characters in length.
-      # The name must start and end with an alphanumeric character, can contain alphanumeric characters, '.', '_', and '-'.
-      # Must not contain '..' or non-ASCII characters.
+    kafka_version = optional(string, "")
+    metadata_version = optional(string, "")
+    node_pools = list(object({
       name = string
-
-      # The number of partitions for the topic.
-      # Recommended default is 1.
-      partitions = number
-
-      # The number of replicas for the topic.
-      # Recommended default is 1.
+      roles = list(string)
       replicas = number
-
-      # Additional configuration for the Kafka topic.
-      # If not provided, default values will be set.
-      # For example, the default `delete.policy` is `delete`, but it can be set to `compact`.
-      config = optional(map(string))
-    })), [])
-
-    # The specifications for the Kafka broker containers.
-    broker_container = object({
-
-      # The number of Kafka brokers to deploy.
-      # Defaults to 1 if the client sets the value to 0.
-      # Recommended default value is 1.
-      replicas = number
-
-      # The CPU and memory resources allocated to the Kafka broker containers.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
+      storage = object({
+        type = optional(string)
+        size = optional(string, "")
+        storage_class = optional(string, "")
+        delete_claim = optional(bool, false)
+        volumes = optional(list(object({
+          id = optional(number, 0)
+          size = string
+          storage_class = optional(string, "")
+          delete_claim = optional(bool, false)
+          kraft_metadata = optional(bool, false)
+        })), [])
       })
-
-      # The size of the disk to be attached to each broker instance (e.g., "30Gi").
-      # A default value is set if not provided by the client.
-      disk_size = string
-    })
-
-    # The specifications for the Zookeeper containers.
-    zookeeper_container = object({
-
-      # The number of Zookeeper container replicas.
-      # Zookeeper requires at least 3 replicas for high availability (HA) mode.
-      # Zookeeper uses the Raft consensus algorithm; refer to https://raft.github.io/ for more information on how replica
-      # count affects availability.
-      replicas = number
-
-      # The CPU and memory resources allocated to the Zookeeper containers.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-
-      # The size of the disk to be attached to each Zookeeper instance (e.g., "30Gi").
-      # A default value is set if not provided by the client.
-      disk_size = string
-    })
-
-    # The specifications for the Schema Registry containers.
-    schema_registry_container = optional(object({
-
-      # A flag to control whether the Schema Registry is created for the Kafka deployment.
-      # Defaults to `false`.
-      is_enabled = bool
-
-      # The number of Schema Registry replicas.
-      # Recommended default value is "1".
-      # This value has no effect if `is_enabled` is set to `false`.
-      replicas = number
-
-      # The CPU and memory resources allocated to the Schema Registry containers.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+      node_selector = optional(map(string), {})
+      tolerations = optional(list(object({
+        key = optional(string, "")
+        operator = optional(string, "")
+        value = optional(string, "")
+        effect = optional(string, "")
+        toleration_seconds = optional(number)
+      })), [])
     }))
-
-    # The ingress configuration for the Kafka deployment.
-    ingress = optional(object({
-
-      # A flag to enable or disable ingress.
-      is_enabled = bool
-
-      # The dns domain.
-      dns_domain = string
+    listeners = list(object({
+      name = string
+      port = number
+      type = optional(string)
+      tls = optional(bool, false)
+      authentication = optional(object({
+        type = string
+        sasl = optional(bool, false)
+        listener_config = optional(map(string), {})
+      }))
+      configuration = optional(object({
+        class = optional(string, "")
+        external_traffic_policy = optional(string)
+        load_balancer_source_ranges = optional(list(string), [])
+        allocate_load_balancer_node_ports = optional(bool)
+        create_bootstrap_service = optional(bool)
+        use_service_dns_domain = optional(bool, false)
+        max_connections = optional(number)
+        max_connection_creation_rate = optional(number)
+        preferred_node_port_address_type = optional(string)
+        publish_not_ready_addresses = optional(bool, false)
+        broker_cert_chain_and_key = optional(object({
+          secret_name = string
+          certificate = optional(string)
+          key = optional(string)
+        }))
+        bootstrap = optional(object({
+          host = optional(string, "")
+          annotations = optional(map(string), {})
+          labels = optional(map(string), {})
+          load_balancer_ip = optional(string, "")
+          node_port = optional(number)
+          alternative_names = optional(list(string), [])
+        }))
+        brokers = optional(list(object({
+          broker = optional(number, 0)
+          host = optional(string, "")
+          advertised_host = optional(string, "")
+          advertised_port = optional(number)
+          annotations = optional(map(string), {})
+          labels = optional(map(string), {})
+          load_balancer_ip = optional(string, "")
+          node_port = optional(number)
+        })), [])
+      }))
     }))
-
-    # A flag to toggle the deployment of the Kafka UI component.
-    is_deploy_kafka_ui = optional(bool, false)
+    config = optional(map(string), {})
+    authorization = optional(object({
+      type = string
+      super_users = optional(list(string), [])
+      authorizer_class = optional(string, "")
+      supports_admin_api = optional(bool, false)
+    }))
+    entity_operator = optional(object({
+      topic_operator_enabled = optional(bool)
+      user_operator_enabled = optional(bool)
+    }))
+    cruise_control = optional(object({
+      enabled = optional(bool, false)
+      config = optional(map(string), {})
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+      auto_rebalance_modes = optional(list(string), [])
+    }))
+    kafka_exporter = optional(object({
+      enabled = optional(bool, false)
+      group_regex = optional(string, "")
+      topic_regex = optional(string, "")
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+    }))
+    metrics = optional(object({
+      enabled = optional(bool, false)
+    }))
+    cluster_ca = optional(object({
+      validity_days = optional(number)
+      renewal_days = optional(number)
+    }))
+    clients_ca = optional(object({
+      validity_days = optional(number)
+      renewal_days = optional(number)
+    }))
+    rack = optional(object({
+      topology_key = string
+    }))
+    jvm = optional(object({
+      xms = optional(string, "")
+      xmx = optional(string, "")
+    }))
+    maintenance_time_windows = optional(list(string), [])
   })
 }
