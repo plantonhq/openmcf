@@ -12,6 +12,8 @@ Google Cloud offers two distinct APIs for managed in-memory data stores under th
 
 The new-generation API is not a drop-in replacement for the legacy API. It uses a different resource model, different networking primitives, and a different engine. Google is steering new deployments toward the new-generation API, but legacy instances remain fully supported.
 
+Instance creation is a long-running operation — the Terraform provider's default create timeout is 60 minutes, and multi-shard instances commonly run tens of minutes; budget deploy windows accordingly.
+
 ### Why a Separate Component?
 
 Despite both services being "Memorystore," the APIs are different enough to warrant separate Planton components:
