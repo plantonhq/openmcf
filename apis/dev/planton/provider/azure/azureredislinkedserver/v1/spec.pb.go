@@ -95,6 +95,13 @@ func (AzureRedisLinkedServerRole) EnumDescriptor() ([]byte, []int) {
 // tier, in different regions, and the secondary must be the same size or
 // larger than the primary. The secondary rejects writes while linked.
 //
+// Note: ARM has begun rejecting NEW Premium cache creations region by
+// region as classic Azure Cache for Redis retires in favor of Azure
+// Managed Redis (live-verified) -- for NEW geo-replicated deployments,
+// prefer AzureManagedRedis with its native geo-replication
+// (AzureManagedRedisGeoReplication); this kind links caches that already
+// exist.
+//
 // Every field is fixed at creation -- changing anything replaces the link
 // (which is safe: replacing a link re-establishes replication; it does not
 // touch cached data on the primary).
