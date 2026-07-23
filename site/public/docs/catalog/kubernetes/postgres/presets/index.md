@@ -8,14 +8,18 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-single-instance"
+  - slug: "01-dev-single-instance"
     rank: "01"
-    title: "Single Instance PostgreSQL"
-    excerpt: "This preset deploys a single-replica PostgreSQL instance with 10Gi of persistent storage and no backup configuration. Suitable for development, testing, or low-criticality workloads."
-  - slug: "02-production-with-backup"
+    title: "Dev Single Instance"
+    excerpt: "This preset declares the smallest useful PostgreSQL cluster: one instance, small storage, a fresh `app` database with an operator-generated password, no backups. It is a single point of failure by..."
+  - slug: "02-production-ha"
     rank: "02"
-    title: "Production PostgreSQL with Backup"
-    excerpt: "This preset deploys a 2-replica PostgreSQL cluster with streaming replication, daily backups, pre-configured database and user, and production-grade resources."
+    title: "Production HA"
+    excerpt: "This preset declares the production PostgreSQL posture on EKS: three instances with quorum synchronous replication (zero data loss on failover), a dedicated WAL volume, hard anti-affinity, and..."
+  - slug: "03-s3-compatible-backups"
+    rank: "03"
+    title: "S3-Compatible Backups"
+    excerpt: "This preset declares a highly available PostgreSQL cluster whose backups land in an S3-COMPATIBLE object store — in-cluster MinIO, Cloudflare R2, Ceph RGW, DigitalOcean Spaces, anything speaking the..."
 ---
 
 # Postgres Presets

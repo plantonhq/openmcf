@@ -1,0 +1,115 @@
+{
+  "metadata": {
+    "name": "test-postgres",
+    "id": "kpg-test-1",
+    "org": "acme",
+    "env": "dev"
+  },
+  "spec": {
+    "namespace": "test-postgres-ns",
+    "create_namespace": true,
+    "instances": 3,
+    "image_name": "ghcr.io/cloudnative-pg/postgresql:17.5",
+    "storage": {
+      "size": "20Gi",
+      "storage_class": "fast-ssd",
+      "resize_in_use_volumes": true
+    },
+    "wal_storage": {
+      "size": "5Gi",
+      "storage_class": "fast-ssd"
+    },
+    "resources": {
+      "limits": { "cpu": "2000m", "memory": "4Gi" },
+      "requests": { "cpu": "500m", "memory": "1Gi" }
+    },
+    "postgresql": {
+      "parameters": {
+        "max_connections": "200",
+        "shared_buffers": "512MB",
+        "pg_stat_statements.max": "10000"
+      },
+      "pg_hba": ["hostssl app all 10.0.0.0/8 scram-sha-256"],
+      "shared_preload_libraries": ["pg_stat_statements"],
+      "synchronous": {
+        "method": "any",
+        "number": 1,
+        "data_durability": "required"
+      }
+    },
+    "bootstrap": {
+      "initdb": {
+        "database": "appdb",
+        "owner": "appuser",
+        "owner_password": "initial-owner-password",
+        "data_checksums": true,
+        "encoding": "UTF8",
+        "post_init_application_sql": [
+          "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;"
+        ]
+      }
+    },
+    "superuser": {
+      "enabled": true,
+      "password": "super-secret-postgres-password"
+    },
+    "roles": [
+      {
+        "name": "analyst",
+        "comment": "read-only analytics user",
+        "password": "analyst-password",
+        "login": true,
+        "in_roles": ["pg_read_all_data"],
+        "connection_limit": 10
+      },
+      {
+        "name": "legacy-batch",
+        "ensure": "absent"
+      }
+    ],
+    "backup": {
+      "object_store": {
+        "destination_path": "s3://backups/test-postgres",
+        "s3": {
+          "region": "us-east-1",
+          "endpoint_url": "http://minio.minio-system.svc:9000",
+          "access_keys": {
+            "access_key_id": "minio-access-key",
+            "secret_access_key": "minio-secret-key"
+          }
+        },
+        "wal": { "compression": "zstd", "max_parallel": 4 },
+        "data": { "compression": "gzip", "jobs": 2, "immediate_checkpoint": true }
+      },
+      "retention_policy": "30d",
+      "schedules": [
+        { "name": "daily", "schedule": "0 0 2 * * *", "immediate": true },
+        { "name": "weekly", "schedule": "0 30 4 * * 0", "target": "primary" }
+      ]
+    },
+    "certificates": {
+      "server_alt_dns_names": ["postgres.example.com"]
+    },
+    "monitoring": {
+      "tls_enabled": true
+    },
+    "scheduling": {
+      "anti_affinity_type": "required",
+      "topology_key": "topology.kubernetes.io/zone",
+      "tolerations": [
+        {
+          "key": "dedicated",
+          "operator": "Equal",
+          "value": "database",
+          "effect": "NoSchedule"
+        }
+      ]
+    },
+    "update_strategy": {
+      "primary_update_strategy": "unsupervised",
+      "primary_update_method": "switchover"
+    },
+    "enable_pdb": true,
+    "image_pull_secrets": ["ghcr-pull-secret"]
+  }
+}

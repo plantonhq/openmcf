@@ -17,14 +17,12 @@ type ResourceVerifier interface {
 // pods only (no service requirement).
 var operatorKinds = map[string]bool{
 	// Tier 2/3 fixture operators (tested since sessions 3-9)
-	"kubernetesperconamongooperator":    true,
-	"kubernetesperconamysqloperator":    true,
-	"kubernetesperconapostgresoperator": true,
-	"kubernetessolroperator":            true,
-	"kubernetesaltinityoperator":        true,
-	"kuberneteselasticoperator":         true,
-	"kubernetesstrimzikafkaoperator":    true,
-	"kuberneteszalandopostgresoperator": true,
+	"kubernetesperconamongooperator": true,
+	"kubernetesperconamysqloperator": true,
+	"kubernetessolroperator":         true,
+	"kubernetesaltinityoperator":     true,
+	"kuberneteselasticoperator":      true,
+	"kubernetesstrimzikafkaoperator": true,
 	// Tier 4 operators with configurable namespace
 	"kubernetesgharunnerscalesetcontroller": true,
 	"kubernetesrookcephoperator":            true,
@@ -36,7 +34,6 @@ var operatorKinds = map[string]bool{
 // reconciled by their prerequisite operator into pods and services.
 // Verification checks namespace + running pods + at least one service.
 var crdWorkloadKinds = map[string]bool{
-	"kubernetespostgres":      true,
 	"kuberneteskafka":         true,
 	"kuberneteselasticsearch": true,
 	"kubernetesmongodb":       true,
@@ -196,7 +193,17 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 	case "kubernetesrbac":
 		return &RbacVerifier{ManifestPath: manifestPath}, nil
 
+	// Existence is the every-lane contract; the aws-load-balancer scenario
+	// (real-cluster profile) additionally asserts the cloud populated a real
+	// LB address — the never-wait-at-deploy posture makes the verifier the
+	// only honest place for that proof.
 	case "kubernetesservice":
+		if strings.Contains(manifestPath, "aws-load-balancer") {
+			return &ServiceLbAddressVerifier{
+				Namespace: info.Namespace,
+				Name:      info.Name,
+			}, nil
+		}
 		return &ResourceExistenceVerifier{
 			Namespace: info.Namespace,
 			Kind:      "service",
@@ -249,14 +256,19 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 		return &KedaInstallVerifier{
 			Namespace:  info.Namespace,
 			Behavioral: manifestHasPrerequisiteSuffix(manifestPath, "fixture-scale-target.yaml"),
+			// The aws-sqs-irsa scenario (real-cluster profile) proves the
+			// cloud pod-identity hop: real SQS depth drives a real scale.
+			BehavioralSqs: strings.Contains(manifestPath, "aws-sqs-irsa"),
 		}, nil
 
 	// Cluster Autoscaler: install proof down to the reconcile loop's own
 	// heartbeat (the status ConfigMap). The kind lane runs the KWOK
-	// simulation arm; real node-group scaling rides the real-cluster lanes.
+	// simulation arm; the aws-asg-scaling scenario (real-cluster profile)
+	// additionally proves a real node-group scale-up/scale-down.
 	case "kubernetesclusterautoscaler":
 		return &ClusterAutoscalerInstallVerifier{
-			Namespace: info.Namespace,
+			Namespace:  info.Namespace,
+			Behavioral: strings.Contains(manifestPath, "aws-asg-scaling"),
 		}, nil
 
 	// Velero: install proof down to the BackupStorageLocation handshake;
@@ -267,6 +279,9 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 		return &VeleroInstallVerifier{
 			Namespace:  info.Namespace,
 			Behavioral: strings.Contains(manifestPath, "behavioral-backup-restore"),
+			// The aws-s3-csi scenario (real-cluster profile) puts a VOLUME
+			// in the DR blast radius: CSI snapshot → real S3 → restore.
+			CsiVolume: strings.Contains(manifestPath, "aws-s3-csi"),
 		}, nil
 
 	// Karpenter: the controller cannot start off AWS (region/credentials/
@@ -285,9 +300,9 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 	// controller; the object's presence is the verifiable contract (node
 	// provisioning itself is the EKS lane's behavioral assertion).
 	case "kuberneteskarpenternodepool":
-		return &ResourceExistenceVerifier{
-			Kind: "nodepools.karpenter.sh",
-			Name: info.Name,
+		return &KarpenterNodePoolVerifier{
+			Name:       info.Name,
+			Behavioral: strings.Contains(manifestPath, "behavioral-node-launch"),
 		}, nil
 	case "kuberneteskarpenterec2nodeclass":
 		return &ResourceExistenceVerifier{
@@ -298,7 +313,17 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 	// A claim under a WaitForFirstConsumer StorageClass is correctly Pending
 	// until a pod consumes it, so existence (not Bound) is the verifiable
 	// contract; the composed consumer scenario proves real binding.
+	// PVC: existence on every lane; the data-source scenarios (real-cluster
+	// profile, snapshot-capable CSI) prove clone/snapshot-restore
+	// PROVISIONING — marker data must travel from the source volume to the
+	// claim under test.
 	case "kubernetespersistentvolumeclaim":
+		if strings.Contains(manifestPath, "snapshot-restore") || strings.Contains(manifestPath, "clone") {
+			return &PvcDataSourceVerifier{
+				Name:     info.Name,
+				Snapshot: strings.Contains(manifestPath, "snapshot-restore"),
+			}, nil
+		}
 		return &ResourceExistenceVerifier{
 			Namespace: info.Namespace,
 			Kind:      "pvc",
@@ -324,7 +349,13 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 
 	// Cluster-scoped; preemption BEHAVIOR needs scheduling pressure and
 	// rides the real-cluster lanes — the object is the verifiable contract.
+	// PriorityClass: existence on every lane; the preemption scenario
+	// (real-cluster profile) proves the class actually evicts lower
+	// priorities under genuine scheduling pressure.
 	case "kubernetespriorityclass":
+		if strings.Contains(manifestPath, "preemption") {
+			return &PriorityClassPreemptionVerifier{Name: info.Name}, nil
+		}
 		return &ResourceExistenceVerifier{
 			Kind: "priorityclass",
 			Name: info.Name,
@@ -373,6 +404,28 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Namespace: info.Namespace,
 			Kind:      "daemonset",
 			Name:      info.Name,
+		}, nil
+
+	// CloudNativePG operator: Deployment Available + CRDs Established;
+	// when the manifest enables the Barman Cloud plugin, the plugin
+	// deployment and its ObjectStore CRD join the contract.
+	case "kubernetescloudnativepgoperator":
+		return &CnpgOperatorInstallVerifier{
+			Namespace:     info.Namespace,
+			PluginEnabled: manifestBarmanPluginEnabled(manifestPath),
+		}, nil
+
+	// A CloudNativePG-managed PostgreSQL cluster: Ready condition + every
+	// declared instance ready + the -rw Service. The behavioral-failover
+	// scenario (recognized by name) additionally proves data durability
+	// through a live primary loss and promotion.
+	case "kubernetespostgres":
+		return &CnpgClusterVerifier{
+			Namespace:   info.Namespace,
+			ClusterName: info.Name,
+			Instances:   manifestSpecInt(manifestPath, "instances", 1),
+			Behavioral:  strings.Contains(manifestPath, "behavioral-failover"),
+			BackupProof: strings.Contains(manifestPath, "with-backup"),
 		}, nil
 
 	// cert-manager installation: the three component Deployments must be
@@ -434,6 +487,15 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 	// first-class, so the release's own Deployment is the contract, not the
 	// namespace).
 	case "kubernetesexternaldns":
+		// The aws-route53-irsa scenario (real-cluster profile) proves REAL
+		// record writes: verifier-owned source, records asserted in the
+		// hosted zone via the AWS API, then removed with the source.
+		if strings.Contains(manifestPath, "aws-route53-irsa") {
+			return &ExternalDnsRoute53Verifier{
+				Namespace:     info.Namespace,
+				ComponentName: info.Name,
+			}, nil
+		}
 		return &ExternalDnsInstallVerifier{
 			Namespace:     info.Namespace,
 			ComponentName: info.Name,
@@ -455,6 +517,9 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 		return &SecretStoreVerifier{
 			Kind: "clustersecretstore",
 			Name: info.Name,
+			// The aws-sm-irsa scenario (real-cluster profile) proves a real
+			// Secrets Manager read through the keyless IRSA identity.
+			BehavioralAwsSm: strings.Contains(manifestPath, "aws-sm-irsa"),
 		}, nil
 
 	case "kubernetessecretstore":
@@ -490,6 +555,9 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Namespace:        info.Namespace,
 			ComponentName:    info.Name,
 			IngressClassName: className,
+			// The aws-nlb scenario (real-cluster profile) validates the
+			// documented AWS annotation recipe down to a provisioned LB.
+			LbAddress: strings.Contains(manifestPath, "aws-nlb"),
 		}, nil
 
 	// metrics-server installation, verified to METRIC FLOW (Deployment
@@ -550,6 +618,15 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 				RouteName:   info.Name,
 				GatewayName: "e2e-istio-gw",
 				Hostname:    hostname,
+			}, nil
+		}
+		// Gateway: the aws-lb-address scenario (real-cluster profile, LB-
+		// default mesh fixture) proves Programmed + a real cloud address in
+		// .status.addresses — the half the kind lanes pin away.
+		if component == "kubernetesgateway" && strings.Contains(manifestPath, "aws-lb-address") {
+			return &GatewayLbAddressVerifier{
+				Namespace: info.Namespace,
+				Name:      info.Name,
 			}, nil
 		}
 		if gw, ok := gatewayApiKinds[component]; ok {

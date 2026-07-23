@@ -148,6 +148,8 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kubernetesbackendtlspolicy` | 2026-07-23, all 3 scenarios (4-part namespaced composed ID; composed-target resolves the Service-fixture FK) | same `kubectl_manifest` tolerances |
 | `kubernetesclusterautoscaler` | 2026-07-23, minimal scenario on the kwok arm (Helm release + created namespace) | `helm_release` install-time attributes (config-only, see the catalog row) |
 | `kubernetesvelero` | 2026-07-23, both scenarios (Helm release + created namespace; behavioral re-imports alongside the live MinIO fixture) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetescloudnativepgoperator` | 2026-07-23, both scenarios (two tofu_resource_name-scoped Helm releases — operator + Barman Cloud plugin — plus the created namespace; the plugin scenario re-imports alongside the live cert-manager fixture) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetespostgres` | 2026-07-23, all three scenarios (composed 4-part IDs for the Cluster / ObjectStore / ScheduledBackup CRs, for_each Secrets via from_address_key, count-indexed singleton Secrets via scoped from_metadata_name_suffix — the with-backup lane's 10-resource blind re-import is the largest kubectl_manifest family proven to date) | `kubectl_manifest` provider-side knobs (config-only, see the catalog row) |
 
 Kinds where an import map is **deliberately not applicable** (recorded so
 absence is never mistaken for an oversight):

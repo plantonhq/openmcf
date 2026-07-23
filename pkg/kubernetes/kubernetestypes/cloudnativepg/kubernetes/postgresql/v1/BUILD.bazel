@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "postgresql",
+    srcs = [
+        "cluster.go",
+        "clusterList.go",
+        "clusterPatch.go",
+        "init.go",
+        "pulumiTypes.go",
+        "pulumiTypes1.go",
+        "scheduledBackup.go",
+        "scheduledBackupList.go",
+        "scheduledBackupPatch.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/kubernetes/kubernetestypes/cloudnativepg/kubernetes/postgresql/v1",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/meta/v1:meta",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/utilities",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
+    ],
+)

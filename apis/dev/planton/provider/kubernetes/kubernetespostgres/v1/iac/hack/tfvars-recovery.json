@@ -1,0 +1,57 @@
+{
+  "metadata": {
+    "name": "restored-postgres"
+  },
+  "spec": {
+    "namespace": "restored-postgres-ns",
+    "create_namespace": false,
+    "instances": 2,
+    "storage": {
+      "size": "20Gi",
+      "resize_in_use_volumes": false
+    },
+    "bootstrap": {
+      "recovery": {
+        "object_store": {
+          "destination_path": "gs://prod-backups/source-postgres",
+          "gcs": { "keyless": true }
+        },
+        "source_server_name": "source-postgres",
+        "recovery_target": {
+          "target_time": "2026-07-20T06:00:00Z"
+        }
+      }
+    },
+    "external_clusters": [
+      {
+        "name": "legacy-rds",
+        "connection_parameters": {
+          "host": "legacy.abc123.us-east-1.rds.amazonaws.com",
+          "port": "5432",
+          "user": "replicator",
+          "sslmode": "require"
+        },
+        "password": "legacy-password"
+      }
+    ],
+    "backup": {
+      "object_store": {
+        "destination_path": "https://acmeprod.blob.core.windows.net/pg-backups/restored-postgres",
+        "azure_blob": {
+          "keyless": true,
+          "storage_account": "acmeprod"
+        }
+      },
+      "schedules": [
+        { "name": "nightly", "schedule": "0 0 3 * * *", "immediate": true, "suspend": true }
+      ]
+    },
+    "workload_identity": {
+      "aks": {
+        "client_id": "11111111-2222-3333-4444-555555555555",
+        "tenant_id": "99999999-8888-7777-6666-555555555555"
+      }
+    },
+    "enable_pdb": false
+  }
+}

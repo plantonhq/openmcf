@@ -92,7 +92,24 @@ type SecretStoreVerifier struct {
 	Kind      string
 	Name      string
 	Namespace string // empty for ClusterSecretStore
+	// BehavioralAwsSm proves a REAL backend read (the aws-sm-irsa scenario):
+	// a verifier-owned ExternalSecret against this store must materialize a
+	// Kubernetes Secret whose value equals what the batch bootstrap stored
+	// in AWS Secrets Manager — the sync loop crossed the cloud boundary
+	// with the IRSA identity, keyless. The ExternalSecret is verifier-owned
+	// because it must reference the store under test, which fixtures
+	// (deploying first) cannot.
+	BehavioralAwsSm bool
 }
+
+// esoAwsSm* identify the verifier-owned sync driver. The expected value is
+// the bootstrap's known plaintext (bootstrap.sh writes the source secret) —
+// asserting the exact value proves the read, not merely a Ready condition.
+const (
+	esoAwsSmNamespace     = "e2e-eso"
+	esoAwsSmTargetSecret  = "e2e-sm-proof"
+	esoAwsSmExpectedValue = "e2e-sup3r-s3cret"
+)
 
 func (v *SecretStoreVerifier) VerifyExists(ctx context.Context, kubeconfig string) error {
 	fmt.Printf("  [verify] %s %q ready\n", v.Kind, v.Name)
@@ -100,7 +117,87 @@ func (v *SecretStoreVerifier) VerifyExists(ctx context.Context, kubeconfig strin
 	if err := KubectlResourceExists(ctx, kubeconfig, v.Kind, v.Name, v.Namespace); err != nil {
 		return err
 	}
-	return kubectlWait(ctx, kubeconfig, v.Kind, v.Name, v.Namespace, "condition=Ready", 2*time.Minute)
+	// Ready is already a real backend call for cloud arms — ESO validates
+	// the connection before granting the condition.
+	if err := kubectlWait(ctx, kubeconfig, v.Kind, v.Name, v.Namespace, "condition=Ready", 3*time.Minute); err != nil {
+		return err
+	}
+
+	if !v.BehavioralAwsSm {
+		return nil
+	}
+	return v.proveAwsSmRead(ctx, kubeconfig)
+}
+
+// proveAwsSmRead drives the verifier-owned ExternalSecret and asserts the
+// materialized Secret's value round-tripped from AWS Secrets Manager.
+func (v *SecretStoreVerifier) proveAwsSmRead(ctx context.Context, kubeconfig string) error {
+	smSecretName := os.Getenv("PLANTON_E2E_SM_SECRET_NAME")
+	if smSecretName == "" {
+		return errors.New("PLANTON_E2E_SM_SECRET_NAME unset — the batch bootstrap exports it")
+	}
+	fmt.Printf("  [verify] behavioral backend read: %q must sync out of AWS Secrets Manager\n", smSecretName)
+
+	storeKind := "ClusterSecretStore"
+	if v.Kind == "secretstore" {
+		storeKind = "SecretStore"
+	}
+	externalSecret := fmt.Sprintf(`apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: e2e-sm-proof
+  namespace: %s
+spec:
+  refreshInterval: 30s
+  secretStoreRef:
+    kind: %s
+    name: %s
+  target:
+    name: %s
+  data:
+    - secretKey: password
+      remoteRef:
+        key: %s
+        property: password
+`, esoAwsSmNamespace, storeKind, v.Name, esoAwsSmTargetSecret, smSecretName)
+	esFile, err := writeTempManifest(externalSecret)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(esFile)
+	if err := v.kubectl(ctx, kubeconfig, "apply", "-f", esFile); err != nil {
+		return errors.Wrap(err, "failed to apply ExternalSecret")
+	}
+	defer func() {
+		_ = v.kubectl(context.Background(), kubeconfig, "delete", "externalsecret", "e2e-sm-proof",
+			"-n", esoAwsSmNamespace, "--ignore-not-found")
+		_ = v.kubectl(context.Background(), kubeconfig, "delete", "secret", esoAwsSmTargetSecret,
+			"-n", esoAwsSmNamespace, "--ignore-not-found")
+	}()
+
+	deadline := time.Now().Add(3 * time.Minute)
+	var last string
+	for time.Now().Before(deadline) {
+		out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+			"get", "secret", esoAwsSmTargetSecret, "-n", esoAwsSmNamespace,
+			"-o", "go-template={{index .data \"password\" | base64decode}}").CombinedOutput()
+		value := strings.TrimSpace(string(out))
+		if err == nil && value == esoAwsSmExpectedValue {
+			fmt.Printf("  [verify] materialized Secret matches the Secrets Manager value — a real keyless read\n")
+			return nil
+		}
+		last = fmt.Sprintf("value-matches=%v err=%v", value == esoAwsSmExpectedValue, err)
+		time.Sleep(5 * time.Second)
+	}
+	return errors.Errorf("the ExternalSecret never materialized the Secrets Manager value (last: %s)", last)
+}
+
+func (v *SecretStoreVerifier) kubectl(ctx context.Context, kubeconfig string, args ...string) error {
+	full := append([]string{"--kubeconfig", kubeconfig}, args...)
+	if out, err := exec.CommandContext(ctx, "kubectl", full...).CombinedOutput(); err != nil {
+		return errors.Errorf("kubectl %s: %v: %s", strings.Join(args, " "), err, string(out))
+	}
+	return nil
 }
 
 func (v *SecretStoreVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) error {

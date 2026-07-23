@@ -23,9 +23,16 @@ solr_operator_release=v0.8.1
 #https://github.com/strimzi/strimzi-kafka-operator/tree/release-0.42.x
 strimzi_operator_release=release-0.42.x
 
-#https://github.com/zalando/postgres-operator/tree/v1.12.2/manifests
-#https://github.com/zalando/postgres-operator/tree/v1.12.2
-zalando_operator_release=v1.12.2
+#https://github.com/cloudnative-pg/cloudnative-pg/tree/v1.30.0/config/crd/bases
+#Note: the served operator chart (https://cloudnative-pg.github.io/charts)
+#pairs chart 0.29.0 with app 1.30.0 — the chart-index pin governs, never a
+#vendored Chart.yaml.
+cloudnative_pg_release=v1.30.0
+
+#https://github.com/cloudnative-pg/plugin-barman-cloud/tree/v0.13.0/config/crd/bases
+#The Barman Cloud CNPG-I plugin serves the ObjectStore CRD that
+#KubernetesPostgres backup blocks render.
+barman_cloud_plugin_release=v0.13.0
 
 #https://github.com/external-secrets/external-secrets/blob/v2.8.0/deploy/crds/bundle.yaml
 #https://github.com/external-secrets/external-secrets/tree/v2.8.0
@@ -50,10 +57,6 @@ percona_mongodb_operator_release=v1.20.1
 #https://github.com/percona/percona-server-mysql-operator/tree/main/deploy
 #https://github.com/percona/percona-server-mysql-operator/releases/tag/v0.12.0
 percona_mysql_operator_release=v0.12.0
-
-#https://github.com/percona/percona-postgresql-operator/tree/main/deploy
-#https://github.com/percona/percona-postgresql-operator/releases/tag/v2.0.0
-percona_postgres_operator_release=v2.0.0
 
 #https://github.com/nats-io/nack/releases
 #https://github.com/nats-io/nack/tree/main/deploy
@@ -123,11 +126,15 @@ gen-strimzi-operator:
 		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/049-Crd-kafkarebalance.yaml\
 		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/04A-Crd-kafkanodepool.yaml
 
-.PHONY: gen-zalando-operator
-gen-zalando-operator:
-	crd2pulumi --force --goPath=zalandooperator https://raw.githubusercontent.com/zalando/postgres-operator/${zalando_operator_release}/manifests/operatorconfiguration.crd.yaml \
-		https://raw.githubusercontent.com/zalando/postgres-operator/${zalando_operator_release}/manifests/postgresql.crd.yaml \
-		https://raw.githubusercontent.com/zalando/postgres-operator/${zalando_operator_release}/manifests/postgresteam.crd.yaml
+# Clusters + ScheduledBackups from the operator; the ObjectStore CRD from the
+# Barman Cloud plugin (backups are plugin-based — the operator's in-tree
+# object-store support is deprecated upstream). One goPath: the three types
+# are consumed together by the KubernetesPostgres Pulumi module.
+.PHONY: gen-cloudnative-pg
+gen-cloudnative-pg:
+	crd2pulumi --force --goPath=cloudnativepg https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/${cloudnative_pg_release}/config/crd/bases/postgresql.cnpg.io_clusters.yaml \
+		https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/${cloudnative_pg_release}/config/crd/bases/postgresql.cnpg.io_scheduledbackups.yaml \
+		https://raw.githubusercontent.com/cloudnative-pg/plugin-barman-cloud/${barman_cloud_plugin_release}/config/crd/bases/barmancloud.cnpg.io_objectstores.yaml
 
 .PHONY: gen-external-secrets
 gen-external-secrets:
@@ -159,16 +166,12 @@ gen-percona-mongodb:
 gen-percona-mysql:
 	crd2pulumi --force --goPath=perconamysql https://raw.githubusercontent.com/percona/percona-server-mysql-operator/${percona_mysql_operator_release}/deploy/crd.yaml
 
-.PHONY: gen-percona-postgres
-gen-percona-postgres:
-	crd2pulumi --force --goPath=perconapostgres https://raw.githubusercontent.com/percona/percona-postgresql-operator/${percona_postgres_operator_release}/deploy/crd.yaml
-
 .PHONY: gen-nack
 gen-nack:
 	crd2pulumi --force --goPath=nack https://raw.githubusercontent.com/nats-io/nack/${nack_release}/deploy/crds.yml
 
 .PHONY: gen
-gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-solr-operator gen-strimzi-operator gen-zalando-operator gen-external-secrets gen-elastic-operator gen-keycloak gen-altinity-operator gen-percona-mongodb gen-percona-mysql gen-percona-postgres gen-nack
+gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-strimzi-operator gen-external-secrets gen-elastic-operator gen-keycloak gen-altinity-operator gen-percona-mongodb gen-percona-mysql gen-nack
 
 .PHONY: build
 build: clean gen

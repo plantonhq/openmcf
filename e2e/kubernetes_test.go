@@ -67,6 +67,13 @@ var kubernetesTier1Components = []string{
 	"kubernetesdestinationrule",
 	"kubernetesenvoyfilter",
 	"kubernetestelemetry",
+	// Postgres flagship. KubernetesPostgres declares
+	// KubernetesCloudNativePgOperator as a registry prerequisite, which the
+	// harness installs before applying the Cluster scenario; the
+	// behavioral-failover scenario proves data durability live (write →
+	// primary loss → promotion → read-back).
+	"kubernetescloudnativepgoperator",
+	"kubernetespostgres",
 }
 
 // Kubernetes Tier 3 components: operator-dependent. Each declares its operator
@@ -76,7 +83,6 @@ var kubernetesTier1Components = []string{
 // harness installs the operator before the test and tears it down after
 // (see e2e/framework/runner/dependencies.go -- ResolveDependencies).
 var kubernetesTier3Components = []string{
-	"kubernetespostgres",
 	"kuberneteskafka",
 	"kuberneteselasticsearch",
 	"kubernetesmongodb",
@@ -88,7 +94,6 @@ var kubernetesTier3Components = []string{
 // infrastructure, including operators that are also exercised as Tier 3
 // fixtures.
 var kubernetesTier4Components = []string{
-	"kuberneteszalandopostgresoperator",
 	"kubernetesstrimzikafkaoperator",
 	"kuberneteselasticoperator",
 	"kubernetesaltinityoperator",
@@ -111,7 +116,6 @@ var kubernetesTier2Components = []string{
 	"kubernetessolroperator",
 	"kubernetesperconamongooperator",
 	"kubernetesperconamysqloperator",
-	"kubernetesperconapostgresoperator",
 	"kubernetestemporal",
 	"kubernetessignoz",
 }
@@ -408,9 +412,6 @@ func TestKubernetesPerconaMongoOperator_Pulumi(t *testing.T) {
 func TestKubernetesPerconaMysqlOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesperconamysqloperator", "pulumi")
 }
-func TestKubernetesPerconaPostgresOperator_Pulumi(t *testing.T) {
-	runAllScenariosForComponent(t, "kubernetesperconapostgresoperator", "pulumi")
-}
 func TestKubernetesTemporal_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestemporal", "pulumi")
 }
@@ -444,9 +445,6 @@ func TestKubernetesPerconaMongoOperator_Terraform(t *testing.T) {
 func TestKubernetesPerconaMysqlOperator_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesperconamysqloperator", "terraform")
 }
-func TestKubernetesPerconaPostgresOperator_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "kubernetesperconapostgresoperator", "terraform")
-}
 func TestKubernetesTemporal_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestemporal", "terraform")
 }
@@ -454,11 +452,26 @@ func TestKubernetesSignoz_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetessignoz", "terraform")
 }
 
-// ─── Tier 3 Pulumi (operator-dependent) ─────────────────────────────────────
+// ─── Tier 1 Pulumi/Terraform (Postgres flagship) ────────────────────────────
+// KubernetesPostgres declares KubernetesCloudNativePgOperator as a registry
+// prerequisite; the harness installs the operator (with the Barman Cloud
+// plugin per the prerequisite manifest) before every Cluster scenario.
 
+func TestKubernetesCloudNativePgOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescloudnativepgoperator", "pulumi")
+}
+func TestKubernetesCloudNativePgOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescloudnativepgoperator", "terraform")
+}
 func TestKubernetesPostgres_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetespostgres", "pulumi")
 }
+func TestKubernetesPostgres_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespostgres", "terraform")
+}
+
+// ─── Tier 3 Pulumi (operator-dependent) ─────────────────────────────────────
+
 func TestKubernetesKafka_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskafka", "pulumi")
 }
@@ -477,9 +490,6 @@ func TestKubernetesClickHouse_Pulumi(t *testing.T) {
 
 // ─── Tier 3 Terraform (operator-dependent) ──────────────────────────────────
 
-func TestKubernetesPostgres_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "kubernetespostgres", "terraform")
-}
 func TestKubernetesKafka_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskafka", "terraform")
 }
@@ -498,9 +508,6 @@ func TestKubernetesClickHouse_Terraform(t *testing.T) {
 
 // ─── Tier 4 Pulumi (operators, addons) ──────────────────────────────────────
 
-func TestKubernetesZalandoPostgresOperator_Pulumi(t *testing.T) {
-	runAllScenariosForComponent(t, "kuberneteszalandopostgresoperator", "pulumi")
-}
 func TestKubernetesStrimziKafkaOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesstrimzikafkaoperator", "pulumi")
 }
@@ -534,9 +541,6 @@ func TestKubernetesIstioBaseCrds_Pulumi(t *testing.T) {
 
 // ─── Tier 4 Terraform (operators, addons) ───────────────────────────────────
 
-func TestKubernetesZalandoPostgresOperator_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "kuberneteszalandopostgresoperator", "terraform")
-}
 func TestKubernetesStrimziKafkaOperator_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesstrimzikafkaoperator", "terraform")
 }
@@ -715,6 +719,17 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 				reason = cp.Spec.Status.String()
 			}
 			t.Skipf("component %s E2E profile status is %s: %s", component, cp.Spec.Status, reason)
+		case componentv1.ComponentE2EProfileSpec_real_cluster:
+			// Runs only against an externally provided real cluster; the
+			// scenarios' own cluster-profile annotations then gate WHICH
+			// real cluster satisfies each of them.
+			if !testHarness.External() {
+				reason := cp.Spec.DeferredReason
+				if reason == "" {
+					reason = "every lane requires an externally provided real cluster"
+				}
+				t.Skipf("component %s E2E profile status is %s: %s", component, cp.Spec.Status, reason)
+			}
 		}
 	}
 
@@ -754,14 +769,31 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenario discovery.TestScenario) {
 	t.Helper()
 
+	// Scenarios restricted to one engine (the e2e-engines annotation — spec
+	// arms the other engine rejects by documented PARITY-EXCEPTION design)
+	// skip the excluded engine's lane with the reason instead of failing on
+	// their own designed rejection.
+	if ok, err := runner.ScenarioSupportsEngine(scenario.ManifestPath, engine); err != nil {
+		t.Fatalf("reading engine restriction for scenario %s/%s: %v", component, scenario.Name, err)
+	} else if !ok {
+		t.Skipf("scenario %s/%s does not run on engine %s (per %s)",
+			component, scenario.Name, engine, runner.ScenarioEnginesAnnotation)
+	}
+
 	// Route the scenario to the cluster its manifest asks for (the
 	// e2e-cluster-profile annotation; default = the shared cluster) and point
 	// the process KUBECONFIG at it. Both engines read cluster credentials
 	// through the environment and scenarios run serially within a process, so
 	// activating per scenario is what keeps multi-cluster runs race-free.
-	scenarioHarness, err := harnessForScenario(scenario.ManifestPath)
+	// A skip reason means the scenario's profile cannot be satisfied in this
+	// lane by design (real-cluster profiles locally; unmatched profiles on an
+	// external cluster) — honest skip, never a wrong-cluster run.
+	scenarioHarness, skipReason, err := harnessForScenario(scenario.ManifestPath)
 	if err != nil {
 		t.Fatalf("failed to resolve cluster for scenario %s/%s: %v", component, scenario.Name, err)
+	}
+	if skipReason != "" {
+		t.Skipf("scenario %s/%s: %s", component, scenario.Name, skipReason)
 	}
 	scenarioHarness.ActivateKubeconfig()
 

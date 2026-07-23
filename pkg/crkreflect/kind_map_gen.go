@@ -426,6 +426,7 @@ import (
 	kubernetescertmanagerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescertmanager/v1"
 	kubernetesciliumv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescilium/v1"
 	kubernetesclickhousev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclickhouse/v1"
+	kubernetescloudnativepgoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescloudnativepgoperator/v1"
 	kubernetesclusterautoscalerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclusterautoscaler/v1"
 	kubernetesclusterissuerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclusterissuer/v1"
 	kubernetesclustersecretstorev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclustersecretstore/v1"
@@ -478,7 +479,6 @@ import (
 	kubernetespeerauthenticationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespeerauthentication/v1"
 	kubernetesperconamongooperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconamongooperator/v1"
 	kubernetesperconamysqloperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconamysqloperator/v1"
-	kubernetesperconapostgresoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconapostgresoperator/v1"
 	kubernetespersistentvolumeclaimv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespersistentvolumeclaim/v1"
 	kubernetespoddisruptionbudgetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespoddisruptionbudget/v1"
 	kubernetespostgresv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1"
@@ -510,7 +510,6 @@ import (
 	kubernetestlsroutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestlsroute/v1"
 	kubernetesudproutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesudproute/v1"
 	kubernetesvelerov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvelero/v1"
-	kuberneteszalandopostgresoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteszalandopostgresoperator/v1"
 	ocialarmv1 "github.com/plantonhq/planton/apis/dev/planton/provider/oci/ocialarm/v1"
 	ociapigatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/oci/ociapigateway/v1"
 	ociapplicationloadbalancerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/oci/ociapplicationloadbalancer/v1"
@@ -1063,6 +1062,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesCertificate:                 &kubernetescertificatev1.KubernetesCertificate{},
 	cloudresourcekind.CloudResourceKind_KubernetesCilium:                      &kubernetesciliumv1.KubernetesCilium{},
 	cloudresourcekind.CloudResourceKind_KubernetesClickHouse:                  &kubernetesclickhousev1.KubernetesClickHouse{},
+	cloudresourcekind.CloudResourceKind_KubernetesCloudNativePgOperator:       &kubernetescloudnativepgoperatorv1.KubernetesCloudNativePgOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesClusterAutoscaler:           &kubernetesclusterautoscalerv1.KubernetesClusterAutoscaler{},
 	cloudresourcekind.CloudResourceKind_KubernetesClusterIssuer:               &kubernetesclusterissuerv1.KubernetesClusterIssuer{},
 	cloudresourcekind.CloudResourceKind_KubernetesClusterSecretStore:          &kubernetesclustersecretstorev1.KubernetesClusterSecretStore{},
@@ -1115,7 +1115,6 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesPeerAuthentication:          &kubernetespeerauthenticationv1.KubernetesPeerAuthentication{},
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator:        &kubernetesperconamongooperatorv1.KubernetesPerconaMongoOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMysqlOperator:        &kubernetesperconamysqloperatorv1.KubernetesPerconaMysqlOperator{},
-	cloudresourcekind.CloudResourceKind_KubernetesPerconaPostgresOperator:     &kubernetesperconapostgresoperatorv1.KubernetesPerconaPostgresOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPersistentVolumeClaim:       &kubernetespersistentvolumeclaimv1.KubernetesPersistentVolumeClaim{},
 	cloudresourcekind.CloudResourceKind_KubernetesPodDisruptionBudget:         &kubernetespoddisruptionbudgetv1.KubernetesPodDisruptionBudget{},
 	cloudresourcekind.CloudResourceKind_KubernetesPostgres:                    &kubernetespostgresv1.KubernetesPostgres{},
@@ -1147,7 +1146,6 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesTlsRoute:                    &kubernetestlsroutev1.KubernetesTlsRoute{},
 	cloudresourcekind.CloudResourceKind_KubernetesUdpRoute:                    &kubernetesudproutev1.KubernetesUdpRoute{},
 	cloudresourcekind.CloudResourceKind_KubernetesVelero:                      &kubernetesvelerov1.KubernetesVelero{},
-	cloudresourcekind.CloudResourceKind_KubernetesZalandoPostgresOperator:     &kuberneteszalandopostgresoperatorv1.KubernetesZalandoPostgresOperator{},
 }
 
 var ProviderOciMap = map[cloudresourcekind.CloudResourceKind]proto.Message{

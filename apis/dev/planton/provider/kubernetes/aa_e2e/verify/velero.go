@@ -28,6 +28,14 @@ type VeleroInstallVerifier struct {
 	Namespace string
 	// Behavioral switches on the live backup/restore proof (see above).
 	Behavioral bool
+	// CsiVolume additionally puts a VOLUME in the DR blast radius (the
+	// aws-s3-csi scenario): the subject namespace carries a PVC-backed pod
+	// whose marker data lives ON the volume, the Backup snapshots it through
+	// the CSI snapshot API, and the restore assertion reads the marker back
+	// from the RESTORED volume — proving volume data survives alongside
+	// object metadata. Requires a snapshot-capable CSI class (the batch's
+	// e2e-gp3) and a Velero VolumeSnapshotClass label on the snapshot class.
+	CsiVolume bool
 }
 
 // veleroSubject* identify the verifier-owned backup subject. Fixed names so
@@ -65,6 +73,9 @@ func (v *VeleroInstallVerifier) VerifyExists(ctx context.Context, kubeconfig str
 		return errors.Wrap(err, "default BackupStorageLocation never became Available — the store handshake failed")
 	}
 
+	if v.CsiVolume {
+		return v.proveCsiVolumeBackupRestore(ctx, kubeconfig)
+	}
 	if !v.Behavioral {
 		return nil
 	}
@@ -171,6 +182,173 @@ spec:
 		return errors.Errorf("restored marker configmap wrong or missing (data=%q err=%v)", strings.TrimSpace(string(out)), err)
 	}
 	fmt.Printf("  [verify] marker configmap restored with intact data — Velero completed a real DR loop\n")
+	return nil
+}
+
+// proveCsiVolumeBackupRestore runs the DR cycle with a volume in the blast
+// radius: subject PVC (snapshot-capable class) + writer pod stamping marker
+// data ONTO the volume → CSI-snapshot Backup → namespace deletion → Restore
+// → reader pod asserting the marker from the RESTORED volume. All resources
+// verifier-owned, removed in defers.
+func (v *VeleroInstallVerifier) proveCsiVolumeBackupRestore(ctx context.Context, kubeconfig string) error {
+	fmt.Printf("  [verify] CSI-volume backup/restore: volume data must survive namespace deletion\n")
+
+	if err := v.kubectl(ctx, kubeconfig, "create", "namespace", veleroSubjectNamespace); err != nil {
+		return errors.Wrap(err, "failed to create backup-subject namespace")
+	}
+	defer func() {
+		_ = v.kubectl(context.Background(), kubeconfig, "delete", "namespace", veleroSubjectNamespace,
+			"--ignore-not-found", "--wait=false")
+	}()
+
+	// Subject: PVC + a long-running pod that stamps the marker and stays up
+	// (Velero's CSI path snapshots volumes of RUNNING pods; the pod also
+	// rides the backup so the restore re-creates it as the reader host).
+	subject := fmt.Sprintf(`apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: e2e-velero-subject-pvc
+  namespace: %s
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: e2e-gp3
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: e2e-velero-subject-pod
+  namespace: %s
+spec:
+  containers:
+    - name: subject
+      image: busybox:1.36
+      # Deliberately does NOT write the marker: the verifier stamps it via
+      # exec with a run-unique value AFTER the pod is Ready. A command that
+      # wrote the marker itself would recreate it on the restored pod's own
+      # restart and make the volume-restore assertion vacuous.
+      command:
+        - sleep
+        - "3600"
+      volumeMounts:
+        - name: data
+          mountPath: /data
+      resources:
+        requests:
+          cpu: 25m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 32Mi
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: e2e-velero-subject-pvc
+`, veleroSubjectNamespace, veleroSubjectNamespace)
+	subjectFile, err := writeTempManifest(subject)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(subjectFile)
+	if err := v.kubectl(ctx, kubeconfig, "apply", "-f", subjectFile); err != nil {
+		return errors.Wrap(err, "failed to apply PVC-backed subject")
+	}
+	if err := kubectlWait(ctx, kubeconfig, "pod", "e2e-velero-subject-pod", veleroSubjectNamespace,
+		"condition=Ready", 4*time.Minute); err != nil {
+		return errors.Wrap(err, "subject pod never became Ready (PVC bind or image pull failed)")
+	}
+
+	// Stamp a run-unique marker onto the volume from OUTSIDE the pod spec —
+	// only data that truly rode snapshot → store → restore can match it.
+	marker := fmt.Sprintf("velero-csi-%d", time.Now().UnixNano())
+	if out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+		"exec", "-n", veleroSubjectNamespace, "e2e-velero-subject-pod", "--",
+		"sh", "-c", fmt.Sprintf("echo %s > /data/marker && sync", marker)).CombinedOutput(); err != nil {
+		return errors.Errorf("failed to stamp volume marker: %v: %s", err, string(out))
+	}
+
+	// Backup WITH volume snapshots (the component enables EnableCSI; the
+	// batch's VolumeSnapshotClass carries the Velero discovery label).
+	backup := fmt.Sprintf(`apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  includedNamespaces:
+    - %s
+  snapshotVolumes: true
+  ttl: 1h0m0s
+`, veleroBackupName, v.Namespace, veleroSubjectNamespace)
+	backupFile, err := writeTempManifest(backup)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(backupFile)
+	if err := v.kubectl(ctx, kubeconfig, "apply", "-f", backupFile); err != nil {
+		return errors.Wrap(err, "failed to apply Backup CR")
+	}
+	defer func() {
+		_ = v.kubectl(context.Background(), kubeconfig, "delete", "backup.velero.io", veleroBackupName,
+			"-n", v.Namespace, "--ignore-not-found")
+	}()
+	// EBS snapshot cut + upload dominates: allow more than the object-only
+	// proof.
+	if err := v.waitForJSONPath(ctx, kubeconfig, 8*time.Minute,
+		"backup.velero.io", veleroBackupName, v.Namespace,
+		"{.status.phase}", "Completed"); err != nil {
+		return errors.Wrap(err, "CSI Backup never reached phase Completed")
+	}
+
+	// The disaster: namespace (pod, PVC, and — via the Delete reclaim
+	// policy — the EBS volume) gone outright.
+	if err := v.kubectl(ctx, kubeconfig, "delete", "namespace", veleroSubjectNamespace, "--wait=true", "--timeout=4m"); err != nil {
+		return errors.Wrap(err, "failed to delete the backup-subject namespace")
+	}
+
+	restore := fmt.Sprintf(`apiVersion: velero.io/v1
+kind: Restore
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  backupName: %s
+`, veleroRestoreName, v.Namespace, veleroBackupName)
+	restoreFile, err := writeTempManifest(restore)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(restoreFile)
+	if err := v.kubectl(ctx, kubeconfig, "apply", "-f", restoreFile); err != nil {
+		return errors.Wrap(err, "failed to apply Restore CR")
+	}
+	defer func() {
+		_ = v.kubectl(context.Background(), kubeconfig, "delete", "restore.velero.io", veleroRestoreName,
+			"-n", v.Namespace, "--ignore-not-found")
+	}()
+	if err := v.waitForJSONPath(ctx, kubeconfig, 8*time.Minute,
+		"restore.velero.io", veleroRestoreName, v.Namespace,
+		"{.status.phase}", "Completed"); err != nil {
+		return errors.Wrap(err, "CSI Restore never reached phase Completed")
+	}
+
+	// The restored pod mounts the RESTORED volume; the marker assertion
+	// reads through exec, so the proof is the volume's contents (stamped
+	// with this run's unique value), never the API object alone.
+	if err := kubectlWait(ctx, kubeconfig, "pod", "e2e-velero-subject-pod", veleroSubjectNamespace,
+		"condition=Ready", 4*time.Minute); err != nil {
+		return errors.Wrap(err, "restored subject pod never became Ready (volume restore failed)")
+	}
+	out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+		"exec", "-n", veleroSubjectNamespace, "e2e-velero-subject-pod", "--",
+		"cat", "/data/marker").CombinedOutput()
+	if err != nil || strings.TrimSpace(string(out)) != marker {
+		return errors.Errorf("restored volume marker wrong or missing (want %q, data=%q err=%v)", marker, strings.TrimSpace(string(out)), err)
+	}
+	fmt.Printf("  [verify] run-unique marker read from the restored volume — CSI-snapshot DR loop proven end to end\n")
 	return nil
 }
 

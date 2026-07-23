@@ -113,11 +113,15 @@ runtime-compatible with the generated `terraform.tfvars` (it omits unset fields)
 
 ## Worked example
 
-The Postgres tofu module was brought to parity with its Pulumi counterpart (correct
-namespace source, `metadata.name` naming basis, `application: spilo` LB selector,
-`planton.ai/*` labels, backup + disaster-recovery standby/env, and nested secret
-outputs). See the conformance guard's `KubernetesPostgres` case and its negative
-counterpart `TestStackOutputsConformance_DetectsFlatSecretDrift`.
+The Postgres modules render the CloudNativePG family (Cluster + Barman Cloud
+ObjectStores + ScheduledBackups + declared-credential Secrets) from one naming
+root (`metadata.name`), with nested secret-handle outputs
+(`username_secret{name,key}` / `password_secret{name,key}`) pointing at the
+EFFECTIVE application Secret — the operator-generated `<name>-app` normally,
+the module-provided `<name>-app-provided` when initdb declares an owner
+password. See the conformance guard's `KubernetesPostgres` case and its
+negative counterpart `TestStackOutputsConformance_DetectsFlatSecretDrift`
+(which proves flat `password_secret_name`-style outputs are caught).
 
 The `Auth0Client` `jwt_configuration.alg` default is another spec-feature-coverage parity
 case: the proto documents `Default: RS256`, but both engines previously passed an omitted
@@ -129,27 +133,22 @@ proto-default applier (`internal/manifest/protodefaults.ApplyDefaults`) runs onl
 manifest loader, not on the tfvars-render path used by orchestrated deploys (`pkg/iac/tofu/generators/tfvars.go`
 prunes unset fields). `alg` is not a stack output, so the conformance guard is unaffected.
 
-The `KubernetesPostgres` per-database **backup R2 credentials** (`spec.backup_config.credentials`,
-plus the symmetric `spec.backup_config.restore.credentials`) are a spec-feature-coverage +
-secret-handling parity case. Both engines, when `credentials` is set, create a Kubernetes Secret
-holding `access_key_id`/`secret_access_key` and inject the credentials into the Spilo `spec.env`
-via `secretKeyRef` (never plaintext in the postgresql CR/pod) -- Pulumi in `backup_config.go`
-(`r2CredentialEnvVars`, shared with `restore_config.go`), tofu via `kubernetes_secret_v1` in
-`credentials.tf` referenced from the `valueFrom.secretKeyRef` env entries in `locals.tf`. The
-backup target is composed identically on both engines from `backup_config.bucket` +
-`backup_config.object_prefix` as `WALG_S3_PREFIX = s3://<bucket>/<object_prefix>/$(SCOPE)/$(PGVERSION)`
-(the `object_prefix` segment is dropped when empty), and restore composes
-`s3://<bucket>/<object_prefix>` for the standby `s3_wal_path`. The non-secret backup env
-(`AWS_ENDPOINT`/`AWS_REGION=auto`/`AWS_FORCE_PATH_STYLE=true`/`WALG_S3_PREFIX`/`USE_WALG_BACKUP`/
-`USE_WALG_RESTORE`/`BACKUP_SCHEDULE`/`BACKUP_NUM_TO_RETAIN`) and the standby `STANDBY_AWS_*` set
-match across engines, as does the standby-env-first / backup-env-second merge order.
-`backup_config.bucket` is a `StringValueOrRef` resolved to a plain bucket name before tfvars (like
-`spec.namespace`), so both engines receive an identical literal. `secret_access_key` carries
-`(options.sensitive) = true`; `access_key_id` is an identifier (the secret-coverage heuristic does
-not flag the `_id` suffix), so it needs no annotation. The cluster-wide
-`KubernetesZalandoPostgresOperator` backup config mirrors the same `bucket` + `object_prefix` +
-`credentials` shape, composing the identical `WALG_S3_PREFIX` into its operator configmap on both
-engines. None of these are stack outputs, so the conformance guard is unaffected.
+The `KubernetesPostgres` **backup object-store credentials** (the declared-key
+arms of `spec.backup.object_store`) are a spec-feature-coverage +
+secret-handling parity case. Both engines, when keys are declared, materialize
+one deterministic Secret (`<name>-backup-creds`, plus `<name>-region` and
+`<name>-backup-endpoint-ca` satellites where the arm needs them) and wire the
+Barman Cloud ObjectStore's `SecretKeySelector` references at it — never
+plaintext in a rendered custom resource. The keyless arms render the backend's
+ambient-identity flag (`inheritFromIAMRole` / `gkeEnvironment` /
+`inheritFromAzureAD`) and create no credential Secret at all. Secret names,
+key names, and the selector wiring must match byte-for-byte across engines
+because the ObjectStore CR the plugin reads is the same object either engine
+applies. `secret_access_key`/`storage_key`/`connection_string`/
+`service_account_key_json` carry `(options.sensitive) = true`;
+`access_key_id` is an identifier (the secret-coverage heuristic does not flag
+the `_id` suffix), so it needs no annotation. None of these are stack outputs,
+so the conformance guard is unaffected.
 
 The `CloudflareR2Bucket` module pins the Cloudflare provider to v5 on both engines (tofu
 `~> 5.0`, Pulumi `sdk/v6`) and provisions the bucket plus its bucket-scoped sub-resources in one

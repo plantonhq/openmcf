@@ -22,12 +22,14 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// postgres-kubernetes stack-input
+// Input for the KubernetesPostgres IaC stack. The platform resolves all
+// StringValueOrRef references (namespace, storage class, TLS secret) to
+// literal strings before passing this to the IaC engine.
 type KubernetesPostgresStackInput struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// target cloud-resource
+	// Target cloud-resource.
 	Target *KubernetesPostgres `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
-	// provider-config
+	// Kubernetes provider configuration (cluster credentials).
 	ProviderConfig *kubernetes.KubernetesProviderConfig `protobuf:"bytes,2,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache

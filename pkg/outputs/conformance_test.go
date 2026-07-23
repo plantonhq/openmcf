@@ -42,27 +42,48 @@ func TestStackOutputsConformance(t *testing.T) {
 		mustPopulate []string
 	}{
 		{
+			// KubernetesPostgres: the CloudNativePG naming contract — the
+			// three traffic services, the rw endpoint, and the credential
+			// Secret handles (nested objects that flatten to
+			// password_secret.name etc.).
 			name: "KubernetesPostgres",
 			kind: cloudresourcekind.CloudResourceKind_KubernetesPostgres,
 			rawOutputs: map[string]interface{}{
-				"namespace":            "gosilver-prod",
-				"service":              "gosilver-prod-postgres-master",
-				"port_forward_command": "kubectl port-forward -n gosilver-prod service/gosilver-prod-postgres-master 8080:8080",
-				"kube_endpoint":        "gosilver-prod-postgres-master.gosilver-prod.svc.cluster.local",
-				"external_hostname":    "gosilver-prod-postgres.planton.live",
-				// Nested objects -- the shape that flattens to password_secret.name etc.
+				"namespace":             "team-alpha",
+				"cluster_name":          "orders-db",
+				"rw_service":            "orders-db-rw",
+				"ro_service":            "orders-db-ro",
+				"r_service":             "orders-db-r",
+				"kube_endpoint":         "orders-db-rw.team-alpha.svc.cluster.local:5432",
+				"port_forward_command":  "kubectl port-forward svc/orders-db-rw -n team-alpha 5432:5432",
+				"superuser_secret_name": "orders-db-superuser",
 				"password_secret": map[string]interface{}{
-					"name": "postgres.db-gosilver-prod-postgres.credentials.postgresql.acid.zalan.do",
+					"name": "orders-db-app",
 					"key":  "password",
 				},
 				"username_secret": map[string]interface{}{
-					"name": "postgres.db-gosilver-prod-postgres.credentials.postgresql.acid.zalan.do",
+					"name": "orders-db-app",
 					"key":  "username",
 				},
 			},
 			mustPopulate: []string{
-				"namespace", "service", "port_forward_command", "kube_endpoint",
-				"external_hostname", "password_secret", "username_secret",
+				"namespace", "cluster_name", "rw_service", "ro_service",
+				"r_service", "kube_endpoint", "port_forward_command",
+				"superuser_secret_name", "password_secret", "username_secret",
+			},
+		},
+		{
+			// KubernetesCloudNativePgOperator: install identity plus the
+			// plugin release handle.
+			name: "KubernetesCloudNativePgOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesCloudNativePgOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":                  "cnpg-system",
+				"release_name":               "cnpg",
+				"barman_plugin_release_name": "plugin-barman-cloud",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "barman_plugin_release_name",
 			},
 		},
 		{

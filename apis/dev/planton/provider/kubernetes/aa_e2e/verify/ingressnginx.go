@@ -15,15 +15,19 @@ import (
 // instance (multiple controllers per cluster are first-class for this
 // component).
 //
-// Deliberately NOT asserted here: a cloud load-balancer address. On
-// clusters without a cloud LB controller (the kind lane) scenarios use
-// node_port, and real LB provisioning rides the batched real-cluster
-// lanes. An Available controller owning its IngressClass is the
-// kind-cluster contract.
+// A cloud load-balancer address is asserted only when LbAddress is set (the
+// aws-nlb scenario on the aws-eks profile): on clusters without a cloud LB
+// controller (the kind lane) scenarios use node_port, so an Available
+// controller owning its IngressClass is the kind-cluster contract, and the
+// address itself is the real-cluster lane's proof — validating the spec's
+// documented per-cloud annotation recipe as written.
 type IngressNginxInstallVerifier struct {
 	Namespace        string
 	ComponentName    string
 	IngressClassName string
+	// LbAddress additionally asserts the controller Service received a real
+	// cloud load-balancer address (see above).
+	LbAddress bool
 }
 
 func (v *IngressNginxInstallVerifier) VerifyExists(ctx context.Context, kubeconfig string) error {
@@ -43,6 +47,16 @@ func (v *IngressNginxInstallVerifier) VerifyExists(ctx context.Context, kubeconf
 	// The IngressClass is the instance's routing identity — cluster-scoped.
 	if err := KubectlResourceExists(ctx, kubeconfig, "ingressclass", v.IngressClassName, ""); err != nil {
 		return errors.Wrapf(err, "ingressclass %q not found for ingress-nginx %q", v.IngressClassName, v.ComponentName)
+	}
+
+	if v.LbAddress {
+		// The controller Service is "<fullname>-controller" (fullname
+		// pinned to metadata.name — same derivation as the Deployment).
+		address, err := waitForServiceLbAddress(ctx, kubeconfig, v.ComponentName+"-controller", v.Namespace, 6*time.Minute)
+		if err != nil {
+			return errors.Wrap(err, "controller service never received a cloud LB address — the documented annotation recipe failed")
+		}
+		fmt.Printf("  [verify] cloud LB provisioned for the controller: %s\n", address)
 	}
 
 	return nil

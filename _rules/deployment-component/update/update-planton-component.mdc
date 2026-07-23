@@ -373,6 +373,19 @@ Based on scenario:
   holds only same-typed strings (identity labels, secret data), plain
   merge with `cond ? {k = v} : {}` is safe — the hazard is mixed primitive
   types.
+- **`try(x, "") != ""` does NOT guard an `optional` scalar inside a PRESENT
+  block**: proto `optional` fields arrive in tfvars as `null` (a present key
+  with a null value), so `try()` succeeds, returns null, and `null != ""` is
+  TRUE — the null then reaches the string template and fails the plan with
+  "Invalid template interpolation value" (or worse, renders on an engine
+  that tolerates it — a live-only cross-engine divergence, since generated
+  Go getters return `""` for unset optionals and the Pulumi module stays
+  correct). The null-safe read for optional scalars is
+  `try(coalesce(var.spec.block.field), "")`: coalesce rejects a lone
+  null/empty argument and `try` turns that rejection into `""`. The offline
+  `tofu plan` proofs must include a manifest where the optional field's
+  PARENT BLOCK is present but the optional scalar itself is omitted — the
+  absent-block case alone never exercises this trap.
 - **Pin Helm charts against the CHART REPOSITORY INDEX, never the vendored
   Chart.yaml at an app tag**: chart releases are cut separately from
   application releases, so the `Chart.yaml` inside an upstream repo at app
@@ -396,6 +409,25 @@ Based on scenario:
   repository opts — the two-sided pattern (with comments at both sites)
   lives in the kuberneteshelmrelease modules and every OCI-backed typed
   kind since.
+- **Read the upstream's DEPRECATION notices during every pin reconcile, and
+  model the REPLACEMENT architecture — never a surface with an announced
+  removal**: mature upstreams fork their configuration surfaces (a built-in
+  mechanism deprecated in favor of a plugin/extension architecture, an
+  in-tree arm split into its own CRD) and announce the removal several
+  minors out. Typing the deprecated surface ships a spec whose backbone
+  dies on a routine upstream upgrade — a breaking spec change later, on
+  upstream's schedule instead of ours — and every kind that copies the
+  shape inherits the regret. CloudNativePG is the worked example: its
+  in-tree `barmanObjectStore` backup stanza is deprecated with a removal
+  announced two minors ahead, so the typed backup surface models the
+  Barman Cloud plugin architecture (a separate plugin deployment beside
+  the operator, an `ObjectStore` CR per backup destination, `plugins`
+  wiring on the Cluster) even though the in-tree stanza still validates at
+  the pinned release. Check the release notes and the CRD's own
+  deprecation markers at every pin jump; when the replacement needs a
+  companion deployment (the plugin), it belongs on the OPERATOR kind as a
+  typed arm, and its external dependencies (cert-manager for plugin TLS)
+  are documented — never hidden.
 - **Custom resources apply through `kubectl_manifest` (alekc/kubectl), not
   the hashicorp provider's `kubernetes_manifest`**: `kubernetes_manifest`
   requires a reachable cluster AND the CRD's OpenAPI schema at PLAN time,
@@ -438,6 +470,18 @@ Based on scenario:
   index — positional keys are not identity and cannot feed an import ID), so
   `from_address_key` derives the `{name}` placeholder blind and state
   addresses survive bundle reorderings.
+- **`from_address_key` only serves `for_each` resources — count-indexed
+  singletons need their own scoped derivation**: a conditional satellite
+  written as `count = cond ? 1 : 0` has address key `0`, which cannot feed
+  an import ID, and the failure is invisible offline (conformance checks
+  placeholder coverage, not derivability of a live name) — only the blind
+  round-trip lane catches it ("values [x] not derivable"). When a module
+  mixes `for_each` satellite families (keyed by the FULL object name) with
+  count-indexed singletons (a backup-credentials Secret, a region Secret),
+  keep the unscoped `from_address_key` declaration as the fallback for the
+  families and add a `tofu_resource_name`-scoped declaration per singleton
+  — deterministic satellite names are metadata.name plus a fixed suffix, so
+  `from_metadata_name_suffix` derives each one blind.
 - **Helm cannot adopt CRDs that already exist without its ownership
   metadata**: a chart that templates CRDs fails to install onto a cluster
   where another tool (or a CRDs-only installer kind) already applied them

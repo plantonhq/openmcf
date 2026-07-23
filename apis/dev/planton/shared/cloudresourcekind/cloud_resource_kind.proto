@@ -48,8 +48,8 @@ message CloudResourceKindMeta {
   //in reverse order; a component may pin a prerequisite's exact config via an
   //e2e/fixtures/ override, which wins over the registry entry. this is also
   //used by the platform for dependency ordering in infra charts.
-  //example: KubernetesPostgres needs KubernetesZalandoPostgresOperator
-  //because it creates acid.zalan.do/v1 postgresql CRDs.
+  //example: KubernetesPostgres needs KubernetesCloudNativePgOperator
+  //because it creates postgresql.cnpg.io/v1 Cluster resources.
   repeated CloudResourceKind prerequisites = 7;
 
   //set ONLY for kinds whose spec is a direct projection of a single Kubernetes
@@ -2996,21 +2996,16 @@ enum CloudResourceKind {
     id_prefix: "k8sfga"
   }];
   // 900–929: Kubernetes data platforms
-  KubernetesZalandoPostgresOperator = 900 [(kind_meta) = {
+  KubernetesCloudNativePgOperator = 900 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8szlop"
+    id_prefix: "k8scnpgop"
   }];
-  KubernetesPerconaPostgresOperator = 901 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sprcnpgop"
-  }];
-  KubernetesPostgres = 902 [(kind_meta) = {
+  KubernetesPostgres = 901 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8spg"
-    prerequisites: [KubernetesZalandoPostgresOperator]
+    prerequisites: [KubernetesCloudNativePgOperator]
   }];
   KubernetesPerconaMysqlOperator = 903 [(kind_meta) = {
     provider: kubernetes

@@ -22,33 +22,47 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// postgres-kubernetes stack outputs
+// *
+// **KubernetesPostgresStackOutputs** — the composition handles a deployed
+// PostgreSQL cluster exports. Applications join through the SERVICES
+// (CloudNativePG re-points them across failovers) and authenticate with
+// the credential Secrets the operator maintains.
 type KubernetesPostgresStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// name of the kubernetes namespace in which the postgres-kubernetes has been created.
+	// Namespace the cluster runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// name of the kubernetes service created for postgres-kubernetes.
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open postgres-kubernetes from developers laptop.
-	// this might come handy when postgres-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/kubernetes_service -n kubernetes_namespace 5432:5432
-	// running the command from this attribute makes it possible to access postgres-kubernetes using localhost:5432
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint for clients running in the same kubernetes cluster.
-	// ex: main-microservice-instance.namespace.svc.instance.local:8080
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// external postgres-kubernetes hostname. port is always 5432.
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// internal postgres-kubernetes hostname. port is always 5432.
-	// DEPRECATED: This field is no longer populated and will be removed in a future version.
-	InternalHostname string `protobuf:"bytes,6,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	// kubernetes secret key for the username.
+	// Name of the Cluster resource (equals metadata.name) — every derived
+	// object (pods, services, secrets) is prefixed with it.
+	ClusterName string `protobuf:"bytes,2,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	// Name of the read-write Service (`<name>-rw`) — always points at the
+	// current primary. The Service applications write through.
+	RwService string `protobuf:"bytes,3,opt,name=rw_service,json=rwService,proto3" json:"rw_service,omitempty"`
+	// Name of the read-only Service (`<name>-ro`) — replicas only; empty
+	// routing until a replica exists. The read-scaling handle.
+	RoService string `protobuf:"bytes,4,opt,name=ro_service,json=roService,proto3" json:"ro_service,omitempty"`
+	// Name of the any-instance read Service (`<name>-r`) — every ready
+	// instance including the primary.
+	RService string `protobuf:"bytes,5,opt,name=r_service,json=rService,proto3" json:"r_service,omitempty"`
+	// In-cluster endpoint of the read-write Service,
+	// `<name>-rw.<namespace>.svc.cluster.local:5432` — the connection host
+	// for applications in the same cluster.
+	KubeEndpoint string `protobuf:"bytes,6,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
+	// Port-forward command for reaching the primary from a workstation
+	// when no exposure is composed
+	// (`kubectl port-forward svc/<name>-rw -n <namespace> 5432:5432`).
+	PortForwardCommand string `protobuf:"bytes,7,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	// Secret key holding the application user's name (the `<name>-app`
+	// Secret's `username` key).
 	UsernameSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,8,opt,name=username_secret,json=usernameSecret,proto3" json:"username_secret,omitempty"`
-	// kubernetes secret key for the password.
+	// Secret key holding the application user's password (the
+	// `<name>-app` Secret's `password` key). The same Secret also carries
+	// ready-made `uri` / `jdbc-uri` connection strings.
 	PasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,9,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Name of the superuser credential Secret (`<name>-superuser`) —
+	// populated only when superuser access is enabled, empty otherwise.
+	SuperuserSecretName string `protobuf:"bytes,10,opt,name=superuser_secret_name,json=superuserSecretName,proto3" json:"superuser_secret_name,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *KubernetesPostgresStackOutputs) Reset() {
@@ -88,16 +102,30 @@ func (x *KubernetesPostgresStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesPostgresStackOutputs) GetService() string {
+func (x *KubernetesPostgresStackOutputs) GetClusterName() string {
 	if x != nil {
-		return x.Service
+		return x.ClusterName
 	}
 	return ""
 }
 
-func (x *KubernetesPostgresStackOutputs) GetPortForwardCommand() string {
+func (x *KubernetesPostgresStackOutputs) GetRwService() string {
 	if x != nil {
-		return x.PortForwardCommand
+		return x.RwService
+	}
+	return ""
+}
+
+func (x *KubernetesPostgresStackOutputs) GetRoService() string {
+	if x != nil {
+		return x.RoService
+	}
+	return ""
+}
+
+func (x *KubernetesPostgresStackOutputs) GetRService() string {
+	if x != nil {
+		return x.RService
 	}
 	return ""
 }
@@ -109,16 +137,9 @@ func (x *KubernetesPostgresStackOutputs) GetKubeEndpoint() string {
 	return ""
 }
 
-func (x *KubernetesPostgresStackOutputs) GetExternalHostname() string {
+func (x *KubernetesPostgresStackOutputs) GetPortForwardCommand() string {
 	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesPostgresStackOutputs) GetInternalHostname() string {
-	if x != nil {
-		return x.InternalHostname
+		return x.PortForwardCommand
 	}
 	return ""
 }
@@ -137,20 +158,32 @@ func (x *KubernetesPostgresStackOutputs) GetPasswordSecret() *kubernetes.Kuberne
 	return nil
 }
 
+func (x *KubernetesPostgresStackOutputs) GetSuperuserSecretName() string {
+	if x != nil {
+		return x.SuperuserSecretName
+	}
+	return ""
+}
+
 var File_dev_planton_provider_kubernetes_kubernetespostgres_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetespostgres_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Idev/planton/provider/kubernetes/kubernetespostgres/v1/stack_outputs.proto\x125dev.planton.provider.kubernetes.kubernetespostgres.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\xc7\x03\n" +
+	"Idev/planton/provider/kubernetes/kubernetespostgres/v1/stack_outputs.proto\x125dev.planton.provider.kubernetes.kubernetespostgres.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\x85\x04\n" +
 	"\x1eKubernetesPostgresStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\x06 \x01(\tR\x10internalHostname\x12]\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\fcluster_name\x18\x02 \x01(\tR\vclusterName\x12\x1d\n" +
+	"\n" +
+	"rw_service\x18\x03 \x01(\tR\trwService\x12\x1d\n" +
+	"\n" +
+	"ro_service\x18\x04 \x01(\tR\troService\x12\x1b\n" +
+	"\tr_service\x18\x05 \x01(\tR\brService\x12#\n" +
+	"\rkube_endpoint\x18\x06 \x01(\tR\fkubeEndpoint\x120\n" +
+	"\x14port_forward_command\x18\a \x01(\tR\x12portForwardCommand\x12]\n" +
 	"\x0fusername_secret\x18\b \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x0eusernameSecret\x12]\n" +
-	"\x0fpassword_secret\x18\t \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x0epasswordSecretB\xb7\x03\n" +
+	"\x0fpassword_secret\x18\t \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x0epasswordSecret\x122\n" +
+	"\x15superuser_secret_name\x18\n" +
+	" \x01(\tR\x13superuserSecretNameB\xb7\x03\n" +
 	"9com.dev.planton.provider.kubernetes.kubernetespostgres.v1B\x11StackOutputsProtoP\x01Zlgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1;kubernetespostgresv1\xa2\x02\x05DPPKK\xaa\x025Dev.Planton.Provider.Kubernetes.Kubernetespostgres.V1\xca\x025Dev\\Planton\\Provider\\Kubernetes\\Kubernetespostgres\\V1\xe2\x02ADev\\Planton\\Provider\\Kubernetes\\Kubernetespostgres\\V1\\GPBMetadata\xea\x02:Dev::Planton::Provider::Kubernetes::Kubernetespostgres::V1b\x06proto3"
 
 var (

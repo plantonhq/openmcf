@@ -6,13 +6,13 @@ import (
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 )
 
-func TestPrerequisites_PostgresRequiresZalandoOperator(t *testing.T) {
+func TestPrerequisites_PostgresRequiresCloudNativePgOperator(t *testing.T) {
 	prereqs := Prerequisites(cloudresourcekind.CloudResourceKind_KubernetesPostgres)
 	if len(prereqs) != 1 {
 		t.Fatalf("expected 1 prerequisite for KubernetesPostgres, got %d", len(prereqs))
 	}
-	if prereqs[0] != cloudresourcekind.CloudResourceKind_KubernetesZalandoPostgresOperator {
-		t.Fatalf("expected KubernetesZalandoPostgresOperator, got %s", prereqs[0])
+	if prereqs[0] != cloudresourcekind.CloudResourceKind_KubernetesCloudNativePgOperator {
+		t.Fatalf("expected KubernetesCloudNativePgOperator, got %s", prereqs[0])
 	}
 }
 
@@ -70,7 +70,7 @@ func TestAllSixOperatorDependentComponents(t *testing.T) {
 		kind   cloudresourcekind.CloudResourceKind
 		expect cloudresourcekind.CloudResourceKind
 	}{
-		{cloudresourcekind.CloudResourceKind_KubernetesPostgres, cloudresourcekind.CloudResourceKind_KubernetesZalandoPostgresOperator},
+		{cloudresourcekind.CloudResourceKind_KubernetesPostgres, cloudresourcekind.CloudResourceKind_KubernetesCloudNativePgOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesKafka, cloudresourcekind.CloudResourceKind_KubernetesStrimziKafkaOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesElasticsearch, cloudresourcekind.CloudResourceKind_KubernetesElasticOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesMongodb, cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator},

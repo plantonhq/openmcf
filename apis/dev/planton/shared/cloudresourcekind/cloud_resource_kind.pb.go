@@ -943,24 +943,23 @@ const (
 	CloudResourceKind_KubernetesOpenBao  CloudResourceKind = 891
 	CloudResourceKind_KubernetesOpenFga  CloudResourceKind = 892
 	// 900–929: Kubernetes data platforms
-	CloudResourceKind_KubernetesZalandoPostgresOperator CloudResourceKind = 900
-	CloudResourceKind_KubernetesPerconaPostgresOperator CloudResourceKind = 901
-	CloudResourceKind_KubernetesPostgres                CloudResourceKind = 902
-	CloudResourceKind_KubernetesPerconaMysqlOperator    CloudResourceKind = 903
-	CloudResourceKind_KubernetesPerconaMongoOperator    CloudResourceKind = 904
-	CloudResourceKind_KubernetesMongodb                 CloudResourceKind = 905
-	CloudResourceKind_KubernetesRedis                   CloudResourceKind = 906
-	CloudResourceKind_KubernetesStrimziKafkaOperator    CloudResourceKind = 907
-	CloudResourceKind_KubernetesKafka                   CloudResourceKind = 908
-	CloudResourceKind_KubernetesElasticOperator         CloudResourceKind = 909
-	CloudResourceKind_KubernetesElasticsearch           CloudResourceKind = 910
-	CloudResourceKind_KubernetesAltinityOperator        CloudResourceKind = 911
-	CloudResourceKind_KubernetesClickHouse              CloudResourceKind = 912
-	CloudResourceKind_KubernetesSolrOperator            CloudResourceKind = 913
-	CloudResourceKind_KubernetesSolr                    CloudResourceKind = 914
-	CloudResourceKind_KubernetesNeo4j                   CloudResourceKind = 915
-	CloudResourceKind_KubernetesRookCephOperator        CloudResourceKind = 916
-	CloudResourceKind_KubernetesRookCephCluster         CloudResourceKind = 917
+	CloudResourceKind_KubernetesCloudNativePgOperator CloudResourceKind = 900
+	CloudResourceKind_KubernetesPostgres              CloudResourceKind = 901
+	CloudResourceKind_KubernetesPerconaMysqlOperator  CloudResourceKind = 903
+	CloudResourceKind_KubernetesPerconaMongoOperator  CloudResourceKind = 904
+	CloudResourceKind_KubernetesMongodb               CloudResourceKind = 905
+	CloudResourceKind_KubernetesRedis                 CloudResourceKind = 906
+	CloudResourceKind_KubernetesStrimziKafkaOperator  CloudResourceKind = 907
+	CloudResourceKind_KubernetesKafka                 CloudResourceKind = 908
+	CloudResourceKind_KubernetesElasticOperator       CloudResourceKind = 909
+	CloudResourceKind_KubernetesElasticsearch         CloudResourceKind = 910
+	CloudResourceKind_KubernetesAltinityOperator      CloudResourceKind = 911
+	CloudResourceKind_KubernetesClickHouse            CloudResourceKind = 912
+	CloudResourceKind_KubernetesSolrOperator          CloudResourceKind = 913
+	CloudResourceKind_KubernetesSolr                  CloudResourceKind = 914
+	CloudResourceKind_KubernetesNeo4j                 CloudResourceKind = 915
+	CloudResourceKind_KubernetesRookCephOperator      CloudResourceKind = 916
+	CloudResourceKind_KubernetesRookCephCluster       CloudResourceKind = 917
 	// 950–969: Kubernetes GitOps and CI/CD
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 950
 	CloudResourceKind_KubernetesTektonOperator              CloudResourceKind = 951
@@ -1545,9 +1544,8 @@ var (
 		890:  "KubernetesKeycloak",
 		891:  "KubernetesOpenBao",
 		892:  "KubernetesOpenFga",
-		900:  "KubernetesZalandoPostgresOperator",
-		901:  "KubernetesPerconaPostgresOperator",
-		902:  "KubernetesPostgres",
+		900:  "KubernetesCloudNativePgOperator",
+		901:  "KubernetesPostgres",
 		903:  "KubernetesPerconaMysqlOperator",
 		904:  "KubernetesPerconaMongoOperator",
 		905:  "KubernetesMongodb",
@@ -2134,9 +2132,8 @@ var (
 		"KubernetesKeycloak":                             890,
 		"KubernetesOpenBao":                              891,
 		"KubernetesOpenFga":                              892,
-		"KubernetesZalandoPostgresOperator":              900,
-		"KubernetesPerconaPostgresOperator":              901,
-		"KubernetesPostgres":                             902,
+		"KubernetesCloudNativePgOperator":                900,
+		"KubernetesPostgres":                             901,
 		"KubernetesPerconaMysqlOperator":                 903,
 		"KubernetesPerconaMongoOperator":                 904,
 		"KubernetesMongodb":                              905,
@@ -2407,8 +2404,8 @@ type CloudResourceKindMeta struct {
 	// in reverse order; a component may pin a prerequisite's exact config via an
 	// e2e/fixtures/ override, which wins over the registry entry. this is also
 	// used by the platform for dependency ordering in infra charts.
-	// example: KubernetesPostgres needs KubernetesZalandoPostgresOperator
-	// because it creates acid.zalan.do/v1 postgresql CRDs.
+	// example: KubernetesPostgres needs KubernetesCloudNativePgOperator
+	// because it creates postgresql.cnpg.io/v1 Cluster resources.
 	Prerequisites []CloudResourceKind `protobuf:"varint,7,rep,packed,name=prerequisites,proto3,enum=dev.planton.shared.cloudresourcekind.CloudResourceKind" json:"prerequisites,omitempty"`
 	// set ONLY for kinds whose spec is a direct projection of a single Kubernetes
 	// custom resource -- i.e. the Terraform module is a thin `kubernetes_manifest`
@@ -2603,7 +2600,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xc8\xde\x01\n" +
+	"\x02v1\x10\x01*\x89\xde\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3023,9 +3020,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x12KubernetesKeycloak\x10\xfa\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8skc\x12(\n" +
 	"\x11KubernetesOpenBao\x10\xfb\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sbao\x12(\n" +
 	"\x11KubernetesOpenFga\x10\xfc\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sfga\x129\n" +
-	"!KubernetesZalandoPostgresOperator\x10\x84\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8szlop\x12=\n" +
-	"!KubernetesPerconaPostgresOperator\x10\x85\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\vk8sprcnpgop\x12,\n" +
-	"\x12KubernetesPostgres\x10\x86\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8spg:\x02\x84\a\x12=\n" +
+	"\x1fKubernetesCloudNativePgOperator\x10\x84\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8scnpgop\x12,\n" +
+	"\x12KubernetesPostgres\x10\x85\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8spg:\x02\x84\a\x12=\n" +
 	"\x1eKubernetesPerconaMysqlOperator\x10\x87\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\x0ek8sprcnmysqlop\x12;\n" +
 	"\x1eKubernetesPerconaMongoOperator\x10\x88\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\fk8sprcnmdbop\x12,\n" +
 	"\x11KubernetesMongodb\x10\x89\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8smdb:\x02\x88\a\x12&\n" +

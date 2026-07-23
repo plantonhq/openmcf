@@ -159,6 +159,26 @@ func manifestSpecInt(manifestPath, key string, fallback int64) int64 {
 	}
 }
 
+// manifestBarmanPluginEnabled reports whether the operator manifest enables
+// the Barman Cloud plugin (spec.barmanCloudPlugin.enabled) — the verifier
+// asserts the plugin deployment only when the spec asked for it.
+func manifestBarmanPluginEnabled(manifestPath string) bool {
+	spec := manifestSpecMap(manifestPath)
+	if spec == nil {
+		return false
+	}
+	plugin, ok := spec["barmanCloudPlugin"].(map[string]interface{})
+	if !ok {
+		// Scenario manifests use the snake_case field convention.
+		plugin, ok = spec["barman_cloud_plugin"].(map[string]interface{})
+		if !ok {
+			return false
+		}
+	}
+	enabled, _ := plugin["enabled"].(bool)
+	return enabled
+}
+
 // manifestHasPrerequisite reports whether the manifest's e2e-prerequisites
 // annotation names the given kind — how a scenario signals it runs with a
 // fixture (e.g. an HPA scenario that installs metrics-server and can

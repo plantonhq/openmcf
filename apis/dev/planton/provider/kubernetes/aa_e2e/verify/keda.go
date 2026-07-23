@@ -31,7 +31,23 @@ type KedaInstallVerifier struct {
 	Namespace string
 	// Behavioral switches on the live scale proof (see above).
 	Behavioral bool
+	// BehavioralSqs proves the CLOUD pod-identity hop (the aws-sqs-irsa
+	// scenario on the aws-eks profile): a verifier-owned driver chain — a
+	// scale target, a pod-identity TriggerAuthentication, and an
+	// aws-sqs-queue ScaledObject against the batch queue — plus real
+	// messages enqueued via the AWS CLI must produce a real 0→N scale-up,
+	// meaning the operator read queue depth out of SQS with the assumed
+	// IRSA role, keyless. The whole chain is verifier-owned because every
+	// CR is served by CRDs this component installs.
+	BehavioralSqs bool
 }
+
+// kedaSqs* identify the verifier-owned SQS driver chain. Queue coordinates
+// come from the batch bootstrap's exported environment.
+const (
+	kedaSqsNamespace  = "e2e-keda-sqs"
+	kedaSqsTargetName = "e2e-keda-sqs-target"
+)
 
 // kedaScaleTargetName/Namespace identify the scale-target Deployment fixture
 // the behavioral scenario deploys (fixture-scale-target.yaml under the
@@ -67,10 +83,131 @@ func (v *KedaInstallVerifier) VerifyExists(ctx context.Context, kubeconfig strin
 		return errors.Wrap(err, "v1beta1.external.metrics.k8s.io APIService not available")
 	}
 
+	if v.BehavioralSqs {
+		return v.proveSqsScaling(ctx, kubeconfig)
+	}
 	if !v.Behavioral {
 		return nil
 	}
 	return v.proveScaling(ctx, kubeconfig)
+}
+
+// proveSqsScaling drives the cloud-identity scale loop: target + pod-identity
+// TriggerAuthentication + SQS ScaledObject, real messages in, real replicas
+// out, queue purged so scale-in state never leaks into the destroy phase.
+func (v *KedaInstallVerifier) proveSqsScaling(ctx context.Context, kubeconfig string) error {
+	queueURL := os.Getenv("PLANTON_E2E_SQS_QUEUE_URL")
+	awsRegion := os.Getenv("PLANTON_E2E_AWS_REGION")
+	if queueURL == "" || awsRegion == "" {
+		return errors.New("PLANTON_E2E_SQS_QUEUE_URL / PLANTON_E2E_AWS_REGION unset — the batch bootstrap exports them")
+	}
+	fmt.Printf("  [verify] behavioral SQS scaling: queue depth must drive a real scale-up (keyless)\n")
+
+	if err := v.kubectl(ctx, kubeconfig, "create", "namespace", kedaSqsNamespace); err != nil {
+		return errors.Wrap(err, "failed to create sqs driver namespace")
+	}
+	defer func() {
+		_ = v.kubectl(context.Background(), kubeconfig, "delete", "namespace", kedaSqsNamespace,
+			"--ignore-not-found", "--wait=false")
+	}()
+
+	driver := fmt.Sprintf(`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: %s
+  template:
+    metadata:
+      labels:
+        app: %s
+    spec:
+      containers:
+        - name: worker
+          image: registry.k8s.io/pause:3.10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 16Mi
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: e2e-sqs-podidentity
+  namespace: %s
+spec:
+  podIdentity:
+    provider: aws
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  scaleTargetRef:
+    name: %s
+  minReplicaCount: 0
+  maxReplicaCount: 2
+  pollingInterval: 10
+  cooldownPeriod: 60
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: e2e-sqs-podidentity
+      metadata:
+        queueURL: %s
+        awsRegion: %s
+        queueLength: "2"
+`, kedaSqsTargetName, kedaSqsNamespace, kedaSqsTargetName, kedaSqsTargetName,
+		kedaSqsNamespace, kedaSqsTargetName, kedaSqsNamespace, kedaSqsTargetName,
+		queueURL, awsRegion)
+	driverFile, err := writeTempManifest(driver)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(driverFile)
+	if err := v.kubectl(ctx, kubeconfig, "apply", "-f", driverFile); err != nil {
+		return errors.Wrap(err, "failed to apply SQS driver chain")
+	}
+	defer func() {
+		_ = v.kubectl(context.Background(), kubeconfig, "delete", "scaledobject", kedaSqsTargetName,
+			"-n", kedaSqsNamespace, "--ignore-not-found")
+		_ = v.kubectl(context.Background(), kubeconfig, "delete", "triggerauthentication", "e2e-sqs-podidentity",
+			"-n", kedaSqsNamespace, "--ignore-not-found")
+	}()
+
+	// Real messages: enough to demand both replicas at queueLength=2.
+	for i := 0; i < 5; i++ {
+		if out, err := exec.CommandContext(ctx, "aws", "sqs", "send-message",
+			"--queue-url", queueURL, "--message-body", fmt.Sprintf("e2e-proof-%d", i)).CombinedOutput(); err != nil {
+			return errors.Errorf("failed to enqueue proof message: %v: %s", err, string(out))
+		}
+	}
+	// Purge whatever happens: queue depth must never leak into later runs.
+	defer func() {
+		_ = exec.Command("aws", "sqs", "purge-queue", "--queue-url", queueURL).Run()
+	}()
+
+	deadline := time.Now().Add(4 * time.Minute)
+	var last string
+	for time.Now().Before(deadline) {
+		out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+			"get", "deployment", kedaSqsTargetName, "-n", kedaSqsNamespace,
+			"-o", "jsonpath={.status.readyReplicas}").CombinedOutput()
+		replicas := strings.TrimSpace(string(out))
+		if err == nil && (replicas == "2" || replicas == "1") {
+			fmt.Printf("  [verify] target scaled 0→%s off real SQS depth — the keyless cloud hop is proven\n", replicas)
+			return nil
+		}
+		last = fmt.Sprintf("readyReplicas=%q err=%v", replicas, err)
+		time.Sleep(5 * time.Second)
+	}
+	return errors.Errorf("KEDA never scaled the target off the SQS queue (last: %s)", last)
 }
 
 func (v *KedaInstallVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) error {
@@ -158,6 +295,14 @@ spec:
 		time.Sleep(5 * time.Second)
 	}
 	return errors.Errorf("KEDA never scaled the target above baseline (last: %s)", last)
+}
+
+func (v *KedaInstallVerifier) kubectl(ctx context.Context, kubeconfig string, args ...string) error {
+	full := append([]string{"--kubeconfig", kubeconfig}, args...)
+	if out, err := exec.CommandContext(ctx, "kubectl", full...).CombinedOutput(); err != nil {
+		return errors.Errorf("kubectl %s: %v: %s", strings.Join(args, " "), err, string(out))
+	}
+	return nil
 }
 
 // writeTempManifest writes a manifest document to a temp file for kubectl

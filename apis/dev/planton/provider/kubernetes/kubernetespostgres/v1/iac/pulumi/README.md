@@ -1,77 +1,115 @@
-# PostgresKubernetes Pulumi Module
+# KubernetesPostgres Pulumi Module
 
-## Key Features
+Deploys one CloudNativePG-managed PostgreSQL cluster: the optional
+namespace, the declared-credential Secrets, the Barman Cloud
+`ObjectStore` resource(s), the `postgresql.cnpg.io/v1` Cluster resource,
+and one `ScheduledBackup` per declared schedule. The custom resources
+render through typed crd2pulumi SDK bindings pinned to the CloudNativePG
+CRDs — field or structure drift against the pinned CRD fails at COMPILE
+time, not at apply time.
 
-### API-Resource Highlights
+Prerequisites at deploy time: the CloudNativePG operator
+(`KubernetesCloudNativePgOperator`) on the cluster, installed with
+`barman_cloud_plugin.enabled` when backups are declared.
 
-- **Standardized Structure**: Adheres to the Kubernetes API resource model, including `apiVersion`, `kind`, `metadata`, `spec`, and `status`, ensuring consistency and ease of integration.
-- **Unified API Approach**: Designed for the multi-cloud era, enabling seamless interaction with various cloud providers through a consistent API structure.
-- **Comprehensive Configuration**: Supports detailed configurations for PostgreSQL deployments, including replica counts, resource allocations, disk sizes, and ingress settings.
-- **Flexible Storage Options**: Allows specification of disk sizes with validation to ensure appropriate storage allocation for PostgreSQL instances.
-- **Ingress Management**: Integrated support for customizable ingress settings, enabling secure external and internal access to the PostgreSQL service.
+## What the Module Creates
 
-### Module Features
+1. **Namespace** (optional) — created with the standard governance
+   labels when `create_namespace` is true
+2. **Credential Secrets** — every DECLARED credential materializes as a
+   deterministic Secret so nothing sensitive appears inline in a
+   rendered custom resource (the operator and plugin only ever see
+   secretKeyRef pointers):
+   - `<name>-app-provided` / `<name>-superuser-provided` /
+     `<name>-role-<role>` — `kubernetes.io/basic-auth` pairs
+     CloudNativePG WATCHES: rotating the value rotates the database
+     password
+   - `<name>-ext-<external-cluster>` — external-server passwords (the
+     operator builds a passfile from them)
+   - `<name>-backup-creds` / `<name>-recovery-creds` (+ `-endpoint-ca`
+     for self-signed S3-compatible endpoints, + `-region` because the
+     ObjectStore CRD models the S3 region as a secret reference) —
+     object-store credentials; keyless arms render the backend's
+     ambient-identity flag and need no Secret at all
+3. **ObjectStore(s)** (`barmancloud.cnpg.io/v1`) — the backup store
+   (named after the cluster, carrying the retention policy) when
+   `spec.backup` is set; the recovery-source store
+   (`<name>-recovery-source`, never with retention — the plugin must not
+   prune the source archive) when the bootstrap restores from a backup
+4. **Cluster** — the PostgreSQL cluster itself; unset optionals are
+   omitted entirely so the apiserver applies the CRD's own defaults, and
+   chart-default-matching values (anti-affinity `preferred`,
+   `enable_pdb` true, role ensure `present`, connection limit −1) render
+   only on divergence
+5. **ScheduledBackup(s)** (`<cluster>-<schedule>`) — each explicitly
+   `method: plugin` against the cluster's backup ObjectStore, never the
+   deprecated in-tree method
 
-- **Pulumi Integration**: Developed in Go, the module integrates seamlessly with Pulumi, leveraging its powerful IaC capabilities for managing PostgreSQL infrastructure within Kubernetes.
-- **Automated Namespace Creation**: Automatically creates and manages a dedicated Kubernetes namespace for the PostgreSQL deployment, ensuring resource isolation and organizational clarity.
-- **Zalando PostgreSQL Operator Deployment**: Utilizes the Zalando PostgreSQL Operator to deploy and manage highly available PostgreSQL instances, ensuring reliability and scalability.
-- **Kubernetes Provider Configuration**: Dynamically sets up the Kubernetes provider using cluster credentials, facilitating secure and efficient connections to target Kubernetes clusters.
-- **Customizable Ingress Setup**: Supports the creation of external and internal load balancer services based on ingress configurations, enhancing accessibility and security.
-- **Secret Management**: Manages Kubernetes secrets for PostgreSQL credentials, ensuring sensitive information is securely stored and easily accessible for authorized services.
-- **Exported Outputs**: Provides detailed outputs such as namespace name, service endpoints, port-forwarding commands, and secret keys, enabling seamless integration with other tools and systems.
-- **Extensible and Modular Design**: Designed to be easily extensible, allowing for the incorporation of additional functionalities and integrations as needed.
-- **Consistent Deployment Pattern**: Utilizes a standardized pattern where API resources serve as inputs to Pulumi modules, promoting consistency and reducing complexity in infrastructure deployments.
+Ordering: Secrets and ObjectStores land before the Cluster (the operator
+reads the Secrets and the plugin resolves the ObjectStore at reconcile
+time); ScheduledBackups follow the Cluster.
 
-## Installation
+## Rendering Notes
 
-To install the PostgresKubernetes Pulumi Module, follow the standard Pulumi module installation procedures. Ensure that you have Pulumi installed and configured in your development environment. The module is available on GitHub, and you can include it in your Pulumi projects by referencing the repository in your project’s dependencies.
-
-```shell
-pulumi plugin install resource postgreskubernetes <version>
-```
-
-Replace `<version>` with the desired version of the module.
-
-## Configuration
-
-The module requires a `PostgresKubernetesStackInput` specification to define the desired state of the PostgreSQL deployment within a Kubernetes cluster. This specification includes configurations for PostgreSQL container resources, replica counts, disk sizes, and ingress settings. Additionally, Kubernetes cluster credentials must be provided to enable the module to interact with the target Kubernetes cluster.
-
-### Key Configuration Parameters
-
-- **Kubernetes Credentials**: Provide the necessary credentials to authenticate and interact with the target Kubernetes cluster by specifying the `kubernetes_credential_id`.
-- **PostgreSQL Container Configuration**: Define the number of replicas, resource allocations (CPU and memory), and disk size for the PostgreSQL containers to ensure optimal performance and scalability.
-- **User Configuration**: Declare PostgreSQL users/roles via the `users` list, where each user has a `name` and optional `flags` (e.g., `["createdb"]`). Users must be declared before being used as database owners.
-- **Database Configuration**: Specify databases to create during cluster initialization via the `databases` map, where keys are database names and values are owner role names. Owner roles must be declared in `users`.
-- **Ingress Settings**: Configure ingress specifications to manage external and internal access to the PostgreSQL service, including load balancer types and hostname configurations.
-- **Pulumi Input**: Define Pulumi-specific configurations required for the stack-update, facilitating the integration between the API resource and Pulumi's deployment processes.
-- **Target API-Resource**: Specify the `PostgresKubernetes` target, linking the API resource definition with the Pulumi module for deployment.
+- **The naming contract flows from `metadata.name`** — the module
+  computes the derived names (`-rw`/`-ro`/`-r` services, `-app` /
+  `-superuser` secrets) in `locals.go` and exports them; deterministic
+  names (never engine-generated suffixes) keep both engines
+  byte-identical and let import recipes derive them blind.
+- **A declared initdb owner password changes the effective app secret**
+  — the module materializes `<name>-app-provided` and the operator
+  adopts it instead of generating `<name>-app`; the
+  `username_secret`/`password_secret` outputs point at the EFFECTIVE
+  secret either way.
+- **Recovery reads through a synthetic external cluster** — the module
+  renders an `externalClusters` entry named `origin` whose plugin block
+  points at the recovery-source ObjectStore with the SOURCE cluster's
+  `serverName` as a plugin parameter (the ObjectStore CRD forbids
+  `serverName` inline).
+- **Workload identity rides the ServiceAccount template** — the
+  `workload_identity` arm renders the exact per-cloud annotation
+  (`eks.amazonaws.com/role-arn`, `iam.gke.io/gcp-service-account`,
+  `azure.workload.identity/client-id` [+ tenant]) on the cluster's own
+  ServiceAccount — the identity keyless backup arms authenticate with.
 
 ## Usage
 
-Refer to example section for usage instructions.
+```shell
+planton pulumi up --manifest hack/manifest.yaml --module-dir <path-to-this-module>
+```
 
 ## Outputs
 
-Upon successful execution, the PostgresKubernetes module exports several key outputs that are essential for managing and accessing the PostgreSQL service:
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the cluster runs in |
+| `cluster_name` | Name of the Cluster resource (equals `metadata.name`) |
+| `rw_service` | Read-write Service (`<name>-rw`) — the current primary |
+| `ro_service` | Read-only Service (`<name>-ro`) — replicas only |
+| `r_service` | Any-instance read Service (`<name>-r`) |
+| `kube_endpoint` | In-cluster endpoint of the read-write Service (`<name>-rw.<namespace>.svc.cluster.local:5432`) |
+| `port_forward_command` | Port-forward command for workstation access |
+| `username_secret` | `{name, key}` of the application user's name (the effective app Secret) |
+| `password_secret` | `{name, key}` of the application user's password |
+| `superuser_secret_name` | Superuser credential Secret — empty unless superuser access is enabled |
 
-- **Namespace**: The name of the Kubernetes namespace where PostgresKubernetes is deployed.
-- **Service**: The Kubernetes service name created for PostgresKubernetes.
-- **Port Forward Command**: A command to set up port-forwarding for local access to PostgreSQL, which is useful when ingress is disabled for security reasons.
-- **Kube Endpoint**: The internal Kubernetes endpoint for accessing PostgreSQL from within the same Kubernetes cluster.
-- **External Hostname**: The public endpoint for accessing PostgreSQL from outside the Kubernetes cluster.
-- **Username Secret**: Kubernetes secret key for the PostgreSQL username.
-- **Password Secret**: Kubernetes secret key for the PostgreSQL password.
+## Module Structure
 
-These outputs facilitate seamless integration with other systems and tools, enabling efficient operational management and monitoring of the PostgreSQL deployment.
-
-## Documentation
-
-Comprehensive documentation for the API resources and module is available via [buf.build](https://buf.build). This documentation provides detailed insights into the API structure, configuration options, and operational guidelines, ensuring that developers can effectively utilize the module to deploy and manage PostgreSQL services within the Planton ecosystem.
-
-## Contributing
-
-Contributions to the PostgresKubernetes Pulumi Module are welcome. Please refer to the `CONTRIBUTING.md` file in the repository for guidelines on how to contribute, report issues, and suggest enhancements. Your contributions help improve the module and expand its capabilities to better serve the community.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+- `main.go`: entrypoint that calls the module
+- `module/main.go`: namespace → credential Secrets → ObjectStores →
+  Cluster → ScheduledBackups → output exports
+- `module/locals.go`: the naming contract (service/secret names, the
+  effective app secret) — kept in lockstep with the Terraform module's
+  `locals.tf`
+- `module/cluster.go`: the Cluster resource (storage, PostgreSQL config,
+  synchronous replication, roles, plugin wiring, workload-identity
+  annotations, certificates, scheduling, update strategy)
+- `module/bootstrap.go`: the bootstrap oneof (initdb with import,
+  recovery with PITR targets, pg_basebackup) and the externalClusters
+  list including the synthetic recovery entry
+- `module/backup.go`: ObjectStore rendering per backend arm (S3 /
+  GCS / Azure Blob, keyless vs declared keys), ScheduledBackups
+- `module/secrets.go`: deterministic credential-Secret materialization
+- `module/vars.go`: the CNPG-I plugin identifier
+  (`barman-cloud.cloudnative-pg.io`) and the synthetic recovery-source
+  name (`origin`)
