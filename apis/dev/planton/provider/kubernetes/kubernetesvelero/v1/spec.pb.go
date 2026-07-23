@@ -318,6 +318,16 @@ type KubernetesVeleroBackupStorage struct {
 	// Directory prefix under which Velero data is stored within the
 	// bucket/container — the multi-cluster pattern: one bucket, one prefix
 	// per cluster.
+	//
+	// Backup NAMES are keys under this prefix, and the store is the source of
+	// truth: deleting a Backup resource from the cluster does NOT remove its
+	// records from the bucket, and Velero's location sync re-imports whatever
+	// the store holds (verified live) — so a backup name can never be reused
+	// against a prefix that still holds a prior backup's records ("already
+	// exists in object storage"). Give ad-hoc backups unique names, let each
+	// backup's TTL expire its store records, and never point two clusters at
+	// the same prefix unless the second is deliberately restoring the
+	// first's backups.
 	Prefix string `protobuf:"bytes,4,opt,name=prefix,proto3" json:"prefix,omitempty"`
 	// *
 	// Override the provider plugin image (default: the arm's official

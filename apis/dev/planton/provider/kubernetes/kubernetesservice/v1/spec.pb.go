@@ -545,6 +545,14 @@ type KubernetesServiceSpec struct {
 	// - `networking.gke.io/load-balancer-ip-addresses: "<name>"` — GKE pinned address
 	// - `service.beta.kubernetes.io/azure-load-balancer-internal: "true"` — Azure internal LB
 	// - `external-dns.alpha.kubernetes.io/hostname: "app.example.com"` — external-dns record
+	//
+	// Which controller answers matters (verified live on EKS): the
+	// `aws-load-balancer-type: "nlb"` value is handled by EKS's built-in
+	// cloud controller — no extra install needed — while the
+	// `aws-load-balancer-type: "external"` family of annotations is handled
+	// ONLY by the AWS Load Balancer Controller; with those set and the
+	// controller absent, the Service simply never receives an address (no
+	// error anywhere — the annotation just has no reader).
 	Annotations map[string]string `protobuf:"bytes,4,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// *
 	// How the Service is exposed.

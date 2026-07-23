@@ -62,6 +62,17 @@ The bar for every component:
   relevant flow rule, or `architecture/deployment-component.md` in the same session, as
   timeless guidance (never naming a project or a task), so the next agent forging the next
   component never has to re-learn it. The workflow is expected to get sharper with every use.
+- **Knowledge lands where its READER lives.** Workflow lessons (above) serve the next
+  BUILDING agent — but most lessons, especially live-E2E ones, are CONFIGURATION lessons
+  whose reader is the next agent or human writing a manifest, and they must land on the
+  surface that reader will actually be looking at: live-caught constraints upstream docs do
+  not state go into the spec proto's FIELD comments (the manifest author's surface);
+  mechanism explanations go into the module comments of BOTH engines; operational recipes
+  and cross-component prerequisites go into `docs/README.md` / the catalog page / preset
+  explainers. The test: if a future manifest could repeat the mistake, the warning must sit
+  on the field its author will be reading when they make it — a lesson recorded only in a
+  workflow rule is NOT captured. (The update rule's "Knowledge lands where its READER
+  lives" section carries the full reader-to-surface table.)
 
 This philosophy governs every flow rule below; the per-rule steps are how it is executed, not
 a substitute for it.

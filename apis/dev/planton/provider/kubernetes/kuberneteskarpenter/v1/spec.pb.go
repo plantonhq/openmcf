@@ -63,6 +63,15 @@ type KubernetesKarpenterSpec struct {
 	// recommended home since v1 — it keeps the controller under the
 	// system-critical eviction umbrella). Accepts a literal namespace name or
 	// a reference to a KubernetesNamespace resource.
+	//
+	// Treat the namespace as PERMANENT for a given cluster: the CRDs survive
+	// uninstall by design (so removing Karpenter never deletes the fleet),
+	// and kept CRDs pin the Helm release's namespace in their ownership
+	// metadata — re-installing into a DIFFERENT namespace then fails with
+	// Helm's release-ownership error on CRDs that "should not exist"
+	// (verified live). Moving an existing install requires first deleting
+	// the kept CRDs (only safe with an empty fleet: no NodePools,
+	// EC2NodeClasses, or NodeClaims).
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// *
 	// When true, the namespace is created (with the standard Planton

@@ -235,6 +235,17 @@ type KubernetesPersistentVolumeClaimSpec struct {
 	// Requires a CSI driver that implements the operation. Sources are
 	// same-namespace only (cross-namespace sources are feature-gated upstream
 	// and deliberately unmodeled).
+	//
+	// The operation's semantics and constraints are the DRIVER's, and they can
+	// be stricter than the API suggests — verified live on the AWS EBS driver:
+	// cloning is implemented internally as snapshot-then-restore (expect
+	// minutes even for small volumes, and budget timeouts accordingly), and
+	// EC2 refuses to clone an UNENCRYPTED source volume outright — on EKS a
+	// clone data source only works when the source claim's StorageClass sets
+	// `encrypted: "true"`. Restoring a VolumeSnapshot has no such encryption
+	// constraint and completes much faster (the snapshot already exists).
+	// Check your driver's documentation for the equivalent constraints before
+	// depending on clones in a workflow.
 	DataSource    *KubernetesPersistentVolumeClaimDataSource `protobuf:"bytes,13,opt,name=data_source,json=dataSource,proto3" json:"data_source,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

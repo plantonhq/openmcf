@@ -46,6 +46,14 @@ type KubernetesKarpenterNodePoolSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Template for the nodes this pool launches: the node's class reference,
 	// scheduling requirements, taints, labels, and lifetime.
+	//
+	// Deliberately FLATTER than the CRD: upstream nests these under
+	// template.metadata (labels/annotations) and template.spec (everything
+	// else); this spec folds both levels into one message because the split
+	// carries no meaning for a manifest author. Both IaC modules rebuild the
+	// CRD's exact nesting when rendering — when diffing this spec against the
+	// upstream CRD, compare against the UNION of template.metadata and
+	// template.spec fields.
 	Template *KubernetesKarpenterNodePoolTemplate `protobuf:"bytes,1,opt,name=template,proto3" json:"template,omitempty"`
 	// Disruption policy: when Karpenter may consolidate or replace nodes it
 	// provisioned from this pool, and how many may be disrupted at once.

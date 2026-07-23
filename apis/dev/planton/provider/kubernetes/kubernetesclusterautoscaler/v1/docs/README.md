@@ -116,6 +116,27 @@ hundred of them. The spec splits the surface deliberately:
   so user entries win on key collision; the chart's own extraArgs
   defaults (logtostderr/stderrthreshold/v) survive per-key.
 
+### A proven burst-pool recipe (verified live on EKS)
+
+The cleanest way to give a cluster on-demand burst capacity without letting
+ordinary workloads wander onto it — a scale-to-zero node group the
+autoscaler alone manages:
+
+1. Create a dedicated node group with `min: 0`, the autoscaler discovery
+   tags (`k8s.io/cluster-autoscaler/enabled` +
+   `k8s.io/cluster-autoscaler/<cluster-name>`), a distinguishing node
+   label, and a `NoSchedule` taint of your own.
+2. Give ONLY the burst workloads a `nodeSelector` on that label plus a
+   toleration for the taint. Everything else stays off the group, so
+   scale-down back to zero is deterministic once the burst work is gone.
+3. Tune the reclaim half through the typed block:
+   `scale_down.unneeded_time` and `scale_down.delay_after_add` (upstream
+   defaults are 10m each — a burst pool usually wants far less).
+
+The full loop — pending burst pod → node group scaled up → pod runs → work
+deleted → group drained back to zero — is exactly what this component's
+own real-cluster E2E asserts.
+
 ## Deployment Posture
 
 `deployment.replicas` (chart default 1) leader-elect — extras are warm

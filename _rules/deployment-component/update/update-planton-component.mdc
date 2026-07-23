@@ -28,6 +28,33 @@ one component will come to expect.
 
 If updating a component required knowledge this rule or its flow rules did not give you — an undocumented mechanism you had to reverse-engineer, a wrong or misleading implication, a missing step, or a stale path — amend this rule, the relevant flow rule, or `architecture/deployment-component.md` in the same session, as timeless guidance (never naming a project or a task), so the next agent never has to re-learn it. The workflow is expected to get sharper with every use.
 
+## Knowledge lands where its READER lives (NON-NEGOTIABLE)
+
+The clause above covers WORKFLOW lessons — knowledge the next *building*
+agent needs. Most lessons a session earns (especially live-E2E sessions) are
+CONFIGURATION lessons: knowledge the next *configuring* agent, or the human
+reading the docs, needs at the moment they write a manifest. Those never
+belong in this rule — an agent configuring a component does not read forge
+workflows. Before a session ends, classify every lesson by its reader and
+land it in that reader's surface:
+
+| Reader | Surface | Example of what belongs there |
+|---|---|---|
+| An agent (or human) WRITING a manifest | The spec proto's field comments | "the EBS CSI driver refuses to clone unencrypted source volumes", "reusing a backup name against a bucket holding prior records fails — records outlive the CR" |
+| An agent MAINTAINING a module | Module comments (both engines) at the mechanism they explain | "this guard is null-safe because tfvars emits null for unset optionals" |
+| A human EVALUATING or OPERATING the component | `docs/README.md`, the catalog page, presets' explainers | operational recipes (a min-0 tainted burst node group), cross-component prerequisites (an annotation set that requires a controller installed) |
+| The next BUILDING agent | This rule / flow rules / doctrine | engine mechanics, gate design, projection idioms |
+
+The test: *if a future manifest could repeat the mistake, the warning must
+sit on the field the manifest author will be reading when they make it.*
+A lesson recorded only in a workflow rule (or worse, only in a session
+record) is considered NOT captured. Live-caught constraints that upstream
+docs do not state (a cloud API rejection, a controller behavior, a timing
+reality) are the highest-value comments in the catalog — they are the
+knowledge nobody else has written down. Keep the comments timeless and
+evidence-flavored ("verified live: ..."), never narrating who learned it or
+when.
+
 ## When to Use Update
 
 Use update when you need to:

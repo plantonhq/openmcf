@@ -798,6 +798,15 @@ type KubernetesIngressNginxService struct {
 	// GCP internal: {"networking.gke.io/load-balancer-type": "Internal"};
 	// Azure internal: {"service.beta.kubernetes.io/azure-load-balancer-internal": "true"}.
 	// Full per-cloud recipes in the component README.
+	//
+	// The AWS recipe above requires the AWS Load Balancer Controller
+	// installed in the cluster — the "external" type family is its
+	// vocabulary, and without it the Service never receives an address (no
+	// error surfaces; the annotations simply have no reader, and this
+	// module's readiness wait then times out loudly). On clusters without
+	// that controller, EKS's built-in cloud controller answers
+	// {"service.beta.kubernetes.io/aws-load-balancer-type": "nlb"} instead —
+	// both paths verified live.
 	Annotations map[string]string `protobuf:"bytes,2,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// *
 	// External traffic policy. `local` preserves client source IPs and
