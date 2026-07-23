@@ -9,65 +9,104 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	KubernetesIngressNginx *kubernetesingressnginxv1.KubernetesIngressNginx
-	Namespace              string
-	ReleaseName            string
-	ServiceName            string
-	ServiceType            string
-	ChartVersion           string
-	Labels                 map[string]string
+	Spec *kubernetesingressnginxv1.KubernetesIngressNginxSpec
+
+	// Resource-identity labels stamped on the module-created satellites
+	// (the namespace — never injected into the chart's own resources;
+	// Helm owns those).
+	Labels map[string]string
+
+	// Namespace the controller installs into (resolved literal from the
+	// spec's value-or-ref).
+	Namespace string
+
+	// Helm release name — metadata.name, NOT a fixed chart name: multiple
+	// controller instances per cluster (public + internal split) are a
+	// first-class upstream pattern, so each manifest gets its own release.
+	// The chart fullname is pinned to this too, which also isolates
+	// leader election per instance (electionID defaults to
+	// "<fullname>-leader" in the chart).
+	ReleaseName string
+
+	// IngressClass this instance owns (spec default: "nginx").
+	IngressClassName string
+
+	// spec.controller of the IngressClass. Empty spec value derives:
+	// the chart default "k8s.io/ingress-nginx" for class "nginx",
+	// otherwise "k8s.io/<class-name>" so additional controllers isolate
+	// automatically without the user inventing a vocabulary.
+	IngressClassControllerValue string
+
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
+	ChartVersion string
+
+	// Deterministic chart-derived object names ("<fullname>-controller"
+	// and "-internal" sibling) — what verification and downstream
+	// composition key off.
+	ControllerServiceName string
+	InternalServiceName   string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesingressnginxv1.KubernetesIngressNginxStackInput) *Locals {
-	locals := &Locals{}
-
-	locals.KubernetesIngressNginx = stackInput.Target
-
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesingressnginxv1.KubernetesIngressNginxStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	locals.Labels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesIngressNginx.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// Extract namespace from spec or use default
-	locals.Namespace = target.Spec.Namespace.GetValue()
-	if locals.Namespace == "" {
-		locals.Namespace = vars.Namespace
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	// Determine chart version
-	locals.ChartVersion = target.Spec.ChartVersion
-	if locals.ChartVersion == "" {
-		locals.ChartVersion = vars.DefaultChartVersion
+	className := spec.GetIngressClass().GetName()
+	if className == "" {
+		className = "nginx"
 	}
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	// Users can prefix metadata.name with component type if needed (e.g., "nginx-public")
-	locals.ReleaseName = target.Metadata.Name
-	locals.ServiceName = target.Metadata.Name + "-controller"
-	locals.ServiceType = "LoadBalancer"
+	controllerValue := spec.GetIngressClass().GetControllerValue()
+	if controllerValue == "" {
+		if className == "nginx" {
+			controllerValue = "k8s.io/ingress-nginx"
+		} else {
+			controllerValue = "k8s.io/" + className
+		}
+	}
 
-	// Export stack outputs
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-	ctx.Export(OpReleaseName, pulumi.String(locals.ReleaseName))
-	ctx.Export(OpServiceName, pulumi.String(locals.ServiceName))
-	ctx.Export(OpServiceType, pulumi.String(locals.ServiceType))
+	internalServiceName := ""
+	if spec.GetService().GetInternal().GetEnabled() {
+		internalServiceName = target.Metadata.Name + "-controller-internal"
+	}
 
-	return locals
+	return &Locals{
+		Spec:                        spec,
+		Labels:                      labels,
+		Namespace:                   spec.Namespace.GetValue(),
+		ReleaseName:                 target.Metadata.Name,
+		IngressClassName:            className,
+		IngressClassControllerValue: controllerValue,
+		ChartVersion:                chartVersion,
+		ControllerServiceName:       target.Metadata.Name + "-controller",
+		InternalServiceName:         internalServiceName,
+	}
 }

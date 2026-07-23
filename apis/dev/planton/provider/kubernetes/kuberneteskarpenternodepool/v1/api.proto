@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskarpenternodepool.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kuberneteskarpenternodepool/v1/spec.proto";
+import "dev/planton/provider/kubernetes/kuberneteskarpenternodepool/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// KubernetesKarpenterNodePool declares a Karpenter NodePool — the fleet
+// shape (constraints, taints, lifetime, disruption policy, resource
+// ceiling) Karpenter provisions machines from. Requires a Karpenter
+// installation (KubernetesKarpenter) on the cluster; the cloud machine
+// template is referenced through node_class_ref
+// (KubernetesKarpenterEc2NodeClass on AWS).
+message KubernetesKarpenterNodePool {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesKarpenterNodePool'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesKarpenterNodePoolSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesKarpenterNodePoolStatus status = 5;
+}
+
+// KubernetesKarpenterNodePoolStatus holds the deployment status and outputs.
+message KubernetesKarpenterNodePoolStatus {
+  // stack-outputs
+  KubernetesKarpenterNodePoolStackOutputs outputs = 1;
+}

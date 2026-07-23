@@ -86,9 +86,15 @@ type ResourceTypeImportId struct {
 	// "{vpc_id}_{association_id}"). A trailing "?" inside the braces marks a
 	// segment the provider documents as legitimately empty in some variants
 	// (e.g. DynamoDB contributor insights on the table itself:
-	// "name:{table_name}/index:{index_name?}/{account_id}"); required
-	// placeholders that fail to resolve abort the import instead of
-	// rendering empty. A template with no placeholders is a literal ID.
+	// "name:{table_name}/index:{index_name?}/{account_id}"); the surrounding
+	// literals STAY when it renders empty. An optional SEGMENT GROUP in
+	// [square brackets] -- literal text plus one placeholder, e.g.
+	// "{api_version}//{kind}//{name}[//{namespace}]" -- instead disappears
+	// WHOLESALE (delimiters included) when its placeholder does not resolve,
+	// for providers that reject a trailing delimiter (kubectl_manifest's
+	// composed ID with cluster-scoped resources). Required placeholders that
+	// fail to resolve abort the import instead of rendering empty. A template
+	// with no placeholders is a literal ID.
 	IdFormat string `protobuf:"bytes,3,opt,name=id_format,json=idFormat,proto3" json:"id_format,omitempty"`
 	// Provider-documentation notes about the format -- optional variants
 	// (e.g. a trailing ",{expected_bucket_owner}"), gotchas, or where the
@@ -113,6 +119,15 @@ type ResourceTypeImportId struct {
 	// separately because the classes genuinely differ -- config-only values
 	// never exist cloud-side at all, normalized values do -- and future drift
 	// surfaces will want to explain them differently.
+	//
+	// Entries in BOTH tolerance lists may be a dotted sub-path
+	// (e.g. "spec.update_strategy") when a provider's importer fails to read
+	// back ONE nested block: the round-trip oracle then tolerates drift only
+	// under that sub-path (pruning it from both plan sides and requiring the
+	// remainder identical), so sibling drift inside the same top-level
+	// attribute still fails. Prefer a dotted path over declaring a broad
+	// attribute like "spec" -- a whole-attribute tolerance on a structural
+	// attribute blinds the proof.
 	WriteNormalizedAttributes []string `protobuf:"bytes,6,rep,name=write_normalized_attributes,json=writeNormalizedAttributes,proto3" json:"write_normalized_attributes,omitempty"`
 	// CloudFormation type name for the same provider resource
 	// (e.g. "AWS::S3::Bucket") -- the declared correspondence between what a

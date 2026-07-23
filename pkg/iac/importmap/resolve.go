@@ -24,6 +24,11 @@ type ResolveContext struct {
 	// `...intelligent_tiering_configuration.this["archive"]`
 	// (from_address_key). Empty for non-repeated resources.
 	AddressKey string
+	// The enumerated address's Terraform logical resource name (the `istiod`
+	// in `helm_release.istiod`) -- selects tofu_resource_name-scoped value
+	// declarations when a module has several resources of one type whose
+	// placeholders carry different values. Empty disables scoped selection.
+	LogicalName string
 	// Parsed parts of a user-pasted ARN, keyed "resource_id" |
 	// "resource_name" | "account_id" | "region" | "arn" (the full ARN as
 	// pasted) for from_arn_part. May be nil or partial: deterministic
@@ -36,23 +41,36 @@ type ResolveContext struct {
 
 // ResolveValues resolves the named placeholders through the component map's
 // ordered derivations. The first derivation that yields a non-empty value
-// wins. Returns the resolved values and the names nothing could derive --
-// the caller decides whether unresolved names are user inputs (the wizard)
-// or a failure (the round-trip proof).
+// wins. A declaration scoped to the address's logical resource name
+// (tofu_resource_name) wins over the unscoped declaration of the same
+// placeholder; scoped declarations for OTHER resources are never consulted.
+// Returns the resolved values and the names nothing could derive -- the
+// caller decides whether unresolved names are user inputs (the wizard) or a
+// failure (the round-trip proof).
 func ResolveValues(
 	m *componentv1.ComponentImportMap,
 	names []string,
 	rctx ResolveContext,
 ) (resolved map[string]string, unresolved []string) {
-	valuesByName := make(map[string]*componentv1.ImportValue)
+	unscopedByName := make(map[string]*componentv1.ImportValue)
+	scopedByName := make(map[string]*componentv1.ImportValue)
 	for _, v := range m.GetSpec().GetValues() {
-		valuesByName[v.GetName()] = v
+		switch v.GetTofuResourceName() {
+		case "":
+			unscopedByName[v.GetName()] = v
+		case rctx.LogicalName:
+			scopedByName[v.GetName()] = v
+		}
 	}
 
 	resolved = make(map[string]string)
 	for _, name := range names {
+		importValue, declared := scopedByName[name]
+		if !declared {
+			importValue, declared = unscopedByName[name]
+		}
 		value := ""
-		if importValue, declared := valuesByName[name]; declared {
+		if declared {
 			for _, derivation := range importValue.GetDerivations() {
 				value = resolveDerivation(derivation, rctx)
 				if value != "" {
@@ -85,6 +103,12 @@ func resolveDerivation(d *componentv1.ImportValueDerivation, rctx ResolveContext
 		if source.FromAddressKey {
 			return rctx.AddressKey
 		}
+	case *componentv1.ImportValueDerivation_FromMetadataNameSuffix:
+		if rctx.MetadataName != "" && source.FromMetadataNameSuffix != "" {
+			return rctx.MetadataName + source.FromMetadataNameSuffix
+		}
+	case *componentv1.ImportValueDerivation_Literal:
+		return source.Literal
 	}
 	return ""
 }

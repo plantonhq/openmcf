@@ -10,6 +10,7 @@ import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,17 +25,115 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **KubernetesPerconaMysqlOperatorSpec** defines the configuration for deploying the Percona Operator for MySQL
-// on a Kubernetes cluster. This message specifies the parameters needed to create and manage the operator
-// deployment within a Kubernetes environment. It includes container specifications to control resource allocation.
+// *
+// **KubernetesPerconaMysqlOperatorSpec** installs the Percona Operator
+// for MySQL — based on Percona XtraDB Cluster — from the official
+// `pxc-operator` Helm chart
+// (https://percona.github.io/percona-helm-charts). The operator
+// reconciles `PerconaXtraDBCluster` custom resources into highly
+// available MySQL clusters: Galera synchronous multi-primary
+// replication with automated failover, HAProxy or ProxySQL query
+// routing, scheduled XtraBackup backups with point-in-time recovery,
+// and TLS.
+//
+// This component installs and configures the ENGINE. The databases
+// themselves are declared with KubernetesMysql resources — one per
+// MySQL cluster — which the operator reconciles.
+//
+// WATCH SCOPE: by default the operator watches ITS OWN namespace only
+// (the upstream default — databases live beside their operator). Set
+// `watch.cluster_wide` for one operator managing databases in every
+// namespace, or `watch.namespaces` for a fenced set.
+//
+// CRD LIFECYCLE: the chart ships the PerconaXtraDBCluster CRDs in its
+// Helm-native `crds/` directory — installed on first install, never
+// upgraded or deleted by Helm. Uninstalling the release therefore NEVER
+// cascade-deletes the database clusters (the upstream safety posture).
+// The same posture means a `chart_version` upgrade runs new operator
+// code against the EXISTING CRDs — apply the new release's CRDs
+// yourself when an upgrade's release notes call for it.
+//
+// The typed fields below cover the chart's meaningful configuration
+// surface; `helm_values` remains as the escape hatch for chart values
+// beyond them (merged last, Helm `-f` semantics, identical on both
+// engines) — a safety valve, never the primary interface.
 type KubernetesPerconaMysqlOperatorSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// Container resource specifications for the operator
-	Container     *KubernetesPerconaMysqlOperatorSpecContainer `protobuf:"bytes,4,opt,name=container,proto3" json:"container,omitempty"`
+	// *
+	// Namespace to install the operator into. Accepts a literal namespace
+	// name or a reference to a KubernetesNamespace resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the resource.
+	// When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (e.g. "1.20.0" — chart and operator
+	// versions move together for this chart; the chart pin governs). Pin
+	// deliberately; upgrades re-run the release with the new chart.
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// Operator replica count. Chart default: 1. Extra replicas are
+	// leader-elected warm standbys for the OPERATOR itself — they add no
+	// reconciliation throughput.
+	Replicas *int32 `protobuf:"varint,4,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// What the operator watches. Omitted = its own namespace only (the
+	// upstream default).
+	Watch *KubernetesPerconaMysqlOperatorWatch `protobuf:"bytes,5,opt,name=watch,proto3" json:"watch,omitempty"`
+	// *
+	// Maximum number of PerconaXtraDBCluster resources reconciled
+	// concurrently. Chart default: 1. Raise on control planes managing
+	// many databases.
+	MaxConcurrentReconciles *int32 `protobuf:"varint,6,opt,name=max_concurrent_reconciles,json=maxConcurrentReconciles,proto3,oneof" json:"max_concurrent_reconciles,omitempty"`
+	// *
+	// Concurrent S3 workers for backup uploads/deletes across the
+	// databases this operator manages. Chart default: 10.
+	S3WorkersLimit *int32 `protobuf:"varint,7,opt,name=s3_workers_limit,json=s3WorkersLimit,proto3,oneof" json:"s3_workers_limit,omitempty"`
+	// *
+	// Operator logging.
+	Log *KubernetesPerconaMysqlOperatorLog `protobuf:"bytes,8,opt,name=log,proto3" json:"log,omitempty"`
+	// *
+	// Disable Percona's anonymous telemetry (version and feature usage
+	// pings to check.percona.com). Chart default: false (telemetry on).
+	DisableTelemetry bool `protobuf:"varint,9,opt,name=disable_telemetry,json=disableTelemetry,proto3" json:"disable_telemetry,omitempty"`
+	// *
+	// Leader election between operator replicas. Meaningful only with
+	// replicas above 1 — exactly one replica reconciles at a time.
+	LeaderElection *KubernetesPerconaMysqlOperatorLeaderElection `protobuf:"bytes,10,opt,name=leader_election,json=leaderElection,proto3" json:"leader_election,omitempty"`
+	// *
+	// Run XtraBackup as a SIDECAR of the database pods instead of
+	// separate backup jobs (the chart's xtrabackupSidecar feature gate).
+	// Chart default: false.
+	XtrabackupSidecar bool `protobuf:"varint,11,opt,name=xtrabackup_sidecar,json=xtrabackupSidecar,proto3" json:"xtrabackup_sidecar,omitempty"`
+	// *
+	// Operator container resources. Empty = the chart defaults (requests
+	// 100m/20Mi, limits 200m/500Mi).
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,12,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Node selector for the operator pod.
+	NodeSelector map[string]string `protobuf:"bytes,13,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for the operator pod.
+	Tolerations []*kubernetes.WorkloadToleration `protobuf:"bytes,14,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	// *
+	// Names of image-pull secrets (in the installation namespace) for
+	// pulling the operator image from a private mirror.
+	ImagePullSecrets []string `protobuf:"bytes,15,rep,name=image_pull_secrets,json=imagePullSecrets,proto3" json:"image_pull_secrets,omitempty"`
+	// *
+	// Override the operator image (registry mirrors, air-gapped
+	// clusters). Empty = the chart default
+	// (percona/percona-xtradb-cluster-operator at the chart version).
+	Image *KubernetesPerconaMysqlOperatorImage `protobuf:"bytes,16,opt,name=image,proto3" json:"image,omitempty"`
+	// *
+	// Escape hatch: additional chart values as a YAML document, merged
+	// LAST over everything the typed fields render (Helm `-f` semantics,
+	// identical on both engines). For the chart surface beyond the typed
+	// fields (security contexts, RBAC toggles, extra env vars, pod
+	// annotations, ...) — never the substitute for them. Do not put
+	// secrets here.
+	HelmValues    string `protobuf:"bytes,17,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -83,37 +182,142 @@ func (x *KubernetesPerconaMysqlOperatorSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesPerconaMysqlOperatorSpec) GetContainer() *KubernetesPerconaMysqlOperatorSpecContainer {
+func (x *KubernetesPerconaMysqlOperatorSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
+	}
+	return ""
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetWatch() *KubernetesPerconaMysqlOperatorWatch {
 	if x != nil {
-		return x.Container
+		return x.Watch
 	}
 	return nil
 }
 
-// **KubernetesPerconaMysqlOperatorSpecContainer** specifies the container configuration for the Percona operator.
-// It includes resource allocations for CPU and memory to ensure the operator runs efficiently.
-type KubernetesPerconaMysqlOperatorSpecContainer struct {
+func (x *KubernetesPerconaMysqlOperatorSpec) GetMaxConcurrentReconciles() int32 {
+	if x != nil && x.MaxConcurrentReconciles != nil {
+		return *x.MaxConcurrentReconciles
+	}
+	return 0
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetS3WorkersLimit() int32 {
+	if x != nil && x.S3WorkersLimit != nil {
+		return *x.S3WorkersLimit
+	}
+	return 0
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetLog() *KubernetesPerconaMysqlOperatorLog {
+	if x != nil {
+		return x.Log
+	}
+	return nil
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetDisableTelemetry() bool {
+	if x != nil {
+		return x.DisableTelemetry
+	}
+	return false
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetLeaderElection() *KubernetesPerconaMysqlOperatorLeaderElection {
+	if x != nil {
+		return x.LeaderElection
+	}
+	return nil
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetXtrabackupSidecar() bool {
+	if x != nil {
+		return x.XtrabackupSidecar
+	}
+	return false
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetImagePullSecrets() []string {
+	if x != nil {
+		return x.ImagePullSecrets
+	}
+	return nil
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetImage() *KubernetesPerconaMysqlOperatorImage {
+	if x != nil {
+		return x.Image
+	}
+	return nil
+}
+
+func (x *KubernetesPerconaMysqlOperatorSpec) GetHelmValues() string {
+	if x != nil {
+		return x.HelmValues
+	}
+	return ""
+}
+
+// *
+// Operator watch scope. At most one of cluster_wide / namespaces.
+type KubernetesPerconaMysqlOperatorWatch struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// CPU and memory resources for the operator pod
-	Resources     *kubernetes.ContainerResources `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Watch every namespace in the cluster (cluster-wide RBAC). Chart
+	// default: false.
+	ClusterWide bool `protobuf:"varint,1,opt,name=cluster_wide,json=clusterWide,proto3" json:"cluster_wide,omitempty"`
+	// *
+	// Watch exactly these namespaces (rendered as the chart's
+	// comma-separated watchNamespace). Empty with cluster_wide false =
+	// the operator's own namespace only.
+	Namespaces    []string `protobuf:"bytes,2,rep,name=namespaces,proto3" json:"namespaces,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesPerconaMysqlOperatorSpecContainer) Reset() {
-	*x = KubernetesPerconaMysqlOperatorSpecContainer{}
+func (x *KubernetesPerconaMysqlOperatorWatch) Reset() {
+	*x = KubernetesPerconaMysqlOperatorWatch{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesPerconaMysqlOperatorSpecContainer) String() string {
+func (x *KubernetesPerconaMysqlOperatorWatch) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesPerconaMysqlOperatorSpecContainer) ProtoMessage() {}
+func (*KubernetesPerconaMysqlOperatorWatch) ProtoMessage() {}
 
-func (x *KubernetesPerconaMysqlOperatorSpecContainer) ProtoReflect() protoreflect.Message {
+func (x *KubernetesPerconaMysqlOperatorWatch) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -125,32 +329,287 @@ func (x *KubernetesPerconaMysqlOperatorSpecContainer) ProtoReflect() protoreflec
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesPerconaMysqlOperatorSpecContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesPerconaMysqlOperatorSpecContainer) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesPerconaMysqlOperatorWatch.ProtoReflect.Descriptor instead.
+func (*KubernetesPerconaMysqlOperatorWatch) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesPerconaMysqlOperatorSpecContainer) GetResources() *kubernetes.ContainerResources {
+func (x *KubernetesPerconaMysqlOperatorWatch) GetClusterWide() bool {
 	if x != nil {
-		return x.Resources
+		return x.ClusterWide
+	}
+	return false
+}
+
+func (x *KubernetesPerconaMysqlOperatorWatch) GetNamespaces() []string {
+	if x != nil {
+		return x.Namespaces
 	}
 	return nil
+}
+
+// *
+// Operator logging.
+type KubernetesPerconaMysqlOperatorLog struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Emit structured (JSON) logs instead of the console encoder. Chart
+	// default: false.
+	Structured bool `protobuf:"varint,1,opt,name=structured,proto3" json:"structured,omitempty"`
+	// *
+	// Log level: DEBUG, INFO (the chart default), or ERROR.
+	Level         *string `protobuf:"bytes,2,opt,name=level,proto3,oneof" json:"level,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesPerconaMysqlOperatorLog) Reset() {
+	*x = KubernetesPerconaMysqlOperatorLog{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesPerconaMysqlOperatorLog) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesPerconaMysqlOperatorLog) ProtoMessage() {}
+
+func (x *KubernetesPerconaMysqlOperatorLog) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesPerconaMysqlOperatorLog.ProtoReflect.Descriptor instead.
+func (*KubernetesPerconaMysqlOperatorLog) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesPerconaMysqlOperatorLog) GetStructured() bool {
+	if x != nil {
+		return x.Structured
+	}
+	return false
+}
+
+func (x *KubernetesPerconaMysqlOperatorLog) GetLevel() string {
+	if x != nil && x.Level != nil {
+		return *x.Level
+	}
+	return ""
+}
+
+// *
+// Leader election between operator replicas.
+type KubernetesPerconaMysqlOperatorLeaderElection struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Enable leader election. Chart default: true — disable only for a
+	// single-replica operator where the election round-trips are pure
+	// overhead.
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// *
+	// How long a leader lease lasts before it must be renewed (Go
+	// duration). Chart default: "60s".
+	LeaseDuration *string `protobuf:"bytes,2,opt,name=lease_duration,json=leaseDuration,proto3,oneof" json:"lease_duration,omitempty"`
+	// *
+	// How long the leader keeps trying to renew before giving up (Go
+	// duration). Chart default: "40s".
+	RenewDeadline *string `protobuf:"bytes,3,opt,name=renew_deadline,json=renewDeadline,proto3,oneof" json:"renew_deadline,omitempty"`
+	// *
+	// Wait between acquisition attempts by non-leaders (Go duration).
+	// Chart default: "10s".
+	RetryPeriod   *string `protobuf:"bytes,4,opt,name=retry_period,json=retryPeriod,proto3,oneof" json:"retry_period,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesPerconaMysqlOperatorLeaderElection) Reset() {
+	*x = KubernetesPerconaMysqlOperatorLeaderElection{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesPerconaMysqlOperatorLeaderElection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesPerconaMysqlOperatorLeaderElection) ProtoMessage() {}
+
+func (x *KubernetesPerconaMysqlOperatorLeaderElection) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesPerconaMysqlOperatorLeaderElection.ProtoReflect.Descriptor instead.
+func (*KubernetesPerconaMysqlOperatorLeaderElection) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesPerconaMysqlOperatorLeaderElection) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesPerconaMysqlOperatorLeaderElection) GetLeaseDuration() string {
+	if x != nil && x.LeaseDuration != nil {
+		return *x.LeaseDuration
+	}
+	return ""
+}
+
+func (x *KubernetesPerconaMysqlOperatorLeaderElection) GetRenewDeadline() string {
+	if x != nil && x.RenewDeadline != nil {
+		return *x.RenewDeadline
+	}
+	return ""
+}
+
+func (x *KubernetesPerconaMysqlOperatorLeaderElection) GetRetryPeriod() string {
+	if x != nil && x.RetryPeriod != nil {
+		return *x.RetryPeriod
+	}
+	return ""
+}
+
+// *
+// Operator image override.
+type KubernetesPerconaMysqlOperatorImage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Image repository (e.g.
+	// "my-mirror.example.com/percona-xtradb-cluster-operator").
+	Repository string `protobuf:"bytes,1,opt,name=repository,proto3" json:"repository,omitempty"`
+	// *
+	// Image tag. Empty = the chart version.
+	Tag           string `protobuf:"bytes,2,opt,name=tag,proto3" json:"tag,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesPerconaMysqlOperatorImage) Reset() {
+	*x = KubernetesPerconaMysqlOperatorImage{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesPerconaMysqlOperatorImage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesPerconaMysqlOperatorImage) ProtoMessage() {}
+
+func (x *KubernetesPerconaMysqlOperatorImage) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesPerconaMysqlOperatorImage.ProtoReflect.Descriptor instead.
+func (*KubernetesPerconaMysqlOperatorImage) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesPerconaMysqlOperatorImage) GetRepository() string {
+	if x != nil {
+		return x.Repository
+	}
+	return ""
+}
+
+func (x *KubernetesPerconaMysqlOperatorImage) GetTag() string {
+	if x != nil {
+		return x.Tag
+	}
+	return ""
 }
 
 var File_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ldev/planton/provider/kubernetes/kubernetesperconamysqloperator/v1/spec.proto\x12Adev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xd2\x02\n" +
+	"Ldev/planton/provider/kubernetes/kubernetesperconamysqloperator/v1/spec.proto\x12Adev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x8f\r\n" +
 	"\"KubernetesPerconaMysqlOperatorSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x94\x01\n" +
-	"\tcontainer\x18\x04 \x01(\v2n.dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\"\xa4\x01\n" +
-	"+KubernetesPerconaMysqlOperatorSpecContainer\x12u\n" +
-	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB\"\xba\xfb\xa4\x02\x1d\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\r\n" +
-	"\x04100m\x12\x05256MiR\tresourcesB\x84\x04\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
+	"\rchart_version\x18\x03 \x01(\tB\n" +
+	"\x8a\xa6\x1d\x061.20.0H\x00R\fchartVersion\x88\x01\x01\x12-\n" +
+	"\breplicas\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12|\n" +
+	"\x05watch\x18\x05 \x01(\v2f.dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorWatchR\x05watch\x12M\n" +
+	"\x19max_concurrent_reconciles\x18\x06 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x02R\x17maxConcurrentReconciles\x88\x01\x01\x12<\n" +
+	"\x10s3_workers_limit\x18\a \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0210H\x03R\x0es3WorkersLimit\x88\x01\x01\x12v\n" +
+	"\x03log\x18\b \x01(\v2d.dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorLogR\x03log\x12+\n" +
+	"\x11disable_telemetry\x18\t \x01(\bR\x10disableTelemetry\x12\x98\x01\n" +
+	"\x0fleader_election\x18\n" +
+	" \x01(\v2o.dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorLeaderElectionR\x0eleaderElection\x12-\n" +
+	"\x12xtrabackup_sidecar\x18\v \x01(\bR\x11xtrabackupSidecar\x12Q\n" +
+	"\tresources\x18\f \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\x9c\x01\n" +
+	"\rnode_selector\x18\r \x03(\v2w.dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x0e \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x12x\n" +
+	"\x12image_pull_secrets\x18\x0f \x03(\tBJ\xaa\xa6\x1dFNames of existing Kubernetes Secrets (references), not secret materialR\x10imagePullSecrets\x12|\n" +
+	"\x05image\x18\x10 \x01(\v2f.dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorImageR\x05image\x12\x1f\n" +
+	"\vhelm_values\x18\x11 \x01(\tR\n" +
+	"helmValues\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
+	"\x0e_chart_versionB\v\n" +
+	"\t_replicasB\x1c\n" +
+	"\x1a_max_concurrent_reconcilesB\x13\n" +
+	"\x11_s3_workers_limit\"\xb9\x02\n" +
+	"#KubernetesPerconaMysqlOperatorWatch\x12!\n" +
+	"\fcluster_wide\x18\x01 \x01(\bR\vclusterWide\x12\x1e\n" +
+	"\n" +
+	"namespaces\x18\x02 \x03(\tR\n" +
+	"namespaces:\xce\x01\xbaH\xca\x01\x1a\xc7\x01\n" +
+	"&spec.watch.cluster_wide_xor_namespaces\x12icluster_wide and namespaces are mutually exclusive — a cluster-wide operator already watches everything\x1a2!(this.cluster_wide && this.namespaces.size() > 0)\"\xe9\x01\n" +
+	"!KubernetesPerconaMysqlOperatorLog\x12\x1e\n" +
+	"\n" +
+	"structured\x18\x01 \x01(\bR\n" +
+	"structured\x12\x99\x01\n" +
+	"\x05level\x18\x02 \x01(\tB~\xbaHs\xba\x01p\n" +
+	"\x13spec.log.level_enum\x12'log level must be DEBUG, INFO, or ERROR\x1a0this == '' || this in ['DEBUG', 'INFO', 'ERROR']\x8a\xa6\x1d\x04INFOH\x00R\x05level\x88\x01\x01B\b\n" +
+	"\x06_level\"\xb5\x02\n" +
+	",KubernetesPerconaMysqlOperatorLeaderElection\x12'\n" +
+	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x123\n" +
+	"\x0elease_duration\x18\x02 \x01(\tB\a\x8a\xa6\x1d\x0360sH\x01R\rleaseDuration\x88\x01\x01\x123\n" +
+	"\x0erenew_deadline\x18\x03 \x01(\tB\a\x8a\xa6\x1d\x0340sH\x02R\rrenewDeadline\x88\x01\x01\x12/\n" +
+	"\fretry_period\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x0310sH\x03R\vretryPeriod\x88\x01\x01B\n" +
+	"\n" +
+	"\b_enabledB\x11\n" +
+	"\x0f_lease_durationB\x11\n" +
+	"\x0f_renew_deadlineB\x0f\n" +
+	"\r_retry_period\"W\n" +
+	"#KubernetesPerconaMysqlOperatorImage\x12\x1e\n" +
+	"\n" +
+	"repository\x18\x01 \x01(\tR\n" +
+	"repository\x12\x10\n" +
+	"\x03tag\x18\x02 \x01(\tR\x03tagB\x84\x04\n" +
 	"Ecom.dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1B\tSpecProtoP\x01Z\x84\x01github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconamysqloperator/v1;kubernetesperconamysqloperatorv1\xa2\x02\x05DPPKK\xaa\x02ADev.Planton.Provider.Kubernetes.Kubernetesperconamysqloperator.V1\xca\x02ADev\\Planton\\Provider\\Kubernetes\\Kubernetesperconamysqloperator\\V1\xe2\x02MDev\\Planton\\Provider\\Kubernetes\\Kubernetesperconamysqloperator\\V1\\GPBMetadata\xea\x02FDev::Planton::Provider::Kubernetes::Kubernetesperconamysqloperator::V1b\x06proto3"
 
 var (
@@ -165,22 +624,32 @@ func file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec
 	return file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_goTypes = []any{
-	(*KubernetesPerconaMysqlOperatorSpec)(nil),          // 0: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec
-	(*KubernetesPerconaMysqlOperatorSpecContainer)(nil), // 1: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpecContainer
-	(*v1.StringValueOrRef)(nil),                         // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),               // 3: dev.planton.provider.kubernetes.ContainerResources
+	(*KubernetesPerconaMysqlOperatorSpec)(nil),           // 0: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec
+	(*KubernetesPerconaMysqlOperatorWatch)(nil),          // 1: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorWatch
+	(*KubernetesPerconaMysqlOperatorLog)(nil),            // 2: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorLog
+	(*KubernetesPerconaMysqlOperatorLeaderElection)(nil), // 3: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorLeaderElection
+	(*KubernetesPerconaMysqlOperatorImage)(nil),          // 4: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorImage
+	nil,                                   // 5: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),           // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil), // 7: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil), // 8: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpecContainer
-	3, // 2: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6, // 0: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.watch:type_name -> dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorWatch
+	2, // 2: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.log:type_name -> dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorLog
+	3, // 3: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.leader_election:type_name -> dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorLeaderElection
+	7, // 4: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	5, // 5: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.NodeSelectorEntry
+	8, // 6: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	4, // 7: dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.image:type_name -> dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorImage
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_init() }
@@ -188,13 +657,16 @@ func file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec
 	if File_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesperconamysqloperator_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

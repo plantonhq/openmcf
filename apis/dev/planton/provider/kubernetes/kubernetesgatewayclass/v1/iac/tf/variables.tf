@@ -3,17 +3,26 @@
 # Thin projection of the gateway.networking.k8s.io/v1 "GatewayClass" custom resource.
 #
 # The proto->tfvars converter emits the manifest-shaped (camelCase, null-pruned)
-# spec, so this module hands it to kubernetes_manifest verbatim -- no snake->camel,
-# null-prune, or oneOf logic. variable "spec" is typed 'any' because the apiserver
-# plus Planton protovalidate are the schema authority; re-encoding the CRD schema
-# as HCL types would only reintroduce the pruning this design removes.
+# spec with StringValueOrRef foreign keys resolved to literal strings, so this
+# module hands it to kubectl_manifest verbatim -- no snake->camel, null-prune,
+# or oneOf logic. variable "spec" is typed 'any' because the apiserver plus
+# Planton protovalidate are the schema authority; re-encoding the CRD schema as
+# HCL types would only reintroduce the pruning this design removes.
 
 variable "metadata" {
-  description = "Planton resource metadata (name, labels, ...). Passed through; only name is read."
-  type        = any
+  description = "Cloud resource metadata (name plus the optional Planton identity attributes the module renders as labels)."
+  type = object({
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
+  })
 }
 
 variable "spec" {
-  description = "Spec for the gateway.networking.k8s.io/v1 \"GatewayClass\" custom resource, passed through verbatim to kubernetes_manifest. Typed 'any': the apiserver and Planton protovalidate are the schema authority."
+  description = "Spec for the gateway.networking.k8s.io/v1 \"GatewayClass\" custom resource, passed through verbatim to kubectl_manifest. Typed 'any': the apiserver and Planton protovalidate are the schema authority."
   type        = any
 }

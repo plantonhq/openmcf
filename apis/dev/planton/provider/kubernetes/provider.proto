@@ -4,14 +4,22 @@ package dev.planton.provider.kubernetes;
 
 import "buf/validate/validate.proto";
 
-// KubernetesProvider enum represents the various Kubernetes providers.
-// This enumeration allows specifying the type of Kubernetes cluster being used, such as GKE, EKS, or AKS, with additional context on each.
+// KubernetesProvider enumerates the platforms whose clusters Planton deploy engines
+// can connect to.
+//
+// A value earns its place here when the platform brings its own credential shape:
+// the selected provider determines which sub-message of KubernetesProviderConfig
+// holds the connection details. Platforms that authenticate through a plain
+// kubeconfig (local development clusters, on-prem, bare metal, and managed
+// platforms like Civo or Scaleway that simply hand out a kubeconfig) share the
+// single self_managed value rather than one value per platform.
 enum KubernetesProvider {
   kubernetes_provider_unspecified = 0; // Unspecified Kubernetes provider.
   gcp_gke = 1; // Google Kubernetes Engine (GKE) - A managed Kubernetes service by Google Cloud that provides automated cluster management and scaling.
   aws_eks = 2; // Amazon Elastic Kubernetes Service (EKS) - A managed Kubernetes service by AWS that simplifies the deployment and management of Kubernetes clusters.
   azure_aks = 3; // Azure Kubernetes Service (AKS) - A managed Kubernetes service by Microsoft Azure that provides Kubernetes cluster orchestration and management.
   digital_ocean_doks = 4; // DigitalOcean Kubernetes Service (DOKS) - A managed Kubernetes service by DigitalOcean that simplifies the deployment and management of Kubernetes clusters.
+  self_managed = 5; // A cluster on no credential-bearing managed platform: kind/minikube/k3s, on-prem, bare metal, vSphere, and kubeconfig-only clouds (Civo, Scaleway). Connects through a plain kubeconfig.
 }
 
 // KubernetesProviderConfig message represents the specification required to create or connect a Kubernetes Cluster.
@@ -35,6 +43,10 @@ message KubernetesProviderConfig {
   KubernetesProviderConfigAzureAks azure_aks = 4;
 
   KubernetesProviderConfigDigitalOceanDoks digital_ocean_doks = 5;
+
+  // Connection specification for self-managed clusters (kind, minikube, k3s, on-prem,
+  // bare metal, vSphere, and kubeconfig-only clouds such as Civo and Scaleway).
+  KubernetesProviderConfigSelfManaged self_managed = 6;
 }
 
 // KubernetesProviderConfigGcpGke contains the connection parameters for a Google Kubernetes Engine (GKE) cluster.
@@ -116,11 +128,63 @@ message KubernetesProviderConfigAwsEks {
   string session_token = 7;
 }
 
-// KubernetesProviderConfigAzureEks message represents the specification required to connect to a Azure Kubernetes Service (AKS) cluster.
-// This message consolidates the necessary input parameters for establishing a secure connection with a AKS cluster.
-message KubernetesProviderConfigAzureAks {}
+// KubernetesProviderConfigAzureAks contains the connection parameters for an Azure
+// Kubernetes Service (AKS) cluster with Microsoft Entra ID integration.
+//
+// Like EKS, an Entra-integrated AKS API server has no long-lived bearer credential:
+// it honors short-lived Entra access tokens issued for the AKS AAD server application
+// (a first-party Azure app whose ID is identical in every environment). This config
+// therefore carries the cluster identity as plain values plus the Entra
+// service-principal credential used to mint those tokens on demand. The caller (a
+// deploy engine or an in-process Kubernetes client) exchanges the credential for a
+// fresh token whenever one is needed; the token itself is never stored here.
+//
+// Clusters WITHOUT Entra integration (local-accounts-only) have no token to mint --
+// connect those through the self_managed arm with the kubeconfig AKS hands out.
+message KubernetesProviderConfigAzureAks {
+  // A client secret only has meaning together with the identity it authenticates.
+  option (buf.validate.message).cel = {
+    id: "kubernetes.azure_aks.secret_requires_identity"
+    message: "tenant_id and client_id are required when client_secret is set"
+    expression: "this.client_secret == '' || (this.tenant_id != '' && this.client_id != '')"
+  };
+
+  // The cluster API server endpoint URL, from the AKS portal or
+  // `az aks show --query fqdn`.
+  string cluster_endpoint = 1 [(buf.validate.field).required = true];
+
+  // Base64-encoded cluster Certificate Authority (CA) certificate.
+  // This is the standard kubeconfig CA data format.
+  string cluster_ca_data = 2 [(buf.validate.field).required = true];
+
+  // The Entra tenant ID the service principal lives in. Required with client_secret;
+  // omitted in ambient mode (the process's own Azure credential chain signs instead).
+  string tenant_id = 3;
+
+  // The service principal's client ID. Required with client_secret; the principal
+  // must hold RBAC on the cluster (e.g. Azure Kubernetes Service RBAC Cluster Admin,
+  // or a cluster role bound to its object ID).
+  string client_id = 4;
+
+  // The service principal's client secret, used to mint AKS tokens. Optional: when
+  // empty, tokens are minted from the ambient Azure credential chain of the process
+  // (environment variables, managed identity, or Azure CLI login).
+  string client_secret = 5;
+}
 
 // KubernetesProviderConfigDigitalOceanDoks message represents the specification required to connect to a DigitalOcean Kubernetes Service (DOKS) cluster.
 message KubernetesProviderConfigDigitalOceanDoks {
+  string kube_config = 1 [(buf.validate.field).required = true];
+}
+
+// KubernetesProviderConfigSelfManaged carries the connection for any cluster that
+// authenticates through a plain kubeconfig: local development clusters (kind,
+// minikube, k3s, Docker Desktop), on-prem and bare-metal clusters, vSphere, and
+// managed platforms that simply hand out a kubeconfig (Civo, Scaleway). The file
+// bundles endpoint, CA data, and credential; there is no token to refresh and
+// therefore nothing else to configure.
+message KubernetesProviderConfigSelfManaged {
+  // The complete kubeconfig YAML for the cluster. If the file contains several
+  // contexts, the current-context is used.
   string kube_config = 1 [(buf.validate.field).required = true];
 }

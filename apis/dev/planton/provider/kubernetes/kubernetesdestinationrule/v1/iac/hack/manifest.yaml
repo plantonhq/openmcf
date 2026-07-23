@@ -5,7 +5,8 @@ metadata:
 spec:
   namespace:
     value: test-namespace
-  host: reviews.test-namespace.svc.cluster.local
+  host:
+    value: reviews.test-namespace.svc.cluster.local
   traffic_policy:
     load_balancer:
       simple: LEAST_REQUEST
@@ -24,6 +25,9 @@ spec:
       max_ejection_percent: 50
     tls:
       mode: ISTIO_MUTUAL
+    retry_budget:
+      percent: 25.5
+      min_retry_concurrency: 4
   subsets:
     - name: v1
       labels:
@@ -33,6 +37,15 @@ spec:
         version: v2
       traffic_policy:
         load_balancer:
-          simple: ROUND_ROBIN
+          consistent_hash:
+            http_cookie:
+              name: session
+              ttl: 1h
+              attributes:
+                - name: SameSite
+                  value: Strict
+                - name: Secure
+        retry_budget:
+          percent: 10.0
   export_to:
     - "."

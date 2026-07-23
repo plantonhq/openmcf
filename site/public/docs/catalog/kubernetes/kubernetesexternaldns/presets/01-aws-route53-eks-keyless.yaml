@@ -1,0 +1,24 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesExternalDns
+metadata:
+  name: my-external-dns-route53
+spec:
+  namespace:
+    value: external-dns
+  createNamespace: true
+  awsRoute53:
+    region: us-east-1 # SDK client region; Route 53 itself is global
+    zoneIdFilters:
+      - value: '<route53-hosted-zone-id>'
+    zoneType: public
+  workloadIdentity:
+    eks:
+      roleArn:
+        value: '<external-dns-irsa-role-arn>'
+  sources:
+    - service
+    - ingress
+  policy: sync # dedicated zone: full reconciliation, including deletes of owned records
+  txtOwnerId: '<cluster-name>' # must be distinct per instance sharing a zone
+  domainFilters:
+    - '<example.com>'

@@ -30,7 +30,8 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
   hostnames:
     - app.example.com
   rules:
@@ -39,7 +40,8 @@ spec:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: web
+        - name:
+            value: web
           port: 8080
 ```
 
@@ -60,11 +62,11 @@ planton apply -f httproute.yaml
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. |
+| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. Each `name` is a reference (defaults to `KubernetesGateway`). |
 | `hostnames` | list | Host header values that select this route. |
 | `rules[].matches` | list | Path, header, query-param, and method matchers. |
 | `rules[].filters` | list | Header modify, redirect, URL rewrite, request mirror, CORS, extension ref. |
-| `rules[].backendRefs` | list | Weighted backends to forward to. |
+| `rules[].backendRefs` | list | Weighted backends; each `name` is a reference (defaults to `KubernetesService`). |
 | `rules[].timeouts` | object | Request and backend-request timeouts. |
 
 ## Examples
@@ -76,7 +78,8 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
   hostnames:
     - app.example.com
   rules:
@@ -85,7 +88,8 @@ spec:
             type: PathPrefix
             value: /api
       backendRefs:
-        - name: api
+        - name:
+            value: api
           port: 8080
 ```
 
@@ -96,15 +100,18 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
   hostnames:
     - app.example.com
   rules:
     - backendRefs:
-        - name: web-stable
+        - name:
+            value: web-stable
           port: 8080
           weight: 90
-        - name: web-canary
+        - name:
+            value: web-canary
           port: 8080
           weight: 10
 ```

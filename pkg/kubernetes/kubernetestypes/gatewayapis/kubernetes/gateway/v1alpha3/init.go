@@ -21,6 +21,12 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
+	case "kubernetes:gateway.networking.k8s.io/v1alpha3:BackendTLSPolicy":
+		r = &BackendTLSPolicy{}
+	case "kubernetes:gateway.networking.k8s.io/v1alpha3:BackendTLSPolicyList":
+		r = &BackendTLSPolicyList{}
+	case "kubernetes:gateway.networking.k8s.io/v1alpha3:BackendTLSPolicyPatch":
+		r = &BackendTLSPolicyPatch{}
 	case "kubernetes:gateway.networking.k8s.io/v1alpha3:TLSRoute":
 		r = &TLSRoute{}
 	case "kubernetes:gateway.networking.k8s.io/v1alpha3:TLSRouteList":

@@ -98,7 +98,7 @@ func targetRef(kind, name string) *kubernetes.KubernetesIstioApiPolicyTargetRefe
 	return &kubernetes.KubernetesIstioApiPolicyTargetReference{
 		Group: "gateway.networking.k8s.io",
 		Kind:  kind,
-		Name:  name,
+		Name:  literal(name),
 	}
 }
 
@@ -314,7 +314,7 @@ var _ = ginkgo.Describe("KubernetesEnvoyFilter Validation Tests", func() {
 		ginkgo.Context("with a target_ref missing its kind", func() {
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.TargetRefs = []*kubernetes.KubernetesIstioApiPolicyTargetReference{
-					{Group: "gateway.networking.k8s.io", Name: "my-gateway"},
+					{Group: "gateway.networking.k8s.io", Name: literal("my-gateway")},
 				}
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
@@ -332,7 +332,7 @@ var _ = ginkgo.Describe("KubernetesEnvoyFilter Validation Tests", func() {
 		ginkgo.Context("with a cross-namespace target_ref", func() {
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.TargetRefs = []*kubernetes.KubernetesIstioApiPolicyTargetReference{
-					{Group: "gateway.networking.k8s.io", Kind: "Gateway", Name: "my-gateway", Namespace: "other-ns"},
+					{Group: "gateway.networking.k8s.io", Kind: "Gateway", Name: literal("my-gateway"), Namespace: "other-ns"},
 				}
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
@@ -358,6 +358,38 @@ var _ = ginkgo.Describe("KubernetesEnvoyFilter Validation Tests", func() {
 				}
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
+		})
+
+		ginkgo.Context("with both waypoint and cluster set", func() {
+			ginkgo.It("should return a validation error", func() {
+				input.Spec.ConfigPatches[0].Match = &KubernetesEnvoyFilterEnvoyConfigObjectMatch{
+					Waypoint: &KubernetesEnvoyFilterWaypointMatch{PortNumber: ptr(uint32(8080))},
+					Cluster:  &KubernetesEnvoyFilterClusterMatch{Name: ptr("outbound|80||x")},
+				}
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+			})
+		})
+	})
+
+	ginkgo.Describe("When an ambient waypoint match is configured", func() {
+		ginkgo.It("accepts the WAYPOINT context with a waypoint filter match", func() {
+			input.Spec.ConfigPatches[0].Match = &KubernetesEnvoyFilterEnvoyConfigObjectMatch{
+				Context: ptr("WAYPOINT"),
+				Waypoint: &KubernetesEnvoyFilterWaypointMatch{
+					Filter: &KubernetesEnvoyFilterWaypointFilterMatch{
+						Name:      ptr("envoy.filters.network.http_connection_manager"),
+						SubFilter: &KubernetesEnvoyFilterWaypointSubFilterMatch{Name: ptr("envoy.filters.http.router")},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a waypoint port number out of range", func() {
+			input.Spec.ConfigPatches[0].Match = &KubernetesEnvoyFilterEnvoyConfigObjectMatch{
+				Waypoint: &KubernetesEnvoyFilterWaypointMatch{PortNumber: ptr(uint32(70000))},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 	})
 

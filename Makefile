@@ -224,43 +224,48 @@ preview-site:
 	$(MAKE) -C site preview-site
 
 # ── E2E Tests ─────────────────────────────────────────────────────────────────
+# Every provider test package sets up its harness in TestMain BEFORE Go applies
+# the -run filter, so sweeping ./e2e/... pays every provider's harness setup --
+# and inherits its credential failures -- even when zero tests in that package
+# match. Each run below is therefore scoped to the package that owns the tests;
+# Kubernetes tests live in the root ./e2e/ package.
 .PHONY: e2e-test-kubernetes
 e2e-test-kubernetes:  ## Run all Kubernetes E2E tests -- Tier 1 + Tier 2 + Tier 3 + Tier 4 (requires kind, pulumi, kubectl, Docker)
-	go test -tags=e2e -timeout=360m -v -count=1 ./e2e/...
+	go test -tags=e2e -timeout=360m -v -count=1 ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier1
 e2e-test-kubernetes-tier1:  ## Run Kubernetes Tier 1 (native K8s) E2E tests only
-	go test -tags=e2e -timeout=60m -v -count=1 -run "Test(KubernetesNamespace|KubernetesDeployment|KubernetesStatefulSet|KubernetesSecret|KubernetesService|KubernetesCronJob|KubernetesJob|KubernetesDaemonSet|KubernetesManifest)_" ./e2e/...
+	go test -tags=e2e -timeout=60m -v -count=1 -run "Test(KubernetesNamespace|KubernetesConfigMap|KubernetesServiceAccount|KubernetesRbac|KubernetesDeployment|KubernetesStatefulSet|KubernetesSecret|KubernetesService|KubernetesIngress|KubernetesNetworkPolicy|KubernetesCronJob|KubernetesJob|KubernetesDaemonSet|KubernetesManifest|KubernetesHelmRelease|KubernetesPersistentVolumeClaim|KubernetesStorageClass|KubernetesResourceQuota|KubernetesPriorityClass|KubernetesPodDisruptionBudget|KubernetesHorizontalPodAutoscaler|KubernetesCertManager|KubernetesClusterIssuer|KubernetesIssuer|KubernetesCertificate|KubernetesExternalDns|KubernetesExternalSecretsOperator|KubernetesClusterSecretStore|KubernetesSecretStore|KubernetesExternalSecret|KubernetesIngressNginx|KubernetesMetricsServer|KubernetesCilium|KubernetesKeda|KubernetesBackendTlsPolicy|KubernetesGatewayApiCrds|KubernetesGatewayClass|KubernetesGateway|KubernetesListenerSet|KubernetesHttpRoute|KubernetesGrpcRoute|KubernetesTcpRoute|KubernetesUdpRoute|KubernetesTlsRoute|KubernetesReferenceGrant|KubernetesIstio|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesAuthorizationPolicy|KubernetesServiceEntry|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesTelemetry|KubernetesKarpenter|KubernetesKarpenterNodePool|KubernetesKarpenterEc2NodeClass|KubernetesClusterAutoscaler|KubernetesVelero|KubernetesCloudNativePgOperator|KubernetesPostgres)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier2
 e2e-test-kubernetes-tier2:  ## Run Kubernetes Tier 2 (Helm-based) E2E tests only
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesRedis|KubernetesGrafana|KubernetesOpenBao|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesJenkins|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesPerconaPostgresOperator|KubernetesGitlab)_" ./e2e/...
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesOpenBao|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesJenkins|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier3
 e2e-test-kubernetes-tier3:  ## Run Kubernetes Tier 3 (operator-dependent) E2E tests -- fixtures deployed automatically
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesPostgres|KubernetesKafka|KubernetesElasticsearch|KubernetesMongodb|KubernetesSolr|KubernetesClickHouse)_" ./e2e/...
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesKafka|KubernetesElasticsearch|KubernetesMongodb|KubernetesMysql|KubernetesSolr|KubernetesClickHouse)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier4
 e2e-test-kubernetes-tier4:  ## Run Kubernetes Tier 4 (operators, addons, cluster infra) E2E tests
-	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesZalandoPostgresOperator|KubernetesStrimziKafkaOperator|KubernetesElasticOperator|KubernetesAltinityOperator|KubernetesGatewayApiCrds|KubernetesGhaRunnerScaleSetController|KubernetesRookCephOperator|KubernetesExternalSecrets|KubernetesIngressNginx|KubernetesTekton|KubernetesTektonOperator|KubernetesIstio|KubernetesIstioBaseCrds|KubernetesGatewayClass|KubernetesGateway|KubernetesHttpRoute|KubernetesGrpcRoute|KubernetesTcpRoute|KubernetesTlsRoute|KubernetesReferenceGrant|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesAuthorizationPolicy|KubernetesServiceEntry|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesTelemetry)_" ./e2e/...
+	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesStrimziKafkaOperator|KubernetesElasticOperator|KubernetesAltinityOperator|KubernetesGhaRunnerScaleSetController|KubernetesRookCephOperator|KubernetesTekton|KubernetesTektonOperator)_" ./e2e/
 
 # ── Terraform-only E2E targets (requires kind, tofu/terraform, kubectl, Docker) ──
 
 .PHONY: e2e-test-kubernetes-terraform-tier1
 e2e-test-kubernetes-terraform-tier1:  ## Run Kubernetes Tier 1 Terraform E2E tests only
-	go test -tags=e2e -timeout=60m -v -count=1 -run "Test(KubernetesNamespace|KubernetesDeployment|KubernetesStatefulSet|KubernetesSecret|KubernetesService|KubernetesCronJob|KubernetesJob|KubernetesDaemonSet|KubernetesManifest)_Terraform" ./e2e/...
+	go test -tags=e2e -timeout=60m -v -count=1 -run "Test(KubernetesNamespace|KubernetesConfigMap|KubernetesServiceAccount|KubernetesRbac|KubernetesDeployment|KubernetesStatefulSet|KubernetesSecret|KubernetesService|KubernetesIngress|KubernetesNetworkPolicy|KubernetesCronJob|KubernetesJob|KubernetesDaemonSet|KubernetesManifest|KubernetesHelmRelease|KubernetesPersistentVolumeClaim|KubernetesStorageClass|KubernetesResourceQuota|KubernetesPriorityClass|KubernetesPodDisruptionBudget|KubernetesHorizontalPodAutoscaler|KubernetesCertManager|KubernetesClusterIssuer|KubernetesIssuer|KubernetesCertificate|KubernetesExternalDns|KubernetesExternalSecretsOperator|KubernetesClusterSecretStore|KubernetesSecretStore|KubernetesExternalSecret|KubernetesIngressNginx|KubernetesMetricsServer|KubernetesCilium|KubernetesKeda|KubernetesBackendTlsPolicy|KubernetesGatewayApiCrds|KubernetesGatewayClass|KubernetesGateway|KubernetesListenerSet|KubernetesHttpRoute|KubernetesGrpcRoute|KubernetesTcpRoute|KubernetesUdpRoute|KubernetesTlsRoute|KubernetesReferenceGrant|KubernetesIstio|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesAuthorizationPolicy|KubernetesServiceEntry|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesTelemetry|KubernetesKarpenter|KubernetesKarpenterNodePool|KubernetesKarpenterEc2NodeClass|KubernetesClusterAutoscaler|KubernetesVelero|KubernetesCloudNativePgOperator|KubernetesPostgres)_Terraform" ./e2e/
 
 .PHONY: e2e-test-kubernetes-terraform-tier2
 e2e-test-kubernetes-terraform-tier2:  ## Run Kubernetes Tier 2 Terraform (Helm-based) E2E tests only
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesRedis|KubernetesGrafana|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesPerconaPostgresOperator)_Terraform" ./e2e/...
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator)_Terraform" ./e2e/
 
 .PHONY: e2e-test-kubernetes-terraform-tier3
 e2e-test-kubernetes-terraform-tier3:  ## Run Kubernetes Tier 3 Terraform (operator-dependent) E2E tests
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesPostgres|KubernetesKafka|KubernetesElasticsearch|KubernetesMongodb|KubernetesSolr|KubernetesClickHouse)_Terraform" ./e2e/...
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesKafka|KubernetesElasticsearch|KubernetesMongodb|KubernetesMysql|KubernetesSolr|KubernetesClickHouse)_Terraform" ./e2e/
 
 .PHONY: e2e-test-kubernetes-terraform-tier4
 e2e-test-kubernetes-terraform-tier4:  ## Run Kubernetes Tier 4 Terraform (operators, addons) E2E tests
-	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesZalandoPostgresOperator|KubernetesStrimziKafkaOperator|KubernetesElasticOperator|KubernetesAltinityOperator|KubernetesGatewayApiCrds|KubernetesGhaRunnerScaleSetController|KubernetesRookCephOperator|KubernetesExternalSecrets|KubernetesTekton|KubernetesIstioBaseCrds|KubernetesGatewayClass|KubernetesGateway|KubernetesHttpRoute|KubernetesGrpcRoute|KubernetesTcpRoute|KubernetesTlsRoute|KubernetesReferenceGrant|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesAuthorizationPolicy|KubernetesServiceEntry|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesTelemetry)_Terraform" ./e2e/...
+	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesStrimziKafkaOperator|KubernetesElasticOperator|KubernetesAltinityOperator|KubernetesGhaRunnerScaleSetController|KubernetesRookCephOperator|KubernetesTekton)_Terraform" ./e2e/
 
 # ── Auth0 E2E targets ────────────────────────────────────────────────────────
 
@@ -292,9 +297,18 @@ e2e-test-gcp-terraform:  ## Run GCP Terraform E2E tests only
 
 # ── Generic component E2E targets ────────────────────────────────────────────
 
+# Resolve the component name's provider prefix to the test package that owns it
+# (see the harness-setup note at the top of the E2E section for why runs must
+# never sweep ./e2e/...). Unknown prefixes fall back to the full sweep.
+e2e_component_pkg = $(if $(findstring Kubernetes,$(component)),./e2e/,\
+$(if $(findstring Aws,$(component)),./e2e/aws/...,\
+$(if $(findstring Gcp,$(component)),./e2e/gcp/...,\
+$(if $(findstring Azure,$(component)),./e2e/azure/...,\
+$(if $(findstring Auth0,$(component)),./e2e/auth0/...,./e2e/...)))))
+
 .PHONY: e2e-test-component
 e2e-test-component:  ## Single component E2E test (usage: make e2e-test-component component=KubernetesNamespace)
-	go test -tags=e2e -timeout=15m -v -count=1 -run "Test.*$(component)" ./e2e/...
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test.*$(component)" $(strip $(e2e_component_pkg))
 
 .PHONY: e2e-matrix
 e2e-matrix:  ## Regenerate E2E GitHub Actions matrix JSON from profiles

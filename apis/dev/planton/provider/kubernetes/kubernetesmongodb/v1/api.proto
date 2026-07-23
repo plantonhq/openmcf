@@ -7,7 +7,13 @@ import "dev/planton/provider/kubernetes/kubernetesmongodb/v1/spec.proto";
 import "dev/planton/provider/kubernetes/kubernetesmongodb/v1/stack_outputs.proto";
 import "dev/planton/shared/metadata.proto";
 
-//mongodb-kubernetes
+/**
+ * KubernetesMongodb declares a production-grade MongoDB cluster on
+ * Kubernetes: replica sets with automated failover, optional sharding,
+ * scheduled backups with point-in-time recovery, TLS, and declarative
+ * users — reconciled by the Percona Operator for MongoDB
+ * (KubernetesPerconaMongoOperator).
+ */
 message KubernetesMongodb {
   //api-version
   string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1'];
@@ -25,7 +31,7 @@ message KubernetesMongodb {
   KubernetesMongodbStatus status = 5;
 }
 
-//mongodb-kubernetes status.
+//KubernetesMongodb status.
 message KubernetesMongodbStatus {
   //stack-outputs
   KubernetesMongodbStackOutputs outputs = 1;

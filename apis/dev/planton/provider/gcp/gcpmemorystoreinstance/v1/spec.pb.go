@@ -801,6 +801,12 @@ func (x *GcpMemorystoreInstanceManagedBackupSource) GetBackup() string {
 //   - Node memory is determined by the node_type, not by an explicit
 //     memory_size_gb field. The actual memory per node is reported in
 //     stack outputs.
+//
+//   - Instance creation is a long-running operation — the provider's
+//     default create timeout is 60 minutes, and multi-shard instances
+//     commonly run tens of minutes. Budget deploy windows accordingly; a
+//     create that appears stalled at the 20-minute mark is normal, not
+//     hung.
 type GcpMemorystoreInstanceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project where the Memorystore instance will be created.

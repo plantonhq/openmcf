@@ -1,283 +1,139 @@
-# KubernetesJob: Technical Research Documentation
+# Kubernetes Job: Research Documentation
 
 ## Introduction
 
-Kubernetes Jobs are a fundamental workload controller that runs pods to completion, making them the building blocks for batch processing in Kubernetes. Unlike Deployments that maintain a desired number of running pods indefinitely, or CronJobs that trigger on a schedule, Jobs create pods that execute a task and then stop.
+The batch/v1 Job is Kubernetes' run-to-completion primitive: create pods, run them until enough succeed, never restart the finished result. Everything interesting about Jobs lives in the gap between that one-line description and production reality — how failures are counted, how partitioned work is distributed, how infrastructure disruption is distinguished from application error, and how finished work is cleaned up.
 
-This document provides comprehensive research into Kubernetes Jobs, their deployment landscape, implementation approaches, and the design decisions behind Planton's KubernetesJob component.
+Planton's **KubernetesJob** component models the full modern JobSpec on top of the shared workload container/pod core, so a user who knows how to configure a Deployment's containers already knows how to configure a Job's — only the batch controls are new.
 
-## What is a Kubernetes Job?
+## The Completion Model
 
-A Kubernetes Job creates one or more pods and ensures that a specified number of them successfully terminate. When a successful number of completions is reached, the job is complete. Jobs can run:
+### NonIndexed: interchangeable pods
 
-1. **Single Pods**: One pod runs to completion (default behavior)
-2. **Parallel Pods (Work Queue)**: Multiple pods process a shared queue until empty
-3. **Parallel Pods (Fixed Count)**: A specific number of pods each process a portion of work
-4. **Indexed Parallel Jobs**: Each pod gets a unique index for processing partitioned data
+In the default `NonIndexed` mode, pods are fungible workers. The Job succeeds after `completions` pods (default 1) exit successfully, with at most `parallelism` running at once. Which pod performed which unit of work is invisible to Kubernetes — coordination, if needed, is the application's problem (a work queue, a claim table).
 
-### Core Concepts
+This is the right mode for two shapes of work:
 
-**Completion**: A job is complete when the required number of pods have successfully terminated (exit code 0). The `completions` field specifies how many successful completions are needed.
+- **Single completion** (`completions: 1`) — migrations, backfills, one-shot scripts
+- **Worker-pool draining** — N identical workers pulling from an external queue until it is empty; here `completions` equals the worker count and each worker exits when the queue is drained
 
-**Parallelism**: The `parallelism` field specifies the maximum number of pods that can run simultaneously. For work queue patterns, this is typically less than completions.
+### Indexed: numbered partitions
 
-**Backoff Limit**: The `backoffLimit` field specifies how many times Kubernetes retries creating a pod before marking the job as failed. Each retry uses exponential backoff.
+`Indexed` mode gives every completion a stable identity: each pod receives an index from 0 to completions−1, exposed through the `batch.kubernetes.io/job-completion-index` annotation, the `JOB_COMPLETION_INDEX` environment variable, and the pod hostname. Each index must succeed exactly once for the Job to complete.
 
-**Active Deadline**: The `activeDeadlineSeconds` field sets an absolute deadline for the job. If the job runs longer, it's terminated and marked as failed.
+This turns the Job controller into a static work distributor: shard N of a table, file N of a manifest, partition N of a dataset. No queue infrastructure needed — the partition assignment IS the index. Indexed mode is also the foundation for the per-index failure controls and success policies below, none of which make sense when pods are interchangeable.
 
-**TTL After Finished**: The `ttlSecondsAfterFinished` field enables automatic cleanup of completed jobs after a specified duration.
+## Failure Handling, Layer by Layer
 
-### Job Completion Modes
+### Layer 1: restart_policy — inside the pod
 
-Kubernetes 1.21+ introduced completion modes:
+`restart_policy` decides what the kubelet does when a container exits non-zero. `Never` (this component's default) leaves the failed pod in place and lets the Job controller create a replacement — one pod per attempt, every failure inspectable with `kubectl logs`. `OnFailure` restarts the container in place, reusing the pod; cheaper, but the failed container's state is gone.
 
-1. **NonIndexed (default)**: All pods are interchangeable. The job completes when `.spec.completions` pods succeed.
+`Never` is the production default for a second reason: `pod_failure_policy` requires it, because in-place container restarts never surface as pod failures for policy rules to match.
 
-2. **Indexed**: Each pod gets a unique index (0 to completions-1) via the `JOB_COMPLETION_INDEX` environment variable. The job completes when each index has exactly one successful pod.
+### Layer 2: backoff_limit — the global retry budget
 
-Indexed mode is particularly useful for:
-- Processing partitioned datasets
-- Sharded database operations
-- Parallel processing with explicit coordination
+Failed pods are retried with exponential back-off (10s, 20s, 40s… capped at 6 minutes) until `backoff_limit` failures accumulate (Kubernetes defaults to 6). Then the whole Job is marked failed and its pods terminated.
 
-## Deployment Landscape
+One subtlety worth designing around: when `backoff_limit_per_index` is set, upstream stops counting failures globally and the plain `backoff_limit` becomes effectively unlimited unless set explicitly.
 
-### Manual Deployment Methods
+### Layer 3: backoff_limit_per_index — retries per partition
 
-**kubectl CLI**:
-```bash
-kubectl create job my-job --image=busybox -- echo "Hello"
-kubectl get jobs
-kubectl describe job my-job
-kubectl logs job/my-job
-kubectl delete job my-job
-```
+For Indexed Jobs, a global budget has a failure mode: one pathologically flaky partition can exhaust the budget and fail indexes that never got to run. `backoff_limit_per_index` gives every index its own budget, so each partition succeeds or fails on its own merits. `max_failed_indexes` then bounds the damage — the Job terminates once that many indexes have failed for good; unset, every index runs to its own outcome and the Job finishes with whatever mix results.
 
-**YAML Manifests**:
+### Layer 4: pod_failure_policy — classify before counting
+
+The retry budget treats all failures identically, but failures are not identical. A pod killed by a node drain says nothing about the workload; a pod that exits with "invalid configuration" will fail every retry. The pod failure policy inserts a classification step: ordered rules, first match wins, unmatched failures fall through to default counting.
+
+Each rule pairs one **action** with exactly one **trigger** (a container exit-code check or a pod-condition check, never both):
+
+- **`FailJob`** — terminate the whole Job immediately, ignoring the budget. For application-signaled unrecoverable errors: the workload exits with a contract code (say, 42) meaning "retrying cannot help"
+- **`Ignore`** — the failure does not count; a replacement pod is created. For infrastructure-caused failures
+- **`Count`** — explicit default handling; useful to terminate a rule chain
+- **`FailIndex`** — mark only this pod's index failed, without retrying it. Indexed mode only, requires `backoff_limit_per_index`
+
+### The DisruptionTarget pattern
+
+The canonical rule pair, and the reason the feature exists:
+
 ```yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: my-job
-spec:
-  template:
-    spec:
-      containers:
-      - name: main
-        image: busybox
-        command: ["echo", "Hello"]
-      restartPolicy: Never
-  backoffLimit: 4
+podFailurePolicy:
+  rules:
+    - action: FailJob
+      onExitCodes:
+        operator: In
+        values: [42]
+    - action: Ignore
+      onPodConditions:
+        - type: DisruptionTarget
 ```
 
-### Infrastructure-as-Code Tools
+Kubernetes stamps the `DisruptionTarget` condition on pods terminated by node drains, preemption, or taint eviction. Ignoring those failures makes batch work first-class on spot/preemptible nodes and autoscaled clusters: maintenance churns pods freely without ever burning the retry budget, while genuine application failures still count. Rule order matters — the most specific classification (the exit-code contract) goes first, because the first matching rule wins.
 
-**Terraform (kubernetes provider)**:
-```hcl
-resource "kubernetes_job" "example" {
-  metadata {
-    name = "my-job"
-  }
-  spec {
-    template {
-      spec {
-        container {
-          name    = "main"
-          image   = "busybox"
-          command = ["echo", "Hello"]
-        }
-        restart_policy = "Never"
-      }
-    }
-    backoff_limit = 4
-  }
-}
+Exit-code rules have two guardrails: `values` cannot contain 0 for the `In` operator (0 is success and is never considered), and `container_name` optionally scopes the check to one container.
+
+## Success Policies: Leader/Worker Topologies
+
+By default, an Indexed Job succeeds only when every index succeeds. `success_policy` relaxes that: the Job is declared succeeded as soon as **any** rule is satisfied, and lingering pods are terminated.
+
+Each rule sets `succeeded_indexes` (comma-separated integers or ranges, e.g. `"0"` or `"0-2,4"`), `succeeded_count` (minimum number of successes), or both — when combined, only successes within the listed indexes are counted.
+
+The motivating topology is leader/worker batch frameworks (MPI-style): index 0 is the driver whose exit code carries the verdict; the workers are its helpers. `succeeded_indexes: "0"` declares the Job done the moment the leader succeeds, instead of waiting for workers that may have nothing left to do. Quorum shapes (`succeeded_count: 5` of 10 replicated attempts) fall out of the same mechanism.
+
+## Deadlines, Suspension, and Cleanup
+
+- **`active_deadline_seconds`** is a whole-Job wall clock, counted from the Job's start. When it expires, all pods are killed and the Job fails regardless of remaining retries — it outranks every retry control. It is the standard guard against runaway batch work
+- **`suspend`** stops pod creation. Suspending a running Job deletes its active pods (the workload must tolerate that) and — easy to miss — resets the start time, and with it the `active_deadline_seconds` timer
+- **`ttl_seconds_after_finished`** deletes the Job and its pods after it finishes, success or failure. 0 deletes immediately; unset keeps the Job forever. The production balance is retention long enough for post-mortem log access (a day is common), because once the Job is deleted, `kubectl logs` has nothing to read
+
+## The Sidecar Caveat
+
+A Job pod completes only when **all** of its containers exit. A log shipper or proxy sidecar that runs an infinite loop keeps the pod Running after the app finishes — the Job never completes, the deadline eventually kills it, and the run is marked failed despite the work having succeeded.
+
+The component models sidecars as full containers (probes, mounts, security context, lifecycle hooks — anything the app container can express), and its spec documentation carries the warning explicitly: use termination-aware sidecars, or have the app signal them to shut down when its work is done. Init containers have no such caveat — they run to completion by definition, before the app starts, which makes them the safe place for setup work.
+
+## Deployment Methods Landscape
+
+### Level 0: kubectl
+
+```bash
+kubectl create job my-migration --image=ghcr.io/acme/migrate:v3 -- ./migrate.sh
 ```
 
-**Pulumi (Go)**:
-```go
-job, err := batchv1.NewJob(ctx, "my-job", &batchv1.JobArgs{
-    Spec: &batchv1.JobSpecArgs{
-        Template: &corev1.PodTemplateSpecArgs{
-            Spec: &corev1.PodSpecArgs{
-                Containers: corev1.ContainerArray{
-                    &corev1.ContainerArgs{
-                        Name:    pulumi.String("main"),
-                        Image:   pulumi.String("busybox"),
-                        Command: pulumi.StringArray{pulumi.String("echo"), pulumi.String("Hello")},
-                    },
-                },
-                RestartPolicy: pulumi.String("Never"),
-            },
-        },
-        BackoffLimit: pulumi.Int(4),
-    },
-})
-```
+Immediate, imperative, unrepeatable. Fine for experiments; nothing about the retry posture, deadline, or cleanup is expressed.
 
-### Specialized Tools
+### Level 1: Raw YAML
 
-**Helm Charts**: Many applications include job templates for migrations, setup tasks, or backups.
+The full surface is available, but validation happens only at the API server, and Jobs have unusually many cross-field rules: `pod_failure_policy` requires `restartPolicy: Never`, `backoff_limit_per_index` requires Indexed mode, exit-code lists cannot contain 0 with `In`, each policy rule takes exactly one trigger. Raw YAML discovers each of these at apply time, one round-trip per mistake.
 
-**Argo Workflows**: Extends Jobs into complex DAG-based workflows with dependencies.
+### Level 2/3: Terraform / Pulumi
 
-**Tekton**: CI/CD focused task runner built on Kubernetes primitives.
+Full IaC lifecycle with state, drift detection, and composition. The provider schemas are untyped where it matters, though: policy actions, operators, and completion modes are plain strings, and the cross-field rules above still surface only at apply.
 
-**Kueue**: Kubernetes-native job queueing system for batch workloads.
+### The Planton approach
 
-## Comparative Analysis
+The spec moves the API server's cross-field rules to validation time (CEL expressions on the schema), models the batch surface one-to-one with upstream naming, and inherits the shared workload core — so container, pod, scheduling, and hardening configuration is identical across every workload kind. Both Pulumi and Terraform modules consume the same validated spec with feature parity.
 
-| Aspect | kubectl/YAML | Terraform | Pulumi | Planton |
-|--------|--------------|-----------|--------|-----------------|
-| Learning Curve | Low | Medium | Medium-High | Low |
-| Type Safety | None | Limited (HCL) | Full (Go) | Full (Protobuf) |
-| Multi-Cluster | Manual | Via providers | Via providers | Built-in |
-| Secrets Management | External | Via providers | Via providers | Integrated |
-| State Management | None | Remote state | Remote state | Integrated |
-| Validation | kubectl dry-run | terraform validate | Compile-time | Protobuf + CEL |
-| Documentation | Manual | terraform-docs | Code comments | Auto-generated |
+## Production Best Practices
 
-## Planton's Approach
-
-### Design Philosophy
-
-Planton's KubernetesJob follows the 80/20 principle, exposing the configuration options that address the most common use cases while providing sensible defaults for advanced settings.
-
-### Key Design Decisions
-
-1. **Unified Container Model**: Uses the same container image, resources, and environment variable patterns as KubernetesDeployment and KubernetesCronJob for consistency.
-
-2. **Foreign Key References**: Environment variables can reference outputs from other Planton resources, enabling dynamic configuration.
-
-3. **Secret References**: Supports both direct secret values (for development) and Kubernetes Secret references (for production).
-
-4. **Volume Mounts**: Supports ConfigMaps, Secrets, PVCs, HostPaths, and EmptyDirs with a unified interface.
-
-5. **Sensible Defaults**:
-   - `parallelism: 1` - Sequential execution by default
-   - `completions: 1` - Single completion by default
-   - `backoffLimit: 6` - Standard Kubernetes default
-   - `restartPolicy: Never` - Job-level retries preferred over pod-level
-
-### Fields Included (80% Use Cases)
-
-| Field | Purpose |
-|-------|---------|
-| `namespace` | Target namespace with reference support |
-| `createNamespace` | Optionally create namespace |
-| `image` | Container image configuration |
-| `resources` | CPU and memory limits/requests |
-| `env` | Environment variables and secrets |
-| `parallelism` | Concurrent pod count |
-| `completions` | Required successful completions |
-| `backoffLimit` | Retry count before failure |
-| `activeDeadlineSeconds` | Maximum job duration |
-| `ttlSecondsAfterFinished` | Automatic cleanup timer |
-| `completionMode` | NonIndexed or Indexed |
-| `restartPolicy` | Never or OnFailure |
-| `command` / `args` | Container entry point override |
-| `configMaps` | Create ConfigMaps for the job |
-| `volumeMounts` | Mount various volume types |
-| `suspend` | Pause job creation |
-
-### Fields Excluded (Advanced/Rare)
-
-| Field | Reason for Exclusion |
-|-------|----------------------|
-| `selector` | Auto-generated, rarely customized |
-| `manualSelector` | Advanced use case |
-| `podFailurePolicy` | Complex, Kubernetes 1.26+ |
-| `successPolicy` | Complex, Kubernetes 1.30+ |
-| `backoffLimitPerIndex` | Indexed mode advanced config |
-| `maxFailedIndexes` | Indexed mode advanced config |
-| `podReplacementPolicy` | Advanced pod scheduling |
-| `managedBy` | External controller integration |
-
-## Implementation Architecture
-
-### Resource Creation Flow
-
-```
-User Manifest → Orchestrator → Stack Input → IaC Module → Kubernetes API
-                    ↓
-            Resolve References
-            Apply Defaults
-            Validate Schema
-```
-
-### Created Kubernetes Resources
-
-1. **Namespace** (optional): If `createNamespace: true`
-2. **ConfigMaps**: From `spec.configMaps`
-3. **Secret** (internal): For `env.secrets` with direct values
-4. **Image Pull Secret** (optional): If Docker credentials provided
-5. **ServiceAccount**: For pod identity
-6. **Job**: The main batch workload
-
-### Output Values
-
-| Output | Description |
-|--------|-------------|
-| `namespace` | Kubernetes namespace name |
-| `job_name` | Created job name |
-
-## Best Practices
-
-### Resource Management
-
-1. **Always Set Limits**: Jobs can consume significant resources; set CPU and memory limits
-2. **Set Active Deadline**: Prevent runaway jobs with `activeDeadlineSeconds`
-3. **Enable TTL Cleanup**: Use `ttlSecondsAfterFinished` to prevent job accumulation
-
-### Reliability
-
-1. **Configure Backoff**: Set appropriate `backoffLimit` for transient failures
-2. **Choose Restart Policy Carefully**:
-   - `Never`: Job controller handles retries (new pod each attempt)
-   - `OnFailure`: kubelet restarts container in same pod (preserves local state)
-3. **Use Indexed Mode**: For partitioned processing with failure isolation
-
-### Security
-
-1. **Use Secret References**: Avoid direct secret values in manifests
-2. **Limit Namespace Access**: Run jobs in dedicated namespaces
-3. **Use Service Accounts**: Configure appropriate RBAC permissions
-
-### Observability
-
-1. **Log Aggregation**: Ensure job logs are captured before pod cleanup
-2. **Set Meaningful Names**: Use descriptive job names for debugging
-3. **Monitor Job Metrics**: Track job success/failure rates
-
-## Comparison: Job vs CronJob
-
-| Aspect | Job | CronJob |
-|--------|-----|---------|
-| Trigger | Immediate on creation | Schedule-based |
-| Use Case | One-time tasks | Recurring tasks |
-| Cleanup | Manual or TTL | History limits |
-| Concurrency | N/A | Allow/Forbid/Replace |
-| Schedule | N/A | Cron expression |
-
-Choose **Job** when:
-- Task is triggered by an event (deployment, user action)
-- Exact timing isn't important
-- Task should run once
-
-Choose **CronJob** when:
-- Task needs to run on a schedule
-- Recurring execution is required
-- Time-based triggering is needed
+1. **Choose the completion mode deliberately**: external queue → NonIndexed worker pool; static partitions → Indexed. Retrofitting index awareness into a queue-draining design (or vice versa) is a rewrite
+2. **`restart_policy: Never` unless pod churn is a problem**: attempt-per-pod debuggability is worth more than pod reuse, and failure policies require it
+3. **Budget retries per index for partitioned work**: pair `backoff_limit_per_index` with `max_failed_indexes` so one bad shard neither sinks nor stalls the run
+4. **Define an exit-code contract**: reserve one code for "do not retry" and wire it to `FailJob`; always pair it with an `Ignore` on `DisruptionTarget` so infrastructure noise stays out of the budget
+5. **Set both a deadline and a TTL**: `active_deadline_seconds` bounds the run, `ttl_seconds_after_finished` bounds the residue
+6. **Keep sidecars terminating**: verify every sidecar exits when the app does — it is the one spec mistake that turns a succeeded workload into a failed Job
+7. **Compose identity**: reference a `KubernetesServiceAccount` from `pod.service_account` and grant permissions via `KubernetesRbac`; the Job creates neither
 
 ## Conclusion
 
-Planton's KubernetesJob component provides a streamlined, type-safe interface for deploying batch workloads to Kubernetes. By focusing on the 80/20 of configuration options while maintaining consistency with other Kubernetes workload components, it enables platform teams to standardize job deployments across their infrastructure.
-
-The integration with Planton's resource reference system allows jobs to dynamically reference configuration from other resources, while the dual IaC support (Pulumi and Terraform) ensures flexibility in deployment tooling preferences.
+The Job spec rewards understanding its layers: restart policy inside the pod, retry budgets above it, failure classification above that, and success policies at the top. Modeled fully and validated early, those layers make batch work on Kubernetes predictable — including on the churning, spot-priced clusters where batch work actually runs.
 
 ## References
 
 - [Kubernetes Jobs Documentation](https://kubernetes.io/docs/concepts/workloads/controllers/job/)
-- [Kubernetes Indexed Jobs](https://kubernetes.io/docs/tasks/job/indexed-parallel-processing-static/)
-- [Kubernetes TTL Controller](https://kubernetes.io/docs/concepts/workloads/controllers/ttlafterfinished/)
-- [Batch Processing Patterns](https://kubernetes.io/docs/concepts/workloads/controllers/job/#job-patterns)
+- [Indexed Jobs for Parallel Processing](https://kubernetes.io/docs/tasks/job/indexed-parallel-processing-static/)
+- [Pod Failure Policy](https://kubernetes.io/docs/concepts/workloads/controllers/job/#pod-failure-policy)
+- [Backoff Limit per Index](https://kubernetes.io/docs/concepts/workloads/controllers/job/#backoff-limit-per-index)
+- [Job Success Policy](https://kubernetes.io/docs/concepts/workloads/controllers/job/#success-policy)
+- [Automatic Cleanup for Finished Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/ttlafterfinished/)
+- [Job API Reference](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/job-v1/)

@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// PushSecret is the Schema for the PushSecrets API that enables pushing Kubernetes secrets to external secret providers.
 type PushSecret struct {
 	pulumi.CustomResourceState
 

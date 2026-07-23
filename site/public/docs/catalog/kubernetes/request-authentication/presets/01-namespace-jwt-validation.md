@@ -46,8 +46,9 @@ principal).
 | Placeholder | Description |
 |-------------|-------------|
 | `<namespace>` | Namespace whose workloads should validate JWTs (e.g. `finance`). |
-| `<issuer-url>` | The token issuer, matching the `iss` claim (e.g. `https://accounts.example.com`). |
-| `<jwks-url>` | The issuer's JWKS endpoint (e.g. `https://accounts.example.com/.well-known/jwks.json`). |
+
+The `issuer` and `jwks_uri` values are literal examples -- replace them with your own
+identity provider's issuer (matching the token's `iss` claim) and JWKS endpoint.
 
 To require a token (not just validate one when present), add an
 `AuthorizationPolicy` that demands `requestPrincipals`.

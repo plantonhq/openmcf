@@ -14,20 +14,19 @@ has no matching: connections on the listener's port are forwarded to the rule's
 backends. Use it to expose non-HTTP TCP services (databases, brokers, custom
 protocols) through a Gateway.
 
-> **Experimental channel.** TCPRoute is served as
-> `gateway.networking.k8s.io/v1alpha2` and requires the Gateway API experimental
-> CRDs (`KubernetesGatewayApiCrds` with `install_channel: experimental`).
+TCPRoute is a GA, standard-channel resource served as
+`gateway.networking.k8s.io/v1` (Gateway API v1.6.1); the default
+standard-channel CRD install includes it.
 
 ## What Gets Created
 
-- A namespaced `gateway.networking.k8s.io/v1alpha2` `TCPRoute` custom resource.
+- A namespaced `gateway.networking.k8s.io/v1` `TCPRoute` custom resource.
 - One or more rules (max 16), each forwarding to one or more weighted backend
   refs.
 
 ## Prerequisites
 
-- Gateway API experimental-channel CRDs installed (`KubernetesGatewayApiCrds`
-  with `install_channel: experimental`).
+- Gateway API standard-channel CRDs installed (`KubernetesGatewayApiCrds`).
 - A `Gateway` to attach to via `parentRefs` (`KubernetesGateway`) with a `TCP`
   listener.
 - The target namespace (`KubernetesNamespace`).
@@ -44,11 +43,13 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tcp
   rules:
     - backendRefs:
-        - name: postgres
+        - name:
+            value: postgres
           port: 5432
 ```
 
@@ -69,10 +70,9 @@ planton apply -f tcproute.yaml
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. |
-| `useDefaultGateways` | string | `All` or `None` -- experimental default-Gateway attachment. |
+| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. Each `name` is a reference (defaults to `KubernetesGateway`). |
 | `rules[].name` | string | Optional rule name. |
-| `rules[].backendRefs` | list | Weighted backends to forward to. |
+| `rules[].backendRefs` | list | Weighted backends; each `name` is a reference (defaults to `KubernetesService`). |
 
 ## Examples
 
@@ -83,11 +83,13 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tcp
   rules:
     - backendRefs:
-        - name: postgres
+        - name:
+            value: postgres
           port: 5432
 ```
 
@@ -98,14 +100,17 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tcp
   rules:
     - backendRefs:
-        - name: broker-stable
+        - name:
+            value: broker-stable
           port: 9092
           weight: 90
-        - name: broker-canary
+        - name:
+            value: broker-canary
           port: 9092
           weight: 10
 ```
@@ -121,6 +126,7 @@ spec:
 
 - [Kubernetes Gateway](kubernetesgateway)
 - [Kubernetes TLS Route](kubernetestlsroute)
+- [Kubernetes UDP Route](kubernetesudproute)
 - [Kubernetes Gateway Class](kubernetesgatewayclass)
 - [Kubernetes Gateway API CRDs](kubernetesgatewayapicrds)
 - [Kubernetes Namespace](kubernetesnamespace)

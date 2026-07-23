@@ -6,8 +6,8 @@ spec:
   namespace:
     value: <root-namespace>
   tracing:
-    - random_sampling_percentage: <sample-percentage>
+    - random_sampling_percentage: 10.0
       custom_tags:
         cluster:
           literal:
-            value: <tag-value>
+            value: prod-cluster

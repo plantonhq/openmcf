@@ -24,186 +24,306 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Private key algorithm.
-type CertificatePrivateKey_PrivateKeyAlgorithm int32
+// *
+// **KubernetesCertificatePrivateKeyAlgorithm** — the key algorithm.
+// ECDSA gives smaller, faster keys; RSA maximizes legacy compatibility;
+// Ed25519 is modern but unsupported by many CAs (Let's Encrypt rejects it).
+type KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm int32
 
 const (
-	CertificatePrivateKey_private_key_algorithm_unspecified CertificatePrivateKey_PrivateKeyAlgorithm = 0
-	CertificatePrivateKey_rsa                               CertificatePrivateKey_PrivateKeyAlgorithm = 1
-	CertificatePrivateKey_ecdsa                             CertificatePrivateKey_PrivateKeyAlgorithm = 2
-	CertificatePrivateKey_ed25519                           CertificatePrivateKey_PrivateKeyAlgorithm = 3
+	KubernetesCertificatePrivateKey_kubernetes_certificate_private_key_algorithm_unspecified KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm = 0
+	KubernetesCertificatePrivateKey_rsa                                                      KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm = 1
+	KubernetesCertificatePrivateKey_ecdsa                                                    KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm = 2
+	KubernetesCertificatePrivateKey_ed25519                                                  KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm = 3
 )
 
-// Enum value maps for CertificatePrivateKey_PrivateKeyAlgorithm.
+// Enum value maps for KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm.
 var (
-	CertificatePrivateKey_PrivateKeyAlgorithm_name = map[int32]string{
-		0: "private_key_algorithm_unspecified",
+	KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm_name = map[int32]string{
+		0: "kubernetes_certificate_private_key_algorithm_unspecified",
 		1: "rsa",
 		2: "ecdsa",
 		3: "ed25519",
 	}
-	CertificatePrivateKey_PrivateKeyAlgorithm_value = map[string]int32{
-		"private_key_algorithm_unspecified": 0,
-		"rsa":                               1,
-		"ecdsa":                             2,
-		"ed25519":                           3,
+	KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm_value = map[string]int32{
+		"kubernetes_certificate_private_key_algorithm_unspecified": 0,
+		"rsa":     1,
+		"ecdsa":   2,
+		"ed25519": 3,
 	}
 )
 
-func (x CertificatePrivateKey_PrivateKeyAlgorithm) Enum() *CertificatePrivateKey_PrivateKeyAlgorithm {
-	p := new(CertificatePrivateKey_PrivateKeyAlgorithm)
+func (x KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm) Enum() *KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm {
+	p := new(KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm)
 	*p = x
 	return p
 }
 
-func (x CertificatePrivateKey_PrivateKeyAlgorithm) String() string {
+func (x KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (CertificatePrivateKey_PrivateKeyAlgorithm) Descriptor() protoreflect.EnumDescriptor {
+func (KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_enumTypes[0].Descriptor()
 }
 
-func (CertificatePrivateKey_PrivateKeyAlgorithm) Type() protoreflect.EnumType {
+func (KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_enumTypes[0]
 }
 
-func (x CertificatePrivateKey_PrivateKeyAlgorithm) Number() protoreflect.EnumNumber {
+func (x KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use CertificatePrivateKey_PrivateKeyAlgorithm.Descriptor instead.
-func (CertificatePrivateKey_PrivateKeyAlgorithm) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{5, 0}
+// Deprecated: Use KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm.Descriptor instead.
+func (KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{7, 0}
 }
 
-// Private key encoding format.
-type CertificatePrivateKey_PrivateKeyEncoding int32
+// *
+// **KubernetesCertificatePrivateKeyEncoding** — how the key is serialized
+// into the Secret: PKCS#1 (traditional "RSA PRIVATE KEY", upstream
+// default) or PKCS#8 ("PRIVATE KEY", required by some consumers e.g.
+// Java, some Ingress controllers).
+type KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding int32
 
 const (
-	CertificatePrivateKey_private_key_encoding_unspecified CertificatePrivateKey_PrivateKeyEncoding = 0
-	CertificatePrivateKey_pkcs1                            CertificatePrivateKey_PrivateKeyEncoding = 1
-	CertificatePrivateKey_pkcs8                            CertificatePrivateKey_PrivateKeyEncoding = 2
+	KubernetesCertificatePrivateKey_kubernetes_certificate_private_key_encoding_unspecified KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding = 0
+	KubernetesCertificatePrivateKey_pkcs1                                                   KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding = 1
+	KubernetesCertificatePrivateKey_pkcs8                                                   KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding = 2
 )
 
-// Enum value maps for CertificatePrivateKey_PrivateKeyEncoding.
+// Enum value maps for KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding.
 var (
-	CertificatePrivateKey_PrivateKeyEncoding_name = map[int32]string{
-		0: "private_key_encoding_unspecified",
+	KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding_name = map[int32]string{
+		0: "kubernetes_certificate_private_key_encoding_unspecified",
 		1: "pkcs1",
 		2: "pkcs8",
 	}
-	CertificatePrivateKey_PrivateKeyEncoding_value = map[string]int32{
-		"private_key_encoding_unspecified": 0,
-		"pkcs1":                            1,
-		"pkcs8":                            2,
+	KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding_value = map[string]int32{
+		"kubernetes_certificate_private_key_encoding_unspecified": 0,
+		"pkcs1": 1,
+		"pkcs8": 2,
 	}
 )
 
-func (x CertificatePrivateKey_PrivateKeyEncoding) Enum() *CertificatePrivateKey_PrivateKeyEncoding {
-	p := new(CertificatePrivateKey_PrivateKeyEncoding)
+func (x KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding) Enum() *KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding {
+	p := new(KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding)
 	*p = x
 	return p
 }
 
-func (x CertificatePrivateKey_PrivateKeyEncoding) String() string {
+func (x KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (CertificatePrivateKey_PrivateKeyEncoding) Descriptor() protoreflect.EnumDescriptor {
+func (KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_enumTypes[1].Descriptor()
 }
 
-func (CertificatePrivateKey_PrivateKeyEncoding) Type() protoreflect.EnumType {
+func (KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_enumTypes[1]
 }
 
-func (x CertificatePrivateKey_PrivateKeyEncoding) Number() protoreflect.EnumNumber {
+func (x KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use CertificatePrivateKey_PrivateKeyEncoding.Descriptor instead.
-func (CertificatePrivateKey_PrivateKeyEncoding) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{5, 1}
+// Deprecated: Use KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding.Descriptor instead.
+func (KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{7, 1}
 }
 
-// Controls whether the private key is regenerated on renewal.
-type CertificatePrivateKey_PrivateKeyRotationPolicy int32
+// *
+// **KubernetesCertificatePrivateKeyRotationPolicy** — whether a NEW key is
+// generated at each renewal. "always" (upstream default since v1.18) is
+// the safe choice; "never" reuses the existing key (needed only for key-
+// pinning setups, at the cost of never rotating a possibly-leaked key).
+type KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy int32
 
 const (
-	CertificatePrivateKey_private_key_rotation_policy_unspecified CertificatePrivateKey_PrivateKeyRotationPolicy = 0
-	CertificatePrivateKey_always                                  CertificatePrivateKey_PrivateKeyRotationPolicy = 1
-	CertificatePrivateKey_never                                   CertificatePrivateKey_PrivateKeyRotationPolicy = 2
+	KubernetesCertificatePrivateKey_kubernetes_certificate_private_key_rotation_policy_unspecified KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy = 0
+	KubernetesCertificatePrivateKey_always                                                         KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy = 1
+	KubernetesCertificatePrivateKey_never                                                          KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy = 2
 )
 
-// Enum value maps for CertificatePrivateKey_PrivateKeyRotationPolicy.
+// Enum value maps for KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy.
 var (
-	CertificatePrivateKey_PrivateKeyRotationPolicy_name = map[int32]string{
-		0: "private_key_rotation_policy_unspecified",
+	KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy_name = map[int32]string{
+		0: "kubernetes_certificate_private_key_rotation_policy_unspecified",
 		1: "always",
 		2: "never",
 	}
-	CertificatePrivateKey_PrivateKeyRotationPolicy_value = map[string]int32{
-		"private_key_rotation_policy_unspecified": 0,
+	KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy_value = map[string]int32{
+		"kubernetes_certificate_private_key_rotation_policy_unspecified": 0,
 		"always": 1,
 		"never":  2,
 	}
 )
 
-func (x CertificatePrivateKey_PrivateKeyRotationPolicy) Enum() *CertificatePrivateKey_PrivateKeyRotationPolicy {
-	p := new(CertificatePrivateKey_PrivateKeyRotationPolicy)
+func (x KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy) Enum() *KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy {
+	p := new(KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy)
 	*p = x
 	return p
 }
 
-func (x CertificatePrivateKey_PrivateKeyRotationPolicy) String() string {
+func (x KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (CertificatePrivateKey_PrivateKeyRotationPolicy) Descriptor() protoreflect.EnumDescriptor {
+func (KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_enumTypes[2].Descriptor()
 }
 
-func (CertificatePrivateKey_PrivateKeyRotationPolicy) Type() protoreflect.EnumType {
+func (KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_enumTypes[2]
 }
 
-func (x CertificatePrivateKey_PrivateKeyRotationPolicy) Number() protoreflect.EnumNumber {
+func (x KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use CertificatePrivateKey_PrivateKeyRotationPolicy.Descriptor instead.
-func (CertificatePrivateKey_PrivateKeyRotationPolicy) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{5, 2}
+// Deprecated: Use KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy.Descriptor instead.
+func (KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{7, 2}
 }
 
-// KubernetesCertificateSpec defines configuration for a cert-manager Certificate
-// on any Kubernetes cluster. Each instance creates one Certificate resource that
-// requests a signed TLS certificate from a specified Issuer or ClusterIssuer.
+// *
+// **KubernetesCertificateSpec** requests one signed X.509 certificate from a
+// cert-manager issuer and keeps it renewed for as long as the resource
+// exists. The signed certificate, its private key, and the CA chain land in
+// a Kubernetes TLS Secret (`secret_name`) that consumers — Ingress TLS
+// blocks, Gateway listeners, workload volume mounts, CA issuers — reference
+// by name.
 //
-// The resulting TLS certificate and private key are stored in a Kubernetes Secret
-// named by secret_name. Consumers (Ingress, Gateway, CA Issuer) reference that
-// Secret directly.
+// The issuer decides WHO signs (Let's Encrypt via ACME, an internal CA, a
+// self-signed root, Vault); this resource decides WHAT is requested: the
+// names, lifetime, key parameters, usages, and output formats. Covers the
+// complete cert-manager.io/v1 Certificate surface.
+//
+// Requires cert-manager (KubernetesCertManager) on the cluster.
 type KubernetesCertificateSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Namespace where the Certificate resource will be created.
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// DNS Subject Alternative Names. At least one required.
-	DnsNames []string `protobuf:"bytes,3,rep,name=dns_names,json=dnsNames,proto3" json:"dns_names,omitempty"`
-	// Kubernetes Secret name where the signed certificate and private key will be stored.
-	SecretName string `protobuf:"bytes,4,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
-	// Issuer that will sign this certificate.
-	IssuerRef *CertificateIssuerRef `protobuf:"bytes,5,opt,name=issuer_ref,json=issuerRef,proto3" json:"issuer_ref,omitempty"`
-	// Certificate lifetime and renewal timing.
-	DurationConfig *CertificateDuration `protobuf:"bytes,6,opt,name=duration_config,json=durationConfig,proto3,oneof" json:"duration_config,omitempty"`
-	// Private key algorithm, size, encoding, and rotation.
-	PrivateKey *CertificatePrivateKey `protobuf:"bytes,7,opt,name=private_key,json=privateKey,proto3,oneof" json:"private_key,omitempty"`
-	// When true, the issued certificate is a CA certificate (adds cert-sign usage).
-	// Used for bootstrapping internal PKI: create a self-signed root CA cert, then
-	// use it as the signing key for a CA Issuer.
-	IsCa          bool `protobuf:"varint,8,opt,name=is_ca,json=isCa,proto3" json:"is_ca,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// *
+	// Namespace the Certificate (and its output Secret) is created in.
+	// A namespace-scoped Issuer must live in this same namespace; a
+	// ClusterIssuer serves any namespace. Accepts a literal namespace name or
+	// a reference to a KubernetesNamespace resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// Name of the Kubernetes Secret the signed certificate is written to
+	// (keys: tls.crt, tls.key, ca.crt). This is the handle every consumer
+	// references — exported as status.outputs.secret_name.
+	SecretName string `protobuf:"bytes,2,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// *
+	// The issuer that signs this certificate.
+	IssuerRef *KubernetesCertificateIssuerRef `protobuf:"bytes,3,opt,name=issuer_ref,json=issuerRef,proto3" json:"issuer_ref,omitempty"`
+	// *
+	// Requested DNS Subject Alternative Names (e.g. "api.example.com",
+	// "*.apps.example.com"). Wildcards require a DNS-01-capable ACME issuer or
+	// a private CA. At least one name field (dns_names, ip_addresses, uris,
+	// email_addresses, common_name, or literal_subject) must be set.
+	DnsNames []string `protobuf:"bytes,4,rep,name=dns_names,json=dnsNames,proto3" json:"dns_names,omitempty"`
+	// *
+	// Requested IP address SANs — for certificates presented on bare IPs
+	// (internal load balancers, node endpoints). Public ACME CAs generally
+	// refuse IP SANs; use with internal issuers.
+	IpAddresses []string `protobuf:"bytes,5,rep,name=ip_addresses,json=ipAddresses,proto3" json:"ip_addresses,omitempty"`
+	// *
+	// Requested URI SANs (e.g. SPIFFE IDs like
+	// "spiffe://cluster.local/ns/team-a/sa/api"). The mTLS workload-identity
+	// pattern with internal issuers.
+	Uris []string `protobuf:"bytes,6,rep,name=uris,proto3" json:"uris,omitempty"`
+	// *
+	// Requested email address SANs — for S/MIME client certificates.
+	EmailAddresses []string `protobuf:"bytes,7,rep,name=email_addresses,json=emailAddresses,proto3" json:"email_addresses,omitempty"`
+	// *
+	// Requested X.509 common name (CN). Modern TLS validation ignores CN in
+	// favor of SANs, and CNs are limited to 64 characters — set it only when a
+	// consumer requires it (legacy clients, LDAP, some private CAs).
+	CommonName string `protobuf:"bytes,8,opt,name=common_name,json=commonName,proto3" json:"common_name,omitempty"`
+	// *
+	// Requested subject attributes (organization, country, ...). Most public
+	// CAs (Let's Encrypt) strip these; they matter for internal PKI. Mutually
+	// exclusive with literal_subject.
+	Subject *KubernetesCertificateSubject `protobuf:"bytes,9,opt,name=subject,proto3" json:"subject,omitempty"`
+	// *
+	// The FULL subject as an LDAP RFC 4514 distinguished-name string (e.g.
+	// "CN=api,OU=platform,O=acme,C=US"). Preserves attribute ORDER — required
+	// for LDAP-authentication certificates where order is semantic. Mutually
+	// exclusive with subject and common_name (it embeds both).
+	LiteralSubject string `protobuf:"bytes,10,opt,name=literal_subject,json=literalSubject,proto3" json:"literal_subject,omitempty"`
+	// *
+	// OtherName SANs (e.g. Microsoft User Principal Names for smart-card /
+	// AD-joined client certificates).
+	OtherNames []*KubernetesCertificateOtherName `protobuf:"bytes,11,rep,name=other_names,json=otherNames,proto3" json:"other_names,omitempty"`
+	// *
+	// Requested certificate lifetime as a Go duration (e.g. "2160h" = 90
+	// days). The issuer may override (ACME CAs set their own policy; Let's
+	// Encrypt always issues 90 days). Default upstream: 90 days.
+	Duration *string `protobuf:"bytes,12,opt,name=duration,proto3,oneof" json:"duration,omitempty"`
+	// *
+	// Renew this long before expiry, as a Go duration (e.g. "360h" = 15 days).
+	// Mutually exclusive with renew_before_percentage. Default upstream:
+	// a third of the certificate lifetime.
+	RenewBefore string `protobuf:"bytes,13,opt,name=renew_before,json=renewBefore,proto3" json:"renew_before,omitempty"`
+	// *
+	// Renew when this percentage of the certificate's lifetime REMAINS (e.g.
+	// 25 renews a 60-minute certificate 45 minutes after issuance). Scales
+	// with issuer-decided lifetimes, unlike the absolute renew_before.
+	// Mutually exclusive with renew_before.
+	RenewBeforePercentage *int32 `protobuf:"varint,14,opt,name=renew_before_percentage,json=renewBeforePercentage,proto3,oneof" json:"renew_before_percentage,omitempty"`
+	// *
+	// Private key algorithm, size, encoding, and rotation policy.
+	PrivateKey *KubernetesCertificatePrivateKey `protobuf:"bytes,15,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
+	// *
+	// Requested key usages and extended key usages. Empty = upstream default
+	// ("digital signature" + "key encipherment"). Add "server auth" / "client
+	// auth" explicitly when an issuer requires exact usages (Vault, some
+	// private CAs); public ACME CAs typically override.
+	Usages []string `protobuf:"bytes,16,rep,name=usages,proto3" json:"usages,omitempty"`
+	// *
+	// When true, the encoded usages are included in the CertificateRequest
+	// sent to the issuer (some issuers require it, most ignore it).
+	EncodeUsagesInRequest bool `protobuf:"varint,17,opt,name=encode_usages_in_request,json=encodeUsagesInRequest,proto3" json:"encode_usages_in_request,omitempty"`
+	// *
+	// When true, request a CA certificate (adds the cert-sign usage and the CA
+	// basic constraint). THE internal-PKI bootstrap: a self_signed issuer +
+	// is_ca=true produces a root CA Secret, which a CA-backed issuer then
+	// signs leaf certificates with.
+	IsCa bool `protobuf:"varint,18,opt,name=is_ca,json=isCa,proto3" json:"is_ca,omitempty"`
+	// *
+	// Requested signature algorithm (e.g. "SHA256WithRSA", "ECDSAWithSHA384",
+	// "PureEd25519"). Empty = issuer default. Must match the private key
+	// algorithm family.
+	SignatureAlgorithm *string `protobuf:"bytes,19,opt,name=signature_algorithm,json=signatureAlgorithm,proto3,oneof" json:"signature_algorithm,omitempty"`
+	// *
+	// Java/PKCS#12 keystore outputs added to the Secret alongside the PEM
+	// data — for JVM and Windows consumers that cannot read PEM.
+	Keystores *KubernetesCertificateKeystores `protobuf:"bytes,20,opt,name=keystores,proto3" json:"keystores,omitempty"`
+	// *
+	// Additional encodings of the certificate added to the Secret:
+	// "der" (tls-combined.der... binary DER of the key) and "combined_pem"
+	// (tls-combined.pem: key + certificate concatenated — HAProxy-style
+	// consumers).
+	AdditionalOutputFormats []*KubernetesCertificateAdditionalOutputFormat `protobuf:"bytes,21,rep,name=additional_output_formats,json=additionalOutputFormats,proto3" json:"additional_output_formats,omitempty"`
+	// *
+	// X.509 name constraints stamped into CA certificates (is_ca=true) —
+	// restricts what names the CA is allowed to sign. Defense-in-depth for
+	// delegated internal CAs.
+	NameConstraints *KubernetesCertificateNameConstraints `protobuf:"bytes,22,opt,name=name_constraints,json=nameConstraints,proto3" json:"name_constraints,omitempty"`
+	// *
+	// Labels and annotations copied onto the output Secret — for consumers
+	// that discover certificates by label (e.g. reflector/replicator tooling,
+	// Gateway API implementations with Secret label selectors).
+	SecretTemplate *KubernetesCertificateSecretTemplate `protobuf:"bytes,23,opt,name=secret_template,json=secretTemplate,proto3" json:"secret_template,omitempty"`
+	// *
+	// How many issued-certificate revisions (CertificateRequest resources)
+	// cert-manager retains. Upstream default: 1. Raise it to keep an audit
+	// trail of recent issuances.
+	RevisionHistoryLimit *int32 `protobuf:"varint,24,opt,name=revision_history_limit,json=revisionHistoryLimit,proto3,oneof" json:"revision_history_limit,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *KubernetesCertificateSpec) Reset() {
@@ -243,13 +363,6 @@ func (x *KubernetesCertificateSpec) GetNamespace() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *KubernetesCertificateSpec) GetDnsNames() []string {
-	if x != nil {
-		return x.DnsNames
-	}
-	return nil
-}
-
 func (x *KubernetesCertificateSpec) GetSecretName() string {
 	if x != nil {
 		return x.SecretName
@@ -257,25 +370,109 @@ func (x *KubernetesCertificateSpec) GetSecretName() string {
 	return ""
 }
 
-func (x *KubernetesCertificateSpec) GetIssuerRef() *CertificateIssuerRef {
+func (x *KubernetesCertificateSpec) GetIssuerRef() *KubernetesCertificateIssuerRef {
 	if x != nil {
 		return x.IssuerRef
 	}
 	return nil
 }
 
-func (x *KubernetesCertificateSpec) GetDurationConfig() *CertificateDuration {
+func (x *KubernetesCertificateSpec) GetDnsNames() []string {
 	if x != nil {
-		return x.DurationConfig
+		return x.DnsNames
 	}
 	return nil
 }
 
-func (x *KubernetesCertificateSpec) GetPrivateKey() *CertificatePrivateKey {
+func (x *KubernetesCertificateSpec) GetIpAddresses() []string {
+	if x != nil {
+		return x.IpAddresses
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetUris() []string {
+	if x != nil {
+		return x.Uris
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetEmailAddresses() []string {
+	if x != nil {
+		return x.EmailAddresses
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetCommonName() string {
+	if x != nil {
+		return x.CommonName
+	}
+	return ""
+}
+
+func (x *KubernetesCertificateSpec) GetSubject() *KubernetesCertificateSubject {
+	if x != nil {
+		return x.Subject
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetLiteralSubject() string {
+	if x != nil {
+		return x.LiteralSubject
+	}
+	return ""
+}
+
+func (x *KubernetesCertificateSpec) GetOtherNames() []*KubernetesCertificateOtherName {
+	if x != nil {
+		return x.OtherNames
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetDuration() string {
+	if x != nil && x.Duration != nil {
+		return *x.Duration
+	}
+	return ""
+}
+
+func (x *KubernetesCertificateSpec) GetRenewBefore() string {
+	if x != nil {
+		return x.RenewBefore
+	}
+	return ""
+}
+
+func (x *KubernetesCertificateSpec) GetRenewBeforePercentage() int32 {
+	if x != nil && x.RenewBeforePercentage != nil {
+		return *x.RenewBeforePercentage
+	}
+	return 0
+}
+
+func (x *KubernetesCertificateSpec) GetPrivateKey() *KubernetesCertificatePrivateKey {
 	if x != nil {
 		return x.PrivateKey
 	}
 	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetUsages() []string {
+	if x != nil {
+		return x.Usages
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetEncodeUsagesInRequest() bool {
+	if x != nil {
+		return x.EncodeUsagesInRequest
+	}
+	return false
 }
 
 func (x *KubernetesCertificateSpec) GetIsCa() bool {
@@ -285,33 +482,78 @@ func (x *KubernetesCertificateSpec) GetIsCa() bool {
 	return false
 }
 
-// CertificateIssuerRef selects either a cluster-scoped or namespace-scoped issuer
-// to sign the certificate. Exactly one must be provided.
-type CertificateIssuerRef struct {
+func (x *KubernetesCertificateSpec) GetSignatureAlgorithm() string {
+	if x != nil && x.SignatureAlgorithm != nil {
+		return *x.SignatureAlgorithm
+	}
+	return ""
+}
+
+func (x *KubernetesCertificateSpec) GetKeystores() *KubernetesCertificateKeystores {
+	if x != nil {
+		return x.Keystores
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetAdditionalOutputFormats() []*KubernetesCertificateAdditionalOutputFormat {
+	if x != nil {
+		return x.AdditionalOutputFormats
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetNameConstraints() *KubernetesCertificateNameConstraints {
+	if x != nil {
+		return x.NameConstraints
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetSecretTemplate() *KubernetesCertificateSecretTemplate {
+	if x != nil {
+		return x.SecretTemplate
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSpec) GetRevisionHistoryLimit() int32 {
+	if x != nil && x.RevisionHistoryLimit != nil {
+		return *x.RevisionHistoryLimit
+	}
+	return 0
+}
+
+// *
+// Selects the issuer that signs the certificate: a Planton-managed
+// ClusterIssuer or Issuer (by reference, composable in infra charts), or an
+// external issuer kind installed by a third-party controller.
+type KubernetesCertificateIssuerRef struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to IssuerType:
 	//
-	//	*CertificateIssuerRef_ClusterIssuer
-	//	*CertificateIssuerRef_Issuer
-	IssuerType    isCertificateIssuerRef_IssuerType `protobuf_oneof:"issuer_type"`
+	//	*KubernetesCertificateIssuerRef_ClusterIssuer
+	//	*KubernetesCertificateIssuerRef_Issuer
+	//	*KubernetesCertificateIssuerRef_External
+	IssuerType    isKubernetesCertificateIssuerRef_IssuerType `protobuf_oneof:"issuer_type"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CertificateIssuerRef) Reset() {
-	*x = CertificateIssuerRef{}
+func (x *KubernetesCertificateIssuerRef) Reset() {
+	*x = KubernetesCertificateIssuerRef{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CertificateIssuerRef) String() string {
+func (x *KubernetesCertificateIssuerRef) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CertificateIssuerRef) ProtoMessage() {}
+func (*KubernetesCertificateIssuerRef) ProtoMessage() {}
 
-func (x *CertificateIssuerRef) ProtoReflect() protoreflect.Message {
+func (x *KubernetesCertificateIssuerRef) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -323,77 +565,94 @@ func (x *CertificateIssuerRef) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CertificateIssuerRef.ProtoReflect.Descriptor instead.
-func (*CertificateIssuerRef) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesCertificateIssuerRef.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateIssuerRef) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *CertificateIssuerRef) GetIssuerType() isCertificateIssuerRef_IssuerType {
+func (x *KubernetesCertificateIssuerRef) GetIssuerType() isKubernetesCertificateIssuerRef_IssuerType {
 	if x != nil {
 		return x.IssuerType
 	}
 	return nil
 }
 
-func (x *CertificateIssuerRef) GetClusterIssuer() *ClusterIssuerRef {
+func (x *KubernetesCertificateIssuerRef) GetClusterIssuer() *KubernetesCertificateClusterIssuerRef {
 	if x != nil {
-		if x, ok := x.IssuerType.(*CertificateIssuerRef_ClusterIssuer); ok {
+		if x, ok := x.IssuerType.(*KubernetesCertificateIssuerRef_ClusterIssuer); ok {
 			return x.ClusterIssuer
 		}
 	}
 	return nil
 }
 
-func (x *CertificateIssuerRef) GetIssuer() *NamespacedIssuerRef {
+func (x *KubernetesCertificateIssuerRef) GetIssuer() *KubernetesCertificateNamespacedIssuerRef {
 	if x != nil {
-		if x, ok := x.IssuerType.(*CertificateIssuerRef_Issuer); ok {
+		if x, ok := x.IssuerType.(*KubernetesCertificateIssuerRef_Issuer); ok {
 			return x.Issuer
 		}
 	}
 	return nil
 }
 
-type isCertificateIssuerRef_IssuerType interface {
-	isCertificateIssuerRef_IssuerType()
+func (x *KubernetesCertificateIssuerRef) GetExternal() *KubernetesCertificateExternalIssuerRef {
+	if x != nil {
+		if x, ok := x.IssuerType.(*KubernetesCertificateIssuerRef_External); ok {
+			return x.External
+		}
+	}
+	return nil
 }
 
-type CertificateIssuerRef_ClusterIssuer struct {
-	// ClusterIssuer reference (cluster-scoped, typically ACME / Let's Encrypt).
-	ClusterIssuer *ClusterIssuerRef `protobuf:"bytes,1,opt,name=cluster_issuer,json=clusterIssuer,proto3,oneof"`
+type isKubernetesCertificateIssuerRef_IssuerType interface {
+	isKubernetesCertificateIssuerRef_IssuerType()
 }
 
-type CertificateIssuerRef_Issuer struct {
-	// Issuer reference (namespace-scoped, typically internal CA or self-signed).
-	Issuer *NamespacedIssuerRef `protobuf:"bytes,2,opt,name=issuer,proto3,oneof"`
+type KubernetesCertificateIssuerRef_ClusterIssuer struct {
+	// Cluster-scoped ClusterIssuer, by name.
+	ClusterIssuer *KubernetesCertificateClusterIssuerRef `protobuf:"bytes,1,opt,name=cluster_issuer,json=clusterIssuer,proto3,oneof"`
 }
 
-func (*CertificateIssuerRef_ClusterIssuer) isCertificateIssuerRef_IssuerType() {}
+type KubernetesCertificateIssuerRef_Issuer struct {
+	// Namespace-scoped Issuer (must live in the certificate's namespace), by name.
+	Issuer *KubernetesCertificateNamespacedIssuerRef `protobuf:"bytes,2,opt,name=issuer,proto3,oneof"`
+}
 
-func (*CertificateIssuerRef_Issuer) isCertificateIssuerRef_IssuerType() {}
+type KubernetesCertificateIssuerRef_External struct {
+	// Third-party issuer kind (external issuer controller).
+	External *KubernetesCertificateExternalIssuerRef `protobuf:"bytes,3,opt,name=external,proto3,oneof"`
+}
 
-// ClusterIssuerRef references a cluster-scoped ClusterIssuer by name.
-type ClusterIssuerRef struct {
+func (*KubernetesCertificateIssuerRef_ClusterIssuer) isKubernetesCertificateIssuerRef_IssuerType() {}
+
+func (*KubernetesCertificateIssuerRef_Issuer) isKubernetesCertificateIssuerRef_IssuerType() {}
+
+func (*KubernetesCertificateIssuerRef_External) isKubernetesCertificateIssuerRef_IssuerType() {}
+
+// Reference to a cluster-scoped ClusterIssuer.
+type KubernetesCertificateClusterIssuerRef struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the ClusterIssuer resource.
+	// ClusterIssuer name. Accepts a literal name or a reference to a
+	// KubernetesClusterIssuer resource.
 	Name          *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ClusterIssuerRef) Reset() {
-	*x = ClusterIssuerRef{}
+func (x *KubernetesCertificateClusterIssuerRef) Reset() {
+	*x = KubernetesCertificateClusterIssuerRef{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ClusterIssuerRef) String() string {
+func (x *KubernetesCertificateClusterIssuerRef) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ClusterIssuerRef) ProtoMessage() {}
+func (*KubernetesCertificateClusterIssuerRef) ProtoMessage() {}
 
-func (x *ClusterIssuerRef) ProtoReflect() protoreflect.Message {
+func (x *KubernetesCertificateClusterIssuerRef) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -405,41 +664,42 @@ func (x *ClusterIssuerRef) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ClusterIssuerRef.ProtoReflect.Descriptor instead.
-func (*ClusterIssuerRef) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesCertificateClusterIssuerRef.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateClusterIssuerRef) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ClusterIssuerRef) GetName() *v1.StringValueOrRef {
+func (x *KubernetesCertificateClusterIssuerRef) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
 	return nil
 }
 
-// NamespacedIssuerRef references a namespace-scoped Issuer by name.
-type NamespacedIssuerRef struct {
+// Reference to a namespace-scoped Issuer.
+type KubernetesCertificateNamespacedIssuerRef struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the Issuer resource.
+	// Issuer name. Accepts a literal name or a reference to a
+	// KubernetesIssuer resource.
 	Name          *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *NamespacedIssuerRef) Reset() {
-	*x = NamespacedIssuerRef{}
+func (x *KubernetesCertificateNamespacedIssuerRef) Reset() {
+	*x = KubernetesCertificateNamespacedIssuerRef{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *NamespacedIssuerRef) String() string {
+func (x *KubernetesCertificateNamespacedIssuerRef) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*NamespacedIssuerRef) ProtoMessage() {}
+func (*KubernetesCertificateNamespacedIssuerRef) ProtoMessage() {}
 
-func (x *NamespacedIssuerRef) ProtoReflect() protoreflect.Message {
+func (x *KubernetesCertificateNamespacedIssuerRef) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -451,43 +711,46 @@ func (x *NamespacedIssuerRef) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use NamespacedIssuerRef.ProtoReflect.Descriptor instead.
-func (*NamespacedIssuerRef) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesCertificateNamespacedIssuerRef.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateNamespacedIssuerRef) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *NamespacedIssuerRef) GetName() *v1.StringValueOrRef {
+func (x *KubernetesCertificateNamespacedIssuerRef) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
 	return nil
 }
 
-// CertificateDuration configures the certificate lifetime and renewal window.
-type CertificateDuration struct {
+// Reference to a third-party issuer kind (e.g. awspca.cert-manager.io
+// AWSPCAClusterIssuer) installed by an external issuer controller.
+type KubernetesCertificateExternalIssuerRef struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Certificate lifetime (Go duration format, e.g., '2160h' = 90 days).
-	Duration *string `protobuf:"bytes,1,opt,name=duration,proto3,oneof" json:"duration,omitempty"`
-	// Renew this long before expiry (e.g., '360h' = 15 days).
-	RenewBefore   *string `protobuf:"bytes,2,opt,name=renew_before,json=renewBefore,proto3,oneof" json:"renew_before,omitempty"`
+	// API group of the external issuer kind (e.g. "awspca.cert-manager.io").
+	Group string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
+	// Kind of the external issuer (e.g. "AWSPCAClusterIssuer").
+	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	// Name of the external issuer resource.
+	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *CertificateDuration) Reset() {
-	*x = CertificateDuration{}
+func (x *KubernetesCertificateExternalIssuerRef) Reset() {
+	*x = KubernetesCertificateExternalIssuerRef{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CertificateDuration) String() string {
+func (x *KubernetesCertificateExternalIssuerRef) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CertificateDuration) ProtoMessage() {}
+func (*KubernetesCertificateExternalIssuerRef) ProtoMessage() {}
 
-func (x *CertificateDuration) ProtoReflect() protoreflect.Message {
+func (x *KubernetesCertificateExternalIssuerRef) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -499,52 +762,231 @@ func (x *CertificateDuration) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CertificateDuration.ProtoReflect.Descriptor instead.
-func (*CertificateDuration) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesCertificateExternalIssuerRef.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateExternalIssuerRef) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *CertificateDuration) GetDuration() string {
-	if x != nil && x.Duration != nil {
-		return *x.Duration
+func (x *KubernetesCertificateExternalIssuerRef) GetGroup() string {
+	if x != nil {
+		return x.Group
 	}
 	return ""
 }
 
-func (x *CertificateDuration) GetRenewBefore() string {
-	if x != nil && x.RenewBefore != nil {
-		return *x.RenewBefore
+func (x *KubernetesCertificateExternalIssuerRef) GetKind() string {
+	if x != nil {
+		return x.Kind
 	}
 	return ""
 }
 
-// CertificatePrivateKey configures the private key algorithm, size, encoding,
-// and rotation policy for the certificate.
-type CertificatePrivateKey struct {
-	state          protoimpl.MessageState                          `protogen:"open.v1"`
-	Algorithm      *CertificatePrivateKey_PrivateKeyAlgorithm      `protobuf:"varint,1,opt,name=algorithm,proto3,enum=dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey_PrivateKeyAlgorithm,oneof" json:"algorithm,omitempty"`
-	Size           *int32                                          `protobuf:"varint,2,opt,name=size,proto3,oneof" json:"size,omitempty"`
-	Encoding       *CertificatePrivateKey_PrivateKeyEncoding       `protobuf:"varint,3,opt,name=encoding,proto3,enum=dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey_PrivateKeyEncoding,oneof" json:"encoding,omitempty"`
-	RotationPolicy *CertificatePrivateKey_PrivateKeyRotationPolicy `protobuf:"varint,4,opt,name=rotation_policy,json=rotationPolicy,proto3,enum=dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey_PrivateKeyRotationPolicy,oneof" json:"rotation_policy,omitempty"`
+func (x *KubernetesCertificateExternalIssuerRef) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+// *
+// X.509 subject attributes. Every field is a repeated RDN per the x509 spec.
+type KubernetesCertificateSubject struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Organizations (O).
+	Organizations []string `protobuf:"bytes,1,rep,name=organizations,proto3" json:"organizations,omitempty"`
+	// Organizational units (OU).
+	OrganizationalUnits []string `protobuf:"bytes,2,rep,name=organizational_units,json=organizationalUnits,proto3" json:"organizational_units,omitempty"`
+	// Countries (C), two-letter codes.
+	Countries []string `protobuf:"bytes,3,rep,name=countries,proto3" json:"countries,omitempty"`
+	// State/province names (ST).
+	Provinces []string `protobuf:"bytes,4,rep,name=provinces,proto3" json:"provinces,omitempty"`
+	// Locality/city names (L).
+	Localities []string `protobuf:"bytes,5,rep,name=localities,proto3" json:"localities,omitempty"`
+	// Street addresses.
+	StreetAddresses []string `protobuf:"bytes,6,rep,name=street_addresses,json=streetAddresses,proto3" json:"street_addresses,omitempty"`
+	// Postal codes.
+	PostalCodes []string `protobuf:"bytes,7,rep,name=postal_codes,json=postalCodes,proto3" json:"postal_codes,omitempty"`
+	// Serial number RDN (NOT the certificate serial — the subject attribute).
+	SerialNumber  string `protobuf:"bytes,8,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertificateSubject) Reset() {
+	*x = KubernetesCertificateSubject{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertificateSubject) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertificateSubject) ProtoMessage() {}
+
+func (x *KubernetesCertificateSubject) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertificateSubject.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateSubject) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesCertificateSubject) GetOrganizations() []string {
+	if x != nil {
+		return x.Organizations
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSubject) GetOrganizationalUnits() []string {
+	if x != nil {
+		return x.OrganizationalUnits
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSubject) GetCountries() []string {
+	if x != nil {
+		return x.Countries
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSubject) GetProvinces() []string {
+	if x != nil {
+		return x.Provinces
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSubject) GetLocalities() []string {
+	if x != nil {
+		return x.Localities
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSubject) GetStreetAddresses() []string {
+	if x != nil {
+		return x.StreetAddresses
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSubject) GetPostalCodes() []string {
+	if x != nil {
+		return x.PostalCodes
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSubject) GetSerialNumber() string {
+	if x != nil {
+		return x.SerialNumber
+	}
+	return ""
+}
+
+// *
+// OtherName SAN: an OID-typed name (e.g. Microsoft UPN
+// oid 1.3.6.1.4.1.311.20.2.3 with a user@domain value).
+type KubernetesCertificateOtherName struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Object identifier in dotted form (e.g. "1.3.6.1.4.1.311.20.2.3").
+	Oid string `protobuf:"bytes,1,opt,name=oid,proto3" json:"oid,omitempty"`
+	// UTF-8 value for the name (e.g. "upn@domain.local").
+	Utf8Value     string `protobuf:"bytes,2,opt,name=utf8_value,json=utf8Value,proto3" json:"utf8_value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertificateOtherName) Reset() {
+	*x = KubernetesCertificateOtherName{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertificateOtherName) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertificateOtherName) ProtoMessage() {}
+
+func (x *KubernetesCertificateOtherName) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertificateOtherName.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateOtherName) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesCertificateOtherName) GetOid() string {
+	if x != nil {
+		return x.Oid
+	}
+	return ""
+}
+
+func (x *KubernetesCertificateOtherName) GetUtf8Value() string {
+	if x != nil {
+		return x.Utf8Value
+	}
+	return ""
+}
+
+// *
+// Private key parameters and rotation behavior.
+type KubernetesCertificatePrivateKey struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Key algorithm. Default upstream: RSA.
+	Algorithm *KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm `protobuf:"varint,1,opt,name=algorithm,proto3,enum=dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm,oneof" json:"algorithm,omitempty"`
+	// Key size: RSA 2048/3072/4096/8192 (default 2048); ECDSA 256/384/521
+	// (default 256). Ignored for Ed25519.
+	Size *int32 `protobuf:"varint,2,opt,name=size,proto3,oneof" json:"size,omitempty"`
+	// Serialization format in the Secret. Default upstream: PKCS#1.
+	Encoding *KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding `protobuf:"varint,3,opt,name=encoding,proto3,enum=dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding,oneof" json:"encoding,omitempty"`
+	// Key rotation at renewal. Default upstream (v1.18+): always.
+	RotationPolicy *KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy `protobuf:"varint,4,opt,name=rotation_policy,json=rotationPolicy,proto3,enum=dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy,oneof" json:"rotation_policy,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
-func (x *CertificatePrivateKey) Reset() {
-	*x = CertificatePrivateKey{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[5]
+func (x *KubernetesCertificatePrivateKey) Reset() {
+	*x = KubernetesCertificatePrivateKey{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CertificatePrivateKey) String() string {
+func (x *KubernetesCertificatePrivateKey) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CertificatePrivateKey) ProtoMessage() {}
+func (*KubernetesCertificatePrivateKey) ProtoMessage() {}
 
-func (x *CertificatePrivateKey) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[5]
+func (x *KubernetesCertificatePrivateKey) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -555,96 +997,615 @@ func (x *CertificatePrivateKey) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CertificatePrivateKey.ProtoReflect.Descriptor instead.
-func (*CertificatePrivateKey) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{5}
+// Deprecated: Use KubernetesCertificatePrivateKey.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificatePrivateKey) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *CertificatePrivateKey) GetAlgorithm() CertificatePrivateKey_PrivateKeyAlgorithm {
+func (x *KubernetesCertificatePrivateKey) GetAlgorithm() KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm {
 	if x != nil && x.Algorithm != nil {
 		return *x.Algorithm
 	}
-	return CertificatePrivateKey_private_key_algorithm_unspecified
+	return KubernetesCertificatePrivateKey_kubernetes_certificate_private_key_algorithm_unspecified
 }
 
-func (x *CertificatePrivateKey) GetSize() int32 {
+func (x *KubernetesCertificatePrivateKey) GetSize() int32 {
 	if x != nil && x.Size != nil {
 		return *x.Size
 	}
 	return 0
 }
 
-func (x *CertificatePrivateKey) GetEncoding() CertificatePrivateKey_PrivateKeyEncoding {
+func (x *KubernetesCertificatePrivateKey) GetEncoding() KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding {
 	if x != nil && x.Encoding != nil {
 		return *x.Encoding
 	}
-	return CertificatePrivateKey_private_key_encoding_unspecified
+	return KubernetesCertificatePrivateKey_kubernetes_certificate_private_key_encoding_unspecified
 }
 
-func (x *CertificatePrivateKey) GetRotationPolicy() CertificatePrivateKey_PrivateKeyRotationPolicy {
+func (x *KubernetesCertificatePrivateKey) GetRotationPolicy() KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy {
 	if x != nil && x.RotationPolicy != nil {
 		return *x.RotationPolicy
 	}
-	return CertificatePrivateKey_private_key_rotation_policy_unspecified
+	return KubernetesCertificatePrivateKey_kubernetes_certificate_private_key_rotation_policy_unspecified
+}
+
+// *
+// Keystore outputs added to the certificate Secret for JVM / Windows
+// consumers. The keystore password protects the container format, not the
+// key material itself — treat it as an access convention, sensitive
+// nonetheless.
+type KubernetesCertificateKeystores struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Java keystore (keystore.jks + truststore.jks entries in the Secret).
+	Jks *KubernetesCertificateJksKeystore `protobuf:"bytes,1,opt,name=jks,proto3" json:"jks,omitempty"`
+	// PKCS#12 keystore (keystore.p12 + truststore.p12 entries in the Secret).
+	Pkcs12        *KubernetesCertificatePkcs12Keystore `protobuf:"bytes,2,opt,name=pkcs12,proto3" json:"pkcs12,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertificateKeystores) Reset() {
+	*x = KubernetesCertificateKeystores{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertificateKeystores) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertificateKeystores) ProtoMessage() {}
+
+func (x *KubernetesCertificateKeystores) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertificateKeystores.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateKeystores) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *KubernetesCertificateKeystores) GetJks() *KubernetesCertificateJksKeystore {
+	if x != nil {
+		return x.Jks
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateKeystores) GetPkcs12() *KubernetesCertificatePkcs12Keystore {
+	if x != nil {
+		return x.Pkcs12
+	}
+	return nil
+}
+
+// JKS keystore output.
+type KubernetesCertificateJksKeystore struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Create the JKS entries.
+	Create bool `protobuf:"varint,1,opt,name=create,proto3" json:"create,omitempty"`
+	// Certificate alias inside the keystore. Upstream default: "certificate".
+	Alias *string `protobuf:"bytes,2,opt,name=alias,proto3,oneof" json:"alias,omitempty"`
+	// Password encrypting the keystore.
+	Password      string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertificateJksKeystore) Reset() {
+	*x = KubernetesCertificateJksKeystore{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertificateJksKeystore) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertificateJksKeystore) ProtoMessage() {}
+
+func (x *KubernetesCertificateJksKeystore) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertificateJksKeystore.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateJksKeystore) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *KubernetesCertificateJksKeystore) GetCreate() bool {
+	if x != nil {
+		return x.Create
+	}
+	return false
+}
+
+func (x *KubernetesCertificateJksKeystore) GetAlias() string {
+	if x != nil && x.Alias != nil {
+		return *x.Alias
+	}
+	return ""
+}
+
+func (x *KubernetesCertificateJksKeystore) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+// PKCS#12 keystore output.
+type KubernetesCertificatePkcs12Keystore struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Create the PKCS#12 entries.
+	Create bool `protobuf:"varint,1,opt,name=create,proto3" json:"create,omitempty"`
+	// Password encrypting the keystore.
+	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	// Encryption/MAC profile: "legacy_rc2" (upstream default — maximum
+	// compatibility, weak crypto), "legacy_des", or "modern2023" (AES/SHA256;
+	// requires consumers newer than ~2013).
+	Profile       *string `protobuf:"bytes,3,opt,name=profile,proto3,oneof" json:"profile,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertificatePkcs12Keystore) Reset() {
+	*x = KubernetesCertificatePkcs12Keystore{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertificatePkcs12Keystore) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertificatePkcs12Keystore) ProtoMessage() {}
+
+func (x *KubernetesCertificatePkcs12Keystore) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertificatePkcs12Keystore.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificatePkcs12Keystore) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *KubernetesCertificatePkcs12Keystore) GetCreate() bool {
+	if x != nil {
+		return x.Create
+	}
+	return false
+}
+
+func (x *KubernetesCertificatePkcs12Keystore) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *KubernetesCertificatePkcs12Keystore) GetProfile() string {
+	if x != nil && x.Profile != nil {
+		return *x.Profile
+	}
+	return ""
+}
+
+// *
+// One additional output format entry.
+type KubernetesCertificateAdditionalOutputFormat struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// "der" (adds key.der — binary DER private key) or "combined_pem" (adds
+	// tls-combined.pem — private key and certificate concatenated).
+	Type          string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertificateAdditionalOutputFormat) Reset() {
+	*x = KubernetesCertificateAdditionalOutputFormat{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertificateAdditionalOutputFormat) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertificateAdditionalOutputFormat) ProtoMessage() {}
+
+func (x *KubernetesCertificateAdditionalOutputFormat) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertificateAdditionalOutputFormat.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateAdditionalOutputFormat) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *KubernetesCertificateAdditionalOutputFormat) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+// *
+// X.509 name constraints for CA certificates: which names the CA may (or may
+// not) sign. Only meaningful with is_ca=true.
+type KubernetesCertificateNameConstraints struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Mark the extension critical: validators that do not understand name
+	// constraints must reject the chain (the strict, recommended posture).
+	Critical bool `protobuf:"varint,1,opt,name=critical,proto3" json:"critical,omitempty"`
+	// Names the CA is permitted to sign.
+	Permitted *KubernetesCertificateNameConstraintSet `protobuf:"bytes,2,opt,name=permitted,proto3" json:"permitted,omitempty"`
+	// Names the CA is forbidden to sign.
+	Excluded      *KubernetesCertificateNameConstraintSet `protobuf:"bytes,3,opt,name=excluded,proto3" json:"excluded,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertificateNameConstraints) Reset() {
+	*x = KubernetesCertificateNameConstraints{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertificateNameConstraints) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertificateNameConstraints) ProtoMessage() {}
+
+func (x *KubernetesCertificateNameConstraints) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertificateNameConstraints.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateNameConstraints) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *KubernetesCertificateNameConstraints) GetCritical() bool {
+	if x != nil {
+		return x.Critical
+	}
+	return false
+}
+
+func (x *KubernetesCertificateNameConstraints) GetPermitted() *KubernetesCertificateNameConstraintSet {
+	if x != nil {
+		return x.Permitted
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateNameConstraints) GetExcluded() *KubernetesCertificateNameConstraintSet {
+	if x != nil {
+		return x.Excluded
+	}
+	return nil
+}
+
+// One direction (permitted or excluded) of a name-constraints extension.
+type KubernetesCertificateNameConstraintSet struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// DNS domains (e.g. "internal.example.com" constrains all subdomains).
+	DnsDomains []string `protobuf:"bytes,1,rep,name=dns_domains,json=dnsDomains,proto3" json:"dns_domains,omitempty"`
+	// IP ranges in CIDR form.
+	IpRanges []string `protobuf:"bytes,2,rep,name=ip_ranges,json=ipRanges,proto3" json:"ip_ranges,omitempty"`
+	// Email addresses or domains.
+	EmailAddresses []string `protobuf:"bytes,3,rep,name=email_addresses,json=emailAddresses,proto3" json:"email_addresses,omitempty"`
+	// URI domains.
+	UriDomains    []string `protobuf:"bytes,4,rep,name=uri_domains,json=uriDomains,proto3" json:"uri_domains,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertificateNameConstraintSet) Reset() {
+	*x = KubernetesCertificateNameConstraintSet{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertificateNameConstraintSet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertificateNameConstraintSet) ProtoMessage() {}
+
+func (x *KubernetesCertificateNameConstraintSet) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertificateNameConstraintSet.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateNameConstraintSet) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *KubernetesCertificateNameConstraintSet) GetDnsDomains() []string {
+	if x != nil {
+		return x.DnsDomains
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateNameConstraintSet) GetIpRanges() []string {
+	if x != nil {
+		return x.IpRanges
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateNameConstraintSet) GetEmailAddresses() []string {
+	if x != nil {
+		return x.EmailAddresses
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateNameConstraintSet) GetUriDomains() []string {
+	if x != nil {
+		return x.UriDomains
+	}
+	return nil
+}
+
+// *
+// Labels and annotations copied onto the output Secret.
+type KubernetesCertificateSecretTemplate struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Labels for the Secret.
+	Labels map[string]string `protobuf:"bytes,1,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Annotations for the Secret.
+	Annotations   map[string]string `protobuf:"bytes,2,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertificateSecretTemplate) Reset() {
+	*x = KubernetesCertificateSecretTemplate{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertificateSecretTemplate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertificateSecretTemplate) ProtoMessage() {}
+
+func (x *KubernetesCertificateSecretTemplate) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertificateSecretTemplate.ProtoReflect.Descriptor instead.
+func (*KubernetesCertificateSecretTemplate) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *KubernetesCertificateSecretTemplate) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *KubernetesCertificateSecretTemplate) GetAnnotations() map[string]string {
+	if x != nil {
+		return x.Annotations
+	}
+	return nil
 }
 
 var File_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetescertificate/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertificate.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfb\x04\n" +
+	"Cdev/planton/provider/kubernetes/kubernetescertificate/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertificate.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xdc!\n" +
 	"\x19KubernetesCertificateSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12%\n" +
-	"\tdns_names\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\bdnsNames\x12'\n" +
-	"\vsecret_name\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"secretName\x12u\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12'\n" +
+	"\vsecret_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"secretName\x12\x7f\n" +
 	"\n" +
-	"issuer_ref\x18\x05 \x01(\v2N.dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRefB\x06\xbaH\x03\xc8\x01\x01R\tissuerRef\x12{\n" +
-	"\x0fduration_config\x18\x06 \x01(\v2M.dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateDurationH\x00R\x0edurationConfig\x88\x01\x01\x12u\n" +
-	"\vprivate_key\x18\a \x01(\v2O.dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKeyH\x01R\n" +
-	"privateKey\x88\x01\x01\x12\x13\n" +
-	"\x05is_ca\x18\b \x01(\bR\x04isCaB\x12\n" +
-	"\x10_duration_configB\x0e\n" +
-	"\f_private_key\"\xa5\x04\n" +
-	"\x14CertificateIssuerRef\x12s\n" +
-	"\x0ecluster_issuer\x18\x01 \x01(\v2J.dev.planton.provider.kubernetes.kubernetescertificate.v1.ClusterIssuerRefH\x00R\rclusterIssuer\x12g\n" +
-	"\x06issuer\x18\x02 \x01(\v2M.dev.planton.provider.kubernetes.kubernetescertificate.v1.NamespacedIssuerRefH\x00R\x06issuer:\x9f\x02\xbaH\x9b\x02\x1a\x98\x02\n" +
-	"\x17issuer_ref.one_required\x12\xce\x01An issuer reference is required -- choose 'cluster_issuer' for public TLS certificates via ACME (e.g., Let's Encrypt), or 'issuer' for namespace-scoped certificates from an internal CA or self-signed issuer\x1a,has(this.cluster_issuer) || has(this.issuer)B\r\n" +
-	"\vissuer_type\"\x8d\x01\n" +
-	"\x10ClusterIssuerRef\x12y\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd3\x06\x92\xd4a\"status.outputs.cluster_issuer_nameR\x04name\"\x88\x01\n" +
-	"\x13NamespacedIssuerRef\x12q\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x06\x92\xd4a\x1astatus.outputs.issuer_nameR\x04name\"\x91\x01\n" +
-	"\x13CertificateDuration\x12*\n" +
-	"\bduration\x18\x01 \x01(\tB\t\x8a\xa6\x1d\x052160hH\x00R\bduration\x88\x01\x01\x120\n" +
-	"\frenew_before\x18\x02 \x01(\tB\b\x8a\xa6\x1d\x04360hH\x01R\vrenewBefore\x88\x01\x01B\v\n" +
-	"\t_durationB\x0f\n" +
-	"\r_renew_before\"\xcb\x06\n" +
-	"\x15CertificatePrivateKey\x12\x8f\x01\n" +
-	"\talgorithm\x18\x01 \x01(\x0e2c.dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyAlgorithmB\a\x8a\xa6\x1d\x03rsaH\x00R\talgorithm\x88\x01\x01\x12!\n" +
-	"\x04size\x18\x02 \x01(\x05B\b\x8a\xa6\x1d\x042048H\x01R\x04size\x88\x01\x01\x12\x8e\x01\n" +
-	"\bencoding\x18\x03 \x01(\x0e2b.dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyEncodingB\t\x8a\xa6\x1d\x05pkcs1H\x02R\bencoding\x88\x01\x01\x12\xa2\x01\n" +
-	"\x0frotation_policy\x18\x04 \x01(\x0e2h.dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyRotationPolicyB\n" +
-	"\x8a\xa6\x1d\x06alwaysH\x03R\x0erotationPolicy\x88\x01\x01\"]\n" +
-	"\x13PrivateKeyAlgorithm\x12%\n" +
-	"!private_key_algorithm_unspecified\x10\x00\x12\a\n" +
+	"issuer_ref\x18\x03 \x01(\v2X.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateIssuerRefB\x06\xbaH\x03\xc8\x01\x01R\tissuerRef\x12\x1b\n" +
+	"\tdns_names\x18\x04 \x03(\tR\bdnsNames\x12!\n" +
+	"\fip_addresses\x18\x05 \x03(\tR\vipAddresses\x12\x12\n" +
+	"\x04uris\x18\x06 \x03(\tR\x04uris\x12'\n" +
+	"\x0femail_addresses\x18\a \x03(\tR\x0eemailAddresses\x12(\n" +
+	"\vcommon_name\x18\b \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
+	"commonName\x12p\n" +
+	"\asubject\x18\t \x01(\v2V.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSubjectR\asubject\x12'\n" +
+	"\x0fliteral_subject\x18\n" +
+	" \x01(\tR\x0eliteralSubject\x12y\n" +
+	"\vother_names\x18\v \x03(\v2X.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateOtherNameR\n" +
+	"otherNames\x12\xc0\x01\n" +
+	"\bduration\x18\f \x01(\tB\x9e\x01\xbaH\x91\x01\xba\x01\x8d\x01\n" +
+	"\x0fduration.format\x12?duration must be a Go duration string (e.g. '2160h', '720h30m')\x1a9this == '' || this.matches('^([0-9]+(h|m|s|ms|us|ns))+$')\x8a\xa6\x1d\x052160hH\x00R\bduration\x88\x01\x01\x12\xb5\x01\n" +
+	"\frenew_before\x18\r \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x13renew_before.format\x127renew_before must be a Go duration string (e.g. '360h')\x1a9this == '' || this.matches('^([0-9]+(h|m|s|ms|us|ns))+$')R\vrenewBefore\x12F\n" +
+	"\x17renew_before_percentage\x18\x0e \x01(\x05B\t\xbaH\x06\x1a\x04\x18c(\x01H\x01R\x15renewBeforePercentage\x88\x01\x01\x12z\n" +
+	"\vprivate_key\x18\x0f \x01(\v2Y.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKeyR\n" +
+	"privateKey\x12\xa2\a\n" +
+	"\x06usages\x18\x10 \x03(\tB\x89\a\xbaH\x85\a\x92\x01\x81\a\"\xfe\x06\xba\x01\xfa\x06\n" +
+	"\x11usages.vocabulary\x12\xe8\x03Each usage must be one of cert-manager's x509 usage names, e.g. 'digital signature', 'key encipherment', 'server auth', 'client auth', 'cert sign', 'any' (full list: signing, digital signature, content commitment, key encipherment, key agreement, data encipherment, cert sign, crl sign, encipher only, decipher only, any, server auth, client auth, code signing, email protection, s/mime, ipsec end system, ipsec tunnel, ipsec user, timestamping, ocsp signing, microsoft sgc, netscape sgc)\x1a\xf9\x02this in ['signing', 'digital signature', 'content commitment', 'key encipherment', 'key agreement', 'data encipherment', 'cert sign', 'crl sign', 'encipher only', 'decipher only', 'any', 'server auth', 'client auth', 'code signing', 'email protection', 's/mime', 'ipsec end system', 'ipsec tunnel', 'ipsec user', 'timestamping', 'ocsp signing', 'microsoft sgc', 'netscape sgc']R\x06usages\x127\n" +
+	"\x18encode_usages_in_request\x18\x11 \x01(\bR\x15encodeUsagesInRequest\x12\x13\n" +
+	"\x05is_ca\x18\x12 \x01(\bR\x04isCa\x12\x84\x03\n" +
+	"\x13signature_algorithm\x18\x13 \x01(\tB\xcd\x02\xbaH\xc9\x02\xba\x01\xc5\x02\n" +
+	"\x1esignature_algorithm.vocabulary\x12\x8e\x01signature_algorithm must be one of SHA256WithRSA, SHA384WithRSA, SHA512WithRSA, ECDSAWithSHA256, ECDSAWithSHA384, ECDSAWithSHA512, PureEd25519\x1a\x91\x01this == '' || this in ['SHA256WithRSA', 'SHA384WithRSA', 'SHA512WithRSA', 'ECDSAWithSHA256', 'ECDSAWithSHA384', 'ECDSAWithSHA512', 'PureEd25519']H\x02R\x12signatureAlgorithm\x88\x01\x01\x12v\n" +
+	"\tkeystores\x18\x14 \x01(\v2X.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateKeystoresR\tkeystores\x12\xa1\x01\n" +
+	"\x19additional_output_formats\x18\x15 \x03(\v2e.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateAdditionalOutputFormatR\x17additionalOutputFormats\x12\x89\x01\n" +
+	"\x10name_constraints\x18\x16 \x01(\v2^.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNameConstraintsR\x0fnameConstraints\x12\x86\x01\n" +
+	"\x0fsecret_template\x18\x17 \x01(\v2].dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplateR\x0esecretTemplate\x12B\n" +
+	"\x16revision_history_limit\x18\x18 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x03R\x14revisionHistoryLimit\x88\x01\x01:\xe1\x06\xbaH\xdd\x06\x1a\xe9\x02\n" +
+	"\x13spec.names_required\x12\x88\x01At least one name must be requested — set dns_names, ip_addresses, uris, email_addresses, common_name, literal_subject, or other_names\x1a\xc6\x01size(this.dns_names) > 0 || size(this.ip_addresses) > 0 || size(this.uris) > 0 || size(this.email_addresses) > 0 || this.common_name != '' || this.literal_subject != '' || size(this.other_names) > 0\x1a\xff\x01\n" +
+	"\x1espec.literal_subject_exclusive\x12\x8e\x01literal_subject embeds the full distinguished name (including CN and subject attributes) — it cannot be combined with subject or common_name\x1aLthis.literal_subject == '' || (!has(this.subject) && this.common_name == '')\x1a\xec\x01\n" +
+	"\x1bspec.renew_before_exclusive\x12\x8b\x01renew_before (absolute duration) and renew_before_percentage (relative) are two ways to express the same renewal window — set at most one\x1a?!(this.renew_before != '' && has(this.renew_before_percentage))B\v\n" +
+	"\t_durationB\x1a\n" +
+	"\x18_renew_before_percentageB\x16\n" +
+	"\x14_signature_algorithmB\x19\n" +
+	"\x17_revision_history_limit\"\x9e\x06\n" +
+	"\x1eKubernetesCertificateIssuerRef\x12\x88\x01\n" +
+	"\x0ecluster_issuer\x18\x01 \x01(\v2_.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateClusterIssuerRefH\x00R\rclusterIssuer\x12|\n" +
+	"\x06issuer\x18\x02 \x01(\v2b.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNamespacedIssuerRefH\x00R\x06issuer\x12~\n" +
+	"\bexternal\x18\x03 \x01(\v2`.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateExternalIssuerRefH\x00R\bexternal:\xe3\x02\xbaH\xdf\x02\x1a\xdc\x02\n" +
+	"\x17issuer_ref.one_required\x12\xe5\x01An issuer reference is required — choose 'cluster_issuer' (cluster-scoped, serves any namespace), 'issuer' (namespace-scoped, same namespace as the certificate), or 'external' for a third-party issuer kind (e.g. AWS Private CA)\x1aY[has(this.cluster_issuer), has(this.issuer), has(this.external)].filter(x, x).size() == 1B\r\n" +
+	"\vissuer_type\"\xa2\x01\n" +
+	"%KubernetesCertificateClusterIssuerRef\x12y\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xbf\x06\x92\xd4a\"status.outputs.cluster_issuer_nameR\x04name\"\x9d\x01\n" +
+	"(KubernetesCertificateNamespacedIssuerRef\x12q\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x06\x92\xd4a\x1astatus.outputs.issuer_nameR\x04name\"~\n" +
+	"&KubernetesCertificateExternalIssuerRef\x12\x1c\n" +
+	"\x05group\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05group\x12\x1a\n" +
+	"\x04kind\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04kind\x12\x1a\n" +
+	"\x04name\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\"\xc6\x02\n" +
+	"\x1cKubernetesCertificateSubject\x12$\n" +
+	"\rorganizations\x18\x01 \x03(\tR\rorganizations\x121\n" +
+	"\x14organizational_units\x18\x02 \x03(\tR\x13organizationalUnits\x12\x1c\n" +
+	"\tcountries\x18\x03 \x03(\tR\tcountries\x12\x1c\n" +
+	"\tprovinces\x18\x04 \x03(\tR\tprovinces\x12\x1e\n" +
+	"\n" +
+	"localities\x18\x05 \x03(\tR\n" +
+	"localities\x12)\n" +
+	"\x10street_addresses\x18\x06 \x03(\tR\x0fstreetAddresses\x12!\n" +
+	"\fpostal_codes\x18\a \x03(\tR\vpostalCodes\x12#\n" +
+	"\rserial_number\x18\b \x01(\tR\fserialNumber\"a\n" +
+	"\x1eKubernetesCertificateOtherName\x12\x18\n" +
+	"\x03oid\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03oid\x12%\n" +
+	"\n" +
+	"utf8_value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tutf8Value\"\xff\v\n" +
+	"\x1fKubernetesCertificatePrivateKey\x12\xaf\x01\n" +
+	"\talgorithm\x18\x01 \x01(\x0e2\x82\x01.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.KubernetesCertificatePrivateKeyAlgorithmB\a\x8a\xa6\x1d\x03rsaH\x00R\talgorithm\x88\x01\x01\x12\xb1\x01\n" +
+	"\x04size\x18\x02 \x01(\x05B\x97\x01\xbaH\x93\x01\xba\x01\x8f\x01\n" +
+	"\x10private_key.size\x12Jsize must be 2048, 3072, 4096, or 8192 for RSA; 256, 384, or 521 for ECDSA\x1a/this in [256, 384, 521, 2048, 3072, 4096, 8192]H\x01R\x04size\x88\x01\x01\x12\xae\x01\n" +
+	"\bencoding\x18\x03 \x01(\x0e2\x81\x01.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.KubernetesCertificatePrivateKeyEncodingB\t\x8a\xa6\x1d\x05pkcs1H\x02R\bencoding\x88\x01\x01\x12\xc2\x01\n" +
+	"\x0frotation_policy\x18\x04 \x01(\x0e2\x87\x01.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.KubernetesCertificatePrivateKeyRotationPolicyB\n" +
+	"\x8a\xa6\x1d\x06alwaysH\x03R\x0erotationPolicy\x88\x01\x01\"\x89\x01\n" +
+	"(KubernetesCertificatePrivateKeyAlgorithm\x12<\n" +
+	"8kubernetes_certificate_private_key_algorithm_unspecified\x10\x00\x12\a\n" +
 	"\x03rsa\x10\x01\x12\t\n" +
 	"\x05ecdsa\x10\x02\x12\v\n" +
-	"\aed25519\x10\x03\"P\n" +
-	"\x12PrivateKeyEncoding\x12$\n" +
-	" private_key_encoding_unspecified\x10\x00\x12\t\n" +
+	"\aed25519\x10\x03\"|\n" +
+	"'KubernetesCertificatePrivateKeyEncoding\x12;\n" +
+	"7kubernetes_certificate_private_key_encoding_unspecified\x10\x00\x12\t\n" +
 	"\x05pkcs1\x10\x01\x12\t\n" +
-	"\x05pkcs8\x10\x02\"^\n" +
-	"\x18PrivateKeyRotationPolicy\x12+\n" +
-	"'private_key_rotation_policy_unspecified\x10\x00\x12\n" +
+	"\x05pkcs8\x10\x02\"\x8a\x01\n" +
+	"-KubernetesCertificatePrivateKeyRotationPolicy\x12B\n" +
+	">kubernetes_certificate_private_key_rotation_policy_unspecified\x10\x00\x12\n" +
 	"\n" +
 	"\x06always\x10\x01\x12\t\n" +
-	"\x05never\x10\x02B\f\n" +
+	"\x05never\x10\x02:\xb0\x02\xbaH\xac\x02\x1a\xa9\x02\n" +
+	"\"private_key.size_matches_algorithm\x12qKey size must match the algorithm family — RSA: 2048/3072/4096/8192, ECDSA: 256/384/521 (Ed25519 takes no size)\x1a\x8f\x01!has(this.size) || (this.algorithm == 2 ? this.size in [256, 384, 521] : (this.algorithm == 3 ? false : this.size in [2048, 3072, 4096, 8192]))B\f\n" +
 	"\n" +
 	"_algorithmB\a\n" +
 	"\x05_sizeB\v\n" +
 	"\t_encodingB\x12\n" +
-	"\x10_rotation_policyB\xc4\x03\n" +
+	"\x10_rotation_policy\"\x85\x02\n" +
+	"\x1eKubernetesCertificateKeystores\x12l\n" +
+	"\x03jks\x18\x01 \x01(\v2Z.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateJksKeystoreR\x03jks\x12u\n" +
+	"\x06pkcs12\x18\x02 \x01(\v2].dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePkcs12KeystoreR\x06pkcs12\"\x98\x01\n" +
+	" KubernetesCertificateJksKeystore\x12\x16\n" +
+	"\x06create\x18\x01 \x01(\bR\x06create\x12*\n" +
+	"\x05alias\x18\x02 \x01(\tB\x0f\x8a\xa6\x1d\vcertificateH\x00R\x05alias\x88\x01\x01\x12&\n" +
+	"\bpassword\x18\x03 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bpasswordB\b\n" +
+	"\x06_alias\"\xa9\x02\n" +
+	"#KubernetesCertificatePkcs12Keystore\x12\x16\n" +
+	"\x06create\x18\x01 \x01(\bR\x06create\x12&\n" +
+	"\bpassword\x18\x02 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bpassword\x12\xb5\x01\n" +
+	"\aprofile\x18\x03 \x01(\tB\x95\x01\xbaH\x91\x01\xba\x01\x8d\x01\n" +
+	"\x0epkcs12.profile\x129profile must be one of legacy_rc2, legacy_des, modern2023\x1a@this == '' || this in ['legacy_rc2', 'legacy_des', 'modern2023']H\x00R\aprofile\x88\x01\x01B\n" +
+	"\n" +
+	"\b_profile\"\xa7\x01\n" +
+	"+KubernetesCertificateAdditionalOutputFormat\x12x\n" +
+	"\x04type\x18\x01 \x01(\tBd\xbaHa\xba\x01[\n" +
+	"\x12output_format.type\x12$type must be 'der' or 'combined_pem'\x1a\x1fthis in ['der', 'combined_pem']\xc8\x01\x01R\x04type\"\xc0\x02\n" +
+	"$KubernetesCertificateNameConstraints\x12\x1a\n" +
+	"\bcritical\x18\x01 \x01(\bR\bcritical\x12~\n" +
+	"\tpermitted\x18\x02 \x01(\v2`.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNameConstraintSetR\tpermitted\x12|\n" +
+	"\bexcluded\x18\x03 \x01(\v2`.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNameConstraintSetR\bexcluded\"\xb0\x01\n" +
+	"&KubernetesCertificateNameConstraintSet\x12\x1f\n" +
+	"\vdns_domains\x18\x01 \x03(\tR\n" +
+	"dnsDomains\x12\x1b\n" +
+	"\tip_ranges\x18\x02 \x03(\tR\bipRanges\x12'\n" +
+	"\x0femail_addresses\x18\x03 \x03(\tR\x0eemailAddresses\x12\x1f\n" +
+	"\vuri_domains\x18\x04 \x03(\tR\n" +
+	"uriDomains\"\xb7\x03\n" +
+	"#KubernetesCertificateSecretTemplate\x12\x81\x01\n" +
+	"\x06labels\x18\x01 \x03(\v2i.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplate.LabelsEntryR\x06labels\x12\x90\x01\n" +
+	"\vannotations\x18\x02 \x03(\v2n.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplate.AnnotationsEntryR\vannotations\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
+	"\x10AnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xc4\x03\n" +
 	"<com.dev.planton.provider.kubernetes.kubernetescertificate.v1B\tSpecProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescertificate/v1;kubernetescertificatev1\xa2\x02\x05DPPKK\xaa\x028Dev.Planton.Provider.Kubernetes.Kubernetescertificate.V1\xca\x028Dev\\Planton\\Provider\\Kubernetes\\Kubernetescertificate\\V1\xe2\x02DDev\\Planton\\Provider\\Kubernetes\\Kubernetescertificate\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Kubernetes::Kubernetescertificate::V1b\x06proto3"
 
 var (
@@ -660,36 +1621,59 @@ func file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_ra
 }
 
 var file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_goTypes = []any{
-	(CertificatePrivateKey_PrivateKeyAlgorithm)(0),      // 0: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyAlgorithm
-	(CertificatePrivateKey_PrivateKeyEncoding)(0),       // 1: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyEncoding
-	(CertificatePrivateKey_PrivateKeyRotationPolicy)(0), // 2: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyRotationPolicy
-	(*KubernetesCertificateSpec)(nil),                   // 3: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec
-	(*CertificateIssuerRef)(nil),                        // 4: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRef
-	(*ClusterIssuerRef)(nil),                            // 5: dev.planton.provider.kubernetes.kubernetescertificate.v1.ClusterIssuerRef
-	(*NamespacedIssuerRef)(nil),                         // 6: dev.planton.provider.kubernetes.kubernetescertificate.v1.NamespacedIssuerRef
-	(*CertificateDuration)(nil),                         // 7: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateDuration
-	(*CertificatePrivateKey)(nil),                       // 8: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey
-	(*v1.StringValueOrRef)(nil),                         // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyAlgorithm)(0),      // 0: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.KubernetesCertificatePrivateKeyAlgorithm
+	(KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyEncoding)(0),       // 1: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.KubernetesCertificatePrivateKeyEncoding
+	(KubernetesCertificatePrivateKey_KubernetesCertificatePrivateKeyRotationPolicy)(0), // 2: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.KubernetesCertificatePrivateKeyRotationPolicy
+	(*KubernetesCertificateSpec)(nil),                                                  // 3: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec
+	(*KubernetesCertificateIssuerRef)(nil),                                             // 4: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateIssuerRef
+	(*KubernetesCertificateClusterIssuerRef)(nil),                                      // 5: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateClusterIssuerRef
+	(*KubernetesCertificateNamespacedIssuerRef)(nil),                                   // 6: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNamespacedIssuerRef
+	(*KubernetesCertificateExternalIssuerRef)(nil),                                     // 7: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateExternalIssuerRef
+	(*KubernetesCertificateSubject)(nil),                                               // 8: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSubject
+	(*KubernetesCertificateOtherName)(nil),                                             // 9: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateOtherName
+	(*KubernetesCertificatePrivateKey)(nil),                                            // 10: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey
+	(*KubernetesCertificateKeystores)(nil),                                             // 11: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateKeystores
+	(*KubernetesCertificateJksKeystore)(nil),                                           // 12: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateJksKeystore
+	(*KubernetesCertificatePkcs12Keystore)(nil),                                        // 13: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePkcs12Keystore
+	(*KubernetesCertificateAdditionalOutputFormat)(nil),                                // 14: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateAdditionalOutputFormat
+	(*KubernetesCertificateNameConstraints)(nil),                                       // 15: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNameConstraints
+	(*KubernetesCertificateNameConstraintSet)(nil),                                     // 16: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNameConstraintSet
+	(*KubernetesCertificateSecretTemplate)(nil),                                        // 17: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplate
+	nil,                         // 18: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplate.LabelsEntry
+	nil,                         // 19: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplate.AnnotationsEntry
+	(*v1.StringValueOrRef)(nil), // 20: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_depIdxs = []int32{
-	9,  // 0: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 1: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.issuer_ref:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRef
-	7,  // 2: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.duration_config:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateDuration
-	8,  // 3: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.private_key:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey
-	5,  // 4: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRef.cluster_issuer:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.ClusterIssuerRef
-	6,  // 5: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificateIssuerRef.issuer:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.NamespacedIssuerRef
-	9,  // 6: dev.planton.provider.kubernetes.kubernetescertificate.v1.ClusterIssuerRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9,  // 7: dev.planton.provider.kubernetes.kubernetescertificate.v1.NamespacedIssuerRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 8: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.algorithm:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyAlgorithm
-	1,  // 9: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.encoding:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyEncoding
-	2,  // 10: dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.rotation_policy:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.CertificatePrivateKey.PrivateKeyRotationPolicy
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	20, // 0: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 1: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.issuer_ref:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateIssuerRef
+	8,  // 2: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.subject:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSubject
+	9,  // 3: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.other_names:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateOtherName
+	10, // 4: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.private_key:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey
+	11, // 5: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.keystores:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateKeystores
+	14, // 6: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.additional_output_formats:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateAdditionalOutputFormat
+	15, // 7: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.name_constraints:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNameConstraints
+	17, // 8: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.secret_template:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplate
+	5,  // 9: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateIssuerRef.cluster_issuer:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateClusterIssuerRef
+	6,  // 10: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateIssuerRef.issuer:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNamespacedIssuerRef
+	7,  // 11: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateIssuerRef.external:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateExternalIssuerRef
+	20, // 12: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateClusterIssuerRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 13: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNamespacedIssuerRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 14: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.algorithm:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.KubernetesCertificatePrivateKeyAlgorithm
+	1,  // 15: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.encoding:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.KubernetesCertificatePrivateKeyEncoding
+	2,  // 16: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.rotation_policy:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePrivateKey.KubernetesCertificatePrivateKeyRotationPolicy
+	12, // 17: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateKeystores.jks:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateJksKeystore
+	13, // 18: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateKeystores.pkcs12:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificatePkcs12Keystore
+	16, // 19: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNameConstraints.permitted:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNameConstraintSet
+	16, // 20: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNameConstraints.excluded:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNameConstraintSet
+	18, // 21: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplate.labels:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplate.LabelsEntry
+	19, // 22: dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplate.annotations:type_name -> dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSecretTemplate.AnnotationsEntry
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_init() }
@@ -699,18 +1683,20 @@ func file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_in
 	}
 	file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[1].OneofWrappers = []any{
-		(*CertificateIssuerRef_ClusterIssuer)(nil),
-		(*CertificateIssuerRef_Issuer)(nil),
+		(*KubernetesCertificateIssuerRef_ClusterIssuer)(nil),
+		(*KubernetesCertificateIssuerRef_Issuer)(nil),
+		(*KubernetesCertificateIssuerRef_External)(nil),
 	}
-	file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   6,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

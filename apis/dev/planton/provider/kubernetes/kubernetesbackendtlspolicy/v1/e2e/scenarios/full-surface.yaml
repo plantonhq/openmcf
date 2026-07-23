@@ -1,0 +1,37 @@
+# Full-surface BackendTLSPolicy: two section-scoped refs to the same target
+# (exercising the CRD's own same-target CEL rules server-side), a CA-bundle
+# ConfigMap reference (the Core trust arm — group "" must survive rendering
+# as an EMPTY-BUT-PRESENT key, the faithful-projection contract), SANs in
+# both formats, and implementation-specific options.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesBackendTlsPolicy
+metadata:
+  name: e2e-btls-full
+spec:
+  namespace:
+    value: default
+  target_refs:
+    - group: ""
+      kind: Service
+      name:
+        value: e2e-svc-fixture
+      section_name: http
+    - group: ""
+      kind: Service
+      name:
+        value: e2e-svc-fixture
+      section_name: metrics
+  validation:
+    ca_certificate_refs:
+      - group: ""
+        kind: ConfigMap
+        name:
+          value: e2e-btls-ca-bundle
+    hostname: backend.internal.example.com
+    subject_alt_names:
+      - type: Hostname
+        hostname: backend.internal.example.com
+      - type: URI
+        uri: spiffe://cluster.example.com/ns/default/sa/backend
+  options:
+    vendor.example.com/min-tls-version: "1.3"

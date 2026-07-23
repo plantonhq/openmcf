@@ -1,0 +1,3 @@
+name: kubernetes-service-account
+runtime: go
+description: Kubernetes ServiceAccount with image-pull secrets, tri-state token automount, and cloud workload-identity annotation binding (GKE, EKS IRSA, AKS)

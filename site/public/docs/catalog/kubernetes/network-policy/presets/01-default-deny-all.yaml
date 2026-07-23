@@ -1,0 +1,12 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesNetworkPolicy
+metadata:
+  name: default-deny-all
+spec:
+  name: default-deny-all
+  namespace:
+    value: "<your-namespace>"
+  pod_selector: {}
+  policy_types:
+    - ingress
+    - egress

@@ -23,19 +23,28 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesManifest is a generic deployment component for deploying raw Kubernetes manifests.
-// It supports single or multi-document YAML manifests containing any valid Kubernetes resources.
+// *
+// **KubernetesManifest** applies raw Kubernetes YAML following the Kubernetes
+// Resource Model (KRM) — the catalog's bring-your-own-manifest escape hatch
+// for resources no first-class component covers yet. Single or
+// multi-document manifests, core kinds or custom resources, applied
+// identically by both engines.
 type KubernetesManifest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// api-version
+	// API version for this resource.
+	// Always set to "kubernetes.planton.dev/v1".
 	ApiVersion string `protobuf:"bytes,1,opt,name=api_version,json=apiVersion,proto3" json:"api_version,omitempty"`
-	// resource-kind
+	// Resource kind identifier.
+	// Always set to "KubernetesManifest".
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
-	// metadata
+	// Metadata for the manifest resource.
+	// Includes standard fields like name, organization, environment, etc.
 	Metadata *shared.CloudResourceMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	// spec
+	// Specification of the manifest to apply: the anchor namespace, the raw
+	// YAML, and the await behavior.
 	Spec *KubernetesManifestSpec `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
-	// status
+	// Status of the manifest resource.
+	// Contains outputs populated after deployment.
 	Status        *KubernetesManifestStatus `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -106,10 +115,13 @@ func (x *KubernetesManifest) GetStatus() *KubernetesManifestStatus {
 	return nil
 }
 
-// KubernetesManifestStatus contains the status of the Kubernetes manifest deployment.
+// *
+// **KubernetesManifestStatus** captures the runtime status of an applied
+// manifest, including the outputs generated after the apply.
 type KubernetesManifestStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// stack-outputs
+	// Outputs from the manifest apply.
+	// Contains the anchor namespace and the applied-resource inventory.
 	Outputs       *KubernetesManifestStackOutputs `protobuf:"bytes,1,opt,name=outputs,proto3" json:"outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

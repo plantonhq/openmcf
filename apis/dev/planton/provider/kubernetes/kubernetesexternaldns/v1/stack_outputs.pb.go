@@ -21,17 +21,21 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// stack outputs for kubernetes-external-dns
+// KubernetesExternalDnsStackOutputs captures observable outputs after the
+// ExternalDNS installation completes.
 type KubernetesExternalDnsStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace where the kubernetes-external-dns is deployed
+	// Namespace ExternalDNS is installed in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes release name
+	// Helm release name (equals metadata.name — multiple instances of this
+	// component coexist in one cluster, each with its own release).
 	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
-	// kubernetes service account name
-	SolverSa      string `protobuf:"bytes,3,opt,name=solver_sa,json=solverSa,proto3" json:"solver_sa,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Name of the controller ServiceAccount. The cloud-side half of a keyless
+	// binding (IAM role trust policy, Workload Identity binding, federated
+	// credential) references this name together with the namespace.
+	ServiceAccountName string `protobuf:"bytes,3,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesExternalDnsStackOutputs) Reset() {
@@ -78,9 +82,9 @@ func (x *KubernetesExternalDnsStackOutputs) GetReleaseName() string {
 	return ""
 }
 
-func (x *KubernetesExternalDnsStackOutputs) GetSolverSa() string {
+func (x *KubernetesExternalDnsStackOutputs) GetServiceAccountName() string {
 	if x != nil {
-		return x.SolverSa
+		return x.ServiceAccountName
 	}
 	return ""
 }
@@ -89,11 +93,11 @@ var File_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_stack_outputs_
 
 const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ldev/planton/provider/kubernetes/kubernetesexternaldns/v1/stack_outputs.proto\x128dev.planton.provider.kubernetes.kubernetesexternaldns.v1\"\x81\x01\n" +
+	"Ldev/planton/provider/kubernetes/kubernetesexternaldns/v1/stack_outputs.proto\x128dev.planton.provider.kubernetes.kubernetesexternaldns.v1\"\x96\x01\n" +
 	"!KubernetesExternalDnsStackOutputs\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
-	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12\x1b\n" +
-	"\tsolver_sa\x18\x03 \x01(\tR\bsolverSaB\xcc\x03\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x120\n" +
+	"\x14service_account_name\x18\x03 \x01(\tR\x12serviceAccountNameB\xcc\x03\n" +
 	"<com.dev.planton.provider.kubernetes.kubernetesexternaldns.v1B\x11StackOutputsProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternaldns/v1;kubernetesexternaldnsv1\xa2\x02\x05DPPKK\xaa\x028Dev.Planton.Provider.Kubernetes.Kubernetesexternaldns.V1\xca\x028Dev\\Planton\\Provider\\Kubernetes\\Kubernetesexternaldns\\V1\xe2\x02DDev\\Planton\\Provider\\Kubernetes\\Kubernetesexternaldns\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Kubernetes::Kubernetesexternaldns::V1b\x06proto3"
 
 var (

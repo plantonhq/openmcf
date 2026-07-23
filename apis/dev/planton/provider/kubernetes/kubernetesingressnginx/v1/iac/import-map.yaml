@@ -1,0 +1,31 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesingressnginx
+spec:
+  # ingress-nginx installs as one Helm release NAMED AFTER metadata.name —
+  # multiple controller instances per cluster (public + internal splits,
+  # each owning its own IngressClass) are a first-class pattern, so nothing
+  # here is a fixed chart name. The module's controller-Service data source
+  # is a read, not a managed resource — nothing to import for it.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "ingress-nginx".
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

@@ -4,7 +4,7 @@ import (
 	"github.com/pkg/errors"
 	kubernetestcproutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestcproute/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
-	gatewayv1alpha2 "github.com/plantonhq/planton/pkg/kubernetes/kubernetestypes/gatewayapis/kubernetes/gateway/v1alpha2"
+	gatewayv1 "github.com/plantonhq/planton/pkg/kubernetes/kubernetestypes/gatewayapis/kubernetes/gateway/v1"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -30,12 +30,12 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetestcproutev1.KubernetesT
 }
 
 // createTcpRoute creates the namespaced Gateway API TCPRoute using the typed
-// crd2pulumi SDK (gatewayv1alpha2.NewTCPRoute). TCPRoute is an experimental-channel
-// resource served as gateway.networking.k8s.io/v1alpha2 (the experimental CRDs
-// must be installed -- see KubernetesGatewayApiCrds install_channel: experimental).
-// The typed approach catches field-name and structure errors at compile time. A
-// TCP route has no hostnames, matches, or filters; the spec mapping is split
-// across parent_refs.go and rules.go.
+// crd2pulumi SDK (gatewayv1.NewTCPRoute). TCPRoute is a standard-channel GA
+// resource served as gateway.networking.k8s.io/v1 (it was experimental
+// v1alpha2 in earlier Gateway API releases). The typed approach catches
+// field-name and structure errors at compile time. A TCP route has no
+// hostnames, matches, or filters; the spec mapping is split across
+// parent_refs.go and rules.go.
 func createTcpRoute(
 	ctx *pulumi.Context,
 	kubeProvider *kubernetes.Provider,
@@ -43,19 +43,16 @@ func createTcpRoute(
 ) error {
 	spec := locals.KubernetesTcpRoute.Spec
 
-	tcpRouteSpec := gatewayv1alpha2.TCPRouteSpecArgs{
+	tcpRouteSpec := gatewayv1.TCPRouteSpecArgs{
 		Rules: buildRules(spec.GetRules()),
 	}
 
 	if parentRefs := spec.GetParentRefs(); len(parentRefs) > 0 {
 		tcpRouteSpec.ParentRefs = buildParentRefs(parentRefs)
 	}
-	if useDefaultGateways := spec.GetUseDefaultGateways(); useDefaultGateways != "" {
-		tcpRouteSpec.UseDefaultGateways = pulumi.String(useDefaultGateways)
-	}
 
-	_, err := gatewayv1alpha2.NewTCPRoute(ctx, locals.RouteName,
-		&gatewayv1alpha2.TCPRouteArgs{
+	_, err := gatewayv1.NewTCPRoute(ctx, locals.RouteName,
+		&gatewayv1.TCPRouteArgs{
 			Metadata: metav1.ObjectMetaArgs{
 				Name:      pulumi.String(locals.RouteName),
 				Namespace: pulumi.String(locals.Namespace),

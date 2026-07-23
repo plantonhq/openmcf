@@ -1,0 +1,355 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesmetricsserver.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesMetricsServerSpec** installs metrics-server — the cluster's
+ * resource-metrics pipeline — from the official Helm chart (`metrics-server`
+ * at https://kubernetes-sigs.github.io/metrics-server/). It scrapes each
+ * kubelet and serves live CPU/memory usage through the `metrics.k8s.io`
+ * APIService, which is what `kubectl top` reads and what
+ * HorizontalPodAutoscalers need for Resource-type utilization targets —
+ * without metrics-server, HPAs deploy but never receive metric values and
+ * never scale.
+ *
+ * ONE INSTALLATION PER CLUSTER: metrics-server registers the cluster-wide
+ * `v1beta1.metrics.k8s.io` APIService, a singleton — a second installation
+ * would fight over it. The Helm release name is therefore fixed to
+ * "metrics-server". Managed clouds differ: GKE ships metrics-server
+ * built-in (do not install this component there); EKS, AKS (resource
+ * metrics), kind, k3s and most self-managed clusters need it.
+ *
+ * The typed fields below cover the chart's meaningful configuration surface;
+ * `helm_values` remains as the escape hatch for chart values beyond them
+ * (merged last, Helm `-f` semantics, identical on both engines) — a safety
+ * valve, never the primary interface.
+ */
+message KubernetesMetricsServerSpec {
+  /**
+   * Namespace to install metrics-server into ("kube-system" is the
+   * upstream convention — the APIService is cluster infrastructure; a
+   * dedicated "metrics-server" namespace also works). Accepts a literal
+   * namespace name or a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist (it usually does —
+   * kube-system always exists).
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "3.13.1", which ships
+   * metrics-server 0.8.1 — chart and app versions are numbered
+   * independently). Pin deliberately; upgrades re-run the release with the
+   * new chart. Pick versions from the chart repository's index
+   * (`helm search repo`): the served chart is the contract — the upstream
+   * source tree's Chart.yaml can claim a version at a tag that was never
+   * served.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "3.13.1"];
+
+  /**
+   * Replica count. One is standard; run 2 with `pod_disruption_budget` for
+   * HA of the metrics API (the APIService fails over between healthy
+   * replicas).
+   */
+  optional int32 replicas = 4 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Skip verification of kubelet serving-certificate CAs
+   * (--kubelet-insecure-tls). REQUIRED on clusters whose kubelets serve
+   * self-signed certificates: kind, k3s, kubeadm without kubelet
+   * certificate rotation, many on-prem setups. Leave false on managed
+   * clouds (EKS/AKS kubelet certs verify against the cluster CA). This is
+   * a scrape-path trust decision, not a serving-side one — the APIService
+   * side is `api_service.insecure_skip_tls_verify`.
+   */
+  bool kubelet_insecure_tls = 5;
+
+  /**
+   * Order of address types tried when scraping a kubelet
+   * (--kubelet-preferred-address-types). Upstream default:
+   * [InternalIP, ExternalIP, Hostname]. Reorder on clusters where the
+   * default resolves to unreachable addresses (e.g. Hostname-first on
+   * clusters whose node names resolve internally).
+   */
+  repeated string kubelet_preferred_address_types = 6 [(buf.validate.field).repeated.items.cel = {
+    id: "spec.kubelet_address_type"
+    message: "Each address type must be one of: InternalIP, ExternalIP, Hostname, InternalDNS, ExternalDNS"
+    expression: "this in ['InternalIP', 'ExternalIP', 'Hostname', 'InternalDNS', 'ExternalDNS']"
+  }];
+
+  /**
+   * How often kubelets are scraped (--metric-resolution). Upstream
+   * default "15s" — the value HPA freshness is built around; values under
+   * 15s burn kubelet CPU for little gain, values over 60s make
+   * autoscaling sluggish.
+   */
+  optional string metric_resolution = 7 [
+    (dev.planton.shared.options.default) = "15s",
+    (buf.validate.field).string.pattern = "^[0-9]+(s|m)$"
+  ];
+
+  /**
+   * Run metrics-server on the host network. Needed where the API server
+   * cannot reach pod IPs over the overlay (the upstream example: Weave
+   * CNI on EKS).
+   */
+  bool host_network = 8;
+
+  /**
+   * The metrics.k8s.io APIService registration.
+   */
+  KubernetesMetricsServerApiService api_service = 9;
+
+  /**
+   * How the metrics-server serving certificate (what the API SERVER
+   * verifies when calling the APIService) is provisioned.
+   */
+  KubernetesMetricsServerTls tls = 10;
+
+  /**
+   * Container CPU/memory requests and limits. Chart default: requests
+   * cpu=100m memory=200Mi, no limits — upstream's envelope for clusters
+   * up to 100 nodes (≤70 pods/node). Beyond 100 nodes, upstream guidance
+   * is +1m CPU and +2Mi memory per additional node.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 11;
+
+  /**
+   * Node selector for the metrics-server pods.
+   */
+  map<string, string> node_selector = 12;
+
+  /**
+   * Tolerations for the metrics-server pods (e.g. to run on control-plane
+   * nodes).
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 13;
+
+  /**
+   * PriorityClass for the metrics-server pods. Chart default:
+   * system-cluster-critical — the metrics pipeline should outlive workload
+   * evictions (HPAs stop scaling without it).
+   */
+  optional string priority_class_name = 14 [(dev.planton.shared.options.default) = "system-cluster-critical"];
+
+  /**
+   * When true, a PodDisruptionBudget (minAvailable 1) guards
+   * metrics-server — meaningful only with replicas > 1 (with a single
+   * replica it would block every voluntary eviction, wedging node drains).
+   */
+  bool pod_disruption_budget = 15;
+
+  /**
+   * Expose metrics-server's OWN Prometheus metrics (scrape performance,
+   * request latencies) and optionally a ServiceMonitor. This is telemetry
+   * ABOUT metrics-server — unrelated to the resource metrics it serves.
+   */
+  KubernetesMetricsServerPrometheus prometheus = 16;
+
+  /**
+   * Image override — the air-gapped/mirror knob. Empty parts = the chart
+   * defaults (registry.k8s.io/metrics-server/metrics-server at the chart's
+   * pinned app version).
+   */
+  KubernetesMetricsServerImage image = 17;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged LAST
+   * over everything the typed fields render (Helm `-f` semantics, identical
+   * on both engines). For the chart surface beyond the typed fields —
+   * never the substitute for them. Do not put secrets here.
+   */
+  string helm_values = 18;
+}
+
+/**
+ * metrics.k8s.io APIService registration.
+ */
+message KubernetesMetricsServerApiService {
+  /**
+   * Register the v1beta1.metrics.k8s.io APIService with the release.
+   * Chart default: true — without it, kubectl top and HPAs cannot find
+   * the metrics API. Disable only when something else manages the
+   * APIService object.
+   */
+  optional bool create = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Let the API server skip TLS verification when calling metrics-server.
+   * Chart default: true — matches the default self-signed serving
+   * certificate. Set false only when the serving certificate is
+   * verifiable: tls type helm (the chart wires the APIService caBundle
+   * automatically), cert_manager (the CA injector wires it), or
+   * existing_secret with the CA provided via ca_bundle.
+   */
+  optional bool insecure_skip_tls_verify = 2 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * PEM-encoded CA bundle the API server uses to verify metrics-server's
+   * serving certificate. Only meaningful with insecure_skip_tls_verify =
+   * false and a serving certificate issued by this CA.
+   */
+  string ca_bundle = 3;
+}
+
+/**
+ * Serving-certificate provisioning method vocabulary.
+ */
+enum KubernetesMetricsServerTlsType {
+  // metrics-server generates its own self-signed certificate at startup
+  // (upstream default; pairs with api_service.insecure_skip_tls_verify).
+  self_signed = 0;
+  // Helm generates a self-signed certificate at install time and wires the
+  // APIService caBundle automatically (verifiable without cert-manager).
+  helm = 1;
+  // cert-manager issues and renews the certificate; the CA injector wires
+  // the APIService caBundle (requires KubernetesCertManager on the cluster).
+  cert_manager = 2;
+  // Reuse an existing kubernetes.io/tls Secret you manage.
+  existing_secret = 3;
+}
+
+/**
+ * Serving-certificate configuration.
+ */
+message KubernetesMetricsServerTls {
+  /**
+   * Provisioning method. The default self_signed is fine for almost every
+   * cluster (the APIService skips verification by default); pick
+   * cert_manager for a verified chain with automatic renewal.
+   */
+  optional KubernetesMetricsServerTlsType type = 1 [(dev.planton.shared.options.default) = "self_signed"];
+
+  /**
+   * cert-manager issuer that signs the serving certificate (type
+   * cert_manager). Empty = the chart creates its own self-signed
+   * Issuer + root Certificate chain in the installation namespace.
+   */
+  KubernetesMetricsServerTlsCertManagerIssuer cert_manager_issuer = 2;
+
+  /**
+   * Name of the existing kubernetes.io/tls Secret (type existing_secret).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef existing_secret_name = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "spec.tls.existing_secret_requires_name"
+    message: "tls type existing_secret requires existing_secret_name — the Secret holding the serving certificate"
+    expression: "this.type != 3 || has(this.existing_secret_name)"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.tls.issuer_requires_cert_manager_type"
+    message: "cert_manager_issuer is only used with tls type cert_manager — set type accordingly or remove the issuer"
+    expression: "!has(this.cert_manager_issuer) || this.type == 2"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.tls.secret_requires_existing_secret_type"
+    message: "existing_secret_name is only used with tls type existing_secret — set type accordingly or remove the secret reference"
+    expression: "!has(this.existing_secret_name) || this.type == 3"
+  };
+}
+
+/**
+ * cert-manager issuer reference kind vocabulary.
+ */
+enum KubernetesMetricsServerIssuerKind {
+  // Namespaced Issuer in the installation namespace.
+  issuer = 0;
+  // Cluster-scoped ClusterIssuer.
+  cluster_issuer = 1;
+}
+
+/**
+ * Existing cert-manager issuer reference.
+ */
+message KubernetesMetricsServerTlsCertManagerIssuer {
+  /**
+   * Issuer grain: a namespaced Issuer (must live in the installation
+   * namespace) or a cluster-scoped ClusterIssuer.
+   */
+  optional KubernetesMetricsServerIssuerKind kind = 1 [(dev.planton.shared.options.default) = "issuer"];
+
+  /**
+   * Name of the Issuer / ClusterIssuer that signs the serving
+   * certificate. References the matching Planton kind's output by default.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesIssuer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.issuer_name"
+  ];
+}
+
+/**
+ * metrics-server's own telemetry.
+ */
+message KubernetesMetricsServerPrometheus {
+  /**
+   * Expose metrics-server's own /metrics endpoint through a Service.
+   * Chart default: false.
+   */
+  bool enabled = 1;
+
+  /**
+   * Create a ServiceMonitor for scrape discovery. Requires the Prometheus
+   * operator CRDs (e.g. kube-prometheus-stack) on the cluster — the
+   * release FAILS to install without them.
+   */
+  bool service_monitor = 2;
+
+  /**
+   * Scrape interval for the ServiceMonitor. Chart default: "1m".
+   */
+  optional string service_monitor_interval = 3 [(dev.planton.shared.options.default) = "1m"];
+
+  /**
+   * Extra labels on the ServiceMonitor — how a Prometheus instance's
+   * serviceMonitorSelector finds it (e.g. {"release": "kube-prometheus-stack"}).
+   */
+  map<string, string> service_monitor_labels = 4;
+
+  option (buf.validate.message).cel = {
+    id: "spec.prometheus.monitor_requires_enabled"
+    message: "service_monitor requires prometheus metrics to be enabled — the ServiceMonitor would have no metrics endpoint to scrape"
+    expression: "!this.service_monitor || this.enabled"
+  };
+}
+
+/**
+ * Image override.
+ */
+message KubernetesMetricsServerImage {
+  /**
+   * Image repository. Empty = registry.k8s.io/metrics-server/metrics-server.
+   */
+  string repository = 1;
+
+  /**
+   * Image tag. Empty = the chart's pinned app version (v0.8.1 for chart
+   * 3.13.1). Overriding decouples the binary from the chart's tested pair —
+   * prefer bumping chart_version.
+   */
+  string tag = 2;
+}

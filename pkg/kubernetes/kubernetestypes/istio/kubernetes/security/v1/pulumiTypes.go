@@ -1371,6 +1371,8 @@ type AuthorizationPolicySpecRulesFromSource struct {
 	// Optional.
 	NotServiceAccounts []string `pulumi:"notServiceAccounts"`
 	// Optional.
+	NotTrustDomains []string `pulumi:"notTrustDomains"`
+	// Optional.
 	Principals []string `pulumi:"principals"`
 	// Optional.
 	RemoteIpBlocks []string `pulumi:"remoteIpBlocks"`
@@ -1378,6 +1380,8 @@ type AuthorizationPolicySpecRulesFromSource struct {
 	RequestPrincipals []string `pulumi:"requestPrincipals"`
 	// Optional.
 	ServiceAccounts []string `pulumi:"serviceAccounts"`
+	// Optional.
+	TrustDomains []string `pulumi:"trustDomains"`
 }
 
 // AuthorizationPolicySpecRulesFromSourceInput is an input type that accepts AuthorizationPolicySpecRulesFromSourceArgs and AuthorizationPolicySpecRulesFromSourceOutput values.
@@ -1410,6 +1414,8 @@ type AuthorizationPolicySpecRulesFromSourceArgs struct {
 	// Optional.
 	NotServiceAccounts pulumi.StringArrayInput `pulumi:"notServiceAccounts"`
 	// Optional.
+	NotTrustDomains pulumi.StringArrayInput `pulumi:"notTrustDomains"`
+	// Optional.
 	Principals pulumi.StringArrayInput `pulumi:"principals"`
 	// Optional.
 	RemoteIpBlocks pulumi.StringArrayInput `pulumi:"remoteIpBlocks"`
@@ -1417,6 +1423,8 @@ type AuthorizationPolicySpecRulesFromSourceArgs struct {
 	RequestPrincipals pulumi.StringArrayInput `pulumi:"requestPrincipals"`
 	// Optional.
 	ServiceAccounts pulumi.StringArrayInput `pulumi:"serviceAccounts"`
+	// Optional.
+	TrustDomains pulumi.StringArrayInput `pulumi:"trustDomains"`
 }
 
 func (AuthorizationPolicySpecRulesFromSourceArgs) ElementType() reflect.Type {
@@ -1538,6 +1546,11 @@ func (o AuthorizationPolicySpecRulesFromSourceOutput) NotServiceAccounts() pulum
 }
 
 // Optional.
+func (o AuthorizationPolicySpecRulesFromSourceOutput) NotTrustDomains() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v AuthorizationPolicySpecRulesFromSource) []string { return v.NotTrustDomains }).(pulumi.StringArrayOutput)
+}
+
+// Optional.
 func (o AuthorizationPolicySpecRulesFromSourceOutput) Principals() pulumi.StringArrayOutput {
 	return o.ApplyT(func(v AuthorizationPolicySpecRulesFromSource) []string { return v.Principals }).(pulumi.StringArrayOutput)
 }
@@ -1555,6 +1568,11 @@ func (o AuthorizationPolicySpecRulesFromSourceOutput) RequestPrincipals() pulumi
 // Optional.
 func (o AuthorizationPolicySpecRulesFromSourceOutput) ServiceAccounts() pulumi.StringArrayOutput {
 	return o.ApplyT(func(v AuthorizationPolicySpecRulesFromSource) []string { return v.ServiceAccounts }).(pulumi.StringArrayOutput)
+}
+
+// Optional.
+func (o AuthorizationPolicySpecRulesFromSourceOutput) TrustDomains() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v AuthorizationPolicySpecRulesFromSource) []string { return v.TrustDomains }).(pulumi.StringArrayOutput)
 }
 
 type AuthorizationPolicySpecRulesFromSourcePtrOutput struct{ *pulumi.OutputState }
@@ -1662,6 +1680,16 @@ func (o AuthorizationPolicySpecRulesFromSourcePtrOutput) NotServiceAccounts() pu
 }
 
 // Optional.
+func (o AuthorizationPolicySpecRulesFromSourcePtrOutput) NotTrustDomains() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *AuthorizationPolicySpecRulesFromSource) []string {
+		if v == nil {
+			return nil
+		}
+		return v.NotTrustDomains
+	}).(pulumi.StringArrayOutput)
+}
+
+// Optional.
 func (o AuthorizationPolicySpecRulesFromSourcePtrOutput) Principals() pulumi.StringArrayOutput {
 	return o.ApplyT(func(v *AuthorizationPolicySpecRulesFromSource) []string {
 		if v == nil {
@@ -1701,6 +1729,16 @@ func (o AuthorizationPolicySpecRulesFromSourcePtrOutput) ServiceAccounts() pulum
 	}).(pulumi.StringArrayOutput)
 }
 
+// Optional.
+func (o AuthorizationPolicySpecRulesFromSourcePtrOutput) TrustDomains() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *AuthorizationPolicySpecRulesFromSource) []string {
+		if v == nil {
+			return nil
+		}
+		return v.TrustDomains
+	}).(pulumi.StringArrayOutput)
+}
+
 // Source specifies the source of a request.
 type AuthorizationPolicySpecRulesFromSourcePatch struct {
 	// Optional.
@@ -1720,6 +1758,8 @@ type AuthorizationPolicySpecRulesFromSourcePatch struct {
 	// Optional.
 	NotServiceAccounts []string `pulumi:"notServiceAccounts"`
 	// Optional.
+	NotTrustDomains []string `pulumi:"notTrustDomains"`
+	// Optional.
 	Principals []string `pulumi:"principals"`
 	// Optional.
 	RemoteIpBlocks []string `pulumi:"remoteIpBlocks"`
@@ -1727,6 +1767,8 @@ type AuthorizationPolicySpecRulesFromSourcePatch struct {
 	RequestPrincipals []string `pulumi:"requestPrincipals"`
 	// Optional.
 	ServiceAccounts []string `pulumi:"serviceAccounts"`
+	// Optional.
+	TrustDomains []string `pulumi:"trustDomains"`
 }
 
 // AuthorizationPolicySpecRulesFromSourcePatchInput is an input type that accepts AuthorizationPolicySpecRulesFromSourcePatchArgs and AuthorizationPolicySpecRulesFromSourcePatchOutput values.
@@ -1759,6 +1801,8 @@ type AuthorizationPolicySpecRulesFromSourcePatchArgs struct {
 	// Optional.
 	NotServiceAccounts pulumi.StringArrayInput `pulumi:"notServiceAccounts"`
 	// Optional.
+	NotTrustDomains pulumi.StringArrayInput `pulumi:"notTrustDomains"`
+	// Optional.
 	Principals pulumi.StringArrayInput `pulumi:"principals"`
 	// Optional.
 	RemoteIpBlocks pulumi.StringArrayInput `pulumi:"remoteIpBlocks"`
@@ -1766,6 +1810,8 @@ type AuthorizationPolicySpecRulesFromSourcePatchArgs struct {
 	RequestPrincipals pulumi.StringArrayInput `pulumi:"requestPrincipals"`
 	// Optional.
 	ServiceAccounts pulumi.StringArrayInput `pulumi:"serviceAccounts"`
+	// Optional.
+	TrustDomains pulumi.StringArrayInput `pulumi:"trustDomains"`
 }
 
 func (AuthorizationPolicySpecRulesFromSourcePatchArgs) ElementType() reflect.Type {
@@ -1887,6 +1933,11 @@ func (o AuthorizationPolicySpecRulesFromSourcePatchOutput) NotServiceAccounts() 
 }
 
 // Optional.
+func (o AuthorizationPolicySpecRulesFromSourcePatchOutput) NotTrustDomains() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v AuthorizationPolicySpecRulesFromSourcePatch) []string { return v.NotTrustDomains }).(pulumi.StringArrayOutput)
+}
+
+// Optional.
 func (o AuthorizationPolicySpecRulesFromSourcePatchOutput) Principals() pulumi.StringArrayOutput {
 	return o.ApplyT(func(v AuthorizationPolicySpecRulesFromSourcePatch) []string { return v.Principals }).(pulumi.StringArrayOutput)
 }
@@ -1904,6 +1955,11 @@ func (o AuthorizationPolicySpecRulesFromSourcePatchOutput) RequestPrincipals() p
 // Optional.
 func (o AuthorizationPolicySpecRulesFromSourcePatchOutput) ServiceAccounts() pulumi.StringArrayOutput {
 	return o.ApplyT(func(v AuthorizationPolicySpecRulesFromSourcePatch) []string { return v.ServiceAccounts }).(pulumi.StringArrayOutput)
+}
+
+// Optional.
+func (o AuthorizationPolicySpecRulesFromSourcePatchOutput) TrustDomains() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v AuthorizationPolicySpecRulesFromSourcePatch) []string { return v.TrustDomains }).(pulumi.StringArrayOutput)
 }
 
 type AuthorizationPolicySpecRulesFromSourcePatchPtrOutput struct{ *pulumi.OutputState }
@@ -2011,6 +2067,16 @@ func (o AuthorizationPolicySpecRulesFromSourcePatchPtrOutput) NotServiceAccounts
 }
 
 // Optional.
+func (o AuthorizationPolicySpecRulesFromSourcePatchPtrOutput) NotTrustDomains() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *AuthorizationPolicySpecRulesFromSourcePatch) []string {
+		if v == nil {
+			return nil
+		}
+		return v.NotTrustDomains
+	}).(pulumi.StringArrayOutput)
+}
+
+// Optional.
 func (o AuthorizationPolicySpecRulesFromSourcePatchPtrOutput) Principals() pulumi.StringArrayOutput {
 	return o.ApplyT(func(v *AuthorizationPolicySpecRulesFromSourcePatch) []string {
 		if v == nil {
@@ -2047,6 +2113,16 @@ func (o AuthorizationPolicySpecRulesFromSourcePatchPtrOutput) ServiceAccounts() 
 			return nil
 		}
 		return v.ServiceAccounts
+	}).(pulumi.StringArrayOutput)
+}
+
+// Optional.
+func (o AuthorizationPolicySpecRulesFromSourcePatchPtrOutput) TrustDomains() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v *AuthorizationPolicySpecRulesFromSourcePatch) []string {
+		if v == nil {
+			return nil
+		}
+		return v.TrustDomains
 	}).(pulumi.StringArrayOutput)
 }
 
@@ -5757,6 +5833,8 @@ type RequestAuthenticationSpecJwtRules struct {
 	OutputClaimToHeaders []RequestAuthenticationSpecJwtRulesOutputClaimToHeaders `pulumi:"outputClaimToHeaders"`
 	// This field specifies the header name to output a successfully verified JWT payload to the backend.
 	OutputPayloadToHeader *string `pulumi:"outputPayloadToHeader"`
+	// List of JWT claim names that should be treated as space-delimited strings.
+	SpaceDelimitedClaims []string `pulumi:"spaceDelimitedClaims"`
 	// The maximum amount of time that the resolver, determined by the PILOT_JWT_ENABLE_REMOTE_JWKS environment variable, will spend waiting for the JWKS to be fetched.
 	Timeout *string `pulumi:"timeout"`
 }
@@ -5795,6 +5873,8 @@ type RequestAuthenticationSpecJwtRulesArgs struct {
 	OutputClaimToHeaders RequestAuthenticationSpecJwtRulesOutputClaimToHeadersArrayInput `pulumi:"outputClaimToHeaders"`
 	// This field specifies the header name to output a successfully verified JWT payload to the backend.
 	OutputPayloadToHeader pulumi.StringPtrInput `pulumi:"outputPayloadToHeader"`
+	// List of JWT claim names that should be treated as space-delimited strings.
+	SpaceDelimitedClaims pulumi.StringArrayInput `pulumi:"spaceDelimitedClaims"`
 	// The maximum amount of time that the resolver, determined by the PILOT_JWT_ENABLE_REMOTE_JWKS environment variable, will spend waiting for the JWKS to be fetched.
 	Timeout pulumi.StringPtrInput `pulumi:"timeout"`
 }
@@ -5907,6 +5987,11 @@ func (o RequestAuthenticationSpecJwtRulesOutput) OutputClaimToHeaders() RequestA
 // This field specifies the header name to output a successfully verified JWT payload to the backend.
 func (o RequestAuthenticationSpecJwtRulesOutput) OutputPayloadToHeader() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v RequestAuthenticationSpecJwtRules) *string { return v.OutputPayloadToHeader }).(pulumi.StringPtrOutput)
+}
+
+// List of JWT claim names that should be treated as space-delimited strings.
+func (o RequestAuthenticationSpecJwtRulesOutput) SpaceDelimitedClaims() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v RequestAuthenticationSpecJwtRules) []string { return v.SpaceDelimitedClaims }).(pulumi.StringArrayOutput)
 }
 
 // The maximum amount of time that the resolver, determined by the PILOT_JWT_ENABLE_REMOTE_JWKS environment variable, will spend waiting for the JWKS to be fetched.
@@ -6381,6 +6466,8 @@ type RequestAuthenticationSpecJwtRulesPatch struct {
 	OutputClaimToHeaders []RequestAuthenticationSpecJwtRulesOutputClaimToHeadersPatch `pulumi:"outputClaimToHeaders"`
 	// This field specifies the header name to output a successfully verified JWT payload to the backend.
 	OutputPayloadToHeader *string `pulumi:"outputPayloadToHeader"`
+	// List of JWT claim names that should be treated as space-delimited strings.
+	SpaceDelimitedClaims []string `pulumi:"spaceDelimitedClaims"`
 	// The maximum amount of time that the resolver, determined by the PILOT_JWT_ENABLE_REMOTE_JWKS environment variable, will spend waiting for the JWKS to be fetched.
 	Timeout *string `pulumi:"timeout"`
 }
@@ -6419,6 +6506,8 @@ type RequestAuthenticationSpecJwtRulesPatchArgs struct {
 	OutputClaimToHeaders RequestAuthenticationSpecJwtRulesOutputClaimToHeadersPatchArrayInput `pulumi:"outputClaimToHeaders"`
 	// This field specifies the header name to output a successfully verified JWT payload to the backend.
 	OutputPayloadToHeader pulumi.StringPtrInput `pulumi:"outputPayloadToHeader"`
+	// List of JWT claim names that should be treated as space-delimited strings.
+	SpaceDelimitedClaims pulumi.StringArrayInput `pulumi:"spaceDelimitedClaims"`
 	// The maximum amount of time that the resolver, determined by the PILOT_JWT_ENABLE_REMOTE_JWKS environment variable, will spend waiting for the JWKS to be fetched.
 	Timeout pulumi.StringPtrInput `pulumi:"timeout"`
 }
@@ -6531,6 +6620,11 @@ func (o RequestAuthenticationSpecJwtRulesPatchOutput) OutputClaimToHeaders() Req
 // This field specifies the header name to output a successfully verified JWT payload to the backend.
 func (o RequestAuthenticationSpecJwtRulesPatchOutput) OutputPayloadToHeader() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v RequestAuthenticationSpecJwtRulesPatch) *string { return v.OutputPayloadToHeader }).(pulumi.StringPtrOutput)
+}
+
+// List of JWT claim names that should be treated as space-delimited strings.
+func (o RequestAuthenticationSpecJwtRulesPatchOutput) SpaceDelimitedClaims() pulumi.StringArrayOutput {
+	return o.ApplyT(func(v RequestAuthenticationSpecJwtRulesPatch) []string { return v.SpaceDelimitedClaims }).(pulumi.StringArrayOutput)
 }
 
 // The maximum amount of time that the resolver, determined by the PILOT_JWT_ENABLE_REMOTE_JWKS environment variable, will spend waiting for the JWKS to be fetched.

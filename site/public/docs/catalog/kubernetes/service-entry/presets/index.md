@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Bring Static Endpoints Into the Mesh"
     excerpt: "Register a service that has a fixed set of backing IPs (a VM-hosted database, a legacy service, an appliance) as a MESH_INTERNAL destination with STATIC resolution. Mesh workloads then reach it by..."
+  - slug: "03-dynamic-dns-wildcard-egress"
+    rank: "03"
+    title: "Dynamic-DNS Wildcard Egress"
+    excerpt: "Registers a whole wildcard domain (`*.example-saas.com`) in the mesh's service registry with `DYNAMIC_DNS` resolution: the proxy resolves the ACTUAL hostname each request asks for, at request time —..."
 ---
 
 # Service Entry Presets

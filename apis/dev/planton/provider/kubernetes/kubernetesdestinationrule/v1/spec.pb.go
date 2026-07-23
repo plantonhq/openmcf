@@ -33,7 +33,7 @@ const (
 //
 // 100% fidelity with the upstream istio.io/api DestinationRule
 // (networking/v1alpha3/destination_rule.proto, served as networking.istio.io/v1), pinned
-// to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
+// to the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly after the
 // Planton namespaced envelope (namespace); there is no nested
 // `destination_rule` sub-message.
 //
@@ -59,20 +59,14 @@ type KubernetesDestinationRuleSpec struct {
 	// Required. Prefer a fully-qualified name (e.g. `reviews.prod.svc.cluster.local`) over a
 	// short name, which istiod resolves relative to this rule's namespace.
 	//
-	// INFRA-CHART COMPOSABILITY: host is a PLAIN string reference resolved by istiod
-	// against the service registry at runtime, NOT an Planton foreign key (StringValueOrRef).
-	// It creates NO automatic DAG edge to the target KubernetesService / KubernetesServiceEntry.
-	// To order this DestinationRule after the service it configures in an infra chart, an
-	// author MUST express the dependency via metadata.relationships, e.g.:
-	//
-	//	metadata:
-	//	  relationships:
-	//	    - kind: KubernetesService
-	//	      name: "{{ values.service }}"
-	//	      type: depends_on
-	//
-	// See the component's "Composing in Infra Charts" docs for the full pattern.
-	Host string `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
+	// INFRA-CHART COMPOSABILITY: host is a foreign key defaulting to a KubernetesService
+	// reference that resolves to the Service's in-cluster FQDN
+	// (`<name>.<namespace>.svc.cluster.local`) — wiring it with valueFrom orders this
+	// DestinationRule after the Service whose traffic it shapes and can never drift from
+	// the Service's actual name. For hosts that are not Planton-managed Services (a
+	// ServiceEntry host, an external FQDN, a wildcard), pass the literal host with
+	// `value:` — istiod resolves it against the service registry at runtime either way.
+	Host *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=host,proto3" json:"host,omitempty"`
 	// Traffic policies (load balancing, connection pool sizes, outlier detection, TLS) applied
 	// to traffic destined for the host, across all ports unless overridden per port.
 	TrafficPolicy *KubernetesDestinationRuleTrafficPolicy `protobuf:"bytes,4,opt,name=traffic_policy,json=trafficPolicy,proto3" json:"traffic_policy,omitempty"`
@@ -147,11 +141,11 @@ func (x *KubernetesDestinationRuleSpec) GetNamespace() *v1.StringValueOrRef {
 	return nil
 }
 
-func (x *KubernetesDestinationRuleSpec) GetHost() string {
+func (x *KubernetesDestinationRuleSpec) GetHost() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Host
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesDestinationRuleSpec) GetTrafficPolicy() *KubernetesDestinationRuleTrafficPolicy {
@@ -204,6 +198,12 @@ type KubernetesDestinationRuleTrafficPolicy struct {
 	Tunnel *KubernetesDestinationRuleTunnelSettings `protobuf:"bytes,6,opt,name=tunnel,proto3" json:"tunnel,omitempty"`
 	// Upstream PROXY protocol settings.
 	ProxyProtocol *KubernetesDestinationRuleProxyProtocol `protobuf:"bytes,7,opt,name=proxy_protocol,json=proxyProtocol,proto3" json:"proxy_protocol,omitempty"`
+	// Limits concurrent retries in relation to the number of active requests — a
+	// relative alternative to a fixed retry cap: under low load few retries are
+	// allowed, under high load proportionally more, without a thundering-herd
+	// amplification. Applies at the destination and subset levels (upstream places it
+	// on TrafficPolicy, not on port-level settings).
+	RetryBudget   *KubernetesDestinationRuleRetryBudget `protobuf:"bytes,8,opt,name=retry_budget,json=retryBudget,proto3" json:"retry_budget,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -287,6 +287,71 @@ func (x *KubernetesDestinationRuleTrafficPolicy) GetProxyProtocol() *KubernetesD
 	return nil
 }
 
+func (x *KubernetesDestinationRuleTrafficPolicy) GetRetryBudget() *KubernetesDestinationRuleRetryBudget {
+	if x != nil {
+		return x.RetryBudget
+	}
+	return nil
+}
+
+// KubernetesDestinationRuleRetryBudget bounds concurrent retries as a share of active
+// traffic. Faithful to upstream TrafficPolicy.RetryBudget.
+type KubernetesDestinationRuleRetryBudget struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Limit on concurrent retries as a percentage of the sum of active requests and
+	// active pending requests (0-100). Upstream default: 20.
+	Percent *float64 `protobuf:"fixed64,1,opt,name=percent,proto3,oneof" json:"percent,omitempty"`
+	// Minimum number of concurrent retries allowed regardless of `percent` — keeps
+	// retries possible when active-request counts are near zero. Upstream default: 3.
+	MinRetryConcurrency *uint32 `protobuf:"varint,2,opt,name=min_retry_concurrency,json=minRetryConcurrency,proto3,oneof" json:"min_retry_concurrency,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *KubernetesDestinationRuleRetryBudget) Reset() {
+	*x = KubernetesDestinationRuleRetryBudget{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesDestinationRuleRetryBudget) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesDestinationRuleRetryBudget) ProtoMessage() {}
+
+func (x *KubernetesDestinationRuleRetryBudget) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesDestinationRuleRetryBudget.ProtoReflect.Descriptor instead.
+func (*KubernetesDestinationRuleRetryBudget) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesDestinationRuleRetryBudget) GetPercent() float64 {
+	if x != nil && x.Percent != nil {
+		return *x.Percent
+	}
+	return 0
+}
+
+func (x *KubernetesDestinationRuleRetryBudget) GetMinRetryConcurrency() uint32 {
+	if x != nil && x.MinRetryConcurrency != nil {
+		return *x.MinRetryConcurrency
+	}
+	return 0
+}
+
 // KubernetesDestinationRulePortTrafficPolicy applies traffic settings to one specific port
 // of the destination service. Faithful to upstream TrafficPolicy.PortTrafficPolicy.
 type KubernetesDestinationRulePortTrafficPolicy struct {
@@ -308,7 +373,7 @@ type KubernetesDestinationRulePortTrafficPolicy struct {
 
 func (x *KubernetesDestinationRulePortTrafficPolicy) Reset() {
 	*x = KubernetesDestinationRulePortTrafficPolicy{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -320,7 +385,7 @@ func (x *KubernetesDestinationRulePortTrafficPolicy) String() string {
 func (*KubernetesDestinationRulePortTrafficPolicy) ProtoMessage() {}
 
 func (x *KubernetesDestinationRulePortTrafficPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -333,7 +398,7 @@ func (x *KubernetesDestinationRulePortTrafficPolicy) ProtoReflect() protoreflect
 
 // Deprecated: Use KubernetesDestinationRulePortTrafficPolicy.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRulePortTrafficPolicy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *KubernetesDestinationRulePortTrafficPolicy) GetPort() *kubernetes.KubernetesIstioApiPortSelector {
@@ -406,7 +471,7 @@ type KubernetesDestinationRuleLoadBalancerSettings struct {
 
 func (x *KubernetesDestinationRuleLoadBalancerSettings) Reset() {
 	*x = KubernetesDestinationRuleLoadBalancerSettings{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -418,7 +483,7 @@ func (x *KubernetesDestinationRuleLoadBalancerSettings) String() string {
 func (*KubernetesDestinationRuleLoadBalancerSettings) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleLoadBalancerSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -431,7 +496,7 @@ func (x *KubernetesDestinationRuleLoadBalancerSettings) ProtoReflect() protorefl
 
 // Deprecated: Use KubernetesDestinationRuleLoadBalancerSettings.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleLoadBalancerSettings) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *KubernetesDestinationRuleLoadBalancerSettings) GetSimple() string {
@@ -496,7 +561,7 @@ type KubernetesDestinationRuleConsistentHashLb struct {
 
 func (x *KubernetesDestinationRuleConsistentHashLb) Reset() {
 	*x = KubernetesDestinationRuleConsistentHashLb{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -508,7 +573,7 @@ func (x *KubernetesDestinationRuleConsistentHashLb) String() string {
 func (*KubernetesDestinationRuleConsistentHashLb) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleConsistentHashLb) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -521,7 +586,7 @@ func (x *KubernetesDestinationRuleConsistentHashLb) ProtoReflect() protoreflect.
 
 // Deprecated: Use KubernetesDestinationRuleConsistentHashLb.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleConsistentHashLb) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *KubernetesDestinationRuleConsistentHashLb) GetHttpHeaderName() string {
@@ -584,14 +649,17 @@ type KubernetesDestinationRuleHttpCookie struct {
 	// Lifetime of the cookie. If present and zero, the generated cookie is a session cookie.
 	// Modeled as a duration string; upstream applies no minimum (duration-validation:
 	// none), so only valid, non-negative durations are enforced.
-	Ttl           *string `protobuf:"bytes,3,opt,name=ttl,proto3,oneof" json:"ttl,omitempty"`
+	Ttl *string `protobuf:"bytes,3,opt,name=ttl,proto3,oneof" json:"ttl,omitempty"`
+	// Additional attributes set on the generated cookie (e.g. SameSite=Strict, Secure).
+	// Each attribute has a required name and an optional value.
+	Attributes    []*KubernetesDestinationRuleHttpCookieAttribute `protobuf:"bytes,4,rep,name=attributes,proto3" json:"attributes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesDestinationRuleHttpCookie) Reset() {
 	*x = KubernetesDestinationRuleHttpCookie{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -603,7 +671,7 @@ func (x *KubernetesDestinationRuleHttpCookie) String() string {
 func (*KubernetesDestinationRuleHttpCookie) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleHttpCookie) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -616,7 +684,7 @@ func (x *KubernetesDestinationRuleHttpCookie) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use KubernetesDestinationRuleHttpCookie.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleHttpCookie) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *KubernetesDestinationRuleHttpCookie) GetName() string {
@@ -640,6 +708,69 @@ func (x *KubernetesDestinationRuleHttpCookie) GetTtl() string {
 	return ""
 }
 
+func (x *KubernetesDestinationRuleHttpCookie) GetAttributes() []*KubernetesDestinationRuleHttpCookieAttribute {
+	if x != nil {
+		return x.Attributes
+	}
+	return nil
+}
+
+// KubernetesDestinationRuleHttpCookieAttribute is one attribute on a generated
+// consistent-hash cookie. Faithful to upstream ConsistentHashLB.HTTPCookie's attributes.
+type KubernetesDestinationRuleHttpCookieAttribute struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The name of the cookie attribute. Required.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The optional value of the cookie attribute (an attribute like `Secure` carries none).
+	Value         *string `protobuf:"bytes,2,opt,name=value,proto3,oneof" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesDestinationRuleHttpCookieAttribute) Reset() {
+	*x = KubernetesDestinationRuleHttpCookieAttribute{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesDestinationRuleHttpCookieAttribute) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesDestinationRuleHttpCookieAttribute) ProtoMessage() {}
+
+func (x *KubernetesDestinationRuleHttpCookieAttribute) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesDestinationRuleHttpCookieAttribute.ProtoReflect.Descriptor instead.
+func (*KubernetesDestinationRuleHttpCookieAttribute) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesDestinationRuleHttpCookieAttribute) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KubernetesDestinationRuleHttpCookieAttribute) GetValue() string {
+	if x != nil && x.Value != nil {
+		return *x.Value
+	}
+	return ""
+}
+
 // KubernetesDestinationRuleRingHash configures the ring-hash algorithm.
 // Faithful to upstream ConsistentHashLB.RingHash.
 type KubernetesDestinationRuleRingHash struct {
@@ -653,7 +784,7 @@ type KubernetesDestinationRuleRingHash struct {
 
 func (x *KubernetesDestinationRuleRingHash) Reset() {
 	*x = KubernetesDestinationRuleRingHash{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -665,7 +796,7 @@ func (x *KubernetesDestinationRuleRingHash) String() string {
 func (*KubernetesDestinationRuleRingHash) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleRingHash) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -678,7 +809,7 @@ func (x *KubernetesDestinationRuleRingHash) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use KubernetesDestinationRuleRingHash.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleRingHash) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *KubernetesDestinationRuleRingHash) GetMinimumRingSize() uint64 {
@@ -701,7 +832,7 @@ type KubernetesDestinationRuleMagLev struct {
 
 func (x *KubernetesDestinationRuleMagLev) Reset() {
 	*x = KubernetesDestinationRuleMagLev{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -713,7 +844,7 @@ func (x *KubernetesDestinationRuleMagLev) String() string {
 func (*KubernetesDestinationRuleMagLev) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleMagLev) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -726,7 +857,7 @@ func (x *KubernetesDestinationRuleMagLev) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesDestinationRuleMagLev.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleMagLev) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *KubernetesDestinationRuleMagLev) GetTableSize() uint64 {
@@ -754,7 +885,7 @@ type KubernetesDestinationRuleWarmupConfiguration struct {
 
 func (x *KubernetesDestinationRuleWarmupConfiguration) Reset() {
 	*x = KubernetesDestinationRuleWarmupConfiguration{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -766,7 +897,7 @@ func (x *KubernetesDestinationRuleWarmupConfiguration) String() string {
 func (*KubernetesDestinationRuleWarmupConfiguration) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleWarmupConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -779,7 +910,7 @@ func (x *KubernetesDestinationRuleWarmupConfiguration) ProtoReflect() protorefle
 
 // Deprecated: Use KubernetesDestinationRuleWarmupConfiguration.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleWarmupConfiguration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *KubernetesDestinationRuleWarmupConfiguration) GetDuration() string {
@@ -817,7 +948,7 @@ type KubernetesDestinationRuleConnectionPoolSettings struct {
 
 func (x *KubernetesDestinationRuleConnectionPoolSettings) Reset() {
 	*x = KubernetesDestinationRuleConnectionPoolSettings{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -829,7 +960,7 @@ func (x *KubernetesDestinationRuleConnectionPoolSettings) String() string {
 func (*KubernetesDestinationRuleConnectionPoolSettings) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleConnectionPoolSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -842,7 +973,7 @@ func (x *KubernetesDestinationRuleConnectionPoolSettings) ProtoReflect() protore
 
 // Deprecated: Use KubernetesDestinationRuleConnectionPoolSettings.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleConnectionPoolSettings) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *KubernetesDestinationRuleConnectionPoolSettings) GetTcp() *KubernetesDestinationRuleTcpSettings {
@@ -882,7 +1013,7 @@ type KubernetesDestinationRuleTcpSettings struct {
 
 func (x *KubernetesDestinationRuleTcpSettings) Reset() {
 	*x = KubernetesDestinationRuleTcpSettings{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -894,7 +1025,7 @@ func (x *KubernetesDestinationRuleTcpSettings) String() string {
 func (*KubernetesDestinationRuleTcpSettings) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleTcpSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -907,7 +1038,7 @@ func (x *KubernetesDestinationRuleTcpSettings) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use KubernetesDestinationRuleTcpSettings.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleTcpSettings) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{10}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *KubernetesDestinationRuleTcpSettings) GetMaxConnections() int32 {
@@ -964,7 +1095,7 @@ type KubernetesDestinationRuleTcpKeepalive struct {
 
 func (x *KubernetesDestinationRuleTcpKeepalive) Reset() {
 	*x = KubernetesDestinationRuleTcpKeepalive{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -976,7 +1107,7 @@ func (x *KubernetesDestinationRuleTcpKeepalive) String() string {
 func (*KubernetesDestinationRuleTcpKeepalive) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleTcpKeepalive) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -989,7 +1120,7 @@ func (x *KubernetesDestinationRuleTcpKeepalive) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use KubernetesDestinationRuleTcpKeepalive.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleTcpKeepalive) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{11}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *KubernetesDestinationRuleTcpKeepalive) GetProbes() uint32 {
@@ -1050,7 +1181,7 @@ type KubernetesDestinationRuleHttpSettings struct {
 
 func (x *KubernetesDestinationRuleHttpSettings) Reset() {
 	*x = KubernetesDestinationRuleHttpSettings{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1062,7 +1193,7 @@ func (x *KubernetesDestinationRuleHttpSettings) String() string {
 func (*KubernetesDestinationRuleHttpSettings) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleHttpSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1075,7 +1206,7 @@ func (x *KubernetesDestinationRuleHttpSettings) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use KubernetesDestinationRuleHttpSettings.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleHttpSettings) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{12}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *KubernetesDestinationRuleHttpSettings) GetHttp1MaxPendingRequests() int32 {
@@ -1168,7 +1299,7 @@ type KubernetesDestinationRuleOutlierDetection struct {
 
 func (x *KubernetesDestinationRuleOutlierDetection) Reset() {
 	*x = KubernetesDestinationRuleOutlierDetection{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[13]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1180,7 +1311,7 @@ func (x *KubernetesDestinationRuleOutlierDetection) String() string {
 func (*KubernetesDestinationRuleOutlierDetection) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleOutlierDetection) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[13]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1193,7 +1324,7 @@ func (x *KubernetesDestinationRuleOutlierDetection) ProtoReflect() protoreflect.
 
 // Deprecated: Use KubernetesDestinationRuleOutlierDetection.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleOutlierDetection) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{13}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *KubernetesDestinationRuleOutlierDetection) GetSplitExternalLocalOriginErrors() bool {
@@ -1312,7 +1443,7 @@ type KubernetesDestinationRuleClientTlsSettings struct {
 
 func (x *KubernetesDestinationRuleClientTlsSettings) Reset() {
 	*x = KubernetesDestinationRuleClientTlsSettings{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[14]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1324,7 +1455,7 @@ func (x *KubernetesDestinationRuleClientTlsSettings) String() string {
 func (*KubernetesDestinationRuleClientTlsSettings) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleClientTlsSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[14]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1337,7 +1468,7 @@ func (x *KubernetesDestinationRuleClientTlsSettings) ProtoReflect() protoreflect
 
 // Deprecated: Use KubernetesDestinationRuleClientTlsSettings.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleClientTlsSettings) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{14}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *KubernetesDestinationRuleClientTlsSettings) GetMode() string {
@@ -1422,7 +1553,7 @@ type KubernetesDestinationRuleTunnelSettings struct {
 
 func (x *KubernetesDestinationRuleTunnelSettings) Reset() {
 	*x = KubernetesDestinationRuleTunnelSettings{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[15]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1434,7 +1565,7 @@ func (x *KubernetesDestinationRuleTunnelSettings) String() string {
 func (*KubernetesDestinationRuleTunnelSettings) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleTunnelSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[15]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1447,7 +1578,7 @@ func (x *KubernetesDestinationRuleTunnelSettings) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use KubernetesDestinationRuleTunnelSettings.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleTunnelSettings) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{15}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *KubernetesDestinationRuleTunnelSettings) GetProtocol() string {
@@ -1484,7 +1615,7 @@ type KubernetesDestinationRuleProxyProtocol struct {
 
 func (x *KubernetesDestinationRuleProxyProtocol) Reset() {
 	*x = KubernetesDestinationRuleProxyProtocol{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[16]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1496,7 +1627,7 @@ func (x *KubernetesDestinationRuleProxyProtocol) String() string {
 func (*KubernetesDestinationRuleProxyProtocol) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleProxyProtocol) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[16]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1509,7 +1640,7 @@ func (x *KubernetesDestinationRuleProxyProtocol) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use KubernetesDestinationRuleProxyProtocol.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleProxyProtocol) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{16}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *KubernetesDestinationRuleProxyProtocol) GetVersion() string {
@@ -1543,7 +1674,7 @@ type KubernetesDestinationRuleLocalityLbSetting struct {
 
 func (x *KubernetesDestinationRuleLocalityLbSetting) Reset() {
 	*x = KubernetesDestinationRuleLocalityLbSetting{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[17]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1555,7 +1686,7 @@ func (x *KubernetesDestinationRuleLocalityLbSetting) String() string {
 func (*KubernetesDestinationRuleLocalityLbSetting) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleLocalityLbSetting) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[17]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1568,7 +1699,7 @@ func (x *KubernetesDestinationRuleLocalityLbSetting) ProtoReflect() protoreflect
 
 // Deprecated: Use KubernetesDestinationRuleLocalityLbSetting.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleLocalityLbSetting) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{17}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *KubernetesDestinationRuleLocalityLbSetting) GetDistribute() []*KubernetesDestinationRuleLocalityDistribute {
@@ -1614,7 +1745,7 @@ type KubernetesDestinationRuleLocalityDistribute struct {
 
 func (x *KubernetesDestinationRuleLocalityDistribute) Reset() {
 	*x = KubernetesDestinationRuleLocalityDistribute{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[18]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1626,7 +1757,7 @@ func (x *KubernetesDestinationRuleLocalityDistribute) String() string {
 func (*KubernetesDestinationRuleLocalityDistribute) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleLocalityDistribute) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[18]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1639,7 +1770,7 @@ func (x *KubernetesDestinationRuleLocalityDistribute) ProtoReflect() protoreflec
 
 // Deprecated: Use KubernetesDestinationRuleLocalityDistribute.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleLocalityDistribute) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{18}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *KubernetesDestinationRuleLocalityDistribute) GetFrom() string {
@@ -1671,7 +1802,7 @@ type KubernetesDestinationRuleLocalityFailover struct {
 
 func (x *KubernetesDestinationRuleLocalityFailover) Reset() {
 	*x = KubernetesDestinationRuleLocalityFailover{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[19]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1683,7 +1814,7 @@ func (x *KubernetesDestinationRuleLocalityFailover) String() string {
 func (*KubernetesDestinationRuleLocalityFailover) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleLocalityFailover) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[19]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1696,7 +1827,7 @@ func (x *KubernetesDestinationRuleLocalityFailover) ProtoReflect() protoreflect.
 
 // Deprecated: Use KubernetesDestinationRuleLocalityFailover.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleLocalityFailover) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{19}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *KubernetesDestinationRuleLocalityFailover) GetFrom() string {
@@ -1733,7 +1864,7 @@ type KubernetesDestinationRuleSubset struct {
 
 func (x *KubernetesDestinationRuleSubset) Reset() {
 	*x = KubernetesDestinationRuleSubset{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[20]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1745,7 +1876,7 @@ func (x *KubernetesDestinationRuleSubset) String() string {
 func (*KubernetesDestinationRuleSubset) ProtoMessage() {}
 
 func (x *KubernetesDestinationRuleSubset) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[20]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1758,7 +1889,7 @@ func (x *KubernetesDestinationRuleSubset) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesDestinationRuleSubset.ProtoReflect.Descriptor instead.
 func (*KubernetesDestinationRuleSubset) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{20}
+	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *KubernetesDestinationRuleSubset) GetName() string {
@@ -1786,14 +1917,14 @@ var File_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto
 
 const file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kubernetesdestinationrule/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesdestinationrule.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbd\x04\n" +
+	"Gdev/planton/provider/kubernetes/kubernetesdestinationrule/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesdestinationrule.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x96\x05\n" +
 	"\x1dKubernetesDestinationRuleSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x1a\n" +
-	"\x04host\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04host\x12\x8b\x01\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12s\n" +
+	"\x04host\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1cstatus.outputs.kube_endpointR\x04host\x12\x8b\x01\n" +
 	"\x0etraffic_policy\x18\x04 \x01(\v2d.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicyR\rtrafficPolicy\x12w\n" +
 	"\asubsets\x18\x05 \x03(\v2].dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubsetR\asubsets\x12\x1b\n" +
 	"\texport_to\x18\x06 \x03(\tR\bexportTo\x12p\n" +
-	"\x11workload_selector\x18\a \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\x10workloadSelector\"\x9a\b\n" +
+	"\x11workload_selector\x18\a \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\x10workloadSelector\"\xa2\t\n" +
 	"&KubernetesDestinationRuleTrafficPolicy\x12\x90\x01\n" +
 	"\rload_balancer\x18\x01 \x01(\v2k.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettingsR\floadBalancer\x12\x96\x01\n" +
 	"\x0fconnection_pool\x18\x02 \x01(\v2m.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettingsR\x0econnectionPool\x12\x94\x01\n" +
@@ -1801,7 +1932,14 @@ const file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_pro
 	"\x03tls\x18\x04 \x01(\v2h.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettingsR\x03tls\x12\xa3\x01\n" +
 	"\x13port_level_settings\x18\x05 \x03(\v2h.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicyB\t\xbaH\x06\x92\x01\x03\x10\x80 R\x11portLevelSettings\x12}\n" +
 	"\x06tunnel\x18\x06 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTunnelSettingsR\x06tunnel\x12\x8b\x01\n" +
-	"\x0eproxy_protocol\x18\a \x01(\v2d.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleProxyProtocolR\rproxyProtocol\"\xc0\x05\n" +
+	"\x0eproxy_protocol\x18\a \x01(\v2d.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleProxyProtocolR\rproxyProtocol\x12\x85\x01\n" +
+	"\fretry_budget\x18\b \x01(\v2b.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleRetryBudgetR\vretryBudget\"\xbd\x01\n" +
+	"$KubernetesDestinationRuleRetryBudget\x126\n" +
+	"\apercent\x18\x01 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00Y@)\x00\x00\x00\x00\x00\x00\x00\x00H\x00R\apercent\x88\x01\x01\x127\n" +
+	"\x15min_retry_concurrency\x18\x02 \x01(\rH\x01R\x13minRetryConcurrency\x88\x01\x01B\n" +
+	"\n" +
+	"\b_percentB\x18\n" +
+	"\x16_min_retry_concurrency\"\xc0\x05\n" +
 	"*KubernetesDestinationRulePortTrafficPolicy\x12S\n" +
 	"\x04port\x18\x01 \x01(\v2?.dev.planton.provider.kubernetes.KubernetesIstioApiPortSelectorR\x04port\x12\x90\x01\n" +
 	"\rload_balancer\x18\x02 \x01(\v2k.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettingsR\floadBalancer\x12\x96\x01\n" +
@@ -1834,14 +1972,21 @@ const file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_pro
 	"\x11_http_header_nameB\x10\n" +
 	"\x0e_use_source_ipB\x1c\n" +
 	"\x1a_http_query_parameter_nameB\x14\n" +
-	"\x12_minimum_ring_size\"\xa5\x02\n" +
+	"\x12_minimum_ring_size\"\xb2\x03\n" +
 	"#KubernetesDestinationRuleHttpCookie\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x17\n" +
 	"\x04path\x18\x02 \x01(\tH\x00R\x04path\x88\x01\x01\x12\xb7\x01\n" +
 	"\x03ttl\x18\x03 \x01(\tB\x9f\x01\xbaH\x9b\x01\xba\x01\x97\x01\n" +
-	"'destination_rule_http_cookie.ttl_format\x12<ttl must be a valid, non-negative duration (e.g. \"0s\", \"1h\")\x1a.this == '' || duration(this) >= duration('0s')H\x01R\x03ttl\x88\x01\x01B\a\n" +
+	"'destination_rule_http_cookie.ttl_format\x12<ttl must be a valid, non-negative duration (e.g. \"0s\", \"1h\")\x1a.this == '' || duration(this) >= duration('0s')H\x01R\x03ttl\x88\x01\x01\x12\x8a\x01\n" +
+	"\n" +
+	"attributes\x18\x04 \x03(\v2j.dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpCookieAttributeR\n" +
+	"attributesB\a\n" +
 	"\x05_pathB\x06\n" +
-	"\x04_ttl\"j\n" +
+	"\x04_ttl\"o\n" +
+	",KubernetesDestinationRuleHttpCookieAttribute\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x19\n" +
+	"\x05value\x18\x02 \x01(\tH\x00R\x05value\x88\x01\x01B\b\n" +
+	"\x06_value\"j\n" +
 	"!KubernetesDestinationRuleRingHash\x12/\n" +
 	"\x11minimum_ring_size\x18\x01 \x01(\x04H\x00R\x0fminimumRingSize\x88\x01\x01B\x14\n" +
 	"\x12_minimum_ring_size\"T\n" +
@@ -1995,71 +2140,76 @@ func file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_prot
 	return file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_goTypes = []any{
 	(*KubernetesDestinationRuleSpec)(nil),                   // 0: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec
 	(*KubernetesDestinationRuleTrafficPolicy)(nil),          // 1: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy
-	(*KubernetesDestinationRulePortTrafficPolicy)(nil),      // 2: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy
-	(*KubernetesDestinationRuleLoadBalancerSettings)(nil),   // 3: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings
-	(*KubernetesDestinationRuleConsistentHashLb)(nil),       // 4: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb
-	(*KubernetesDestinationRuleHttpCookie)(nil),             // 5: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpCookie
-	(*KubernetesDestinationRuleRingHash)(nil),               // 6: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleRingHash
-	(*KubernetesDestinationRuleMagLev)(nil),                 // 7: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleMagLev
-	(*KubernetesDestinationRuleWarmupConfiguration)(nil),    // 8: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleWarmupConfiguration
-	(*KubernetesDestinationRuleConnectionPoolSettings)(nil), // 9: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings
-	(*KubernetesDestinationRuleTcpSettings)(nil),            // 10: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpSettings
-	(*KubernetesDestinationRuleTcpKeepalive)(nil),           // 11: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpKeepalive
-	(*KubernetesDestinationRuleHttpSettings)(nil),           // 12: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpSettings
-	(*KubernetesDestinationRuleOutlierDetection)(nil),       // 13: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleOutlierDetection
-	(*KubernetesDestinationRuleClientTlsSettings)(nil),      // 14: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettings
-	(*KubernetesDestinationRuleTunnelSettings)(nil),         // 15: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTunnelSettings
-	(*KubernetesDestinationRuleProxyProtocol)(nil),          // 16: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleProxyProtocol
-	(*KubernetesDestinationRuleLocalityLbSetting)(nil),      // 17: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting
-	(*KubernetesDestinationRuleLocalityDistribute)(nil),     // 18: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute
-	(*KubernetesDestinationRuleLocalityFailover)(nil),       // 19: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityFailover
-	(*KubernetesDestinationRuleSubset)(nil),                 // 20: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset
-	nil,                                                     // 21: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.ToEntry
-	nil,                                                     // 22: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.LabelsEntry
-	(*v1.StringValueOrRef)(nil),                             // 23: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil),   // 24: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	(*kubernetes.KubernetesIstioApiPortSelector)(nil),       // 25: dev.planton.provider.kubernetes.KubernetesIstioApiPortSelector
+	(*KubernetesDestinationRuleRetryBudget)(nil),            // 2: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleRetryBudget
+	(*KubernetesDestinationRulePortTrafficPolicy)(nil),      // 3: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy
+	(*KubernetesDestinationRuleLoadBalancerSettings)(nil),   // 4: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings
+	(*KubernetesDestinationRuleConsistentHashLb)(nil),       // 5: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb
+	(*KubernetesDestinationRuleHttpCookie)(nil),             // 6: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpCookie
+	(*KubernetesDestinationRuleHttpCookieAttribute)(nil),    // 7: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpCookieAttribute
+	(*KubernetesDestinationRuleRingHash)(nil),               // 8: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleRingHash
+	(*KubernetesDestinationRuleMagLev)(nil),                 // 9: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleMagLev
+	(*KubernetesDestinationRuleWarmupConfiguration)(nil),    // 10: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleWarmupConfiguration
+	(*KubernetesDestinationRuleConnectionPoolSettings)(nil), // 11: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings
+	(*KubernetesDestinationRuleTcpSettings)(nil),            // 12: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpSettings
+	(*KubernetesDestinationRuleTcpKeepalive)(nil),           // 13: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpKeepalive
+	(*KubernetesDestinationRuleHttpSettings)(nil),           // 14: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpSettings
+	(*KubernetesDestinationRuleOutlierDetection)(nil),       // 15: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleOutlierDetection
+	(*KubernetesDestinationRuleClientTlsSettings)(nil),      // 16: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettings
+	(*KubernetesDestinationRuleTunnelSettings)(nil),         // 17: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTunnelSettings
+	(*KubernetesDestinationRuleProxyProtocol)(nil),          // 18: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleProxyProtocol
+	(*KubernetesDestinationRuleLocalityLbSetting)(nil),      // 19: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting
+	(*KubernetesDestinationRuleLocalityDistribute)(nil),     // 20: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute
+	(*KubernetesDestinationRuleLocalityFailover)(nil),       // 21: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityFailover
+	(*KubernetesDestinationRuleSubset)(nil),                 // 22: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset
+	nil,                                                     // 23: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.ToEntry
+	nil,                                                     // 24: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.LabelsEntry
+	(*v1.StringValueOrRef)(nil),                             // 25: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesIstioApiWorkloadSelector)(nil),   // 26: dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	(*kubernetes.KubernetesIstioApiPortSelector)(nil),       // 27: dev.planton.provider.kubernetes.KubernetesIstioApiPortSelector
 }
 var file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_depIdxs = []int32{
-	23, // 0: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 1: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy
-	20, // 2: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.subsets:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset
-	24, // 3: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.workload_selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
-	3,  // 4: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.load_balancer:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings
-	9,  // 5: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.connection_pool:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings
-	13, // 6: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.outlier_detection:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleOutlierDetection
-	14, // 7: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.tls:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettings
-	2,  // 8: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.port_level_settings:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy
-	15, // 9: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.tunnel:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTunnelSettings
-	16, // 10: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.proxy_protocol:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleProxyProtocol
-	25, // 11: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.port:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPortSelector
-	3,  // 12: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.load_balancer:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings
-	9,  // 13: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.connection_pool:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings
-	13, // 14: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.outlier_detection:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleOutlierDetection
-	14, // 15: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.tls:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettings
-	4,  // 16: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.consistent_hash:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb
-	17, // 17: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.locality_lb_setting:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting
-	8,  // 18: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.warmup:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleWarmupConfiguration
-	5,  // 19: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.http_cookie:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpCookie
-	6,  // 20: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.ring_hash:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleRingHash
-	7,  // 21: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.maglev:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleMagLev
-	10, // 22: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings.tcp:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpSettings
-	12, // 23: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings.http:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpSettings
-	11, // 24: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpSettings.tcp_keepalive:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpKeepalive
-	18, // 25: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting.distribute:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute
-	19, // 26: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting.failover:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityFailover
-	21, // 27: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.to:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.ToEntry
-	22, // 28: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.labels:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.LabelsEntry
-	1,  // 29: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy
-	30, // [30:30] is the sub-list for method output_type
-	30, // [30:30] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	25, // 0: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 1: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 2: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy
+	22, // 3: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.subsets:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset
+	26, // 4: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.workload_selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelector
+	4,  // 5: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.load_balancer:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings
+	11, // 6: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.connection_pool:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings
+	15, // 7: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.outlier_detection:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleOutlierDetection
+	16, // 8: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.tls:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettings
+	3,  // 9: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.port_level_settings:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy
+	17, // 10: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.tunnel:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTunnelSettings
+	18, // 11: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.proxy_protocol:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleProxyProtocol
+	2,  // 12: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy.retry_budget:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleRetryBudget
+	27, // 13: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.port:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPortSelector
+	4,  // 14: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.load_balancer:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings
+	11, // 15: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.connection_pool:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings
+	15, // 16: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.outlier_detection:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleOutlierDetection
+	16, // 17: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRulePortTrafficPolicy.tls:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleClientTlsSettings
+	5,  // 18: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.consistent_hash:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb
+	19, // 19: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.locality_lb_setting:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting
+	10, // 20: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLoadBalancerSettings.warmup:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleWarmupConfiguration
+	6,  // 21: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.http_cookie:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpCookie
+	8,  // 22: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.ring_hash:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleRingHash
+	9,  // 23: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConsistentHashLb.maglev:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleMagLev
+	7,  // 24: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpCookie.attributes:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpCookieAttribute
+	12, // 25: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings.tcp:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpSettings
+	14, // 26: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleConnectionPoolSettings.http:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleHttpSettings
+	13, // 27: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpSettings.tcp_keepalive:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTcpKeepalive
+	20, // 28: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting.distribute:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute
+	21, // 29: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityLbSetting.failover:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityFailover
+	23, // 30: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.to:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleLocalityDistribute.ToEntry
+	24, // 31: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.labels:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.LabelsEntry
+	1,  // 32: dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSubset.traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleTrafficPolicy
+	33, // [33:33] is the sub-list for method output_type
+	33, // [33:33] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_init() }
@@ -2067,14 +2217,14 @@ func file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_prot
 	if File_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[11].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[14].OneofWrappers = []any{}
@@ -2083,13 +2233,15 @@ func file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_prot
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[17].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[18].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[19].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[20].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_msgTypes[21].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesdestinationrule_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

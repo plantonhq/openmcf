@@ -1,0 +1,14 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesNetworkPolicy
+metadata:
+  name: allow-same-namespace
+spec:
+  name: allow-same-namespace
+  namespace:
+    value: "<your-namespace>"
+  pod_selector: {}
+  policy_types:
+    - ingress
+  ingress_rules:
+    - from:
+        - pod_selector: {}

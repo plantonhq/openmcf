@@ -54,7 +54,7 @@ The module accepts configuration via the `KubernetesGatewayApiCrdsStackInput` pr
 
 | Field | Description |
 |-------|-------------|
-| `target.spec.version` | Gateway API version to install (default: v1.2.1) |
+| `target.spec.version` | Gateway API version to install (default: v1.6.1) |
 | `target.spec.install_channel.channel` | standard or experimental (default: standard) |
 | `provider_config` | Kubernetes provider configuration |
 
@@ -82,7 +82,6 @@ pulumi/
 ├── Pulumi.yaml       # Pulumi project configuration
 ├── Makefile          # Build and test automation
 ├── README.md         # This file
-├── overview.md       # Architecture overview
 └── module/
     ├── main.go       # Resource creation logic
     ├── locals.go     # Computed values

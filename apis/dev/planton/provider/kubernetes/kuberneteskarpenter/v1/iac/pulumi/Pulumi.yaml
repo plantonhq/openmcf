@@ -1,0 +1,3 @@
+name: kubernetes-karpenter
+runtime: go
+description: Karpenter installation from the official OCI-served Helm charts — just-in-time node provisioning that launches right-sized machines for pending pods in seconds, consolidates under-used nodes, and handles spot interruptions

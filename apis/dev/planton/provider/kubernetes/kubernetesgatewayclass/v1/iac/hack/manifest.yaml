@@ -4,4 +4,9 @@ metadata:
   name: test-gateway-class
 spec:
   controllerName: istio.io/gateway-controller
-  description: "Test gateway class for local hacking"
+  parametersRef:
+    group: ""
+    kind: ConfigMap
+    name: gateway-class-params
+    namespace: gateway-system
+  description: "Full-surface gateway class for offline plan proofs"

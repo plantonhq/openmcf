@@ -60,6 +60,10 @@ type ResourceQuotaConfig struct {
 	Secrets        int32
 	PVCs           int32
 	LoadBalancers  int32
+
+	// Arbitrary extra quota entries (custom profile only), merged into the same
+	// ResourceQuota as the typed fields above
+	AdditionalHardLimits map[string]string
 }
 
 // LimitRangeConfig holds computed limit range values
@@ -262,6 +266,7 @@ func computeResourceQuota(spec *kubernetesnamespacev1.KubernetesNamespaceSpec) *
 			config.PVCs = custom.ObjectCounts.PersistentVolumeClaims
 			config.LoadBalancers = custom.ObjectCounts.LoadBalancers
 		}
+		config.AdditionalHardLimits = custom.AdditionalHardLimits
 	}
 
 	return config

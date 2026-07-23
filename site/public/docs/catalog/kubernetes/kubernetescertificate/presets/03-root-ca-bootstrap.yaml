@@ -1,23 +1,18 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesCertificate
 metadata:
-  name: my-root-ca
+  name: root-ca
 spec:
   namespace:
     value: "<your-namespace>"
-  dnsNames:
-    - "<your-root-ca-name>"
-  secretName: "<your-root-ca-secret>"
-  isCa: true
+  secretName: root-ca-tls
   issuerRef:
     issuer:
       name:
-        value: "<your-selfsigned-issuer>"
-  durationConfig:
-    duration: "87600h"
-    renewBefore: "2160h"
+        value: "<selfsigned-issuer-name>"
+  commonName: root-ca
+  isCa: true
   privateKey:
-    algorithm: rsa
-    size: 4096
-    encoding: pkcs1
-    rotationPolicy: never
+    algorithm: ecdsa
+    size: 256
+  duration: 87600h

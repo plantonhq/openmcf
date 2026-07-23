@@ -5,10 +5,12 @@ package dev.planton.provider.kubernetes.kubernetespostgres.v1;
 import "dev/planton/provider/kubernetes/kubernetespostgres/v1/api.proto";
 import "dev/planton/provider/kubernetes/provider.proto";
 
-//postgres-kubernetes stack-input
+// Input for the KubernetesPostgres IaC stack. The platform resolves all
+// StringValueOrRef references (namespace, storage class, TLS secret) to
+// literal strings before passing this to the IaC engine.
 message KubernetesPostgresStackInput {
-  //target cloud-resource
+  // Target cloud-resource.
   KubernetesPostgres target = 1;
-  //provider-config
+  // Kubernetes provider configuration (cluster credentials).
   dev.planton.provider.kubernetes.KubernetesProviderConfig provider_config = 2;
 }

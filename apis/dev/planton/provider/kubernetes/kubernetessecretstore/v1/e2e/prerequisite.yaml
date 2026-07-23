@@ -1,0 +1,23 @@
+# Dependency-install profile for a SecretStore.
+#
+# The E2E harness deploys this (via KubernetesExternalSecret scenarios that
+# resolve their store through a foreign-key reference) after the External
+# Secrets Operator itself (the registry prerequisite graph chains through
+# this kind's own `prerequisites: [KubernetesExternalSecretsOperator]`).
+# Fake backend in the "default" namespace: reaches Ready with zero external
+# dependencies — the universal in-cluster fixture. Serves a flat entry (for
+# explicit data syncs) and a JSON document (for dataFrom extraction).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSecretStore
+metadata:
+  name: e2e-sst-fixture
+spec:
+  namespace:
+    value: default
+  config:
+    fake:
+      data:
+        - key: db-password
+          value: e2e-db-password-value
+        - key: app-config
+          value: '{"username":"e2e-user","password":"e2e-pass"}'

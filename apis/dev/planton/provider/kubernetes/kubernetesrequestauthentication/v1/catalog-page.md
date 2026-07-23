@@ -48,8 +48,8 @@ planton apply -f requestauthentication.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `selector.match_labels` | map | Pod labels selecting target workloads; omit for namespace-wide scope. Mutually exclusive with `target_refs`. |
-| `target_refs` | list | Gateway / Service / ServiceEntry resources to bind to; required for waypoints. Mutually exclusive with `selector`. |
-| `jwt_rules` | list | JWT rules: `issuer`, `jwks_uri`/`jwks`, token locations, audiences, claim forwarding, `timeout`. |
+| `target_refs` | list | Gateway / Service / ServiceEntry resources to bind to; required for waypoints. Mutually exclusive with `selector`. Each `name` is a foreign key defaulting to a `KubernetesGateway` reference; pass literals with `value:`. |
+| `jwt_rules` | list | JWT rules: `issuer`, `jwks_uri`/`jwks` (at least one of `issuer`/`jwks_uri`), token locations, audiences, claim forwarding, `timeout`, `space_delimited_claims`. |
 
 ## Stack Outputs
 

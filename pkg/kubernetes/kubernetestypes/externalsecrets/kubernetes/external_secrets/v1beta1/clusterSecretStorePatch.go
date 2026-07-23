@@ -43,7 +43,7 @@ func NewClusterSecretStorePatch(ctx *pulumi.Context,
 	args.Kind = pulumi.StringPtr("ClusterSecretStore")
 	aliases := pulumi.Aliases([]pulumi.Alias{
 		{
-			Type: pulumi.String("kubernetes:external-secrets.io/v1alpha1:ClusterSecretStorePatch"),
+			Type: pulumi.String("kubernetes:external-secrets.io/v1:ClusterSecretStorePatch"),
 		},
 	})
 	opts = append(opts, aliases)

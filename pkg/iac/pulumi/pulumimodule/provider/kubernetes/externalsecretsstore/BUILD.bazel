@@ -1,0 +1,12 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "externalsecretsstore",
+    srcs = ["spec.go"],
+    importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/externalsecretsstore",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//apis/dev/planton/provider/kubernetes",
+        "@com_github_pkg_errors//:errors",
+    ],
+)

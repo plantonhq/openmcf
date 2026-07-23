@@ -4,115 +4,946 @@ package dev.planton.provider.kubernetes.kubernetesmongodb.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
-import "google/protobuf/descriptor.proto";
-
-extend google.protobuf.FieldOptions {
-  KubernetesMongodbContainer default_container = 530001;
-}
+import "dev/planton/shared/options/options.proto";
 
 /**
- * **KubernetesMongodbSpec** defines the configuration for deploying MongoDB on a Kubernetes cluster.
- * This message specifies the parameters needed to create and manage a MongoDB deployment within a Kubernetes environment.
- * It includes container specifications, ingress settings, and Helm chart customization options.
+ * **KubernetesMongodbSpec** declares a production-grade MongoDB cluster
+ * reconciled by the Percona Operator for MongoDB
+ * (KubernetesPerconaMongoOperator must be on the cluster). The spec
+ * renders a `psmdb.percona.com/v1` PerconaServerMongoDB custom
+ * resource: replica sets with automated failover (a new primary is
+ * elected in seconds when the current one dies), optional SHARDING
+ * (mongos routers + config servers, each declared replica set becoming
+ * a shard), scheduled logical/physical/incremental backups with
+ * point-in-time recovery via Percona Backup for MongoDB, TLS, and
+ * declarative users.
+ *
+ * The server is Percona Server for MongoDB — a fully MongoDB-compatible
+ * open-source distribution (every driver, tool, and query works
+ * unchanged) with enterprise-grade features under an open license.
+ *
+ * TOPOLOGY: `replica_sets` declares the data-bearing sets. Without
+ * sharding, exactly one replica set (3 members is the production
+ * shape). With `sharding` enabled, EVERY declared replica set becomes a
+ * shard behind the mongos routers, and clients connect to mongos.
+ *
+ * NAMING CONTRACT: every object derives from `metadata.name` — pods
+ * (`<name>-<rs>-0..N`), the per-replica-set headless Services
+ * (`<name>-<rs>`), the mongos Service (`<name>-mongos`, sharding only),
+ * and the system-users Secret (`<name>-secrets`, operator-generated
+ * passwords for the built-in accounts).
+ *
+ * EXPOSURE IS COMPOSED, never embedded: the cluster is in-cluster
+ * plumbing reachable at the exported `kube_endpoint`. The per-set
+ * `expose` block exists for the managed-cloud LoadBalancer recipes and
+ * cross-cluster topologies, documented per environment.
+ *
+ * DELIBERATELY NOT MODELED (reachable via the operator's own upstream
+ * surface where noted, recorded in the research doc): multi-cluster
+ * deployments, split horizons, hidden and non-voting members, external
+ * nodes, Vault integration, hook scripts, sidecar containers, custom
+ * MongoDB roles.
  */
 message KubernetesMongodbSpec {
-  // Kubernetes Namespace
-  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+  /**
+   * Namespace to create the MongoDB cluster in. The reconciling
+   * operator must watch this namespace (the default operator posture
+   * watches its OWN namespace — install the operator there, or widen
+   * its watch). Accepts a literal namespace name or a reference to a
+   * KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
   ];
 
-  // flag to indicate if the namespace should be created
-  bool create_namespace = 3;
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before the cluster and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
 
-  // The specifications for the MongoDB container deployment.
-  KubernetesMongodbContainer container = 4 [(default_container) = {
-    replicas: 1
-    resources: {
-      limits: {
-        cpu: "1000m"
-        memory: "1Gi"
-      }
-      requests: {
-        cpu: "50m"
-        memory: "100Mi"
-      }
+  /**
+   * Percona Server for MongoDB container image, tag form (e.g.
+   * "percona/percona-server-mongodb:8.0.19-7" — MongoDB 8.0). Empty =
+   * the module's default for the pinned operator. This is how the
+   * MongoDB version is chosen; changing it on a live cluster performs a
+   * SmartUpdate rolling upgrade.
+   */
+  string image_name = 3;
+
+  /**
+   * The data-bearing replica sets. Exactly one without sharding; with
+   * sharding, each set becomes a shard. 3 members is the production
+   * shape (automated failover needs a majority); 1 is a development
+   * posture that REQUIRES unsafe.replset_size.
+   */
+  repeated KubernetesMongodbReplicaSet replica_sets = 4 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "spec.replica_sets.unique_names"
+      message: "each replica set needs a distinct name"
+      expression: "this.all(r1, this.exists_one(r2, r1.name == r2.name))"
     }
-    persistence_enabled: true
-    disk_size: "1Gi"
+  ];
+
+  /**
+   * Sharding: mongos routers + a config-server replica set; every
+   * declared replica set becomes a shard. Omitted = a plain replica-set
+   * cluster (the common shape — shard when a single set's write volume
+   * or working set no longer fits).
+   */
+  KubernetesMongodbSharding sharding = 5;
+
+  /**
+   * TLS posture. Omitted = preferTLS with operator-generated
+   * certificates (the upstream default). Point issuer at a cert-manager
+   * (Cluster)Issuer for an organization-trusted chain; disabling TLS
+   * REQUIRES unsafe.tls.
+   */
+  KubernetesMongodbTls tls = 6;
+
+  /**
+   * Declarative application users: the operator creates them, keeps
+   * their roles reconciled, and manages their password Secrets.
+   */
+  repeated KubernetesMongodbUser users = 7 [(buf.validate.field).cel = {
+    id: "spec.users.unique_names"
+    message: "each user needs a distinct name"
+    expression: "this.all(u1, this.exists_one(u2, u1.name == u2.name))"
   }];
 
   /**
-   * The ingress configuration for the MongoDB deployment.
+   * Scheduled backups + point-in-time recovery via Percona Backup for
+   * MongoDB. Omitted = no backups (a deliberate choice to make, not a
+   * default to forget).
    */
-  KubernetesMongodbIngress ingress = 5;
+  KubernetesMongodbBackup backup = 8;
 
   /**
-   * A map of key-value pairs that provide additional customization options for the Helm chart used
-   * to deploy MongoDB on Kubernetes. These values allow for further refinement of the deployment,
-   * such as customizing resource limits, setting environment variables, or specifying version tags.
-   * For detailed information on the available options, refer to the Helm chart documentation at:
-   * https://artifacthub.io/packages/helm/bitnami/mongodb
+   * How updates roll across the cluster: SmartUpdate (the operator
+   * orders restarts safely — the upstream default), RollingUpdate
+   * (StatefulSet semantics), or OnDelete.
    */
-  map<string, string> helm_values = 6;
-}
+  optional string update_strategy = 9 [
+    (dev.planton.shared.options.default) = "SmartUpdate",
+    (buf.validate.field).cel = {
+      id: "spec.update_strategy_enum"
+      message: "update_strategy must be SmartUpdate, RollingUpdate, or OnDelete"
+      expression: "this == '' || this in ['SmartUpdate', 'RollingUpdate', 'OnDelete']"
+    }
+  ];
 
-/**
- * KubernetesMongodbIngress defines ingress configuration for MongoDB.
- */
-message KubernetesMongodbIngress {
-  // Flag to enable or disable ingress.
-  // When enabled, creates a LoadBalancer service with external-dns annotations.
-  bool enabled = 1;
+  /**
+   * The fluent-bit log-collector sidecar shipping mongod logs. Omitted
+   * = DISABLED: the operator runs the sidecar only when this block is
+   * present (and enabled) — declare it to turn log collection on.
+   */
+  KubernetesMongodbLogCollector log_collector = 10;
 
-  // The full hostname for external access (e.g., "mongodb.example.com").
-  // This hostname will be configured automatically via external-dns.
-  // Required when enabled is true.
-  string hostname = 2;
+  /**
+   * Explicit opt-in to unsafe topologies and postures the operator
+   * otherwise REJECTS. Development conveniences — never production.
+   */
+  KubernetesMongodbUnsafe unsafe = 11;
+
+  /**
+   * Pause the cluster: scale everything to zero while keeping the data
+   * volumes (and resume by flipping back).
+   */
+  bool pause = 12;
+
+  /**
+   * Names of image-pull secrets (in the cluster's namespace) for
+   * pulling images from a private registry.
+   */
+  repeated string image_pull_secrets = 13 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing Kubernetes Secrets (references), not secret material"];
 
   option (buf.validate.message).cel = {
-    id: "spec.ingress.hostname.required"
-    expression: "!this.enabled || size(this.hostname) > 0"
-    message: "hostname is required when ingress is enabled"
+    id: "spec.single_replset_without_sharding"
+    message: "without sharding, declare exactly one replica set — multiple sets only make sense as shards (enable sharding)"
+    expression: "(has(this.sharding) && this.sharding.enabled) || this.replica_sets.size() == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.replset_size_or_unsafe"
+    message: "a replica set smaller than 3 members cannot elect a majority — the operator rejects it unless unsafe.replset_size explicitly opts in (development only)"
+    expression: "this.replica_sets.all(r, !has(r.size) || r.size >= 3) || (has(this.unsafe) && this.unsafe.replset_size)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.config_server_size_or_unsafe"
+    message: "a config server smaller than 3 members cannot elect a majority — the operator rejects it unless unsafe.replset_size explicitly opts in (development only)"
+    expression: "(!has(this.sharding) || !has(this.sharding.config_server) || !has(this.sharding.config_server.size) || this.sharding.config_server.size >= 3) || (has(this.unsafe) && this.unsafe.replset_size)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.tls_disabled_or_unsafe"
+    message: "tls mode disabled is a plaintext development posture — the operator rejects it unless unsafe.tls explicitly opts in"
+    expression: "(!has(this.tls) || !has(this.tls.mode) || this.tls.mode != 'disabled') || (has(this.unsafe) && this.unsafe.tls)"
   };
 }
 
 /**
- * **KubernetesMongodbContainer** specifies the container configuration for the MongoDB application.
- * It includes settings such as the number of replicas, resource allocations, data persistence options, and disk size.
- * Proper configuration ensures optimal performance and data reliability for your MongoDB deployment.
+ * One data-bearing replica set (a shard, when sharding is enabled).
  */
-message KubernetesMongodbContainer {
-  // The number of MongoDB pods to deploy.
-  int32 replicas = 1;
+message KubernetesMongodbReplicaSet {
+  /**
+   * Replica set name ("rs0" is the upstream convention for the first).
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.replica_sets.name_format"
+      message: "replica set name must be a lowercase DNS label (letters, numbers, hyphens)"
+      expression: "this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
+    }
+  ];
 
-  //The CPU and memory resources allocated to the MongoDB container.
+  /**
+   * Data-bearing members. 3 is the production shape (a majority
+   * survives one loss); even numbers waste a vote — add the arbiter
+   * instead. 1 REQUIRES unsafe.replset_size.
+   */
+  optional int32 size = 2 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Storage for every member. Required: the operator provisions one
+   * PVC per member; grows are applied in place (never shrinks).
+   */
+  KubernetesMongodbStorage storage = 3 [(buf.validate.field).required = true];
+
+  /**
+   * CPU/memory for every member pod. Empty = no requests/limits (fine
+   * for evaluation, not production — WiredTiger sizes its cache from
+   * the memory limit).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 4;
+
+  /**
+   * Extra mongod configuration merged over the operator's defaults
+   * (YAML, mongod.conf shape — operationProfiling, setParameter,
+   * storage.wiredTiger tuning, ...). Replication and security
+   * essentials are operator-managed.
+   */
+  string mongod_config = 5;
+
+  /**
+   * An arbiter: votes in elections but holds no data — majority
+   * elections for an even number of data members at near-zero cost.
+   */
+  KubernetesMongodbArbiter arbiter = 6;
+
+  /**
+   * Per-member Services instead of the default headless Service —
+   * the managed-cloud LoadBalancer / cross-cluster recipe surface.
+   */
+  KubernetesMongodbExpose expose = 7;
+
+  /**
+   * PodDisruptionBudget for the members. Omitted = the upstream
+   * default (max one member down to voluntary disruptions).
+   */
+  KubernetesMongodbPodDisruptionBudget pod_disruption_budget = 8;
+
+  /**
+   * Where member pods run: anti-affinity spreading, node selection,
+   * tolerations, and scheduling priority.
+   */
+  KubernetesMongodbScheduling scheduling = 9;
+}
+
+/**
+ * One PVC specification.
+ */
+message KubernetesMongodbStorage {
+  /**
+   * Volume size as a Kubernetes quantity (e.g. "10Gi"). Grows are
+   * applied to live PVCs; shrinks are rejected.
+   */
+  string size = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.storage.size_quantity"
+      message: "size must be a Kubernetes quantity like '10Gi' or '500Mi'"
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$')"
+    }
+  ];
+
+  /**
+   * StorageClass for the PVCs. Empty = the cluster's default class.
+   * Accepts a literal class name or a reference to a
+   * KubernetesStorageClass resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_class_name"
+  ];
+}
+
+/**
+ * Replica-set arbiter.
+ */
+message KubernetesMongodbArbiter {
+  /**
+   * Run arbiters.
+   */
+  bool enabled = 1;
+
+  /**
+   * Arbiter count. Upstream default: 1 (one is almost always right —
+   * arbiters exist to break ties).
+   */
+  optional int32 size = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+/**
+ * Per-member exposure.
+ */
+message KubernetesMongodbExpose {
+  /**
+   * Create one Service per member (drivers discover the set through
+   * them). Without it, members are reachable through the headless
+   * Service — the right in-cluster posture.
+   */
+  bool enabled = 1;
+
+  /**
+   * Service type: ClusterIP (default), NodePort, or LoadBalancer.
+   */
+  optional string type = 2 [
+    (dev.planton.shared.options.default) = "ClusterIP",
+    (buf.validate.field).cel = {
+      id: "spec.expose.type_enum"
+      message: "expose type must be ClusterIP, NodePort, or LoadBalancer"
+      expression: "this == '' || this in ['ClusterIP', 'NodePort', 'LoadBalancer']"
+    }
+  ];
+
+  /**
+   * Service annotations — the per-cloud LoadBalancer recipe surface.
+   */
+  map<string, string> annotations = 3;
+}
+
+/**
+ * Sharding topology.
+ */
+message KubernetesMongodbSharding {
+  /**
+   * Enable sharding: every declared replica set becomes a shard;
+   * clients connect through mongos.
+   */
+  bool enabled = 1;
+
+  /**
+   * The config-server replica set (cluster metadata — which chunks
+   * live on which shard). Required when sharding is enabled.
+   */
+  KubernetesMongodbConfigServer config_server = 2;
+
+  /**
+   * The mongos query routers. Required when sharding is enabled.
+   */
+  KubernetesMongodbMongos mongos = 3;
+
+  /**
+   * The shard balancer (moves chunks between shards to even the load).
+   * Upstream default: enabled.
+   */
+  optional bool balancer_enabled = 4 [(dev.planton.shared.options.default) = "true"];
+
+  option (buf.validate.message).cel = {
+    id: "spec.sharding.enabled_needs_topology"
+    message: "sharding needs config_server and mongos declarations"
+    expression: "!this.enabled || (has(this.config_server) && has(this.mongos))"
+  };
+}
+
+/**
+ * The config-server replica set.
+ */
+message KubernetesMongodbConfigServer {
+  /**
+   * Members. 3 is the production shape. 1 REQUIRES
+   * unsafe.replset_size.
+   */
+  optional int32 size = 1 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Storage for every config-server member. Required — metadata is
+   * small but precious (a few Gi is the norm).
+   */
+  KubernetesMongodbStorage storage = 2 [(buf.validate.field).required = true];
+
+  /**
+   * CPU/memory for every config-server pod.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 3;
+}
+
+/**
+ * The mongos query routers.
+ */
+message KubernetesMongodbMongos {
+  /**
+   * Router count. Upstream default: 3 (2+ keeps the query path
+   * available — a single router is a development posture, though the
+   * pinned operator does not reject it).
+   */
+  optional int32 size = 1 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * CPU/memory for every mongos pod.
+   */
   dev.planton.provider.kubernetes.ContainerResources resources = 2;
 
   /**
-   * A flag to enable or disable data persistence for MongoDB.
-   * When enabled, in-memory data is persisted to a storage volume, allowing data to survive pod restarts.
+   * The mongos client Service (`<name>-mongos`). Type and per-cloud
+   * annotations for the managed-LoadBalancer recipes.
    */
-  bool persistence_enabled = 3;
+  KubernetesMongodbExpose expose = 3;
+}
+
+/**
+ * TLS posture.
+ */
+message KubernetesMongodbTls {
+  /**
+   * TLS mode: disabled (REQUIRES unsafe.tls), allowTLS, preferTLS (the
+   * upstream default), or requireTLS (the production posture — clients
+   * must speak TLS).
+   */
+  optional string mode = 1 [
+    (dev.planton.shared.options.default) = "preferTLS",
+    (buf.validate.field).cel = {
+      id: "spec.tls.mode_enum"
+      message: "tls mode must be disabled, allowTLS, preferTLS, or requireTLS"
+      expression: "this == '' || this in ['disabled', 'allowTLS', 'preferTLS', 'requireTLS']"
+    }
+  ];
 
   /**
-   * The size of the persistent volume attached to each Redis pod (e.g., "10Gi").
-   * If the client does not provide a value, a default value is configured.
-   * This attribute is ignored when persistence is not enabled.
-   * This persistent volume is used for backing up in-memory data.
-   * Data from the persistent volume will be restored into memory between pod restarts.
-   * **Note:** This value cannot be modified after creation due to Kubernetes limitations on stateful sets.
+   * cert-manager issuer for the cluster's certificates instead of the
+   * operator's self-generated ones — the organization-trust seam.
+   * References a KubernetesClusterIssuer (set issuer_kind to "Issuer"
+   * for a namespaced KubernetesIssuer).
    */
-  option (buf.validate.message).cel = {
-    // Consolidated validation logic:
-    // If `persistence_enabled` is false, `disk_size` can be empty.
-    // If `persistence_enabled` is true, `disk_size` must be non-empty and match the regex.
-    id: "spec.container.disk_size.required"
-    expression: "((!this.persistence_enabled && (size(this.disk_size) == 0 || this.disk_size == '')) || (this.persistence_enabled && size(this.disk_size) > 0 && this.disk_size.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')))"
-    message: "Disk size is required and must match the format if persistence is enabled"
-  };
+  dev.planton.shared.foreignkey.v1.StringValueOrRef issuer = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesClusterIssuer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
 
-  string disk_size = 4;
+  /**
+   * Kind of the cert-manager issuer named above: "ClusterIssuer" (the
+   * default) or "Issuer" (must live in the database's namespace).
+   */
+  optional string issuer_kind = 3 [
+    (dev.planton.shared.options.default) = "ClusterIssuer",
+    (buf.validate.field).cel = {
+      id: "spec.tls.issuer_kind_enum"
+      message: "issuer_kind must be ClusterIssuer or Issuer"
+      expression: "this == '' || this in ['ClusterIssuer', 'Issuer']"
+    }
+  ];
+
+  /**
+   * Validity of operator-generated certificates (Go duration; upstream
+   * default "2160h" = 90 days).
+   */
+  string cert_validity_duration = 4;
+}
+
+/**
+ * A declaratively managed application user.
+ */
+message KubernetesMongodbUser {
+  /**
+   * Username.
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Authentication database. Upstream default: "admin".
+   */
+  optional string db = 2 [(dev.planton.shared.options.default) = "admin"];
+
+  /**
+   * Password, materialized as a Kubernetes Secret the operator watches
+   * (`<cluster>-user-<name>`) — rotating the value rotates the
+   * database password. Empty = the operator generates a password into
+   * the same Secret.
+   */
+  string password = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  /**
+   * Roles granted to the user.
+   */
+  repeated KubernetesMongodbUserRole roles = 4 [(buf.validate.field).repeated.min_items = 1];
+}
+
+/**
+ * One role grant.
+ */
+message KubernetesMongodbUserRole {
+  /**
+   * Role name (readWrite, read, dbAdmin, clusterAdmin, ...).
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Database the role applies to.
+   */
+  string db = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * Scheduled backups + point-in-time recovery via Percona Backup for
+ * MongoDB (PBM agents ride every member pod).
+ */
+message KubernetesMongodbBackup {
+  /**
+   * Backup storage destinations, referenced by tasks and PITR via
+   * their names. The storage marked main (or the single storage, main
+   * implicitly) is where PITR oplog chunks land.
+   */
+  repeated KubernetesMongodbBackupStorage storages = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "spec.backup.storages.unique_names"
+      message: "each backup storage needs a distinct name"
+      expression: "this.all(s1, this.exists_one(s2, s1.name == s2.name))"
+    }
+  ];
+
+  /**
+   * Scheduled backup tasks.
+   */
+  repeated KubernetesMongodbBackupTask tasks = 2 [(buf.validate.field).cel = {
+    id: "spec.backup.tasks.unique_names"
+    message: "each backup task needs a distinct name"
+    expression: "this.all(t1, this.exists_one(t2, t1.name == t2.name))"
+  }];
+
+  /**
+   * Point-in-time recovery: continuously archive oplog chunks so a
+   * restore can land between backups. Requires at least one completed
+   * base backup to be meaningful.
+   */
+  KubernetesMongodbPitr pitr = 3;
+
+  option (buf.validate.message).cel = {
+    id: "spec.backup.storages.single_main"
+    message: "with multiple backup storages, mark exactly one main: true — PITR oplog chunks and restore metadata land there (a single storage is main implicitly)"
+    expression: "this.storages.size() <= 1 || this.storages.exists_one(s, s.main)"
+  };
+}
+
+/**
+ * One backup storage destination.
+ */
+message KubernetesMongodbBackupStorage {
+  /**
+   * Name tasks reference this storage by.
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.backup.storages.name_format"
+      message: "storage name must be a lowercase DNS label (letters, numbers, hyphens)"
+      expression: "this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * Mark this storage as the MAIN one (PITR oplog chunks and
+   * un-storaged operations land here). Exactly one storage is main
+   * when several are declared; a single storage is main implicitly.
+   */
+  bool main = 2;
+
+  /**
+   * Backend. Exactly one arm; declared credentials materialize as a
+   * Kubernetes Secret the PBM agents read — never plaintext in the
+   * rendered resource.
+   */
+  oneof backend {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * AWS S3 — or ANY S3-compatible store (MinIO, Ceph RGW, ...) via
+     * the endpoint_url override.
+     */
+    KubernetesMongodbS3Storage s3 = 3;
+
+    /**
+     * Google Cloud Storage (native GCS API).
+     */
+    KubernetesMongodbGcsStorage gcs = 4;
+
+    /**
+     * Azure Blob Storage.
+     */
+    KubernetesMongodbAzureStorage azure = 5;
+  }
+}
+
+/**
+ * S3 / S3-compatible backup storage.
+ */
+message KubernetesMongodbS3Storage {
+  /**
+   * Bucket name.
+   */
+  string bucket = 1 [(buf.validate.field).required = true];
+
+  /**
+   * AWS region of the bucket. Required for real S3; S3-compatible
+   * stores use their expected value (MinIO accepts any).
+   */
+  string region = 2;
+
+  /**
+   * Key prefix inside the bucket (a folder for this cluster's
+   * backups).
+   */
+  string prefix = 3;
+
+  /**
+   * S3-COMPATIBLE ARM: endpoint URL of the store (e.g.
+   * http://minio.minio-system.svc:9000 for in-cluster MinIO). Empty =
+   * real AWS S3.
+   */
+  string endpoint_url = 4 [(buf.validate.field).cel = {
+    id: "spec.backup.s3.endpoint_format"
+    message: "endpoint_url must be an http(s) URL (e.g. http://minio.minio-system.svc:9000)"
+    expression: "this == '' || this.startsWith('http://') || this.startsWith('https://')"
+  }];
+
+  /**
+   * Skip TLS verification against a self-signed endpoint (test
+   * environments only).
+   */
+  bool insecure_skip_tls_verify = 5;
+
+  /**
+   * Static access keys, materialized as a Kubernetes Secret the PBM
+   * agents read. Omitted = the pods' AMBIENT AWS identity (EKS IRSA on
+   * the cluster's service account, or node instance-profile
+   * credentials) — the keyless posture for real S3.
+   */
+  KubernetesMongodbS3AccessKeys access_keys = 6;
+
+  option (buf.validate.message).cel = {
+    id: "spec.backup.s3.compatible_needs_keys"
+    message: "an S3-compatible endpoint (endpoint_url) authenticates with access_keys — the keyless posture only mints AWS credentials"
+    expression: "this.endpoint_url == '' || has(this.access_keys)"
+  };
+}
+
+/**
+ * Static S3 access keys.
+ */
+message KubernetesMongodbS3AccessKeys {
+  /**
+   * Access key ID — the public identifier of the key pair, not a
+   * secret. For MinIO this is the access key / username.
+   */
+  string access_key_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Secret access key (for MinIO: the secret key / password).
+   */
+  string secret_access_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+/**
+ * Google Cloud Storage backup storage.
+ */
+message KubernetesMongodbGcsStorage {
+  /**
+   * Bucket name.
+   */
+  string bucket = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key prefix inside the bucket.
+   */
+  string prefix = 2;
+
+  /**
+   * GCP service-account key (the JSON key file's content),
+   * materialized as a Kubernetes Secret the PBM agents read. Empty =
+   * the pods' AMBIENT GCP identity (GKE Workload Identity) — the
+   * keyless posture.
+   */
+  string service_account_key_json = 3 [(dev.planton.shared.options.sensitive) = true];
+}
+
+/**
+ * Azure Blob backup storage.
+ */
+message KubernetesMongodbAzureStorage {
+  /**
+   * Blob container name.
+   */
+  string container = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key prefix inside the container.
+   */
+  string prefix = 2;
+
+  /**
+   * Endpoint URL override (sovereign clouds, Azurite). Empty = the
+   * account's default blob endpoint.
+   */
+  string endpoint_url = 3;
+
+  /**
+   * Storage-account name.
+   */
+  string storage_account = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Storage-account access key, materialized as a Kubernetes Secret
+   * the PBM agents read.
+   */
+  string access_key = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+/**
+ * One scheduled backup task.
+ */
+message KubernetesMongodbBackupTask {
+  /**
+   * Task name.
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.backup.tasks.name_format"
+      message: "task name must be a lowercase DNS label (letters, numbers, hyphens)"
+      expression: "this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * Standard FIVE-field cron expression (e.g. "0 2 * * *" = daily at
+   * 02:00).
+   */
+  string schedule = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.backup.tasks.cron_five_fields"
+      message: "schedule is a five-field cron expression — e.g. '0 2 * * *' for daily at 02:00"
+      expression: "this.split(' ').filter(f, f != '').size() == 5"
+    }
+  ];
+
+  /**
+   * Name of the declared storage this task writes to.
+   */
+  string storage_name = 3 [(buf.validate.field).required = true];
+
+  /**
+   * Backup type: logical (BSON dump — the default; restores anywhere),
+   * physical (data-file copy — much faster for large datasets),
+   * incremental (physical delta since the last incremental-base), or
+   * incremental-base (the full physical backup increments build on).
+   */
+  optional string type = 4 [
+    (dev.planton.shared.options.default) = "logical",
+    (buf.validate.field).cel = {
+      id: "spec.backup.tasks.type_enum"
+      message: "backup type must be logical, physical, incremental, or incremental-base"
+      expression: "this == '' || this in ['logical', 'physical', 'incremental', 'incremental-base']"
+    }
+  ];
+
+  /**
+   * How many backups this task keeps. Older ones are pruned.
+   */
+  optional int32 keep = 5 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Also delete pruned backups FROM THE STORE (not just the cluster's
+   * records).
+   */
+  optional bool delete_from_storage = 6 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Suspend the task (keeps the declaration, stops the backups).
+   */
+  bool suspend = 7;
+
+  /**
+   * Compression: gzip (the upstream default), snappy, lz4, pgzip,
+   * zstd, s2, or none.
+   */
+  optional string compression = 8 [
+    (dev.planton.shared.options.default) = "gzip",
+    (buf.validate.field).cel = {
+      id: "spec.backup.tasks.compression_enum"
+      message: "compression must be one of gzip, snappy, lz4, pgzip, zstd, s2, none"
+      expression: "this == '' || this in ['gzip', 'snappy', 'lz4', 'pgzip', 'zstd', 's2', 'none']"
+    }
+  ];
+}
+
+/**
+ * Point-in-time recovery.
+ */
+message KubernetesMongodbPitr {
+  /**
+   * Continuously archive oplog chunks to the main storage.
+   */
+  bool enabled = 1;
+
+  /**
+   * Archive oplog ONLY — no base-backup requirement enforcement.
+   * Advanced posture for external base-backup management; leave false.
+   */
+  bool oplog_only = 2;
+
+  /**
+   * Minutes of oplog per archived chunk. Upstream default: 10 — the
+   * recovery-point objective for a total-cluster loss.
+   */
+  optional int32 oplog_span_min = 3 [
+    (dev.planton.shared.options.default) = "10",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Oplog chunk compression: gzip (the upstream default), snappy,
+   * lz4, pgzip, zstd, s2, or none.
+   */
+  optional string compression = 4 [
+    (dev.planton.shared.options.default) = "gzip",
+    (buf.validate.field).cel = {
+      id: "spec.backup.pitr.compression_enum"
+      message: "compression must be one of gzip, snappy, lz4, pgzip, zstd, s2, none"
+      expression: "this == '' || this in ['gzip', 'snappy', 'lz4', 'pgzip', 'zstd', 's2', 'none']"
+    }
+  ];
+}
+
+/**
+ * Replica-set member scheduling.
+ */
+message KubernetesMongodbScheduling {
+  /**
+   * Topology key the operator's anti-affinity spreads members across.
+   * Upstream default: kubernetes.io/hostname (one member per node);
+   * use topology.kubernetes.io/zone to spread across zones, or "none"
+   * to disable anti-affinity (development only).
+   */
+  string anti_affinity_topology_key = 1;
+
+  /**
+   * Node selector for the member pods.
+   */
+  map<string, string> node_selector = 2;
+
+  /**
+   * Tolerations for the member pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 3;
+
+  /**
+   * PriorityClass for the member pods — databases should outlive
+   * stateless workloads under node pressure.
+   */
+  string priority_class_name = 4;
+}
+
+/**
+ * PodDisruptionBudget for the replica-set members.
+ */
+message KubernetesMongodbPodDisruptionBudget {
+  /**
+   * Maximum members down during voluntary disruptions. Upstream
+   * default: 1 — the majority must survive. Mutually exclusive with
+   * min_available.
+   */
+  int32 max_unavailable = 1 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * Minimum members that must stay up. Mutually exclusive with
+   * max_unavailable.
+   */
+  int32 min_available = 2 [(buf.validate.field).int32.gte = 0];
+
+  option (buf.validate.message).cel = {
+    id: "spec.pdb.single_bound"
+    message: "declare at most one PDB bound — max_unavailable or min_available"
+    expression: "!(this.max_unavailable > 0 && this.min_available > 0)"
+  };
+}
+
+/**
+ * The fluent-bit log-collector sidecar.
+ */
+message KubernetesMongodbLogCollector {
+  /**
+   * Run the sidecar. Upstream default: true.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * CPU/memory for the sidecar.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+}
+
+/**
+ * Explicit opt-in to configurations the operator otherwise rejects.
+ * Every flag here trades safety for convenience — development only.
+ */
+message KubernetesMongodbUnsafe {
+  /**
+   * Allow replica sets (and config servers) smaller than 3 members
+   * (single-node development clusters).
+   */
+  bool replset_size = 1;
+
+  /**
+   * Rendered onto the CR's unsafeFlags for surface parity, but the
+   * pinned operator (1.22.0) declares this flag without enforcing it —
+   * a single mongos router is never rejected.
+   */
+  bool mongos_size = 2;
+
+  /**
+   * Allow tls.mode disabled.
+   */
+  bool tls = 3;
+
+  /**
+   * Allow backups to run against an unhealthy cluster.
+   */
+  bool backup_if_unhealthy = 4;
 }

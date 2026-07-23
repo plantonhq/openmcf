@@ -1,31 +1,27 @@
 # Kubernetes Deployment
 
-Deploys a containerized application to Kubernetes as a Deployment with automatic Service creation, configurable ingress via Gateway API, environment variable and secret management, and availability controls including autoscaling, rolling update strategy, and pod disruption budgets.
+Deploys a long-running, stateless application to a target cluster as an apps/v1 Deployment fronted by a ClusterIP Service, with optional horizontal pod autoscaling, rollout strategy control, and a pod disruption budget. The full container surface is available — sidecars, init containers, probes, lifecycle hooks, security contexts, volume mounts — along with pod scheduling and hardening. Identity and external exposure are composed from other components rather than embedded.
 
 ## What Gets Created
 
 When you deploy a KubernetesDeployment resource, Planton provisions:
 
+- **Deployment** — an apps/v1 Deployment with the specified containers, probes, volume mounts, scheduling, security contexts, and rollout strategy
+- **Service** — a ClusterIP Service mapping each `servicePort` to its `containerPort`, created only when `container.app.ports` is non-empty; port-less workers get no Service
+- **HorizontalPodAutoscaler** — created only when `availability.horizontalPodAutoscaling.enabled` is `true`, scaling between `availability.replicas` and `maxReplicas`
+- **PodDisruptionBudget** — created only when `availability.podDisruptionBudget.enabled` is `true`, bound to the workload's selector labels
+- **Env Secret** — one Opaque Secret materializing literal values from `env.secrets` across the app container, sidecars, and init containers; entries using `secretRef` are wired directly to existing Secrets instead
+- **Image Pull Secret** — a `kubernetes.io/dockerconfigjson` Secret, created only when registry credentials are supplied
 - **Namespace** — created only when `createNamespace` is `true`
-- **ServiceAccount** — a dedicated service account for the deployment's pods
-- **Deployment** — a Kubernetes Deployment with the specified container image, resource limits, probes, volume mounts, and rolling update strategy
-- **Service** — a ClusterIP Service mapping service ports to container ports, created only when at least one port is defined in `container.app.ports`
-- **ConfigMaps** — one ConfigMap per entry in `configMaps`, each prefixed with `metadata.name` to avoid namespace conflicts
-- **Secret** — an Opaque Secret containing environment secrets provided as direct string values, created only when `container.app.env.secrets` includes direct values
-- **Image Pull Secret** — a `kubernetes.io/dockerconfigjson` Secret for pulling from private registries, created only when a Docker config JSON is provided
-- **Certificate** — a cert-manager Certificate for TLS termination on ingress hostnames, created only when ingress is enabled
-- **External Gateway** — a Gateway API Gateway for traffic from outside the VPC, with HTTPS (port 443) and HTTP (port 80) listeners, created only when ingress is enabled
-- **Internal Gateway** — a Gateway API Gateway for traffic from within the VPC, with HTTPS and HTTP listeners on an `internal-` prefixed hostname, created only when ingress is enabled
-- **HTTPRoutes** — four HTTPRoute resources handling external HTTP-to-HTTPS redirect, external HTTPS routing, internal HTTP-to-HTTPS redirect, and internal HTTPS routing to the Service, created only when ingress is enabled
-- **PodDisruptionBudget** — ensures minimum pod availability during voluntary disruptions, created only when `availability.podDisruptionBudget.enabled` is `true`
+
+Not created by design: ServiceAccounts and RBAC (reference a `KubernetesServiceAccount` from `spec.pod.serviceAccount`; grant permissions with `KubernetesRbac`), and ingress of any form (attach exposure components to the exported `service` / `kubeEndpoint` outputs).
 
 ## Prerequisites
 
 - **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, or set `createNamespace` to `true`
-- **A container image** accessible from the cluster (public registry or with a configured image pull secret)
-- **cert-manager with a ClusterIssuer** if enabling ingress — the ClusterIssuer name must match the domain extracted from the ingress hostname
-- **Gateway API CRDs and an Istio-based gateway controller** if enabling ingress
+- **A Kubernetes namespace** that already exists, a `KubernetesNamespace` resource referenced from `spec.namespace`, or `createNamespace: true`
+- **A container image** accessible from the cluster (public registry, or private with pull credentials)
+- **Metrics server** installed in the cluster if enabling horizontal pod autoscaling
 
 ## Quick Start
 
@@ -42,19 +38,21 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: dev.KubernetesDeployment.my-app
 spec:
-  namespace: my-namespace
-  createNamespace: true
+  namespace:
+    value: my-namespace
   container:
     app:
       image:
         repo: nginx
-        tag: "1.25"
+        tag: "1.27"
       ports:
         - name: http
           containerPort: 80
-          networkProtocol: TCP
-          appProtocol: http
           servicePort: 80
+      readinessProbe:
+        httpGet:
+          path: /
+          portNumber: 80
 ```
 
 Deploy:
@@ -63,100 +61,46 @@ Deploy:
 planton apply -f deployment.yaml
 ```
 
-This creates a single-replica nginx Deployment with a ClusterIP Service on port 80 in the `my-namespace` namespace, using default resource limits (1000m CPU, 1Gi memory).
+This creates a single-replica Deployment and a ClusterIP Service named `my-app` in `my-namespace`.
 
 ## Configuration Reference
 
 ### Required Fields
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `string` | Kubernetes namespace for the deployment. Can reference a KubernetesNamespace resource via `valueFrom`. | Required |
-| `container.app.image.repo` | `string` | Container image repository (e.g., `nginx`, `gcr.io/project/image`). | Required, non-empty |
-| `container.app.image.tag` | `string` | Container image tag (e.g., `latest`, `1.25`). | Required, non-empty |
+| Field | Type | Description |
+|-------|------|-------------|
+| `spec.namespace` | `StringValueOrRef` | Target namespace. Accepts a literal name (`{ value: my-namespace }`) or a reference to a `KubernetesNamespace` resource. |
+| `spec.container.app` | `WorkloadContainer` | The main application container. Its `image.repo` and `image.tag` are required; its ports drive the Service. |
 
 ### Optional Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
-| `version` | `string` | — | Deployment version identifier (e.g., `main`, `review-42`). 1–30 characters, lowercase alphanumeric and hyphens only, must not end with a hyphen. |
-| `container.app.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation. |
-| `container.app.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation. |
-| `container.app.resources.requests.cpu` | `string` | `50m` | Minimum guaranteed CPU. |
-| `container.app.resources.requests.memory` | `string` | `100Mi` | Minimum guaranteed memory. |
-| `container.app.env.variables` | `ContainerEnvVariable[]` | `[]` | Environment variables as a list. Each entry has a `name` and either a direct string `value` or a `valueFrom` reference to another resource. |
-| `container.app.env.secrets` | `ContainerEnvSecret[]` | `[]` | Secret environment variables as a list. Each entry has a `name` and either a direct string `value` (auto-stored in a Kubernetes Secret) or a `secretRef` referencing an existing Kubernetes Secret. |
-| `container.app.ports` | `object[]` | `[]` | Container port definitions. Each port requires `name` (lowercase alphanumeric and hyphens), `containerPort`, `networkProtocol` (`TCP`, `UDP`, or `SCTP`), `appProtocol`, and `servicePort`. |
-| `container.app.ports[].isIngressPort` | `bool` | `false` | When `true`, ingress traffic routes to this port's `servicePort`. |
-| `container.app.livenessProbe` | `Probe` | — | Periodic probe of container liveness. Restarts the container on failure. Supports `httpGet`, `tcpSocket`, `grpc`, and `exec` handlers. |
-| `container.app.readinessProbe` | `Probe` | — | Periodic probe of service readiness. Removes the pod from Service endpoints on failure. |
-| `container.app.startupProbe` | `Probe` | — | Startup probe. All other probes are disabled until this succeeds. Useful for slow-starting containers. |
-| `container.app.volumeMounts` | `VolumeMount[]` | `[]` | Volume mounts supporting ConfigMap, Secret, HostPath, EmptyDir, and PVC sources. |
-| `container.app.command` | `string[]` | `[]` | Overrides the container image's ENTRYPOINT. |
-| `container.app.args` | `string[]` | `[]` | Overrides the container image's CMD. |
-| `container.app.image.pullSecretName` | `string` | — | Name of an existing image pull secret in the namespace. |
-| `container.sidecars` | `Container[]` | `[]` | Sidecar containers deployed alongside the main application container. |
-| `ingress.enabled` | `bool` | `false` | Enables Gateway API ingress with automatic TLS via cert-manager. Creates both external and internal gateways with HTTP-to-HTTPS redirect. |
-| `ingress.hostname` | `string` | — | Full hostname for external access (e.g., `myapp.example.com`). Required when `ingress.enabled` is `true`. An internal hostname `internal-{hostname}` is created automatically. |
-| `availability.minReplicas` | `int32` | `1` | Minimum number of pod replicas. |
-| `availability.horizontalPodAutoscaling.isEnabled` | `bool` | `false` | Enables horizontal pod autoscaling. |
-| `availability.horizontalPodAutoscaling.targetCpuUtilizationPercent` | `double` | — | CPU utilization percentage that triggers autoscaling (e.g., `70`). |
-| `availability.horizontalPodAutoscaling.targetMemoryUtilization` | `string` | — | Memory utilization that triggers autoscaling (e.g., `1Gi`). |
-| `availability.deploymentStrategy.maxUnavailable` | `string` | `25%` | Maximum pods unavailable during a rolling update. Set to `0` for zero-downtime deployments. Cannot be `0` if `maxSurge` is also `0`. |
-| `availability.deploymentStrategy.maxSurge` | `string` | `25%` | Maximum pods created above desired count during a rolling update. Cannot be `0` if `maxUnavailable` is also `0`. |
-| `availability.podDisruptionBudget.enabled` | `bool` | `false` | Creates a PodDisruptionBudget to protect pods during voluntary disruptions (node maintenance, cluster upgrades). |
-| `availability.podDisruptionBudget.minAvailable` | `string` | `1` | Minimum available pods during disruptions. Can be an absolute number or percentage. Cannot be used with `maxUnavailable`. |
-| `availability.podDisruptionBudget.maxUnavailable` | `string` | — | Maximum unavailable pods during disruptions. Can be an absolute number or percentage. Cannot be used with `minAvailable`. |
-| `configMaps` | `map<string, string>` | `{}` | ConfigMaps to create alongside the deployment. Key is the logical name, value is the content. Each ConfigMap is created with the name `{metadata.name}-{key}`. |
+| `spec.createNamespace` | `bool` | `false` | Create the namespace if it does not exist. Leave `false` when the namespace pre-exists or is owned by a `KubernetesNamespace` resource. |
+| `spec.version` | `string` | `main` | Deployment track, stamped as a pod label so multiple tracks of one app coexist in a namespace. Deployment pipelines set this from the git branch. Lowercase letters, numbers, hyphens; max 30 chars. |
+| `spec.container.sidecars` | `WorkloadContainer[]` | `[]` | Sidecar containers running alongside the app in every replica. Full container surface applies; each sidecar must be named. |
+| `spec.pod.serviceAccount` | `StringValueOrRef` | namespace `default` | ServiceAccount pods run as — a literal name or a reference to a `KubernetesServiceAccount` resource's `status.outputs.service_account_name`. |
+| `spec.pod.automountServiceAccountToken` | `bool` | cluster default | Set `false` to withhold the Kubernetes API token from pods that never call the API. |
+| `spec.pod.initContainers` | `WorkloadContainer[]` | `[]` | Run to completion, in order, before app containers start — migrations, config templating, dependency waits. |
+| `spec.pod.scheduling` | `WorkloadScheduling` | — | Node selectors, tolerations, node/pod affinity, and topology spread constraints. |
+| `spec.pod.securityContext` | `WorkloadPodSecurityContext` | — | Pod-level baseline every container inherits: `runAsNonRoot`, `fsGroup`, supplemental groups, sysctls, seccomp. |
+| `spec.pod.terminationGracePeriodSeconds` | `int64` | `30` | Seconds between SIGTERM and SIGKILL; size it to cover `preStop` hooks plus drain time. |
+| `spec.availability.replicas` | `int32` | `1` | Desired replica count; the floor when autoscaling is enabled. |
+| `spec.availability.horizontalPodAutoscaling` | `KubernetesDeploymentHpa` | disabled | `enabled`, `maxReplicas`, and at least one of `targetCpuUtilizationPercent` (1–100) or `targetMemoryUtilization` (quantity, e.g. `1Gi`). |
+| `spec.availability.strategy` | `KubernetesDeploymentStrategy` | RollingUpdate 25%/25% | `type` (`RollingUpdate` or `Recreate`), `maxUnavailable`, `maxSurge`. `"0"` unavailable with `"1"` surge is the zero-downtime pattern; surge and unavailable cannot both be zero. |
+| `spec.availability.podDisruptionBudget` | `KubernetesDeploymentPodDisruptionBudget` | disabled | `enabled` plus exactly one of `minAvailable` or `maxUnavailable` (absolute or percentage). |
+| `spec.availability.minReadySeconds` | `int32` | `0` | Seconds a new pod must stay ready before counting as available — a cheap flap detector during rollouts. |
+| `spec.availability.revisionHistoryLimit` | `int32` | `10` | Old ReplicaSets retained for rollback; `0` disables rollback. |
+| `spec.availability.progressDeadlineSeconds` | `int32` | `600` | Seconds a rollout may stall before being marked failed in the Deployment's conditions. |
+| `spec.availability.paused` | `bool` | `false` | Pause rollouts to batch several spec changes into one. |
+
+Each container (app, sidecar, init) additionally supports `command`/`args`, `workingDir`, `imagePullPolicy`, `env` (variables, secrets, `envFrom`), `resources`, `livenessProbe`/`readinessProbe`/`startupProbe`, `volumeMounts` (each mount carries its volume source: ConfigMap, Secret, EmptyDir, HostPath, or PVC), `lifecycle` (`postStart`/`preStop`, including a kubelet-native `sleep`), and a full `securityContext`.
 
 ## Examples
 
-### Basic Web Server with Health Checks
+### Production Web Service with Autoscaling
 
-A single-replica web server with HTTP readiness and liveness probes:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesDeployment
-metadata:
-  name: web-server
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesDeployment.web-server
-spec:
-  namespace: web
-  createNamespace: true
-  container:
-    app:
-      image:
-        repo: nginx
-        tag: "1.25"
-      ports:
-        - name: http
-          containerPort: 80
-          networkProtocol: TCP
-          appProtocol: http
-          servicePort: 80
-      readinessProbe:
-        httpGet:
-          path: /
-          portNumber: 80
-        initialDelaySeconds: 5
-        periodSeconds: 10
-      livenessProbe:
-        httpGet:
-          path: /
-          portNumber: 80
-        initialDelaySeconds: 15
-        periodSeconds: 20
-```
-
-### Microservice with Environment Variables and Secrets
-
-A backend API service referencing other Planton-managed resources for database and cache connections, with secrets stored in an external Kubernetes Secret:
+CPU-based autoscaling between 2 and 10 replicas, zero-downtime rollouts, and a disruption budget:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
@@ -167,168 +111,152 @@ metadata:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.KubernetesDeployment.api-server
+    pulumi.planton.dev/stack.name: prod.KubernetesDeployment.api-server
 spec:
-  namespace: backend
-  version: main
+  namespace:
+    value: production
   container:
     app:
       image:
-        repo: gcr.io/my-project/api-server
-        tag: "v2.1.0"
+        repo: ghcr.io/acme/api-server
+        tag: v2.3.1
       resources:
-        limits:
-          cpu: "2000m"
-          memory: "2Gi"
         requests:
-          cpu: "500m"
-          memory: "512Mi"
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
       ports:
         - name: http
           containerPort: 8080
-          networkProtocol: TCP
-          appProtocol: http
           servicePort: 80
-        - name: grpc
-          containerPort: 9090
-          networkProtocol: TCP
-          appProtocol: grpc
-          servicePort: 9090
-      env:
-        variables:
-          - name: DATABASE_HOST
-            valueFrom:
-              kind: KubernetesPostgres
-              name: my-postgres
-              field: status.outputs.service
-          - name: REDIS_HOST
-            valueFrom:
-              kind: KubernetesRedis
-              name: my-redis
-              field: status.outputs.service
-          - name: LOG_LEVEL
-            value: "info"
-        secrets:
-          - name: DATABASE_PASSWORD
-            secretRef:
-              name: postgres-credentials
-              key: password
+          appProtocol: http
       readinessProbe:
-        grpc:
-          port: 9090
-        initialDelaySeconds: 5
-        periodSeconds: 10
+        httpGet:
+          path: /healthz
+          portNumber: 8080
+        periodSeconds: 5
+      lifecycle:
+        preStop:
+          sleep:
+            seconds: 10
+  availability:
+    replicas: 2
+    horizontalPodAutoscaling:
+      enabled: true
+      maxReplicas: 10
+      targetCpuUtilizationPercent: 70
+    strategy:
+      type: RollingUpdate
+      maxUnavailable: "0"
+      maxSurge: "1"
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: "1"
 ```
 
-### Production Deployment with Ingress and High Availability
+### Background Worker
 
-Full-featured production deployment with Gateway API ingress, autoscaling, zero-downtime rolling updates, and a pod disruption budget:
+No ports, so no Service is created — the workload is unreachable by design and receives work over connections it initiates:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDeployment
 metadata:
-  name: prod-api
+  name: queue-worker
   annotations:
     planton.dev/provisioner: pulumi
     pulumi.planton.dev/organization: my-org
     pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesDeployment.prod-api
+    pulumi.planton.dev/stack.name: prod.KubernetesDeployment.queue-worker
 spec:
-  namespace: production
-  version: main
+  namespace:
+    value: workers
   container:
     app:
       image:
-        repo: gcr.io/my-project/api
-        tag: "v3.0.0"
-      resources:
-        limits:
-          cpu: "4000m"
-          memory: "4Gi"
-        requests:
-          cpu: "1000m"
-          memory: "1Gi"
+        repo: ghcr.io/acme/worker
+        tag: v1.8.0
+      env:
+        variables:
+          - name: WORKER_CONCURRENCY
+            value: "4"
+        secrets:
+          - name: QUEUE_CONNECTION_STRING
+            secretRef:
+              name: queue-secrets
+              key: connection-string
+```
+
+### Hardened Service with Composed Identity
+
+Passes the restricted Pod Security Standard and runs as a `KubernetesServiceAccount` referenced by output:
+
+```yaml
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesDeployment
+metadata:
+  name: payments
+  annotations:
+    planton.dev/provisioner: pulumi
+    pulumi.planton.dev/organization: my-org
+    pulumi.planton.dev/project: my-project
+    pulumi.planton.dev/stack.name: prod.KubernetesDeployment.payments
+spec:
+  namespace:
+    value: payments
+  container:
+    app:
+      image:
+        repo: ghcr.io/acme/payments
+        tag: v4.1.0
       ports:
         - name: http
           containerPort: 8080
-          networkProtocol: TCP
-          appProtocol: http
           servicePort: 80
-          isIngressPort: true
       readinessProbe:
         httpGet:
           path: /healthz
           portNumber: 8080
-        initialDelaySeconds: 5
-        periodSeconds: 10
-      livenessProbe:
-        httpGet:
-          path: /healthz
-          portNumber: 8080
-        initialDelaySeconds: 15
-        periodSeconds: 20
-      startupProbe:
-        httpGet:
-          path: /healthz
-          portNumber: 8080
-        failureThreshold: 30
-        periodSeconds: 10
-  ingress:
-    enabled: true
-    hostname: api.example.com
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+          emptyDir:
+            sizeLimit: 128Mi
+      securityContext:
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+  pod:
+    serviceAccount:
+      valueFrom:
+        kind: KubernetesServiceAccount
+        name: payments-identity
+        fieldPath: status.outputs.service_account_name
+    automountServiceAccountToken: false
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10001
+      runAsGroup: 10001
+      fsGroup: 10001
+      seccompProfile:
+        type: RuntimeDefault
+    scheduling:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
   availability:
-    minReplicas: 3
-    horizontalPodAutoscaling:
-      isEnabled: true
-      targetCpuUtilizationPercent: 70
-    deploymentStrategy:
+    replicas: 3
+    strategy:
+      type: RollingUpdate
       maxUnavailable: "0"
       maxSurge: "1"
     podDisruptionBudget:
       enabled: true
       minAvailable: "2"
-```
-
-### Deployment with ConfigMaps and Volume Mounts
-
-A worker process with a custom command that mounts a ConfigMap as a configuration file:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesDeployment
-metadata:
-  name: worker
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesDeployment.worker
-spec:
-  namespace: workers
-  createNamespace: true
-  container:
-    app:
-      image:
-        repo: my-registry/worker
-        tag: "latest"
-      command:
-        - /bin/sh
-        - -c
-      args:
-        - "python /app/worker.py --config /etc/config/settings.yaml"
-      volumeMounts:
-        - name: config
-          mountPath: /etc/config/settings.yaml
-          subPath: settings.yaml
-          configMap:
-            name: worker-settings
-            key: settings
-  configMaps:
-    settings: |
-      workers: 4
-      timeout: 30
-      queue: default
 ```
 
 ## Stack Outputs
@@ -337,17 +265,18 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where the deployment is created |
-| `service` | `string` | Kubernetes Service name (matches `metadata.name`) |
-| `port_forward_command` | `string` | kubectl port-forward command for local access |
-| `kube_endpoint` | `string` | Cluster-internal FQDN (e.g., `my-app.my-namespace.svc.cluster.local`) |
-| `external_hostname` | `string` | Public hostname for external access, only set when ingress is enabled |
-| `internal_hostname` | `string` | VPC-internal hostname (e.g., `internal-myapp.example.com`), only set when ingress is enabled |
+| `namespace` | `string` | The namespace the workload was deployed into |
+| `deploymentName` | `string` | Name of the Deployment object as created in the cluster |
+| `service` | `string` | The Kubernetes Service fronting the replicas; empty when the app container exposes no ports |
+| `selectorLabels` | `string` | Pod selector labels as `k=v,k=v` — the exact labels the Service selects on, ready for NetworkPolicy podSelectors, `kubectl get pods -l`, and pod-affinity terms |
+| `portForwardCommand` | `string` | Ready-to-run `kubectl port-forward` command for reaching the workload without external exposure |
+| `kubeEndpoint` | `string` | In-cluster DNS endpoint of the Service (e.g. `my-app.my-ns.svc.cluster.local`) — the handle exposure components and sibling workloads connect to |
 
 ## Related Components
 
-- [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — provides the target namespace via `valueFrom` reference
-- [KubernetesPostgres](/docs/catalog/kubernetes/kubernetespostgres) — commonly referenced for database connection environment variables
-- [KubernetesRedis](/docs/catalog/kubernetes/kubernetesredis) — commonly referenced for cache connection environment variables
-- [KubernetesCertManager](/docs/catalog/kubernetes/kubernetescertmanager) — provides the ClusterIssuer for ingress TLS certificates
-- [KubernetesIstio](/docs/catalog/kubernetes/kubernetesistio) — provides the Gateway API controller for ingress routing
+- [KubernetesServiceAccount](/docs/catalog/kubernetes/kubernetesserviceaccount) — the identity pods run as; reference it from `spec.pod.serviceAccount` so workload-identity bindings and pull secrets live on the identity, not the workload
+- [KubernetesRbac](/docs/catalog/kubernetes/kubernetesrbac) — grants Kubernetes API permissions to the workload's identity
+- [KubernetesHttpRoute](/docs/catalog/kubernetes/kuberneteshttproute) — publishes the workload at a hostname by referencing its exported `service` / `kubeEndpoint` outputs
+- [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — provides the target namespace; reference it from `spec.namespace` to deploy both in one run
+- [KubernetesConfigMap](/docs/catalog/kubernetes/kubernetesconfigmap) / [KubernetesSecret](/docs/catalog/kubernetes/kubernetessecret) — configuration and credentials consumed via env sources or volume mounts
+- [KubernetesStatefulSet](/docs/catalog/kubernetes/kubernetesstatefulset) — for workloads needing stable identity or per-replica storage

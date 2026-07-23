@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesresourcequota.v1;
+
+/**
+ * **KubernetesResourceQuotaStackOutputs** captures the observable handles of a
+ * deployed namespace-governance pair: the ResourceQuota object and, when
+ * limit defaults were configured, the companion LimitRange.
+ */
+message KubernetesResourceQuotaStackOutputs {
+  // The name of the ResourceQuota object as created in the cluster.
+  string resource_quota_name = 1;
+
+  // The namespace the quota governs.
+  string namespace = 2;
+
+  // The name of the companion LimitRange object. Empty when the spec set no
+  // limit_defaults (no LimitRange is created).
+  string limit_range_name = 3;
+}

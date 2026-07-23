@@ -1,6 +1,6 @@
 # KubernetesAuthorizationPolicy Terraform Module
 
-Creates a namespaced Istio `AuthorizationPolicy` via the `kubernetes_manifest`
+Creates a namespaced Istio `AuthorizationPolicy` via the `kubectl_manifest`
 resource. The Istio CRDs must already be installed on the target cluster (see
 `KubernetesIstioBaseCrds`), a running istiod is required to enforce the policy in the
 data plane (see `KubernetesIstio`), and the target namespace must exist (see
@@ -23,14 +23,12 @@ terraform apply -var-file=terraform.tfvars.json
 
 ## Inputs
 
-See `variables.tf` for the full variable specification. `namespace` is a plain string:
-the platform resolves its `StringValueOrRef` foreign key to a literal before Terraform
-runs. `selector.match_labels` and `target_refs` are plain references (not foreign keys),
-and are mutually exclusive. `rules` and all of their nested source/operation match lists
-and conditions are null-pruned, so unset fields are omitted from the manifest and
-upstream defaults flow through (e.g. an absent `action` becomes ALLOW). Snake_case spec
-fields map to the CRD's camelCase (`targetRefs`, `requestPrincipals`, `serviceAccounts`,
-`notServiceAccounts`, `ipBlocks`, `remoteIpBlocks`, `notValues`, ...).
+See `variables.tf` for the variable specification. `variable "spec"` is typed `any`
+and passed through verbatim: the platform resolves the `StringValueOrRef` foreign keys
+(`namespace`, `target_refs[].name`) to literal strings before Terraform runs, and
+emits the manifest-shaped (camelCase, null-pruned) spec, so unset fields are omitted
+from the manifest and upstream defaults flow through (e.g. an absent `action` becomes
+ALLOW). `selector` and `target_refs` are mutually exclusive.
 
 ## Outputs
 

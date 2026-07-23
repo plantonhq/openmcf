@@ -8,6 +8,7 @@ package kubernetesservicev1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -24,25 +25,23 @@ const (
 )
 
 // *
-// **KubernetesServiceType** defines the type of Kubernetes Service to create.
+// **KubernetesServiceType** determines how the Service is exposed.
 type KubernetesServiceSpec_KubernetesServiceType int32
 
 const (
-	// Unspecified service type. Defaults to ClusterIP.
+	// Unspecified. Defaults to cluster_ip.
 	KubernetesServiceSpec_kubernetes_service_type_unspecified KubernetesServiceSpec_KubernetesServiceType = 0
-	// ClusterIP: Exposes the service on a cluster-internal IP.
-	// The service is only reachable from within the cluster.
-	// This is the default and most common service type.
+	// ClusterIP: a cluster-internal virtual IP. Reachable only from inside the
+	// cluster. The default and most common type.
 	KubernetesServiceSpec_cluster_ip KubernetesServiceSpec_KubernetesServiceType = 1
-	// NodePort: Exposes the service on each node's IP at a static port.
-	// A ClusterIP service is automatically created as well.
-	// Accessible externally via <NodeIP>:<NodePort>.
+	// NodePort: builds on ClusterIP and additionally opens a static port on every
+	// node. Reachable externally at <NodeIP>:<NodePort>.
 	KubernetesServiceSpec_node_port KubernetesServiceSpec_KubernetesServiceType = 2
-	// LoadBalancer: Exposes the service externally using a cloud provider's load balancer.
-	// NodePort and ClusterIP services are automatically created as well.
+	// LoadBalancer: builds on NodePort and asks the cloud provider to provision an
+	// external load balancer routing to the same endpoints.
 	KubernetesServiceSpec_load_balancer KubernetesServiceSpec_KubernetesServiceType = 3
-	// ExternalName: Maps the service to the contents of the external_dns_name field
-	// by returning a CNAME record. No proxying of any kind is set up.
+	// ExternalName: a DNS alias — cluster DNS returns a CNAME to `external_name`.
+	// No proxying, no selectors, no ports are involved.
 	KubernetesServiceSpec_external_name KubernetesServiceSpec_KubernetesServiceType = 4
 )
 
@@ -92,18 +91,21 @@ func (KubernetesServiceSpec_KubernetesServiceType) EnumDescriptor() ([]byte, []i
 }
 
 // *
-// **KubernetesServiceExternalTrafficPolicy** controls how external traffic is routed to service endpoints.
+// **KubernetesServiceExternalTrafficPolicy** controls routing for externally
+// originated traffic (NodePort, ExternalIPs, LoadBalancer IPs).
 type KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy int32
 
 const (
-	// Unspecified. Defaults to Cluster.
+	// Unspecified. Defaults to cluster.
 	KubernetesServiceSpec_external_traffic_policy_unspecified KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy = 0
-	// Cluster: Routes traffic to all ready endpoints across all nodes.
-	// May cause a second hop but distributes load evenly.
+	// Cluster: routes to all ready endpoints across all nodes. Even load
+	// distribution, but adds a possible second hop and masquerades the client
+	// source IP.
 	KubernetesServiceSpec_cluster KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy = 1
-	// Local: Routes traffic only to node-local endpoints.
-	// Preserves client source IP but may cause uneven load distribution.
-	// If there are no local endpoints, traffic is dropped.
+	// Local: routes only to endpoints on the node that received the traffic.
+	// Preserves the client source IP and removes the extra hop, but nodes
+	// without endpoints drop the traffic — pair with a load balancer health
+	// check (see health_check_node_port).
 	KubernetesServiceSpec_local KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy = 2
 )
 
@@ -149,16 +151,133 @@ func (KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy) EnumDescript
 }
 
 // *
-// **KubernetesServiceSessionAffinity** defines session affinity behavior.
+// **KubernetesServiceInternalTrafficPolicy** controls routing for traffic
+// arriving on the ClusterIP from inside the cluster.
+type KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy int32
+
+const (
+	// Unspecified. Defaults to cluster.
+	KubernetesServiceSpec_internal_traffic_policy_unspecified KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy = 0
+	// Cluster: routes to all ready endpoints evenly (the standard behavior).
+	KubernetesServiceSpec_internal_cluster KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy = 1
+	// Local: routes only to endpoints on the same node as the client pod,
+	// dropping traffic when the node has none. Useful for node-local agents
+	// (DNS caches, log collectors) exposed behind a Service.
+	KubernetesServiceSpec_internal_local KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy = 2
+)
+
+// Enum value maps for KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy.
+var (
+	KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy_name = map[int32]string{
+		0: "internal_traffic_policy_unspecified",
+		1: "internal_cluster",
+		2: "internal_local",
+	}
+	KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy_value = map[string]int32{
+		"internal_traffic_policy_unspecified": 0,
+		"internal_cluster":                    1,
+		"internal_local":                      2,
+	}
+)
+
+func (x KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy) Enum() *KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy {
+	p := new(KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy)
+	*p = x
+	return p
+}
+
+func (x KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[2].Descriptor()
+}
+
+func (KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[2]
+}
+
+func (x KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy.Descriptor instead.
+func (KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDescGZIP(), []int{0, 2}
+}
+
+// *
+// **KubernetesServiceTrafficDistribution** expresses a topology preference for
+// routing — a hint implementations honor when it is safe to do so.
+type KubernetesServiceSpec_KubernetesServiceTrafficDistribution int32
+
+const (
+	// Unspecified: the implementation applies its default routing strategy.
+	KubernetesServiceSpec_traffic_distribution_unspecified KubernetesServiceSpec_KubernetesServiceTrafficDistribution = 0
+	// PreferSameZone: prefer endpoints in the client's zone — cuts cross-zone
+	// data transfer cost and latency. Only set when endpoints are spread evenly
+	// enough that same-zone preference cannot overload a zone's endpoints.
+	KubernetesServiceSpec_prefer_same_zone KubernetesServiceSpec_KubernetesServiceTrafficDistribution = 1
+	// PreferSameNode: prefer endpoints on the client's node. For node-local
+	// patterns where every node runs an endpoint (e.g. DaemonSet-backed
+	// services).
+	KubernetesServiceSpec_prefer_same_node KubernetesServiceSpec_KubernetesServiceTrafficDistribution = 2
+)
+
+// Enum value maps for KubernetesServiceSpec_KubernetesServiceTrafficDistribution.
+var (
+	KubernetesServiceSpec_KubernetesServiceTrafficDistribution_name = map[int32]string{
+		0: "traffic_distribution_unspecified",
+		1: "prefer_same_zone",
+		2: "prefer_same_node",
+	}
+	KubernetesServiceSpec_KubernetesServiceTrafficDistribution_value = map[string]int32{
+		"traffic_distribution_unspecified": 0,
+		"prefer_same_zone":                 1,
+		"prefer_same_node":                 2,
+	}
+)
+
+func (x KubernetesServiceSpec_KubernetesServiceTrafficDistribution) Enum() *KubernetesServiceSpec_KubernetesServiceTrafficDistribution {
+	p := new(KubernetesServiceSpec_KubernetesServiceTrafficDistribution)
+	*p = x
+	return p
+}
+
+func (x KubernetesServiceSpec_KubernetesServiceTrafficDistribution) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (KubernetesServiceSpec_KubernetesServiceTrafficDistribution) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[3].Descriptor()
+}
+
+func (KubernetesServiceSpec_KubernetesServiceTrafficDistribution) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[3]
+}
+
+func (x KubernetesServiceSpec_KubernetesServiceTrafficDistribution) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use KubernetesServiceSpec_KubernetesServiceTrafficDistribution.Descriptor instead.
+func (KubernetesServiceSpec_KubernetesServiceTrafficDistribution) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDescGZIP(), []int{0, 3}
+}
+
+// *
+// **KubernetesServiceSessionAffinity** pins clients to backends.
 type KubernetesServiceSpec_KubernetesServiceSessionAffinity int32
 
 const (
 	// Unspecified. Defaults to none.
 	KubernetesServiceSpec_session_affinity_unspecified KubernetesServiceSpec_KubernetesServiceSessionAffinity = 0
-	// None: No session affinity. Each request may be routed to any backend pod.
+	// None: every request may land on any backend pod.
 	KubernetesServiceSpec_none KubernetesServiceSpec_KubernetesServiceSessionAffinity = 1
-	// ClientIP: Routes requests from the same client IP to the same backend pod.
-	// Useful for stateful applications that require sticky sessions.
+	// ClientIP: requests from one client IP stick to one backend pod for the
+	// affinity timeout window. For stateful applications needing sticky
+	// sessions without a smarter L7 layer.
 	KubernetesServiceSpec_client_ip KubernetesServiceSpec_KubernetesServiceSessionAffinity = 2
 )
 
@@ -187,11 +306,11 @@ func (x KubernetesServiceSpec_KubernetesServiceSessionAffinity) String() string 
 }
 
 func (KubernetesServiceSpec_KubernetesServiceSessionAffinity) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[2].Descriptor()
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[4].Descriptor()
 }
 
 func (KubernetesServiceSpec_KubernetesServiceSessionAffinity) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[2]
+	return &file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[4]
 }
 
 func (x KubernetesServiceSpec_KubernetesServiceSessionAffinity) Number() protoreflect.EnumNumber {
@@ -200,21 +319,135 @@ func (x KubernetesServiceSpec_KubernetesServiceSessionAffinity) Number() protore
 
 // Deprecated: Use KubernetesServiceSpec_KubernetesServiceSessionAffinity.Descriptor instead.
 func (KubernetesServiceSpec_KubernetesServiceSessionAffinity) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDescGZIP(), []int{0, 2}
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDescGZIP(), []int{0, 4}
 }
 
 // *
-// **KubernetesServiceProtocol** defines the network protocol for a service port.
+// **KubernetesServiceIpFamily** is one IP address family.
+type KubernetesServiceSpec_KubernetesServiceIpFamily int32
+
+const (
+	// Unspecified.
+	KubernetesServiceSpec_ip_family_unspecified KubernetesServiceSpec_KubernetesServiceIpFamily = 0
+	// IPv4.
+	KubernetesServiceSpec_ipv4 KubernetesServiceSpec_KubernetesServiceIpFamily = 1
+	// IPv6.
+	KubernetesServiceSpec_ipv6 KubernetesServiceSpec_KubernetesServiceIpFamily = 2
+)
+
+// Enum value maps for KubernetesServiceSpec_KubernetesServiceIpFamily.
+var (
+	KubernetesServiceSpec_KubernetesServiceIpFamily_name = map[int32]string{
+		0: "ip_family_unspecified",
+		1: "ipv4",
+		2: "ipv6",
+	}
+	KubernetesServiceSpec_KubernetesServiceIpFamily_value = map[string]int32{
+		"ip_family_unspecified": 0,
+		"ipv4":                  1,
+		"ipv6":                  2,
+	}
+)
+
+func (x KubernetesServiceSpec_KubernetesServiceIpFamily) Enum() *KubernetesServiceSpec_KubernetesServiceIpFamily {
+	p := new(KubernetesServiceSpec_KubernetesServiceIpFamily)
+	*p = x
+	return p
+}
+
+func (x KubernetesServiceSpec_KubernetesServiceIpFamily) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (KubernetesServiceSpec_KubernetesServiceIpFamily) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[5].Descriptor()
+}
+
+func (KubernetesServiceSpec_KubernetesServiceIpFamily) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[5]
+}
+
+func (x KubernetesServiceSpec_KubernetesServiceIpFamily) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use KubernetesServiceSpec_KubernetesServiceIpFamily.Descriptor instead.
+func (KubernetesServiceSpec_KubernetesServiceIpFamily) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDescGZIP(), []int{0, 5}
+}
+
+// *
+// **KubernetesServiceIpFamilyPolicy** is the dual-stack requirement level.
+type KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy int32
+
+const (
+	// Unspecified. Kubernetes defaults to SingleStack.
+	KubernetesServiceSpec_ip_family_policy_unspecified KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy = 0
+	// SingleStack: one IP family (the cluster default or ip_families[0]).
+	KubernetesServiceSpec_single_stack KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy = 1
+	// PreferDualStack: two families on dual-stack clusters, one on single-stack
+	// clusters — the portable way to opt into dual-stack.
+	KubernetesServiceSpec_prefer_dual_stack KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy = 2
+	// RequireDualStack: two families or fail — creation errors on single-stack
+	// clusters.
+	KubernetesServiceSpec_require_dual_stack KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy = 3
+)
+
+// Enum value maps for KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy.
+var (
+	KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy_name = map[int32]string{
+		0: "ip_family_policy_unspecified",
+		1: "single_stack",
+		2: "prefer_dual_stack",
+		3: "require_dual_stack",
+	}
+	KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy_value = map[string]int32{
+		"ip_family_policy_unspecified": 0,
+		"single_stack":                 1,
+		"prefer_dual_stack":            2,
+		"require_dual_stack":           3,
+	}
+)
+
+func (x KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy) Enum() *KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy {
+	p := new(KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy)
+	*p = x
+	return p
+}
+
+func (x KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[6].Descriptor()
+}
+
+func (KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy) Type() protoreflect.EnumType {
+	return &file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[6]
+}
+
+func (x KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy.Descriptor instead.
+func (KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDescGZIP(), []int{0, 6}
+}
+
+// *
+// **KubernetesServiceProtocol** is the L4 protocol of a port.
 type KubernetesServicePort_KubernetesServiceProtocol int32
 
 const (
-	// Unspecified protocol. Defaults to TCP.
+	// Unspecified. Defaults to TCP.
 	KubernetesServicePort_kubernetes_service_protocol_unspecified KubernetesServicePort_KubernetesServiceProtocol = 0
-	// TCP protocol. The most common protocol for services.
+	// TCP — the default and most common.
 	KubernetesServicePort_TCP KubernetesServicePort_KubernetesServiceProtocol = 1
-	// UDP protocol. Used for DNS, streaming, and other UDP-based services.
+	// UDP — DNS, QUIC, media streaming.
 	KubernetesServicePort_UDP KubernetesServicePort_KubernetesServiceProtocol = 2
-	// SCTP protocol. Used for telecommunications and specialized networking.
+	// SCTP — telecom workloads; requires cluster SCTP support.
 	KubernetesServicePort_SCTP KubernetesServicePort_KubernetesServiceProtocol = 3
 )
 
@@ -245,11 +478,11 @@ func (x KubernetesServicePort_KubernetesServiceProtocol) String() string {
 }
 
 func (KubernetesServicePort_KubernetesServiceProtocol) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[3].Descriptor()
+	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[7].Descriptor()
 }
 
 func (KubernetesServicePort_KubernetesServiceProtocol) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[3]
+	return &file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes[7]
 }
 
 func (x KubernetesServicePort_KubernetesServiceProtocol) Number() protoreflect.EnumNumber {
@@ -262,90 +495,181 @@ func (KubernetesServicePort_KubernetesServiceProtocol) EnumDescriptor() ([]byte,
 }
 
 // *
-// **KubernetesServiceSpec** defines the configuration for creating and managing a standalone
-// Kubernetes Service resource. This component exposes the Kubernetes Service primitive as a
-// first-class deployment unit, enabling declarative management of service discovery, load
-// balancing, and external access for workloads running in a Kubernetes cluster.
+// **KubernetesServiceSpec** defines a standalone Kubernetes Service — the stable
+// network identity in front of a set of pods. A Service gives its backends one
+// durable virtual IP and DNS name while the pods behind it come and go, and it is
+// the unit every other networking construct composes on: Ingress backends point at
+// a Service, NetworkPolicies allow traffic to the pods a Service selects, and
+// sibling workloads connect to its in-cluster DNS name.
 //
-// Primary use cases include:
-// - Exposing existing cluster workloads via LoadBalancer or NodePort
-// - Creating ExternalName services to proxy external DNS endpoints
-// - Headless services for direct pod addressing and custom DNS resolution
-// - Services targeting pods managed outside of Planton
+// Workload kinds (KubernetesDeployment, KubernetesStatefulSet) already create a
+// Service for their own pods; this standalone kind covers everything else:
+// exposing pods managed outside Planton, LoadBalancer/NodePort exposure with
+// cloud-provider annotations, ExternalName aliases to services outside the
+// cluster, headless services for custom discovery, dual-stack addressing, and
+// selectorless services fronting manually-managed endpoints.
 //
-// This spec follows the 80/20 rule, covering the essential Service configurations that the
-// vast majority of users need while remaining deployment-agnostic.
+// The spec covers the complete core/v1 ServiceSpec surface. The single deliberate
+// omission is the deprecated `loadBalancerIP` field — upstream deprecated it as
+// under-specified and non-portable; every cloud expresses a pinned LB address
+// through provider-specific annotations instead (set them in `annotations`).
 type KubernetesServiceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// The namespace in which the service will be created.
-	// Must be a valid DNS label (lowercase alphanumeric and hyphens, max 63 characters).
-	// The namespace must already exist in the target cluster.
-	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// The namespace to create the Service in. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource, so an infra chart creates the
+	// namespace and the Service in one run. When omitted, the Service lands in the
+	// cluster's `default` namespace — the same behavior as kubectl without a
+	// namespace flag.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// *
-	// The name of the Kubernetes Service.
-	// Used as `metadata.name` on the created Service resource.
-	// Must be a valid DNS label (lowercase alphanumeric and hyphens, max 63 characters).
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// The name of the Service (its `metadata.name` in the cluster). This becomes the
+	// service's DNS name, so the Kubernetes API enforces the stricter RFC 1035 label
+	// form: lowercase alphanumeric and hyphens, at most 63 characters, and it MUST
+	// start with a letter (a leading digit is valid for most Kubernetes names but is
+	// rejected live for Services because DNS labels used in SRV records cannot start
+	// with a digit).
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// *
-	// Additional labels to apply to the Service resource.
-	// These are merged with standard Planton labels for governance and discoverability.
-	Labels map[string]string `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Additional labels to apply to the Service object. Merged with the standard
+	// Planton governance labels. These label the Service itself — pod selection is
+	// controlled by `selector`, not by these labels.
+	Labels map[string]string `protobuf:"bytes,3,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// *
-	// Annotations to apply to the Service resource.
-	// Annotations are critical for configuring cloud-provider-specific load balancer behavior.
-	// Common use cases:
-	// - `service.beta.kubernetes.io/aws-load-balancer-type: "nlb"` for AWS NLB
-	// - `cloud.google.com/neg: '{"ingress": true}'` for GCP NEG
-	// - `service.beta.kubernetes.io/azure-load-balancer-internal: "true"` for Azure internal LB
-	Annotations map[string]string `protobuf:"bytes,5,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Annotations to apply to the Service object. For LoadBalancer services this is
+	// where cloud-provider behavior is configured — the annotation set IS the
+	// portable way to tune the provisioned load balancer:
+	// - `service.beta.kubernetes.io/aws-load-balancer-type: "nlb"` — AWS NLB
+	// - `service.beta.kubernetes.io/aws-load-balancer-internal: "true"` — AWS internal LB
+	// - `cloud.google.com/load-balancer-type: "Internal"` — GCP internal LB
+	// - `networking.gke.io/load-balancer-ip-addresses: "<name>"` — GKE pinned address
+	// - `service.beta.kubernetes.io/azure-load-balancer-internal: "true"` — Azure internal LB
+	// - `external-dns.alpha.kubernetes.io/hostname: "app.example.com"` — external-dns record
+	//
+	// Which controller answers matters (verified live on EKS): the
+	// `aws-load-balancer-type: "nlb"` value is handled by EKS's built-in
+	// cloud controller — no extra install needed — while the
+	// `aws-load-balancer-type: "external"` family of annotations is handled
+	// ONLY by the AWS Load Balancer Controller; with those set and the
+	// controller absent, the Service simply never receives an address (no
+	// error anywhere — the annotation just has no reader).
+	Annotations map[string]string `protobuf:"bytes,4,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// *
-	// The type of Kubernetes Service to create.
+	// How the Service is exposed.
 	// Default: cluster_ip
-	Type *KubernetesServiceSpec_KubernetesServiceType `protobuf:"varint,6,opt,name=type,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec_KubernetesServiceType,oneof" json:"type,omitempty"`
+	Type *KubernetesServiceSpec_KubernetesServiceType `protobuf:"varint,5,opt,name=type,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec_KubernetesServiceType,oneof" json:"type,omitempty"`
 	// *
-	// Label selector for identifying the pods that this service routes traffic to.
-	// The service will route traffic to pods whose labels match all key-value pairs
-	// in this selector.
+	// Label selector identifying the pods this Service routes to. Traffic goes to
+	// pods whose labels match ALL key-value pairs listed here. Planton workloads
+	// stamp a stable selector identity on their pods — the `app` label set to the
+	// workload's `metadata.name` — and export the full set as their
+	// `selector_labels` output, so `app: <workload-name>` is sufficient to select
+	// a Planton-managed workload's pods.
 	//
-	// Not required for ExternalName services or services with manually managed endpoints.
-	Selector map[string]string `protobuf:"bytes,7,rep,name=selector,proto3" json:"selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Leave empty for ExternalName services, or to create a selectorless service
+	// whose endpoints are managed manually (via EndpointSlice objects) or by an
+	// external controller.
+	Selector map[string]string `protobuf:"bytes,6,rep,name=selector,proto3" json:"selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// *
-	// The list of ports exposed by this service.
-	// At least one port must be specified for all service types except ExternalName.
-	Ports []*KubernetesServicePort `protobuf:"bytes,8,rep,name=ports,proto3" json:"ports,omitempty"`
+	// The ports this Service exposes. At least one port is required for every type
+	// except ExternalName (which forwards by DNS, not by port).
+	Ports []*KubernetesServicePort `protobuf:"bytes,7,rep,name=ports,proto3" json:"ports,omitempty"`
 	// *
-	// Whether to create a headless service (clusterIP: None).
-	// Headless services do not allocate a cluster IP; DNS queries return the pod IPs directly.
-	// Useful for StatefulSets and custom service discovery mechanisms.
-	//
-	// Cannot be combined with service types NodePort or LoadBalancer.
-	Headless bool `protobuf:"varint,9,opt,name=headless,proto3" json:"headless,omitempty"`
+	// When true, creates a headless service (`clusterIP: None`): no virtual IP is
+	// allocated and DNS returns the pod IPs directly. The tool of choice for
+	// StatefulSet peer discovery and any client that wants to talk to each pod
+	// individually. Incompatible with NodePort/LoadBalancer types and with a static
+	// `cluster_ip`.
+	Headless bool `protobuf:"varint,8,opt,name=headless,proto3" json:"headless,omitempty"`
 	// *
-	// The external DNS name for ExternalName-type services.
-	// This must be a valid DNS name (e.g., "my-database.example.com").
-	// Only used when type is set to external_name.
+	// A specific cluster-internal IP to assign instead of an allocated one. Must be
+	// a valid IP inside the cluster's service CIDR and not already in use — the API
+	// server rejects the Service otherwise. Rarely needed; omit to let Kubernetes
+	// allocate. For a headless service use `headless: true`, never "None" here.
+	// Immutable after creation.
+	ClusterIpAddress string `protobuf:"bytes,9,opt,name=cluster_ip_address,json=clusterIpAddress,proto3" json:"cluster_ip_address,omitempty"`
+	// *
+	// The DNS name an ExternalName service aliases to (e.g.
+	// "db.prod.example.com") — cluster DNS returns it as a CNAME. Required when
+	// (and only meaningful when) `type` is external_name. Must be a lowercase
+	// RFC-1123 hostname.
 	ExternalDnsName string `protobuf:"bytes,10,opt,name=external_dns_name,json=externalDnsName,proto3" json:"external_dns_name,omitempty"`
 	// *
-	// External traffic policy for NodePort and LoadBalancer services.
-	// Controls whether traffic is routed to node-local endpoints only or across all nodes.
-	// Only applicable when type is node_port or load_balancer.
+	// IP addresses outside Kubernetes' management for which nodes also accept
+	// traffic for this Service — typically VIPs owned by an external load balancer
+	// or router that fronts the cluster. The user is responsible for routing
+	// traffic to these IPs; Kubernetes only accepts it once it arrives at a node.
+	ExternalIps []string `protobuf:"bytes,11,rep,name=external_ips,json=externalIps,proto3" json:"external_ips,omitempty"`
+	// *
+	// External traffic policy for NodePort and LoadBalancer services. Choose
+	// `local` when the application needs the real client source IP.
 	// Default: cluster
-	ExternalTrafficPolicy *KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy `protobuf:"varint,11,opt,name=external_traffic_policy,json=externalTrafficPolicy,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy,oneof" json:"external_traffic_policy,omitempty"`
+	ExternalTrafficPolicy *KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy `protobuf:"varint,12,opt,name=external_traffic_policy,json=externalTrafficPolicy,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy,oneof" json:"external_traffic_policy,omitempty"`
 	// *
-	// Session affinity configuration.
-	// Determines whether requests from the same client are routed to the same backend pod.
+	// Internal traffic policy for ClusterIP traffic.
+	// Default: internal_cluster
+	InternalTrafficPolicy *KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy `protobuf:"varint,13,opt,name=internal_traffic_policy,json=internalTrafficPolicy,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy,oneof" json:"internal_traffic_policy,omitempty"`
+	// *
+	// Topology-aware routing preference. Omit for the cluster's default routing.
+	TrafficDistribution *KubernetesServiceSpec_KubernetesServiceTrafficDistribution `protobuf:"varint,14,opt,name=traffic_distribution,json=trafficDistribution,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec_KubernetesServiceTrafficDistribution,oneof" json:"traffic_distribution,omitempty"`
+	// *
+	// Session affinity mode.
 	// Default: none
-	SessionAffinity *KubernetesServiceSpec_KubernetesServiceSessionAffinity `protobuf:"varint,12,opt,name=session_affinity,json=sessionAffinity,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec_KubernetesServiceSessionAffinity,oneof" json:"session_affinity,omitempty"`
+	SessionAffinity *KubernetesServiceSpec_KubernetesServiceSessionAffinity `protobuf:"varint,15,opt,name=session_affinity,json=sessionAffinity,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec_KubernetesServiceSessionAffinity,oneof" json:"session_affinity,omitempty"`
 	// *
-	// Restrict access to the load balancer by source IP ranges.
-	// Only applicable when type is load_balancer.
-	// Each entry must be a valid CIDR notation (e.g., "203.0.113.0/24", "10.0.0.0/8").
-	//
-	// An empty list means the load balancer is accessible from any source IP.
-	LoadBalancerSourceRanges []string `protobuf:"bytes,13,rep,name=load_balancer_source_ranges,json=loadBalancerSourceRanges,proto3" json:"load_balancer_source_ranges,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// How long (in seconds) a ClientIP affinity pin lasts. Only meaningful when
+	// `session_affinity` is client_ip. Kubernetes default: 10800 (3 hours).
+	// Range: 1–86400 (1 day).
+	SessionAffinityTimeoutSeconds *int32 `protobuf:"varint,16,opt,name=session_affinity_timeout_seconds,json=sessionAffinityTimeoutSeconds,proto3,oneof" json:"session_affinity_timeout_seconds,omitempty"`
+	// *
+	// Restrict which client CIDRs may reach the provisioned load balancer. Only
+	// meaningful for LoadBalancer services, and only enforced by cloud providers
+	// that support it. An empty list means open to all sources.
+	LoadBalancerSourceRanges []string `protobuf:"bytes,17,rep,name=load_balancer_source_ranges,json=loadBalancerSourceRanges,proto3" json:"load_balancer_source_ranges,omitempty"`
+	// *
+	// Selects which load-balancer implementation provisions this Service when the
+	// cluster runs more than one (e.g. the cloud default plus MetalLB). A
+	// label-style identifier, optionally domain-prefixed (e.g.
+	// "example.com/internal-vip"). Omit for the cluster's default implementation.
+	// Only settable for LoadBalancer services; immutable once set.
+	LoadBalancerClass string `protobuf:"bytes,18,opt,name=load_balancer_class,json=loadBalancerClass,proto3" json:"load_balancer_class,omitempty"`
+	// *
+	// Whether NodePorts are auto-allocated for this LoadBalancer service.
+	// Unset defers to the Kubernetes default (true) — deliberately NOT a
+	// platform default, because the field may only exist on LoadBalancer
+	// services and a platform-applied value would be rejected on every other
+	// type. Set false only when the load-balancer implementation routes to pods
+	// directly (e.g. VIP-mode MetalLB, some NLB IP-target setups) and the
+	// NodePort hop is dead weight.
+	AllocateLoadBalancerNodePorts *bool `protobuf:"varint,19,opt,name=allocate_load_balancer_node_ports,json=allocateLoadBalancerNodePorts,proto3,oneof" json:"allocate_load_balancer_node_ports,omitempty"`
+	// *
+	// A specific health-check NodePort for `external_traffic_policy: local`
+	// LoadBalancer services — the port external load balancers probe to learn
+	// which nodes hold endpoints. Omit to let Kubernetes allocate one. Only
+	// settable when type is load_balancer AND external_traffic_policy is local
+	// (the API rejects it otherwise). Immutable once set.
+	HealthCheckNodePort int32 `protobuf:"varint,20,opt,name=health_check_node_port,json=healthCheckNodePort,proto3" json:"health_check_node_port,omitempty"`
+	// *
+	// When true, endpoint controllers publish pod addresses even before the pods
+	// report Ready. The canonical use is a StatefulSet's headless governing
+	// Service, where peers must discover each other DURING startup (databases
+	// bootstrapping a quorum). Leave false for ordinary traffic-serving services —
+	// publishing not-ready backends sends real traffic to pods that cannot
+	// handle it.
+	PublishNotReadyAddresses bool `protobuf:"varint,21,opt,name=publish_not_ready_addresses,json=publishNotReadyAddresses,proto3" json:"publish_not_ready_addresses,omitempty"`
+	// *
+	// The IP families assigned to this Service, in preference order. Usually left
+	// empty (the cluster assigns based on its configuration and
+	// `ip_family_policy`). Set explicitly to pin the primary family or the
+	// dual-stack order, e.g. [ipv6, ipv4] for IPv6-primary. At most two entries,
+	// and they must differ. The requested families must be available in the
+	// cluster or creation fails.
+	IpFamilies []KubernetesServiceSpec_KubernetesServiceIpFamily `protobuf:"varint,22,rep,packed,name=ip_families,json=ipFamilies,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec_KubernetesServiceIpFamily" json:"ip_families,omitempty"`
+	// *
+	// The dual-stack policy for this Service. Omit for SingleStack.
+	IpFamilyPolicy *KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy `protobuf:"varint,23,opt,name=ip_family_policy,json=ipFamilyPolicy,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy,oneof" json:"ip_family_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *KubernetesServiceSpec) Reset() {
@@ -378,11 +702,11 @@ func (*KubernetesServiceSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *KubernetesServiceSpec) GetNamespace() string {
+func (x *KubernetesServiceSpec) GetNamespace() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Namespace
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesServiceSpec) GetName() string {
@@ -434,11 +758,25 @@ func (x *KubernetesServiceSpec) GetHeadless() bool {
 	return false
 }
 
+func (x *KubernetesServiceSpec) GetClusterIpAddress() string {
+	if x != nil {
+		return x.ClusterIpAddress
+	}
+	return ""
+}
+
 func (x *KubernetesServiceSpec) GetExternalDnsName() string {
 	if x != nil {
 		return x.ExternalDnsName
 	}
 	return ""
+}
+
+func (x *KubernetesServiceSpec) GetExternalIps() []string {
+	if x != nil {
+		return x.ExternalIps
+	}
+	return nil
 }
 
 func (x *KubernetesServiceSpec) GetExternalTrafficPolicy() KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy {
@@ -448,11 +786,32 @@ func (x *KubernetesServiceSpec) GetExternalTrafficPolicy() KubernetesServiceSpec
 	return KubernetesServiceSpec_external_traffic_policy_unspecified
 }
 
+func (x *KubernetesServiceSpec) GetInternalTrafficPolicy() KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy {
+	if x != nil && x.InternalTrafficPolicy != nil {
+		return *x.InternalTrafficPolicy
+	}
+	return KubernetesServiceSpec_internal_traffic_policy_unspecified
+}
+
+func (x *KubernetesServiceSpec) GetTrafficDistribution() KubernetesServiceSpec_KubernetesServiceTrafficDistribution {
+	if x != nil && x.TrafficDistribution != nil {
+		return *x.TrafficDistribution
+	}
+	return KubernetesServiceSpec_traffic_distribution_unspecified
+}
+
 func (x *KubernetesServiceSpec) GetSessionAffinity() KubernetesServiceSpec_KubernetesServiceSessionAffinity {
 	if x != nil && x.SessionAffinity != nil {
 		return *x.SessionAffinity
 	}
 	return KubernetesServiceSpec_session_affinity_unspecified
+}
+
+func (x *KubernetesServiceSpec) GetSessionAffinityTimeoutSeconds() int32 {
+	if x != nil && x.SessionAffinityTimeoutSeconds != nil {
+		return *x.SessionAffinityTimeoutSeconds
+	}
+	return 0
 }
 
 func (x *KubernetesServiceSpec) GetLoadBalancerSourceRanges() []string {
@@ -462,36 +821,85 @@ func (x *KubernetesServiceSpec) GetLoadBalancerSourceRanges() []string {
 	return nil
 }
 
+func (x *KubernetesServiceSpec) GetLoadBalancerClass() string {
+	if x != nil {
+		return x.LoadBalancerClass
+	}
+	return ""
+}
+
+func (x *KubernetesServiceSpec) GetAllocateLoadBalancerNodePorts() bool {
+	if x != nil && x.AllocateLoadBalancerNodePorts != nil {
+		return *x.AllocateLoadBalancerNodePorts
+	}
+	return false
+}
+
+func (x *KubernetesServiceSpec) GetHealthCheckNodePort() int32 {
+	if x != nil {
+		return x.HealthCheckNodePort
+	}
+	return 0
+}
+
+func (x *KubernetesServiceSpec) GetPublishNotReadyAddresses() bool {
+	if x != nil {
+		return x.PublishNotReadyAddresses
+	}
+	return false
+}
+
+func (x *KubernetesServiceSpec) GetIpFamilies() []KubernetesServiceSpec_KubernetesServiceIpFamily {
+	if x != nil {
+		return x.IpFamilies
+	}
+	return nil
+}
+
+func (x *KubernetesServiceSpec) GetIpFamilyPolicy() KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy {
+	if x != nil && x.IpFamilyPolicy != nil {
+		return *x.IpFamilyPolicy
+	}
+	return KubernetesServiceSpec_ip_family_policy_unspecified
+}
+
 // *
-// **KubernetesServicePort** defines a port exposed by the Kubernetes Service.
+// **KubernetesServicePort** is one port the Service exposes.
 type KubernetesServicePort struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// Optional name for this port. Must be unique within the list of ports.
-	// Required when the service exposes more than one port.
-	// Must be a valid IANA service name (lowercase alphanumeric and hyphens).
+	// Name of this port. Required (and must be unique) when the Service exposes
+	// more than one port; optional for a single port. Must be a valid IANA service
+	// name: lowercase alphanumeric and hyphens, at most 15 characters, at least
+	// one letter. Named ports let consumers reference "http" instead of a number.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// *
 	// The IP protocol for this port.
 	// Default: TCP
 	Protocol *KubernetesServicePort_KubernetesServiceProtocol `protobuf:"varint,2,opt,name=protocol,proto3,enum=dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort_KubernetesServiceProtocol,oneof" json:"protocol,omitempty"`
 	// *
-	// The port number exposed by the service.
-	// This is the port that clients use to access the service.
-	// Must be in the range 1-65535.
-	Port int32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	// The application protocol for this port — a hint richer dataplanes (meshes,
+	// L7 load balancers) use to pick the right proxying behavior. Either an IANA
+	// service name ("http", "https") or a prefixed name: "kubernetes.io/h2c"
+	// (HTTP/2 cleartext), "kubernetes.io/ws" (WebSocket), "kubernetes.io/wss"
+	// (WebSocket over TLS).
+	AppProtocol string `protobuf:"bytes,3,opt,name=app_protocol,json=appProtocol,proto3" json:"app_protocol,omitempty"`
 	// *
-	// The port on the target pod to route traffic to.
-	// Can be a numeric port (e.g., "8080") or a named port (e.g., "http") defined
-	// in the container's port list.
-	// If not specified, defaults to the same value as port.
-	TargetPort string `protobuf:"bytes,4,opt,name=target_port,json=targetPort,proto3" json:"target_port,omitempty"`
+	// The port number the Service exposes — what clients connect to.
+	// Range: 1–65535.
+	Port int32 `protobuf:"varint,4,opt,name=port,proto3" json:"port,omitempty"`
 	// *
-	// The port on each node to expose for NodePort and LoadBalancer services.
-	// If not specified, Kubernetes allocates a port from the node port range (default 30000-32767).
-	// Must be in the range 30000-32767 when specified.
-	// Only applicable when the service type is node_port or load_balancer.
-	NodePort      int32 `protobuf:"varint,5,opt,name=node_port,json=nodePort,proto3" json:"node_port,omitempty"`
+	// The port on the backend pods to route to: a number ("8080") or a named
+	// container port ("http") declared in the pod's container ports. Defaults to
+	// the same value as `port`. Ignored for headless services (which have no
+	// proxying — set it equal to `port` or omit it).
+	TargetPort string `protobuf:"bytes,5,opt,name=target_port,json=targetPort,proto3" json:"target_port,omitempty"`
+	// *
+	// The static port opened on every node for NodePort and LoadBalancer services.
+	// Omit (0) to let Kubernetes allocate from the node-port range. Setting it on
+	// a ClusterIP service is rejected by the API.
+	// Range when set: 30000–32767 (the default node-port range).
+	NodePort      int32 `protobuf:"varint,6,opt,name=node_port,json=nodePort,proto3" json:"node_port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -540,6 +948,13 @@ func (x *KubernetesServicePort) GetProtocol() KubernetesServicePort_KubernetesSe
 	return KubernetesServicePort_kubernetes_service_protocol_unspecified
 }
 
+func (x *KubernetesServicePort) GetAppProtocol() string {
+	if x != nil {
+		return x.AppProtocol
+	}
+	return ""
+}
+
 func (x *KubernetesServicePort) GetPort() int32 {
 	if x != nil {
 		return x.Port
@@ -565,23 +980,40 @@ var File_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto protore
 
 const file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetesservice/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesservice.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\x9b\x14\n" +
-	"\x15KubernetesServiceSpec\x12\xdf\x01\n" +
-	"\tnamespace\x18\x02 \x01(\tB\xc0\x01\xbaH\xbc\x01\xba\x01\xb2\x01\n" +
-	"\x13namespace.dns_label\x12enamespace must be a valid DNS label (lowercase alphanumeric and hyphens, no leading/trailing hyphens)\x1a4this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')r\x04\x10\x01\x18?R\tnamespace\x12\xcb\x01\n" +
-	"\x04name\x18\x03 \x01(\tB\xb6\x01\xbaH\xb2\x01\xba\x01\xa8\x01\n" +
-	"\x0ename.dns_label\x12`name must be a valid DNS label (lowercase alphanumeric and hyphens, no leading/trailing hyphens)\x1a4this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')r\x04\x10\x01\x18?R\x04name\x12o\n" +
-	"\x06labels\x18\x04 \x03(\v2W.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.LabelsEntryR\x06labels\x12~\n" +
-	"\vannotations\x18\x05 \x03(\v2\\.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.AnnotationsEntryR\vannotations\x12\x84\x01\n" +
-	"\x04type\x18\x06 \x01(\x0e2a.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceTypeB\b\xbaH\x05\x82\x01\x02\x10\x01H\x00R\x04type\x88\x01\x01\x12u\n" +
-	"\bselector\x18\a \x03(\v2Y.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.SelectorEntryR\bselector\x12a\n" +
-	"\x05ports\x18\b \x03(\v2K.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePortR\x05ports\x12\x1a\n" +
-	"\bheadless\x18\t \x01(\bR\bheadless\x12*\n" +
+	"?dev/planton/provider/kubernetes/kubernetesservice/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesservice.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x888\n" +
+	"\x15KubernetesServiceSpec\x12d\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x8b\x02\n" +
+	"\x04name\x18\x02 \x01(\tB\xf6\x01\xbaH\xf2\x01\xba\x01\xe8\x01\n" +
+	"\x13name.dns_1035_label\x12\xa2\x01Service name must be a valid DNS-1035 label: lowercase alphanumeric and hyphens, starting with a letter and ending with an alphanumeric (e.g. \"my-service\", \"web\")\x1a,this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')r\x04\x10\x01\x18?R\x04name\x12o\n" +
+	"\x06labels\x18\x03 \x03(\v2W.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.LabelsEntryR\x06labels\x12~\n" +
+	"\vannotations\x18\x04 \x03(\v2\\.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.AnnotationsEntryR\vannotations\x12\x92\x01\n" +
+	"\x04type\x18\x05 \x01(\x0e2a.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceTypeB\x16\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\n" +
+	"cluster_ipH\x00R\x04type\x88\x01\x01\x12u\n" +
+	"\bselector\x18\x06 \x03(\v2Y.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.SelectorEntryR\bselector\x12a\n" +
+	"\x05ports\x18\a \x03(\v2K.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePortR\x05ports\x12\x1a\n" +
+	"\bheadless\x18\b \x01(\bR\bheadless\x12\xf5\x01\n" +
+	"\x12cluster_ip_address\x18\t \x01(\tB\xc6\x01\xbaH\xc2\x01\xba\x01\xbe\x01\n" +
+	"\x19cluster_ip_address.format\x12\x85\x01cluster_ip_address must be a valid IPv4 or IPv6 address (to create a headless service set headless: true instead of clusterIP \"None\")\x1a\x19this == '' || this.isIp()R\x10clusterIpAddress\x12\x89\x02\n" +
 	"\x11external_dns_name\x18\n" +
-	" \x01(\tR\x0fexternalDnsName\x12\xb9\x01\n" +
-	"\x17external_traffic_policy\x18\v \x01(\x0e2r.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceExternalTrafficPolicyB\b\xbaH\x05\x82\x01\x02\x10\x01H\x01R\x15externalTrafficPolicy\x88\x01\x01\x12\xa6\x01\n" +
-	"\x10session_affinity\x18\f \x01(\x0e2l.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceSessionAffinityB\b\xbaH\x05\x82\x01\x02\x10\x01H\x02R\x0fsessionAffinity\x88\x01\x01\x12=\n" +
-	"\x1bload_balancer_source_ranges\x18\r \x03(\tR\x18loadBalancerSourceRanges\x1a9\n" +
+	" \x01(\tB\xdc\x01\xbaH\xd8\x01\xba\x01\xd4\x01\n" +
+	"\x1aexternal_dns_name.hostname\x12Texternal_dns_name must be a lowercase RFC-1123 hostname (e.g. \"db.prod.example.com\")\x1a`this == '' || this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$')R\x0fexternalDnsName\x12\x87\x01\n" +
+	"\fexternal_ips\x18\v \x03(\tBd\xbaHa\x92\x01^\"\\\xba\x01Y\n" +
+	"\x13external_ips.format\x125each external IP must be a valid IPv4 or IPv6 address\x1a\vthis.isIp()R\vexternalIps\x12\xc4\x01\n" +
+	"\x17external_traffic_policy\x18\f \x01(\x0e2r.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceExternalTrafficPolicyB\x13\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\aclusterH\x01R\x15externalTrafficPolicy\x88\x01\x01\x12\xcd\x01\n" +
+	"\x17internal_traffic_policy\x18\r \x01(\x0e2r.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceInternalTrafficPolicyB\x1c\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x10internal_clusterH\x02R\x15internalTrafficPolicy\x88\x01\x01\x12\xb2\x01\n" +
+	"\x14traffic_distribution\x18\x0e \x01(\x0e2p.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceTrafficDistributionB\b\xbaH\x05\x82\x01\x02\x10\x01H\x03R\x13trafficDistribution\x88\x01\x01\x12\xae\x01\n" +
+	"\x10session_affinity\x18\x0f \x01(\x0e2l.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceSessionAffinityB\x10\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x04noneH\x04R\x0fsessionAffinity\x88\x01\x01\x12Y\n" +
+	" session_affinity_timeout_seconds\x18\x10 \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\xa3\x05(\x01H\x05R\x1dsessionAffinityTimeoutSeconds\x88\x01\x01\x12\xd5\x01\n" +
+	"\x1bload_balancer_source_ranges\x18\x11 \x03(\tB\x95\x01\xbaH\x91\x01\x92\x01\x8d\x01\"\x8a\x01\xba\x01\x86\x01\n" +
+	" load_balancer_source_ranges.cidr\x12Oeach source range must be a valid CIDR (e.g. \"203.0.113.0/24\", \"2001:db8::/64\")\x1a\x11this.isIpPrefix()R\x18loadBalancerSourceRanges\x128\n" +
+	"\x13load_balancer_class\x18\x12 \x01(\tB\b\xbaH\x05r\x03\x18\xbd\x02R\x11loadBalancerClass\x12M\n" +
+	"!allocate_load_balancer_node_ports\x18\x13 \x01(\bH\x06R\x1dallocateLoadBalancerNodePorts\x88\x01\x01\x12\xe3\x01\n" +
+	"\x16health_check_node_port\x18\x14 \x01(\x05B\xad\x01\xbaH\xa9\x01\xba\x01\xa5\x01\n" +
+	"\x1chealth_check_node_port.range\x12Vhealth_check_node_port must be 0 (auto-allocate) or in the node-port range 30000-32767\x1a-this == 0 || (this >= 30000 && this <= 32767)R\x13healthCheckNodePort\x12=\n" +
+	"\x1bpublish_not_ready_addresses\x18\x15 \x01(\bR\x18publishNotReadyAddresses\x12\x99\x01\n" +
+	"\vip_families\x18\x16 \x03(\x0e2e.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceIpFamilyB\x11\xbaH\x0e\x92\x01\v\x10\x02\"\a\x82\x01\x04\x10\x01 \x00R\n" +
+	"ipFamilies\x12\xa4\x01\n" +
+	"\x10ip_family_policy\x18\x17 \x01(\x0e2k.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceIpFamilyPolicyB\b\xbaH\x05\x82\x01\x02\x10\x01H\aR\x0eipFamilyPolicy\x88\x01\x01\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
@@ -601,30 +1033,64 @@ const file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDe
 	"&KubernetesServiceExternalTrafficPolicy\x12'\n" +
 	"#external_traffic_policy_unspecified\x10\x00\x12\v\n" +
 	"\acluster\x10\x01\x12\t\n" +
-	"\x05local\x10\x02\"]\n" +
+	"\x05local\x10\x02\"{\n" +
+	"&KubernetesServiceInternalTrafficPolicy\x12'\n" +
+	"#internal_traffic_policy_unspecified\x10\x00\x12\x14\n" +
+	"\x10internal_cluster\x10\x01\x12\x12\n" +
+	"\x0einternal_local\x10\x02\"x\n" +
+	"$KubernetesServiceTrafficDistribution\x12$\n" +
+	" traffic_distribution_unspecified\x10\x00\x12\x14\n" +
+	"\x10prefer_same_zone\x10\x01\x12\x14\n" +
+	"\x10prefer_same_node\x10\x02\"]\n" +
 	" KubernetesServiceSessionAffinity\x12 \n" +
 	"\x1csession_affinity_unspecified\x10\x00\x12\b\n" +
 	"\x04none\x10\x01\x12\r\n" +
-	"\tclient_ip\x10\x02:\xcf\x03\xbaH\xcb\x03\x1a\x8b\x01\n" +
-	"\x1fexternal_name_requires_dns_name\x128external_dns_name must be set when type is external_name\x1a.this.type != 4 || this.external_dns_name != ''\x1a\xa9\x01\n" +
-	"0headless_incompatible_with_nodeport_loadbalancer\x12?headless cannot be true when type is node_port or load_balancer\x1a4!this.headless || (this.type != 2 && this.type != 3)\x1a\x8e\x01\n" +
-	" non_external_name_requires_ports\x12Aat least one port must be specified for non-ExternalName services\x1a'this.type == 4 || this.ports.size() > 0B\a\n" +
+	"\tclient_ip\x10\x02\"J\n" +
+	"\x19KubernetesServiceIpFamily\x12\x19\n" +
+	"\x15ip_family_unspecified\x10\x00\x12\b\n" +
+	"\x04ipv4\x10\x01\x12\b\n" +
+	"\x04ipv6\x10\x02\"\x84\x01\n" +
+	"\x1fKubernetesServiceIpFamilyPolicy\x12 \n" +
+	"\x1cip_family_policy_unspecified\x10\x00\x12\x10\n" +
+	"\fsingle_stack\x10\x01\x12\x15\n" +
+	"\x11prefer_dual_stack\x10\x02\x12\x16\n" +
+	"\x12require_dual_stack\x10\x03:\xac\x13\xbaH\xa8\x13\x1a\x9e\x01\n" +
+	"\x1fexternal_name_requires_dns_name\x128external_dns_name must be set when type is external_name\x1aA!has(this.type) || this.type != 4 || this.external_dns_name != ''\x1a\xb1\x01\n" +
+	"-external_dns_name_only_for_external_name_type\x12<external_dns_name can only be set when type is external_name\x1aBthis.external_dns_name == '' || (has(this.type) && this.type == 4)\x1a\xbc\x01\n" +
+	"0headless_incompatible_with_nodeport_loadbalancer\x12?headless cannot be true when type is node_port or load_balancer\x1aG!this.headless || !has(this.type) || (this.type != 2 && this.type != 3)\x1a\xb0\x01\n" +
+	"#headless_excludes_static_cluster_ip\x12Xcluster_ip_address cannot be set on a headless service (headless means clusterIP \"None\")\x1a/!this.headless || this.cluster_ip_address == ''\x1a\xb0\x01\n" +
+	" non_external_name_requires_ports\x12Oat least one port must be specified for every service type except external_name\x1a;(has(this.type) && this.type == 4) || this.ports.size() > 0\x1a\xba\x02\n" +
+	"#external_name_excludes_proxy_fields\x12\x8d\x01selector, cluster_ip_address, and external_ips cannot be set when type is external_name (an ExternalName service is a DNS alias, not a proxy)\x1a\x82\x01!has(this.type) || this.type != 4 || (this.selector.size() == 0 && this.cluster_ip_address == '' && this.external_ips.size() == 0)\x1a\xa5\x02\n" +
+	"(health_check_node_port_requires_local_lb\x12fhealth_check_node_port can only be set when type is load_balancer and external_traffic_policy is local\x1a\x90\x01this.health_check_node_port == 0 || (has(this.type) && this.type == 3 && has(this.external_traffic_policy) && this.external_traffic_policy == 2)\x1a\xed\x01\n" +
+	"+session_affinity_timeout_requires_client_ip\x12Ssession_affinity_timeout_seconds can only be set when session_affinity is client_ip\x1ai!has(this.session_affinity_timeout_seconds) || (has(this.session_affinity) && this.session_affinity == 2)\x1a\xdf\x02\n" +
+	"/load_balancer_fields_require_load_balancer_type\x12\x82\x01load_balancer_source_ranges, load_balancer_class, and allocate_load_balancer_node_ports can only be set when type is load_balancer\x1a\xa6\x01(has(this.type) && this.type == 3) || (this.load_balancer_source_ranges.size() == 0 && this.load_balancer_class == '' && !has(this.allocate_load_balancer_node_ports))\x1a\xa7\x01\n" +
+	"\x14ip_families_distinct\x12Dip_families entries must be distinct (at most one ipv4 and one ipv6)\x1aIthis.ip_families.size() < 2 || this.ip_families[0] != this.ip_families[1]\x1a\xca\x01\n" +
+	"\x1esingle_stack_allows_one_family\x12Mip_families may list at most one family when ip_family_policy is single_stack\x1aY!has(this.ip_family_policy) || this.ip_family_policy != 1 || this.ip_families.size() <= 1B\a\n" +
 	"\x05_typeB\x1a\n" +
-	"\x18_external_traffic_policyB\x13\n" +
-	"\x11_session_affinity\"\xb3\x04\n" +
-	"\x15KubernetesServicePort\x12\x1b\n" +
-	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x18?R\x04name\x12\x97\x01\n" +
-	"\bprotocol\x18\x02 \x01(\x0e2e.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort.KubernetesServiceProtocolB\x0f\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x03TCPH\x00R\bprotocol\x88\x01\x01\x12\x1f\n" +
-	"\x04port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01R\x04port\x12\x1f\n" +
-	"\vtarget_port\x18\x04 \x01(\tR\n" +
-	"targetPort\x12\xad\x01\n" +
-	"\tnode_port\x18\x05 \x01(\x05B\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
-	"\x15node_port.valid_range\x12?node_port must be 0 (auto-allocate) or in the range 30000-32767\x1a-this == 0 || (this >= 30000 && this <= 32767)R\bnodePort\"d\n" +
+	"\x18_external_traffic_policyB\x1a\n" +
+	"\x18_internal_traffic_policyB\x17\n" +
+	"\x15_traffic_distributionB\x13\n" +
+	"\x11_session_affinityB#\n" +
+	"!_session_affinity_timeout_secondsB$\n" +
+	"\"_allocate_load_balancer_node_portsB\x13\n" +
+	"\x11_ip_family_policy\"\x9b\v\n" +
+	"\x15KubernetesServicePort\x12\xcc\x02\n" +
+	"\x04name\x18\x01 \x01(\tB\xb7\x02\xbaH\xb3\x02\xba\x01\xaf\x02\n" +
+	"\x17port_name.iana_svc_name\x12\xa0\x01Port name must be a valid IANA service name: lowercase alphanumeric and hyphens, at most 15 characters, containing at least one letter (e.g. \"http\", \"grpc-web\")\x1aqthis == '' || (this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$') && this.size() <= 15 && this.matches('.*[a-z].*'))R\x04name\x12\x97\x01\n" +
+	"\bprotocol\x18\x02 \x01(\x0e2e.dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort.KubernetesServiceProtocolB\x0f\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x03TCPH\x00R\bprotocol\x88\x01\x01\x12+\n" +
+	"\fapp_protocol\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xbc\x02R\vappProtocol\x12\x1f\n" +
+	"\x04port\x18\x04 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01R\x04port\x12\xc0\x02\n" +
+	"\vtarget_port\x18\x05 \x01(\tB\x9e\x02\xbaH\x9a\x02\xba\x01\x96\x02\n" +
+	"\x17target_port.int_or_name\x12ktarget_port must be a port number (\"8080\") or a named container port (\"http\" — a valid IANA service name)\x1a\x8d\x01this == '' || this.matches('^[0-9]+$') || (this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$') && this.size() <= 15 && this.matches('.*[a-z].*'))R\n" +
+	"targetPort\x12\xb7\x01\n" +
+	"\tnode_port\x18\x06 \x01(\x05B\x99\x01\xbaH\x95\x01\xba\x01\x91\x01\n" +
+	"\x15node_port.valid_range\x12Inode_port must be 0 (auto-allocate) or in the node-port range 30000-32767\x1a-this == 0 || (this >= 30000 && this <= 32767)R\bnodePort\"d\n" +
 	"\x19KubernetesServiceProtocol\x12+\n" +
 	"'kubernetes_service_protocol_unspecified\x10\x00\x12\a\n" +
 	"\x03TCP\x10\x01\x12\a\n" +
 	"\x03UDP\x10\x02\x12\b\n" +
-	"\x04SCTP\x10\x03B\v\n" +
+	"\x04SCTP\x10\x03:\xda\x01\xbaH\xd6\x01\x1a\xd3\x01\n" +
+	"\x19target_port.numeric_range\x122a numeric target_port must be in the range 1-65535\x1a\x81\x01this.target_port == '' || !this.target_port.matches('^[0-9]+$') || (int(this.target_port) >= 1 && int(this.target_port) <= 65535)B\v\n" +
 	"\t_protocolB\xa8\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetesservice.v1B\tSpecProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesservice/v1;kubernetesservicev1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetesservice.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetesservice\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetesservice\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetesservice::V1b\x06proto3"
 
@@ -640,33 +1106,43 @@ func file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDes
 	return file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
 var file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_goTypes = []any{
 	(KubernetesServiceSpec_KubernetesServiceType)(0),                  // 0: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceType
 	(KubernetesServiceSpec_KubernetesServiceExternalTrafficPolicy)(0), // 1: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceExternalTrafficPolicy
-	(KubernetesServiceSpec_KubernetesServiceSessionAffinity)(0),       // 2: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceSessionAffinity
-	(KubernetesServicePort_KubernetesServiceProtocol)(0),              // 3: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort.KubernetesServiceProtocol
-	(*KubernetesServiceSpec)(nil),                                     // 4: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec
-	(*KubernetesServicePort)(nil),                                     // 5: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort
-	nil,                                                               // 6: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.LabelsEntry
-	nil,                                                               // 7: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.AnnotationsEntry
-	nil,                                                               // 8: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.SelectorEntry
+	(KubernetesServiceSpec_KubernetesServiceInternalTrafficPolicy)(0), // 2: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceInternalTrafficPolicy
+	(KubernetesServiceSpec_KubernetesServiceTrafficDistribution)(0),   // 3: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceTrafficDistribution
+	(KubernetesServiceSpec_KubernetesServiceSessionAffinity)(0),       // 4: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceSessionAffinity
+	(KubernetesServiceSpec_KubernetesServiceIpFamily)(0),              // 5: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceIpFamily
+	(KubernetesServiceSpec_KubernetesServiceIpFamilyPolicy)(0),        // 6: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceIpFamilyPolicy
+	(KubernetesServicePort_KubernetesServiceProtocol)(0),              // 7: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort.KubernetesServiceProtocol
+	(*KubernetesServiceSpec)(nil),                                     // 8: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec
+	(*KubernetesServicePort)(nil),                                     // 9: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort
+	nil,                                                               // 10: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.LabelsEntry
+	nil,                                                               // 11: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.AnnotationsEntry
+	nil,                                                               // 12: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.SelectorEntry
+	(*v1.StringValueOrRef)(nil),                                       // 13: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_depIdxs = []int32{
-	6, // 0: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.labels:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.LabelsEntry
-	7, // 1: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.AnnotationsEntry
-	0, // 2: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.type:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceType
-	8, // 3: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.selector:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.SelectorEntry
-	5, // 4: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.ports:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort
-	1, // 5: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.external_traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceExternalTrafficPolicy
-	2, // 6: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.session_affinity:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceSessionAffinity
-	3, // 7: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort.protocol:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort.KubernetesServiceProtocol
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	13, // 0: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 1: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.labels:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.LabelsEntry
+	11, // 2: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.AnnotationsEntry
+	0,  // 3: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.type:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceType
+	12, // 4: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.selector:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.SelectorEntry
+	9,  // 5: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.ports:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort
+	1,  // 6: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.external_traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceExternalTrafficPolicy
+	2,  // 7: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.internal_traffic_policy:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceInternalTrafficPolicy
+	3,  // 8: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.traffic_distribution:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceTrafficDistribution
+	4,  // 9: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.session_affinity:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceSessionAffinity
+	5,  // 10: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.ip_families:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceIpFamily
+	6,  // 11: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.ip_family_policy:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServiceSpec.KubernetesServiceIpFamilyPolicy
+	7,  // 12: dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort.protocol:type_name -> dev.planton.provider.kubernetes.kubernetesservice.v1.KubernetesServicePort.KubernetesServiceProtocol
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_init() }
@@ -681,7 +1157,7 @@ func file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_init()
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesservice_v1_spec_proto_rawDesc)),
-			NumEnums:      4,
+			NumEnums:      8,
 			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,

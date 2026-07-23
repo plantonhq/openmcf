@@ -39,8 +39,10 @@ data "http" "gateway_api_crds" {
 # GRPCRoute, and other Gateway API resources.
 #
 # Depending on the channel:
-# - Standard: Gateway, GatewayClass, HTTPRoute, ReferenceGrant
-# - Experimental: Standard + TCPRoute, UDPRoute, TLSRoute, GRPCRoute
+# - Standard (GA/beta): GatewayClass, Gateway, ListenerSet, HTTPRoute,
+#   GRPCRoute, TLSRoute, TCPRoute, UDPRoute, ReferenceGrant, BackendTLSPolicy
+# - Experimental: everything in standard (with experimental fields) plus the
+#   x- experimental resources
 #
 # Note: CRDs are applied using kubectl_manifest
 # which handles multi-document YAML properly.

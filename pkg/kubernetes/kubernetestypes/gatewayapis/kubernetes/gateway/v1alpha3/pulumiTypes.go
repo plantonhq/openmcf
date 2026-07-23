@@ -14,6 +14,5475 @@ import (
 
 var _ = utilities.GetEnvOrDefault
 
+// BackendTLSPolicy provides a way to configure how a Gateway
+// connects to a Backend via TLS.
+type BackendTLSPolicyType struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion *string `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind *string `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata *metav1.ObjectMeta      `pulumi:"metadata"`
+	Spec     *BackendTLSPolicySpec   `pulumi:"spec"`
+	Status   *BackendTLSPolicyStatus `pulumi:"status"`
+}
+
+// BackendTLSPolicyTypeInput is an input type that accepts BackendTLSPolicyTypeArgs and BackendTLSPolicyTypeOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyTypeInput` via:
+//
+//	BackendTLSPolicyTypeArgs{...}
+type BackendTLSPolicyTypeInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyTypeOutput() BackendTLSPolicyTypeOutput
+	ToBackendTLSPolicyTypeOutputWithContext(context.Context) BackendTLSPolicyTypeOutput
+}
+
+// BackendTLSPolicy provides a way to configure how a Gateway
+// connects to a Backend via TLS.
+type BackendTLSPolicyTypeArgs struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion pulumi.StringPtrInput `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata metav1.ObjectMetaPtrInput      `pulumi:"metadata"`
+	Spec     BackendTLSPolicySpecPtrInput   `pulumi:"spec"`
+	Status   BackendTLSPolicyStatusPtrInput `pulumi:"status"`
+}
+
+func (BackendTLSPolicyTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyType)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyTypeArgs) ToBackendTLSPolicyTypeOutput() BackendTLSPolicyTypeOutput {
+	return i.ToBackendTLSPolicyTypeOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyTypeArgs) ToBackendTLSPolicyTypeOutputWithContext(ctx context.Context) BackendTLSPolicyTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyTypeOutput)
+}
+
+// BackendTLSPolicyTypeArrayInput is an input type that accepts BackendTLSPolicyTypeArray and BackendTLSPolicyTypeArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyTypeArrayInput` via:
+//
+//	BackendTLSPolicyTypeArray{ BackendTLSPolicyTypeArgs{...} }
+type BackendTLSPolicyTypeArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyTypeArrayOutput() BackendTLSPolicyTypeArrayOutput
+	ToBackendTLSPolicyTypeArrayOutputWithContext(context.Context) BackendTLSPolicyTypeArrayOutput
+}
+
+type BackendTLSPolicyTypeArray []BackendTLSPolicyTypeInput
+
+func (BackendTLSPolicyTypeArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicyType)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyTypeArray) ToBackendTLSPolicyTypeArrayOutput() BackendTLSPolicyTypeArrayOutput {
+	return i.ToBackendTLSPolicyTypeArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyTypeArray) ToBackendTLSPolicyTypeArrayOutputWithContext(ctx context.Context) BackendTLSPolicyTypeArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyTypeArrayOutput)
+}
+
+// BackendTLSPolicy provides a way to configure how a Gateway
+// connects to a Backend via TLS.
+type BackendTLSPolicyTypeOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyType)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyTypeOutput) ToBackendTLSPolicyTypeOutput() BackendTLSPolicyTypeOutput {
+	return o
+}
+
+func (o BackendTLSPolicyTypeOutput) ToBackendTLSPolicyTypeOutputWithContext(ctx context.Context) BackendTLSPolicyTypeOutput {
+	return o
+}
+
+// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+func (o BackendTLSPolicyTypeOutput) ApiVersion() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyType) *string { return v.ApiVersion }).(pulumi.StringPtrOutput)
+}
+
+// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o BackendTLSPolicyTypeOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyType) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+func (o BackendTLSPolicyTypeOutput) Metadata() metav1.ObjectMetaPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyType) *metav1.ObjectMeta { return v.Metadata }).(metav1.ObjectMetaPtrOutput)
+}
+
+func (o BackendTLSPolicyTypeOutput) Spec() BackendTLSPolicySpecPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyType) *BackendTLSPolicySpec { return v.Spec }).(BackendTLSPolicySpecPtrOutput)
+}
+
+func (o BackendTLSPolicyTypeOutput) Status() BackendTLSPolicyStatusPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyType) *BackendTLSPolicyStatus { return v.Status }).(BackendTLSPolicyStatusPtrOutput)
+}
+
+type BackendTLSPolicyTypeArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyTypeArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicyType)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyTypeArrayOutput) ToBackendTLSPolicyTypeArrayOutput() BackendTLSPolicyTypeArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicyTypeArrayOutput) ToBackendTLSPolicyTypeArrayOutputWithContext(ctx context.Context) BackendTLSPolicyTypeArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicyTypeArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicyTypeOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicyType {
+		return vs[0].([]BackendTLSPolicyType)[vs[1].(int)]
+	}).(BackendTLSPolicyTypeOutput)
+}
+
+// BackendTLSPolicyList is a list of BackendTLSPolicy
+type BackendTLSPolicyListType struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion *string `pulumi:"apiVersion"`
+	// List of backendtlspolicies. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+	Items []BackendTLSPolicyType `pulumi:"items"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind *string `pulumi:"kind"`
+	// Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Metadata *metav1.ListMeta `pulumi:"metadata"`
+}
+
+// BackendTLSPolicyListTypeInput is an input type that accepts BackendTLSPolicyListTypeArgs and BackendTLSPolicyListTypeOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyListTypeInput` via:
+//
+//	BackendTLSPolicyListTypeArgs{...}
+type BackendTLSPolicyListTypeInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyListTypeOutput() BackendTLSPolicyListTypeOutput
+	ToBackendTLSPolicyListTypeOutputWithContext(context.Context) BackendTLSPolicyListTypeOutput
+}
+
+// BackendTLSPolicyList is a list of BackendTLSPolicy
+type BackendTLSPolicyListTypeArgs struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion pulumi.StringPtrInput `pulumi:"apiVersion"`
+	// List of backendtlspolicies. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+	Items BackendTLSPolicyTypeArrayInput `pulumi:"items"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Metadata metav1.ListMetaPtrInput `pulumi:"metadata"`
+}
+
+func (BackendTLSPolicyListTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyListType)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyListTypeArgs) ToBackendTLSPolicyListTypeOutput() BackendTLSPolicyListTypeOutput {
+	return i.ToBackendTLSPolicyListTypeOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyListTypeArgs) ToBackendTLSPolicyListTypeOutputWithContext(ctx context.Context) BackendTLSPolicyListTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyListTypeOutput)
+}
+
+// BackendTLSPolicyList is a list of BackendTLSPolicy
+type BackendTLSPolicyListTypeOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyListTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyListType)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyListTypeOutput) ToBackendTLSPolicyListTypeOutput() BackendTLSPolicyListTypeOutput {
+	return o
+}
+
+func (o BackendTLSPolicyListTypeOutput) ToBackendTLSPolicyListTypeOutputWithContext(ctx context.Context) BackendTLSPolicyListTypeOutput {
+	return o
+}
+
+// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+func (o BackendTLSPolicyListTypeOutput) ApiVersion() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyListType) *string { return v.ApiVersion }).(pulumi.StringPtrOutput)
+}
+
+// List of backendtlspolicies. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+func (o BackendTLSPolicyListTypeOutput) Items() BackendTLSPolicyTypeArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicyListType) []BackendTLSPolicyType { return v.Items }).(BackendTLSPolicyTypeArrayOutput)
+}
+
+// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o BackendTLSPolicyListTypeOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyListType) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o BackendTLSPolicyListTypeOutput) Metadata() metav1.ListMetaPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyListType) *metav1.ListMeta { return v.Metadata }).(metav1.ListMetaPtrOutput)
+}
+
+// BackendTLSPolicy provides a way to configure how a Gateway
+// connects to a Backend via TLS.
+type BackendTLSPolicyPatchType struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion *string `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind *string `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata *metav1.ObjectMetaPatch      `pulumi:"metadata"`
+	Spec     *BackendTLSPolicySpecPatch   `pulumi:"spec"`
+	Status   *BackendTLSPolicyStatusPatch `pulumi:"status"`
+}
+
+// BackendTLSPolicyPatchTypeInput is an input type that accepts BackendTLSPolicyPatchTypeArgs and BackendTLSPolicyPatchTypeOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyPatchTypeInput` via:
+//
+//	BackendTLSPolicyPatchTypeArgs{...}
+type BackendTLSPolicyPatchTypeInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyPatchTypeOutput() BackendTLSPolicyPatchTypeOutput
+	ToBackendTLSPolicyPatchTypeOutputWithContext(context.Context) BackendTLSPolicyPatchTypeOutput
+}
+
+// BackendTLSPolicy provides a way to configure how a Gateway
+// connects to a Backend via TLS.
+type BackendTLSPolicyPatchTypeArgs struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion pulumi.StringPtrInput `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata metav1.ObjectMetaPatchPtrInput      `pulumi:"metadata"`
+	Spec     BackendTLSPolicySpecPatchPtrInput   `pulumi:"spec"`
+	Status   BackendTLSPolicyStatusPatchPtrInput `pulumi:"status"`
+}
+
+func (BackendTLSPolicyPatchTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyPatchType)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyPatchTypeArgs) ToBackendTLSPolicyPatchTypeOutput() BackendTLSPolicyPatchTypeOutput {
+	return i.ToBackendTLSPolicyPatchTypeOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyPatchTypeArgs) ToBackendTLSPolicyPatchTypeOutputWithContext(ctx context.Context) BackendTLSPolicyPatchTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyPatchTypeOutput)
+}
+
+// BackendTLSPolicy provides a way to configure how a Gateway
+// connects to a Backend via TLS.
+type BackendTLSPolicyPatchTypeOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyPatchTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyPatchType)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyPatchTypeOutput) ToBackendTLSPolicyPatchTypeOutput() BackendTLSPolicyPatchTypeOutput {
+	return o
+}
+
+func (o BackendTLSPolicyPatchTypeOutput) ToBackendTLSPolicyPatchTypeOutputWithContext(ctx context.Context) BackendTLSPolicyPatchTypeOutput {
+	return o
+}
+
+// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+func (o BackendTLSPolicyPatchTypeOutput) ApiVersion() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyPatchType) *string { return v.ApiVersion }).(pulumi.StringPtrOutput)
+}
+
+// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o BackendTLSPolicyPatchTypeOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyPatchType) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+func (o BackendTLSPolicyPatchTypeOutput) Metadata() metav1.ObjectMetaPatchPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyPatchType) *metav1.ObjectMetaPatch { return v.Metadata }).(metav1.ObjectMetaPatchPtrOutput)
+}
+
+func (o BackendTLSPolicyPatchTypeOutput) Spec() BackendTLSPolicySpecPatchPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyPatchType) *BackendTLSPolicySpecPatch { return v.Spec }).(BackendTLSPolicySpecPatchPtrOutput)
+}
+
+func (o BackendTLSPolicyPatchTypeOutput) Status() BackendTLSPolicyStatusPatchPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyPatchType) *BackendTLSPolicyStatusPatch { return v.Status }).(BackendTLSPolicyStatusPatchPtrOutput)
+}
+
+// Spec defines the desired state of BackendTLSPolicy.
+type BackendTLSPolicySpec struct {
+	// Options are a list of key/value pairs to enable extended TLS
+	// configuration for each implementation. For example, configuring the
+	// minimum TLS version or supported cipher suites.
+	//
+	// A set of common keys MAY be defined by the API in the future. To avoid
+	// any ambiguity, implementation-specific definitions MUST use
+	// domain-prefixed names, such as `example.com/my-custom-option`.
+	// Un-prefixed names are reserved for key names defined by Gateway API.
+	//
+	// Support: Implementation-specific
+	Options map[string]string `pulumi:"options"`
+	// TargetRefs identifies an API object to apply the policy to.
+	// Note that this config applies to the entire referenced resource
+	// by default, but this default may change in the future to provide
+	// a more granular application of the policy.
+	//
+	// TargetRefs must be _distinct_. This means either that:
+	//
+	// * They select different targets. If this is the case, then targetRef
+	//   entries are distinct. In terms of fields, this means that the
+	//   multi-part key defined by `group`, `kind`, and `name` must
+	//   be unique across all targetRef entries in the BackendTLSPolicy.
+	// * They select different sectionNames in the same target.
+	//
+	// When more than one BackendTLSPolicy selects the same target and
+	// sectionName, implementations MUST determine precedence using the
+	// following criteria, continuing on ties:
+	//
+	// * The older policy by creation timestamp takes precedence. For
+	//   example, a policy with a creation timestamp of "2021-07-15
+	//   01:02:03" MUST be given precedence over a policy with a
+	//   creation timestamp of "2021-07-15 01:02:04".
+	// * The policy appearing first in alphabetical order by {namespace}/{name}.
+	//   For example, a policy named `foo/bar` is given precedence over a
+	//   policy named `foo/baz`.
+	//
+	// For any BackendTLSPolicy that does not take precedence, the
+	// implementation MUST ensure the `Accepted` Condition is set to
+	// `status: False`, with Reason `Conflicted`.
+	//
+	// Implementations SHOULD NOT support more than one targetRef at this
+	// time. Although the API technically allows for this, the current guidance
+	// for conflict resolution and status handling is lacking. Until that can be
+	// clarified in a future release, the safest approach is to support a single
+	// targetRef.
+	//
+	// Support Levels:
+	//
+	// * Extended: Kubernetes Service referenced by backendRefs used on a Route.
+	//   - HTTPRoute, GRPCRoute, TLSRoute with termination
+	//   - Filters that needs a backend of type Service, like Mirror and External Authorization
+	//
+	// * Implementation-Specific: Implementations MAY use BackendTLSPolicy for:
+	//   - Services not referenced by any Route (e.g., infrastructure services)
+	//   - Service mesh workload-to-service communication
+	//   - Other resource types beyond Service
+	//
+	// Implementations SHOULD aim to ensure that BackendTLSPolicy behavior is consistent,
+	// even outside of the extended HTTPRoute -(backendRef) -> Service path.
+	// They SHOULD clearly document how BackendTLSPolicy is interpreted in these
+	// scenarios, including:
+	//   - Which resources beyond Service are supported
+	//   - How the policy is discovered and applied
+	//   - Any implementation-specific semantics or restrictions
+	//
+	// Note that this config applies to the entire referenced resource
+	// by default, but this default may change in the future to provide
+	// a more granular application of the policy.
+	TargetRefs []BackendTLSPolicySpecTargetRefs `pulumi:"targetRefs"`
+	Validation *BackendTLSPolicySpecValidation  `pulumi:"validation"`
+}
+
+// BackendTLSPolicySpecInput is an input type that accepts BackendTLSPolicySpecArgs and BackendTLSPolicySpecOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecInput` via:
+//
+//	BackendTLSPolicySpecArgs{...}
+type BackendTLSPolicySpecInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecOutput() BackendTLSPolicySpecOutput
+	ToBackendTLSPolicySpecOutputWithContext(context.Context) BackendTLSPolicySpecOutput
+}
+
+// Spec defines the desired state of BackendTLSPolicy.
+type BackendTLSPolicySpecArgs struct {
+	// Options are a list of key/value pairs to enable extended TLS
+	// configuration for each implementation. For example, configuring the
+	// minimum TLS version or supported cipher suites.
+	//
+	// A set of common keys MAY be defined by the API in the future. To avoid
+	// any ambiguity, implementation-specific definitions MUST use
+	// domain-prefixed names, such as `example.com/my-custom-option`.
+	// Un-prefixed names are reserved for key names defined by Gateway API.
+	//
+	// Support: Implementation-specific
+	Options pulumi.StringMapInput `pulumi:"options"`
+	// TargetRefs identifies an API object to apply the policy to.
+	// Note that this config applies to the entire referenced resource
+	// by default, but this default may change in the future to provide
+	// a more granular application of the policy.
+	//
+	// TargetRefs must be _distinct_. This means either that:
+	//
+	// * They select different targets. If this is the case, then targetRef
+	//   entries are distinct. In terms of fields, this means that the
+	//   multi-part key defined by `group`, `kind`, and `name` must
+	//   be unique across all targetRef entries in the BackendTLSPolicy.
+	// * They select different sectionNames in the same target.
+	//
+	// When more than one BackendTLSPolicy selects the same target and
+	// sectionName, implementations MUST determine precedence using the
+	// following criteria, continuing on ties:
+	//
+	// * The older policy by creation timestamp takes precedence. For
+	//   example, a policy with a creation timestamp of "2021-07-15
+	//   01:02:03" MUST be given precedence over a policy with a
+	//   creation timestamp of "2021-07-15 01:02:04".
+	// * The policy appearing first in alphabetical order by {namespace}/{name}.
+	//   For example, a policy named `foo/bar` is given precedence over a
+	//   policy named `foo/baz`.
+	//
+	// For any BackendTLSPolicy that does not take precedence, the
+	// implementation MUST ensure the `Accepted` Condition is set to
+	// `status: False`, with Reason `Conflicted`.
+	//
+	// Implementations SHOULD NOT support more than one targetRef at this
+	// time. Although the API technically allows for this, the current guidance
+	// for conflict resolution and status handling is lacking. Until that can be
+	// clarified in a future release, the safest approach is to support a single
+	// targetRef.
+	//
+	// Support Levels:
+	//
+	// * Extended: Kubernetes Service referenced by backendRefs used on a Route.
+	//   - HTTPRoute, GRPCRoute, TLSRoute with termination
+	//   - Filters that needs a backend of type Service, like Mirror and External Authorization
+	//
+	// * Implementation-Specific: Implementations MAY use BackendTLSPolicy for:
+	//   - Services not referenced by any Route (e.g., infrastructure services)
+	//   - Service mesh workload-to-service communication
+	//   - Other resource types beyond Service
+	//
+	// Implementations SHOULD aim to ensure that BackendTLSPolicy behavior is consistent,
+	// even outside of the extended HTTPRoute -(backendRef) -> Service path.
+	// They SHOULD clearly document how BackendTLSPolicy is interpreted in these
+	// scenarios, including:
+	//   - Which resources beyond Service are supported
+	//   - How the policy is discovered and applied
+	//   - Any implementation-specific semantics or restrictions
+	//
+	// Note that this config applies to the entire referenced resource
+	// by default, but this default may change in the future to provide
+	// a more granular application of the policy.
+	TargetRefs BackendTLSPolicySpecTargetRefsArrayInput `pulumi:"targetRefs"`
+	Validation BackendTLSPolicySpecValidationPtrInput   `pulumi:"validation"`
+}
+
+func (BackendTLSPolicySpecArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpec)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecArgs) ToBackendTLSPolicySpecOutput() BackendTLSPolicySpecOutput {
+	return i.ToBackendTLSPolicySpecOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecArgs) ToBackendTLSPolicySpecOutputWithContext(ctx context.Context) BackendTLSPolicySpecOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecOutput)
+}
+
+func (i BackendTLSPolicySpecArgs) ToBackendTLSPolicySpecPtrOutput() BackendTLSPolicySpecPtrOutput {
+	return i.ToBackendTLSPolicySpecPtrOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecArgs) ToBackendTLSPolicySpecPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecOutput).ToBackendTLSPolicySpecPtrOutputWithContext(ctx)
+}
+
+// BackendTLSPolicySpecPtrInput is an input type that accepts BackendTLSPolicySpecArgs, BackendTLSPolicySpecPtr and BackendTLSPolicySpecPtrOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecPtrInput` via:
+//
+//	        BackendTLSPolicySpecArgs{...}
+//
+//	or:
+//
+//	        nil
+type BackendTLSPolicySpecPtrInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecPtrOutput() BackendTLSPolicySpecPtrOutput
+	ToBackendTLSPolicySpecPtrOutputWithContext(context.Context) BackendTLSPolicySpecPtrOutput
+}
+
+type backendTLSPolicySpecPtrType BackendTLSPolicySpecArgs
+
+func BackendTLSPolicySpecPtr(v *BackendTLSPolicySpecArgs) BackendTLSPolicySpecPtrInput {
+	return (*backendTLSPolicySpecPtrType)(v)
+}
+
+func (*backendTLSPolicySpecPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicySpec)(nil)).Elem()
+}
+
+func (i *backendTLSPolicySpecPtrType) ToBackendTLSPolicySpecPtrOutput() BackendTLSPolicySpecPtrOutput {
+	return i.ToBackendTLSPolicySpecPtrOutputWithContext(context.Background())
+}
+
+func (i *backendTLSPolicySpecPtrType) ToBackendTLSPolicySpecPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecPtrOutput)
+}
+
+// Spec defines the desired state of BackendTLSPolicy.
+type BackendTLSPolicySpecOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpec)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecOutput) ToBackendTLSPolicySpecOutput() BackendTLSPolicySpecOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecOutput) ToBackendTLSPolicySpecOutputWithContext(ctx context.Context) BackendTLSPolicySpecOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecOutput) ToBackendTLSPolicySpecPtrOutput() BackendTLSPolicySpecPtrOutput {
+	return o.ToBackendTLSPolicySpecPtrOutputWithContext(context.Background())
+}
+
+func (o BackendTLSPolicySpecOutput) ToBackendTLSPolicySpecPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v BackendTLSPolicySpec) *BackendTLSPolicySpec {
+		return &v
+	}).(BackendTLSPolicySpecPtrOutput)
+}
+
+// Options are a list of key/value pairs to enable extended TLS
+// configuration for each implementation. For example, configuring the
+// minimum TLS version or supported cipher suites.
+//
+// A set of common keys MAY be defined by the API in the future. To avoid
+// any ambiguity, implementation-specific definitions MUST use
+// domain-prefixed names, such as `example.com/my-custom-option`.
+// Un-prefixed names are reserved for key names defined by Gateway API.
+//
+// Support: Implementation-specific
+func (o BackendTLSPolicySpecOutput) Options() pulumi.StringMapOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpec) map[string]string { return v.Options }).(pulumi.StringMapOutput)
+}
+
+// TargetRefs identifies an API object to apply the policy to.
+// Note that this config applies to the entire referenced resource
+// by default, but this default may change in the future to provide
+// a more granular application of the policy.
+//
+// TargetRefs must be _distinct_. This means either that:
+//
+//   - They select different targets. If this is the case, then targetRef
+//     entries are distinct. In terms of fields, this means that the
+//     multi-part key defined by `group`, `kind`, and `name` must
+//     be unique across all targetRef entries in the BackendTLSPolicy.
+//   - They select different sectionNames in the same target.
+//
+// When more than one BackendTLSPolicy selects the same target and
+// sectionName, implementations MUST determine precedence using the
+// following criteria, continuing on ties:
+//
+//   - The older policy by creation timestamp takes precedence. For
+//     example, a policy with a creation timestamp of "2021-07-15
+//     01:02:03" MUST be given precedence over a policy with a
+//     creation timestamp of "2021-07-15 01:02:04".
+//   - The policy appearing first in alphabetical order by {namespace}/{name}.
+//     For example, a policy named `foo/bar` is given precedence over a
+//     policy named `foo/baz`.
+//
+// For any BackendTLSPolicy that does not take precedence, the
+// implementation MUST ensure the `Accepted` Condition is set to
+// `status: False`, with Reason `Conflicted`.
+//
+// Implementations SHOULD NOT support more than one targetRef at this
+// time. Although the API technically allows for this, the current guidance
+// for conflict resolution and status handling is lacking. Until that can be
+// clarified in a future release, the safest approach is to support a single
+// targetRef.
+//
+// Support Levels:
+//
+// * Extended: Kubernetes Service referenced by backendRefs used on a Route.
+//   - HTTPRoute, GRPCRoute, TLSRoute with termination
+//   - Filters that needs a backend of type Service, like Mirror and External Authorization
+//
+// * Implementation-Specific: Implementations MAY use BackendTLSPolicy for:
+//   - Services not referenced by any Route (e.g., infrastructure services)
+//   - Service mesh workload-to-service communication
+//   - Other resource types beyond Service
+//
+// Implementations SHOULD aim to ensure that BackendTLSPolicy behavior is consistent,
+// even outside of the extended HTTPRoute -(backendRef) -> Service path.
+// They SHOULD clearly document how BackendTLSPolicy is interpreted in these
+// scenarios, including:
+//   - Which resources beyond Service are supported
+//   - How the policy is discovered and applied
+//   - Any implementation-specific semantics or restrictions
+//
+// Note that this config applies to the entire referenced resource
+// by default, but this default may change in the future to provide
+// a more granular application of the policy.
+func (o BackendTLSPolicySpecOutput) TargetRefs() BackendTLSPolicySpecTargetRefsArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpec) []BackendTLSPolicySpecTargetRefs { return v.TargetRefs }).(BackendTLSPolicySpecTargetRefsArrayOutput)
+}
+
+func (o BackendTLSPolicySpecOutput) Validation() BackendTLSPolicySpecValidationPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpec) *BackendTLSPolicySpecValidation { return v.Validation }).(BackendTLSPolicySpecValidationPtrOutput)
+}
+
+type BackendTLSPolicySpecPtrOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicySpec)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecPtrOutput) ToBackendTLSPolicySpecPtrOutput() BackendTLSPolicySpecPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecPtrOutput) ToBackendTLSPolicySpecPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecPtrOutput) Elem() BackendTLSPolicySpecOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpec) BackendTLSPolicySpec {
+		if v != nil {
+			return *v
+		}
+		var ret BackendTLSPolicySpec
+		return ret
+	}).(BackendTLSPolicySpecOutput)
+}
+
+// Options are a list of key/value pairs to enable extended TLS
+// configuration for each implementation. For example, configuring the
+// minimum TLS version or supported cipher suites.
+//
+// A set of common keys MAY be defined by the API in the future. To avoid
+// any ambiguity, implementation-specific definitions MUST use
+// domain-prefixed names, such as `example.com/my-custom-option`.
+// Un-prefixed names are reserved for key names defined by Gateway API.
+//
+// Support: Implementation-specific
+func (o BackendTLSPolicySpecPtrOutput) Options() pulumi.StringMapOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpec) map[string]string {
+		if v == nil {
+			return nil
+		}
+		return v.Options
+	}).(pulumi.StringMapOutput)
+}
+
+// TargetRefs identifies an API object to apply the policy to.
+// Note that this config applies to the entire referenced resource
+// by default, but this default may change in the future to provide
+// a more granular application of the policy.
+//
+// TargetRefs must be _distinct_. This means either that:
+//
+//   - They select different targets. If this is the case, then targetRef
+//     entries are distinct. In terms of fields, this means that the
+//     multi-part key defined by `group`, `kind`, and `name` must
+//     be unique across all targetRef entries in the BackendTLSPolicy.
+//   - They select different sectionNames in the same target.
+//
+// When more than one BackendTLSPolicy selects the same target and
+// sectionName, implementations MUST determine precedence using the
+// following criteria, continuing on ties:
+//
+//   - The older policy by creation timestamp takes precedence. For
+//     example, a policy with a creation timestamp of "2021-07-15
+//     01:02:03" MUST be given precedence over a policy with a
+//     creation timestamp of "2021-07-15 01:02:04".
+//   - The policy appearing first in alphabetical order by {namespace}/{name}.
+//     For example, a policy named `foo/bar` is given precedence over a
+//     policy named `foo/baz`.
+//
+// For any BackendTLSPolicy that does not take precedence, the
+// implementation MUST ensure the `Accepted` Condition is set to
+// `status: False`, with Reason `Conflicted`.
+//
+// Implementations SHOULD NOT support more than one targetRef at this
+// time. Although the API technically allows for this, the current guidance
+// for conflict resolution and status handling is lacking. Until that can be
+// clarified in a future release, the safest approach is to support a single
+// targetRef.
+//
+// Support Levels:
+//
+// * Extended: Kubernetes Service referenced by backendRefs used on a Route.
+//   - HTTPRoute, GRPCRoute, TLSRoute with termination
+//   - Filters that needs a backend of type Service, like Mirror and External Authorization
+//
+// * Implementation-Specific: Implementations MAY use BackendTLSPolicy for:
+//   - Services not referenced by any Route (e.g., infrastructure services)
+//   - Service mesh workload-to-service communication
+//   - Other resource types beyond Service
+//
+// Implementations SHOULD aim to ensure that BackendTLSPolicy behavior is consistent,
+// even outside of the extended HTTPRoute -(backendRef) -> Service path.
+// They SHOULD clearly document how BackendTLSPolicy is interpreted in these
+// scenarios, including:
+//   - Which resources beyond Service are supported
+//   - How the policy is discovered and applied
+//   - Any implementation-specific semantics or restrictions
+//
+// Note that this config applies to the entire referenced resource
+// by default, but this default may change in the future to provide
+// a more granular application of the policy.
+func (o BackendTLSPolicySpecPtrOutput) TargetRefs() BackendTLSPolicySpecTargetRefsArrayOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpec) []BackendTLSPolicySpecTargetRefs {
+		if v == nil {
+			return nil
+		}
+		return v.TargetRefs
+	}).(BackendTLSPolicySpecTargetRefsArrayOutput)
+}
+
+func (o BackendTLSPolicySpecPtrOutput) Validation() BackendTLSPolicySpecValidationPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpec) *BackendTLSPolicySpecValidation {
+		if v == nil {
+			return nil
+		}
+		return v.Validation
+	}).(BackendTLSPolicySpecValidationPtrOutput)
+}
+
+// Spec defines the desired state of BackendTLSPolicy.
+type BackendTLSPolicySpecPatch struct {
+	// Options are a list of key/value pairs to enable extended TLS
+	// configuration for each implementation. For example, configuring the
+	// minimum TLS version or supported cipher suites.
+	//
+	// A set of common keys MAY be defined by the API in the future. To avoid
+	// any ambiguity, implementation-specific definitions MUST use
+	// domain-prefixed names, such as `example.com/my-custom-option`.
+	// Un-prefixed names are reserved for key names defined by Gateway API.
+	//
+	// Support: Implementation-specific
+	Options map[string]string `pulumi:"options"`
+	// TargetRefs identifies an API object to apply the policy to.
+	// Note that this config applies to the entire referenced resource
+	// by default, but this default may change in the future to provide
+	// a more granular application of the policy.
+	//
+	// TargetRefs must be _distinct_. This means either that:
+	//
+	// * They select different targets. If this is the case, then targetRef
+	//   entries are distinct. In terms of fields, this means that the
+	//   multi-part key defined by `group`, `kind`, and `name` must
+	//   be unique across all targetRef entries in the BackendTLSPolicy.
+	// * They select different sectionNames in the same target.
+	//
+	// When more than one BackendTLSPolicy selects the same target and
+	// sectionName, implementations MUST determine precedence using the
+	// following criteria, continuing on ties:
+	//
+	// * The older policy by creation timestamp takes precedence. For
+	//   example, a policy with a creation timestamp of "2021-07-15
+	//   01:02:03" MUST be given precedence over a policy with a
+	//   creation timestamp of "2021-07-15 01:02:04".
+	// * The policy appearing first in alphabetical order by {namespace}/{name}.
+	//   For example, a policy named `foo/bar` is given precedence over a
+	//   policy named `foo/baz`.
+	//
+	// For any BackendTLSPolicy that does not take precedence, the
+	// implementation MUST ensure the `Accepted` Condition is set to
+	// `status: False`, with Reason `Conflicted`.
+	//
+	// Implementations SHOULD NOT support more than one targetRef at this
+	// time. Although the API technically allows for this, the current guidance
+	// for conflict resolution and status handling is lacking. Until that can be
+	// clarified in a future release, the safest approach is to support a single
+	// targetRef.
+	//
+	// Support Levels:
+	//
+	// * Extended: Kubernetes Service referenced by backendRefs used on a Route.
+	//   - HTTPRoute, GRPCRoute, TLSRoute with termination
+	//   - Filters that needs a backend of type Service, like Mirror and External Authorization
+	//
+	// * Implementation-Specific: Implementations MAY use BackendTLSPolicy for:
+	//   - Services not referenced by any Route (e.g., infrastructure services)
+	//   - Service mesh workload-to-service communication
+	//   - Other resource types beyond Service
+	//
+	// Implementations SHOULD aim to ensure that BackendTLSPolicy behavior is consistent,
+	// even outside of the extended HTTPRoute -(backendRef) -> Service path.
+	// They SHOULD clearly document how BackendTLSPolicy is interpreted in these
+	// scenarios, including:
+	//   - Which resources beyond Service are supported
+	//   - How the policy is discovered and applied
+	//   - Any implementation-specific semantics or restrictions
+	//
+	// Note that this config applies to the entire referenced resource
+	// by default, but this default may change in the future to provide
+	// a more granular application of the policy.
+	TargetRefs []BackendTLSPolicySpecTargetRefsPatch `pulumi:"targetRefs"`
+	Validation *BackendTLSPolicySpecValidationPatch  `pulumi:"validation"`
+}
+
+// BackendTLSPolicySpecPatchInput is an input type that accepts BackendTLSPolicySpecPatchArgs and BackendTLSPolicySpecPatchOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecPatchInput` via:
+//
+//	BackendTLSPolicySpecPatchArgs{...}
+type BackendTLSPolicySpecPatchInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecPatchOutput() BackendTLSPolicySpecPatchOutput
+	ToBackendTLSPolicySpecPatchOutputWithContext(context.Context) BackendTLSPolicySpecPatchOutput
+}
+
+// Spec defines the desired state of BackendTLSPolicy.
+type BackendTLSPolicySpecPatchArgs struct {
+	// Options are a list of key/value pairs to enable extended TLS
+	// configuration for each implementation. For example, configuring the
+	// minimum TLS version or supported cipher suites.
+	//
+	// A set of common keys MAY be defined by the API in the future. To avoid
+	// any ambiguity, implementation-specific definitions MUST use
+	// domain-prefixed names, such as `example.com/my-custom-option`.
+	// Un-prefixed names are reserved for key names defined by Gateway API.
+	//
+	// Support: Implementation-specific
+	Options pulumi.StringMapInput `pulumi:"options"`
+	// TargetRefs identifies an API object to apply the policy to.
+	// Note that this config applies to the entire referenced resource
+	// by default, but this default may change in the future to provide
+	// a more granular application of the policy.
+	//
+	// TargetRefs must be _distinct_. This means either that:
+	//
+	// * They select different targets. If this is the case, then targetRef
+	//   entries are distinct. In terms of fields, this means that the
+	//   multi-part key defined by `group`, `kind`, and `name` must
+	//   be unique across all targetRef entries in the BackendTLSPolicy.
+	// * They select different sectionNames in the same target.
+	//
+	// When more than one BackendTLSPolicy selects the same target and
+	// sectionName, implementations MUST determine precedence using the
+	// following criteria, continuing on ties:
+	//
+	// * The older policy by creation timestamp takes precedence. For
+	//   example, a policy with a creation timestamp of "2021-07-15
+	//   01:02:03" MUST be given precedence over a policy with a
+	//   creation timestamp of "2021-07-15 01:02:04".
+	// * The policy appearing first in alphabetical order by {namespace}/{name}.
+	//   For example, a policy named `foo/bar` is given precedence over a
+	//   policy named `foo/baz`.
+	//
+	// For any BackendTLSPolicy that does not take precedence, the
+	// implementation MUST ensure the `Accepted` Condition is set to
+	// `status: False`, with Reason `Conflicted`.
+	//
+	// Implementations SHOULD NOT support more than one targetRef at this
+	// time. Although the API technically allows for this, the current guidance
+	// for conflict resolution and status handling is lacking. Until that can be
+	// clarified in a future release, the safest approach is to support a single
+	// targetRef.
+	//
+	// Support Levels:
+	//
+	// * Extended: Kubernetes Service referenced by backendRefs used on a Route.
+	//   - HTTPRoute, GRPCRoute, TLSRoute with termination
+	//   - Filters that needs a backend of type Service, like Mirror and External Authorization
+	//
+	// * Implementation-Specific: Implementations MAY use BackendTLSPolicy for:
+	//   - Services not referenced by any Route (e.g., infrastructure services)
+	//   - Service mesh workload-to-service communication
+	//   - Other resource types beyond Service
+	//
+	// Implementations SHOULD aim to ensure that BackendTLSPolicy behavior is consistent,
+	// even outside of the extended HTTPRoute -(backendRef) -> Service path.
+	// They SHOULD clearly document how BackendTLSPolicy is interpreted in these
+	// scenarios, including:
+	//   - Which resources beyond Service are supported
+	//   - How the policy is discovered and applied
+	//   - Any implementation-specific semantics or restrictions
+	//
+	// Note that this config applies to the entire referenced resource
+	// by default, but this default may change in the future to provide
+	// a more granular application of the policy.
+	TargetRefs BackendTLSPolicySpecTargetRefsPatchArrayInput `pulumi:"targetRefs"`
+	Validation BackendTLSPolicySpecValidationPatchPtrInput   `pulumi:"validation"`
+}
+
+func (BackendTLSPolicySpecPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecPatchArgs) ToBackendTLSPolicySpecPatchOutput() BackendTLSPolicySpecPatchOutput {
+	return i.ToBackendTLSPolicySpecPatchOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecPatchArgs) ToBackendTLSPolicySpecPatchOutputWithContext(ctx context.Context) BackendTLSPolicySpecPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecPatchOutput)
+}
+
+func (i BackendTLSPolicySpecPatchArgs) ToBackendTLSPolicySpecPatchPtrOutput() BackendTLSPolicySpecPatchPtrOutput {
+	return i.ToBackendTLSPolicySpecPatchPtrOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecPatchArgs) ToBackendTLSPolicySpecPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecPatchOutput).ToBackendTLSPolicySpecPatchPtrOutputWithContext(ctx)
+}
+
+// BackendTLSPolicySpecPatchPtrInput is an input type that accepts BackendTLSPolicySpecPatchArgs, BackendTLSPolicySpecPatchPtr and BackendTLSPolicySpecPatchPtrOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecPatchPtrInput` via:
+//
+//	        BackendTLSPolicySpecPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type BackendTLSPolicySpecPatchPtrInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecPatchPtrOutput() BackendTLSPolicySpecPatchPtrOutput
+	ToBackendTLSPolicySpecPatchPtrOutputWithContext(context.Context) BackendTLSPolicySpecPatchPtrOutput
+}
+
+type backendTLSPolicySpecPatchPtrType BackendTLSPolicySpecPatchArgs
+
+func BackendTLSPolicySpecPatchPtr(v *BackendTLSPolicySpecPatchArgs) BackendTLSPolicySpecPatchPtrInput {
+	return (*backendTLSPolicySpecPatchPtrType)(v)
+}
+
+func (*backendTLSPolicySpecPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicySpecPatch)(nil)).Elem()
+}
+
+func (i *backendTLSPolicySpecPatchPtrType) ToBackendTLSPolicySpecPatchPtrOutput() BackendTLSPolicySpecPatchPtrOutput {
+	return i.ToBackendTLSPolicySpecPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *backendTLSPolicySpecPatchPtrType) ToBackendTLSPolicySpecPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecPatchPtrOutput)
+}
+
+// Spec defines the desired state of BackendTLSPolicy.
+type BackendTLSPolicySpecPatchOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecPatchOutput) ToBackendTLSPolicySpecPatchOutput() BackendTLSPolicySpecPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecPatchOutput) ToBackendTLSPolicySpecPatchOutputWithContext(ctx context.Context) BackendTLSPolicySpecPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecPatchOutput) ToBackendTLSPolicySpecPatchPtrOutput() BackendTLSPolicySpecPatchPtrOutput {
+	return o.ToBackendTLSPolicySpecPatchPtrOutputWithContext(context.Background())
+}
+
+func (o BackendTLSPolicySpecPatchOutput) ToBackendTLSPolicySpecPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v BackendTLSPolicySpecPatch) *BackendTLSPolicySpecPatch {
+		return &v
+	}).(BackendTLSPolicySpecPatchPtrOutput)
+}
+
+// Options are a list of key/value pairs to enable extended TLS
+// configuration for each implementation. For example, configuring the
+// minimum TLS version or supported cipher suites.
+//
+// A set of common keys MAY be defined by the API in the future. To avoid
+// any ambiguity, implementation-specific definitions MUST use
+// domain-prefixed names, such as `example.com/my-custom-option`.
+// Un-prefixed names are reserved for key names defined by Gateway API.
+//
+// Support: Implementation-specific
+func (o BackendTLSPolicySpecPatchOutput) Options() pulumi.StringMapOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecPatch) map[string]string { return v.Options }).(pulumi.StringMapOutput)
+}
+
+// TargetRefs identifies an API object to apply the policy to.
+// Note that this config applies to the entire referenced resource
+// by default, but this default may change in the future to provide
+// a more granular application of the policy.
+//
+// TargetRefs must be _distinct_. This means either that:
+//
+//   - They select different targets. If this is the case, then targetRef
+//     entries are distinct. In terms of fields, this means that the
+//     multi-part key defined by `group`, `kind`, and `name` must
+//     be unique across all targetRef entries in the BackendTLSPolicy.
+//   - They select different sectionNames in the same target.
+//
+// When more than one BackendTLSPolicy selects the same target and
+// sectionName, implementations MUST determine precedence using the
+// following criteria, continuing on ties:
+//
+//   - The older policy by creation timestamp takes precedence. For
+//     example, a policy with a creation timestamp of "2021-07-15
+//     01:02:03" MUST be given precedence over a policy with a
+//     creation timestamp of "2021-07-15 01:02:04".
+//   - The policy appearing first in alphabetical order by {namespace}/{name}.
+//     For example, a policy named `foo/bar` is given precedence over a
+//     policy named `foo/baz`.
+//
+// For any BackendTLSPolicy that does not take precedence, the
+// implementation MUST ensure the `Accepted` Condition is set to
+// `status: False`, with Reason `Conflicted`.
+//
+// Implementations SHOULD NOT support more than one targetRef at this
+// time. Although the API technically allows for this, the current guidance
+// for conflict resolution and status handling is lacking. Until that can be
+// clarified in a future release, the safest approach is to support a single
+// targetRef.
+//
+// Support Levels:
+//
+// * Extended: Kubernetes Service referenced by backendRefs used on a Route.
+//   - HTTPRoute, GRPCRoute, TLSRoute with termination
+//   - Filters that needs a backend of type Service, like Mirror and External Authorization
+//
+// * Implementation-Specific: Implementations MAY use BackendTLSPolicy for:
+//   - Services not referenced by any Route (e.g., infrastructure services)
+//   - Service mesh workload-to-service communication
+//   - Other resource types beyond Service
+//
+// Implementations SHOULD aim to ensure that BackendTLSPolicy behavior is consistent,
+// even outside of the extended HTTPRoute -(backendRef) -> Service path.
+// They SHOULD clearly document how BackendTLSPolicy is interpreted in these
+// scenarios, including:
+//   - Which resources beyond Service are supported
+//   - How the policy is discovered and applied
+//   - Any implementation-specific semantics or restrictions
+//
+// Note that this config applies to the entire referenced resource
+// by default, but this default may change in the future to provide
+// a more granular application of the policy.
+func (o BackendTLSPolicySpecPatchOutput) TargetRefs() BackendTLSPolicySpecTargetRefsPatchArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecPatch) []BackendTLSPolicySpecTargetRefsPatch { return v.TargetRefs }).(BackendTLSPolicySpecTargetRefsPatchArrayOutput)
+}
+
+func (o BackendTLSPolicySpecPatchOutput) Validation() BackendTLSPolicySpecValidationPatchPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecPatch) *BackendTLSPolicySpecValidationPatch { return v.Validation }).(BackendTLSPolicySpecValidationPatchPtrOutput)
+}
+
+type BackendTLSPolicySpecPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicySpecPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecPatchPtrOutput) ToBackendTLSPolicySpecPatchPtrOutput() BackendTLSPolicySpecPatchPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecPatchPtrOutput) ToBackendTLSPolicySpecPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecPatchPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecPatchPtrOutput) Elem() BackendTLSPolicySpecPatchOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecPatch) BackendTLSPolicySpecPatch {
+		if v != nil {
+			return *v
+		}
+		var ret BackendTLSPolicySpecPatch
+		return ret
+	}).(BackendTLSPolicySpecPatchOutput)
+}
+
+// Options are a list of key/value pairs to enable extended TLS
+// configuration for each implementation. For example, configuring the
+// minimum TLS version or supported cipher suites.
+//
+// A set of common keys MAY be defined by the API in the future. To avoid
+// any ambiguity, implementation-specific definitions MUST use
+// domain-prefixed names, such as `example.com/my-custom-option`.
+// Un-prefixed names are reserved for key names defined by Gateway API.
+//
+// Support: Implementation-specific
+func (o BackendTLSPolicySpecPatchPtrOutput) Options() pulumi.StringMapOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecPatch) map[string]string {
+		if v == nil {
+			return nil
+		}
+		return v.Options
+	}).(pulumi.StringMapOutput)
+}
+
+// TargetRefs identifies an API object to apply the policy to.
+// Note that this config applies to the entire referenced resource
+// by default, but this default may change in the future to provide
+// a more granular application of the policy.
+//
+// TargetRefs must be _distinct_. This means either that:
+//
+//   - They select different targets. If this is the case, then targetRef
+//     entries are distinct. In terms of fields, this means that the
+//     multi-part key defined by `group`, `kind`, and `name` must
+//     be unique across all targetRef entries in the BackendTLSPolicy.
+//   - They select different sectionNames in the same target.
+//
+// When more than one BackendTLSPolicy selects the same target and
+// sectionName, implementations MUST determine precedence using the
+// following criteria, continuing on ties:
+//
+//   - The older policy by creation timestamp takes precedence. For
+//     example, a policy with a creation timestamp of "2021-07-15
+//     01:02:03" MUST be given precedence over a policy with a
+//     creation timestamp of "2021-07-15 01:02:04".
+//   - The policy appearing first in alphabetical order by {namespace}/{name}.
+//     For example, a policy named `foo/bar` is given precedence over a
+//     policy named `foo/baz`.
+//
+// For any BackendTLSPolicy that does not take precedence, the
+// implementation MUST ensure the `Accepted` Condition is set to
+// `status: False`, with Reason `Conflicted`.
+//
+// Implementations SHOULD NOT support more than one targetRef at this
+// time. Although the API technically allows for this, the current guidance
+// for conflict resolution and status handling is lacking. Until that can be
+// clarified in a future release, the safest approach is to support a single
+// targetRef.
+//
+// Support Levels:
+//
+// * Extended: Kubernetes Service referenced by backendRefs used on a Route.
+//   - HTTPRoute, GRPCRoute, TLSRoute with termination
+//   - Filters that needs a backend of type Service, like Mirror and External Authorization
+//
+// * Implementation-Specific: Implementations MAY use BackendTLSPolicy for:
+//   - Services not referenced by any Route (e.g., infrastructure services)
+//   - Service mesh workload-to-service communication
+//   - Other resource types beyond Service
+//
+// Implementations SHOULD aim to ensure that BackendTLSPolicy behavior is consistent,
+// even outside of the extended HTTPRoute -(backendRef) -> Service path.
+// They SHOULD clearly document how BackendTLSPolicy is interpreted in these
+// scenarios, including:
+//   - Which resources beyond Service are supported
+//   - How the policy is discovered and applied
+//   - Any implementation-specific semantics or restrictions
+//
+// Note that this config applies to the entire referenced resource
+// by default, but this default may change in the future to provide
+// a more granular application of the policy.
+func (o BackendTLSPolicySpecPatchPtrOutput) TargetRefs() BackendTLSPolicySpecTargetRefsPatchArrayOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecPatch) []BackendTLSPolicySpecTargetRefsPatch {
+		if v == nil {
+			return nil
+		}
+		return v.TargetRefs
+	}).(BackendTLSPolicySpecTargetRefsPatchArrayOutput)
+}
+
+func (o BackendTLSPolicySpecPatchPtrOutput) Validation() BackendTLSPolicySpecValidationPatchPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecPatch) *BackendTLSPolicySpecValidationPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Validation
+	}).(BackendTLSPolicySpecValidationPatchPtrOutput)
+}
+
+// LocalPolicyTargetReferenceWithSectionName identifies an API object to apply a
+// direct policy to. This should be used as part of Policy resources that can
+// target single resources. For more information on how this policy attachment
+// mode works, and a sample Policy resource, refer to the policy attachment
+// documentation for Gateway API.
+//
+// Note: This should only be used for direct policy attachment when references
+// to SectionName are actually needed. In all other cases,
+// LocalPolicyTargetReference should be used.
+type BackendTLSPolicySpecTargetRefs struct {
+	// Group is the group of the target resource.
+	Group *string `pulumi:"group"`
+	// Kind is kind of the target resource.
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the target resource.
+	Name *string `pulumi:"name"`
+	// SectionName is the name of a section within the target resource. When
+	// unspecified, this targetRef targets the entire resource. In the following
+	// resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name
+	// * HTTPRoute: HTTPRouteRule name
+	// * Service: Port name
+	//
+	// If a SectionName is specified, but does not exist on the targeted object,
+	// the Policy must fail to attach, and the policy implementation should record
+	// a `ResolvedRefs` or similar Condition in the Policy's status.
+	SectionName *string `pulumi:"sectionName"`
+}
+
+// BackendTLSPolicySpecTargetRefsInput is an input type that accepts BackendTLSPolicySpecTargetRefsArgs and BackendTLSPolicySpecTargetRefsOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecTargetRefsInput` via:
+//
+//	BackendTLSPolicySpecTargetRefsArgs{...}
+type BackendTLSPolicySpecTargetRefsInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecTargetRefsOutput() BackendTLSPolicySpecTargetRefsOutput
+	ToBackendTLSPolicySpecTargetRefsOutputWithContext(context.Context) BackendTLSPolicySpecTargetRefsOutput
+}
+
+// LocalPolicyTargetReferenceWithSectionName identifies an API object to apply a
+// direct policy to. This should be used as part of Policy resources that can
+// target single resources. For more information on how this policy attachment
+// mode works, and a sample Policy resource, refer to the policy attachment
+// documentation for Gateway API.
+//
+// Note: This should only be used for direct policy attachment when references
+// to SectionName are actually needed. In all other cases,
+// LocalPolicyTargetReference should be used.
+type BackendTLSPolicySpecTargetRefsArgs struct {
+	// Group is the group of the target resource.
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is kind of the target resource.
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the target resource.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// SectionName is the name of a section within the target resource. When
+	// unspecified, this targetRef targets the entire resource. In the following
+	// resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name
+	// * HTTPRoute: HTTPRouteRule name
+	// * Service: Port name
+	//
+	// If a SectionName is specified, but does not exist on the targeted object,
+	// the Policy must fail to attach, and the policy implementation should record
+	// a `ResolvedRefs` or similar Condition in the Policy's status.
+	SectionName pulumi.StringPtrInput `pulumi:"sectionName"`
+}
+
+func (BackendTLSPolicySpecTargetRefsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecTargetRefs)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecTargetRefsArgs) ToBackendTLSPolicySpecTargetRefsOutput() BackendTLSPolicySpecTargetRefsOutput {
+	return i.ToBackendTLSPolicySpecTargetRefsOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecTargetRefsArgs) ToBackendTLSPolicySpecTargetRefsOutputWithContext(ctx context.Context) BackendTLSPolicySpecTargetRefsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecTargetRefsOutput)
+}
+
+// BackendTLSPolicySpecTargetRefsArrayInput is an input type that accepts BackendTLSPolicySpecTargetRefsArray and BackendTLSPolicySpecTargetRefsArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecTargetRefsArrayInput` via:
+//
+//	BackendTLSPolicySpecTargetRefsArray{ BackendTLSPolicySpecTargetRefsArgs{...} }
+type BackendTLSPolicySpecTargetRefsArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecTargetRefsArrayOutput() BackendTLSPolicySpecTargetRefsArrayOutput
+	ToBackendTLSPolicySpecTargetRefsArrayOutputWithContext(context.Context) BackendTLSPolicySpecTargetRefsArrayOutput
+}
+
+type BackendTLSPolicySpecTargetRefsArray []BackendTLSPolicySpecTargetRefsInput
+
+func (BackendTLSPolicySpecTargetRefsArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecTargetRefs)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecTargetRefsArray) ToBackendTLSPolicySpecTargetRefsArrayOutput() BackendTLSPolicySpecTargetRefsArrayOutput {
+	return i.ToBackendTLSPolicySpecTargetRefsArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecTargetRefsArray) ToBackendTLSPolicySpecTargetRefsArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecTargetRefsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecTargetRefsArrayOutput)
+}
+
+// LocalPolicyTargetReferenceWithSectionName identifies an API object to apply a
+// direct policy to. This should be used as part of Policy resources that can
+// target single resources. For more information on how this policy attachment
+// mode works, and a sample Policy resource, refer to the policy attachment
+// documentation for Gateway API.
+//
+// Note: This should only be used for direct policy attachment when references
+// to SectionName are actually needed. In all other cases,
+// LocalPolicyTargetReference should be used.
+type BackendTLSPolicySpecTargetRefsOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecTargetRefsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecTargetRefs)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecTargetRefsOutput) ToBackendTLSPolicySpecTargetRefsOutput() BackendTLSPolicySpecTargetRefsOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecTargetRefsOutput) ToBackendTLSPolicySpecTargetRefsOutputWithContext(ctx context.Context) BackendTLSPolicySpecTargetRefsOutput {
+	return o
+}
+
+// Group is the group of the target resource.
+func (o BackendTLSPolicySpecTargetRefsOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecTargetRefs) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the target resource.
+func (o BackendTLSPolicySpecTargetRefsOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecTargetRefs) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the target resource.
+func (o BackendTLSPolicySpecTargetRefsOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecTargetRefs) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. When
+// unspecified, this targetRef targets the entire resource. In the following
+// resources, SectionName is interpreted as the following:
+//
+// * Gateway: Listener name
+// * HTTPRoute: HTTPRouteRule name
+// * Service: Port name
+//
+// If a SectionName is specified, but does not exist on the targeted object,
+// the Policy must fail to attach, and the policy implementation should record
+// a `ResolvedRefs` or similar Condition in the Policy's status.
+func (o BackendTLSPolicySpecTargetRefsOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecTargetRefs) *string { return v.SectionName }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicySpecTargetRefsArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecTargetRefsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecTargetRefs)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecTargetRefsArrayOutput) ToBackendTLSPolicySpecTargetRefsArrayOutput() BackendTLSPolicySpecTargetRefsArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecTargetRefsArrayOutput) ToBackendTLSPolicySpecTargetRefsArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecTargetRefsArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecTargetRefsArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicySpecTargetRefsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicySpecTargetRefs {
+		return vs[0].([]BackendTLSPolicySpecTargetRefs)[vs[1].(int)]
+	}).(BackendTLSPolicySpecTargetRefsOutput)
+}
+
+// LocalPolicyTargetReferenceWithSectionName identifies an API object to apply a
+// direct policy to. This should be used as part of Policy resources that can
+// target single resources. For more information on how this policy attachment
+// mode works, and a sample Policy resource, refer to the policy attachment
+// documentation for Gateway API.
+//
+// Note: This should only be used for direct policy attachment when references
+// to SectionName are actually needed. In all other cases,
+// LocalPolicyTargetReference should be used.
+type BackendTLSPolicySpecTargetRefsPatch struct {
+	// Group is the group of the target resource.
+	Group *string `pulumi:"group"`
+	// Kind is kind of the target resource.
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the target resource.
+	Name *string `pulumi:"name"`
+	// SectionName is the name of a section within the target resource. When
+	// unspecified, this targetRef targets the entire resource. In the following
+	// resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name
+	// * HTTPRoute: HTTPRouteRule name
+	// * Service: Port name
+	//
+	// If a SectionName is specified, but does not exist on the targeted object,
+	// the Policy must fail to attach, and the policy implementation should record
+	// a `ResolvedRefs` or similar Condition in the Policy's status.
+	SectionName *string `pulumi:"sectionName"`
+}
+
+// BackendTLSPolicySpecTargetRefsPatchInput is an input type that accepts BackendTLSPolicySpecTargetRefsPatchArgs and BackendTLSPolicySpecTargetRefsPatchOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecTargetRefsPatchInput` via:
+//
+//	BackendTLSPolicySpecTargetRefsPatchArgs{...}
+type BackendTLSPolicySpecTargetRefsPatchInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecTargetRefsPatchOutput() BackendTLSPolicySpecTargetRefsPatchOutput
+	ToBackendTLSPolicySpecTargetRefsPatchOutputWithContext(context.Context) BackendTLSPolicySpecTargetRefsPatchOutput
+}
+
+// LocalPolicyTargetReferenceWithSectionName identifies an API object to apply a
+// direct policy to. This should be used as part of Policy resources that can
+// target single resources. For more information on how this policy attachment
+// mode works, and a sample Policy resource, refer to the policy attachment
+// documentation for Gateway API.
+//
+// Note: This should only be used for direct policy attachment when references
+// to SectionName are actually needed. In all other cases,
+// LocalPolicyTargetReference should be used.
+type BackendTLSPolicySpecTargetRefsPatchArgs struct {
+	// Group is the group of the target resource.
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is kind of the target resource.
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the target resource.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// SectionName is the name of a section within the target resource. When
+	// unspecified, this targetRef targets the entire resource. In the following
+	// resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name
+	// * HTTPRoute: HTTPRouteRule name
+	// * Service: Port name
+	//
+	// If a SectionName is specified, but does not exist on the targeted object,
+	// the Policy must fail to attach, and the policy implementation should record
+	// a `ResolvedRefs` or similar Condition in the Policy's status.
+	SectionName pulumi.StringPtrInput `pulumi:"sectionName"`
+}
+
+func (BackendTLSPolicySpecTargetRefsPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecTargetRefsPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecTargetRefsPatchArgs) ToBackendTLSPolicySpecTargetRefsPatchOutput() BackendTLSPolicySpecTargetRefsPatchOutput {
+	return i.ToBackendTLSPolicySpecTargetRefsPatchOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecTargetRefsPatchArgs) ToBackendTLSPolicySpecTargetRefsPatchOutputWithContext(ctx context.Context) BackendTLSPolicySpecTargetRefsPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecTargetRefsPatchOutput)
+}
+
+// BackendTLSPolicySpecTargetRefsPatchArrayInput is an input type that accepts BackendTLSPolicySpecTargetRefsPatchArray and BackendTLSPolicySpecTargetRefsPatchArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecTargetRefsPatchArrayInput` via:
+//
+//	BackendTLSPolicySpecTargetRefsPatchArray{ BackendTLSPolicySpecTargetRefsPatchArgs{...} }
+type BackendTLSPolicySpecTargetRefsPatchArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecTargetRefsPatchArrayOutput() BackendTLSPolicySpecTargetRefsPatchArrayOutput
+	ToBackendTLSPolicySpecTargetRefsPatchArrayOutputWithContext(context.Context) BackendTLSPolicySpecTargetRefsPatchArrayOutput
+}
+
+type BackendTLSPolicySpecTargetRefsPatchArray []BackendTLSPolicySpecTargetRefsPatchInput
+
+func (BackendTLSPolicySpecTargetRefsPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecTargetRefsPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecTargetRefsPatchArray) ToBackendTLSPolicySpecTargetRefsPatchArrayOutput() BackendTLSPolicySpecTargetRefsPatchArrayOutput {
+	return i.ToBackendTLSPolicySpecTargetRefsPatchArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecTargetRefsPatchArray) ToBackendTLSPolicySpecTargetRefsPatchArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecTargetRefsPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecTargetRefsPatchArrayOutput)
+}
+
+// LocalPolicyTargetReferenceWithSectionName identifies an API object to apply a
+// direct policy to. This should be used as part of Policy resources that can
+// target single resources. For more information on how this policy attachment
+// mode works, and a sample Policy resource, refer to the policy attachment
+// documentation for Gateway API.
+//
+// Note: This should only be used for direct policy attachment when references
+// to SectionName are actually needed. In all other cases,
+// LocalPolicyTargetReference should be used.
+type BackendTLSPolicySpecTargetRefsPatchOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecTargetRefsPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecTargetRefsPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecTargetRefsPatchOutput) ToBackendTLSPolicySpecTargetRefsPatchOutput() BackendTLSPolicySpecTargetRefsPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecTargetRefsPatchOutput) ToBackendTLSPolicySpecTargetRefsPatchOutputWithContext(ctx context.Context) BackendTLSPolicySpecTargetRefsPatchOutput {
+	return o
+}
+
+// Group is the group of the target resource.
+func (o BackendTLSPolicySpecTargetRefsPatchOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecTargetRefsPatch) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the target resource.
+func (o BackendTLSPolicySpecTargetRefsPatchOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecTargetRefsPatch) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the target resource.
+func (o BackendTLSPolicySpecTargetRefsPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecTargetRefsPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. When
+// unspecified, this targetRef targets the entire resource. In the following
+// resources, SectionName is interpreted as the following:
+//
+// * Gateway: Listener name
+// * HTTPRoute: HTTPRouteRule name
+// * Service: Port name
+//
+// If a SectionName is specified, but does not exist on the targeted object,
+// the Policy must fail to attach, and the policy implementation should record
+// a `ResolvedRefs` or similar Condition in the Policy's status.
+func (o BackendTLSPolicySpecTargetRefsPatchOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecTargetRefsPatch) *string { return v.SectionName }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicySpecTargetRefsPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecTargetRefsPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecTargetRefsPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecTargetRefsPatchArrayOutput) ToBackendTLSPolicySpecTargetRefsPatchArrayOutput() BackendTLSPolicySpecTargetRefsPatchArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecTargetRefsPatchArrayOutput) ToBackendTLSPolicySpecTargetRefsPatchArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecTargetRefsPatchArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecTargetRefsPatchArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicySpecTargetRefsPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicySpecTargetRefsPatch {
+		return vs[0].([]BackendTLSPolicySpecTargetRefsPatch)[vs[1].(int)]
+	}).(BackendTLSPolicySpecTargetRefsPatchOutput)
+}
+
+// Validation contains backend TLS validation configuration.
+type BackendTLSPolicySpecValidation struct {
+	// CACertificateRefs contains one or more references to Kubernetes objects that
+	// contain a PEM-encoded TLS CA certificate bundle, which is used to
+	// validate a TLS handshake between the Gateway and backend Pod.
+	//
+	// If CACertificateRefs is empty or unspecified, then WellKnownCACertificates must be
+	// specified. Only one of CACertificateRefs or WellKnownCACertificates may be specified,
+	// not both. If CACertificateRefs is empty or unspecified, the configuration for
+	// WellKnownCACertificates MUST be honored instead if supported by the implementation.
+	//
+	// A CACertificateRef is invalid if:
+	//
+	// * It refers to a resource that cannot be resolved (e.g., the referenced resource
+	// does not exist) or is misconfigured (e.g., a ConfigMap does not contain a key
+	// named `ca.crt`). In this case, the Reason must be set to `InvalidCACertificateRef`
+	// and the Message of the Condition must indicate which reference is invalid and why.
+	//
+	// * It refers to an unknown or unsupported kind of resource. In this case, the Reason
+	// must be set to `InvalidKind` and the Message of the Condition must explain which
+	// kind of resource is unknown or unsupported.
+	//
+	// * It refers to a resource in another namespace. This may change in future
+	// spec updates.
+	//
+	// Implementations MAY choose to perform further validation of the certificate
+	// content (e.g., checking expiry or enforcing specific formats). In such cases,
+	// an implementation-specific Reason and Message must be set for the invalid reference.
+	//
+	// In all cases, the implementation MUST ensure the `ResolvedRefs` Condition on
+	// the BackendTLSPolicy is set to `status: False`, with a Reason and Message
+	// that indicate the cause of the error. Connections using an invalid
+	// CACertificateRef MUST fail, and the client MUST receive an HTTP 5xx error
+	// response. If ALL CACertificateRefs are invalid, the implementation MUST also
+	// ensure the `Accepted` Condition on the BackendTLSPolicy is set to
+	// `status: False`, with a Reason `NoValidCACertificate`.
+	//
+	// A single CACertificateRef to a Kubernetes ConfigMap kind has "Core" support.
+	// Implementations MAY choose to support attaching multiple certificates to
+	// a backend, but this behavior is implementation-specific.
+	//
+	// Support: Core - An optional single reference to a Kubernetes ConfigMap,
+	// with the CA certificate in a key named `ca.crt`.
+	//
+	// Support: Implementation-specific - More than one reference, other kinds
+	// of resources, or a single reference that includes multiple certificates.
+	CaCertificateRefs []BackendTLSPolicySpecValidationCaCertificateRefs `pulumi:"caCertificateRefs"`
+	// Hostname is used for two purposes in the connection between Gateways and
+	// backends:
+	//
+	// 1. Hostname MUST be used as the SNI to connect to the backend (RFC 6066).
+	// 2. Hostname MUST be used for authentication and MUST match the certificate
+	//    served by the matching backend, unless SubjectAltNames is specified.
+	// 3. If SubjectAltNames are specified, Hostname can be used for certificate selection
+	//    but MUST NOT be used for authentication. If you want to use the value
+	//    of the Hostname field for authentication, you MUST add it to the SubjectAltNames list.
+	//
+	// Support: Core
+	Hostname *string `pulumi:"hostname"`
+	// SubjectAltNames contains one or more Subject Alternative Names.
+	// When specified the certificate served from the backend MUST
+	// have at least one Subject Alternate Name matching one of the specified SubjectAltNames.
+	//
+	// Support: Extended
+	SubjectAltNames []BackendTLSPolicySpecValidationSubjectAltNames `pulumi:"subjectAltNames"`
+	// WellKnownCACertificates specifies whether a well-known set of CA certificates
+	// may be used in the TLS handshake between the gateway and backend pod.
+	//
+	// If WellKnownCACertificates is unspecified or empty (""), then CACertificateRefs
+	// must be specified with at least one entry for a valid configuration. Only one of
+	// CACertificateRefs or WellKnownCACertificates may be specified, not both.
+	// If an implementation does not support the WellKnownCACertificates field, or
+	// the supplied value is not recognized, the implementation MUST ensure the
+	// `Accepted` Condition on the BackendTLSPolicy is set to `status: False`, with
+	// a Reason `Invalid`.
+	//
+	// Valid values include:
+	// * "System" - indicates that well-known system CA certificates should be used.
+	//
+	// Implementations MAY define their own sets of CA certificates. Such definitions
+	// MUST use an implementation-specific, prefixed name, such as
+	// `mycompany.com/my-custom-ca-certificates`.
+	//
+	// Support: Implementation-specific
+	WellKnownCACertificates *string `pulumi:"wellKnownCACertificates"`
+}
+
+// BackendTLSPolicySpecValidationInput is an input type that accepts BackendTLSPolicySpecValidationArgs and BackendTLSPolicySpecValidationOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationInput` via:
+//
+//	BackendTLSPolicySpecValidationArgs{...}
+type BackendTLSPolicySpecValidationInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationOutput() BackendTLSPolicySpecValidationOutput
+	ToBackendTLSPolicySpecValidationOutputWithContext(context.Context) BackendTLSPolicySpecValidationOutput
+}
+
+// Validation contains backend TLS validation configuration.
+type BackendTLSPolicySpecValidationArgs struct {
+	// CACertificateRefs contains one or more references to Kubernetes objects that
+	// contain a PEM-encoded TLS CA certificate bundle, which is used to
+	// validate a TLS handshake between the Gateway and backend Pod.
+	//
+	// If CACertificateRefs is empty or unspecified, then WellKnownCACertificates must be
+	// specified. Only one of CACertificateRefs or WellKnownCACertificates may be specified,
+	// not both. If CACertificateRefs is empty or unspecified, the configuration for
+	// WellKnownCACertificates MUST be honored instead if supported by the implementation.
+	//
+	// A CACertificateRef is invalid if:
+	//
+	// * It refers to a resource that cannot be resolved (e.g., the referenced resource
+	// does not exist) or is misconfigured (e.g., a ConfigMap does not contain a key
+	// named `ca.crt`). In this case, the Reason must be set to `InvalidCACertificateRef`
+	// and the Message of the Condition must indicate which reference is invalid and why.
+	//
+	// * It refers to an unknown or unsupported kind of resource. In this case, the Reason
+	// must be set to `InvalidKind` and the Message of the Condition must explain which
+	// kind of resource is unknown or unsupported.
+	//
+	// * It refers to a resource in another namespace. This may change in future
+	// spec updates.
+	//
+	// Implementations MAY choose to perform further validation of the certificate
+	// content (e.g., checking expiry or enforcing specific formats). In such cases,
+	// an implementation-specific Reason and Message must be set for the invalid reference.
+	//
+	// In all cases, the implementation MUST ensure the `ResolvedRefs` Condition on
+	// the BackendTLSPolicy is set to `status: False`, with a Reason and Message
+	// that indicate the cause of the error. Connections using an invalid
+	// CACertificateRef MUST fail, and the client MUST receive an HTTP 5xx error
+	// response. If ALL CACertificateRefs are invalid, the implementation MUST also
+	// ensure the `Accepted` Condition on the BackendTLSPolicy is set to
+	// `status: False`, with a Reason `NoValidCACertificate`.
+	//
+	// A single CACertificateRef to a Kubernetes ConfigMap kind has "Core" support.
+	// Implementations MAY choose to support attaching multiple certificates to
+	// a backend, but this behavior is implementation-specific.
+	//
+	// Support: Core - An optional single reference to a Kubernetes ConfigMap,
+	// with the CA certificate in a key named `ca.crt`.
+	//
+	// Support: Implementation-specific - More than one reference, other kinds
+	// of resources, or a single reference that includes multiple certificates.
+	CaCertificateRefs BackendTLSPolicySpecValidationCaCertificateRefsArrayInput `pulumi:"caCertificateRefs"`
+	// Hostname is used for two purposes in the connection between Gateways and
+	// backends:
+	//
+	// 1. Hostname MUST be used as the SNI to connect to the backend (RFC 6066).
+	// 2. Hostname MUST be used for authentication and MUST match the certificate
+	//    served by the matching backend, unless SubjectAltNames is specified.
+	// 3. If SubjectAltNames are specified, Hostname can be used for certificate selection
+	//    but MUST NOT be used for authentication. If you want to use the value
+	//    of the Hostname field for authentication, you MUST add it to the SubjectAltNames list.
+	//
+	// Support: Core
+	Hostname pulumi.StringPtrInput `pulumi:"hostname"`
+	// SubjectAltNames contains one or more Subject Alternative Names.
+	// When specified the certificate served from the backend MUST
+	// have at least one Subject Alternate Name matching one of the specified SubjectAltNames.
+	//
+	// Support: Extended
+	SubjectAltNames BackendTLSPolicySpecValidationSubjectAltNamesArrayInput `pulumi:"subjectAltNames"`
+	// WellKnownCACertificates specifies whether a well-known set of CA certificates
+	// may be used in the TLS handshake between the gateway and backend pod.
+	//
+	// If WellKnownCACertificates is unspecified or empty (""), then CACertificateRefs
+	// must be specified with at least one entry for a valid configuration. Only one of
+	// CACertificateRefs or WellKnownCACertificates may be specified, not both.
+	// If an implementation does not support the WellKnownCACertificates field, or
+	// the supplied value is not recognized, the implementation MUST ensure the
+	// `Accepted` Condition on the BackendTLSPolicy is set to `status: False`, with
+	// a Reason `Invalid`.
+	//
+	// Valid values include:
+	// * "System" - indicates that well-known system CA certificates should be used.
+	//
+	// Implementations MAY define their own sets of CA certificates. Such definitions
+	// MUST use an implementation-specific, prefixed name, such as
+	// `mycompany.com/my-custom-ca-certificates`.
+	//
+	// Support: Implementation-specific
+	WellKnownCACertificates pulumi.StringPtrInput `pulumi:"wellKnownCACertificates"`
+}
+
+func (BackendTLSPolicySpecValidationArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidation)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecValidationArgs) ToBackendTLSPolicySpecValidationOutput() BackendTLSPolicySpecValidationOutput {
+	return i.ToBackendTLSPolicySpecValidationOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationArgs) ToBackendTLSPolicySpecValidationOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationOutput)
+}
+
+func (i BackendTLSPolicySpecValidationArgs) ToBackendTLSPolicySpecValidationPtrOutput() BackendTLSPolicySpecValidationPtrOutput {
+	return i.ToBackendTLSPolicySpecValidationPtrOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationArgs) ToBackendTLSPolicySpecValidationPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationOutput).ToBackendTLSPolicySpecValidationPtrOutputWithContext(ctx)
+}
+
+// BackendTLSPolicySpecValidationPtrInput is an input type that accepts BackendTLSPolicySpecValidationArgs, BackendTLSPolicySpecValidationPtr and BackendTLSPolicySpecValidationPtrOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationPtrInput` via:
+//
+//	        BackendTLSPolicySpecValidationArgs{...}
+//
+//	or:
+//
+//	        nil
+type BackendTLSPolicySpecValidationPtrInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationPtrOutput() BackendTLSPolicySpecValidationPtrOutput
+	ToBackendTLSPolicySpecValidationPtrOutputWithContext(context.Context) BackendTLSPolicySpecValidationPtrOutput
+}
+
+type backendTLSPolicySpecValidationPtrType BackendTLSPolicySpecValidationArgs
+
+func BackendTLSPolicySpecValidationPtr(v *BackendTLSPolicySpecValidationArgs) BackendTLSPolicySpecValidationPtrInput {
+	return (*backendTLSPolicySpecValidationPtrType)(v)
+}
+
+func (*backendTLSPolicySpecValidationPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicySpecValidation)(nil)).Elem()
+}
+
+func (i *backendTLSPolicySpecValidationPtrType) ToBackendTLSPolicySpecValidationPtrOutput() BackendTLSPolicySpecValidationPtrOutput {
+	return i.ToBackendTLSPolicySpecValidationPtrOutputWithContext(context.Background())
+}
+
+func (i *backendTLSPolicySpecValidationPtrType) ToBackendTLSPolicySpecValidationPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationPtrOutput)
+}
+
+// Validation contains backend TLS validation configuration.
+type BackendTLSPolicySpecValidationOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidation)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationOutput) ToBackendTLSPolicySpecValidationOutput() BackendTLSPolicySpecValidationOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationOutput) ToBackendTLSPolicySpecValidationOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationOutput) ToBackendTLSPolicySpecValidationPtrOutput() BackendTLSPolicySpecValidationPtrOutput {
+	return o.ToBackendTLSPolicySpecValidationPtrOutputWithContext(context.Background())
+}
+
+func (o BackendTLSPolicySpecValidationOutput) ToBackendTLSPolicySpecValidationPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v BackendTLSPolicySpecValidation) *BackendTLSPolicySpecValidation {
+		return &v
+	}).(BackendTLSPolicySpecValidationPtrOutput)
+}
+
+// CACertificateRefs contains one or more references to Kubernetes objects that
+// contain a PEM-encoded TLS CA certificate bundle, which is used to
+// validate a TLS handshake between the Gateway and backend Pod.
+//
+// If CACertificateRefs is empty or unspecified, then WellKnownCACertificates must be
+// specified. Only one of CACertificateRefs or WellKnownCACertificates may be specified,
+// not both. If CACertificateRefs is empty or unspecified, the configuration for
+// WellKnownCACertificates MUST be honored instead if supported by the implementation.
+//
+// A CACertificateRef is invalid if:
+//
+// * It refers to a resource that cannot be resolved (e.g., the referenced resource
+// does not exist) or is misconfigured (e.g., a ConfigMap does not contain a key
+// named `ca.crt`). In this case, the Reason must be set to `InvalidCACertificateRef`
+// and the Message of the Condition must indicate which reference is invalid and why.
+//
+// * It refers to an unknown or unsupported kind of resource. In this case, the Reason
+// must be set to `InvalidKind` and the Message of the Condition must explain which
+// kind of resource is unknown or unsupported.
+//
+// * It refers to a resource in another namespace. This may change in future
+// spec updates.
+//
+// Implementations MAY choose to perform further validation of the certificate
+// content (e.g., checking expiry or enforcing specific formats). In such cases,
+// an implementation-specific Reason and Message must be set for the invalid reference.
+//
+// In all cases, the implementation MUST ensure the `ResolvedRefs` Condition on
+// the BackendTLSPolicy is set to `status: False`, with a Reason and Message
+// that indicate the cause of the error. Connections using an invalid
+// CACertificateRef MUST fail, and the client MUST receive an HTTP 5xx error
+// response. If ALL CACertificateRefs are invalid, the implementation MUST also
+// ensure the `Accepted` Condition on the BackendTLSPolicy is set to
+// `status: False`, with a Reason `NoValidCACertificate`.
+//
+// A single CACertificateRef to a Kubernetes ConfigMap kind has "Core" support.
+// Implementations MAY choose to support attaching multiple certificates to
+// a backend, but this behavior is implementation-specific.
+//
+// Support: Core - An optional single reference to a Kubernetes ConfigMap,
+// with the CA certificate in a key named `ca.crt`.
+//
+// Support: Implementation-specific - More than one reference, other kinds
+// of resources, or a single reference that includes multiple certificates.
+func (o BackendTLSPolicySpecValidationOutput) CaCertificateRefs() BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidation) []BackendTLSPolicySpecValidationCaCertificateRefs {
+		return v.CaCertificateRefs
+	}).(BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput)
+}
+
+// Hostname is used for two purposes in the connection between Gateways and
+// backends:
+//
+//  1. Hostname MUST be used as the SNI to connect to the backend (RFC 6066).
+//  2. Hostname MUST be used for authentication and MUST match the certificate
+//     served by the matching backend, unless SubjectAltNames is specified.
+//  3. If SubjectAltNames are specified, Hostname can be used for certificate selection
+//     but MUST NOT be used for authentication. If you want to use the value
+//     of the Hostname field for authentication, you MUST add it to the SubjectAltNames list.
+//
+// Support: Core
+func (o BackendTLSPolicySpecValidationOutput) Hostname() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidation) *string { return v.Hostname }).(pulumi.StringPtrOutput)
+}
+
+// SubjectAltNames contains one or more Subject Alternative Names.
+// When specified the certificate served from the backend MUST
+// have at least one Subject Alternate Name matching one of the specified SubjectAltNames.
+//
+// Support: Extended
+func (o BackendTLSPolicySpecValidationOutput) SubjectAltNames() BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidation) []BackendTLSPolicySpecValidationSubjectAltNames {
+		return v.SubjectAltNames
+	}).(BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput)
+}
+
+// WellKnownCACertificates specifies whether a well-known set of CA certificates
+// may be used in the TLS handshake between the gateway and backend pod.
+//
+// If WellKnownCACertificates is unspecified or empty (""), then CACertificateRefs
+// must be specified with at least one entry for a valid configuration. Only one of
+// CACertificateRefs or WellKnownCACertificates may be specified, not both.
+// If an implementation does not support the WellKnownCACertificates field, or
+// the supplied value is not recognized, the implementation MUST ensure the
+// `Accepted` Condition on the BackendTLSPolicy is set to `status: False`, with
+// a Reason `Invalid`.
+//
+// Valid values include:
+// * "System" - indicates that well-known system CA certificates should be used.
+//
+// Implementations MAY define their own sets of CA certificates. Such definitions
+// MUST use an implementation-specific, prefixed name, such as
+// `mycompany.com/my-custom-ca-certificates`.
+//
+// Support: Implementation-specific
+func (o BackendTLSPolicySpecValidationOutput) WellKnownCACertificates() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidation) *string { return v.WellKnownCACertificates }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicySpecValidationPtrOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicySpecValidation)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationPtrOutput) ToBackendTLSPolicySpecValidationPtrOutput() BackendTLSPolicySpecValidationPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationPtrOutput) ToBackendTLSPolicySpecValidationPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationPtrOutput) Elem() BackendTLSPolicySpecValidationOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecValidation) BackendTLSPolicySpecValidation {
+		if v != nil {
+			return *v
+		}
+		var ret BackendTLSPolicySpecValidation
+		return ret
+	}).(BackendTLSPolicySpecValidationOutput)
+}
+
+// CACertificateRefs contains one or more references to Kubernetes objects that
+// contain a PEM-encoded TLS CA certificate bundle, which is used to
+// validate a TLS handshake between the Gateway and backend Pod.
+//
+// If CACertificateRefs is empty or unspecified, then WellKnownCACertificates must be
+// specified. Only one of CACertificateRefs or WellKnownCACertificates may be specified,
+// not both. If CACertificateRefs is empty or unspecified, the configuration for
+// WellKnownCACertificates MUST be honored instead if supported by the implementation.
+//
+// A CACertificateRef is invalid if:
+//
+// * It refers to a resource that cannot be resolved (e.g., the referenced resource
+// does not exist) or is misconfigured (e.g., a ConfigMap does not contain a key
+// named `ca.crt`). In this case, the Reason must be set to `InvalidCACertificateRef`
+// and the Message of the Condition must indicate which reference is invalid and why.
+//
+// * It refers to an unknown or unsupported kind of resource. In this case, the Reason
+// must be set to `InvalidKind` and the Message of the Condition must explain which
+// kind of resource is unknown or unsupported.
+//
+// * It refers to a resource in another namespace. This may change in future
+// spec updates.
+//
+// Implementations MAY choose to perform further validation of the certificate
+// content (e.g., checking expiry or enforcing specific formats). In such cases,
+// an implementation-specific Reason and Message must be set for the invalid reference.
+//
+// In all cases, the implementation MUST ensure the `ResolvedRefs` Condition on
+// the BackendTLSPolicy is set to `status: False`, with a Reason and Message
+// that indicate the cause of the error. Connections using an invalid
+// CACertificateRef MUST fail, and the client MUST receive an HTTP 5xx error
+// response. If ALL CACertificateRefs are invalid, the implementation MUST also
+// ensure the `Accepted` Condition on the BackendTLSPolicy is set to
+// `status: False`, with a Reason `NoValidCACertificate`.
+//
+// A single CACertificateRef to a Kubernetes ConfigMap kind has "Core" support.
+// Implementations MAY choose to support attaching multiple certificates to
+// a backend, but this behavior is implementation-specific.
+//
+// Support: Core - An optional single reference to a Kubernetes ConfigMap,
+// with the CA certificate in a key named `ca.crt`.
+//
+// Support: Implementation-specific - More than one reference, other kinds
+// of resources, or a single reference that includes multiple certificates.
+func (o BackendTLSPolicySpecValidationPtrOutput) CaCertificateRefs() BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecValidation) []BackendTLSPolicySpecValidationCaCertificateRefs {
+		if v == nil {
+			return nil
+		}
+		return v.CaCertificateRefs
+	}).(BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput)
+}
+
+// Hostname is used for two purposes in the connection between Gateways and
+// backends:
+//
+//  1. Hostname MUST be used as the SNI to connect to the backend (RFC 6066).
+//  2. Hostname MUST be used for authentication and MUST match the certificate
+//     served by the matching backend, unless SubjectAltNames is specified.
+//  3. If SubjectAltNames are specified, Hostname can be used for certificate selection
+//     but MUST NOT be used for authentication. If you want to use the value
+//     of the Hostname field for authentication, you MUST add it to the SubjectAltNames list.
+//
+// Support: Core
+func (o BackendTLSPolicySpecValidationPtrOutput) Hostname() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecValidation) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Hostname
+	}).(pulumi.StringPtrOutput)
+}
+
+// SubjectAltNames contains one or more Subject Alternative Names.
+// When specified the certificate served from the backend MUST
+// have at least one Subject Alternate Name matching one of the specified SubjectAltNames.
+//
+// Support: Extended
+func (o BackendTLSPolicySpecValidationPtrOutput) SubjectAltNames() BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecValidation) []BackendTLSPolicySpecValidationSubjectAltNames {
+		if v == nil {
+			return nil
+		}
+		return v.SubjectAltNames
+	}).(BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput)
+}
+
+// WellKnownCACertificates specifies whether a well-known set of CA certificates
+// may be used in the TLS handshake between the gateway and backend pod.
+//
+// If WellKnownCACertificates is unspecified or empty (""), then CACertificateRefs
+// must be specified with at least one entry for a valid configuration. Only one of
+// CACertificateRefs or WellKnownCACertificates may be specified, not both.
+// If an implementation does not support the WellKnownCACertificates field, or
+// the supplied value is not recognized, the implementation MUST ensure the
+// `Accepted` Condition on the BackendTLSPolicy is set to `status: False`, with
+// a Reason `Invalid`.
+//
+// Valid values include:
+// * "System" - indicates that well-known system CA certificates should be used.
+//
+// Implementations MAY define their own sets of CA certificates. Such definitions
+// MUST use an implementation-specific, prefixed name, such as
+// `mycompany.com/my-custom-ca-certificates`.
+//
+// Support: Implementation-specific
+func (o BackendTLSPolicySpecValidationPtrOutput) WellKnownCACertificates() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecValidation) *string {
+		if v == nil {
+			return nil
+		}
+		return v.WellKnownCACertificates
+	}).(pulumi.StringPtrOutput)
+}
+
+// LocalObjectReference identifies an API object within the namespace of the
+// referrer.
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+//
+// References to objects with invalid Group and Kind are not valid, and must
+// be rejected by the implementation, with appropriate Conditions set
+// on the containing object.
+type BackendTLSPolicySpecValidationCaCertificateRefs struct {
+	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+	// When unspecified or empty string, core API group is inferred.
+	Group *string `pulumi:"group"`
+	// Kind is kind of the referent. For example "HTTPRoute" or "Service".
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the referent.
+	Name *string `pulumi:"name"`
+}
+
+// BackendTLSPolicySpecValidationCaCertificateRefsInput is an input type that accepts BackendTLSPolicySpecValidationCaCertificateRefsArgs and BackendTLSPolicySpecValidationCaCertificateRefsOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationCaCertificateRefsInput` via:
+//
+//	BackendTLSPolicySpecValidationCaCertificateRefsArgs{...}
+type BackendTLSPolicySpecValidationCaCertificateRefsInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationCaCertificateRefsOutput() BackendTLSPolicySpecValidationCaCertificateRefsOutput
+	ToBackendTLSPolicySpecValidationCaCertificateRefsOutputWithContext(context.Context) BackendTLSPolicySpecValidationCaCertificateRefsOutput
+}
+
+// LocalObjectReference identifies an API object within the namespace of the
+// referrer.
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+//
+// References to objects with invalid Group and Kind are not valid, and must
+// be rejected by the implementation, with appropriate Conditions set
+// on the containing object.
+type BackendTLSPolicySpecValidationCaCertificateRefsArgs struct {
+	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+	// When unspecified or empty string, core API group is inferred.
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is kind of the referent. For example "HTTPRoute" or "Service".
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the referent.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (BackendTLSPolicySpecValidationCaCertificateRefsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidationCaCertificateRefs)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecValidationCaCertificateRefsArgs) ToBackendTLSPolicySpecValidationCaCertificateRefsOutput() BackendTLSPolicySpecValidationCaCertificateRefsOutput {
+	return i.ToBackendTLSPolicySpecValidationCaCertificateRefsOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationCaCertificateRefsArgs) ToBackendTLSPolicySpecValidationCaCertificateRefsOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationCaCertificateRefsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationCaCertificateRefsOutput)
+}
+
+// BackendTLSPolicySpecValidationCaCertificateRefsArrayInput is an input type that accepts BackendTLSPolicySpecValidationCaCertificateRefsArray and BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationCaCertificateRefsArrayInput` via:
+//
+//	BackendTLSPolicySpecValidationCaCertificateRefsArray{ BackendTLSPolicySpecValidationCaCertificateRefsArgs{...} }
+type BackendTLSPolicySpecValidationCaCertificateRefsArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationCaCertificateRefsArrayOutput() BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput
+	ToBackendTLSPolicySpecValidationCaCertificateRefsArrayOutputWithContext(context.Context) BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput
+}
+
+type BackendTLSPolicySpecValidationCaCertificateRefsArray []BackendTLSPolicySpecValidationCaCertificateRefsInput
+
+func (BackendTLSPolicySpecValidationCaCertificateRefsArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecValidationCaCertificateRefs)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecValidationCaCertificateRefsArray) ToBackendTLSPolicySpecValidationCaCertificateRefsArrayOutput() BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput {
+	return i.ToBackendTLSPolicySpecValidationCaCertificateRefsArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationCaCertificateRefsArray) ToBackendTLSPolicySpecValidationCaCertificateRefsArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput)
+}
+
+// LocalObjectReference identifies an API object within the namespace of the
+// referrer.
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+//
+// References to objects with invalid Group and Kind are not valid, and must
+// be rejected by the implementation, with appropriate Conditions set
+// on the containing object.
+type BackendTLSPolicySpecValidationCaCertificateRefsOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationCaCertificateRefsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidationCaCertificateRefs)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationCaCertificateRefsOutput) ToBackendTLSPolicySpecValidationCaCertificateRefsOutput() BackendTLSPolicySpecValidationCaCertificateRefsOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationCaCertificateRefsOutput) ToBackendTLSPolicySpecValidationCaCertificateRefsOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationCaCertificateRefsOutput {
+	return o
+}
+
+// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+// When unspecified or empty string, core API group is inferred.
+func (o BackendTLSPolicySpecValidationCaCertificateRefsOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationCaCertificateRefs) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent. For example "HTTPRoute" or "Service".
+func (o BackendTLSPolicySpecValidationCaCertificateRefsOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationCaCertificateRefs) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+func (o BackendTLSPolicySpecValidationCaCertificateRefsOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationCaCertificateRefs) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecValidationCaCertificateRefs)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput) ToBackendTLSPolicySpecValidationCaCertificateRefsArrayOutput() BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput) ToBackendTLSPolicySpecValidationCaCertificateRefsArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicySpecValidationCaCertificateRefsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicySpecValidationCaCertificateRefs {
+		return vs[0].([]BackendTLSPolicySpecValidationCaCertificateRefs)[vs[1].(int)]
+	}).(BackendTLSPolicySpecValidationCaCertificateRefsOutput)
+}
+
+// LocalObjectReference identifies an API object within the namespace of the
+// referrer.
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+//
+// References to objects with invalid Group and Kind are not valid, and must
+// be rejected by the implementation, with appropriate Conditions set
+// on the containing object.
+type BackendTLSPolicySpecValidationCaCertificateRefsPatch struct {
+	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+	// When unspecified or empty string, core API group is inferred.
+	Group *string `pulumi:"group"`
+	// Kind is kind of the referent. For example "HTTPRoute" or "Service".
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the referent.
+	Name *string `pulumi:"name"`
+}
+
+// BackendTLSPolicySpecValidationCaCertificateRefsPatchInput is an input type that accepts BackendTLSPolicySpecValidationCaCertificateRefsPatchArgs and BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationCaCertificateRefsPatchInput` via:
+//
+//	BackendTLSPolicySpecValidationCaCertificateRefsPatchArgs{...}
+type BackendTLSPolicySpecValidationCaCertificateRefsPatchInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationCaCertificateRefsPatchOutput() BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput
+	ToBackendTLSPolicySpecValidationCaCertificateRefsPatchOutputWithContext(context.Context) BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput
+}
+
+// LocalObjectReference identifies an API object within the namespace of the
+// referrer.
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+//
+// References to objects with invalid Group and Kind are not valid, and must
+// be rejected by the implementation, with appropriate Conditions set
+// on the containing object.
+type BackendTLSPolicySpecValidationCaCertificateRefsPatchArgs struct {
+	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+	// When unspecified or empty string, core API group is inferred.
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is kind of the referent. For example "HTTPRoute" or "Service".
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the referent.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (BackendTLSPolicySpecValidationCaCertificateRefsPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidationCaCertificateRefsPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecValidationCaCertificateRefsPatchArgs) ToBackendTLSPolicySpecValidationCaCertificateRefsPatchOutput() BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput {
+	return i.ToBackendTLSPolicySpecValidationCaCertificateRefsPatchOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationCaCertificateRefsPatchArgs) ToBackendTLSPolicySpecValidationCaCertificateRefsPatchOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput)
+}
+
+// BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayInput is an input type that accepts BackendTLSPolicySpecValidationCaCertificateRefsPatchArray and BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayInput` via:
+//
+//	BackendTLSPolicySpecValidationCaCertificateRefsPatchArray{ BackendTLSPolicySpecValidationCaCertificateRefsPatchArgs{...} }
+type BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput() BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput
+	ToBackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutputWithContext(context.Context) BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput
+}
+
+type BackendTLSPolicySpecValidationCaCertificateRefsPatchArray []BackendTLSPolicySpecValidationCaCertificateRefsPatchInput
+
+func (BackendTLSPolicySpecValidationCaCertificateRefsPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecValidationCaCertificateRefsPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecValidationCaCertificateRefsPatchArray) ToBackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput() BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput {
+	return i.ToBackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationCaCertificateRefsPatchArray) ToBackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput)
+}
+
+// LocalObjectReference identifies an API object within the namespace of the
+// referrer.
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+//
+// References to objects with invalid Group and Kind are not valid, and must
+// be rejected by the implementation, with appropriate Conditions set
+// on the containing object.
+type BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidationCaCertificateRefsPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput) ToBackendTLSPolicySpecValidationCaCertificateRefsPatchOutput() BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput) ToBackendTLSPolicySpecValidationCaCertificateRefsPatchOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput {
+	return o
+}
+
+// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+// When unspecified or empty string, core API group is inferred.
+func (o BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationCaCertificateRefsPatch) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent. For example "HTTPRoute" or "Service".
+func (o BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationCaCertificateRefsPatch) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+func (o BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationCaCertificateRefsPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecValidationCaCertificateRefsPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput) ToBackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput() BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput) ToBackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicySpecValidationCaCertificateRefsPatch {
+		return vs[0].([]BackendTLSPolicySpecValidationCaCertificateRefsPatch)[vs[1].(int)]
+	}).(BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput)
+}
+
+// Validation contains backend TLS validation configuration.
+type BackendTLSPolicySpecValidationPatch struct {
+	// CACertificateRefs contains one or more references to Kubernetes objects that
+	// contain a PEM-encoded TLS CA certificate bundle, which is used to
+	// validate a TLS handshake between the Gateway and backend Pod.
+	//
+	// If CACertificateRefs is empty or unspecified, then WellKnownCACertificates must be
+	// specified. Only one of CACertificateRefs or WellKnownCACertificates may be specified,
+	// not both. If CACertificateRefs is empty or unspecified, the configuration for
+	// WellKnownCACertificates MUST be honored instead if supported by the implementation.
+	//
+	// A CACertificateRef is invalid if:
+	//
+	// * It refers to a resource that cannot be resolved (e.g., the referenced resource
+	// does not exist) or is misconfigured (e.g., a ConfigMap does not contain a key
+	// named `ca.crt`). In this case, the Reason must be set to `InvalidCACertificateRef`
+	// and the Message of the Condition must indicate which reference is invalid and why.
+	//
+	// * It refers to an unknown or unsupported kind of resource. In this case, the Reason
+	// must be set to `InvalidKind` and the Message of the Condition must explain which
+	// kind of resource is unknown or unsupported.
+	//
+	// * It refers to a resource in another namespace. This may change in future
+	// spec updates.
+	//
+	// Implementations MAY choose to perform further validation of the certificate
+	// content (e.g., checking expiry or enforcing specific formats). In such cases,
+	// an implementation-specific Reason and Message must be set for the invalid reference.
+	//
+	// In all cases, the implementation MUST ensure the `ResolvedRefs` Condition on
+	// the BackendTLSPolicy is set to `status: False`, with a Reason and Message
+	// that indicate the cause of the error. Connections using an invalid
+	// CACertificateRef MUST fail, and the client MUST receive an HTTP 5xx error
+	// response. If ALL CACertificateRefs are invalid, the implementation MUST also
+	// ensure the `Accepted` Condition on the BackendTLSPolicy is set to
+	// `status: False`, with a Reason `NoValidCACertificate`.
+	//
+	// A single CACertificateRef to a Kubernetes ConfigMap kind has "Core" support.
+	// Implementations MAY choose to support attaching multiple certificates to
+	// a backend, but this behavior is implementation-specific.
+	//
+	// Support: Core - An optional single reference to a Kubernetes ConfigMap,
+	// with the CA certificate in a key named `ca.crt`.
+	//
+	// Support: Implementation-specific - More than one reference, other kinds
+	// of resources, or a single reference that includes multiple certificates.
+	CaCertificateRefs []BackendTLSPolicySpecValidationCaCertificateRefsPatch `pulumi:"caCertificateRefs"`
+	// Hostname is used for two purposes in the connection between Gateways and
+	// backends:
+	//
+	// 1. Hostname MUST be used as the SNI to connect to the backend (RFC 6066).
+	// 2. Hostname MUST be used for authentication and MUST match the certificate
+	//    served by the matching backend, unless SubjectAltNames is specified.
+	// 3. If SubjectAltNames are specified, Hostname can be used for certificate selection
+	//    but MUST NOT be used for authentication. If you want to use the value
+	//    of the Hostname field for authentication, you MUST add it to the SubjectAltNames list.
+	//
+	// Support: Core
+	Hostname *string `pulumi:"hostname"`
+	// SubjectAltNames contains one or more Subject Alternative Names.
+	// When specified the certificate served from the backend MUST
+	// have at least one Subject Alternate Name matching one of the specified SubjectAltNames.
+	//
+	// Support: Extended
+	SubjectAltNames []BackendTLSPolicySpecValidationSubjectAltNamesPatch `pulumi:"subjectAltNames"`
+	// WellKnownCACertificates specifies whether a well-known set of CA certificates
+	// may be used in the TLS handshake between the gateway and backend pod.
+	//
+	// If WellKnownCACertificates is unspecified or empty (""), then CACertificateRefs
+	// must be specified with at least one entry for a valid configuration. Only one of
+	// CACertificateRefs or WellKnownCACertificates may be specified, not both.
+	// If an implementation does not support the WellKnownCACertificates field, or
+	// the supplied value is not recognized, the implementation MUST ensure the
+	// `Accepted` Condition on the BackendTLSPolicy is set to `status: False`, with
+	// a Reason `Invalid`.
+	//
+	// Valid values include:
+	// * "System" - indicates that well-known system CA certificates should be used.
+	//
+	// Implementations MAY define their own sets of CA certificates. Such definitions
+	// MUST use an implementation-specific, prefixed name, such as
+	// `mycompany.com/my-custom-ca-certificates`.
+	//
+	// Support: Implementation-specific
+	WellKnownCACertificates *string `pulumi:"wellKnownCACertificates"`
+}
+
+// BackendTLSPolicySpecValidationPatchInput is an input type that accepts BackendTLSPolicySpecValidationPatchArgs and BackendTLSPolicySpecValidationPatchOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationPatchInput` via:
+//
+//	BackendTLSPolicySpecValidationPatchArgs{...}
+type BackendTLSPolicySpecValidationPatchInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationPatchOutput() BackendTLSPolicySpecValidationPatchOutput
+	ToBackendTLSPolicySpecValidationPatchOutputWithContext(context.Context) BackendTLSPolicySpecValidationPatchOutput
+}
+
+// Validation contains backend TLS validation configuration.
+type BackendTLSPolicySpecValidationPatchArgs struct {
+	// CACertificateRefs contains one or more references to Kubernetes objects that
+	// contain a PEM-encoded TLS CA certificate bundle, which is used to
+	// validate a TLS handshake between the Gateway and backend Pod.
+	//
+	// If CACertificateRefs is empty or unspecified, then WellKnownCACertificates must be
+	// specified. Only one of CACertificateRefs or WellKnownCACertificates may be specified,
+	// not both. If CACertificateRefs is empty or unspecified, the configuration for
+	// WellKnownCACertificates MUST be honored instead if supported by the implementation.
+	//
+	// A CACertificateRef is invalid if:
+	//
+	// * It refers to a resource that cannot be resolved (e.g., the referenced resource
+	// does not exist) or is misconfigured (e.g., a ConfigMap does not contain a key
+	// named `ca.crt`). In this case, the Reason must be set to `InvalidCACertificateRef`
+	// and the Message of the Condition must indicate which reference is invalid and why.
+	//
+	// * It refers to an unknown or unsupported kind of resource. In this case, the Reason
+	// must be set to `InvalidKind` and the Message of the Condition must explain which
+	// kind of resource is unknown or unsupported.
+	//
+	// * It refers to a resource in another namespace. This may change in future
+	// spec updates.
+	//
+	// Implementations MAY choose to perform further validation of the certificate
+	// content (e.g., checking expiry or enforcing specific formats). In such cases,
+	// an implementation-specific Reason and Message must be set for the invalid reference.
+	//
+	// In all cases, the implementation MUST ensure the `ResolvedRefs` Condition on
+	// the BackendTLSPolicy is set to `status: False`, with a Reason and Message
+	// that indicate the cause of the error. Connections using an invalid
+	// CACertificateRef MUST fail, and the client MUST receive an HTTP 5xx error
+	// response. If ALL CACertificateRefs are invalid, the implementation MUST also
+	// ensure the `Accepted` Condition on the BackendTLSPolicy is set to
+	// `status: False`, with a Reason `NoValidCACertificate`.
+	//
+	// A single CACertificateRef to a Kubernetes ConfigMap kind has "Core" support.
+	// Implementations MAY choose to support attaching multiple certificates to
+	// a backend, but this behavior is implementation-specific.
+	//
+	// Support: Core - An optional single reference to a Kubernetes ConfigMap,
+	// with the CA certificate in a key named `ca.crt`.
+	//
+	// Support: Implementation-specific - More than one reference, other kinds
+	// of resources, or a single reference that includes multiple certificates.
+	CaCertificateRefs BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayInput `pulumi:"caCertificateRefs"`
+	// Hostname is used for two purposes in the connection between Gateways and
+	// backends:
+	//
+	// 1. Hostname MUST be used as the SNI to connect to the backend (RFC 6066).
+	// 2. Hostname MUST be used for authentication and MUST match the certificate
+	//    served by the matching backend, unless SubjectAltNames is specified.
+	// 3. If SubjectAltNames are specified, Hostname can be used for certificate selection
+	//    but MUST NOT be used for authentication. If you want to use the value
+	//    of the Hostname field for authentication, you MUST add it to the SubjectAltNames list.
+	//
+	// Support: Core
+	Hostname pulumi.StringPtrInput `pulumi:"hostname"`
+	// SubjectAltNames contains one or more Subject Alternative Names.
+	// When specified the certificate served from the backend MUST
+	// have at least one Subject Alternate Name matching one of the specified SubjectAltNames.
+	//
+	// Support: Extended
+	SubjectAltNames BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayInput `pulumi:"subjectAltNames"`
+	// WellKnownCACertificates specifies whether a well-known set of CA certificates
+	// may be used in the TLS handshake between the gateway and backend pod.
+	//
+	// If WellKnownCACertificates is unspecified or empty (""), then CACertificateRefs
+	// must be specified with at least one entry for a valid configuration. Only one of
+	// CACertificateRefs or WellKnownCACertificates may be specified, not both.
+	// If an implementation does not support the WellKnownCACertificates field, or
+	// the supplied value is not recognized, the implementation MUST ensure the
+	// `Accepted` Condition on the BackendTLSPolicy is set to `status: False`, with
+	// a Reason `Invalid`.
+	//
+	// Valid values include:
+	// * "System" - indicates that well-known system CA certificates should be used.
+	//
+	// Implementations MAY define their own sets of CA certificates. Such definitions
+	// MUST use an implementation-specific, prefixed name, such as
+	// `mycompany.com/my-custom-ca-certificates`.
+	//
+	// Support: Implementation-specific
+	WellKnownCACertificates pulumi.StringPtrInput `pulumi:"wellKnownCACertificates"`
+}
+
+func (BackendTLSPolicySpecValidationPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidationPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecValidationPatchArgs) ToBackendTLSPolicySpecValidationPatchOutput() BackendTLSPolicySpecValidationPatchOutput {
+	return i.ToBackendTLSPolicySpecValidationPatchOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationPatchArgs) ToBackendTLSPolicySpecValidationPatchOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationPatchOutput)
+}
+
+func (i BackendTLSPolicySpecValidationPatchArgs) ToBackendTLSPolicySpecValidationPatchPtrOutput() BackendTLSPolicySpecValidationPatchPtrOutput {
+	return i.ToBackendTLSPolicySpecValidationPatchPtrOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationPatchArgs) ToBackendTLSPolicySpecValidationPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationPatchOutput).ToBackendTLSPolicySpecValidationPatchPtrOutputWithContext(ctx)
+}
+
+// BackendTLSPolicySpecValidationPatchPtrInput is an input type that accepts BackendTLSPolicySpecValidationPatchArgs, BackendTLSPolicySpecValidationPatchPtr and BackendTLSPolicySpecValidationPatchPtrOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationPatchPtrInput` via:
+//
+//	        BackendTLSPolicySpecValidationPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type BackendTLSPolicySpecValidationPatchPtrInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationPatchPtrOutput() BackendTLSPolicySpecValidationPatchPtrOutput
+	ToBackendTLSPolicySpecValidationPatchPtrOutputWithContext(context.Context) BackendTLSPolicySpecValidationPatchPtrOutput
+}
+
+type backendTLSPolicySpecValidationPatchPtrType BackendTLSPolicySpecValidationPatchArgs
+
+func BackendTLSPolicySpecValidationPatchPtr(v *BackendTLSPolicySpecValidationPatchArgs) BackendTLSPolicySpecValidationPatchPtrInput {
+	return (*backendTLSPolicySpecValidationPatchPtrType)(v)
+}
+
+func (*backendTLSPolicySpecValidationPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicySpecValidationPatch)(nil)).Elem()
+}
+
+func (i *backendTLSPolicySpecValidationPatchPtrType) ToBackendTLSPolicySpecValidationPatchPtrOutput() BackendTLSPolicySpecValidationPatchPtrOutput {
+	return i.ToBackendTLSPolicySpecValidationPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *backendTLSPolicySpecValidationPatchPtrType) ToBackendTLSPolicySpecValidationPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationPatchPtrOutput)
+}
+
+// Validation contains backend TLS validation configuration.
+type BackendTLSPolicySpecValidationPatchOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidationPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationPatchOutput) ToBackendTLSPolicySpecValidationPatchOutput() BackendTLSPolicySpecValidationPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationPatchOutput) ToBackendTLSPolicySpecValidationPatchOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationPatchOutput) ToBackendTLSPolicySpecValidationPatchPtrOutput() BackendTLSPolicySpecValidationPatchPtrOutput {
+	return o.ToBackendTLSPolicySpecValidationPatchPtrOutputWithContext(context.Background())
+}
+
+func (o BackendTLSPolicySpecValidationPatchOutput) ToBackendTLSPolicySpecValidationPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v BackendTLSPolicySpecValidationPatch) *BackendTLSPolicySpecValidationPatch {
+		return &v
+	}).(BackendTLSPolicySpecValidationPatchPtrOutput)
+}
+
+// CACertificateRefs contains one or more references to Kubernetes objects that
+// contain a PEM-encoded TLS CA certificate bundle, which is used to
+// validate a TLS handshake between the Gateway and backend Pod.
+//
+// If CACertificateRefs is empty or unspecified, then WellKnownCACertificates must be
+// specified. Only one of CACertificateRefs or WellKnownCACertificates may be specified,
+// not both. If CACertificateRefs is empty or unspecified, the configuration for
+// WellKnownCACertificates MUST be honored instead if supported by the implementation.
+//
+// A CACertificateRef is invalid if:
+//
+// * It refers to a resource that cannot be resolved (e.g., the referenced resource
+// does not exist) or is misconfigured (e.g., a ConfigMap does not contain a key
+// named `ca.crt`). In this case, the Reason must be set to `InvalidCACertificateRef`
+// and the Message of the Condition must indicate which reference is invalid and why.
+//
+// * It refers to an unknown or unsupported kind of resource. In this case, the Reason
+// must be set to `InvalidKind` and the Message of the Condition must explain which
+// kind of resource is unknown or unsupported.
+//
+// * It refers to a resource in another namespace. This may change in future
+// spec updates.
+//
+// Implementations MAY choose to perform further validation of the certificate
+// content (e.g., checking expiry or enforcing specific formats). In such cases,
+// an implementation-specific Reason and Message must be set for the invalid reference.
+//
+// In all cases, the implementation MUST ensure the `ResolvedRefs` Condition on
+// the BackendTLSPolicy is set to `status: False`, with a Reason and Message
+// that indicate the cause of the error. Connections using an invalid
+// CACertificateRef MUST fail, and the client MUST receive an HTTP 5xx error
+// response. If ALL CACertificateRefs are invalid, the implementation MUST also
+// ensure the `Accepted` Condition on the BackendTLSPolicy is set to
+// `status: False`, with a Reason `NoValidCACertificate`.
+//
+// A single CACertificateRef to a Kubernetes ConfigMap kind has "Core" support.
+// Implementations MAY choose to support attaching multiple certificates to
+// a backend, but this behavior is implementation-specific.
+//
+// Support: Core - An optional single reference to a Kubernetes ConfigMap,
+// with the CA certificate in a key named `ca.crt`.
+//
+// Support: Implementation-specific - More than one reference, other kinds
+// of resources, or a single reference that includes multiple certificates.
+func (o BackendTLSPolicySpecValidationPatchOutput) CaCertificateRefs() BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationPatch) []BackendTLSPolicySpecValidationCaCertificateRefsPatch {
+		return v.CaCertificateRefs
+	}).(BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput)
+}
+
+// Hostname is used for two purposes in the connection between Gateways and
+// backends:
+//
+//  1. Hostname MUST be used as the SNI to connect to the backend (RFC 6066).
+//  2. Hostname MUST be used for authentication and MUST match the certificate
+//     served by the matching backend, unless SubjectAltNames is specified.
+//  3. If SubjectAltNames are specified, Hostname can be used for certificate selection
+//     but MUST NOT be used for authentication. If you want to use the value
+//     of the Hostname field for authentication, you MUST add it to the SubjectAltNames list.
+//
+// Support: Core
+func (o BackendTLSPolicySpecValidationPatchOutput) Hostname() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationPatch) *string { return v.Hostname }).(pulumi.StringPtrOutput)
+}
+
+// SubjectAltNames contains one or more Subject Alternative Names.
+// When specified the certificate served from the backend MUST
+// have at least one Subject Alternate Name matching one of the specified SubjectAltNames.
+//
+// Support: Extended
+func (o BackendTLSPolicySpecValidationPatchOutput) SubjectAltNames() BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationPatch) []BackendTLSPolicySpecValidationSubjectAltNamesPatch {
+		return v.SubjectAltNames
+	}).(BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput)
+}
+
+// WellKnownCACertificates specifies whether a well-known set of CA certificates
+// may be used in the TLS handshake between the gateway and backend pod.
+//
+// If WellKnownCACertificates is unspecified or empty (""), then CACertificateRefs
+// must be specified with at least one entry for a valid configuration. Only one of
+// CACertificateRefs or WellKnownCACertificates may be specified, not both.
+// If an implementation does not support the WellKnownCACertificates field, or
+// the supplied value is not recognized, the implementation MUST ensure the
+// `Accepted` Condition on the BackendTLSPolicy is set to `status: False`, with
+// a Reason `Invalid`.
+//
+// Valid values include:
+// * "System" - indicates that well-known system CA certificates should be used.
+//
+// Implementations MAY define their own sets of CA certificates. Such definitions
+// MUST use an implementation-specific, prefixed name, such as
+// `mycompany.com/my-custom-ca-certificates`.
+//
+// Support: Implementation-specific
+func (o BackendTLSPolicySpecValidationPatchOutput) WellKnownCACertificates() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationPatch) *string { return v.WellKnownCACertificates }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicySpecValidationPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicySpecValidationPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationPatchPtrOutput) ToBackendTLSPolicySpecValidationPatchPtrOutput() BackendTLSPolicySpecValidationPatchPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationPatchPtrOutput) ToBackendTLSPolicySpecValidationPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationPatchPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationPatchPtrOutput) Elem() BackendTLSPolicySpecValidationPatchOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecValidationPatch) BackendTLSPolicySpecValidationPatch {
+		if v != nil {
+			return *v
+		}
+		var ret BackendTLSPolicySpecValidationPatch
+		return ret
+	}).(BackendTLSPolicySpecValidationPatchOutput)
+}
+
+// CACertificateRefs contains one or more references to Kubernetes objects that
+// contain a PEM-encoded TLS CA certificate bundle, which is used to
+// validate a TLS handshake between the Gateway and backend Pod.
+//
+// If CACertificateRefs is empty or unspecified, then WellKnownCACertificates must be
+// specified. Only one of CACertificateRefs or WellKnownCACertificates may be specified,
+// not both. If CACertificateRefs is empty or unspecified, the configuration for
+// WellKnownCACertificates MUST be honored instead if supported by the implementation.
+//
+// A CACertificateRef is invalid if:
+//
+// * It refers to a resource that cannot be resolved (e.g., the referenced resource
+// does not exist) or is misconfigured (e.g., a ConfigMap does not contain a key
+// named `ca.crt`). In this case, the Reason must be set to `InvalidCACertificateRef`
+// and the Message of the Condition must indicate which reference is invalid and why.
+//
+// * It refers to an unknown or unsupported kind of resource. In this case, the Reason
+// must be set to `InvalidKind` and the Message of the Condition must explain which
+// kind of resource is unknown or unsupported.
+//
+// * It refers to a resource in another namespace. This may change in future
+// spec updates.
+//
+// Implementations MAY choose to perform further validation of the certificate
+// content (e.g., checking expiry or enforcing specific formats). In such cases,
+// an implementation-specific Reason and Message must be set for the invalid reference.
+//
+// In all cases, the implementation MUST ensure the `ResolvedRefs` Condition on
+// the BackendTLSPolicy is set to `status: False`, with a Reason and Message
+// that indicate the cause of the error. Connections using an invalid
+// CACertificateRef MUST fail, and the client MUST receive an HTTP 5xx error
+// response. If ALL CACertificateRefs are invalid, the implementation MUST also
+// ensure the `Accepted` Condition on the BackendTLSPolicy is set to
+// `status: False`, with a Reason `NoValidCACertificate`.
+//
+// A single CACertificateRef to a Kubernetes ConfigMap kind has "Core" support.
+// Implementations MAY choose to support attaching multiple certificates to
+// a backend, but this behavior is implementation-specific.
+//
+// Support: Core - An optional single reference to a Kubernetes ConfigMap,
+// with the CA certificate in a key named `ca.crt`.
+//
+// Support: Implementation-specific - More than one reference, other kinds
+// of resources, or a single reference that includes multiple certificates.
+func (o BackendTLSPolicySpecValidationPatchPtrOutput) CaCertificateRefs() BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecValidationPatch) []BackendTLSPolicySpecValidationCaCertificateRefsPatch {
+		if v == nil {
+			return nil
+		}
+		return v.CaCertificateRefs
+	}).(BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput)
+}
+
+// Hostname is used for two purposes in the connection between Gateways and
+// backends:
+//
+//  1. Hostname MUST be used as the SNI to connect to the backend (RFC 6066).
+//  2. Hostname MUST be used for authentication and MUST match the certificate
+//     served by the matching backend, unless SubjectAltNames is specified.
+//  3. If SubjectAltNames are specified, Hostname can be used for certificate selection
+//     but MUST NOT be used for authentication. If you want to use the value
+//     of the Hostname field for authentication, you MUST add it to the SubjectAltNames list.
+//
+// Support: Core
+func (o BackendTLSPolicySpecValidationPatchPtrOutput) Hostname() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecValidationPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Hostname
+	}).(pulumi.StringPtrOutput)
+}
+
+// SubjectAltNames contains one or more Subject Alternative Names.
+// When specified the certificate served from the backend MUST
+// have at least one Subject Alternate Name matching one of the specified SubjectAltNames.
+//
+// Support: Extended
+func (o BackendTLSPolicySpecValidationPatchPtrOutput) SubjectAltNames() BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecValidationPatch) []BackendTLSPolicySpecValidationSubjectAltNamesPatch {
+		if v == nil {
+			return nil
+		}
+		return v.SubjectAltNames
+	}).(BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput)
+}
+
+// WellKnownCACertificates specifies whether a well-known set of CA certificates
+// may be used in the TLS handshake between the gateway and backend pod.
+//
+// If WellKnownCACertificates is unspecified or empty (""), then CACertificateRefs
+// must be specified with at least one entry for a valid configuration. Only one of
+// CACertificateRefs or WellKnownCACertificates may be specified, not both.
+// If an implementation does not support the WellKnownCACertificates field, or
+// the supplied value is not recognized, the implementation MUST ensure the
+// `Accepted` Condition on the BackendTLSPolicy is set to `status: False`, with
+// a Reason `Invalid`.
+//
+// Valid values include:
+// * "System" - indicates that well-known system CA certificates should be used.
+//
+// Implementations MAY define their own sets of CA certificates. Such definitions
+// MUST use an implementation-specific, prefixed name, such as
+// `mycompany.com/my-custom-ca-certificates`.
+//
+// Support: Implementation-specific
+func (o BackendTLSPolicySpecValidationPatchPtrOutput) WellKnownCACertificates() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicySpecValidationPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.WellKnownCACertificates
+	}).(pulumi.StringPtrOutput)
+}
+
+// SubjectAltName represents Subject Alternative Name.
+type BackendTLSPolicySpecValidationSubjectAltNames struct {
+	// Hostname contains Subject Alternative Name specified in DNS name format.
+	// Required when Type is set to Hostname, ignored otherwise.
+	//
+	// Support: Core
+	Hostname *string `pulumi:"hostname"`
+	// Type determines the format of the Subject Alternative Name. Always required.
+	//
+	// Support: Core
+	Type *string `pulumi:"type"`
+	// URI contains Subject Alternative Name specified in a full URI format.
+	// It MUST include both a scheme (e.g., "http" or "ftp") and a scheme-specific-part.
+	// Common values include SPIFFE IDs like "spiffe://mycluster.example.com/ns/myns/sa/svc1sa".
+	// Required when Type is set to URI, ignored otherwise.
+	//
+	// Support: Core
+	Uri *string `pulumi:"uri"`
+}
+
+// BackendTLSPolicySpecValidationSubjectAltNamesInput is an input type that accepts BackendTLSPolicySpecValidationSubjectAltNamesArgs and BackendTLSPolicySpecValidationSubjectAltNamesOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationSubjectAltNamesInput` via:
+//
+//	BackendTLSPolicySpecValidationSubjectAltNamesArgs{...}
+type BackendTLSPolicySpecValidationSubjectAltNamesInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationSubjectAltNamesOutput() BackendTLSPolicySpecValidationSubjectAltNamesOutput
+	ToBackendTLSPolicySpecValidationSubjectAltNamesOutputWithContext(context.Context) BackendTLSPolicySpecValidationSubjectAltNamesOutput
+}
+
+// SubjectAltName represents Subject Alternative Name.
+type BackendTLSPolicySpecValidationSubjectAltNamesArgs struct {
+	// Hostname contains Subject Alternative Name specified in DNS name format.
+	// Required when Type is set to Hostname, ignored otherwise.
+	//
+	// Support: Core
+	Hostname pulumi.StringPtrInput `pulumi:"hostname"`
+	// Type determines the format of the Subject Alternative Name. Always required.
+	//
+	// Support: Core
+	Type pulumi.StringPtrInput `pulumi:"type"`
+	// URI contains Subject Alternative Name specified in a full URI format.
+	// It MUST include both a scheme (e.g., "http" or "ftp") and a scheme-specific-part.
+	// Common values include SPIFFE IDs like "spiffe://mycluster.example.com/ns/myns/sa/svc1sa".
+	// Required when Type is set to URI, ignored otherwise.
+	//
+	// Support: Core
+	Uri pulumi.StringPtrInput `pulumi:"uri"`
+}
+
+func (BackendTLSPolicySpecValidationSubjectAltNamesArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidationSubjectAltNames)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecValidationSubjectAltNamesArgs) ToBackendTLSPolicySpecValidationSubjectAltNamesOutput() BackendTLSPolicySpecValidationSubjectAltNamesOutput {
+	return i.ToBackendTLSPolicySpecValidationSubjectAltNamesOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationSubjectAltNamesArgs) ToBackendTLSPolicySpecValidationSubjectAltNamesOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationSubjectAltNamesOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationSubjectAltNamesOutput)
+}
+
+// BackendTLSPolicySpecValidationSubjectAltNamesArrayInput is an input type that accepts BackendTLSPolicySpecValidationSubjectAltNamesArray and BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationSubjectAltNamesArrayInput` via:
+//
+//	BackendTLSPolicySpecValidationSubjectAltNamesArray{ BackendTLSPolicySpecValidationSubjectAltNamesArgs{...} }
+type BackendTLSPolicySpecValidationSubjectAltNamesArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationSubjectAltNamesArrayOutput() BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput
+	ToBackendTLSPolicySpecValidationSubjectAltNamesArrayOutputWithContext(context.Context) BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput
+}
+
+type BackendTLSPolicySpecValidationSubjectAltNamesArray []BackendTLSPolicySpecValidationSubjectAltNamesInput
+
+func (BackendTLSPolicySpecValidationSubjectAltNamesArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecValidationSubjectAltNames)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecValidationSubjectAltNamesArray) ToBackendTLSPolicySpecValidationSubjectAltNamesArrayOutput() BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput {
+	return i.ToBackendTLSPolicySpecValidationSubjectAltNamesArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationSubjectAltNamesArray) ToBackendTLSPolicySpecValidationSubjectAltNamesArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput)
+}
+
+// SubjectAltName represents Subject Alternative Name.
+type BackendTLSPolicySpecValidationSubjectAltNamesOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationSubjectAltNamesOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidationSubjectAltNames)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationSubjectAltNamesOutput) ToBackendTLSPolicySpecValidationSubjectAltNamesOutput() BackendTLSPolicySpecValidationSubjectAltNamesOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationSubjectAltNamesOutput) ToBackendTLSPolicySpecValidationSubjectAltNamesOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationSubjectAltNamesOutput {
+	return o
+}
+
+// Hostname contains Subject Alternative Name specified in DNS name format.
+// Required when Type is set to Hostname, ignored otherwise.
+//
+// Support: Core
+func (o BackendTLSPolicySpecValidationSubjectAltNamesOutput) Hostname() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationSubjectAltNames) *string { return v.Hostname }).(pulumi.StringPtrOutput)
+}
+
+// Type determines the format of the Subject Alternative Name. Always required.
+//
+// Support: Core
+func (o BackendTLSPolicySpecValidationSubjectAltNamesOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationSubjectAltNames) *string { return v.Type }).(pulumi.StringPtrOutput)
+}
+
+// URI contains Subject Alternative Name specified in a full URI format.
+// It MUST include both a scheme (e.g., "http" or "ftp") and a scheme-specific-part.
+// Common values include SPIFFE IDs like "spiffe://mycluster.example.com/ns/myns/sa/svc1sa".
+// Required when Type is set to URI, ignored otherwise.
+//
+// Support: Core
+func (o BackendTLSPolicySpecValidationSubjectAltNamesOutput) Uri() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationSubjectAltNames) *string { return v.Uri }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecValidationSubjectAltNames)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput) ToBackendTLSPolicySpecValidationSubjectAltNamesArrayOutput() BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput) ToBackendTLSPolicySpecValidationSubjectAltNamesArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicySpecValidationSubjectAltNamesOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicySpecValidationSubjectAltNames {
+		return vs[0].([]BackendTLSPolicySpecValidationSubjectAltNames)[vs[1].(int)]
+	}).(BackendTLSPolicySpecValidationSubjectAltNamesOutput)
+}
+
+// SubjectAltName represents Subject Alternative Name.
+type BackendTLSPolicySpecValidationSubjectAltNamesPatch struct {
+	// Hostname contains Subject Alternative Name specified in DNS name format.
+	// Required when Type is set to Hostname, ignored otherwise.
+	//
+	// Support: Core
+	Hostname *string `pulumi:"hostname"`
+	// Type determines the format of the Subject Alternative Name. Always required.
+	//
+	// Support: Core
+	Type *string `pulumi:"type"`
+	// URI contains Subject Alternative Name specified in a full URI format.
+	// It MUST include both a scheme (e.g., "http" or "ftp") and a scheme-specific-part.
+	// Common values include SPIFFE IDs like "spiffe://mycluster.example.com/ns/myns/sa/svc1sa".
+	// Required when Type is set to URI, ignored otherwise.
+	//
+	// Support: Core
+	Uri *string `pulumi:"uri"`
+}
+
+// BackendTLSPolicySpecValidationSubjectAltNamesPatchInput is an input type that accepts BackendTLSPolicySpecValidationSubjectAltNamesPatchArgs and BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationSubjectAltNamesPatchInput` via:
+//
+//	BackendTLSPolicySpecValidationSubjectAltNamesPatchArgs{...}
+type BackendTLSPolicySpecValidationSubjectAltNamesPatchInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationSubjectAltNamesPatchOutput() BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput
+	ToBackendTLSPolicySpecValidationSubjectAltNamesPatchOutputWithContext(context.Context) BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput
+}
+
+// SubjectAltName represents Subject Alternative Name.
+type BackendTLSPolicySpecValidationSubjectAltNamesPatchArgs struct {
+	// Hostname contains Subject Alternative Name specified in DNS name format.
+	// Required when Type is set to Hostname, ignored otherwise.
+	//
+	// Support: Core
+	Hostname pulumi.StringPtrInput `pulumi:"hostname"`
+	// Type determines the format of the Subject Alternative Name. Always required.
+	//
+	// Support: Core
+	Type pulumi.StringPtrInput `pulumi:"type"`
+	// URI contains Subject Alternative Name specified in a full URI format.
+	// It MUST include both a scheme (e.g., "http" or "ftp") and a scheme-specific-part.
+	// Common values include SPIFFE IDs like "spiffe://mycluster.example.com/ns/myns/sa/svc1sa".
+	// Required when Type is set to URI, ignored otherwise.
+	//
+	// Support: Core
+	Uri pulumi.StringPtrInput `pulumi:"uri"`
+}
+
+func (BackendTLSPolicySpecValidationSubjectAltNamesPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidationSubjectAltNamesPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecValidationSubjectAltNamesPatchArgs) ToBackendTLSPolicySpecValidationSubjectAltNamesPatchOutput() BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput {
+	return i.ToBackendTLSPolicySpecValidationSubjectAltNamesPatchOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationSubjectAltNamesPatchArgs) ToBackendTLSPolicySpecValidationSubjectAltNamesPatchOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput)
+}
+
+// BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayInput is an input type that accepts BackendTLSPolicySpecValidationSubjectAltNamesPatchArray and BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayInput` via:
+//
+//	BackendTLSPolicySpecValidationSubjectAltNamesPatchArray{ BackendTLSPolicySpecValidationSubjectAltNamesPatchArgs{...} }
+type BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput() BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput
+	ToBackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutputWithContext(context.Context) BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput
+}
+
+type BackendTLSPolicySpecValidationSubjectAltNamesPatchArray []BackendTLSPolicySpecValidationSubjectAltNamesPatchInput
+
+func (BackendTLSPolicySpecValidationSubjectAltNamesPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecValidationSubjectAltNamesPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicySpecValidationSubjectAltNamesPatchArray) ToBackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput() BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput {
+	return i.ToBackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicySpecValidationSubjectAltNamesPatchArray) ToBackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput)
+}
+
+// SubjectAltName represents Subject Alternative Name.
+type BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicySpecValidationSubjectAltNamesPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput) ToBackendTLSPolicySpecValidationSubjectAltNamesPatchOutput() BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput) ToBackendTLSPolicySpecValidationSubjectAltNamesPatchOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput {
+	return o
+}
+
+// Hostname contains Subject Alternative Name specified in DNS name format.
+// Required when Type is set to Hostname, ignored otherwise.
+//
+// Support: Core
+func (o BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput) Hostname() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationSubjectAltNamesPatch) *string { return v.Hostname }).(pulumi.StringPtrOutput)
+}
+
+// Type determines the format of the Subject Alternative Name. Always required.
+//
+// Support: Core
+func (o BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationSubjectAltNamesPatch) *string { return v.Type }).(pulumi.StringPtrOutput)
+}
+
+// URI contains Subject Alternative Name specified in a full URI format.
+// It MUST include both a scheme (e.g., "http" or "ftp") and a scheme-specific-part.
+// Common values include SPIFFE IDs like "spiffe://mycluster.example.com/ns/myns/sa/svc1sa".
+// Required when Type is set to URI, ignored otherwise.
+//
+// Support: Core
+func (o BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput) Uri() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicySpecValidationSubjectAltNamesPatch) *string { return v.Uri }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicySpecValidationSubjectAltNamesPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput) ToBackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput() BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput) ToBackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutputWithContext(ctx context.Context) BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicySpecValidationSubjectAltNamesPatch {
+		return vs[0].([]BackendTLSPolicySpecValidationSubjectAltNamesPatch)[vs[1].(int)]
+	}).(BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput)
+}
+
+// Status defines the current state of BackendTLSPolicy.
+type BackendTLSPolicyStatus struct {
+	// Ancestors is a list of ancestor resources (usually Gateways) that are
+	// associated with the policy, and the status of the policy with respect to
+	// each ancestor. When this policy attaches to a parent, the controller that
+	// manages the parent and the ancestors MUST add an entry to this list when
+	// the controller first sees the policy and SHOULD update the entry as
+	// appropriate when the relevant ancestor is modified.
+	//
+	// Note that choosing the relevant ancestor is left to the Policy designers;
+	// an important part of Policy design is designing the right object level at
+	// which to namespace this status.
+	//
+	// Note also that implementations MUST ONLY populate ancestor status for
+	// the Ancestor resources they are responsible for. Implementations MUST
+	// use the ControllerName field to uniquely identify the entries in this list
+	// that they are responsible for.
+	//
+	// Note that to achieve this, the list of PolicyAncestorStatus structs
+	// MUST be treated as a map with a composite key, made up of the AncestorRef
+	// and ControllerName fields combined.
+	//
+	// A maximum of 16 ancestors will be represented in this list. An empty list
+	// means the Policy is not relevant for any ancestors.
+	//
+	// If this slice is full, implementations MUST NOT add further entries.
+	// Instead they MUST consider the policy unimplementable and signal that
+	// on any related resources such as the ancestor that would be referenced
+	// here. For example, if this list was full on BackendTLSPolicy, no
+	// additional Gateways would be able to reference the Service targeted by
+	// the BackendTLSPolicy.
+	Ancestors []BackendTLSPolicyStatusAncestors `pulumi:"ancestors"`
+}
+
+// BackendTLSPolicyStatusInput is an input type that accepts BackendTLSPolicyStatusArgs and BackendTLSPolicyStatusOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusInput` via:
+//
+//	BackendTLSPolicyStatusArgs{...}
+type BackendTLSPolicyStatusInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusOutput() BackendTLSPolicyStatusOutput
+	ToBackendTLSPolicyStatusOutputWithContext(context.Context) BackendTLSPolicyStatusOutput
+}
+
+// Status defines the current state of BackendTLSPolicy.
+type BackendTLSPolicyStatusArgs struct {
+	// Ancestors is a list of ancestor resources (usually Gateways) that are
+	// associated with the policy, and the status of the policy with respect to
+	// each ancestor. When this policy attaches to a parent, the controller that
+	// manages the parent and the ancestors MUST add an entry to this list when
+	// the controller first sees the policy and SHOULD update the entry as
+	// appropriate when the relevant ancestor is modified.
+	//
+	// Note that choosing the relevant ancestor is left to the Policy designers;
+	// an important part of Policy design is designing the right object level at
+	// which to namespace this status.
+	//
+	// Note also that implementations MUST ONLY populate ancestor status for
+	// the Ancestor resources they are responsible for. Implementations MUST
+	// use the ControllerName field to uniquely identify the entries in this list
+	// that they are responsible for.
+	//
+	// Note that to achieve this, the list of PolicyAncestorStatus structs
+	// MUST be treated as a map with a composite key, made up of the AncestorRef
+	// and ControllerName fields combined.
+	//
+	// A maximum of 16 ancestors will be represented in this list. An empty list
+	// means the Policy is not relevant for any ancestors.
+	//
+	// If this slice is full, implementations MUST NOT add further entries.
+	// Instead they MUST consider the policy unimplementable and signal that
+	// on any related resources such as the ancestor that would be referenced
+	// here. For example, if this list was full on BackendTLSPolicy, no
+	// additional Gateways would be able to reference the Service targeted by
+	// the BackendTLSPolicy.
+	Ancestors BackendTLSPolicyStatusAncestorsArrayInput `pulumi:"ancestors"`
+}
+
+func (BackendTLSPolicyStatusArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatus)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusArgs) ToBackendTLSPolicyStatusOutput() BackendTLSPolicyStatusOutput {
+	return i.ToBackendTLSPolicyStatusOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusArgs) ToBackendTLSPolicyStatusOutputWithContext(ctx context.Context) BackendTLSPolicyStatusOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusOutput)
+}
+
+func (i BackendTLSPolicyStatusArgs) ToBackendTLSPolicyStatusPtrOutput() BackendTLSPolicyStatusPtrOutput {
+	return i.ToBackendTLSPolicyStatusPtrOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusArgs) ToBackendTLSPolicyStatusPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusOutput).ToBackendTLSPolicyStatusPtrOutputWithContext(ctx)
+}
+
+// BackendTLSPolicyStatusPtrInput is an input type that accepts BackendTLSPolicyStatusArgs, BackendTLSPolicyStatusPtr and BackendTLSPolicyStatusPtrOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusPtrInput` via:
+//
+//	        BackendTLSPolicyStatusArgs{...}
+//
+//	or:
+//
+//	        nil
+type BackendTLSPolicyStatusPtrInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusPtrOutput() BackendTLSPolicyStatusPtrOutput
+	ToBackendTLSPolicyStatusPtrOutputWithContext(context.Context) BackendTLSPolicyStatusPtrOutput
+}
+
+type backendTLSPolicyStatusPtrType BackendTLSPolicyStatusArgs
+
+func BackendTLSPolicyStatusPtr(v *BackendTLSPolicyStatusArgs) BackendTLSPolicyStatusPtrInput {
+	return (*backendTLSPolicyStatusPtrType)(v)
+}
+
+func (*backendTLSPolicyStatusPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicyStatus)(nil)).Elem()
+}
+
+func (i *backendTLSPolicyStatusPtrType) ToBackendTLSPolicyStatusPtrOutput() BackendTLSPolicyStatusPtrOutput {
+	return i.ToBackendTLSPolicyStatusPtrOutputWithContext(context.Background())
+}
+
+func (i *backendTLSPolicyStatusPtrType) ToBackendTLSPolicyStatusPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusPtrOutput)
+}
+
+// Status defines the current state of BackendTLSPolicy.
+type BackendTLSPolicyStatusOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatus)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusOutput) ToBackendTLSPolicyStatusOutput() BackendTLSPolicyStatusOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusOutput) ToBackendTLSPolicyStatusOutputWithContext(ctx context.Context) BackendTLSPolicyStatusOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusOutput) ToBackendTLSPolicyStatusPtrOutput() BackendTLSPolicyStatusPtrOutput {
+	return o.ToBackendTLSPolicyStatusPtrOutputWithContext(context.Background())
+}
+
+func (o BackendTLSPolicyStatusOutput) ToBackendTLSPolicyStatusPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v BackendTLSPolicyStatus) *BackendTLSPolicyStatus {
+		return &v
+	}).(BackendTLSPolicyStatusPtrOutput)
+}
+
+// Ancestors is a list of ancestor resources (usually Gateways) that are
+// associated with the policy, and the status of the policy with respect to
+// each ancestor. When this policy attaches to a parent, the controller that
+// manages the parent and the ancestors MUST add an entry to this list when
+// the controller first sees the policy and SHOULD update the entry as
+// appropriate when the relevant ancestor is modified.
+//
+// Note that choosing the relevant ancestor is left to the Policy designers;
+// an important part of Policy design is designing the right object level at
+// which to namespace this status.
+//
+// Note also that implementations MUST ONLY populate ancestor status for
+// the Ancestor resources they are responsible for. Implementations MUST
+// use the ControllerName field to uniquely identify the entries in this list
+// that they are responsible for.
+//
+// Note that to achieve this, the list of PolicyAncestorStatus structs
+// MUST be treated as a map with a composite key, made up of the AncestorRef
+// and ControllerName fields combined.
+//
+// A maximum of 16 ancestors will be represented in this list. An empty list
+// means the Policy is not relevant for any ancestors.
+//
+// If this slice is full, implementations MUST NOT add further entries.
+// Instead they MUST consider the policy unimplementable and signal that
+// on any related resources such as the ancestor that would be referenced
+// here. For example, if this list was full on BackendTLSPolicy, no
+// additional Gateways would be able to reference the Service targeted by
+// the BackendTLSPolicy.
+func (o BackendTLSPolicyStatusOutput) Ancestors() BackendTLSPolicyStatusAncestorsArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatus) []BackendTLSPolicyStatusAncestors { return v.Ancestors }).(BackendTLSPolicyStatusAncestorsArrayOutput)
+}
+
+type BackendTLSPolicyStatusPtrOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicyStatus)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusPtrOutput) ToBackendTLSPolicyStatusPtrOutput() BackendTLSPolicyStatusPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusPtrOutput) ToBackendTLSPolicyStatusPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusPtrOutput) Elem() BackendTLSPolicyStatusOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatus) BackendTLSPolicyStatus {
+		if v != nil {
+			return *v
+		}
+		var ret BackendTLSPolicyStatus
+		return ret
+	}).(BackendTLSPolicyStatusOutput)
+}
+
+// Ancestors is a list of ancestor resources (usually Gateways) that are
+// associated with the policy, and the status of the policy with respect to
+// each ancestor. When this policy attaches to a parent, the controller that
+// manages the parent and the ancestors MUST add an entry to this list when
+// the controller first sees the policy and SHOULD update the entry as
+// appropriate when the relevant ancestor is modified.
+//
+// Note that choosing the relevant ancestor is left to the Policy designers;
+// an important part of Policy design is designing the right object level at
+// which to namespace this status.
+//
+// Note also that implementations MUST ONLY populate ancestor status for
+// the Ancestor resources they are responsible for. Implementations MUST
+// use the ControllerName field to uniquely identify the entries in this list
+// that they are responsible for.
+//
+// Note that to achieve this, the list of PolicyAncestorStatus structs
+// MUST be treated as a map with a composite key, made up of the AncestorRef
+// and ControllerName fields combined.
+//
+// A maximum of 16 ancestors will be represented in this list. An empty list
+// means the Policy is not relevant for any ancestors.
+//
+// If this slice is full, implementations MUST NOT add further entries.
+// Instead they MUST consider the policy unimplementable and signal that
+// on any related resources such as the ancestor that would be referenced
+// here. For example, if this list was full on BackendTLSPolicy, no
+// additional Gateways would be able to reference the Service targeted by
+// the BackendTLSPolicy.
+func (o BackendTLSPolicyStatusPtrOutput) Ancestors() BackendTLSPolicyStatusAncestorsArrayOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatus) []BackendTLSPolicyStatusAncestors {
+		if v == nil {
+			return nil
+		}
+		return v.Ancestors
+	}).(BackendTLSPolicyStatusAncestorsArrayOutput)
+}
+
+// PolicyAncestorStatus describes the status of a route with respect to an
+// associated Ancestor.
+//
+// Ancestors refer to objects that are either the Target of a policy or above it
+// in terms of object hierarchy. For example, if a policy targets a Service, the
+// Policy's Ancestors are, in order, the Service, the HTTPRoute, the Gateway, and
+// the GatewayClass. Almost always, in this hierarchy, the Gateway will be the most
+// useful object to place Policy status on, so we recommend that implementations
+// SHOULD use Gateway as the PolicyAncestorStatus object unless the designers
+// have a _very_ good reason otherwise.
+//
+// In the context of policy attachment, the Ancestor is used to distinguish which
+// resource results in a distinct application of this policy. For example, if a policy
+// targets a Service, it may have a distinct result per attached Gateway.
+//
+// Policies targeting the same resource may have different effects depending on the
+// ancestors of those resources. For example, different Gateways targeting the same
+// Service may have different capabilities, especially if they have different underlying
+// implementations.
+//
+// For example, in BackendTLSPolicy, the Policy attaches to a Service that is
+// used as a backend in a HTTPRoute that is itself attached to a Gateway.
+// In this case, the relevant object for status is the Gateway, and that is the
+// ancestor object referred to in this status.
+//
+// Note that a parent is also an ancestor, so for objects where the parent is the
+// relevant object for status, this struct SHOULD still be used.
+//
+// This struct is intended to be used in a slice that's effectively a map,
+// with a composite key made up of the AncestorRef and the ControllerName.
+type BackendTLSPolicyStatusAncestors struct {
+	AncestorRef *BackendTLSPolicyStatusAncestorsAncestorRef `pulumi:"ancestorRef"`
+	// Conditions describes the status of the Policy with respect to the given Ancestor.
+	Conditions []BackendTLSPolicyStatusAncestorsConditions `pulumi:"conditions"`
+	// ControllerName is a domain/path string that indicates the name of the
+	// controller that wrote this status. This corresponds with the
+	// controllerName field on GatewayClass.
+	//
+	// Example: "example.net/gateway-controller".
+	//
+	// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+	// valid Kubernetes names
+	// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	//
+	// Controllers MUST populate this field when writing status. Controllers should ensure that
+	// entries to status populated with their ControllerName are cleaned up when they are no
+	// longer necessary.
+	ControllerName *string `pulumi:"controllerName"`
+}
+
+// BackendTLSPolicyStatusAncestorsInput is an input type that accepts BackendTLSPolicyStatusAncestorsArgs and BackendTLSPolicyStatusAncestorsOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsInput` via:
+//
+//	BackendTLSPolicyStatusAncestorsArgs{...}
+type BackendTLSPolicyStatusAncestorsInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsOutput() BackendTLSPolicyStatusAncestorsOutput
+	ToBackendTLSPolicyStatusAncestorsOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsOutput
+}
+
+// PolicyAncestorStatus describes the status of a route with respect to an
+// associated Ancestor.
+//
+// Ancestors refer to objects that are either the Target of a policy or above it
+// in terms of object hierarchy. For example, if a policy targets a Service, the
+// Policy's Ancestors are, in order, the Service, the HTTPRoute, the Gateway, and
+// the GatewayClass. Almost always, in this hierarchy, the Gateway will be the most
+// useful object to place Policy status on, so we recommend that implementations
+// SHOULD use Gateway as the PolicyAncestorStatus object unless the designers
+// have a _very_ good reason otherwise.
+//
+// In the context of policy attachment, the Ancestor is used to distinguish which
+// resource results in a distinct application of this policy. For example, if a policy
+// targets a Service, it may have a distinct result per attached Gateway.
+//
+// Policies targeting the same resource may have different effects depending on the
+// ancestors of those resources. For example, different Gateways targeting the same
+// Service may have different capabilities, especially if they have different underlying
+// implementations.
+//
+// For example, in BackendTLSPolicy, the Policy attaches to a Service that is
+// used as a backend in a HTTPRoute that is itself attached to a Gateway.
+// In this case, the relevant object for status is the Gateway, and that is the
+// ancestor object referred to in this status.
+//
+// Note that a parent is also an ancestor, so for objects where the parent is the
+// relevant object for status, this struct SHOULD still be used.
+//
+// This struct is intended to be used in a slice that's effectively a map,
+// with a composite key made up of the AncestorRef and the ControllerName.
+type BackendTLSPolicyStatusAncestorsArgs struct {
+	AncestorRef BackendTLSPolicyStatusAncestorsAncestorRefPtrInput `pulumi:"ancestorRef"`
+	// Conditions describes the status of the Policy with respect to the given Ancestor.
+	Conditions BackendTLSPolicyStatusAncestorsConditionsArrayInput `pulumi:"conditions"`
+	// ControllerName is a domain/path string that indicates the name of the
+	// controller that wrote this status. This corresponds with the
+	// controllerName field on GatewayClass.
+	//
+	// Example: "example.net/gateway-controller".
+	//
+	// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+	// valid Kubernetes names
+	// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	//
+	// Controllers MUST populate this field when writing status. Controllers should ensure that
+	// entries to status populated with their ControllerName are cleaned up when they are no
+	// longer necessary.
+	ControllerName pulumi.StringPtrInput `pulumi:"controllerName"`
+}
+
+func (BackendTLSPolicyStatusAncestorsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestors)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusAncestorsArgs) ToBackendTLSPolicyStatusAncestorsOutput() BackendTLSPolicyStatusAncestorsOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsArgs) ToBackendTLSPolicyStatusAncestorsOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsOutput)
+}
+
+// BackendTLSPolicyStatusAncestorsArrayInput is an input type that accepts BackendTLSPolicyStatusAncestorsArray and BackendTLSPolicyStatusAncestorsArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsArrayInput` via:
+//
+//	BackendTLSPolicyStatusAncestorsArray{ BackendTLSPolicyStatusAncestorsArgs{...} }
+type BackendTLSPolicyStatusAncestorsArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsArrayOutput() BackendTLSPolicyStatusAncestorsArrayOutput
+	ToBackendTLSPolicyStatusAncestorsArrayOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsArrayOutput
+}
+
+type BackendTLSPolicyStatusAncestorsArray []BackendTLSPolicyStatusAncestorsInput
+
+func (BackendTLSPolicyStatusAncestorsArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicyStatusAncestors)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusAncestorsArray) ToBackendTLSPolicyStatusAncestorsArrayOutput() BackendTLSPolicyStatusAncestorsArrayOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsArray) ToBackendTLSPolicyStatusAncestorsArrayOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsArrayOutput)
+}
+
+// PolicyAncestorStatus describes the status of a route with respect to an
+// associated Ancestor.
+//
+// Ancestors refer to objects that are either the Target of a policy or above it
+// in terms of object hierarchy. For example, if a policy targets a Service, the
+// Policy's Ancestors are, in order, the Service, the HTTPRoute, the Gateway, and
+// the GatewayClass. Almost always, in this hierarchy, the Gateway will be the most
+// useful object to place Policy status on, so we recommend that implementations
+// SHOULD use Gateway as the PolicyAncestorStatus object unless the designers
+// have a _very_ good reason otherwise.
+//
+// In the context of policy attachment, the Ancestor is used to distinguish which
+// resource results in a distinct application of this policy. For example, if a policy
+// targets a Service, it may have a distinct result per attached Gateway.
+//
+// Policies targeting the same resource may have different effects depending on the
+// ancestors of those resources. For example, different Gateways targeting the same
+// Service may have different capabilities, especially if they have different underlying
+// implementations.
+//
+// For example, in BackendTLSPolicy, the Policy attaches to a Service that is
+// used as a backend in a HTTPRoute that is itself attached to a Gateway.
+// In this case, the relevant object for status is the Gateway, and that is the
+// ancestor object referred to in this status.
+//
+// Note that a parent is also an ancestor, so for objects where the parent is the
+// relevant object for status, this struct SHOULD still be used.
+//
+// This struct is intended to be used in a slice that's effectively a map,
+// with a composite key made up of the AncestorRef and the ControllerName.
+type BackendTLSPolicyStatusAncestorsOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestors)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsOutput) ToBackendTLSPolicyStatusAncestorsOutput() BackendTLSPolicyStatusAncestorsOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsOutput) ToBackendTLSPolicyStatusAncestorsOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsOutput) AncestorRef() BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestors) *BackendTLSPolicyStatusAncestorsAncestorRef {
+		return v.AncestorRef
+	}).(BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput)
+}
+
+// Conditions describes the status of the Policy with respect to the given Ancestor.
+func (o BackendTLSPolicyStatusAncestorsOutput) Conditions() BackendTLSPolicyStatusAncestorsConditionsArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestors) []BackendTLSPolicyStatusAncestorsConditions {
+		return v.Conditions
+	}).(BackendTLSPolicyStatusAncestorsConditionsArrayOutput)
+}
+
+// ControllerName is a domain/path string that indicates the name of the
+// controller that wrote this status. This corresponds with the
+// controllerName field on GatewayClass.
+//
+// Example: "example.net/gateway-controller".
+//
+// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+// valid Kubernetes names
+// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+//
+// Controllers MUST populate this field when writing status. Controllers should ensure that
+// entries to status populated with their ControllerName are cleaned up when they are no
+// longer necessary.
+func (o BackendTLSPolicyStatusAncestorsOutput) ControllerName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestors) *string { return v.ControllerName }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicyStatusAncestorsArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicyStatusAncestors)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsArrayOutput) ToBackendTLSPolicyStatusAncestorsArrayOutput() BackendTLSPolicyStatusAncestorsArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsArrayOutput) ToBackendTLSPolicyStatusAncestorsArrayOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicyStatusAncestorsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicyStatusAncestors {
+		return vs[0].([]BackendTLSPolicyStatusAncestors)[vs[1].(int)]
+	}).(BackendTLSPolicyStatusAncestorsOutput)
+}
+
+// AncestorRef corresponds with a ParentRef in the spec that this
+// PolicyAncestorStatus struct describes the status of.
+type BackendTLSPolicyStatusAncestorsAncestorRef struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group *string `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name *string `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace *string `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port *int `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName *string `pulumi:"sectionName"`
+}
+
+// BackendTLSPolicyStatusAncestorsAncestorRefInput is an input type that accepts BackendTLSPolicyStatusAncestorsAncestorRefArgs and BackendTLSPolicyStatusAncestorsAncestorRefOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsAncestorRefInput` via:
+//
+//	BackendTLSPolicyStatusAncestorsAncestorRefArgs{...}
+type BackendTLSPolicyStatusAncestorsAncestorRefInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsAncestorRefOutput() BackendTLSPolicyStatusAncestorsAncestorRefOutput
+	ToBackendTLSPolicyStatusAncestorsAncestorRefOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsAncestorRefOutput
+}
+
+// AncestorRef corresponds with a ParentRef in the spec that this
+// PolicyAncestorStatus struct describes the status of.
+type BackendTLSPolicyStatusAncestorsAncestorRefArgs struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port pulumi.IntPtrInput `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName pulumi.StringPtrInput `pulumi:"sectionName"`
+}
+
+func (BackendTLSPolicyStatusAncestorsAncestorRefArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestorsAncestorRef)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusAncestorsAncestorRefArgs) ToBackendTLSPolicyStatusAncestorsAncestorRefOutput() BackendTLSPolicyStatusAncestorsAncestorRefOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsAncestorRefOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsAncestorRefArgs) ToBackendTLSPolicyStatusAncestorsAncestorRefOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsAncestorRefOutput)
+}
+
+func (i BackendTLSPolicyStatusAncestorsAncestorRefArgs) ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutput() BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsAncestorRefArgs) ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsAncestorRefOutput).ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutputWithContext(ctx)
+}
+
+// BackendTLSPolicyStatusAncestorsAncestorRefPtrInput is an input type that accepts BackendTLSPolicyStatusAncestorsAncestorRefArgs, BackendTLSPolicyStatusAncestorsAncestorRefPtr and BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsAncestorRefPtrInput` via:
+//
+//	        BackendTLSPolicyStatusAncestorsAncestorRefArgs{...}
+//
+//	or:
+//
+//	        nil
+type BackendTLSPolicyStatusAncestorsAncestorRefPtrInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutput() BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput
+	ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput
+}
+
+type backendTLSPolicyStatusAncestorsAncestorRefPtrType BackendTLSPolicyStatusAncestorsAncestorRefArgs
+
+func BackendTLSPolicyStatusAncestorsAncestorRefPtr(v *BackendTLSPolicyStatusAncestorsAncestorRefArgs) BackendTLSPolicyStatusAncestorsAncestorRefPtrInput {
+	return (*backendTLSPolicyStatusAncestorsAncestorRefPtrType)(v)
+}
+
+func (*backendTLSPolicyStatusAncestorsAncestorRefPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicyStatusAncestorsAncestorRef)(nil)).Elem()
+}
+
+func (i *backendTLSPolicyStatusAncestorsAncestorRefPtrType) ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutput() BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutputWithContext(context.Background())
+}
+
+func (i *backendTLSPolicyStatusAncestorsAncestorRefPtrType) ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput)
+}
+
+// AncestorRef corresponds with a ParentRef in the spec that this
+// PolicyAncestorStatus struct describes the status of.
+type BackendTLSPolicyStatusAncestorsAncestorRefOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsAncestorRefOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestorsAncestorRef)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefOutput() BackendTLSPolicyStatusAncestorsAncestorRefOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutput() BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput {
+	return o.ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutputWithContext(context.Background())
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v BackendTLSPolicyStatusAncestorsAncestorRef) *BackendTLSPolicyStatusAncestorsAncestorRef {
+		return &v
+	}).(BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput)
+}
+
+// Group is the group of the referent.
+// When unspecified, "gateway.networking.k8s.io" is inferred.
+// To set the core API group (such as for a "Service" kind referent),
+// Group must be explicitly set to "" (empty string).
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRef) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// Support for other resources is Implementation-Specific.
+func (o BackendTLSPolicyStatusAncestorsAncestorRefOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRef) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRef) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the referent. When unspecified, this refers
+// to the local namespace of the Route.
+//
+// Note that there are specific rules for ParentRefs which cross namespace
+// boundaries. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example:
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable any other kind of cross-namespace reference.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRef) *string { return v.Namespace }).(pulumi.StringPtrOutput)
+}
+
+// Port is the network port this Route targets. It can be interpreted
+// differently based on the type of parent resource.
+//
+// When the parent resource is a Gateway, this targets all listeners
+// listening on the specified port that also support this kind of Route(and
+// select this Route). It's not recommended to set `Port` unless the
+// networking behaviors specified in a Route must apply to a specific port
+// as opposed to a listener(s) whose port(s) may be changed. When both Port
+// and SectionName are specified, the name and port of the selected listener
+// must match both specified values.
+//
+// Implementations MAY choose to support other parent resources.
+// Implementations supporting other types of parent resources MUST clearly
+// document how/if Port is interpreted.
+//
+// For the purpose of status, an attachment is considered successful as
+// long as the parent resource accepts it partially. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+// from the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route,
+// the Route MUST be considered detached from the Gateway.
+//
+// Support: Extended
+func (o BackendTLSPolicyStatusAncestorsAncestorRefOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRef) *int { return v.Port }).(pulumi.IntPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. In the
+// following resources, SectionName is interpreted as the following:
+//
+//   - Gateway: Listener name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//   - Service: Port name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//
+// Implementations MAY choose to support attaching Routes to other resources.
+// If that is the case, they MUST clearly document how SectionName is
+// interpreted.
+//
+// When unspecified (empty string), this will reference the entire resource.
+// For the purpose of status, an attachment is considered successful if at
+// least one section in the parent resource accepts it. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+// the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route, the
+// Route MUST be considered detached from the Gateway.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRef) *string { return v.SectionName }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicyStatusAncestorsAncestorRef)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutput() BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput) Elem() BackendTLSPolicyStatusAncestorsAncestorRefOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRef) BackendTLSPolicyStatusAncestorsAncestorRef {
+		if v != nil {
+			return *v
+		}
+		var ret BackendTLSPolicyStatusAncestorsAncestorRef
+		return ret
+	}).(BackendTLSPolicyStatusAncestorsAncestorRefOutput)
+}
+
+// Group is the group of the referent.
+// When unspecified, "gateway.networking.k8s.io" is inferred.
+// To set the core API group (such as for a "Service" kind referent),
+// Group must be explicitly set to "" (empty string).
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRef) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Group
+	}).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// Support for other resources is Implementation-Specific.
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRef) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Kind
+	}).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRef) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the referent. When unspecified, this refers
+// to the local namespace of the Route.
+//
+// Note that there are specific rules for ParentRefs which cross namespace
+// boundaries. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example:
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable any other kind of cross-namespace reference.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRef) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Namespace
+	}).(pulumi.StringPtrOutput)
+}
+
+// Port is the network port this Route targets. It can be interpreted
+// differently based on the type of parent resource.
+//
+// When the parent resource is a Gateway, this targets all listeners
+// listening on the specified port that also support this kind of Route(and
+// select this Route). It's not recommended to set `Port` unless the
+// networking behaviors specified in a Route must apply to a specific port
+// as opposed to a listener(s) whose port(s) may be changed. When both Port
+// and SectionName are specified, the name and port of the selected listener
+// must match both specified values.
+//
+// Implementations MAY choose to support other parent resources.
+// Implementations supporting other types of parent resources MUST clearly
+// document how/if Port is interpreted.
+//
+// For the purpose of status, an attachment is considered successful as
+// long as the parent resource accepts it partially. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+// from the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route,
+// the Route MUST be considered detached from the Gateway.
+//
+// Support: Extended
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRef) *int {
+		if v == nil {
+			return nil
+		}
+		return v.Port
+	}).(pulumi.IntPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. In the
+// following resources, SectionName is interpreted as the following:
+//
+//   - Gateway: Listener name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//   - Service: Port name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//
+// Implementations MAY choose to support attaching Routes to other resources.
+// If that is the case, they MUST clearly document how SectionName is
+// interpreted.
+//
+// When unspecified (empty string), this will reference the entire resource.
+// For the purpose of status, an attachment is considered successful if at
+// least one section in the parent resource accepts it. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+// the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route, the
+// Route MUST be considered detached from the Gateway.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRef) *string {
+		if v == nil {
+			return nil
+		}
+		return v.SectionName
+	}).(pulumi.StringPtrOutput)
+}
+
+// AncestorRef corresponds with a ParentRef in the spec that this
+// PolicyAncestorStatus struct describes the status of.
+type BackendTLSPolicyStatusAncestorsAncestorRefPatch struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group *string `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name *string `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace *string `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port *int `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName *string `pulumi:"sectionName"`
+}
+
+// BackendTLSPolicyStatusAncestorsAncestorRefPatchInput is an input type that accepts BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs and BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsAncestorRefPatchInput` via:
+//
+//	BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs{...}
+type BackendTLSPolicyStatusAncestorsAncestorRefPatchInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsAncestorRefPatchOutput() BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput
+	ToBackendTLSPolicyStatusAncestorsAncestorRefPatchOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput
+}
+
+// AncestorRef corresponds with a ParentRef in the spec that this
+// PolicyAncestorStatus struct describes the status of.
+type BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port pulumi.IntPtrInput `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName pulumi.StringPtrInput `pulumi:"sectionName"`
+}
+
+func (BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestorsAncestorRefPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchOutput() BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsAncestorRefPatchOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput)
+}
+
+func (i BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput() BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput).ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutputWithContext(ctx)
+}
+
+// BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrInput is an input type that accepts BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs, BackendTLSPolicyStatusAncestorsAncestorRefPatchPtr and BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrInput` via:
+//
+//	        BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput() BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput
+	ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput
+}
+
+type backendTLSPolicyStatusAncestorsAncestorRefPatchPtrType BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs
+
+func BackendTLSPolicyStatusAncestorsAncestorRefPatchPtr(v *BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs) BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrInput {
+	return (*backendTLSPolicyStatusAncestorsAncestorRefPatchPtrType)(v)
+}
+
+func (*backendTLSPolicyStatusAncestorsAncestorRefPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicyStatusAncestorsAncestorRefPatch)(nil)).Elem()
+}
+
+func (i *backendTLSPolicyStatusAncestorsAncestorRefPatchPtrType) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput() BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *backendTLSPolicyStatusAncestorsAncestorRefPatchPtrType) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput)
+}
+
+// AncestorRef corresponds with a ParentRef in the spec that this
+// PolicyAncestorStatus struct describes the status of.
+type BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestorsAncestorRefPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchOutput() BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput() BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput {
+	return o.ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutputWithContext(context.Background())
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v BackendTLSPolicyStatusAncestorsAncestorRefPatch) *BackendTLSPolicyStatusAncestorsAncestorRefPatch {
+		return &v
+	}).(BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput)
+}
+
+// Group is the group of the referent.
+// When unspecified, "gateway.networking.k8s.io" is inferred.
+// To set the core API group (such as for a "Service" kind referent),
+// Group must be explicitly set to "" (empty string).
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRefPatch) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// Support for other resources is Implementation-Specific.
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRefPatch) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRefPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the referent. When unspecified, this refers
+// to the local namespace of the Route.
+//
+// Note that there are specific rules for ParentRefs which cross namespace
+// boundaries. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example:
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable any other kind of cross-namespace reference.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRefPatch) *string { return v.Namespace }).(pulumi.StringPtrOutput)
+}
+
+// Port is the network port this Route targets. It can be interpreted
+// differently based on the type of parent resource.
+//
+// When the parent resource is a Gateway, this targets all listeners
+// listening on the specified port that also support this kind of Route(and
+// select this Route). It's not recommended to set `Port` unless the
+// networking behaviors specified in a Route must apply to a specific port
+// as opposed to a listener(s) whose port(s) may be changed. When both Port
+// and SectionName are specified, the name and port of the selected listener
+// must match both specified values.
+//
+// Implementations MAY choose to support other parent resources.
+// Implementations supporting other types of parent resources MUST clearly
+// document how/if Port is interpreted.
+//
+// For the purpose of status, an attachment is considered successful as
+// long as the parent resource accepts it partially. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+// from the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route,
+// the Route MUST be considered detached from the Gateway.
+//
+// Support: Extended
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRefPatch) *int { return v.Port }).(pulumi.IntPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. In the
+// following resources, SectionName is interpreted as the following:
+//
+//   - Gateway: Listener name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//   - Service: Port name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//
+// Implementations MAY choose to support attaching Routes to other resources.
+// If that is the case, they MUST clearly document how SectionName is
+// interpreted.
+//
+// When unspecified (empty string), this will reference the entire resource.
+// For the purpose of status, an attachment is considered successful if at
+// least one section in the parent resource accepts it. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+// the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route, the
+// Route MUST be considered detached from the Gateway.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsAncestorRefPatch) *string { return v.SectionName }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicyStatusAncestorsAncestorRefPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput() BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput) ToBackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput) Elem() BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRefPatch) BackendTLSPolicyStatusAncestorsAncestorRefPatch {
+		if v != nil {
+			return *v
+		}
+		var ret BackendTLSPolicyStatusAncestorsAncestorRefPatch
+		return ret
+	}).(BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput)
+}
+
+// Group is the group of the referent.
+// When unspecified, "gateway.networking.k8s.io" is inferred.
+// To set the core API group (such as for a "Service" kind referent),
+// Group must be explicitly set to "" (empty string).
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRefPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Group
+	}).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// Support for other resources is Implementation-Specific.
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRefPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Kind
+	}).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRefPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the referent. When unspecified, this refers
+// to the local namespace of the Route.
+//
+// Note that there are specific rules for ParentRefs which cross namespace
+// boundaries. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example:
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable any other kind of cross-namespace reference.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRefPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Namespace
+	}).(pulumi.StringPtrOutput)
+}
+
+// Port is the network port this Route targets. It can be interpreted
+// differently based on the type of parent resource.
+//
+// When the parent resource is a Gateway, this targets all listeners
+// listening on the specified port that also support this kind of Route(and
+// select this Route). It's not recommended to set `Port` unless the
+// networking behaviors specified in a Route must apply to a specific port
+// as opposed to a listener(s) whose port(s) may be changed. When both Port
+// and SectionName are specified, the name and port of the selected listener
+// must match both specified values.
+//
+// Implementations MAY choose to support other parent resources.
+// Implementations supporting other types of parent resources MUST clearly
+// document how/if Port is interpreted.
+//
+// For the purpose of status, an attachment is considered successful as
+// long as the parent resource accepts it partially. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+// from the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route,
+// the Route MUST be considered detached from the Gateway.
+//
+// Support: Extended
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRefPatch) *int {
+		if v == nil {
+			return nil
+		}
+		return v.Port
+	}).(pulumi.IntPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. In the
+// following resources, SectionName is interpreted as the following:
+//
+//   - Gateway: Listener name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//   - Service: Port name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//
+// Implementations MAY choose to support attaching Routes to other resources.
+// If that is the case, they MUST clearly document how SectionName is
+// interpreted.
+//
+// When unspecified (empty string), this will reference the entire resource.
+// For the purpose of status, an attachment is considered successful if at
+// least one section in the parent resource accepts it. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+// the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route, the
+// Route MUST be considered detached from the Gateway.
+//
+// Support: Core
+func (o BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusAncestorsAncestorRefPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.SectionName
+	}).(pulumi.StringPtrOutput)
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type BackendTLSPolicyStatusAncestorsConditions struct {
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	LastTransitionTime *string `pulumi:"lastTransitionTime"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	Message *string `pulumi:"message"`
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	ObservedGeneration *int `pulumi:"observedGeneration"`
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// Producers of specific condition types may define expected values and meanings for this field,
+	// and whether the values are considered a guaranteed API.
+	// The value should be a CamelCase string.
+	// This field may not be empty.
+	Reason *string `pulumi:"reason"`
+	// status of the condition, one of True, False, Unknown.
+	Status *string `pulumi:"status"`
+	// type of condition in CamelCase or in foo.example.com/CamelCase.
+	Type *string `pulumi:"type"`
+}
+
+// BackendTLSPolicyStatusAncestorsConditionsInput is an input type that accepts BackendTLSPolicyStatusAncestorsConditionsArgs and BackendTLSPolicyStatusAncestorsConditionsOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsConditionsInput` via:
+//
+//	BackendTLSPolicyStatusAncestorsConditionsArgs{...}
+type BackendTLSPolicyStatusAncestorsConditionsInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsConditionsOutput() BackendTLSPolicyStatusAncestorsConditionsOutput
+	ToBackendTLSPolicyStatusAncestorsConditionsOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsConditionsOutput
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type BackendTLSPolicyStatusAncestorsConditionsArgs struct {
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	LastTransitionTime pulumi.StringPtrInput `pulumi:"lastTransitionTime"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	Message pulumi.StringPtrInput `pulumi:"message"`
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	ObservedGeneration pulumi.IntPtrInput `pulumi:"observedGeneration"`
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// Producers of specific condition types may define expected values and meanings for this field,
+	// and whether the values are considered a guaranteed API.
+	// The value should be a CamelCase string.
+	// This field may not be empty.
+	Reason pulumi.StringPtrInput `pulumi:"reason"`
+	// status of the condition, one of True, False, Unknown.
+	Status pulumi.StringPtrInput `pulumi:"status"`
+	// type of condition in CamelCase or in foo.example.com/CamelCase.
+	Type pulumi.StringPtrInput `pulumi:"type"`
+}
+
+func (BackendTLSPolicyStatusAncestorsConditionsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestorsConditions)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusAncestorsConditionsArgs) ToBackendTLSPolicyStatusAncestorsConditionsOutput() BackendTLSPolicyStatusAncestorsConditionsOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsConditionsOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsConditionsArgs) ToBackendTLSPolicyStatusAncestorsConditionsOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsConditionsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsConditionsOutput)
+}
+
+// BackendTLSPolicyStatusAncestorsConditionsArrayInput is an input type that accepts BackendTLSPolicyStatusAncestorsConditionsArray and BackendTLSPolicyStatusAncestorsConditionsArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsConditionsArrayInput` via:
+//
+//	BackendTLSPolicyStatusAncestorsConditionsArray{ BackendTLSPolicyStatusAncestorsConditionsArgs{...} }
+type BackendTLSPolicyStatusAncestorsConditionsArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsConditionsArrayOutput() BackendTLSPolicyStatusAncestorsConditionsArrayOutput
+	ToBackendTLSPolicyStatusAncestorsConditionsArrayOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsConditionsArrayOutput
+}
+
+type BackendTLSPolicyStatusAncestorsConditionsArray []BackendTLSPolicyStatusAncestorsConditionsInput
+
+func (BackendTLSPolicyStatusAncestorsConditionsArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicyStatusAncestorsConditions)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusAncestorsConditionsArray) ToBackendTLSPolicyStatusAncestorsConditionsArrayOutput() BackendTLSPolicyStatusAncestorsConditionsArrayOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsConditionsArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsConditionsArray) ToBackendTLSPolicyStatusAncestorsConditionsArrayOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsConditionsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsConditionsArrayOutput)
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type BackendTLSPolicyStatusAncestorsConditionsOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsConditionsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestorsConditions)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsConditionsOutput) ToBackendTLSPolicyStatusAncestorsConditionsOutput() BackendTLSPolicyStatusAncestorsConditionsOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsConditionsOutput) ToBackendTLSPolicyStatusAncestorsConditionsOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsConditionsOutput {
+	return o
+}
+
+// lastTransitionTime is the last time the condition transitioned from one status to another.
+// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+func (o BackendTLSPolicyStatusAncestorsConditionsOutput) LastTransitionTime() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditions) *string { return v.LastTransitionTime }).(pulumi.StringPtrOutput)
+}
+
+// message is a human readable message indicating details about the transition.
+// This may be an empty string.
+func (o BackendTLSPolicyStatusAncestorsConditionsOutput) Message() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditions) *string { return v.Message }).(pulumi.StringPtrOutput)
+}
+
+// observedGeneration represents the .metadata.generation that the condition was set based upon.
+// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+// with respect to the current state of the instance.
+func (o BackendTLSPolicyStatusAncestorsConditionsOutput) ObservedGeneration() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditions) *int { return v.ObservedGeneration }).(pulumi.IntPtrOutput)
+}
+
+// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+// Producers of specific condition types may define expected values and meanings for this field,
+// and whether the values are considered a guaranteed API.
+// The value should be a CamelCase string.
+// This field may not be empty.
+func (o BackendTLSPolicyStatusAncestorsConditionsOutput) Reason() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditions) *string { return v.Reason }).(pulumi.StringPtrOutput)
+}
+
+// status of the condition, one of True, False, Unknown.
+func (o BackendTLSPolicyStatusAncestorsConditionsOutput) Status() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditions) *string { return v.Status }).(pulumi.StringPtrOutput)
+}
+
+// type of condition in CamelCase or in foo.example.com/CamelCase.
+func (o BackendTLSPolicyStatusAncestorsConditionsOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditions) *string { return v.Type }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicyStatusAncestorsConditionsArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsConditionsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicyStatusAncestorsConditions)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsConditionsArrayOutput) ToBackendTLSPolicyStatusAncestorsConditionsArrayOutput() BackendTLSPolicyStatusAncestorsConditionsArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsConditionsArrayOutput) ToBackendTLSPolicyStatusAncestorsConditionsArrayOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsConditionsArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsConditionsArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicyStatusAncestorsConditionsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicyStatusAncestorsConditions {
+		return vs[0].([]BackendTLSPolicyStatusAncestorsConditions)[vs[1].(int)]
+	}).(BackendTLSPolicyStatusAncestorsConditionsOutput)
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type BackendTLSPolicyStatusAncestorsConditionsPatch struct {
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	LastTransitionTime *string `pulumi:"lastTransitionTime"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	Message *string `pulumi:"message"`
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	ObservedGeneration *int `pulumi:"observedGeneration"`
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// Producers of specific condition types may define expected values and meanings for this field,
+	// and whether the values are considered a guaranteed API.
+	// The value should be a CamelCase string.
+	// This field may not be empty.
+	Reason *string `pulumi:"reason"`
+	// status of the condition, one of True, False, Unknown.
+	Status *string `pulumi:"status"`
+	// type of condition in CamelCase or in foo.example.com/CamelCase.
+	Type *string `pulumi:"type"`
+}
+
+// BackendTLSPolicyStatusAncestorsConditionsPatchInput is an input type that accepts BackendTLSPolicyStatusAncestorsConditionsPatchArgs and BackendTLSPolicyStatusAncestorsConditionsPatchOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsConditionsPatchInput` via:
+//
+//	BackendTLSPolicyStatusAncestorsConditionsPatchArgs{...}
+type BackendTLSPolicyStatusAncestorsConditionsPatchInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsConditionsPatchOutput() BackendTLSPolicyStatusAncestorsConditionsPatchOutput
+	ToBackendTLSPolicyStatusAncestorsConditionsPatchOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsConditionsPatchOutput
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type BackendTLSPolicyStatusAncestorsConditionsPatchArgs struct {
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	LastTransitionTime pulumi.StringPtrInput `pulumi:"lastTransitionTime"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	Message pulumi.StringPtrInput `pulumi:"message"`
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	ObservedGeneration pulumi.IntPtrInput `pulumi:"observedGeneration"`
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// Producers of specific condition types may define expected values and meanings for this field,
+	// and whether the values are considered a guaranteed API.
+	// The value should be a CamelCase string.
+	// This field may not be empty.
+	Reason pulumi.StringPtrInput `pulumi:"reason"`
+	// status of the condition, one of True, False, Unknown.
+	Status pulumi.StringPtrInput `pulumi:"status"`
+	// type of condition in CamelCase or in foo.example.com/CamelCase.
+	Type pulumi.StringPtrInput `pulumi:"type"`
+}
+
+func (BackendTLSPolicyStatusAncestorsConditionsPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestorsConditionsPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusAncestorsConditionsPatchArgs) ToBackendTLSPolicyStatusAncestorsConditionsPatchOutput() BackendTLSPolicyStatusAncestorsConditionsPatchOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsConditionsPatchOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsConditionsPatchArgs) ToBackendTLSPolicyStatusAncestorsConditionsPatchOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsConditionsPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsConditionsPatchOutput)
+}
+
+// BackendTLSPolicyStatusAncestorsConditionsPatchArrayInput is an input type that accepts BackendTLSPolicyStatusAncestorsConditionsPatchArray and BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsConditionsPatchArrayInput` via:
+//
+//	BackendTLSPolicyStatusAncestorsConditionsPatchArray{ BackendTLSPolicyStatusAncestorsConditionsPatchArgs{...} }
+type BackendTLSPolicyStatusAncestorsConditionsPatchArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput() BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput
+	ToBackendTLSPolicyStatusAncestorsConditionsPatchArrayOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput
+}
+
+type BackendTLSPolicyStatusAncestorsConditionsPatchArray []BackendTLSPolicyStatusAncestorsConditionsPatchInput
+
+func (BackendTLSPolicyStatusAncestorsConditionsPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicyStatusAncestorsConditionsPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusAncestorsConditionsPatchArray) ToBackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput() BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsConditionsPatchArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsConditionsPatchArray) ToBackendTLSPolicyStatusAncestorsConditionsPatchArrayOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput)
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type BackendTLSPolicyStatusAncestorsConditionsPatchOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsConditionsPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestorsConditionsPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchOutput) ToBackendTLSPolicyStatusAncestorsConditionsPatchOutput() BackendTLSPolicyStatusAncestorsConditionsPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchOutput) ToBackendTLSPolicyStatusAncestorsConditionsPatchOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsConditionsPatchOutput {
+	return o
+}
+
+// lastTransitionTime is the last time the condition transitioned from one status to another.
+// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchOutput) LastTransitionTime() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditionsPatch) *string { return v.LastTransitionTime }).(pulumi.StringPtrOutput)
+}
+
+// message is a human readable message indicating details about the transition.
+// This may be an empty string.
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchOutput) Message() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditionsPatch) *string { return v.Message }).(pulumi.StringPtrOutput)
+}
+
+// observedGeneration represents the .metadata.generation that the condition was set based upon.
+// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+// with respect to the current state of the instance.
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchOutput) ObservedGeneration() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditionsPatch) *int { return v.ObservedGeneration }).(pulumi.IntPtrOutput)
+}
+
+// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+// Producers of specific condition types may define expected values and meanings for this field,
+// and whether the values are considered a guaranteed API.
+// The value should be a CamelCase string.
+// This field may not be empty.
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchOutput) Reason() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditionsPatch) *string { return v.Reason }).(pulumi.StringPtrOutput)
+}
+
+// status of the condition, one of True, False, Unknown.
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchOutput) Status() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditionsPatch) *string { return v.Status }).(pulumi.StringPtrOutput)
+}
+
+// type of condition in CamelCase or in foo.example.com/CamelCase.
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsConditionsPatch) *string { return v.Type }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicyStatusAncestorsConditionsPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput) ToBackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput() BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput) ToBackendTLSPolicyStatusAncestorsConditionsPatchArrayOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicyStatusAncestorsConditionsPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicyStatusAncestorsConditionsPatch {
+		return vs[0].([]BackendTLSPolicyStatusAncestorsConditionsPatch)[vs[1].(int)]
+	}).(BackendTLSPolicyStatusAncestorsConditionsPatchOutput)
+}
+
+// PolicyAncestorStatus describes the status of a route with respect to an
+// associated Ancestor.
+//
+// Ancestors refer to objects that are either the Target of a policy or above it
+// in terms of object hierarchy. For example, if a policy targets a Service, the
+// Policy's Ancestors are, in order, the Service, the HTTPRoute, the Gateway, and
+// the GatewayClass. Almost always, in this hierarchy, the Gateway will be the most
+// useful object to place Policy status on, so we recommend that implementations
+// SHOULD use Gateway as the PolicyAncestorStatus object unless the designers
+// have a _very_ good reason otherwise.
+//
+// In the context of policy attachment, the Ancestor is used to distinguish which
+// resource results in a distinct application of this policy. For example, if a policy
+// targets a Service, it may have a distinct result per attached Gateway.
+//
+// Policies targeting the same resource may have different effects depending on the
+// ancestors of those resources. For example, different Gateways targeting the same
+// Service may have different capabilities, especially if they have different underlying
+// implementations.
+//
+// For example, in BackendTLSPolicy, the Policy attaches to a Service that is
+// used as a backend in a HTTPRoute that is itself attached to a Gateway.
+// In this case, the relevant object for status is the Gateway, and that is the
+// ancestor object referred to in this status.
+//
+// Note that a parent is also an ancestor, so for objects where the parent is the
+// relevant object for status, this struct SHOULD still be used.
+//
+// This struct is intended to be used in a slice that's effectively a map,
+// with a composite key made up of the AncestorRef and the ControllerName.
+type BackendTLSPolicyStatusAncestorsPatch struct {
+	AncestorRef *BackendTLSPolicyStatusAncestorsAncestorRefPatch `pulumi:"ancestorRef"`
+	// Conditions describes the status of the Policy with respect to the given Ancestor.
+	Conditions []BackendTLSPolicyStatusAncestorsConditionsPatch `pulumi:"conditions"`
+	// ControllerName is a domain/path string that indicates the name of the
+	// controller that wrote this status. This corresponds with the
+	// controllerName field on GatewayClass.
+	//
+	// Example: "example.net/gateway-controller".
+	//
+	// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+	// valid Kubernetes names
+	// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	//
+	// Controllers MUST populate this field when writing status. Controllers should ensure that
+	// entries to status populated with their ControllerName are cleaned up when they are no
+	// longer necessary.
+	ControllerName *string `pulumi:"controllerName"`
+}
+
+// BackendTLSPolicyStatusAncestorsPatchInput is an input type that accepts BackendTLSPolicyStatusAncestorsPatchArgs and BackendTLSPolicyStatusAncestorsPatchOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsPatchInput` via:
+//
+//	BackendTLSPolicyStatusAncestorsPatchArgs{...}
+type BackendTLSPolicyStatusAncestorsPatchInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsPatchOutput() BackendTLSPolicyStatusAncestorsPatchOutput
+	ToBackendTLSPolicyStatusAncestorsPatchOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsPatchOutput
+}
+
+// PolicyAncestorStatus describes the status of a route with respect to an
+// associated Ancestor.
+//
+// Ancestors refer to objects that are either the Target of a policy or above it
+// in terms of object hierarchy. For example, if a policy targets a Service, the
+// Policy's Ancestors are, in order, the Service, the HTTPRoute, the Gateway, and
+// the GatewayClass. Almost always, in this hierarchy, the Gateway will be the most
+// useful object to place Policy status on, so we recommend that implementations
+// SHOULD use Gateway as the PolicyAncestorStatus object unless the designers
+// have a _very_ good reason otherwise.
+//
+// In the context of policy attachment, the Ancestor is used to distinguish which
+// resource results in a distinct application of this policy. For example, if a policy
+// targets a Service, it may have a distinct result per attached Gateway.
+//
+// Policies targeting the same resource may have different effects depending on the
+// ancestors of those resources. For example, different Gateways targeting the same
+// Service may have different capabilities, especially if they have different underlying
+// implementations.
+//
+// For example, in BackendTLSPolicy, the Policy attaches to a Service that is
+// used as a backend in a HTTPRoute that is itself attached to a Gateway.
+// In this case, the relevant object for status is the Gateway, and that is the
+// ancestor object referred to in this status.
+//
+// Note that a parent is also an ancestor, so for objects where the parent is the
+// relevant object for status, this struct SHOULD still be used.
+//
+// This struct is intended to be used in a slice that's effectively a map,
+// with a composite key made up of the AncestorRef and the ControllerName.
+type BackendTLSPolicyStatusAncestorsPatchArgs struct {
+	AncestorRef BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrInput `pulumi:"ancestorRef"`
+	// Conditions describes the status of the Policy with respect to the given Ancestor.
+	Conditions BackendTLSPolicyStatusAncestorsConditionsPatchArrayInput `pulumi:"conditions"`
+	// ControllerName is a domain/path string that indicates the name of the
+	// controller that wrote this status. This corresponds with the
+	// controllerName field on GatewayClass.
+	//
+	// Example: "example.net/gateway-controller".
+	//
+	// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+	// valid Kubernetes names
+	// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	//
+	// Controllers MUST populate this field when writing status. Controllers should ensure that
+	// entries to status populated with their ControllerName are cleaned up when they are no
+	// longer necessary.
+	ControllerName pulumi.StringPtrInput `pulumi:"controllerName"`
+}
+
+func (BackendTLSPolicyStatusAncestorsPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestorsPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusAncestorsPatchArgs) ToBackendTLSPolicyStatusAncestorsPatchOutput() BackendTLSPolicyStatusAncestorsPatchOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsPatchOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsPatchArgs) ToBackendTLSPolicyStatusAncestorsPatchOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsPatchOutput)
+}
+
+// BackendTLSPolicyStatusAncestorsPatchArrayInput is an input type that accepts BackendTLSPolicyStatusAncestorsPatchArray and BackendTLSPolicyStatusAncestorsPatchArrayOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusAncestorsPatchArrayInput` via:
+//
+//	BackendTLSPolicyStatusAncestorsPatchArray{ BackendTLSPolicyStatusAncestorsPatchArgs{...} }
+type BackendTLSPolicyStatusAncestorsPatchArrayInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusAncestorsPatchArrayOutput() BackendTLSPolicyStatusAncestorsPatchArrayOutput
+	ToBackendTLSPolicyStatusAncestorsPatchArrayOutputWithContext(context.Context) BackendTLSPolicyStatusAncestorsPatchArrayOutput
+}
+
+type BackendTLSPolicyStatusAncestorsPatchArray []BackendTLSPolicyStatusAncestorsPatchInput
+
+func (BackendTLSPolicyStatusAncestorsPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicyStatusAncestorsPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusAncestorsPatchArray) ToBackendTLSPolicyStatusAncestorsPatchArrayOutput() BackendTLSPolicyStatusAncestorsPatchArrayOutput {
+	return i.ToBackendTLSPolicyStatusAncestorsPatchArrayOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusAncestorsPatchArray) ToBackendTLSPolicyStatusAncestorsPatchArrayOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusAncestorsPatchArrayOutput)
+}
+
+// PolicyAncestorStatus describes the status of a route with respect to an
+// associated Ancestor.
+//
+// Ancestors refer to objects that are either the Target of a policy or above it
+// in terms of object hierarchy. For example, if a policy targets a Service, the
+// Policy's Ancestors are, in order, the Service, the HTTPRoute, the Gateway, and
+// the GatewayClass. Almost always, in this hierarchy, the Gateway will be the most
+// useful object to place Policy status on, so we recommend that implementations
+// SHOULD use Gateway as the PolicyAncestorStatus object unless the designers
+// have a _very_ good reason otherwise.
+//
+// In the context of policy attachment, the Ancestor is used to distinguish which
+// resource results in a distinct application of this policy. For example, if a policy
+// targets a Service, it may have a distinct result per attached Gateway.
+//
+// Policies targeting the same resource may have different effects depending on the
+// ancestors of those resources. For example, different Gateways targeting the same
+// Service may have different capabilities, especially if they have different underlying
+// implementations.
+//
+// For example, in BackendTLSPolicy, the Policy attaches to a Service that is
+// used as a backend in a HTTPRoute that is itself attached to a Gateway.
+// In this case, the relevant object for status is the Gateway, and that is the
+// ancestor object referred to in this status.
+//
+// Note that a parent is also an ancestor, so for objects where the parent is the
+// relevant object for status, this struct SHOULD still be used.
+//
+// This struct is intended to be used in a slice that's effectively a map,
+// with a composite key made up of the AncestorRef and the ControllerName.
+type BackendTLSPolicyStatusAncestorsPatchOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusAncestorsPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsPatchOutput) ToBackendTLSPolicyStatusAncestorsPatchOutput() BackendTLSPolicyStatusAncestorsPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsPatchOutput) ToBackendTLSPolicyStatusAncestorsPatchOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsPatchOutput) AncestorRef() BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsPatch) *BackendTLSPolicyStatusAncestorsAncestorRefPatch {
+		return v.AncestorRef
+	}).(BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput)
+}
+
+// Conditions describes the status of the Policy with respect to the given Ancestor.
+func (o BackendTLSPolicyStatusAncestorsPatchOutput) Conditions() BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsPatch) []BackendTLSPolicyStatusAncestorsConditionsPatch {
+		return v.Conditions
+	}).(BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput)
+}
+
+// ControllerName is a domain/path string that indicates the name of the
+// controller that wrote this status. This corresponds with the
+// controllerName field on GatewayClass.
+//
+// Example: "example.net/gateway-controller".
+//
+// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+// valid Kubernetes names
+// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+//
+// Controllers MUST populate this field when writing status. Controllers should ensure that
+// entries to status populated with their ControllerName are cleaned up when they are no
+// longer necessary.
+func (o BackendTLSPolicyStatusAncestorsPatchOutput) ControllerName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusAncestorsPatch) *string { return v.ControllerName }).(pulumi.StringPtrOutput)
+}
+
+type BackendTLSPolicyStatusAncestorsPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusAncestorsPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]BackendTLSPolicyStatusAncestorsPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusAncestorsPatchArrayOutput) ToBackendTLSPolicyStatusAncestorsPatchArrayOutput() BackendTLSPolicyStatusAncestorsPatchArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsPatchArrayOutput) ToBackendTLSPolicyStatusAncestorsPatchArrayOutputWithContext(ctx context.Context) BackendTLSPolicyStatusAncestorsPatchArrayOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusAncestorsPatchArrayOutput) Index(i pulumi.IntInput) BackendTLSPolicyStatusAncestorsPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) BackendTLSPolicyStatusAncestorsPatch {
+		return vs[0].([]BackendTLSPolicyStatusAncestorsPatch)[vs[1].(int)]
+	}).(BackendTLSPolicyStatusAncestorsPatchOutput)
+}
+
+// Status defines the current state of BackendTLSPolicy.
+type BackendTLSPolicyStatusPatch struct {
+	// Ancestors is a list of ancestor resources (usually Gateways) that are
+	// associated with the policy, and the status of the policy with respect to
+	// each ancestor. When this policy attaches to a parent, the controller that
+	// manages the parent and the ancestors MUST add an entry to this list when
+	// the controller first sees the policy and SHOULD update the entry as
+	// appropriate when the relevant ancestor is modified.
+	//
+	// Note that choosing the relevant ancestor is left to the Policy designers;
+	// an important part of Policy design is designing the right object level at
+	// which to namespace this status.
+	//
+	// Note also that implementations MUST ONLY populate ancestor status for
+	// the Ancestor resources they are responsible for. Implementations MUST
+	// use the ControllerName field to uniquely identify the entries in this list
+	// that they are responsible for.
+	//
+	// Note that to achieve this, the list of PolicyAncestorStatus structs
+	// MUST be treated as a map with a composite key, made up of the AncestorRef
+	// and ControllerName fields combined.
+	//
+	// A maximum of 16 ancestors will be represented in this list. An empty list
+	// means the Policy is not relevant for any ancestors.
+	//
+	// If this slice is full, implementations MUST NOT add further entries.
+	// Instead they MUST consider the policy unimplementable and signal that
+	// on any related resources such as the ancestor that would be referenced
+	// here. For example, if this list was full on BackendTLSPolicy, no
+	// additional Gateways would be able to reference the Service targeted by
+	// the BackendTLSPolicy.
+	Ancestors []BackendTLSPolicyStatusAncestorsPatch `pulumi:"ancestors"`
+}
+
+// BackendTLSPolicyStatusPatchInput is an input type that accepts BackendTLSPolicyStatusPatchArgs and BackendTLSPolicyStatusPatchOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusPatchInput` via:
+//
+//	BackendTLSPolicyStatusPatchArgs{...}
+type BackendTLSPolicyStatusPatchInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusPatchOutput() BackendTLSPolicyStatusPatchOutput
+	ToBackendTLSPolicyStatusPatchOutputWithContext(context.Context) BackendTLSPolicyStatusPatchOutput
+}
+
+// Status defines the current state of BackendTLSPolicy.
+type BackendTLSPolicyStatusPatchArgs struct {
+	// Ancestors is a list of ancestor resources (usually Gateways) that are
+	// associated with the policy, and the status of the policy with respect to
+	// each ancestor. When this policy attaches to a parent, the controller that
+	// manages the parent and the ancestors MUST add an entry to this list when
+	// the controller first sees the policy and SHOULD update the entry as
+	// appropriate when the relevant ancestor is modified.
+	//
+	// Note that choosing the relevant ancestor is left to the Policy designers;
+	// an important part of Policy design is designing the right object level at
+	// which to namespace this status.
+	//
+	// Note also that implementations MUST ONLY populate ancestor status for
+	// the Ancestor resources they are responsible for. Implementations MUST
+	// use the ControllerName field to uniquely identify the entries in this list
+	// that they are responsible for.
+	//
+	// Note that to achieve this, the list of PolicyAncestorStatus structs
+	// MUST be treated as a map with a composite key, made up of the AncestorRef
+	// and ControllerName fields combined.
+	//
+	// A maximum of 16 ancestors will be represented in this list. An empty list
+	// means the Policy is not relevant for any ancestors.
+	//
+	// If this slice is full, implementations MUST NOT add further entries.
+	// Instead they MUST consider the policy unimplementable and signal that
+	// on any related resources such as the ancestor that would be referenced
+	// here. For example, if this list was full on BackendTLSPolicy, no
+	// additional Gateways would be able to reference the Service targeted by
+	// the BackendTLSPolicy.
+	Ancestors BackendTLSPolicyStatusAncestorsPatchArrayInput `pulumi:"ancestors"`
+}
+
+func (BackendTLSPolicyStatusPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusPatch)(nil)).Elem()
+}
+
+func (i BackendTLSPolicyStatusPatchArgs) ToBackendTLSPolicyStatusPatchOutput() BackendTLSPolicyStatusPatchOutput {
+	return i.ToBackendTLSPolicyStatusPatchOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusPatchArgs) ToBackendTLSPolicyStatusPatchOutputWithContext(ctx context.Context) BackendTLSPolicyStatusPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusPatchOutput)
+}
+
+func (i BackendTLSPolicyStatusPatchArgs) ToBackendTLSPolicyStatusPatchPtrOutput() BackendTLSPolicyStatusPatchPtrOutput {
+	return i.ToBackendTLSPolicyStatusPatchPtrOutputWithContext(context.Background())
+}
+
+func (i BackendTLSPolicyStatusPatchArgs) ToBackendTLSPolicyStatusPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusPatchOutput).ToBackendTLSPolicyStatusPatchPtrOutputWithContext(ctx)
+}
+
+// BackendTLSPolicyStatusPatchPtrInput is an input type that accepts BackendTLSPolicyStatusPatchArgs, BackendTLSPolicyStatusPatchPtr and BackendTLSPolicyStatusPatchPtrOutput values.
+// You can construct a concrete instance of `BackendTLSPolicyStatusPatchPtrInput` via:
+//
+//	        BackendTLSPolicyStatusPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type BackendTLSPolicyStatusPatchPtrInput interface {
+	pulumi.Input
+
+	ToBackendTLSPolicyStatusPatchPtrOutput() BackendTLSPolicyStatusPatchPtrOutput
+	ToBackendTLSPolicyStatusPatchPtrOutputWithContext(context.Context) BackendTLSPolicyStatusPatchPtrOutput
+}
+
+type backendTLSPolicyStatusPatchPtrType BackendTLSPolicyStatusPatchArgs
+
+func BackendTLSPolicyStatusPatchPtr(v *BackendTLSPolicyStatusPatchArgs) BackendTLSPolicyStatusPatchPtrInput {
+	return (*backendTLSPolicyStatusPatchPtrType)(v)
+}
+
+func (*backendTLSPolicyStatusPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicyStatusPatch)(nil)).Elem()
+}
+
+func (i *backendTLSPolicyStatusPatchPtrType) ToBackendTLSPolicyStatusPatchPtrOutput() BackendTLSPolicyStatusPatchPtrOutput {
+	return i.ToBackendTLSPolicyStatusPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *backendTLSPolicyStatusPatchPtrType) ToBackendTLSPolicyStatusPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BackendTLSPolicyStatusPatchPtrOutput)
+}
+
+// Status defines the current state of BackendTLSPolicy.
+type BackendTLSPolicyStatusPatchOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*BackendTLSPolicyStatusPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusPatchOutput) ToBackendTLSPolicyStatusPatchOutput() BackendTLSPolicyStatusPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusPatchOutput) ToBackendTLSPolicyStatusPatchOutputWithContext(ctx context.Context) BackendTLSPolicyStatusPatchOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusPatchOutput) ToBackendTLSPolicyStatusPatchPtrOutput() BackendTLSPolicyStatusPatchPtrOutput {
+	return o.ToBackendTLSPolicyStatusPatchPtrOutputWithContext(context.Background())
+}
+
+func (o BackendTLSPolicyStatusPatchOutput) ToBackendTLSPolicyStatusPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v BackendTLSPolicyStatusPatch) *BackendTLSPolicyStatusPatch {
+		return &v
+	}).(BackendTLSPolicyStatusPatchPtrOutput)
+}
+
+// Ancestors is a list of ancestor resources (usually Gateways) that are
+// associated with the policy, and the status of the policy with respect to
+// each ancestor. When this policy attaches to a parent, the controller that
+// manages the parent and the ancestors MUST add an entry to this list when
+// the controller first sees the policy and SHOULD update the entry as
+// appropriate when the relevant ancestor is modified.
+//
+// Note that choosing the relevant ancestor is left to the Policy designers;
+// an important part of Policy design is designing the right object level at
+// which to namespace this status.
+//
+// Note also that implementations MUST ONLY populate ancestor status for
+// the Ancestor resources they are responsible for. Implementations MUST
+// use the ControllerName field to uniquely identify the entries in this list
+// that they are responsible for.
+//
+// Note that to achieve this, the list of PolicyAncestorStatus structs
+// MUST be treated as a map with a composite key, made up of the AncestorRef
+// and ControllerName fields combined.
+//
+// A maximum of 16 ancestors will be represented in this list. An empty list
+// means the Policy is not relevant for any ancestors.
+//
+// If this slice is full, implementations MUST NOT add further entries.
+// Instead they MUST consider the policy unimplementable and signal that
+// on any related resources such as the ancestor that would be referenced
+// here. For example, if this list was full on BackendTLSPolicy, no
+// additional Gateways would be able to reference the Service targeted by
+// the BackendTLSPolicy.
+func (o BackendTLSPolicyStatusPatchOutput) Ancestors() BackendTLSPolicyStatusAncestorsPatchArrayOutput {
+	return o.ApplyT(func(v BackendTLSPolicyStatusPatch) []BackendTLSPolicyStatusAncestorsPatch { return v.Ancestors }).(BackendTLSPolicyStatusAncestorsPatchArrayOutput)
+}
+
+type BackendTLSPolicyStatusPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (BackendTLSPolicyStatusPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**BackendTLSPolicyStatusPatch)(nil)).Elem()
+}
+
+func (o BackendTLSPolicyStatusPatchPtrOutput) ToBackendTLSPolicyStatusPatchPtrOutput() BackendTLSPolicyStatusPatchPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusPatchPtrOutput) ToBackendTLSPolicyStatusPatchPtrOutputWithContext(ctx context.Context) BackendTLSPolicyStatusPatchPtrOutput {
+	return o
+}
+
+func (o BackendTLSPolicyStatusPatchPtrOutput) Elem() BackendTLSPolicyStatusPatchOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusPatch) BackendTLSPolicyStatusPatch {
+		if v != nil {
+			return *v
+		}
+		var ret BackendTLSPolicyStatusPatch
+		return ret
+	}).(BackendTLSPolicyStatusPatchOutput)
+}
+
+// Ancestors is a list of ancestor resources (usually Gateways) that are
+// associated with the policy, and the status of the policy with respect to
+// each ancestor. When this policy attaches to a parent, the controller that
+// manages the parent and the ancestors MUST add an entry to this list when
+// the controller first sees the policy and SHOULD update the entry as
+// appropriate when the relevant ancestor is modified.
+//
+// Note that choosing the relevant ancestor is left to the Policy designers;
+// an important part of Policy design is designing the right object level at
+// which to namespace this status.
+//
+// Note also that implementations MUST ONLY populate ancestor status for
+// the Ancestor resources they are responsible for. Implementations MUST
+// use the ControllerName field to uniquely identify the entries in this list
+// that they are responsible for.
+//
+// Note that to achieve this, the list of PolicyAncestorStatus structs
+// MUST be treated as a map with a composite key, made up of the AncestorRef
+// and ControllerName fields combined.
+//
+// A maximum of 16 ancestors will be represented in this list. An empty list
+// means the Policy is not relevant for any ancestors.
+//
+// If this slice is full, implementations MUST NOT add further entries.
+// Instead they MUST consider the policy unimplementable and signal that
+// on any related resources such as the ancestor that would be referenced
+// here. For example, if this list was full on BackendTLSPolicy, no
+// additional Gateways would be able to reference the Service targeted by
+// the BackendTLSPolicy.
+func (o BackendTLSPolicyStatusPatchPtrOutput) Ancestors() BackendTLSPolicyStatusAncestorsPatchArrayOutput {
+	return o.ApplyT(func(v *BackendTLSPolicyStatusPatch) []BackendTLSPolicyStatusAncestorsPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Ancestors
+	}).(BackendTLSPolicyStatusAncestorsPatchArrayOutput)
+}
+
 // The TLSRoute resource is similar to TCPRoute, but can be configured
 // to match against TLS-specific metadata. This allows more flexibility
 // in matching streams for a given TLS listener.
@@ -1918,6 +7387,9 @@ type TLSRouteSpecRules struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -1925,6 +7397,8 @@ type TLSRouteSpecRules struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs []TLSRouteSpecRulesBackendRefs `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name *string `pulumi:"name"`
@@ -1952,6 +7426,9 @@ type TLSRouteSpecRulesArgs struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -1959,6 +7436,8 @@ type TLSRouteSpecRulesArgs struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs TLSRouteSpecRulesBackendRefsArrayInput `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name pulumi.StringPtrInput `pulumi:"name"`
@@ -2025,6 +7504,9 @@ func (o TLSRouteSpecRulesOutput) ToTLSRouteSpecRulesOutputWithContext(ctx contex
 // weight; if an invalid backend is requested to have 80% of requests, then
 // 80% of requests must be rejected instead.
 //
+// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+// can be used to enable re-encryption of the traffic to the backends.
+//
 // Support: Core for Kubernetes Service
 //
 // Support: Extended for Kubernetes ServiceImport
@@ -2032,6 +7514,8 @@ func (o TLSRouteSpecRulesOutput) ToTLSRouteSpecRulesOutputWithContext(ctx contex
 // Support: Implementation-specific for any other resource
 //
 // Support for weight: Extended
+//
+// Support for BackendTLSPolicy: Extended
 func (o TLSRouteSpecRulesOutput) BackendRefs() TLSRouteSpecRulesBackendRefsArrayOutput {
 	return o.ApplyT(func(v TLSRouteSpecRules) []TLSRouteSpecRulesBackendRefs { return v.BackendRefs }).(TLSRouteSpecRulesBackendRefsArrayOutput)
 }
@@ -2650,6 +8134,9 @@ type TLSRouteSpecRulesPatch struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -2657,6 +8144,8 @@ type TLSRouteSpecRulesPatch struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs []TLSRouteSpecRulesBackendRefsPatch `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name *string `pulumi:"name"`
@@ -2684,6 +8173,9 @@ type TLSRouteSpecRulesPatchArgs struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -2691,6 +8183,8 @@ type TLSRouteSpecRulesPatchArgs struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs TLSRouteSpecRulesBackendRefsPatchArrayInput `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name pulumi.StringPtrInput `pulumi:"name"`
@@ -2757,6 +8251,9 @@ func (o TLSRouteSpecRulesPatchOutput) ToTLSRouteSpecRulesPatchOutputWithContext(
 // weight; if an invalid backend is requested to have 80% of requests, then
 // 80% of requests must be rejected instead.
 //
+// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+// can be used to enable re-encryption of the traffic to the backends.
+//
 // Support: Core for Kubernetes Service
 //
 // Support: Extended for Kubernetes ServiceImport
@@ -2764,6 +8261,8 @@ func (o TLSRouteSpecRulesPatchOutput) ToTLSRouteSpecRulesPatchOutputWithContext(
 // Support: Implementation-specific for any other resource
 //
 // Support for weight: Extended
+//
+// Support for BackendTLSPolicy: Extended
 func (o TLSRouteSpecRulesPatchOutput) BackendRefs() TLSRouteSpecRulesBackendRefsPatchArrayOutput {
 	return o.ApplyT(func(v TLSRouteSpecRulesPatch) []TLSRouteSpecRulesBackendRefsPatch { return v.BackendRefs }).(TLSRouteSpecRulesBackendRefsPatchArrayOutput)
 }
@@ -4960,6 +10459,46 @@ func (o TLSRouteStatusPatchPtrOutput) Parents() TLSRouteStatusParentsPatchArrayO
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyTypeInput)(nil)).Elem(), BackendTLSPolicyTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyTypeArrayInput)(nil)).Elem(), BackendTLSPolicyTypeArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyListTypeInput)(nil)).Elem(), BackendTLSPolicyListTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyPatchTypeInput)(nil)).Elem(), BackendTLSPolicyPatchTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecInput)(nil)).Elem(), BackendTLSPolicySpecArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecPtrInput)(nil)).Elem(), BackendTLSPolicySpecArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecPatchInput)(nil)).Elem(), BackendTLSPolicySpecPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecPatchPtrInput)(nil)).Elem(), BackendTLSPolicySpecPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecTargetRefsInput)(nil)).Elem(), BackendTLSPolicySpecTargetRefsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecTargetRefsArrayInput)(nil)).Elem(), BackendTLSPolicySpecTargetRefsArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecTargetRefsPatchInput)(nil)).Elem(), BackendTLSPolicySpecTargetRefsPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecTargetRefsPatchArrayInput)(nil)).Elem(), BackendTLSPolicySpecTargetRefsPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationInput)(nil)).Elem(), BackendTLSPolicySpecValidationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationPtrInput)(nil)).Elem(), BackendTLSPolicySpecValidationArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationCaCertificateRefsInput)(nil)).Elem(), BackendTLSPolicySpecValidationCaCertificateRefsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationCaCertificateRefsArrayInput)(nil)).Elem(), BackendTLSPolicySpecValidationCaCertificateRefsArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationCaCertificateRefsPatchInput)(nil)).Elem(), BackendTLSPolicySpecValidationCaCertificateRefsPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayInput)(nil)).Elem(), BackendTLSPolicySpecValidationCaCertificateRefsPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationPatchInput)(nil)).Elem(), BackendTLSPolicySpecValidationPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationPatchPtrInput)(nil)).Elem(), BackendTLSPolicySpecValidationPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationSubjectAltNamesInput)(nil)).Elem(), BackendTLSPolicySpecValidationSubjectAltNamesArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationSubjectAltNamesArrayInput)(nil)).Elem(), BackendTLSPolicySpecValidationSubjectAltNamesArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationSubjectAltNamesPatchInput)(nil)).Elem(), BackendTLSPolicySpecValidationSubjectAltNamesPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayInput)(nil)).Elem(), BackendTLSPolicySpecValidationSubjectAltNamesPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusInput)(nil)).Elem(), BackendTLSPolicyStatusArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusPtrInput)(nil)).Elem(), BackendTLSPolicyStatusArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsArrayInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsAncestorRefInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsAncestorRefArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsAncestorRefPtrInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsAncestorRefArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsAncestorRefPatchInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsAncestorRefPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsConditionsInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsConditionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsConditionsArrayInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsConditionsArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsConditionsPatchInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsConditionsPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsConditionsPatchArrayInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsConditionsPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsPatchInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusAncestorsPatchArrayInput)(nil)).Elem(), BackendTLSPolicyStatusAncestorsPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusPatchInput)(nil)).Elem(), BackendTLSPolicyStatusPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BackendTLSPolicyStatusPatchPtrInput)(nil)).Elem(), BackendTLSPolicyStatusPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*TLSRouteTypeInput)(nil)).Elem(), TLSRouteTypeArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*TLSRouteTypeArrayInput)(nil)).Elem(), TLSRouteTypeArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*TLSRouteListTypeInput)(nil)).Elem(), TLSRouteListTypeArgs{})
@@ -4996,6 +10535,46 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*TLSRouteStatusParentsPatchArrayInput)(nil)).Elem(), TLSRouteStatusParentsPatchArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*TLSRouteStatusPatchInput)(nil)).Elem(), TLSRouteStatusPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*TLSRouteStatusPatchPtrInput)(nil)).Elem(), TLSRouteStatusPatchArgs{})
+	pulumi.RegisterOutputType(BackendTLSPolicyTypeOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyTypeArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyListTypeOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyPatchTypeOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecPtrOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecPatchOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecPatchPtrOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecTargetRefsOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecTargetRefsArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecTargetRefsPatchOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecTargetRefsPatchArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationPtrOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationCaCertificateRefsOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationCaCertificateRefsArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationCaCertificateRefsPatchOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationCaCertificateRefsPatchArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationPatchOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationPatchPtrOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationSubjectAltNamesOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationSubjectAltNamesArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationSubjectAltNamesPatchOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicySpecValidationSubjectAltNamesPatchArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusPtrOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsAncestorRefOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsAncestorRefPtrOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsAncestorRefPatchOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsAncestorRefPatchPtrOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsConditionsOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsConditionsArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsConditionsPatchOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsConditionsPatchArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsPatchOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusAncestorsPatchArrayOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusPatchOutput{})
+	pulumi.RegisterOutputType(BackendTLSPolicyStatusPatchPtrOutput{})
 	pulumi.RegisterOutputType(TLSRouteTypeOutput{})
 	pulumi.RegisterOutputType(TLSRouteTypeArrayOutput{})
 	pulumi.RegisterOutputType(TLSRouteListTypeOutput{})

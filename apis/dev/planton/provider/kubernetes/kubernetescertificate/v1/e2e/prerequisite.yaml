@@ -1,0 +1,28 @@
+# Dependency-install profile for a Certificate: a self-signed ROOT CA
+# certificate. Deployed (via the prerequisite graph) when another scenario
+# needs an existing certificate — most importantly the KubernetesIssuer
+# ca-chain scenario, which turns this root's Secret into a CA signer. The
+# signing issuer resolves through the KubernetesIssuer fixture
+# (e2e-issuer-fixture, self-signed) via foreign-key reference; cert-manager
+# chains in through the registry prerequisites.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesCertificate
+metadata:
+  name: e2e-cert-fixture
+  annotations:
+    # This fixture's signing issuer is itself a fixture: the annotation adds
+    # the KubernetesIssuer install profile (e2e-issuer-fixture, self-signed)
+    # to the prerequisite graph so the valueFrom below resolves against a
+    # deployed resource.
+    planton.dev/e2e-prerequisites: "KubernetesIssuer"
+spec:
+  namespace:
+    value: default
+  secretName: e2e-root-ca-tls
+  issuerRef:
+    issuer:
+      name:
+        valueFrom:
+          name: e2e-issuer-fixture
+  commonName: e2e-root-ca
+  isCa: true

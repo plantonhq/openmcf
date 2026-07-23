@@ -81,10 +81,10 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Hostname: stringPtr("app.example.com"),
 						Port:     443,
 						Protocol: "HTTPS",
-						Tls: &KubernetesGatewayListenerTlsConfig{
+						Tls: &kubernetes.KubernetesGatewayApiListenerTlsConfig{
 							Mode: stringPtr("Terminate"),
 							CertificateRefs: []*kubernetes.KubernetesGatewayApiSecretObjectReference{
-								{Name: "app-tls"},
+								{Name: literal("app-tls")},
 							},
 						},
 					},
@@ -101,7 +101,7 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Hostname: stringPtr("passthrough.example.com"),
 						Port:     443,
 						Protocol: "TLS",
-						Tls:      &KubernetesGatewayListenerTlsConfig{Mode: stringPtr("Passthrough")},
+						Tls:      &kubernetes.KubernetesGatewayApiListenerTlsConfig{Mode: stringPtr("Passthrough")},
 					},
 				}
 				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
@@ -116,9 +116,9 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Name:     "https",
 						Port:     443,
 						Protocol: "HTTPS",
-						Tls: &KubernetesGatewayListenerTlsConfig{
+						Tls: &kubernetes.KubernetesGatewayApiListenerTlsConfig{
 							Mode:            stringPtr("Terminate"),
-							CertificateRefs: []*kubernetes.KubernetesGatewayApiSecretObjectReference{{Name: "app-tls"}},
+							CertificateRefs: []*kubernetes.KubernetesGatewayApiSecretObjectReference{{Name: literal("app-tls")}},
 						},
 					},
 					{Name: "postgres", Port: 5432, Protocol: "TCP"},
@@ -137,9 +137,9 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 
 		ginkgo.Context("with allowed_routes restricting kinds and namespaces", func() {
 			ginkgo.It("should not return a validation error", func() {
-				input.Spec.Listeners[0].AllowedRoutes = &KubernetesGatewayAllowedRoutes{
-					Namespaces: &KubernetesGatewayRouteNamespaces{From: stringPtr("Same")},
-					Kinds:      []*KubernetesGatewayRouteGroupKind{{Kind: "HTTPRoute"}},
+				input.Spec.Listeners[0].AllowedRoutes = &kubernetes.KubernetesGatewayApiAllowedRoutes{
+					Namespaces: &kubernetes.KubernetesGatewayApiRouteNamespaces{From: stringPtr("Same")},
+					Kinds:      []*kubernetes.KubernetesGatewayApiRouteGroupKind{{Kind: "HTTPRoute"}},
 				}
 				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 			})
@@ -147,12 +147,12 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 
 		ginkgo.Context("with a label selector for route namespaces", func() {
 			ginkgo.It("should not return a validation error", func() {
-				input.Spec.Listeners[0].AllowedRoutes = &KubernetesGatewayAllowedRoutes{
-					Namespaces: &KubernetesGatewayRouteNamespaces{
+				input.Spec.Listeners[0].AllowedRoutes = &kubernetes.KubernetesGatewayApiAllowedRoutes{
+					Namespaces: &kubernetes.KubernetesGatewayApiRouteNamespaces{
 						From: stringPtr("Selector"),
-						Selector: &KubernetesGatewayLabelSelector{
+						Selector: &kubernetes.KubernetesGatewayApiLabelSelector{
 							MatchLabels: map[string]string{"team": "platform"},
-							MatchExpressions: []*KubernetesGatewayLabelSelectorRequirement{
+							MatchExpressions: []*kubernetes.KubernetesGatewayApiLabelSelectorRequirement{
 								{Key: "tier", Operator: "In", Values: []string{"web", "api"}},
 							},
 						},
@@ -182,7 +182,7 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Default: &KubernetesGatewayFrontendTlsValidationConfig{
 							Validation: &KubernetesGatewayFrontendTlsValidation{
 								CaCertificateRefs: []*kubernetes.KubernetesGatewayApiObjectReference{
-									{Group: "", Kind: "ConfigMap", Name: "client-ca"},
+									{Group: stringPtr(""), Kind: "ConfigMap", Name: literal("client-ca")},
 								},
 								Mode: stringPtr("AllowValidOnly"),
 							},
@@ -213,7 +213,7 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 
 		ginkgo.Context("with tls set on an HTTP listener", func() {
 			ginkgo.It("should return a validation error", func() {
-				input.Spec.Listeners[0].Tls = &KubernetesGatewayListenerTlsConfig{Mode: stringPtr("Terminate")}
+				input.Spec.Listeners[0].Tls = &kubernetes.KubernetesGatewayApiListenerTlsConfig{Mode: stringPtr("Terminate")}
 				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 			})
 		})
@@ -234,7 +234,7 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Name:     "https",
 						Port:     443,
 						Protocol: "HTTPS",
-						Tls:      &KubernetesGatewayListenerTlsConfig{Mode: stringPtr("Passthrough")},
+						Tls:      &kubernetes.KubernetesGatewayApiListenerTlsConfig{Mode: stringPtr("Passthrough")},
 					},
 				}
 				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
@@ -291,7 +291,7 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Name:     "https",
 						Port:     443,
 						Protocol: "HTTPS",
-						Tls:      &KubernetesGatewayListenerTlsConfig{Mode: stringPtr("Terminate")},
+						Tls:      &kubernetes.KubernetesGatewayApiListenerTlsConfig{Mode: stringPtr("Terminate")},
 					},
 				}
 				gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
@@ -305,9 +305,9 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Name:     "https",
 						Port:     443,
 						Protocol: "HTTPS",
-						Tls: &KubernetesGatewayListenerTlsConfig{
+						Tls: &kubernetes.KubernetesGatewayApiListenerTlsConfig{
 							Mode:            stringPtr("Reterminate"),
-							CertificateRefs: []*kubernetes.KubernetesGatewayApiSecretObjectReference{{Name: "app-tls"}},
+							CertificateRefs: []*kubernetes.KubernetesGatewayApiSecretObjectReference{{Name: literal("app-tls")}},
 						},
 					},
 				}
@@ -326,11 +326,11 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 
 		ginkgo.Context("with an invalid label selector operator", func() {
 			ginkgo.It("should return a validation error", func() {
-				input.Spec.Listeners[0].AllowedRoutes = &KubernetesGatewayAllowedRoutes{
-					Namespaces: &KubernetesGatewayRouteNamespaces{
+				input.Spec.Listeners[0].AllowedRoutes = &kubernetes.KubernetesGatewayApiAllowedRoutes{
+					Namespaces: &kubernetes.KubernetesGatewayApiRouteNamespaces{
 						From: stringPtr("Selector"),
-						Selector: &KubernetesGatewayLabelSelector{
-							MatchExpressions: []*KubernetesGatewayLabelSelectorRequirement{
+						Selector: &kubernetes.KubernetesGatewayApiLabelSelector{
+							MatchExpressions: []*kubernetes.KubernetesGatewayApiLabelSelectorRequirement{
 								{Key: "tier", Operator: "Contains", Values: []string{"web"}},
 							},
 						},
@@ -358,7 +358,7 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 				validation := &KubernetesGatewayFrontendTlsValidationConfig{
 					Validation: &KubernetesGatewayFrontendTlsValidation{
 						CaCertificateRefs: []*kubernetes.KubernetesGatewayApiObjectReference{
-							{Group: "", Kind: "ConfigMap", Name: "client-ca"},
+							{Group: stringPtr(""), Kind: "ConfigMap", Name: literal("client-ca")},
 						},
 					},
 				}
@@ -396,9 +396,9 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Name:     "https",
 						Port:     443,
 						Protocol: "HTTPS",
-						Tls: &KubernetesGatewayListenerTlsConfig{
+						Tls: &kubernetes.KubernetesGatewayApiListenerTlsConfig{
 							Mode:            stringPtr("Terminate"),
-							CertificateRefs: []*kubernetes.KubernetesGatewayApiSecretObjectReference{{Name: "app-tls", Group: stringPtr("Bad_Group")}},
+							CertificateRefs: []*kubernetes.KubernetesGatewayApiSecretObjectReference{{Name: literal("app-tls"), Group: stringPtr("Bad_Group")}},
 						},
 					},
 				}
@@ -413,9 +413,9 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Name:     "https",
 						Port:     443,
 						Protocol: "HTTPS",
-						Tls: &KubernetesGatewayListenerTlsConfig{
+						Tls: &kubernetes.KubernetesGatewayApiListenerTlsConfig{
 							Mode:            stringPtr("Terminate"),
-							CertificateRefs: []*kubernetes.KubernetesGatewayApiSecretObjectReference{{Name: "app-tls", Kind: stringPtr("bad/kind")}},
+							CertificateRefs: []*kubernetes.KubernetesGatewayApiSecretObjectReference{{Name: literal("app-tls"), Kind: stringPtr("bad/kind")}},
 						},
 					},
 				}
@@ -430,7 +430,7 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Default: &KubernetesGatewayFrontendTlsValidationConfig{
 							Validation: &KubernetesGatewayFrontendTlsValidation{
 								CaCertificateRefs: []*kubernetes.KubernetesGatewayApiObjectReference{
-									{Group: "", Name: "client-ca"},
+									{Group: stringPtr(""), Name: literal("client-ca")},
 								},
 							},
 						},
@@ -447,7 +447,7 @@ var _ = ginkgo.Describe("KubernetesGateway Validation Tests", func() {
 						Default: &KubernetesGatewayFrontendTlsValidationConfig{
 							Validation: &KubernetesGatewayFrontendTlsValidation{
 								CaCertificateRefs: []*kubernetes.KubernetesGatewayApiObjectReference{
-									{Group: "Bad_Group", Kind: "ConfigMap", Name: "client-ca"},
+									{Group: stringPtr("Bad_Group"), Kind: "ConfigMap", Name: literal("client-ca")},
 								},
 							},
 						},

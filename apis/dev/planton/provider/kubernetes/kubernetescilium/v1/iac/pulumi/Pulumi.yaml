@@ -1,0 +1,3 @@
+name: kubernetes-cilium
+runtime: go
+description: Cilium installation from the official Helm chart — the eBPF-based CNI providing pod networking, NetworkPolicy enforcement, kube-proxy replacement, and Hubble observability

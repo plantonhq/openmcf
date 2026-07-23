@@ -1,146 +1,89 @@
 package module
 
 import (
-	"fmt"
+	"strconv"
 
 	kubernetesexternaldnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternaldns/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/kuberneteslabelkeys"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Locals holds all computed values for the ExternalDNS module
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	// KubernetesExternalDns is the target resource
-	KubernetesExternalDns *kubernetesexternaldnsv1.KubernetesExternalDns
+	Spec *kubernetesexternaldnsv1.KubernetesExternalDnsSpec
 
-	// Namespace where resources will be deployed
+	// Resource-identity labels stamped on the module-created satellites
+	// (namespace, credential Secrets — never injected into the chart's own
+	// resources; Helm owns those).
+	Labels map[string]string
+
+	// Namespace ExternalDNS installs into (resolved literal from the
+	// spec's value-or-ref).
 	Namespace string
 
-	// HelmChartVersion for the ExternalDNS chart
-	HelmChartVersion string
-
-	// ExternalDnsVersion for the ExternalDNS image tag
-	ExternalDnsVersion string
-
-	// ReleaseName is the Helm release name (same as metadata.name)
+	// Helm release name — metadata.name, NOT a fixed chart name: multiple
+	// ExternalDNS instances per cluster are a first-class pattern (one per
+	// DNS provider / zone set, separated by TXT owner IDs), so each
+	// manifest gets its own release.
 	ReleaseName string
 
-	// KsaName is the Kubernetes ServiceAccount name
-	KsaName string
+	// Controller ServiceAccount name. The chart creates the SA; the module
+	// pins its name to metadata.name (serviceAccount.name) so cloud-side
+	// identity bindings have a deterministic subject.
+	ServiceAccountName string
 
-	// ProviderType indicates which DNS provider is configured (google, aws, azure, cloudflare)
-	ProviderType string
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
+	ChartVersion string
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	CloudflareApiTokenSecretName string
-
-	// GKE-specific configuration
-	GkeProjectId string
-	GkeDnsZoneId string
-	GkeGsaEmail  string
-	IsGke        bool
-
-	// EKS-specific configuration
-	EksRoute53ZoneId string
-	EksIrsaRoleArn   string
-	IsEks            bool
-
-	// AKS-specific configuration
-	AksDnsZoneId               string
-	AksManagedIdentityClientId string
-	IsAks                      bool
-
-	// Cloudflare-specific configuration
-	CfApiToken   string
-	CfDnsZoneId  string
-	CfIsProxied  bool
-	IsCloudflare bool
+	// Deterministic names for credential satellites this module may
+	// materialize (empty when the selected provider needs none).
+	CloudflareSecretName string
+	AwsSecretName        string
+	GcpSecretName        string
+	AzureSecretName      string
 }
 
-// initializeLocals creates and populates the Locals struct
-func initializeLocals(stackInput *kubernetesexternaldnsv1.KubernetesExternalDnsStackInput) *Locals {
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesexternaldnsv1.KubernetesExternalDnsStackInput) *Locals {
 	target := stackInput.Target
 	spec := target.Spec
 
-	locals := &Locals{
-		KubernetesExternalDns: target,
+	labels := map[string]string{
+		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
+		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
+		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesExternalDns.String(),
+	}
+	if target.Metadata.Id != "" {
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+	}
+	if target.Metadata.Org != "" {
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+	}
+	if target.Metadata.Env != "" {
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// Namespace with default
-	locals.Namespace = getNamespace(spec)
-
-	// Versions with defaults
-	locals.HelmChartVersion = getHelmChartVersion(spec)
-	locals.ExternalDnsVersion = getExternalDnsVersion(spec)
-
-	// Release name and ServiceAccount name (both use metadata.name)
-	locals.ReleaseName = target.Metadata.Name
-	locals.KsaName = target.Metadata.Name
-
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	locals.CloudflareApiTokenSecretName = fmt.Sprintf("%s-cloudflare-api-token", target.Metadata.Name)
-
-	// Determine provider type and set provider-specific locals
-	locals.IsGke = spec.GetGke() != nil
-	locals.IsEks = spec.GetEks() != nil
-	locals.IsAks = spec.GetAks() != nil
-	locals.IsCloudflare = spec.GetCloudflare() != nil
-
-	switch {
-	case locals.IsGke:
-		locals.ProviderType = "google"
-		gke := spec.GetGke()
-		locals.GkeProjectId = gke.ProjectId.GetValue()
-		locals.GkeDnsZoneId = gke.DnsZoneId.GetValue()
-		locals.GkeGsaEmail = fmt.Sprintf("%s@%s.iam.gserviceaccount.com", locals.KsaName, locals.GkeProjectId)
-
-	case locals.IsEks:
-		locals.ProviderType = "aws"
-		eks := spec.GetEks()
-		locals.EksRoute53ZoneId = eks.Route53ZoneId.GetValue()
-		locals.EksIrsaRoleArn = eks.IrsaRoleArnOverride
-
-	case locals.IsAks:
-		locals.ProviderType = "azure"
-		aks := spec.GetAks()
-		locals.AksDnsZoneId = aks.DnsZoneId.GetValue()
-		locals.AksManagedIdentityClientId = aks.ManagedIdentityClientId
-
-	case locals.IsCloudflare:
-		locals.ProviderType = "cloudflare"
-		cf := spec.GetCloudflare()
-		locals.CfApiToken = cf.ApiToken
-		locals.CfDnsZoneId = cf.DnsZoneId.GetValue()
-		locals.CfIsProxied = cf.IsProxied
-
-	default:
-		locals.ProviderType = "unknown"
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	return locals
-}
-
-// getNamespace returns the namespace from spec, with default if not specified
-func getNamespace(spec *kubernetesexternaldnsv1.KubernetesExternalDnsSpec) string {
-	namespace := spec.Namespace.GetValue()
-	if namespace == "" {
-		return "external-dns" // default
+	return &Locals{
+		Spec:                 spec,
+		Labels:               labels,
+		Namespace:            spec.Namespace.GetValue(),
+		ReleaseName:          target.Metadata.Name,
+		ServiceAccountName:   target.Metadata.Name,
+		ChartVersion:         chartVersion,
+		CloudflareSecretName: target.Metadata.Name + "-cloudflare-credentials",
+		AwsSecretName:        target.Metadata.Name + "-aws-credentials",
+		GcpSecretName:        target.Metadata.Name + "-gcp-credentials",
+		AzureSecretName:      target.Metadata.Name + "-azure-config",
 	}
-	return namespace
-}
-
-// getHelmChartVersion returns the Helm chart version from spec, with default if not specified
-func getHelmChartVersion(spec *kubernetesexternaldnsv1.KubernetesExternalDnsSpec) string {
-	if spec.HelmChartVersion != nil && *spec.HelmChartVersion != "" {
-		return *spec.HelmChartVersion
-	}
-	return "1.19.0" // default
-}
-
-// getExternalDnsVersion returns the ExternalDNS version from spec, with default if not specified
-func getExternalDnsVersion(spec *kubernetesexternaldnsv1.KubernetesExternalDnsSpec) string {
-	if spec.ExternalDnsVersion != nil && *spec.ExternalDnsVersion != "" {
-		return *spec.ExternalDnsVersion
-	}
-	return "v0.19.0" // default
 }

@@ -1,0 +1,137 @@
+# Full-surface manifest for offline module proofs (tofu validate/plan and
+# pulumi preview). Exercises every typed block coherently: a sharded
+# cluster (two shards, config servers, mongos routers with an exposed
+# Service), per-set tuned mongod config, an arbiter, cert-manager TLS,
+# declarative users with roles and declared passwords, PBM backups to an
+# S3-compatible (MinIO-style) store with declared keys plus a keyless GCS
+# arm, a schedule and PITR, hard anti-affinity with tolerations, PDBs, the
+# log-collector sidecar, and image pull secrets. Both engines must render
+# identical CRs + credential Secrets from it.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMongodb
+metadata:
+  name: test-mongodb
+spec:
+  namespace:
+    value: test-mongodb-ns
+  create_namespace: true
+  image_name: percona/percona-server-mongodb:8.0.19-7
+  replica_sets:
+    - name: rs0
+      size: 3
+      storage:
+        size: 20Gi
+        storage_class:
+          value: fast-ssd
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 2000m
+          memory: 4Gi
+      mongod_config: |
+        operationProfiling:
+          mode: slowOp
+          slowOpThresholdMs: 200
+      arbiter:
+        enabled: true
+        size: 1
+      pod_disruption_budget:
+        max_unavailable: 1
+      scheduling:
+        anti_affinity_topology_key: topology.kubernetes.io/zone
+        node_selector:
+          workload: database
+        tolerations:
+          - key: dedicated
+            operator: Equal
+            value: database
+            effect: NoSchedule
+        priority_class_name: database-critical
+    - name: rs1
+      size: 3
+      storage:
+        size: 20Gi
+      expose:
+        enabled: true
+        type: ClusterIP
+        annotations:
+          example.com/team: data
+  sharding:
+    enabled: true
+    balancer_enabled: true
+    config_server:
+      size: 3
+      storage:
+        size: 5Gi
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+    mongos:
+      size: 2
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+      expose:
+        enabled: true
+        type: ClusterIP
+  tls:
+    mode: requireTLS
+    issuer:
+      value: org-ca-issuer
+    issuer_kind: ClusterIssuer
+    cert_validity_duration: 2160h
+  users:
+    - name: appuser
+      db: admin
+      password: initial-app-password
+      roles:
+        - name: readWrite
+          db: appdb
+    - name: reporting
+      db: admin
+      password: reporting-password
+      roles:
+        - name: read
+          db: appdb
+  backup:
+    storages:
+      - name: minio
+        main: true
+        s3:
+          bucket: mongo-backups
+          region: minio
+          prefix: test-mongodb
+          endpoint_url: http://minio.minio-system.svc:9000
+          insecure_skip_tls_verify: true
+          access_keys:
+            access_key_id: minio-access-key
+            secret_access_key: minio-secret-key
+      - name: gcs-archive
+        gcs:
+          bucket: mongo-archive
+          prefix: test-mongodb
+    tasks:
+      - name: nightly
+        schedule: "0 3 * * *"
+        storage_name: minio
+        type: physical
+        keep: 7
+        delete_from_storage: true
+        compression: gzip
+    pitr:
+      enabled: true
+      oplog_span_min: 10
+      compression: gzip
+  log_collector:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  update_strategy: SmartUpdate
+  image_pull_secrets:
+    - ghcr-pull-secret

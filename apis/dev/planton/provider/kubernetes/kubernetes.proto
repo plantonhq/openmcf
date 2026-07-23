@@ -2,27 +2,6 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes;
 
-// **Container** defines the specifications for a container within a microservice deployment configuration.
-// This message mirrors the Kubernetes container spec (https://pkg.go.dev/k8s.io/api/core/v1#Container),
-// allowing you to specify container attributes such as the image, ports, resources, and environment variables.
-// **Warning:** The sidecar feature currently does not support all features of a Kubernetes container spec.
-message Container {
-  // The name of the container.
-  string name = 1;
-
-  // The container image to be used.
-  string image = 2;
-
-  // A list of ports exposed by the container.
-  repeated ContainerPort ports = 3;
-
-  // Resource specifications for the container, including CPU and memory limits and requests.
-  ContainerResources resources = 4;
-
-  // A list of environment variables to be set in the container.
-  repeated ContainerEnvVar env = 5;
-}
-
 // **ContainerResources** specifies the CPU and memory resources for a container.
 // It allows you to define resource limits and requests to manage resource allocation and ensure optimal performance.
 message ContainerResources {
@@ -33,29 +12,6 @@ message ContainerResources {
   // The resource requests for the container.
   // Specify the minimum amount of CPU and memory that the container is guaranteed.
   CpuMemory requests = 2;
-}
-
-// **ContainerEnvVar** represents an environment variable to be set in the container.
-// It allows you to pass configuration or sensitive information to the container at runtime.
-message ContainerEnvVar {
-  // The name of the environment variable.
-  string name = 1;
-
-  // The value of the environment variable.
-  string value = 2;
-}
-
-// **ContainerPort** specifies a network port in a single container.
-// It allows you to expose ports for communication with other services or the external network.
-message ContainerPort {
-  // The name of the port.
-  string name = 1;
-
-  // The port number on the container.
-  int32 container_port = 2;
-
-  // The protocol used by the port (e.g., "TCP" or "UDP").
-  string protocol = 3;
 }
 
 // **CpuMemory** defines CPU and memory resource quantities for a container.

@@ -37,6 +37,12 @@ func NewTCPRoute(ctx *pulumi.Context,
 
 	args.ApiVersion = pulumi.StringPtr("gateway.networking.k8s.io/v1alpha2")
 	args.Kind = pulumi.StringPtr("TCPRoute")
+	aliases := pulumi.Aliases([]pulumi.Alias{
+		{
+			Type: pulumi.String("kubernetes:gateway.networking.k8s.io/v1:TCPRoute"),
+		},
+	})
+	opts = append(opts, aliases)
 	opts = utilities.PkgResourceDefaultOpts(opts)
 	var resource TCPRoute
 	err := ctx.RegisterResource("kubernetes:gateway.networking.k8s.io/v1alpha2:TCPRoute", name, args, &resource, opts...)

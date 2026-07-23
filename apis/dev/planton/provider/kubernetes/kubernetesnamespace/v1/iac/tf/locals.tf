@@ -114,7 +114,10 @@ locals {
     local.quota_config.configmaps != null ? { "count/configmaps" = tostring(local.quota_config.configmaps) } : {},
     local.quota_config.secrets != null ? { "count/secrets" = tostring(local.quota_config.secrets) } : {},
     local.quota_config.pvcs != null ? { "count/persistentvolumeclaims" = tostring(local.quota_config.pvcs) } : {},
-    local.quota_config.load_balancers != null ? { "count/services.loadbalancers" = tostring(local.quota_config.load_balancers) } : {}
+    local.quota_config.load_balancers != null ? { "count/services.loadbalancers" = tostring(local.quota_config.load_balancers) } : {},
+    # Arbitrary extra quota entries only exist on the custom profile; try() yields
+    # {} for presets. Merged last: the spec keeps the typed fields authoritative.
+    try(var.spec.resource_profile.custom.additional_hard_limits, {})
   ) : {}
 
   # Limit Range configuration

@@ -309,4 +309,4 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — pre-create a namespace to reference via `valueFrom`
 - [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — deploy the target application to load test against
-- [KubernetesRedis](/docs/catalog/kubernetes/redis) — deploy Redis as a backend or caching layer for the system under test
+- [KubernetesValkey](/docs/catalog/kubernetes/valkey) — deploy Valkey (Redis-compatible) as a backend or caching layer for the system under test

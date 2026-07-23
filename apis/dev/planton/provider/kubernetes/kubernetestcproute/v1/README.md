@@ -6,25 +6,22 @@ has no matching: connections on the listener's port are forwarded to the rule's
 backends. Use it to expose non-HTTP TCP services (databases, brokers, custom
 protocols) through a Gateway.
 
-> **Experimental channel.** TCPRoute is part of the Gateway API **experimental**
-> channel (served as `gateway.networking.k8s.io/v1alpha2`), not the standard
-> channel. Install the prerequisite CRDs with
-> `KubernetesGatewayApiCrds` `install_channel: experimental`, and ensure your
-> Gateway controller supports TCPRoute. Its sibling `KubernetesTlsRoute`, by
-> contrast, is standard-channel `v1`.
+TCPRoute is a GA, standard-channel resource served as
+`gateway.networking.k8s.io/v1` (Gateway API v1.6.1). The default standard-channel
+install of `KubernetesGatewayApiCrds` includes it; no experimental channel is
+needed.
 
 ## What Gets Created
 
-- A namespaced `gateway.networking.k8s.io/v1alpha2` `TCPRoute` custom resource.
+- A namespaced `gateway.networking.k8s.io/v1` `TCPRoute` custom resource.
 - One or more rules (max 16), each forwarding to one or more weighted backend
   refs.
 
 ## Prerequisites
 
-- Gateway API **experimental-channel** CRDs installed on the cluster
-  (`KubernetesGatewayApiCrds` with `install_channel: experimental`).
-- A `Gateway` to attach to via `parentRefs` (`KubernetesGateway`) with a listener
-  of protocol `TCP`.
+- Gateway API standard-channel CRDs installed (`KubernetesGatewayApiCrds`).
+- A `Gateway` to attach to via `parentRefs` (`KubernetesGateway`) with a `TCP`
+  listener, backed by a controller that supports layer-4 routing.
 - The target namespace (`KubernetesNamespace`).
 - The backend Services the route forwards to.
 
@@ -39,11 +36,13 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tcp
   rules:
     - backendRefs:
-        - name: postgres
+        - name:
+            value: postgres
           port: 5432
 ```
 
@@ -64,10 +63,9 @@ planton apply -f tcproute.yaml
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. |
-| `useDefaultGateways` | string | `All` or `None` -- experimental default-Gateway attachment. |
+| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. Each `name` is a reference (defaults to `KubernetesGateway`). |
 | `rules[].name` | string | Optional rule name (unique within the route). |
-| `rules[].backendRefs` | list | One to 16 weighted backends to forward to. |
+| `rules[].backendRefs` | list | One to 16 weighted backends; each `name` is a reference (defaults to `KubernetesService`). |
 
 ## Examples
 
@@ -78,11 +76,13 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tcp
   rules:
     - backendRefs:
-        - name: postgres
+        - name:
+            value: postgres
           port: 5432
 ```
 
@@ -93,14 +93,17 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tcp
   rules:
     - backendRefs:
-        - name: broker-stable
+        - name:
+            value: broker-stable
           port: 9092
           weight: 90
-        - name: broker-canary
+        - name:
+            value: broker-canary
           port: 9092
           weight: 10
 ```
@@ -108,29 +111,17 @@ spec:
 ## Composing in Infra Charts
 
 `KubernetesTcpRoute` is a leaf in the ingress DAG: it attaches to a `Gateway` and
-forwards to backend Services. Two mechanisms wire it to its neighbors (see DD-009
-in the project knowledge base):
-
-1. **Data dependencies use `valueFrom`.** `namespace` is a `StringValueOrRef`, so
-   it can reference a `KubernetesNamespace` output and the platform builds the DAG
-   edge automatically.
-2. **Topology dependencies use `metadata.relationships`.** `parentRefs` and
-   `backendRefs` are **plain** upstream references (arrays of multi-field objects),
-   not foreign keys -- a plain name creates no automatic DAG edge. Express those
-   edges explicitly so the chart deploys in the right order:
+forwards to backend Services. Every one of those neighbor references is a foreign
+key -- `namespace`, `parentRefs[].name` (defaults to `KubernetesGateway`), and
+`backendRefs[].name` (defaults to `KubernetesService`) -- so wiring them with
+`valueFrom` creates real dependency edges and the platform orders the deployment
+automatically. No manual relationship declarations are needed:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTcpRoute
 metadata:
   name: "{{ values.env }}-postgres-route"
-  relationships:
-    - kind: KubernetesGateway
-      name: "{{ values.env }}-gateway"
-      type: depends_on
-    - kind: KubernetesService          # if the backend is Planton-managed
-      name: "{{ values.service_name }}"
-      type: uses
 spec:
   namespace:
     valueFrom:
@@ -138,19 +129,29 @@ spec:
       name: "{{ values.env }}-ns"
       fieldPath: spec.name
   parentRefs:
-    - name: "{{ values.env }}-gateway"   # literal Gateway name
+    - name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: "{{ values.env }}-gateway"
+          fieldPath: status.outputs.gateway_name
       sectionName: tcp
   rules:
     - backendRefs:
-        - name: "{{ values.service_name }}"
+        - name:
+            valueFrom:
+              kind: KubernetesService
+              name: "{{ values.service_name }}"
+              fieldPath: status.outputs.service_name
           port: 5432
 ```
 
-Full ingress stack DAG (mixing `valueFrom` data edges and `metadata.relationships`
-topology edges):
+When a parent or backend is not Planton-managed (an externally created Gateway,
+a custom backend kind), pass the literal name with `value:` instead.
+
+Full ingress stack DAG:
 
 ```
-KubernetesGatewayApiCrds (experimental) -> KubernetesGateway -> KubernetesTcpRoute
+KubernetesGatewayApiCrds -> KubernetesGateway -> KubernetesTcpRoute
 ```
 
 ## Stack Outputs
@@ -165,6 +166,7 @@ KubernetesGatewayApiCrds (experimental) -> KubernetesGateway -> KubernetesTcpRou
 - [Kubernetes Gateway](kubernetesgateway)
 - [Kubernetes Gateway Class](kubernetesgatewayclass)
 - [Kubernetes TLS Route](kubernetestlsroute)
+- [Kubernetes UDP Route](kubernetesudproute)
 - [Kubernetes Gateway API CRDs](kubernetesgatewayapicrds)
 - [Kubernetes Namespace](kubernetesnamespace)
 

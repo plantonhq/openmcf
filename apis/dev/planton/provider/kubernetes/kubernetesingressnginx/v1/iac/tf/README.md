@@ -1,299 +1,82 @@
-# Kubernetes Ingress NGINX - Terraform Module
-
-This Terraform module deploys the official NGINX Ingress Controller on Kubernetes clusters with cloud-specific optimizations for GKE, EKS, and AKS.
-
-## Overview
-
-The module provides automatic configuration for:
-
-- **Multi-Cloud Support**: GCP, AWS, and Azure
-- **Load Balancer Setup**: Native cloud load balancer integration
-- **Internal/External Control**: Toggle private vs public access
-- **Namespace Management**: Create new or use existing namespaces
-- **Static IP Assignment**: Cloud-specific static IP support
-- **Security Integration**: Security groups, managed identities
-
-## Prerequisites
-
-- Terraform >= 1.0
-- Kubernetes cluster access
-- kubectl configured
-- Helm provider configured
-
-## Required Providers
-
-```hcl
-terraform {
-  required_providers {
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = ">= 2.0"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = ">= 2.0"
-    }
-  }
-}
-```
-
-## Module Inputs
-
-### `metadata` (Required)
-
-Metadata for the ingress controller deployment.
-
-```hcl
-metadata = {
-  name = "my-ingress"
-  id   = "unique-id"
-  org  = "my-org"
-  env  = "production"
-}
-```
-
-### `spec` (Required)
-
-Specification for the ingress controller.
-
-```hcl
-spec = {
-  chart_version = "4.11.1"  # Optional, uses default if not specified
-  internal      = false     # false = external, true = internal
-  
-  # Cloud-specific configuration (choose one)
-  gke = {
-    static_ip_name       = "my-static-ip"
-    subnetwork_self_link = "projects/my-project/regions/us-west1/subnetworks/private"
-  }
-  
-  # OR
-  eks = {
-    additional_security_group_ids = ["sg-123", "sg-456"]
-    subnet_ids                    = ["subnet-abc", "subnet-def"]
-    irsa_role_arn_override        = "arn:aws:iam::123456789012:role/ingress-nginx"
-  }
-  
-  # OR
-  aks = {
-    managed_identity_client_id = "12345678-1234-1234-1234-123456789012"
-    public_ip_name             = "my-public-ip"
-  }
-}
-```
-
-## Module Outputs
-
-| Output | Description |
-|--------|-------------|
-| `namespace` | Kubernetes namespace where controller is deployed |
-| `release_name` | Helm release name |
-| `service_name` | Kubernetes service name for the controller |
-| `service_type` | Service type (LoadBalancer) |
-
-## Usage Examples
-
-### Basic External Ingress
-
-```hcl
-module "ingress_nginx" {
-  source = "path/to/module"
-
-  metadata = {
-    name = "basic-ingress"
-  }
-
-  spec = {
-    chart_version = "4.11.1"
-    internal      = false
-  }
-}
-```
-
-### GKE with Static IP
-
-```hcl
-module "gke_ingress" {
-  source = "path/to/module"
-
-  metadata = {
-    name = "gke-ingress"
-    env  = "production"
-  }
-
-  spec = {
-    chart_version = "4.11.1"
-    internal      = false
-    gke = {
-      static_ip_name = "prod-ingress-ip"
-    }
-  }
-}
-
-output "load_balancer_ip" {
-  value = "Check GCP console for the static IP"
-}
-```
-
-### EKS Internal with Subnets
-
-```hcl
-module "eks_internal_ingress" {
-  source = "path/to/module"
-
-  metadata = {
-    name = "internal-ingress"
-    env  = "production"
-  }
-
-  spec = {
-    chart_version = "4.11.1"
-    internal      = true
-    eks = {
-      subnet_ids = [
-        "subnet-private-1a",
-        "subnet-private-1b",
-        "subnet-private-1c"
-      ]
-      additional_security_group_ids = [
-        "sg-app-internal"
-      ]
-    }
-  }
-}
-```
-
-### AKS with Managed Identity
-
-```hcl
-module "aks_ingress" {
-  source = "path/to/module"
-
-  metadata = {
-    name = "aks-ingress"
-    env  = "production"
-  }
-
-  spec = {
-    chart_version = "4.11.1"
-    internal      = false
-    aks = {
-      managed_identity_client_id = "12345678-1234-1234-1234-123456789012"
-      public_ip_name             = "prod-ingress-public-ip"
-    }
-  }
-}
-```
-
-## Accessing Outputs
-
-```hcl
-output "controller_namespace" {
-  value = module.ingress_nginx.namespace
-}
-
-output "controller_service" {
-  value = module.ingress_nginx.service_name
-}
-```
-
-## Verification
-
-After deployment:
-
-```bash
-# Check namespace
-kubectl get ns kubernetes-ingress-nginx
-
-# Check Helm release
-helm list -n kubernetes-ingress-nginx
-
-# Check controller pods
-kubectl get pods -n kubernetes-ingress-nginx
-
-# Check load balancer service
-kubectl get svc -n kubernetes-ingress-nginx
-
-# Get load balancer IP/hostname
-kubectl get svc -n kubernetes-ingress-nginx kubernetes-ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0]}'
-```
-
-## Creating Ingress Resources
-
-After the controller is deployed, create Ingress resources to route traffic:
-
-```hcl
-resource "kubernetes_ingress_v1" "example" {
-  metadata {
-    name      = "myapp-ingress"
-    namespace = "default"
-  }
-
-  spec {
-    ingress_class_name = "nginx"
-    
-    rule {
-      host = "myapp.example.com"
-      http {
-        path {
-          path      = "/"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = "myapp"
-              port {
-                number = 80
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-## Troubleshooting
-
-### Load Balancer Pending
-
-If the service stays in Pending state:
-
-1. Check cloud provider quotas
-2. Verify network configuration (subnets, security groups)
-3. Review controller logs:
-   ```bash
-   kubectl logs -n kubernetes-ingress-nginx -l app.kubernetes.io/component=controller
-   ```
-
-### Static IP Not Assigned (GKE)
-
-```bash
-# Verify IP exists
-gcloud compute addresses list
-
-# Check if IP is global or regional (must match LB type)
-gcloud compute addresses describe <ip-name> --global
-```
-
-### Security Group Issues (EKS)
-
-```bash
-# Verify security groups exist
-aws ec2 describe-security-groups --group-ids <sg-id>
-
-# Check rules allow traffic
-aws ec2 describe-security-group-rules --filters Name=group-id,Values=<sg-id>
-```
-
-## Advanced Configuration
-
-For advanced Helm chart configuration, you can extend the module or use the Helm provider directly with additional values.
-
-## Additional Resources
-
-- [Module Examples](./examples.md) - Terraform-specific examples
-- [NGINX Ingress Controller Docs](https://kubernetes.github.io/ingress-nginx/)
-- [Terraform Helm Provider](https://registry.terraform.io/providers/hashicorp/helm/latest/docs)
-- [Terraform Kubernetes Provider](https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs)
-
+# KubernetesIngressNginx Terraform Module
+
+Terraform/OpenTofu module for the KubernetesIngressNginx component: installs
+the ingress-nginx controller from the official Helm chart (`ingress-nginx`
+at https://kubernetes.github.io/ingress-nginx) as the cluster's HTTP(S)
+entry point, with multi-instance coexistence built in.
+
+## Module Behavior
+
+- **One Helm release named after `metadata.name`** — multiple controller
+  instances per cluster (public + internal traffic splits, each owning its
+  own IngressClass) are a first-class pattern, so nothing here is a fixed
+  chart name. The chart's fullname is pinned to the release name too, so
+  every chart object (Deployment/DaemonSet, Services, IngressClass, RBAC,
+  admission webhook) carries a deterministic, manifest-derived name —
+  including the leader-election identity (`<fullname>-leader`), which
+  isolates election per instance.
+- **The typed spec renders into chart values** (`locals.typed_values`), and
+  the spec's `helm_values` escape hatch is passed as a SECOND values
+  document that the provider merges over the first with Helm `-f`
+  semantics — the exact semantic twin of the Pulumi module's
+  `buildHelmValues` + `mergeMaps`.
+- **Chart-name parity**: the repository serves this chart as
+  `ingress-nginx` — the repo-prefixed spelling `kubernetes-ingress-nginx`
+  does not exist in the index and fails at install time. The chart identity
+  is kept byte-identical with the Pulumi module's vars; cross-engine drift
+  would deploy two different products from one manifest.
+- **The IngressClass controller identifier derives automatically**: the
+  chart default `k8s.io/ingress-nginx` for class `nginx`, otherwise
+  `k8s.io/<class-name>` — additional controllers isolate without the user
+  inventing a vocabulary. The legacy annotation-vocabulary value
+  (`controller.ingressClass`) tracks the class name too.
+- **The install waits for the release to become ready**
+  (`wait`/`wait_for_jobs`/`atomic`/`cleanup_on_fail`, 300s timeout) — a
+  controller that never starts (bad image, unschedulable pod, webhook
+  certgen failure) fails THIS deploy, not the first Ingress.
+  `wait_for_jobs` covers the admission-webhook certgen hook Jobs.
+- **LB-wait posture**: Helm's readiness check on a LoadBalancer-type
+  Service also waits for the cloud LB address, so on clusters WITHOUT a
+  cloud LB controller (kind, bare metal) a `load_balancer` service type
+  times out loudly here — deliberate: use `node_port`/host access on such
+  clusters, and the failure names the real problem instead of leaving a
+  silently Pending entry point.
+- **The controller Service is read back** (`data.kubernetes_service_v1`)
+  for the load-balancer address outputs — gated on the `load_balancer`
+  service type: for `node_port`/`cluster_ip` there is no LB status to read
+  and the address outputs stay empty by design. For `load_balancer` the
+  Helm wait guarantees the address exists by the time the read runs.
+
+## Resources
+
+| Resource | Condition |
+|---|---|
+| `kubernetes_namespace_v1.ingress_nginx` | `spec.create_namespace` |
+| `helm_release.ingress_nginx` | always |
+| `data.kubernetes_service_v1.controller` (read) | `spec.service.type` is `load_balancer` |
+
+The chart owns ALL of the controller's Kubernetes objects; the module
+itself creates only the optional anchor namespace (stamped with the
+standard governance labels — never injected into chart resources) and reads
+the controller Service back.
+
+## Outputs
+
+| Output | Meaning |
+|---|---|
+| `namespace` | Namespace the controller is installed in |
+| `release_name` | Helm release name (= `metadata.name`; controller resources are named `<release>-controller`) |
+| `ingress_class_name` | The IngressClass this controller owns — what KubernetesIngress resources reference |
+| `controller_service_name` | The controller's external Service (`<name>-controller`) — the traffic entry point |
+| `internal_service_name` | The internal Service — empty unless `spec.service.internal.enabled` |
+| `load_balancer_ip` | External IP of the cloud LB (providers that populate an IP; empty otherwise) |
+| `load_balancer_hostname` | External hostname of the cloud LB (providers that populate a DNS name; empty otherwise) |
+
+## Parity
+
+Kept in lockstep with the Pulumi module (`iac/pulumi/module/`): same chart
+identity and pinned default version, same values rendering (ingress-class
+derivation, replicas-vs-autoscaling exclusivity, host-network DNS policy,
+default-TLS `extraArgs` flag, default-backend image split), same wait
+posture, same outputs. Conditional objects use the null-prune idiom
+throughout so numbers and booleans keep their types in the rendered values.

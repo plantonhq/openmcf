@@ -21,32 +21,39 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// microservice-kubernetes-stack outputs
+// *
+// **KubernetesDeploymentStackOutputs** captures the observable handles of a deployed
+// workload. Downstream resources compose on these: routes and network policies match
+// `selector_labels`, clients connect through `service` / `kube_endpoint`, and charts
+// wire dependents to the exported hostnames.
 type KubernetesDeploymentStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which microservice-kubernetes is created.
+	// The namespace the workload was deployed into.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for microservice-kubernetes.
-	// ex: main-microservice-kubernetes
-	// in the above example, "main" is the name of the microservice-kubernetes
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open microservice-kubernetes from developers laptop.
-	// this might come handy when microservice-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining microservice_kubernetes_kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/microservice_kubernetes_kubernetes_service -n kubernetes_namespace 8080:8080
-	// running the command from this attribute makes it possible to access microservice-kubernetes using http://localhost:8080
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to microservice-kubernetes from the web browser.
-	// ex: main-microservice-kubernetes.namespace.svc.instance.local:8080
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open microservice-kubernetes from clients outside kubernetes.
-	// ex: https://k8sms-planton-pcs-dev-account.dev.planton.live:8080
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// internal endpoint to open microservice-kubernetes from clients inside kubernetes.
-	// ex: https://k8sms-planton-pcs-dev-account-internal.dev.planton.live:8080
-	InternalHostname string `protobuf:"bytes,6,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The name of the Deployment object as created in the cluster.
+	DeploymentName string `protobuf:"bytes,2,opt,name=deployment_name,json=deploymentName,proto3" json:"deployment_name,omitempty"`
+	// *
+	// The Kubernetes Service fronting the replicas. Empty when the app container
+	// exposes no ports (no Service is created).
+	Service string `protobuf:"bytes,3,opt,name=service,proto3" json:"service,omitempty"`
+	// *
+	// The pod selector labels as a "k=v,k=v" string — the exact labels the Service
+	// selects on, ready for NetworkPolicy podSelectors, `kubectl get pods -l`, and
+	// pod-affinity terms in sibling workloads.
+	SelectorLabels string `protobuf:"bytes,4,opt,name=selector_labels,json=selectorLabels,proto3" json:"selector_labels,omitempty"`
+	// *
+	// Ready-to-run port-forward command for reaching the workload from a developer
+	// machine without any external exposure.
+	// ex: kubectl port-forward -n my-ns service/my-app 8080:8080
+	PortForwardCommand string `protobuf:"bytes,5,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	// *
+	// In-cluster DNS endpoint of the Service — the handle exposure kinds
+	// (KubernetesIngress, KubernetesHttpRoute and the other Gateway API route kinds)
+	// and sibling workloads connect to.
+	// ex: my-app.my-ns.svc.cluster.local
+	KubeEndpoint  string `protobuf:"bytes,6,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesDeploymentStackOutputs) Reset() {
@@ -86,9 +93,23 @@ func (x *KubernetesDeploymentStackOutputs) GetNamespace() string {
 	return ""
 }
 
+func (x *KubernetesDeploymentStackOutputs) GetDeploymentName() string {
+	if x != nil {
+		return x.DeploymentName
+	}
+	return ""
+}
+
 func (x *KubernetesDeploymentStackOutputs) GetService() string {
 	if x != nil {
 		return x.Service
+	}
+	return ""
+}
+
+func (x *KubernetesDeploymentStackOutputs) GetSelectorLabels() string {
+	if x != nil {
+		return x.SelectorLabels
 	}
 	return ""
 }
@@ -107,32 +128,18 @@ func (x *KubernetesDeploymentStackOutputs) GetKubeEndpoint() string {
 	return ""
 }
 
-func (x *KubernetesDeploymentStackOutputs) GetExternalHostname() string {
-	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesDeploymentStackOutputs) GetInternalHostname() string {
-	if x != nil {
-		return x.InternalHostname
-	}
-	return ""
-}
-
 var File_dev_planton_provider_kubernetes_kubernetesdeployment_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesdeployment_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Kdev/planton/provider/kubernetes/kubernetesdeployment/v1/stack_outputs.proto\x127dev.planton.provider.kubernetes.kubernetesdeployment.v1\"\x8b\x02\n" +
+	"Kdev/planton/provider/kubernetes/kubernetesdeployment/v1/stack_outputs.proto\x127dev.planton.provider.kubernetes.kubernetesdeployment.v1\"\x83\x02\n" +
 	" KubernetesDeploymentStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\x06 \x01(\tR\x10internalHostnameB\xc5\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12'\n" +
+	"\x0fdeployment_name\x18\x02 \x01(\tR\x0edeploymentName\x12\x18\n" +
+	"\aservice\x18\x03 \x01(\tR\aservice\x12'\n" +
+	"\x0fselector_labels\x18\x04 \x01(\tR\x0eselectorLabels\x120\n" +
+	"\x14port_forward_command\x18\x05 \x01(\tR\x12portForwardCommand\x12#\n" +
+	"\rkube_endpoint\x18\x06 \x01(\tR\fkubeEndpointB\xc5\x03\n" +
 	";com.dev.planton.provider.kubernetes.kubernetesdeployment.v1B\x11StackOutputsProtoP\x01Zpgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdeployment/v1;kubernetesdeploymentv1\xa2\x02\x05DPPKK\xaa\x027Dev.Planton.Provider.Kubernetes.Kubernetesdeployment.V1\xca\x027Dev\\Planton\\Provider\\Kubernetes\\Kubernetesdeployment\\V1\xe2\x02CDev\\Planton\\Provider\\Kubernetes\\Kubernetesdeployment\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Kubernetes::Kubernetesdeployment::V1b\x06proto3"
 
 var (

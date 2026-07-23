@@ -1,0 +1,45 @@
+# KubernetesClusterSecretStore Terraform Module
+
+## Module Behavior
+
+- **Twin locals**: `locals.tf` renders the same CRD-JSON spec shape the
+  Pulumi module's shared builder produces — identical field mappings, kept
+  in lockstep, so the two engines apply byte-equivalent stores.
+- **`kubectl_manifest` apply**: the CR applies through the alekc/kubectl
+  provider, which needs no cluster connection at plan time — a
+  ClusterSecretStore can be PLANNED before the External Secrets Operator's
+  CRDs exist, which is what lets an infra chart deploy the operator and its
+  stores in one run.
+- **Credential Secret materialization**: static credentials declared in the
+  spec land in a `<resource-name>-credentials` Secret in the spec's secrets
+  namespace; the CR depends on it, so ESO never observes dangling
+  secretRefs.
+- **No `wait_for` block, deliberately**: store readiness depends on
+  external reachability (the cloud secrets API, Vault) that is not part of
+  applying the resource — the never-block-on-a-controller posture.
+
+## Usage
+
+```bash
+planton tofu apply --manifest cluster-secret-store.yaml
+```
+
+## Local Development
+
+```bash
+terraform init
+terraform validate
+terraform plan -var-file=terraform.tfvars.json
+terraform apply -var-file=terraform.tfvars.json
+```
+
+## Inputs
+
+See `variables.tf` for the full variable specification.
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `store_name` | Name of the created ClusterSecretStore — the handle ExternalSecrets reference |
+| `secrets_namespace` | Namespace credential Secrets were materialized in |

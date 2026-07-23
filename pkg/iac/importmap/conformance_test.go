@@ -20,7 +20,7 @@ import (
 	"github.com/plantonhq/planton/pkg/crkreflect"
 )
 
-var tfResourcePattern = regexp.MustCompile(`(?m)^resource\s+"([a-z0-9_]+)"\s+"`)
+var tfResourcePattern = regexp.MustCompile(`(?m)^resource\s+"([a-z0-9_]+)"\s+"([A-Za-z0-9_-]+)"`)
 
 // cloudControlTypeNamePattern is the CloudFormation type-name shape
 // (e.g. "AWS::S3::Bucket") that Cloud Control keys its list/get calls on.
@@ -145,9 +145,19 @@ func TestImportMapConformance(t *testing.T) {
 				}
 
 				// Every module-declared resource type must be importable.
-				moduleTypes := terraformResourceTypes(t, filepath.Join(root, "apis/dev/planton/provider", provider, component, "v1/iac/tf"))
+				moduleTypes, moduleNames := terraformResourceTypes(t, filepath.Join(root, "apis/dev/planton/provider", provider, component, "v1/iac/tf"))
 				if len(moduleTypes) == 0 {
 					t.Fatal("module declares no resources -- wrong path?")
+				}
+
+				// A tofu_resource_name scope must name a REAL logical resource:
+				// a typo'd scope silently falls back to the unscoped declaration
+				// at resolve time, which imports the wrong resource.
+				for _, v := range m.GetSpec().GetValues() {
+					if scope := v.GetTofuResourceName(); scope != "" && !moduleNames[scope] {
+						t.Errorf("value %q is scoped to tofu_resource_name %q, but the module declares no resource with that logical name",
+							v.GetName(), scope)
+					}
 				}
 				for _, resourceType := range moduleTypes {
 					idFormat, mapped := formatsByTerraformType[resourceType]
@@ -205,13 +215,14 @@ func TestImportMapConformance(t *testing.T) {
 
 // terraformResourceTypes scans a module directory's .tf files for top-level
 // resource declarations and returns the distinct resource types.
-func terraformResourceTypes(t *testing.T, moduleDir string) []string {
+func terraformResourceTypes(t *testing.T, moduleDir string) ([]string, map[string]bool) {
 	t.Helper()
 	entries, err := os.ReadDir(moduleDir)
 	if err != nil {
 		t.Fatalf("reading module dir %s: %v", moduleDir, err)
 	}
 	seen := map[string]bool{}
+	names := map[string]bool{}
 	var types []string
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tf") {
@@ -226,9 +237,10 @@ func terraformResourceTypes(t *testing.T, moduleDir string) []string {
 				seen[match[1]] = true
 				types = append(types, match[1])
 			}
+			names[match[2]] = true
 		}
 	}
-	return types
+	return types, names
 }
 
 // specMessageDescriptor returns the descriptor of the kind's spec message

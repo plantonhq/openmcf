@@ -1,0 +1,3 @@
+name: kubernetes-karpenter-ec2-node-class
+runtime: go
+description: Pulumi module that provisions a Karpenter EC2NodeClass (karpenter.k8s.aws/v1) from a KubernetesKarpenterEc2NodeClass manifest.

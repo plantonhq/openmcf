@@ -1,0 +1,451 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskeda.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesKedaSpec** installs KEDA — Kubernetes Event-Driven Autoscaling
+ * — from the official Helm chart (`keda` at
+ * https://kedacore.github.io/charts). KEDA scales workloads on REAL-WORLD
+ * signals (queue depth, stream lag, database rows, cron schedules, cloud
+ * metrics — 70+ scalers) instead of only CPU/memory: its operator watches
+ * ScaledObject/ScaledJob resources, drives the workload's HPA (including
+ * scale-to-ZERO, which plain HPA cannot do), and serves the
+ * external.metrics.k8s.io API the HPA controller reads.
+ *
+ * ONE INSTALLATION PER CLUSTER: KEDA registers the cluster-wide
+ * `v1beta1.external.metrics.k8s.io` APIService, a singleton — a second
+ * installation would fight over it (and Kubernetes allows only one external
+ * metrics provider). The Helm release name is therefore fixed to "keda".
+ *
+ * The scaling declarations themselves (ScaledObject, ScaledJob,
+ * TriggerAuthentication) are KEDA custom resources applied per workload —
+ * deploy them alongside the workloads they scale (KubernetesManifest carries
+ * them today). This component installs and configures the ENGINE.
+ *
+ * The typed fields below cover the chart's meaningful configuration surface;
+ * `helm_values` remains as the escape hatch for chart values beyond them
+ * (merged last, Helm `-f` semantics, identical on both engines) — a safety
+ * valve, never the primary interface.
+ */
+message KubernetesKedaSpec {
+  /**
+   * Namespace to install KEDA into ("keda" is the upstream convention).
+   * Accepts a literal namespace name or a reference to a
+   * KubernetesNamespace resource.
+   *
+   * Treat the namespace as PERMANENT while CRDs are kept (the
+   * `crds.keep_on_uninstall` default): kept CRDs retain the Helm release's
+   * namespace in their ownership metadata, so re-installing into a
+   * DIFFERENT namespace fails with Helm's release-ownership error on the
+   * surviving CRDs. Moving an install requires first deleting the kept
+   * CRDs — which cascades to every scaling declaration in the cluster
+   * (ScaledObjects, ScaledJobs, TriggerAuthentications).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "2.20.1", which ships KEDA 2.20.1 —
+   * chart and app versions move together). Pin deliberately; upgrades
+   * re-run the release with the new chart. Pick versions from the chart
+   * repository's index (`helm search repo`): the served chart is the
+   * contract — the upstream source tree's Chart.yaml can claim a version at
+   * a tag that was never served.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "2.20.1"];
+
+  /**
+   * KEDA custom resource definitions (ScaledObject, ScaledJob,
+   * TriggerAuthentication, ...) lifecycle.
+   */
+  KubernetesKedaCrds crds = 4;
+
+  /**
+   * Namespace KEDA watches for ScaledObjects/ScaledJobs. Empty (the chart
+   * default) watches ALL namespaces — the normal cluster-wide posture. Set
+   * a single namespace to fence KEDA into one team's space.
+   */
+  string watch_namespace = 5;
+
+  /**
+   * keda-operator sizing — the controller that reconciles ScaledObjects
+   * and drives HPAs. Extra replicas are warm standbys (leader-elected),
+   * not horizontal capacity.
+   */
+  KubernetesKedaComponent operator = 6;
+
+  /**
+   * Metrics API server sizing — serves external.metrics.k8s.io to the HPA
+   * controller. Like the operator, one instance serves traffic; extra
+   * replicas reduce failover downtime.
+   */
+  KubernetesKedaComponent metrics_server = 7;
+
+  /**
+   * Admission webhooks — validate ScaledObjects at apply time (catching
+   * broken scale targets and conflicting HPAs before they misbehave at
+   * runtime).
+   */
+  KubernetesKedaWebhooks webhooks = 8;
+
+  /**
+   * Ambient cloud identity for SCALERS: how KEDA authenticates to cloud
+   * metric sources (SQS queue depth, Azure Service Bus, GCP Pub/Sub, ...)
+   * without stored credentials. This annotates/labels KEDA's own service
+   * accounts; per-trigger authentication beyond it lives in
+   * TriggerAuthentication resources next to the workloads.
+   */
+  KubernetesKedaPodIdentity pod_identity = 9;
+
+  /**
+   * How KEDA's internal TLS certificates (operator ↔ metrics server ↔
+   * webhooks) are provisioned.
+   */
+  KubernetesKedaCertificates certificates = 10;
+
+  /**
+   * Default timeout in MILLISECONDS for scalers that reach external
+   * services over raw HTTP. Chart default: 3000.
+   */
+  optional int32 http_timeout_ms = 11 [
+    (dev.planton.shared.options.default) = "3000",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * PriorityClass for all KEDA components. The autoscaling engine should
+   * outlive workload evictions — pods that scale on KEDA stop scaling
+   * without it.
+   */
+  string priority_class_name = 12;
+
+  /**
+   * Node selector applied to all KEDA components.
+   */
+  map<string, string> node_selector = 13;
+
+  /**
+   * Tolerations applied to all KEDA components.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 14;
+
+  /**
+   * KEDA's own Prometheus telemetry (operator + metrics-server scrape
+   * endpoints and optional ServiceMonitors). This is telemetry ABOUT KEDA —
+   * unrelated to the external metrics it serves to HPAs.
+   */
+  KubernetesKedaPrometheus prometheus = 15;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged LAST
+   * over everything the typed fields render (Helm `-f` semantics, identical
+   * on both engines). For the chart surface beyond the typed fields
+   * (network policies, OpenTelemetry, profiling, per-component scheduling
+   * overrides, image overrides, ...) — never the substitute for them. Do
+   * not put secrets here.
+   */
+  string helm_values = 16;
+}
+
+/**
+ * KEDA CRD lifecycle.
+ */
+message KubernetesKedaCrds {
+  /**
+   * Install the KEDA CRDs with the release. Chart default: true. Disable
+   * only when something else manages them.
+   */
+  optional bool install = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Keep the CRDs (and therefore every ScaledObject/ScaledJob/
+   * TriggerAuthentication in the cluster) when this release is
+   * uninstalled. Rendered as the `helm.sh/resource-policy: keep` annotation
+   * on the CRDs — the chart has no native keep knob, and WITHOUT this a
+   * plain uninstall cascade-deletes every scaling declaration in the
+   * cluster. Leave true unless you deliberately want uninstall to purge
+   * them.
+   */
+  optional bool keep_on_uninstall = 2 [(dev.planton.shared.options.default) = "true"];
+
+  option (buf.validate.message).cel = {
+    id: "spec.crds.keep_requires_install"
+    message: "keep_on_uninstall only applies when the release installs the CRDs — with install false there is nothing to keep"
+    expression: "!(has(this.install) && this.install == false) || !(has(this.keep_on_uninstall) && this.keep_on_uninstall == true)"
+  };
+}
+
+/**
+ * Sizing for one KEDA component (operator or metrics API server).
+ */
+message KubernetesKedaComponent {
+  /**
+   * Replica count. Chart default: 1. Only one instance leads/serves at a
+   * time — extra replicas are failover standbys, per upstream's HA
+   * guidance.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Container resources. Empty = chart defaults (requests 100m/100Mi,
+   * limits 1/1000Mi).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+}
+
+/**
+ * KEDA admission webhooks.
+ */
+message KubernetesKedaWebhooks {
+  /**
+   * Deploy the admission webhooks. Chart default: true. Disabling removes
+   * apply-time validation of ScaledObjects (mistakes then surface only as
+   * runtime scaling failures).
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * What the API server does when the webhook is unreachable: "Ignore"
+   * (chart default — applies proceed unvalidated) or "Fail" (applies are
+   * rejected until the webhook is back; stricter, but a webhook outage
+   * then blocks ScaledObject changes).
+   */
+  optional string failure_policy = 2 [
+    (dev.planton.shared.options.default) = "Ignore",
+    (buf.validate.field).cel = {
+      id: "spec.webhooks.failure_policy_enum"
+      message: "failure_policy must be either 'Ignore' or 'Fail'"
+      expression: "this == '' || this in ['Ignore', 'Fail']"
+    }
+  ];
+
+  /**
+   * Replica count. Chart default: 1.
+   */
+  optional int32 replicas = 3 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Container resources. Empty = chart defaults.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 4;
+}
+
+/**
+ * Ambient cloud identity for KEDA's scalers. Each arm annotates/labels
+ * KEDA's service accounts with the platform's keyless-identity contract —
+ * the same pattern as workload identity on other addons. Enable the arm for
+ * the cloud whose metric sources KEDA reads; the arms configure independent
+ * chart blocks, so cross-cloud setups (rare but real: an EKS cluster
+ * scaling on Azure Service Bus needs no arm here — that case uses a
+ * TriggerAuthentication with explicit credentials).
+ */
+message KubernetesKedaPodIdentity {
+  /**
+   * AWS IRSA: annotate KEDA's service account with an IAM role so scalers
+   * read SQS/CloudWatch/Kinesis without stored keys.
+   */
+  KubernetesKedaAwsIrsa aws_irsa = 1;
+
+  /**
+   * Azure Workload Identity: label/annotate for federated Entra identity
+   * so scalers read Service Bus/Event Hubs/Monitor without stored secrets.
+   */
+  KubernetesKedaAzureWorkloadIdentity azure_workload_identity = 2;
+
+  /**
+   * GCP Workload Identity: bind a GCP service account so scalers read
+   * Pub/Sub/Stackdriver without stored keys.
+   */
+  KubernetesKedaGcpWorkloadIdentity gcp_workload_identity = 3;
+}
+
+/**
+ * AWS IAM Roles for Service Accounts.
+ */
+message KubernetesKedaAwsIrsa {
+  /**
+   * Enable IRSA annotations on the KEDA service account.
+   */
+  bool enabled = 1;
+
+  /**
+   * ARN of the IAM role to assume (the role's trust policy must allow the
+   * cluster's OIDC provider and KEDA's service account).
+   */
+  string role_arn = 2 [(buf.validate.field).cel = {
+    id: "spec.pod_identity.aws_irsa.role_arn_format"
+    message: "role_arn must be an IAM role ARN (arn:aws:iam::<account>:role/<name>)"
+    expression: "this == '' || this.matches('^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+$')"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "spec.pod_identity.aws_irsa.enabled_requires_role"
+    message: "aws_irsa requires role_arn — without the role annotation there is no identity to assume"
+    expression: "!this.enabled || this.role_arn != ''"
+  };
+}
+
+/**
+ * Azure Workload Identity (federated Entra credentials).
+ */
+message KubernetesKedaAzureWorkloadIdentity {
+  /**
+   * Enable the Azure Workload Identity label/annotations on the KEDA
+   * service account.
+   */
+  bool enabled = 1;
+
+  /**
+   * Entra application (client) ID KEDA federates as.
+   */
+  string client_id = 2;
+
+  /**
+   * Entra tenant ID of that application.
+   */
+  string tenant_id = 3;
+
+  option (buf.validate.message).cel = {
+    id: "spec.pod_identity.azure_wi.enabled_requires_ids"
+    message: "azure_workload_identity requires both client_id and tenant_id — the federated credential is addressed by the pair"
+    expression: "!this.enabled || (this.client_id != '' && this.tenant_id != '')"
+  };
+}
+
+/**
+ * GCP Workload Identity.
+ */
+message KubernetesKedaGcpWorkloadIdentity {
+  /**
+   * Enable the GCP Workload Identity annotation on the KEDA service
+   * account.
+   */
+  bool enabled = 1;
+
+  /**
+   * Email of the GCP IAM service account to impersonate (must carry a
+   * workload-identity binding to KEDA's Kubernetes service account).
+   */
+  string service_account_email = 2 [(buf.validate.field).cel = {
+    id: "spec.pod_identity.gcp_wi.email_format"
+    message: "service_account_email must be a GCP service-account email (…@…gserviceaccount.com)"
+    expression: "this == '' || this.matches('^[a-z0-9-]+@[a-z0-9-]+(\\\\.[a-z0-9-]+)*\\\\.gserviceaccount\\\\.com$')"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "spec.pod_identity.gcp_wi.enabled_requires_email"
+    message: "gcp_workload_identity requires service_account_email — without it there is no GCP identity to impersonate"
+    expression: "!this.enabled || this.service_account_email != ''"
+  };
+}
+
+/**
+ * Internal TLS certificate provisioning (operator ↔ metrics server ↔
+ * webhooks, and the external-metrics APIService caBundle).
+ */
+message KubernetesKedaCertificates {
+  /**
+   * Provisioning method. "operator" (chart default): the KEDA operator
+   * self-generates certificates and patches the APIService caBundle —
+   * zero-dependency and fine for almost every cluster. "cert_manager":
+   * cert-manager issues and renews them (requires KubernetesCertManager on
+   * the cluster).
+   */
+  optional string type = 1 [
+    (dev.planton.shared.options.default) = "operator",
+    (buf.validate.field).cel = {
+      id: "spec.certificates.type_enum"
+      message: "certificates type must be either 'operator' or 'cert_manager'"
+      expression: "this == '' || this in ['operator', 'cert_manager']"
+    }
+  ];
+
+  /**
+   * cert-manager issuer that signs KEDA's certificates (type cert_manager).
+   * Empty = the chart generates its own self-signed CA + Issuer chain.
+   */
+  KubernetesKedaCertManagerIssuer cert_manager_issuer = 2;
+
+  option (buf.validate.message).cel = {
+    id: "spec.certificates.issuer_requires_cert_manager_type"
+    message: "cert_manager_issuer is only used with certificates type cert_manager — set type accordingly or remove the issuer"
+    expression: "!has(this.cert_manager_issuer) || this.type == 'cert_manager'"
+  };
+}
+
+/**
+ * cert-manager issuer reference kind vocabulary.
+ */
+enum KubernetesKedaIssuerKind {
+  // Namespaced Issuer in the installation namespace.
+  issuer = 0;
+  // Cluster-scoped ClusterIssuer.
+  cluster_issuer = 1;
+}
+
+/**
+ * Existing cert-manager issuer reference.
+ */
+message KubernetesKedaCertManagerIssuer {
+  /**
+   * Issuer grain: a namespaced Issuer (must live in the installation
+   * namespace) or a cluster-scoped ClusterIssuer.
+   */
+  optional KubernetesKedaIssuerKind kind = 1 [(dev.planton.shared.options.default) = "issuer"];
+
+  /**
+   * Name of the Issuer / ClusterIssuer that signs KEDA's certificates.
+   * References the matching Planton kind's output by default.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesIssuer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.issuer_name"
+  ];
+}
+
+/**
+ * KEDA's own telemetry.
+ */
+message KubernetesKedaPrometheus {
+  /**
+   * Expose the operator's and metrics API server's own /metrics endpoints
+   * (scaler loop latencies, trigger errors, HPA interactions).
+   */
+  bool enabled = 1;
+
+  /**
+   * Create ServiceMonitors for scrape discovery. Requires the Prometheus
+   * operator CRDs on the cluster — the release FAILS to install without
+   * them.
+   */
+  bool service_monitor = 2;
+
+  option (buf.validate.message).cel = {
+    id: "spec.prometheus.monitor_requires_enabled"
+    message: "service_monitor requires prometheus metrics to be enabled — the ServiceMonitor would have no metrics endpoint to scrape"
+    expression: "!this.service_monitor || this.enabled"
+  };
+}

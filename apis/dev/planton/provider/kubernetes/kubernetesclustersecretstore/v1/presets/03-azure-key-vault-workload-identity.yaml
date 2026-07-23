@@ -1,0 +1,15 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesClusterSecretStore
+metadata:
+  name: azure-key-vault
+spec:
+  secretsNamespace:
+    value: external-secrets # the operator's install namespace, by convention
+  config:
+    azureKeyVault:
+      vaultUrl: https://my-key-vault.vault.azure.net # replace with your Key Vault URL
+      tenantId: <entra-tenant-id>
+      authType: WorkloadIdentity # default; the keyless AKS posture
+      serviceAccountName:
+        value: <eso-reader-service-account>
+      serviceAccountNamespace: external-secrets # required on a ClusterSecretStore

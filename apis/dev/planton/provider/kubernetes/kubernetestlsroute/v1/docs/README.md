@@ -1,8 +1,8 @@
 # KubernetesTlsRoute -- Research Documentation
 
 This document explains why `KubernetesTlsRoute` exists, how it maps the upstream
-Gateway API `TLSRoute` into the Planton component model, and the design decisions
-behind its spec, validation, and IaC. It is the source-of-truth companion to the
+Gateway API `TLSRoute` into the Planton component model, and the reasoning behind
+its spec, validation, and IaC. It is the source-of-truth companion to the
 user-facing `README.md` (getting started) and `catalog-page.md` (catalog listing).
 
 ## Table of Contents
@@ -14,8 +14,8 @@ user-facing `README.md` (getting started) and `catalog-page.md` (catalog listing
 5. The SNI / Backend Model
 6. Validation Rules
 7. Why TLSRoute Is a First-Class Planton Component
-8. Design Decisions
-9. Standard vs Experimental Channel (TLSRoute graduated to v1)
+8. Design Notes
+9. Standard Channel Status
 10. Composing in Infra Charts
 11. Controller Landscape
 12. Common Pitfalls
@@ -33,8 +33,8 @@ end to end. This is the right tool when a service must hold its own certificate 
 do its own mTLS, and the Gateway should route but never decrypt.
 
 `KubernetesTlsRoute` brings that resource into Planton as a first-class deployment
-component, at 100% fidelity with the upstream standard channel, so customers never
-have to fall back to a raw `KubernetesManifest` to express TLS passthrough
+component modeling the complete upstream standard-channel surface, so customers
+never have to fall back to a raw `KubernetesManifest` to express TLS passthrough
 routing. It is a sibling of `KubernetesHttpRoute` / `KubernetesGrpcRoute` and
 shares their envelope, conventions, and IaC structure.
 
@@ -74,8 +74,9 @@ The Planton spec flattens the upstream `TLSRouteSpec` after the standard
 namespaced envelope (`namespace`):
 
 - `parent_refs` -- the Gateways this route attaches to (max 32).
-- `hostnames` -- the SNI hostnames that select the route (**required**, 1 to 16;
-  wildcard prefix allowed; IPs not allowed).
+- `hostnames` -- the SNI hostnames that select the route (**required**, 1 to
+  1024; wildcard prefix allowed; IPs not allowed). Upstream raised the bound
+  from 16 to 1024 in the v1.6 release.
 - `rules` -- **exactly one** routing rule (`min_items: 1`, `max_items: 1`). Each
   rule has only:
   - an optional `name`;
@@ -83,6 +84,12 @@ namespaced envelope (`namespace`):
 
 There are no matches and no filters: a TLS passthrough route has no layer-7
 visibility to match on or transform.
+
+Reference names are foreign keys: `parent_refs[].name` defaults to
+`KubernetesGateway` and `backend_refs[].name` defaults to `KubernetesService`,
+both as `StringValueOrRef`. In infra charts these wire with `valueFrom` and give
+the resource graph real dependency edges; when the referent is not
+Planton-managed, the literal name is passed with `value:`.
 
 ## The SNI / Backend Model
 
@@ -101,13 +108,17 @@ visibility to match on or transform.
 Every upstream `XValidation` and kubebuilder marker is translated to
 `buf.validate`:
 
-- `hostnames`: required (`min_items: 1`), `max_items: 16`; per-item RFC 1123
-  wildcard-prefix pattern; a list-level CEL rejecting IPv4 literals (the SNI no-IP
-  rule from RFC 6066).
+- `hostnames`: required (`min_items: 1`), `max_items: 1024` (the upstream v1.6
+  bound); per-item RFC 1123 wildcard-prefix pattern; a list-level CEL rejecting
+  IPv4 literals (the SNI no-IP rule from RFC 6066).
 - `rules`: `min_items: 1`, `max_items: 1` (upstream caps a TLSRoute at one rule).
 - `backend_refs`: `min_items: 1`, `max_items: 16`; the shared backend ref carries
-  the upstream group/kind/name patterns and port/weight bounds.
+  the upstream group/kind patterns and port/weight bounds.
 - `name` (rule): SectionName pattern (lowercase RFC 1123 subdomain, 1-253).
+
+The upstream length/format constraints on foreign-key `name` fields are enforced
+by the Kubernetes API server at apply time; the referenced object's own creation
+already validated them.
 
 ### A note on `isIp`
 
@@ -127,55 +138,50 @@ InfraChart composability, no UI wizards. `KubernetesTlsRoute` closes that gap fo
 the TLS-passthrough slice of the ingress story, alongside `KubernetesHttpRoute`
 and `KubernetesGrpcRoute`.
 
-## Design Decisions
+## Design Notes
 
-- **Standard channel, `v1`.** TLSRoute graduated to the standard channel and is
-  served as `gateway.networking.k8s.io/v1` (it was experimental `v1alpha2` /
-  `v1alpha3` in earlier releases). The typed crd2pulumi resource emits the `v1`
-  apiVersion (aliased from the older versions).
-- **Plain `parent_refs` / `backend_refs` (DD-009).** Kept as plain upstream
-  references, not `StringValueOrRef`, because they are arrays of multi-field
-  objects; wrapping them would break 100% fidelity and distort the typed CRD
-  shape. Their DAG edges are expressed via `metadata.relationships` (see below).
+- **Standard channel, `v1`.** TLSRoute is standard-channel since Gateway API v1.5
+  and is served as `gateway.networking.k8s.io/v1` (it was experimental
+  `v1alpha2` / `v1alpha3` in earlier releases). The typed crd2pulumi resource
+  emits the `v1` apiVersion.
+- **Foreign-key `parent_refs` / `backend_refs` names.** Each reference's `name`
+  is a `StringValueOrRef` (Gateway and Service foreign keys respectively):
+  `valueFrom` wiring creates real dependency edges in infra charts, while
+  `value:` carries literal names for referents outside Planton.
 - **Reuse the shared backend ref.** TLS routes have no per-backend filters, so
-  they consume the canonical `KubernetesGatewayApiBackendRef` directly -- the
-  first consumer of that shared type (hardened to full upstream field fidelity in
-  this change).
-- **DD-008 value modeling.** Open sets use the upstream regex; no proto enums and
-  no baked-in Planton defaults on upstream fields.
+  they consume the canonical `KubernetesGatewayApiBackendRef` directly.
+- **String-typed enum aliases stay strings.** Upstream models its enums as string
+  type aliases with validation markers; the proto mirrors that with `optional
+  string` plus pattern/CEL checks, so CEL comparisons and controller-specific
+  values keep working, and no Planton defaults are baked into upstream fields.
 - **Typed crd2pulumi IaC.** `gatewayv1.NewTLSRoute`; the spec mapping is split
   across `parent_refs.go` and `rules.go` (no matches/filters).
+- **Terraform applies through `kubectl_manifest`** (alekc/kubectl) with
+  server-side apply: plannable before the Gateway API CRDs exist, so an infra
+  chart can deploy CRDs, Gateway, and routes in one run.
 
-## Standard vs Experimental Channel (TLSRoute graduated to v1)
+## Standard Channel Status
 
-Unlike `KubernetesTcpRoute` (which is experimental-only, `v1alpha2`), TLSRoute is
-served in the **standard** channel as `v1`. The standard-channel `TLSRouteSpec`
-has no `useDefaultGateways` field (that experimental field is stripped from the
-standard CRD), so there is nothing experimental to exclude here -- the spec is the
-full standard-channel surface.
+TLSRoute is served in the **standard** channel as `v1` (standard since Gateway
+API v1.5). The standard-channel `TLSRouteSpec` has no `useDefaultGateways` field
+(that experimental field is stripped from the standard CRD), so there is nothing
+experimental to exclude here -- the spec is the full standard-channel surface.
 
 ## Composing in Infra Charts
 
-`KubernetesTlsRoute` is designed as a LEGO block for Infra Charts. Two mechanisms
-wire it into the dependency DAG (see project decision DD-009):
+`KubernetesTlsRoute` is designed as a LEGO block for Infra Charts. Every neighbor
+reference is a `StringValueOrRef` foreign key:
 
-1. **Data dependencies use `StringValueOrRef` (`valueFrom`).** `namespace` is a
-   `StringValueOrRef` with `default_kind = KubernetesNamespace`, so it can
-   reference a namespace output and the platform builds the DAG edge automatically.
-2. **Topology dependencies use `metadata.relationships`.** `parent_refs` and
-   `backend_refs` are plain references -- a plain name string creates no automatic
-   DAG edge. Infra-chart authors express those edges explicitly:
+- `namespace` (default kind `KubernetesNamespace`),
+- `parent_refs[].name` (default kind `KubernetesGateway`),
+- `backend_refs[].name` (default kind `KubernetesService`).
+
+Wiring them with `valueFrom` creates real dependency edges, so the platform
+builds the DAG automatically -- no manual relationship declarations:
 
 ```yaml
 metadata:
   name: "{{ values.env }}-secure-route"
-  relationships:
-    - kind: KubernetesGateway
-      name: "{{ values.env }}-gateway"
-      type: depends_on
-    - kind: KubernetesService          # when the backend is Planton-managed
-      name: "{{ values.service_name }}"
-      type: uses
 spec:
   namespace:
     valueFrom:
@@ -183,13 +189,21 @@ spec:
       name: "{{ values.env }}-ns"
       fieldPath: spec.name
   parentRefs:
-    - name: "{{ values.env }}-gateway"
+    - name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: "{{ values.env }}-gateway"
+          fieldPath: status.outputs.gateway_name
       sectionName: tls
   hostnames:
     - "secure.{{ values.domain }}"
   rules:
     - backendRefs:
-        - name: "{{ values.service_name }}"
+        - name:
+            valueFrom:
+              kind: KubernetesService
+              name: "{{ values.service_name }}"
+              fieldPath: status.outputs.service_name
           port: 8443
 ```
 
@@ -200,26 +214,24 @@ KubernetesCertManager            (runs_on cluster)
   -> KubernetesClusterIssuer     (cert_manager_namespace: valueFrom CertManager)
     -> KubernetesCertificate     (issuerRef: valueFrom ClusterIssuer)
       -> (Kubernetes Secret)     (Certificate.status.outputs.secret_name)
-        -> KubernetesGateway     (gateway_class_name + namespace: valueFrom;
-                                   certificate_refs -> Certificate: relationships uses)
-          -> KubernetesTlsRoute  (namespace: valueFrom;
-                                  parent_refs -> Gateway: relationships depends_on;
-                                  backend_refs -> Service: relationships uses)
+        -> KubernetesGateway     (certificate_refs[].name: valueFrom Certificate)
+          -> KubernetesTlsRoute  (parent_refs[].name: valueFrom Gateway;
+                                  backend_refs[].name: valueFrom Service)
 ```
 
 (For pure TLS passthrough the backend holds its own certificate, so the
 cert-manager prefix is optional; it applies when the Gateway terminates TLS in the
 extended `Terminate` mode.)
 
-Data edges use `valueFrom`; topology edges (the plain refs) use
-`metadata.relationships`. Both are required for the platform to build the full DAG.
-
 ## Controller Landscape
 
 TLSRoute is implemented by the major Gateway API controllers that support
 layer-4 routing (Istio, Envoy Gateway, and others). The proto carries no
 controller-specific behavior; upstream defaults are documented in comments and
-left to the controller rather than baked into the spec.
+left to the controller rather than baked into the spec. Deploying the route never
+blocks on a controller: the per-parent Accepted/ResolvedRefs conditions appear
+when a Gateway implementation reconciles the resource, observed via kubectl
+rather than awaited at apply time.
 
 ## Common Pitfalls
 
@@ -231,18 +243,22 @@ left to the controller rather than baked into the spec.
   terminates TLS and you need layer-7 routing.
 - **Exactly one rule.** Upstream caps a TLSRoute at one rule; express traffic
   splitting through multiple weighted `backendRefs` in that single rule.
-- **Plain refs need relationships in charts.** Setting only `parentRefs[].name`
-  does not create a DAG edge; add `metadata.relationships` (DD-009).
+- **Very large hostname sets.** The 1024-hostname bound matches upstream v1.6;
+  validate apiserver/etcd/controller behavior with representative manifests
+  before relying on very large sets in production.
+- **Literal `value:` names create no dependency edge.** In infra charts, prefer
+  `valueFrom` for Planton-managed Gateways and Services so ordering is
+  guaranteed.
 
 ## Conclusion
 
 `KubernetesTlsRoute` completes the TLS-passthrough slice of the Planton Gateway
-API ingress layer at 100% standard-channel fidelity, mirroring its sibling routes
-in every convention and fully accounting for infra-chart composability.
+API ingress layer, modeling the complete upstream standard-channel surface,
+mirroring its sibling routes in every convention and fully accounting for
+infra-chart composability.
 
 ## References
 
 - [Gateway API TLSRoute](https://gateway-api.sigs.k8s.io/api-types/tlsroute/)
-- Upstream types: `kubernetes-sigs/gateway-api` `apis/v1/tlsroute_types.go` (v1.5.1)
-- Sibling components: `KubernetesHttpRoute`, `KubernetesGrpcRoute`, `KubernetesTcpRoute`
-- Project decision: DD-009 (infra-chart composability, plain refs + relationships)
+- Upstream types: `kubernetes-sigs/gateway-api` `apis/v1/tlsroute_types.go` (v1.6.1)
+- Sibling components: `KubernetesHttpRoute`, `KubernetesGrpcRoute`, `KubernetesTcpRoute`, `KubernetesUdpRoute`

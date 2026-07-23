@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// VaultDynamicSecret represents a generator that can create dynamic secrets from HashiCorp Vault.
 type VaultDynamicSecret struct {
 	pulumi.CustomResourceState
 

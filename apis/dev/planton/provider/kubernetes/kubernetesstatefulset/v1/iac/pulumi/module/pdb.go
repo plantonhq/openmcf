@@ -1,8 +1,7 @@
 package module
 
 import (
-	"strconv"
-	"strings"
+	"fmt"
 
 	"github.com/pkg/errors"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
@@ -11,21 +10,23 @@ import (
 )
 
 // podDisruptionBudget creates a PodDisruptionBudget resource if configured.
+// PodDisruptionBudgets ensure minimum availability during voluntary disruptions like node maintenance.
 func podDisruptionBudget(ctx *pulumi.Context, locals *Locals,
 	kubernetesProvider pulumi.ProviderResource, namespaceDeps []pulumi.ResourceOption) error {
 
-	// Check if PDB is enabled
-	if locals.KubernetesStatefulSet.Spec.Availability == nil ||
-		locals.KubernetesStatefulSet.Spec.Availability.PodDisruptionBudget == nil ||
-		!locals.KubernetesStatefulSet.Spec.Availability.PodDisruptionBudget.Enabled {
+	availability := locals.KubernetesStatefulSet.Spec.Availability
+	if availability == nil || availability.PodDisruptionBudget == nil ||
+		!availability.PodDisruptionBudget.Enabled {
 		return nil
 	}
+	pdbConfig := availability.PodDisruptionBudget
 
-	pdbConfig := locals.KubernetesStatefulSet.Spec.Availability.PodDisruptionBudget
-
+	// The PDB must select on the workload's SELECTOR labels — the same immutable
+	// set the StatefulSet selects pods with. Matching the full governance label set
+	// would silently guard zero pods if a non-selector label ever drifts.
 	pdbSpec := &policyv1.PodDisruptionBudgetSpecArgs{
 		Selector: &metav1.LabelSelectorArgs{
-			MatchLabels: pulumi.ToStringMap(locals.Labels),
+			MatchLabels: pulumi.ToStringMap(locals.SelectorLabels),
 		},
 	}
 
@@ -48,9 +49,11 @@ func podDisruptionBudget(ctx *pulumi.Context, locals *Locals,
 		Spec: pdbSpec,
 	}
 
+	// Use metadata.name prefix for Pulumi resource ID to avoid state conflicts
+	pdbResourceName := fmt.Sprintf("%s-pdb", locals.KubernetesStatefulSet.Metadata.Name)
 	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, namespaceDeps...)
 	_, err := policyv1.NewPodDisruptionBudget(ctx,
-		"pdb",
+		pdbResourceName,
 		pdbArgs,
 		opts...)
 	if err != nil {
@@ -58,25 +61,4 @@ func podDisruptionBudget(ctx *pulumi.Context, locals *Locals,
 	}
 
 	return nil
-}
-
-// parseIntOrString converts a string value to the appropriate Pulumi input type
-// for Kubernetes IntOrString fields.
-func parseIntOrString(value string) pulumi.Input {
-	if value == "" {
-		return nil
-	}
-
-	// Check if it's a percentage
-	if strings.HasSuffix(value, "%") {
-		return pulumi.String(value)
-	}
-
-	// Try to parse as integer
-	if intValue, err := strconv.Atoi(value); err == nil {
-		return pulumi.Int(intValue)
-	}
-
-	// Fallback to string
-	return pulumi.String(value)
 }

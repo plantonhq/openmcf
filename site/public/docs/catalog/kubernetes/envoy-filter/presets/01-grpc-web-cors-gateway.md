@@ -15,8 +15,8 @@ order: 1
 
 The canonical "escape hatch" use: insert Envoy's native CORS HTTP filter into a gateway's HTTP
 connection manager so a browser can call a gRPC-Web (or any cross-origin) backend through the
-gateway. Native `HTTPRoute` CORS only lands in Istio 1.26+, so on many meshes this EnvoyFilter
-is still how CORS is delivered at the edge.
+gateway. Native `HTTPRoute` CORS exists as a first-class alternative for Gateway API routes;
+this EnvoyFilter is how CORS is delivered at the edge where that does not apply.
 
 ## When to Use
 
@@ -50,5 +50,5 @@ is still how CORS is delivered at the edge.
 | `<namespace>` | Namespace the gateway and this EnvoyFilter live in (e.g. `edge`). |
 | `<gateway-name>` | Name of the Gateway to attach the CORS filter to. |
 
-This is an expert-only escape hatch. Prefer a first-class typed API (native `HTTPRoute` CORS on
-Istio 1.26+) where your version supports it, and graduate off this EnvoyFilter when you can.
+This is an expert-only escape hatch. Prefer a first-class typed API (native `HTTPRoute` CORS)
+where it covers your need, and graduate off this EnvoyFilter when you can.

@@ -1,0 +1,3 @@
+name: kubernetes-network-policy
+runtime: go
+description: Kubernetes NetworkPolicy deployment with pod selection and ingress/egress allow rules

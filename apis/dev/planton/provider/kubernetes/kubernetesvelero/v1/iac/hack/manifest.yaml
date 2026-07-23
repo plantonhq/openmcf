@@ -1,0 +1,88 @@
+# Full-surface test manifest: exercises every typed arm of the spec so the
+# offline plan proofs cover what the live lanes may not. Not a realistic
+# production shape — see presets for those.
+#
+# Backend: the self-contained S3-compatible posture (in-cluster MinIO via
+# s3_url + path-style + access keys); volume snapshots are OFF (MinIO has
+# no snapshot provider) so volume data rides file-system backup.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesVelero
+metadata:
+  name: hack-velero
+spec:
+  namespace:
+    value: hack-velero
+  createNamespace: true
+  chartVersion: "12.1.0"
+  crds:
+    upgradeOnInstall: true
+    cleanupOnUninstall: false
+  backupStorage:
+    s3:
+      bucket: velero-backups
+      region: minio
+      s3Url: http://minio.minio.svc:9000
+      forcePathStyle: true
+      caCert: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJoVENDQVN1Z0F3SUJBZ0lTCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+      accessKeys:
+        accessKeyId: minio
+        secretAccessKey: minio123
+    prefix: hack-cluster
+  volumeSnapshots:
+    enabled: false
+  fsBackup:
+    deployNodeAgent: true
+    defaultVolumesToFsBackup: true
+    nodeAgentResources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    nodeAgentTolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+  schedules:
+    - name: daily-cluster
+      schedule: "0 2 * * *"
+      ttl: 720h
+      includedNamespaces:
+        - default
+        - hack-apps
+      excludedResources:
+        - events
+      labelSelector:
+        backup: enabled
+      includeClusterResources: true
+      snapshotVolumes: false
+      defaultVolumesToFsBackup: true
+      storageLocation: default
+  server:
+    defaultBackupTtl: 720h
+    defaultItemOperationTimeout: 4h
+    garbageCollectionFrequency: 1h
+    logLevel: info
+    logFormat: text
+  deployment:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    priorityClassName: system-cluster-critical
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+  prometheus:
+    enabled: true
+    serviceMonitor: false
+  helmValues: |
+    configuration:
+      backupSyncPeriod: 1m

@@ -1,0 +1,30 @@
+# The tuned install: cluster-wide watch (one operator managing databases in
+# every namespace — the control-plane posture), structured logging, raised
+# reconcile concurrency, telemetry off, explicit sizing, and an escape-hatch
+# value — the full rendered-values surface deployed live.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPerconaMongoOperator
+metadata:
+  name: e2e-psmdb-op-tuned
+spec:
+  namespace:
+    value: e2e-psmdb-op-tuned
+  create_namespace: true
+  replicas: 1
+  watch:
+    cluster_wide: true
+  max_concurrent_reconciles: 4
+  log:
+    structured: true
+    level: INFO
+  disable_telemetry: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  helm_values: |
+    podAnnotations:
+      e2e.planton.dev/lane: tuned-full

@@ -1,0 +1,17 @@
+# Internal traffic policy Local: node-local routing for ClusterIP traffic —
+# the pattern for node-local agents (DNS caches, log collectors).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesService
+metadata:
+  name: e2e-svc-itp-local
+spec:
+  namespace:
+    value: default
+  name: e2e-svc-itp-local
+  internal_traffic_policy: internal_local
+  selector:
+    app: node-agent
+  ports:
+    - name: http
+      port: 8080
+      target_port: "8080"

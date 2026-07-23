@@ -12,20 +12,12 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // the listener's port is forwarded to the rule's backends. The route attaches to
 // a Gateway listener of protocol TCP through parent_refs.
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 TCPRouteSpec
-// (kubernetes-sigs/gateway-api apis/v1alpha2/tcproute_types.go).
-//
-// CHANNEL NOTE: TCPRoute is an EXPERIMENTAL-channel resource. Unlike HttpRoute,
-// GrpcRoute, and TlsRoute (which are standard channel), TCPRoute exists only in
-// the Gateway API experimental channel and is served as
-// gateway.networking.k8s.io/v1alpha2. It is therefore deployable only on clusters
-// where the experimental CRDs are installed -- install KubernetesGatewayApiCrds
-// with install_channel: experimental. See the component's docs/README.md.
-//
-// Because the whole resource is experimental, the experimental CommonRouteSpec
-// field use_default_gateways IS reachable on this deployment target (it is absent
-// from the standard-channel routes' targets, which is the only reason HttpRoute /
-// GrpcRoute excluded it). It is included here for 100% fidelity (DD-001).
+// 100% fidelity with the upstream Gateway API v1.6.1 TCPRouteSpec
+// (kubernetes-sigs/gateway-api apis/v1/tcproute_types.go), standard channel.
+// TCPRoute graduated to GA and is served as gateway.networking.k8s.io/v1 (it
+// was an experimental v1alpha2 resource in earlier releases). The experimental
+// CommonRouteSpec field useDefaultGateways is intentionally excluded: it is
+// absent from the standard-channel CRD, so it would have no deployable target.
 //
 // TCPRoute is a layer-4 route: it has no hostnames, no matches, and no filters.
 // Each rule simply forwards to one or more backends, so it reuses the shared
@@ -43,46 +35,16 @@ message KubernetesTcpRouteSpec {
 
   // References to the parent resources (usually Gateways) this route attaches
   // to. Each parent must have a TCP listener that allows attachment from
-  // TCPRoutes of this namespace.
-  //
-  // INFRA-CHART COMPOSABILITY (DD-009): parent_refs is a PLAIN reference, not an
-  // Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-  // objects, so wrapping its scalars in StringValueOrRef would break 100% upstream
-  // fidelity (DD-001) and distort the typed CRD shape (dont-do #6). Because a plain
-  // string creates NO automatic DAG edge, an infra-chart author MUST express the
-  // route -> Gateway dependency via metadata.relationships, e.g.:
-  //   metadata:
-  //     relationships:
-  //       - kind: KubernetesGateway
-  //         name: "{{ values.env }}-gateway"
-  //         type: depends_on
-  // The plain `name` here is then the literal Gateway name. See the component's
-  // "Composing in Infra Charts" docs for the full pattern.
+  // TCPRoutes of this namespace. Each reference's name defaults to a
+  // KubernetesGateway foreign key — wire it with valueFrom in an infra chart
+  // and the route deploys after its Gateway.
   //
   // Flattened from the upstream CommonRouteSpec.
   repeated dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference parent_refs = 3 [(buf.validate.field).repeated.max_items = 32];
 
-  // Default Gateway scope this route should attach to, in addition to (or instead
-  // of) explicit parent_refs. "None" (or unset) attaches to no default Gateway;
-  // "All" attaches to any default Gateway supporting the scope.
-  //
-  // Upstream default: behaves as "None". Closed enum.
-  //
-  // This is the experimental CommonRouteSpec.useDefaultGateways field. It is
-  // modeled here (unlike on the standard-channel HttpRoute / GrpcRoute, where it
-  // is absent from the deployment target) because TCPRoute is itself an
-  // experimental-channel resource whose typed target exposes it -- so including it
-  // is 100% fidelity (DD-001), not divergence. Think carefully before using it:
-  // the set of default Gateways can change without notice to the route author.
-  optional string use_default_gateways = 4 [(buf.validate.field).cel = {
-    id: "tcp_route.use_default_gateways_enum"
-    message: "use_default_gateways must be either 'All' or 'None'"
-    expression: "this == '' || this in ['All', 'None']"
-  }];
-
   // Routing rules. Each rule forwards matching connections to one or more
   // backends. At least one rule is required; upstream allows up to 16.
-  repeated KubernetesTcpRouteRule rules = 5 [(buf.validate.field).repeated = {
+  repeated KubernetesTcpRouteRule rules = 4 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 16
   }];
@@ -91,7 +53,7 @@ message KubernetesTcpRouteSpec {
 // KubernetesTcpRouteRule forwards TCP connections to one or more backends
 // (backend_refs). There are no matches or filters for TCP routes.
 //
-// Upstream: TCPRouteRule in apis/v1alpha2/tcproute_types.go.
+// Upstream: TCPRouteRule in apis/v1/tcproute_types.go.
 message KubernetesTcpRouteRule {
   // Name of the route rule; must be unique within the route if set. Upstream
   // support level: Extended.
@@ -106,21 +68,9 @@ message KubernetesTcpRouteRule {
 
   // Backends matching connections are forwarded to. When multiple backends are
   // given, traffic is split by weight. At least one backend is required.
-  // Upstream support level: Core for Kubernetes Service.
-  //
-  // INFRA-CHART COMPOSABILITY (DD-009): backend_refs is a PLAIN reference, not an
-  // Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-  // objects, so wrapping its scalars would break 100% fidelity (DD-001) and distort
-  // the typed CRD shape (dont-do #6). Because a plain string creates NO automatic
-  // DAG edge, an infra-chart author MUST express the route -> backend dependency via
-  // metadata.relationships when the backend is an Planton-managed resource, e.g.:
-  //   metadata:
-  //     relationships:
-  //       - kind: KubernetesService   # or the backend's actual kind
-  //         name: "{{ values.service_name }}"
-  //         type: uses
-  // The plain `name` here is then the literal Kubernetes Service name. See the
-  // component's "Composing in Infra Charts" docs for the full pattern.
+  // Upstream support level: Core for Kubernetes Service. Each backend's name
+  // defaults to a KubernetesService foreign key — wire it with valueFrom in an
+  // infra chart and the route deploys after its backend.
   repeated dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRef backend_refs = 2 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 16

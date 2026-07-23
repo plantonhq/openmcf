@@ -8,20 +8,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// namespace conditionally creates the Kubernetes namespace that will hold every
-// resource in the KubernetesPerconaMongoOperator deployment based on the create_namespace flag.
-// We return the created object (or nil if not created) so that downstream helpers
-// can set it as Parent and inherit the namespace automatically.
-//
-// If create_namespace is false, the namespace is assumed to exist and is not created.
-// In this case, nil is returned and downstream resources will use the namespace name
-// directly from locals.Namespace.
-//
-// Terraform equivalent: a standalone kubernetes_namespace resource with count.
-func namespace(ctx *pulumi.Context, stackInput *kubernetesperconamongooperatorv1.KubernetesPerconaMongoOperatorStackInput,
-	locals *Locals, kubernetesProvider pulumi.ProviderResource) (*kubernetescorev1.Namespace, error) {
-
-	// Only create namespace if the flag is set to true
+// namespace conditionally creates the installation namespace based on the
+// create_namespace flag. Returns the created namespace resource (or nil when
+// create_namespace is false — the namespace must then already exist).
+// Terraform equivalent: kubernetes_namespace_v1 with count.
+func namespace(ctx *pulumi.Context,
+	stackInput *kubernetesperconamongooperatorv1.KubernetesPerconaMongoOperatorStackInput,
+	locals *Locals,
+	kubernetesProvider pulumi.ProviderResource,
+) (*kubernetescorev1.Namespace, error) {
 	if !stackInput.Target.Spec.CreateNamespace {
 		return nil, nil
 	}
@@ -29,10 +24,11 @@ func namespace(ctx *pulumi.Context, stackInput *kubernetesperconamongooperatorv1
 	createdNamespace, err := kubernetescorev1.NewNamespace(ctx,
 		locals.Namespace,
 		&kubernetescorev1.NamespaceArgs{
-			Metadata: &kubernetesmeta.ObjectMetaArgs{
-				Name:   pulumi.String(locals.Namespace),
-				Labels: pulumi.ToStringMap(locals.Labels),
-			},
+			Metadata: kubernetesmeta.ObjectMetaPtrInput(
+				&kubernetesmeta.ObjectMetaArgs{
+					Name:   pulumi.String(locals.Namespace),
+					Labels: pulumi.ToStringMap(locals.Labels),
+				}),
 		}, pulumi.Provider(kubernetesProvider))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create %s namespace", locals.Namespace)

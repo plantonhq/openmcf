@@ -1,0 +1,15 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesHelmRelease
+metadata:
+  name: podinfo-oci
+spec:
+  namespace:
+    value: podinfo
+  create_namespace: true
+  repo: oci://ghcr.io/stefanprodan/charts
+  chart: podinfo
+  version: 6.9.2
+  set:
+    replicaCount: "2"
+  set_string:
+    image.tag: "6.9.2"

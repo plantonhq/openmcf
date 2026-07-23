@@ -9,40 +9,41 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Resources creates one cert-manager Certificate using the typed crd2pulumi
+// SDK (regenerated from the pinned cert-manager CRDs). The full spec mapping
+// lives in spec_builder.go; the Terraform module renders the identical CR
+// through its locals — keep the two in lockstep.
+//
+// Neither engine waits for the certificate to become Ready: issuance time
+// belongs to the issuer (an ACME order can take minutes; an unreachable CA
+// would block forever) — the same never-block-on-a-controller posture as
+// Ingress. Consumers that need the TLS Secret express the dependency through
+// composition; the E2E lanes verify issuance by polling the live cluster.
+// Terraform equivalent: kubectl_manifest without a wait_for block.
 func Resources(ctx *pulumi.Context, stackInput *kubernetescertificatev1.KubernetesCertificateStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	kubeProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
 		ctx, stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to set up kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
-	// Create the cert-manager Certificate using the typed crd2pulumi SDK,
-	// following the same pattern as KubernetesLocust ingress.go and all other
-	// Planton components that create Certificate resources.
-	certArgs := &certmanagerv1.CertificateArgs{
-		Metadata: metav1.ObjectMetaArgs{
-			Name:      pulumi.String(locals.CertificateName),
-			Namespace: pulumi.String(locals.Namespace),
-			Labels:    pulumi.ToStringMap(locals.Labels),
-		},
-		Spec: certmanagerv1.CertificateSpecArgs{
-			DnsNames:   pulumi.ToStringArray(locals.DnsNames),
-			SecretName: pulumi.String(locals.SecretName),
-			IssuerRef: certmanagerv1.CertificateSpecIssuerRefArgs{
-				Kind: pulumi.String(locals.IssuerRefKind),
-				Name: pulumi.String(locals.IssuerRefName),
+	certificateSpec, err := buildCertificateSpec(locals)
+	if err != nil {
+		return errors.Wrap(err, "failed to build certificate spec")
+	}
+
+	_, err = certmanagerv1.NewCertificate(ctx, locals.CertificateName,
+		&certmanagerv1.CertificateArgs{
+			Metadata: metav1.ObjectMetaArgs{
+				Name:      pulumi.String(locals.CertificateName),
+				Namespace: pulumi.String(locals.Namespace),
+				Labels:    pulumi.ToStringMap(locals.Labels),
 			},
-			IsCA:        pulumi.Bool(locals.IsCa),
-			Duration:    locals.Duration,
-			RenewBefore: locals.RenewBefore,
-			PrivateKey:  locals.PrivateKey,
+			Spec: certificateSpec,
 		},
-	}
-
-	_, err = certmanagerv1.NewCertificate(ctx, locals.CertificateName, certArgs,
-		pulumi.Provider(kubeProvider))
+		pulumi.Provider(kubernetesProvider))
 	if err != nil {
 		return errors.Wrap(err, "failed to create certificate")
 	}

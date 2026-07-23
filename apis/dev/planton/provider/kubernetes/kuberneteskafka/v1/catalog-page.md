@@ -272,4 +272,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — provides the target namespace via `valueFrom` reference
 - [KubernetesDeployment](/docs/catalog/kubernetes/kubernetesdeployment) — application deployments that produce to or consume from Kafka topics
 - [KubernetesPostgres](/docs/catalog/kubernetes/kubernetespostgres) — often deployed alongside Kafka for event-sourced architectures with a relational read store
-- [KubernetesRedis](/docs/catalog/kubernetes/kubernetesredis) — complementary caching layer for applications consuming Kafka events
+- [KubernetesValkey](/docs/catalog/kubernetes/kubernetesvalkey) — complementary Redis-compatible caching layer for applications consuming Kafka events

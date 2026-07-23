@@ -13,7 +13,7 @@ func buildParentRefs(parentRefs []*kubernetesapis.KubernetesGatewayApiParentRefe
 	arr := gatewayv1.HTTPRouteSpecParentRefsArray{}
 	for _, ref := range parentRefs {
 		args := gatewayv1.HTTPRouteSpecParentRefsArgs{
-			Name: pulumi.String(ref.GetName()),
+			Name: pulumi.String(ref.GetName().GetValue()),
 		}
 		if group := ref.GetGroup(); group != "" {
 			args.Group = pulumi.String(group)

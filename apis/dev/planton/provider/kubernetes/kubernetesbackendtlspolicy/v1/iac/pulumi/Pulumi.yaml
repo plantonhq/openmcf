@@ -1,0 +1,3 @@
+name: kubernetes-backend-tls-policy
+runtime: go
+description: Pulumi module that provisions a Kubernetes Gateway API BackendTLSPolicy from a KubernetesBackendTlsPolicy manifest.

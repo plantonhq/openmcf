@@ -23,7 +23,11 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// postgres-kubernetes
+// KubernetesPostgres declares a production-grade PostgreSQL cluster
+// reconciled by CloudNativePG: streaming replication with automated
+// failover, storage, bootstrap (fresh / restore / migrate), declarative
+// roles, plugin-based object-store backups, TLS, and monitoring.
+// Requires KubernetesCloudNativePgOperator on the cluster.
 type KubernetesPostgres struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

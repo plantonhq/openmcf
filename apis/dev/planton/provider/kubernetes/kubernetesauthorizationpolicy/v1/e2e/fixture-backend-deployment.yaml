@@ -1,0 +1,31 @@
+# Extra-instance fixture for the behavioral-deny scenario: the meshed HTTP
+# backend the policy protects (pod label app=e2e-authz-backend is both the
+# auto-created Service's selector and the policy's workload selector). The
+# workload kind auto-creates its own ClusterIP Service named e2e-authz-backend
+# exposing port 80 — the client curls that Service, so no separate Service
+# fixture is needed (a same-named one would collide on server-side apply).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesDeployment
+metadata:
+  name: e2e-authz-backend
+spec:
+  namespace:
+    value: e2e-authz-mesh
+  version: main
+  container:
+    app:
+      image:
+        repo: nginxinc/nginx-unprivileged
+        tag: "1.27"
+      ports:
+        - name: http
+          container_port: 8080
+          service_port: 80
+          network_protocol: TCP
+      resources:
+        requests:
+          cpu: "25m"
+          memory: "32Mi"
+        limits:
+          cpu: "200m"
+          memory: "128Mi"

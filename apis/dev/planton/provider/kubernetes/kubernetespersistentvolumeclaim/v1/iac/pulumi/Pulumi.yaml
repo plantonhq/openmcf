@@ -1,0 +1,3 @@
+name: kubernetes-persistent-volume-claim
+runtime: go
+description: Kubernetes PersistentVolumeClaim deployment with storage request, access modes, and provisioning class

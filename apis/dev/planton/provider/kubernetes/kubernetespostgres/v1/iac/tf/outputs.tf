@@ -1,46 +1,62 @@
+# Stack outputs — identical names and derivations in the Pulumi module's
+# outputs.go / main.go exports (KubernetesPostgresStackOutputs).
+
 output "namespace" {
-  description = "The namespace in which the Postgres resources are deployed."
+  description = "Namespace the cluster runs in"
   value       = local.namespace
 }
 
-output "service" {
-  description = "Name of the Postgres service (master)."
-  value       = local.kube_service_name
+output "cluster_name" {
+  description = "Name of the Cluster resource (equals metadata.name) — every derived object (pods, services, secrets) is prefixed with it"
+  value       = local.cluster_name
 }
 
-output "port_forward_command" {
-  description = "Convenient command to port-forward to the Postgres service."
-  value       = local.kube_port_forward_command
+output "rw_service" {
+  description = "Name of the read-write Service (`<name>-rw`) — always points at the current primary"
+  value       = local.rw_service_name
+}
+
+output "ro_service" {
+  description = "Name of the read-only Service (`<name>-ro`) — replicas only"
+  value       = local.ro_service_name
+}
+
+output "r_service" {
+  description = "Name of the any-instance read Service (`<name>-r`)"
+  value       = local.r_service_name
 }
 
 output "kube_endpoint" {
-  description = "FQDN of the Postgres service within the cluster."
-  value       = local.kube_service_fqdn
+  description = "In-cluster endpoint of the read-write Service — the connection host for applications in the same cluster"
+  value       = local.kube_endpoint
 }
 
-output "external_hostname" {
-  description = "The external hostname for Postgres if ingress is enabled."
-  value       = local.ingress_external_hostname
+output "port_forward_command" {
+  description = "Port-forward command for reaching the primary from a workstation when no exposure is composed"
+  value       = "kubectl port-forward svc/${local.rw_service_name} -n ${local.namespace} 5432:5432"
 }
 
-# Nested objects so the generic outputs transformer (pkg/outputs.Flatten) produces
-# the dotted keys password_secret.name / password_secret.key that the
-# KubernetesPostgresStackOutputs proto's password_secret (KubernetesSecretKey)
-# field expects -- matching the Pulumi module's "password_secret.name" exports.
-# The secret name follows the Zalando operator convention for the superuser
-# credentials of the "db-<metadata.name>" cluster.
-output "password_secret" {
-  description = "Kubernetes secret key for the Postgres superuser password."
+# The username/password handles point at the EFFECTIVE application secret:
+# the operator-generated `<name>-app` normally, or the module-provided
+# `<name>-app-provided` when initdb declared an owner password (the
+# operator adopts a provided bootstrap secret instead of generating one).
+output "username_secret" {
+  description = "Secret key holding the application user's name"
   value = {
-    name = "postgres.db-${var.metadata.name}.credentials.postgresql.acid.zalan.do"
+    name = local.effective_app_secret_name
+    key  = "username"
+  }
+}
+
+output "password_secret" {
+  description = "Secret key holding the application user's password"
+  value = {
+    name = local.effective_app_secret_name
     key  = "password"
   }
 }
 
-output "username_secret" {
-  description = "Kubernetes secret key for the Postgres superuser username."
-  value = {
-    name = "postgres.db-${var.metadata.name}.credentials.postgresql.acid.zalan.do"
-    key  = "username"
-  }
+output "superuser_secret_name" {
+  description = "Name of the superuser credential Secret — populated only when superuser access is enabled (the provided secret when a password was declared, the operator's `<name>-superuser` otherwise), empty when disabled"
+  value       = local.superuser_secret_name_output
 }

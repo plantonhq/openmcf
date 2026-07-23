@@ -21,11 +21,27 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// kubernetes-helm-release status on kubernetes cluster.
+// *
+// **KubernetesHelmReleaseStackOutputs** captures the observable handles of an
+// installed Helm release — what `helm list` and `helm status` would show,
+// exported identically by both engines.
 type KubernetesHelmReleaseStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// namespace in which the helm release has been created.
-	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// The namespace the release is installed in.
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// The Helm release name (as shown by `helm list`) — `spec.release_name`
+	// when set, otherwise the resource's metadata.name.
+	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
+	// The installed chart version (e.g. "6.9.2").
+	Version string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
+	// The chart's appVersion — the upstream application version the chart
+	// packages (e.g. "6.9.2" for podinfo, "v1.18.2" for cert-manager).
+	AppVersion string `protobuf:"bytes,4,opt,name=app_version,json=appVersion,proto3" json:"app_version,omitempty"`
+	// The release status as Helm records it (e.g. "deployed").
+	Status string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	// The release revision number (1 on first install, incremented by each
+	// upgrade or rollback).
+	Revision      int32 `protobuf:"varint,6,opt,name=revision,proto3" json:"revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -67,13 +83,54 @@ func (x *KubernetesHelmReleaseStackOutputs) GetNamespace() string {
 	return ""
 }
 
+func (x *KubernetesHelmReleaseStackOutputs) GetReleaseName() string {
+	if x != nil {
+		return x.ReleaseName
+	}
+	return ""
+}
+
+func (x *KubernetesHelmReleaseStackOutputs) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *KubernetesHelmReleaseStackOutputs) GetAppVersion() string {
+	if x != nil {
+		return x.AppVersion
+	}
+	return ""
+}
+
+func (x *KubernetesHelmReleaseStackOutputs) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *KubernetesHelmReleaseStackOutputs) GetRevision() int32 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
 var File_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kuberneteshelmrelease_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ldev/planton/provider/kubernetes/kuberneteshelmrelease/v1/stack_outputs.proto\x128dev.planton.provider.kubernetes.kuberneteshelmrelease.v1\"A\n" +
+	"Ldev/planton/provider/kubernetes/kuberneteshelmrelease/v1/stack_outputs.proto\x128dev.planton.provider.kubernetes.kuberneteshelmrelease.v1\"\xd3\x01\n" +
 	"!KubernetesHelmReleaseStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespaceB\xcc\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\tR\aversion\x12\x1f\n" +
+	"\vapp_version\x18\x04 \x01(\tR\n" +
+	"appVersion\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\x12\x1a\n" +
+	"\brevision\x18\x06 \x01(\x05R\brevisionB\xcc\x03\n" +
 	"<com.dev.planton.provider.kubernetes.kuberneteshelmrelease.v1B\x11StackOutputsProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteshelmrelease/v1;kuberneteshelmreleasev1\xa2\x02\x05DPPKK\xaa\x028Dev.Planton.Provider.Kubernetes.Kuberneteshelmrelease.V1\xca\x028Dev\\Planton\\Provider\\Kubernetes\\Kuberneteshelmrelease\\V1\xe2\x02DDev\\Planton\\Provider\\Kubernetes\\Kuberneteshelmrelease\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Kubernetes::Kuberneteshelmrelease::V1b\x06proto3"
 
 var (

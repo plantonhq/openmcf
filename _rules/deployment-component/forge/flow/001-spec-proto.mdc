@@ -149,6 +149,21 @@ PROACTIVE DEFAULT IDENTIFICATION (MANDATORY STEP)
   presence explicit so required accepts a stated false and still rejects absence.
   A spec test asserting the explicit-false shape validates is the guard for this
   class.
+- **CRD-projection kinds: pin `json_name` when the CRD key's casing differs from
+  protojson's derivation -- acronym casing is part of the faithful-projection
+  contract.** protojson derives lowerCamelCase from the snake_case field name
+  (`well_known_ca_certificates` -> `wellKnownCaCertificates`), but Kubernetes
+  API types keep acronyms uppercase mid-word (`wellKnownCACertificates`,
+  `caBundle`-class keys are safe; multi-letter acronyms after the first word are
+  the hazard). A miscased key passes EVERY offline gate -- protovalidate,
+  builds, `tofu plan` -- because nothing offline knows the CRD schema; the API
+  server rejects it at apply as "field not declared in schema", and only on the
+  engine that renders manifests through protojson (a typed-SDK engine emits the
+  correct key, so the failure is silently cross-engine-asymmetric). When
+  translating a CRD field whose camelCase contains a multi-letter acronym,
+  diff the intended key against the CRD's own `properties` map and pin it with
+  `json_name = "<exact CRD key>"` on the proto field. A live full-surface apply
+  on the protojson-rendering engine is the only end-to-end guard.
 
 PROACTIVE SENSITIVE-FIELD IDENTIFICATION (MANDATORY STEP)
 - While authoring the schema, review EVERY string field and the literal of EVERY

@@ -8,14 +8,18 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-standard"
+  - slug: "01-database"
     rank: "01"
-    title: "Standard StatefulSet"
-    excerpt: "This preset deploys a single-replica StatefulSet without persistent volumes. Suitable for stateful applications that need stable pod identities and network names but do not require persistent storage."
-  - slug: "02-with-persistent-volumes"
+    title: "Single-Instance Database"
+    excerpt: "This preset deploys a single-replica database: one pod with a stable name (`my-database-0`), one PersistentVolumeClaim stamped from the `data` template that survives pod restarts and rescheduling,..."
+  - slug: "02-ha-quorum-cluster"
     rank: "02"
-    title: "StatefulSet with Persistent Volumes"
-    excerpt: "This preset deploys a 3-replica StatefulSet with persistent volume claims, a pod disruption budget, and data volume mounts. Each replica gets its own 10Gi persistent volume."
+    title: "Highly Available Quorum Cluster"
+    excerpt: "This preset deploys a three-member clustered stateful system — the shape of Kafka, etcd, ZooKeeper, or any consensus-based store. Each member gets a stable name (`my-quorum-cluster-0/-1/-2`), a..."
+  - slug: "03-hardened-database"
+    rank: "03"
+    title: "Hardened Database"
+    excerpt: "This preset passes the Kubernetes restricted Pod Security Standard while running persistent storage: non-root with a pinned UID, read-only root filesystem (with a writable EmptyDir for /tmp), all..."
 ---
 
 # StatefulSet Presets

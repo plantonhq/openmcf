@@ -1,0 +1,3 @@
+name: kubernetes-storage-class
+runtime: go
+description: Kubernetes StorageClass deployment with provisioner parameters and volume lifecycle policies

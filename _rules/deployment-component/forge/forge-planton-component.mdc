@@ -71,6 +71,17 @@ The bar for every component:
   relevant flow rule, or `architecture/deployment-component.md` in the same session, as
   timeless guidance (never naming a project or a task), so the next agent forging the next
   component never has to re-learn it. The workflow is expected to get sharper with every use.
+- **Knowledge lands where its READER lives.** Workflow lessons (above) serve the next
+  BUILDING agent — but most lessons, especially live-E2E ones, are CONFIGURATION lessons
+  whose reader is the next agent or human writing a manifest, and they must land on the
+  surface that reader will actually be looking at: live-caught constraints upstream docs do
+  not state go into the spec proto's FIELD comments (the manifest author's surface);
+  mechanism explanations go into the module comments of BOTH engines; operational recipes
+  and cross-component prerequisites go into `docs/README.md` / the catalog page / preset
+  explainers. The test: if a future manifest could repeat the mistake, the warning must sit
+  on the field its author will be reading when they make it — a lesson recorded only in a
+  workflow rule is NOT captured. (The update rule's "Knowledge lands where its READER
+  lives" section carries the full reader-to-surface table.)
 
 This philosophy governs every flow rule below; the per-rule steps are how it is executed, not
 a substitute for it.
@@ -229,6 +240,38 @@ The following 20 rules execute in order. Each rule is atomic and can be run indi
 13. **010-pulumi-entrypoint** - Generate entrypoint (main.go, Pulumi.yaml, Makefile)
 14. **012-pulumi-docs** - Generate iac/pulumi/README.md
 
+**CR-rendering kinds — verify the generated SDK can actually CARRY the CRD
+before adopting it.** crd2pulumi flattens a CRD field typed as a map of
+NESTED objects (schemas using `additionalProperties` with object values —
+e.g. name-keyed backup-storage maps) into `map[string]map[string]string`,
+a generated type that structurally cannot hold the nested bodies; any
+adapter that smuggles heterogeneous values through it panics at runtime
+inside the provider's input marshaling. When the CRD carries such a field,
+render the WHOLE CR with `apiextensions.NewCustomResource` +
+`kubernetes.UntypedArgs` (a plain nested `map[string]interface{}` — the
+exact twin of the Terraform module's `yamlencode` locals), record the
+reason in the builder's header comment, and do not generate the typed
+package at all: an SDK no module consumes is dead weight. The operator's
+server-side schema validation plus the live E2E lanes are the shape-error
+safety net the typed SDK would have been.
+
+**Operator kinds — own every cluster-scoped object the operator creates
+at RUNTIME.** Some operators register cluster-scoped singletons at startup
+(the classic case: a fixed-name Fail-closed `ValidatingWebhookConfiguration`
+pointing at a Service in the operator's own namespace). Kubernetes never
+garbage-collects a cluster-scoped dependent of a namespaced owner, and an
+operator that finds the object already present typically refreshes only
+parts of it — so left to the operator, UNINSTALL strands an object that
+can brick the whole cluster's admissions. Read the operator's startup
+source in the clone for such registrations; when found, the module renders
+the object itself (created BEFORE the release, deleted with the resource),
+ignores the operator-managed fields (CA bundles, ownerReferences) via
+`ignore_changes` / `IgnoreChanges`, and — on the Pulumi side — annotates it
+`pulumi.com/patchForce: "true"` so server-side apply adopts an instance a
+previous operator created instead of failing on the field conflict. The
+E2E verifier asserts the object exists while deployed and is GONE after
+destroy.
+
 ### Phase 6: Terraform Implementation (Rules 013, 015)
 
 15. **013-terraform-module** - Generate tf/ (variables.tf, main.tf, locals.tf, outputs.tf, provider.tf), richly commented to the module-comment bar
@@ -281,8 +324,16 @@ platform's guided import can derive identifiers instead of asking the user
    an entry per resource type the module declares -- the import-ID format from
    the PROVIDER's import documentation (read the provider docs/source, never
    guess), the Pulumi type token, and any `config_only_attributes` (attributes
-   that exist only in IaC configuration, e.g. `force_destroy`-class delete
-   behavior -- import can never carry them).
+   that exist only in IaC configuration -- `force_destroy`-class delete
+   behavior, and the kubernetes provider's `wait_for_*` lifecycle knobs
+   (`wait_for_rollout`, `wait_for_load_balancer`,
+   `wait_for_service_account_token`) -- import can never carry them; declare
+   them when the resource type first enters the catalog, or every consumer's
+   round-trip lane fails on the same knob later). When a provider's importer
+   fails to read back ONE nested block (found only by running the round-trip),
+   declare it as a dotted `write_normalized_attributes` sub-path
+   (e.g. `"spec.update_strategy"`) -- never tolerate a whole structural
+   attribute like `spec`, which would blind the proof.
 2. **Component map** (`v1/iac/import-map.yaml`): the value source per
    `{placeholder}` -- prefer derivable sources (metadata.name, spec field,
    stack output, ARN part, address key); `where_to_find` is mandatory when
@@ -382,7 +433,12 @@ Until then, author the profile as `status: deferred` with an empty
 (the field is `deferred_reason` — protojson silently drops unknown keys, so a
 misspelled key vanishes without an error). A profile that overclaims is a
 lie in the release ledger; flip it to green in the same session the lanes
-pass, never before.
+pass, never before. Note the mechanics for a NEW kind: the test entrypoints
+SKIP components whose profile is deferred, so a deferred profile can never
+run its own lanes — flip the profile to green immediately before executing
+the lanes, and if they do not pass by session end, flip it back to deferred
+in the same commit. Honesty is judged on the COMMITTED state, not the
+mid-session working tree.
 
 ### Wire the kind into the provider E2E first (required for either tier)
 
@@ -399,9 +455,9 @@ A new kind is only exercised once it is registered in the provider harness:
   `pkg/e2e/profile/discover.go` maps component directory names (e.g. `awslambda`) to
   Go test `-run` regexes via `crkreflect.KindFromString` +
   `ExtractKindNameByKind` — **do not** add hand-maintained PascalCase entries per
-  kind. Kubernetes components still fall back to the legacy prefix table until the
-  registry covers them. Add a unit test in `discover_test.go` when forging a kind
-  whose directory name would naive-fallback incorrectly.
+  kind. The only exceptions live in the small `testNameOverrides` map, reserved for
+  genuine, verified deviations where the test entrypoint spelling differs from the
+  enum name; a new kind whose entrypoints follow the enum name needs no entry.
 
 **Composed scenarios are registry-driven, with a scenario-level extension for
 optional composition.** The harness resolves a component's E2E dependencies
@@ -446,6 +502,16 @@ chain deploys in resolvable order with no per-consumer wiring. Put the
 annotation on the install manifest that carries the references; consumers of
 that kind inherit the ordering automatically.
 
+**But a MANIFEST-PATH fixture's own file annotations are NOT edges.** The
+recursive annotation walk above applies to KIND install profiles
+(`prerequisite.yaml` / minimal scenarios); a path entry contributes only its
+kind's registry prerequisites. When one path fixture depends on another (a
+ServiceAccount fixture needing a Namespace fixture), list BOTH paths on the
+scenario's annotation in deploy order — path entries deploy exactly in
+listed order. An annotation placed on the path fixture's own file is
+silently ignored, and the failure is live-only (the dependent fixture
+deploys into a namespace that does not exist).
+
 **Multi-instance prerequisites.** A prerequisite install profile
 (`e2e/prerequisite.yaml`) may carry multiple `---`-separated documents of the
 kind when real topologies need more than one instance — e.g. a load balancer
@@ -487,6 +553,49 @@ what make orphan sweeps and name-aware resolution possible), so two concurrent
 runs in the same account collide on IAM role names and subnet CIDRs and both
 fail their DEPENDENCIES-UP phase. Batch a family's runs one after another; the
 time saved by parallelism is an illusion here.
+
+The Kubernetes analog: kind-cluster lanes for DISJOINT components may run in
+parallel, but lanes must serialize whenever one lane's component is another
+lane's prerequisite fixture, or the component is a cluster singleton (a fixed
+release name / cluster-scoped APIService or CRDs) — the two runs contend for
+one identity.
+
+**Kubernetes cluster profiles: scenarios that need a cluster the default kind
+cluster cannot be.** Some components change what the CLUSTER ITSELF is — a CNI
+must install onto a cluster created WITHOUT a default CNI, and behavioral
+proofs that depend on such a component (NetworkPolicy enforcement needs an
+enforcing CNI) inherit the requirement. The harness supports this via the
+`planton.dev/e2e-cluster-profile` scenario annotation: the test entrypoints
+route the annotated scenario to a dedicated persistent kind cluster built for
+that profile, created lazily on first use (see the aa_e2e README for the
+profile table and mechanics). Rules when designing lanes around a profile:
+the profile cluster is typically single-node, so chart defaults sized for HA
+(a 2-replica anti-affine operator) can never fully schedule — scenario
+manifests must size those knobs to the topology or the atomic install waits
+forever; a CNI-less cluster's nodes are NotReady BY DESIGN until the CNI
+component installs, so never gate the profile's creation on node readiness —
+assert the NotReady→Ready transition in the component's install verifier
+instead, where it becomes part of the proof; and behavioral scenarios that
+merely CONSUME the profile component declare it a scenario-level prerequisite
+(annotation), never a registry prerequisite — the component under test
+deploys fine without it on ordinary clusters.
+
+**Behavioral proofs whose driver CR is served by the component under test are
+VERIFIER-OWNED.** Scenario fixtures deploy BEFORE the component under test, so
+a fixture cannot carry a custom resource whose CRD the component itself
+installs (a KEDA ScaledObject, an operator's workload CR) — and chaining a
+second instance of the component to fix the ordering trips its
+fixed-release-name singleton. The honest shape: fixtures carry only what needs
+nothing from the component (a plain target Deployment); the behavioral
+verifier applies the driver CR via kubectl AFTER the install assertions pass,
+asserts the behavior, and deletes what it applied in a defer — active cluster
+interaction is established verifier grain (`kubectl top` gates, live curl
+probes), and verifier-owned cleanup keeps a failed assertion from leaking a CR
+that blocks later lanes. And never kill a lane mid-install to "free" the cluster: an
+interrupted Helm install orphans its release in `pending-install` state, which
+blocks every later install of the same name with a misleading name-in-use
+error. Sweep with `helm uninstall <release> -n <namespace>` (plus the fixture
+namespaces) before re-running.
 
 **Isolate the run from OTHER suites on the same machine.** Serial-within-your-
 provider is not enough when a different provider's E2E suite runs concurrently
@@ -596,6 +705,92 @@ resources that may not exist in the test tenant (e.g. an Auth0 role's `minimal`
 scenario omits permissions so it needs no pre-existing resource server). Add a
 richer scenario (seeding the dependency) when you need live coverage of dependent
 fields.
+
+**Model the upstream's built-in sandbox arm when one exists.** Cloud-talking
+addons (DNS publishers, secret-store operators, ...) cannot prove their
+provider hop on a kind cluster — but many upstreams ship a first-class
+in-process backend for exactly this (a DNS provider that holds records in
+memory, a secret store that serves declared literals, a node-autoscaler
+simulation provider). Model it as a typed spec arm, documented as
+sandbox/test-only: users get a safe evaluation arm, and the kind-cluster
+E2E lanes get a FULLY verifiable path (the controller runs its real
+reconcile loop and the verifier can assert end-state, e.g. a synced
+Secret's contents), instead of settling for install-only assertions.
+Also read the controller's error handling before designing credential-less
+lanes: some providers crash-loop on a bad credential (a 4xx at first sync)
+while others log-and-retry — only the latter class supports an
+install-proves-out lane with no real account. **Before authoring a fixture
+for a sandbox arm, check whether the CHART renders the sandbox's
+supporting objects itself** (grep the templates for the arm's
+`cloudProvider`/mode conditional): pre-creating an object the chart also
+templates fails the install with Helm's release-ownership error ("exists
+and cannot be imported into the current release"), and the failure is
+live-only — every offline gate passes. When the chart is self-contained
+for the arm, the scenario needs no fixture at all.
+
+**Keep-on-uninstall CRDs come in TWO classes with different blast radii —
+know which one the chart ships before writing the guidance.** (1)
+Chart-TEMPLATED CRDs kept via `helm.sh/resource-policy: keep` are
+release-owned: they retain `meta.helm.sh/release-namespace` ownership
+annotations, so a later install of the same release in a DIFFERENT
+namespace hits the release-ownership error on objects that "should not
+exist" — live-only, and easy to trigger by moving a scenario between
+namespaces; scenarios for such kinds need a stable, dedicated namespace.
+(2) `crds/`-directory CRDs are created RAW by Helm on first install with
+NO ownership metadata at all (verified in the Helm source) — they pin
+nothing and collide with nothing, but Helm also never UPGRADES them:
+a chart-version upgrade runs new controller code against old CRDs, and
+the honest spec/docs story is "apply the new release's CRDs yourself when
+the upgrade calls for it", never a claimed auto-upgrade. One more
+corollary of surviving CRDs, either class: operators that AUTO-DETECT an
+integration by CRD presence (cert-manager is the classic) are fooled by
+controller-less remnants on a long-lived cluster — a dead-webhook dry-run
+failure at reconcile, not install. Two release-ownership corollaries:
+(1) never place a component's E2E scenario in `kube-system` or another
+shared system namespace — the cleanup phase asserts namespace absence,
+which a system namespace can never satisfy (and upstream docs defaulting to
+kube-system are a docs default, not an E2E-compatible one); (2) when
+sweeping kept CRDs manually, enumerate by the `meta.helm.sh/release-name`
+annotation, never by an API-group name grep — CRD bundles routinely span
+groups (Karpenter's fleet CRDs live in karpenter.sh, karpenter.k8s.aws AND
+autoscaling.x-k8s.io), and one missed CRD reproduces the collision.
+
+**Behavioral drivers against PERSISTENT external stores need run-unique
+names.** A verifier-owned driver CR whose name doubles as a key in an
+external store (a Velero Backup's name keys its object-store records) must
+carry a run-unique suffix: on a real, persistent bucket the store copy
+outlives the CR — deleting the CR never purges the store and the location
+sync even resurrects it — so a second lane reusing a fixed name fails with
+"already exists in object storage". Ephemeral in-cluster fixtures (a MinIO
+that dies with the scenario) mask this class completely: the kind lanes
+stay green while every real-cluster lane after the first fails.
+
+**Verifier-owned driver resources keyed in PERSISTENT external stores need
+run-unique names.** A verifier-owned CR whose name doubles as a key in an
+external store that outlives the lane (a Velero Backup's records in the
+object-store bucket, which the BSL sync even resurrects after the CR is
+deleted) can never reuse a fixed name across lanes: the second lane fails
+with an "already exists" that no kind-cluster run reproduces (ephemeral
+fixtures start empty; the real-cluster batch's bucket persists). Derive the
+name per run and let the resource's own TTL expire the store residue.
+
+**Saturation fixtures must not await rollout.** A pressure fixture DESIGNED
+to leave trailing replicas Pending (capacity saturation for preemption or
+autoscaling proofs) deadlocks any deploy that awaits workload readiness —
+set the fixture's skip-await knob and say in the manifest why it is
+load-bearing, or the fixture times out its own deploy on both engines.
+
+**Expanded/resolved manifest copies must keep the scenario's basename.**
+The runner rewrites scenario manifests to temp copies at two points (run-ID/
+environment token expansion and foreign-key reference resolution), and
+verifier dispatch keys behavioral variants off the scenario NAME in the
+manifest path. A randomly named copy silently demotes the scenario to its
+plain verifier — the lane still passes, install-grade, and the behavioral
+claim becomes an overclaim nobody notices. Both rewrite sites preserve the
+basename by contract; any future manifest-rewriting step must do the same,
+and a behavioral lane's proof lines (the verifier's own `[verify]`
+behavioral output) — not its PASS alone — are what a session may cite as
+evidence.
 
 **Soft-delete-reserved identifiers need the `${E2E_RUN_ID}` token.** Some cloud
 resources reserve their user-chosen identifier long after deletion (e.g. GCP

@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesserviceaccount.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetesserviceaccount/v1/spec.proto";
+import "dev/planton/provider/kubernetes/kubernetesserviceaccount/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+/**
+ * **KubernetesServiceAccount** defines a Kubernetes ServiceAccount resource following the
+ * Kubernetes Resource Model (KRM). A ServiceAccount is the in-cluster identity pods run as —
+ * the anchor for API authentication (RBAC), image-pull credentials, and keyless cloud access
+ * via workload identity federation.
+ */
+message KubernetesServiceAccount {
+  // API version for this resource.
+  // Always set to "kubernetes.planton.dev/v1".
+  string api_version = 1 [(buf.validate.field).string.const = "kubernetes.planton.dev/v1"];
+
+  // Resource kind identifier.
+  // Always set to "KubernetesServiceAccount".
+  string kind = 2 [(buf.validate.field).string.const = "KubernetesServiceAccount"];
+
+  // Metadata for the ServiceAccount resource.
+  // Includes standard fields like name, organization, environment, etc.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Specification of the desired state for the ServiceAccount.
+  // Defines the target namespace, image-pull secrets, token automount behavior,
+  // and cloud workload-identity binding.
+  KubernetesServiceAccountSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Status of the ServiceAccount resource.
+  // Contains outputs populated after deployment.
+  KubernetesServiceAccountStatus status = 5;
+}
+
+/**
+ * **KubernetesServiceAccountStatus** captures the runtime status of a ServiceAccount
+ * deployment, including the outputs generated after the identity is created.
+ */
+message KubernetesServiceAccountStatus {
+  // Outputs from the ServiceAccount deployment.
+  // Contains the identity handles downstream resources compose on.
+  KubernetesServiceAccountStackOutputs outputs = 1;
+}

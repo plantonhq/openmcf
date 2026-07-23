@@ -6,9 +6,15 @@
 ##############################################
 
 variable "metadata" {
-  description = "Resource metadata including name"
+  description = "Cloud resource metadata (name plus the optional Planton identity attributes the module renders as labels)."
   type = object({
-    name = string
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 

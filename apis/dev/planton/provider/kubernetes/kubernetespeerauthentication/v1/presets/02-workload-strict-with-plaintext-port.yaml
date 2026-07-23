@@ -11,5 +11,6 @@ spec:
   mtls:
     mode: STRICT
   port_level_mtls:
-    "<plaintext-port>":
+    # Port that must stay plaintext (e.g. a metrics or health port).
+    "8080":
       mode: DISABLE

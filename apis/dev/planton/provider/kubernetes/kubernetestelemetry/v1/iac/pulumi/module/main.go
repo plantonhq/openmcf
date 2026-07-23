@@ -105,9 +105,12 @@ func buildTelemetrySpec(spec *kubernetestelemetryv1.KubernetesTelemetrySpec) map
 func buildTargetRefs(refs []*istioapi.KubernetesIstioApiPolicyTargetReference) []interface{} {
 	out := make([]interface{}, 0, len(refs))
 	for _, ref := range refs {
+		// name is a StringValueOrRef foreign key (default: a KubernetesGateway's
+		// name output); the platform resolves valueFrom references before the
+		// module runs, so GetValue() always carries the literal name here.
 		m := map[string]interface{}{
 			"kind": ref.GetKind(),
-			"name": ref.GetName(),
+			"name": ref.GetName().GetValue(),
 		}
 		if ref.GetGroup() != "" {
 			m["group"] = ref.GetGroup()
@@ -155,15 +158,18 @@ func buildTracingList(list []*kubernetestelemetryv1.KubernetesTelemetryTracing) 
 		if t.UseRequestIdForTraceSampling != nil {
 			m["useRequestIdForTraceSampling"] = t.GetUseRequestIdForTraceSampling()
 		}
+		if t.DisableContextPropagation != nil {
+			m["disableContextPropagation"] = t.GetDisableContextPropagation()
+		}
 		out = append(out, m)
 	}
 	return out
 }
 
 // buildCustomTags maps the custom-tag map to its CRD JSON shape. Each tag carries
-// exactly one source (literal/environment/header); only the set source is emitted, so
-// the resulting object satisfies the CRD's oneOf. This nested shape is the precise
-// reason this component uses an untyped CustomResource (see createTelemetry).
+// exactly one source (literal/environment/header/formatter); only the set source is
+// emitted, so the resulting object satisfies the CRD's oneOf. This nested shape is the
+// precise reason this component uses an untyped CustomResource (see createTelemetry).
 func buildCustomTags(tags map[string]*kubernetestelemetryv1.KubernetesTelemetryCustomTag) map[string]interface{} {
 	out := make(map[string]interface{}, len(tags))
 	for name, tag := range tags {
@@ -185,6 +191,8 @@ func buildCustomTags(tags map[string]*kubernetestelemetryv1.KubernetesTelemetryC
 				h["defaultValue"] = hdr.GetDefaultValue()
 			}
 			entry["header"] = h
+		case tag.GetFormatter() != nil:
+			entry["formatter"] = map[string]interface{}{"value": tag.GetFormatter().GetValue()}
 		}
 		out[name] = entry
 	}

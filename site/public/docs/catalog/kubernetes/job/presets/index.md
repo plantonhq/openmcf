@@ -8,14 +8,18 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-batch-processing"
+  - slug: "01-database-migration"
     rank: "01"
-    title: "Batch Processing Job"
-    excerpt: "This preset creates a one-shot Kubernetes Job for batch processing. The job runs a single pod to completion and automatically cleans up after 1 hour."
-  - slug: "02-data-migration"
+    title: "Database Migration Job"
+    excerpt: "This preset runs a schema migration to completion: one pod, one success required, a small retry budget, and automatic cleanup a day after the Job finishes. It is the canonical one-shot Job pattern —..."
+  - slug: "02-parallel-batch"
     rank: "02"
-    title: "Data Migration Job"
-    excerpt: "This preset creates a Kubernetes Job for database schema migrations or data migrations. Configured with a 1-hour deadline, higher resource limits, and minimal retries to prevent duplicate migration..."
+    title: "Parallel Batch Job (Indexed)"
+    excerpt: "This preset partitions work across 10 numbered completions, running 3 pods at a time. Each pod receives its completion index (0–9) through the `batch.kubernetes.io/job-completion-index` annotation..."
+  - slug: "03-resilient-batch"
+    rank: "03"
+    title: "Resilient Batch Job (Failure Policy)"
+    excerpt: "This preset classifies pod failures before they consume the retry budget. Two rules, evaluated in order: an application-signaled unrecoverable error (exit code 42) fails the Job immediately, and..."
 ---
 
 # Job Presets

@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-external-dns
+runtime: go
+description: ExternalDNS installation from the official Helm chart with typed multi-provider DNS configuration and keyless workload identity

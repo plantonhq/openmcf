@@ -1,0 +1,29 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kuberneteskeda
+spec:
+  # KEDA installs as ONE Helm release whose name is fixed to "keda" (the
+  # cluster-wide v1beta1.external.metrics.k8s.io APIService is a singleton
+  # — one installation per cluster), in the spec's namespace ("keda" by
+  # upstream convention, usually module-created).
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+      where_to_find: >-
+        Always "keda" — the module fixes the release name.
+        Confirm with `helm list -n <namespace>` (NAME column).
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "keda".
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

@@ -56,7 +56,7 @@ planton apply -f serviceentry.yaml
 | `addresses` | list | Virtual IPs / CIDR prefixes (CIDR only with NONE/STATIC resolution). |
 | `ports` | list | Exposed ports (`number`, `name`, `protocol`, `target_port`); name + number unique. |
 | `location` | string | `MESH_EXTERNAL` (default) or `MESH_INTERNAL`. |
-| `resolution` | string | `NONE` (default), `STATIC`, `DNS`, `DNS_ROUND_ROBIN`. |
+| `resolution` | string | `NONE` (default), `STATIC`, `DNS`, `DNS_ROUND_ROBIN`, `DYNAMIC_DNS`. |
 | `endpoints` | list | Static backing endpoints; mutually exclusive with `workload_selector`. |
 | `export_to` | list | Namespaces the service is visible to (default all). |
 | `subject_alt_names` | list | SANs verified on the server certificate. |

@@ -6,9 +6,11 @@ spec:
   namespace:
     value: default
   parent_refs:
-    - name: e2e-gateway
+    - name:
+        value: e2e-gateway
       section_name: tcp
   rules:
     - backend_refs:
-        - name: tcp-backend
+        - name:
+            value: tcp-backend
           port: 5432

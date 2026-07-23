@@ -1,58 +1,108 @@
-##############################################
-# locals.tf
+# Computed values shared across the module's resources.
 #
-# Includes logic for:
-#  - Deriving resource_id, labels, namespace
-#  - Computing resource names
-#  - ServiceAccount name derivation
-##############################################
+# The load-bearing decisions here:
+#  - selector_labels are the IMMUTABLE pod-selection identity (metadata.name
+#    based) — the DaemonSet selector uses exactly this set. Selectors are
+#    immutable on apps/v1 DaemonSets, so nothing mutable may ever join it.
+#  - all_containers normalizes the app container (default name "app") and the
+#    sidecars into ONE uniform list, so daemonset.tf renders every container
+#    through a single dynamic block — identical semantics for app and sidecars.
+#  - pod_volumes derives the pod-level volume list from the union of every
+#    container's mounts, de-duplicated by name (two containers sharing an
+#    EmptyDir declare the same mount name and source).
 
 locals {
-  # Derive a stable resource ID (prefer `metadata.id`, fallback to `metadata.name`)
   resource_id = (
     var.metadata.id != null && var.metadata.id != ""
     ? var.metadata.id
     : var.metadata.name
   )
 
-  # Base labels
-  base_labels = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_kind" = "kubernetes_daemonset"
+  selector_labels = {
+    "app"           = var.metadata.name
+    "resource_name" = var.metadata.name
   }
 
-  # Organization label only if var.metadata.org is non-empty
+  base_labels = merge(local.selector_labels, {
+    "resource"      = "true"
+    "resource_id"   = local.resource_id
+    "resource_kind" = "KubernetesDaemonSet"
+  })
+
   org_label = (
     var.metadata.org != null && var.metadata.org != ""
   ) ? { "organization" = var.metadata.org } : {}
 
-  # Environment label only if var.metadata.env is non-empty
   env_label = (
-    var.metadata.env != null && var.metadata.env != ""
+    var.metadata.env != null && try(var.metadata.env, "") != ""
   ) ? { "environment" = var.metadata.env } : {}
 
-  # Merge base, org, and environment labels
   final_labels = merge(local.base_labels, local.org_label, local.env_label)
 
-  # Selector labels (subset for pod selection)
-  selector_labels = {
-    "resource_id"   = local.resource_id
-    "resource_kind" = "kubernetes_daemonset"
-  }
-
-  # Get namespace from spec
   namespace = var.spec.namespace
 
-  # Computed resource names to avoid conflicts
+  # Satellite resource names, prefixed with metadata.name so multiple
+  # instances sharing a namespace never collide.
   env_secret_name        = "${var.metadata.name}-env-secrets"
   image_pull_secret_name = "${var.metadata.name}-image-pull"
 
-  # ServiceAccount name: use provided name, or default to DaemonSet name
-  service_account_name = (
-    var.spec.service_account_name != null && var.spec.service_account_name != ""
-    ? var.spec.service_account_name
-    : var.metadata.name
+  # ---------------------------------------------------------------------------
+  # Container normalization: app first (named "app" unless the spec names it),
+  # then sidecars in declared order. Kubernetes shows containers in declaration
+  # order and tooling conventionally treats the first as primary.
+  # ---------------------------------------------------------------------------
+  app_container = merge(var.spec.container.app, {
+    name = try(var.spec.container.app.name, "") != "" ? var.spec.container.app.name : "app"
+  })
+
+  all_containers = concat([local.app_container], try(var.spec.container.sidecars, []))
+
+  init_containers = try(var.spec.pod.init_containers, [])
+
+  # Literal secret env values across ALL containers (app, sidecars, init),
+  # materialized into one workload-scoped Secret. secretRef entries are wired
+  # directly as env references and never pass through this map.
+  env_secret_data = merge([
+    for c in concat(local.all_containers, local.init_containers) : {
+      for s in try(c.env.secrets, []) : s.name => s.value
+      if try(s.value, "") != "" && try(s.secret_ref, null) == null
+    }
+  ]...)
+
+  # Pod-level volumes: union of every container's mounts, first declaration of
+  # a name wins. DaemonSet agents commonly declare HostPath mounts (node logs,
+  # the container runtime socket) — each contributes one pod volume here.
+  volume_mounts_flat = flatten([
+    for c in concat(local.all_containers, local.init_containers) : try(c.volume_mounts, [])
+  ])
+
+  pod_volumes = {
+    for vm in local.volume_mounts_flat : vm.name => vm...
+  }
+
+  # Pod-level image pull secrets: spec-listed names plus the module-created
+  # docker-config secret when configured. ServiceAccount-attached pull secrets
+  # need no entry here.
+  image_pull_secret_names = concat(
+    try(var.spec.pod.image_pull_secrets, []),
+    local.create_image_pull_secret ? [local.image_pull_secret_name] : []
   )
+
+  create_image_pull_secret = try(var.docker_config_json, "") != ""
+
+  # Pod template labels: controller labels win over user pod labels so a user
+  # label can never break pod selection.
+  pod_template_labels = merge(try(var.spec.pod.labels, {}), local.final_labels)
+
+  # Selector labels rendered as a deterministic sorted "k=v,k=v" string — the
+  # exact syntax kubectl -l and NetworkPolicy tooling accept.
+  selector_labels_string = join(",", [for k in sort(keys(local.selector_labels)) : "${k}=${local.selector_labels[k]}"])
+
+  update_strategy_type = try(var.spec.update_strategy.type, "") != "" ? var.spec.update_strategy.type : "RollingUpdate"
 }
 
+variable "docker_config_json" {
+  description = "Docker registry credential (dockerconfigjson) injected by the platform at deploy time; empty when pulling public images or when pull secrets are attached to the ServiceAccount."
+  type        = string
+  default     = ""
+}

@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "kubetoken",
     srcs = [
+        "aks.go",
         "eks.go",
         "gke.go",
         "token.go",
@@ -14,6 +15,9 @@ go_library(
         "@com_github_aws_aws_sdk_go_v2_credentials//:credentials",
         "@com_github_aws_aws_sdk_go_v2_service_sts//:sts",
         "@com_github_aws_smithy_go//transport/http",
+        "@com_github_azure_azure_sdk_for_go_sdk_azcore//:azcore",
+        "@com_github_azure_azure_sdk_for_go_sdk_azcore//policy",
+        "@com_github_azure_azure_sdk_for_go_sdk_azidentity//:azidentity",
         "@com_github_pkg_errors//:errors",
         "@org_golang_x_oauth2//google",
     ],
@@ -22,6 +26,7 @@ go_library(
 go_test(
     name = "kubetoken_test",
     srcs = [
+        "aks_test.go",
         "eks_test.go",
         "gke_test.go",
     ],

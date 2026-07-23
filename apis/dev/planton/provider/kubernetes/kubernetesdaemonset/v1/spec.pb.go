@@ -25,65 +25,61 @@ const (
 )
 
 // *
-// **KubernetesDaemonSetSpec** defines the configuration for deploying a DaemonSet on a Kubernetes cluster.
-// A DaemonSet ensures that all (or some) nodes run a copy of a pod. As nodes are added to the cluster,
-// pods are added to them. As nodes are removed from the cluster, those pods are garbage collected.
-// Common use cases include: cluster storage daemons, log collection daemons, and node monitoring daemons.
+// **KubernetesDaemonSetSpec** deploys a node agent on a Kubernetes cluster as an
+// apps/v1 DaemonSet: exactly one pod runs on every node that matches the pod's
+// scheduling rules, and pods are added or garbage-collected as nodes join and leave.
+// This is the kind for log shippers, node monitors, storage daemons, and CNI
+// components. There is no replica count — node membership IS the replica count —
+// and no Service or ingress: clients that must reach an agent do so on its node via
+// per-container `host_port` or `pod.host_network`.
+//
+// Which nodes run the agent is controlled under `pod.scheduling`: `node_selector`
+// and `node_affinity` narrow the node set, and `tolerations` unlock tainted nodes
+// (e.g. control-plane nodes). Node-level access composes from the shared building
+// blocks — `pod.host_network`/`pod.host_pid` for host namespaces, per-container
+// `host_port` for node-IP exposure, and the container `security_context` for
+// privileged operation. Identity and permissions are composed, not bundled:
+// `pod.service_account` references a KubernetesServiceAccount, and API permissions
+// come from KubernetesRbac grants targeting that identity.
 type KubernetesDaemonSetSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// The container specifications for the DaemonSet.
-	// This includes configurations for the main application container and any sidecar containers.
-	Container *KubernetesDaemonSetContainer `protobuf:"bytes,4,opt,name=container,proto3" json:"container,omitempty"`
-	// Node selector for constraining the DaemonSet pods to run on specific nodes.
-	// Key-value pairs that must match labels on nodes for the pod to be scheduled.
-	NodeSelector map[string]string `protobuf:"bytes,5,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Tolerations allow the DaemonSet pods to be scheduled on nodes with matching taints.
-	// This is essential for running pods on master nodes or nodes with specific taints.
-	Tolerations []*KubernetesDaemonSetToleration `protobuf:"bytes,6,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
-	// The update strategy for the DaemonSet.
-	// Controls how pods are updated when the DaemonSet specification changes.
-	UpdateStrategy *KubernetesDaemonSetUpdateStrategy `protobuf:"bytes,7,opt,name=update_strategy,json=updateStrategy,proto3" json:"update_strategy,omitempty"`
-	// Minimum number of seconds for which a newly created DaemonSet pod should be ready
-	// without any of its container crashing, for it to be considered available.
-	// Defaults to 0 (pod will be considered available as soon as it is ready).
-	MinReadySeconds int32 `protobuf:"varint,8,opt,name=min_ready_seconds,json=minReadySeconds,proto3" json:"min_ready_seconds,omitempty"`
 	// *
-	// Flag to indicate if a ServiceAccount should be created for this DaemonSet.
-	// If true, a ServiceAccount with the name specified in service_account_name
-	// (or the DaemonSet name if not specified) will be created.
-	// The DaemonSet pods will use this ServiceAccount.
-	CreateServiceAccount bool `protobuf:"varint,9,opt,name=create_service_account,json=createServiceAccount,proto3" json:"create_service_account,omitempty"`
+	// The namespace to deploy into. Accepts a literal namespace name or a reference to a
+	// KubernetesNamespace resource, so an infra chart creates the namespace and the
+	// workload in one run.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// *
-	// Name of the ServiceAccount to use for the DaemonSet pods.
-	// If create_service_account is true, a ServiceAccount with this name will be created.
-	// If create_service_account is false, this references an existing ServiceAccount.
-	// If not specified and create_service_account is true, uses the DaemonSet name.
-	ServiceAccountName string `protobuf:"bytes,10,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
+	// When true, the module creates the namespace if it does not exist. Leave false when
+	// the namespace is owned by a KubernetesNamespace resource or pre-exists.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
 	// *
-	// ConfigMaps to create alongside the DaemonSet.
-	// Key is the ConfigMap name, value is the content.
-	// These ConfigMaps can be referenced in volume mounts.
-	//
-	// Example:
-	//
-	//	config_maps:
-	//	  vector-config: |
-	//	    data_dir: /var/lib/vector
-	//	    sources:
-	//	      kubernetes_logs:
-	//	        type: kubernetes_logs
-	ConfigMaps map[string]string `protobuf:"bytes,11,rep,name=config_maps,json=configMaps,proto3" json:"config_maps,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The containers of the per-node pod: one main agent container and any sidecars.
+	// DaemonSet containers commonly need HostPath volume mounts (node logs, the
+	// container runtime socket) and an elevated `security_context` — both are
+	// per-container settings on WorkloadContainer.
+	Container *KubernetesDaemonSetContainer `protobuf:"bytes,3,opt,name=container,proto3" json:"container,omitempty"`
 	// *
-	// RBAC configuration for the DaemonSet ServiceAccount.
-	// Allows defining ClusterRole and Role permissions.
-	// Only used if create_service_account is true.
-	Rbac          *KubernetesDaemonSetRbac `protobuf:"bytes,12,opt,name=rbac,proto3" json:"rbac,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Pod-level configuration shared by every node's pod: identity (ServiceAccount
+	// reference), init containers, scheduling (which nodes run the agent —
+	// node_selector, tolerations, affinity), host namespaces (host_network, host_pid),
+	// security hardening, DNS, and termination behavior. Host-network agents that
+	// resolve cluster services should also set `dns_policy: ClusterFirstWithHostNet`.
+	Pod *kubernetes.WorkloadPod `protobuf:"bytes,4,opt,name=pod,proto3" json:"pod,omitempty"`
+	// *
+	// How pods are replaced when the spec changes. Omit for the Kubernetes default:
+	// RollingUpdate, at most 1 node's pod unavailable at a time.
+	UpdateStrategy *KubernetesDaemonSetUpdateStrategy `protobuf:"bytes,5,opt,name=update_strategy,json=updateStrategy,proto3" json:"update_strategy,omitempty"`
+	// *
+	// Seconds a new pod must stay ready (no container crashes) before it counts as
+	// available during rollouts. A cheap flap detector — 10–30s catches a crashing
+	// agent build before the rollout replaces it on every node.
+	MinReadySeconds *int32 `protobuf:"varint,6,opt,name=min_ready_seconds,json=minReadySeconds,proto3,oneof" json:"min_ready_seconds,omitempty"`
+	// *
+	// How many old ControllerRevisions are retained for rollback. Kubernetes defaults
+	// to 10; 0 disables rollback entirely.
+	RevisionHistoryLimit *int32 `protobuf:"varint,7,opt,name=revision_history_limit,json=revisionHistoryLimit,proto3,oneof" json:"revision_history_limit,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *KubernetesDaemonSetSpec) Reset() {
@@ -137,16 +133,9 @@ func (x *KubernetesDaemonSetSpec) GetContainer() *KubernetesDaemonSetContainer {
 	return nil
 }
 
-func (x *KubernetesDaemonSetSpec) GetNodeSelector() map[string]string {
+func (x *KubernetesDaemonSetSpec) GetPod() *kubernetes.WorkloadPod {
 	if x != nil {
-		return x.NodeSelector
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetSpec) GetTolerations() []*KubernetesDaemonSetToleration {
-	if x != nil {
-		return x.Tolerations
+		return x.Pod
 	}
 	return nil
 }
@@ -159,49 +148,33 @@ func (x *KubernetesDaemonSetSpec) GetUpdateStrategy() *KubernetesDaemonSetUpdate
 }
 
 func (x *KubernetesDaemonSetSpec) GetMinReadySeconds() int32 {
-	if x != nil {
-		return x.MinReadySeconds
+	if x != nil && x.MinReadySeconds != nil {
+		return *x.MinReadySeconds
 	}
 	return 0
 }
 
-func (x *KubernetesDaemonSetSpec) GetCreateServiceAccount() bool {
-	if x != nil {
-		return x.CreateServiceAccount
+func (x *KubernetesDaemonSetSpec) GetRevisionHistoryLimit() int32 {
+	if x != nil && x.RevisionHistoryLimit != nil {
+		return *x.RevisionHistoryLimit
 	}
-	return false
-}
-
-func (x *KubernetesDaemonSetSpec) GetServiceAccountName() string {
-	if x != nil {
-		return x.ServiceAccountName
-	}
-	return ""
-}
-
-func (x *KubernetesDaemonSetSpec) GetConfigMaps() map[string]string {
-	if x != nil {
-		return x.ConfigMaps
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetSpec) GetRbac() *KubernetesDaemonSetRbac {
-	if x != nil {
-		return x.Rbac
-	}
-	return nil
+	return 0
 }
 
 // *
-// **KubernetesDaemonSetContainer** specifies the container configuration for the DaemonSet.
-// It includes the main application container and any sidecar containers that need to run alongside it.
+// **KubernetesDaemonSetContainer** groups the main agent container and its sidecars,
+// all of which run once per matching node.
 type KubernetesDaemonSetContainer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The main application container specifications.
-	App *KubernetesDaemonSetContainerApp `protobuf:"bytes,1,opt,name=app,proto3" json:"app,omitempty"`
-	// A list of sidecar containers to be deployed alongside the main application container.
-	Sidecars      []*kubernetes.Container `protobuf:"bytes,2,rep,name=sidecars,proto3" json:"sidecars,omitempty"`
+	// *
+	// The main agent container. Expose node-local endpoints (metrics, health) through
+	// each port's `host_port` — DaemonSets have no Service.
+	App *kubernetes.WorkloadContainer `protobuf:"bytes,1,opt,name=app,proto3" json:"app,omitempty"`
+	// *
+	// Sidecar containers running alongside the agent on every node. Sidecars are full
+	// containers: probes, mounts, security context, and lifecycle hooks all apply.
+	// Each sidecar must be named.
+	Sidecars      []*kubernetes.WorkloadContainer `protobuf:"bytes,2,rep,name=sidecars,proto3" json:"sidecars,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -236,14 +209,14 @@ func (*KubernetesDaemonSetContainer) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesDaemonSetContainer) GetApp() *KubernetesDaemonSetContainerApp {
+func (x *KubernetesDaemonSetContainer) GetApp() *kubernetes.WorkloadContainer {
 	if x != nil {
 		return x.App
 	}
 	return nil
 }
 
-func (x *KubernetesDaemonSetContainer) GetSidecars() []*kubernetes.Container {
+func (x *KubernetesDaemonSetContainer) GetSidecars() []*kubernetes.WorkloadContainer {
 	if x != nil {
 		return x.Sidecars
 	}
@@ -251,340 +224,37 @@ func (x *KubernetesDaemonSetContainer) GetSidecars() []*kubernetes.Container {
 }
 
 // *
-// **KubernetesDaemonSetContainerApp** specifies the configuration for the main application container.
-// It includes the container image, resource allocations, environment variables, and health probes.
-type KubernetesDaemonSetContainerApp struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// The container image to be used for the application.
-	// The `pull_secret_name` is the name of the image pull secret to be configured in the Kubernetes DaemonSet resource.
-	Image *kubernetes.ContainerImage `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
-	// The CPU and memory resources allocated to the application container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// *
-	// The environment variables and secrets for the application container.
-	Env *kubernetes.ContainerEnv `protobuf:"bytes,3,opt,name=env,proto3" json:"env,omitempty"`
-	// *
-	// A list of ports to be configured for the application container.
-	Ports []*KubernetesDaemonSetContainerAppPort `protobuf:"bytes,4,rep,name=ports,proto3" json:"ports,omitempty"`
-	// *
-	// Volume mounts for the container.
-	// Supports ConfigMap, Secret, HostPath, EmptyDir, and PVC volumes.
-	// DaemonSets commonly need HostPath mounts for log collection, node monitoring, etc.
-	VolumeMounts []*kubernetes.VolumeMount `protobuf:"bytes,5,rep,name=volume_mounts,json=volumeMounts,proto3" json:"volume_mounts,omitempty"`
-	// *
-	// Liveness probe configuration.
-	// Periodic probe of container liveness. Container will be restarted if the probe fails.
-	LivenessProbe *kubernetes.Probe `protobuf:"bytes,6,opt,name=liveness_probe,json=livenessProbe,proto3" json:"liveness_probe,omitempty"`
-	// *
-	// Readiness probe configuration.
-	// Periodic probe of container service readiness.
-	ReadinessProbe *kubernetes.Probe `protobuf:"bytes,7,opt,name=readiness_probe,json=readinessProbe,proto3" json:"readiness_probe,omitempty"`
-	// *
-	// Startup probe configuration.
-	// Indicates whether the application within the container is started.
-	StartupProbe *kubernetes.Probe `protobuf:"bytes,8,opt,name=startup_probe,json=startupProbe,proto3" json:"startup_probe,omitempty"`
-	// *
-	// Command to run in the container (overrides the container image's ENTRYPOINT).
-	Command []string `protobuf:"bytes,9,rep,name=command,proto3" json:"command,omitempty"`
-	// *
-	// Arguments to pass to the command (overrides the container image's CMD).
-	Args []string `protobuf:"bytes,10,rep,name=args,proto3" json:"args,omitempty"`
-	// *
-	// Security context for the container.
-	// DaemonSets often need privileged access for node-level operations.
-	SecurityContext *KubernetesDaemonSetSecurityContext `protobuf:"bytes,11,opt,name=security_context,json=securityContext,proto3" json:"security_context,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *KubernetesDaemonSetContainerApp) Reset() {
-	*x = KubernetesDaemonSetContainerApp{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDaemonSetContainerApp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDaemonSetContainerApp) ProtoMessage() {}
-
-func (x *KubernetesDaemonSetContainerApp) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDaemonSetContainerApp.ProtoReflect.Descriptor instead.
-func (*KubernetesDaemonSetContainerApp) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetImage() *kubernetes.ContainerImage {
-	if x != nil {
-		return x.Image
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetEnv() *kubernetes.ContainerEnv {
-	if x != nil {
-		return x.Env
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetPorts() []*KubernetesDaemonSetContainerAppPort {
-	if x != nil {
-		return x.Ports
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetVolumeMounts() []*kubernetes.VolumeMount {
-	if x != nil {
-		return x.VolumeMounts
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetLivenessProbe() *kubernetes.Probe {
-	if x != nil {
-		return x.LivenessProbe
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetReadinessProbe() *kubernetes.Probe {
-	if x != nil {
-		return x.ReadinessProbe
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetStartupProbe() *kubernetes.Probe {
-	if x != nil {
-		return x.StartupProbe
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetCommand() []string {
-	if x != nil {
-		return x.Command
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetArgs() []string {
-	if x != nil {
-		return x.Args
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetContainerApp) GetSecurityContext() *KubernetesDaemonSetSecurityContext {
-	if x != nil {
-		return x.SecurityContext
-	}
-	return nil
-}
-
-// *
-// **KubernetesDaemonSetContainerAppPort** specifies the port configuration for the application container.
-type KubernetesDaemonSetContainerAppPort struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the port (e.g., "metrics", "health").
-	// The name must only contain lowercase alphanumeric characters and hyphens.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The port number on the container.
-	ContainerPort int32 `protobuf:"varint,2,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
-	// The network protocol used by the port (e.g., "TCP", "UDP", "SCTP").
-	NetworkProtocol string `protobuf:"bytes,3,opt,name=network_protocol,json=networkProtocol,proto3" json:"network_protocol,omitempty"`
-	// Host port to expose the container port on.
-	// Use with caution as it limits where pods can be scheduled.
-	HostPort      int32 `protobuf:"varint,4,opt,name=host_port,json=hostPort,proto3" json:"host_port,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesDaemonSetContainerAppPort) Reset() {
-	*x = KubernetesDaemonSetContainerAppPort{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDaemonSetContainerAppPort) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDaemonSetContainerAppPort) ProtoMessage() {}
-
-func (x *KubernetesDaemonSetContainerAppPort) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDaemonSetContainerAppPort.ProtoReflect.Descriptor instead.
-func (*KubernetesDaemonSetContainerAppPort) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *KubernetesDaemonSetContainerAppPort) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *KubernetesDaemonSetContainerAppPort) GetContainerPort() int32 {
-	if x != nil {
-		return x.ContainerPort
-	}
-	return 0
-}
-
-func (x *KubernetesDaemonSetContainerAppPort) GetNetworkProtocol() string {
-	if x != nil {
-		return x.NetworkProtocol
-	}
-	return ""
-}
-
-func (x *KubernetesDaemonSetContainerAppPort) GetHostPort() int32 {
-	if x != nil {
-		return x.HostPort
-	}
-	return 0
-}
-
-// *
-// **KubernetesDaemonSetToleration** defines a toleration for the DaemonSet pods.
-type KubernetesDaemonSetToleration struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Key is the taint key that the toleration applies to.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// Operator represents a key's relationship to the value.
-	// Valid operators are Exists and Equal. Defaults to Equal.
-	Operator string `protobuf:"bytes,2,opt,name=operator,proto3" json:"operator,omitempty"`
-	// Value is the taint value the toleration matches to.
-	Value string `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
-	// Effect indicates the taint effect to match.
-	// Valid effects are NoSchedule, PreferNoSchedule and NoExecute.
-	Effect string `protobuf:"bytes,4,opt,name=effect,proto3" json:"effect,omitempty"`
-	// TolerationSeconds represents the period of time the toleration tolerates the taint.
-	// Only applicable when effect is NoExecute.
-	TolerationSeconds int64 `protobuf:"varint,5,opt,name=toleration_seconds,json=tolerationSeconds,proto3" json:"toleration_seconds,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
-func (x *KubernetesDaemonSetToleration) Reset() {
-	*x = KubernetesDaemonSetToleration{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDaemonSetToleration) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDaemonSetToleration) ProtoMessage() {}
-
-func (x *KubernetesDaemonSetToleration) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDaemonSetToleration.ProtoReflect.Descriptor instead.
-func (*KubernetesDaemonSetToleration) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *KubernetesDaemonSetToleration) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *KubernetesDaemonSetToleration) GetOperator() string {
-	if x != nil {
-		return x.Operator
-	}
-	return ""
-}
-
-func (x *KubernetesDaemonSetToleration) GetValue() string {
-	if x != nil {
-		return x.Value
-	}
-	return ""
-}
-
-func (x *KubernetesDaemonSetToleration) GetEffect() string {
-	if x != nil {
-		return x.Effect
-	}
-	return ""
-}
-
-func (x *KubernetesDaemonSetToleration) GetTolerationSeconds() int64 {
-	if x != nil {
-		return x.TolerationSeconds
-	}
-	return 0
-}
-
-// *
-// **KubernetesDaemonSetUpdateStrategy** defines the update strategy for the DaemonSet.
+// **KubernetesDaemonSetUpdateStrategy** controls how the per-node pods are replaced
+// during updates.
 type KubernetesDaemonSetUpdateStrategy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Type of update strategy.
-	// Can be "RollingUpdate" or "OnDelete".
-	// RollingUpdate: The DaemonSet controller creates new pods and deletes old ones progressively.
-	// OnDelete: Pods are only updated when they are manually deleted.
+	// *
+	// "RollingUpdate" (default) replaces pods node by node within the
+	// max_unavailable/max_surge bounds; "OnDelete" only recreates a pod (with the new
+	// template) when someone deletes it — full manual control per node, used when
+	// agent restarts must be coordinated with node maintenance.
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	// Rolling update config params. Present only if type = "RollingUpdate".
-	RollingUpdate *KubernetesDaemonSetRollingUpdate `protobuf:"bytes,2,opt,name=rolling_update,json=rollingUpdate,proto3" json:"rolling_update,omitempty"`
+	// *
+	// Maximum nodes whose pod may be unavailable during a rolling update — absolute
+	// ("2") or percentage ("10%"). Kubernetes defaults to 1: one node's agent down at
+	// a time. Raise it to speed rollouts across large fleets when a brief per-node
+	// agent gap is acceptable. Ignored for OnDelete.
+	MaxUnavailable string `protobuf:"bytes,2,opt,name=max_unavailable,json=maxUnavailable,proto3" json:"max_unavailable,omitempty"`
+	// *
+	// Maximum nodes that may run BOTH the old and new pod during a rolling update —
+	// absolute ("1") or percentage ("10%"). Kubernetes defaults to 0. Surging gives
+	// gapless updates for agents that must never miss data (log shippers), at the cost
+	// of doubled per-node resource usage during the update — and it requires the old
+	// and new pods to coexist, so it cannot be combined with exclusive host ports.
+	// Cannot be 0 when max_unavailable is 0. Ignored for OnDelete.
+	MaxSurge      string `protobuf:"bytes,3,opt,name=max_surge,json=maxSurge,proto3" json:"max_surge,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesDaemonSetUpdateStrategy) Reset() {
 	*x = KubernetesDaemonSetUpdateStrategy{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -596,7 +266,7 @@ func (x *KubernetesDaemonSetUpdateStrategy) String() string {
 func (*KubernetesDaemonSetUpdateStrategy) ProtoMessage() {}
 
 func (x *KubernetesDaemonSetUpdateStrategy) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -609,7 +279,7 @@ func (x *KubernetesDaemonSetUpdateStrategy) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use KubernetesDaemonSetUpdateStrategy.ProtoReflect.Descriptor instead.
 func (*KubernetesDaemonSetUpdateStrategy) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesDaemonSetUpdateStrategy) GetType() string {
@@ -619,463 +289,45 @@ func (x *KubernetesDaemonSetUpdateStrategy) GetType() string {
 	return ""
 }
 
-func (x *KubernetesDaemonSetUpdateStrategy) GetRollingUpdate() *KubernetesDaemonSetRollingUpdate {
-	if x != nil {
-		return x.RollingUpdate
-	}
-	return nil
-}
-
-// *
-// **KubernetesDaemonSetRollingUpdate** defines the parameters for rolling update strategy.
-type KubernetesDaemonSetRollingUpdate struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The maximum number of DaemonSet pods that can be unavailable during the update.
-	// Can be an absolute number or a percentage (e.g., "1" or "10%").
-	// This cannot be 0 if maxSurge is 0.
-	// Defaults to 1.
-	MaxUnavailable string `protobuf:"bytes,1,opt,name=max_unavailable,json=maxUnavailable,proto3" json:"max_unavailable,omitempty"`
-	// The maximum number of nodes with an existing available DaemonSet pod that can have
-	// an updated DaemonSet pod during an update.
-	// Can be an absolute number or a percentage (e.g., "1" or "10%").
-	// Defaults to 0.
-	MaxSurge      string `protobuf:"bytes,2,opt,name=max_surge,json=maxSurge,proto3" json:"max_surge,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesDaemonSetRollingUpdate) Reset() {
-	*x = KubernetesDaemonSetRollingUpdate{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDaemonSetRollingUpdate) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDaemonSetRollingUpdate) ProtoMessage() {}
-
-func (x *KubernetesDaemonSetRollingUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDaemonSetRollingUpdate.ProtoReflect.Descriptor instead.
-func (*KubernetesDaemonSetRollingUpdate) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *KubernetesDaemonSetRollingUpdate) GetMaxUnavailable() string {
+func (x *KubernetesDaemonSetUpdateStrategy) GetMaxUnavailable() string {
 	if x != nil {
 		return x.MaxUnavailable
 	}
 	return ""
 }
 
-func (x *KubernetesDaemonSetRollingUpdate) GetMaxSurge() string {
+func (x *KubernetesDaemonSetUpdateStrategy) GetMaxSurge() string {
 	if x != nil {
 		return x.MaxSurge
 	}
 	return ""
 }
 
-// *
-// **KubernetesDaemonSetSecurityContext** defines the security context for the container.
-type KubernetesDaemonSetSecurityContext struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Run as privileged container.
-	// DaemonSets often need privileged access for node-level operations.
-	Privileged bool `protobuf:"varint,1,opt,name=privileged,proto3" json:"privileged,omitempty"`
-	// Run as a specific user ID.
-	RunAsUser int64 `protobuf:"varint,2,opt,name=run_as_user,json=runAsUser,proto3" json:"run_as_user,omitempty"`
-	// Run as a specific group ID.
-	RunAsGroup int64 `protobuf:"varint,3,opt,name=run_as_group,json=runAsGroup,proto3" json:"run_as_group,omitempty"`
-	// Run as non-root user.
-	RunAsNonRoot bool `protobuf:"varint,4,opt,name=run_as_non_root,json=runAsNonRoot,proto3" json:"run_as_non_root,omitempty"`
-	// Make the root filesystem read-only.
-	ReadOnlyRootFilesystem bool `protobuf:"varint,5,opt,name=read_only_root_filesystem,json=readOnlyRootFilesystem,proto3" json:"read_only_root_filesystem,omitempty"`
-	// Capabilities to add or drop.
-	Capabilities  *KubernetesDaemonSetCapabilities `protobuf:"bytes,6,opt,name=capabilities,proto3" json:"capabilities,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesDaemonSetSecurityContext) Reset() {
-	*x = KubernetesDaemonSetSecurityContext{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDaemonSetSecurityContext) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDaemonSetSecurityContext) ProtoMessage() {}
-
-func (x *KubernetesDaemonSetSecurityContext) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDaemonSetSecurityContext.ProtoReflect.Descriptor instead.
-func (*KubernetesDaemonSetSecurityContext) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *KubernetesDaemonSetSecurityContext) GetPrivileged() bool {
-	if x != nil {
-		return x.Privileged
-	}
-	return false
-}
-
-func (x *KubernetesDaemonSetSecurityContext) GetRunAsUser() int64 {
-	if x != nil {
-		return x.RunAsUser
-	}
-	return 0
-}
-
-func (x *KubernetesDaemonSetSecurityContext) GetRunAsGroup() int64 {
-	if x != nil {
-		return x.RunAsGroup
-	}
-	return 0
-}
-
-func (x *KubernetesDaemonSetSecurityContext) GetRunAsNonRoot() bool {
-	if x != nil {
-		return x.RunAsNonRoot
-	}
-	return false
-}
-
-func (x *KubernetesDaemonSetSecurityContext) GetReadOnlyRootFilesystem() bool {
-	if x != nil {
-		return x.ReadOnlyRootFilesystem
-	}
-	return false
-}
-
-func (x *KubernetesDaemonSetSecurityContext) GetCapabilities() *KubernetesDaemonSetCapabilities {
-	if x != nil {
-		return x.Capabilities
-	}
-	return nil
-}
-
-// *
-// **KubernetesDaemonSetCapabilities** defines Linux capabilities to add or drop.
-type KubernetesDaemonSetCapabilities struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// List of capabilities to add.
-	Add []string `protobuf:"bytes,1,rep,name=add,proto3" json:"add,omitempty"`
-	// List of capabilities to drop.
-	Drop          []string `protobuf:"bytes,2,rep,name=drop,proto3" json:"drop,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesDaemonSetCapabilities) Reset() {
-	*x = KubernetesDaemonSetCapabilities{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDaemonSetCapabilities) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDaemonSetCapabilities) ProtoMessage() {}
-
-func (x *KubernetesDaemonSetCapabilities) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDaemonSetCapabilities.ProtoReflect.Descriptor instead.
-func (*KubernetesDaemonSetCapabilities) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *KubernetesDaemonSetCapabilities) GetAdd() []string {
-	if x != nil {
-		return x.Add
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetCapabilities) GetDrop() []string {
-	if x != nil {
-		return x.Drop
-	}
-	return nil
-}
-
-// *
-// KubernetesDaemonSetRbac defines RBAC permissions for the DaemonSet ServiceAccount.
-// Creates ClusterRole/ClusterRoleBinding for cluster-wide permissions
-// and Role/RoleBinding for namespace-scoped permissions.
-type KubernetesDaemonSetRbac struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// Cluster-wide RBAC rules.
-	// Creates a ClusterRole and ClusterRoleBinding.
-	// Use for permissions that span across namespaces (e.g., reading all pods).
-	ClusterRules []*KubernetesDaemonSetRbacRule `protobuf:"bytes,1,rep,name=cluster_rules,json=clusterRules,proto3" json:"cluster_rules,omitempty"`
-	// *
-	// Namespace-scoped RBAC rules.
-	// Creates a Role and RoleBinding in the DaemonSet's namespace.
-	// Use for permissions limited to the deployment namespace.
-	NamespaceRules []*KubernetesDaemonSetRbacRule `protobuf:"bytes,2,rep,name=namespace_rules,json=namespaceRules,proto3" json:"namespace_rules,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *KubernetesDaemonSetRbac) Reset() {
-	*x = KubernetesDaemonSetRbac{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDaemonSetRbac) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDaemonSetRbac) ProtoMessage() {}
-
-func (x *KubernetesDaemonSetRbac) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDaemonSetRbac.ProtoReflect.Descriptor instead.
-func (*KubernetesDaemonSetRbac) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *KubernetesDaemonSetRbac) GetClusterRules() []*KubernetesDaemonSetRbacRule {
-	if x != nil {
-		return x.ClusterRules
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetRbac) GetNamespaceRules() []*KubernetesDaemonSetRbacRule {
-	if x != nil {
-		return x.NamespaceRules
-	}
-	return nil
-}
-
-// *
-// KubernetesDaemonSetRbacRule defines a single RBAC policy rule.
-// Maps directly to Kubernetes RBAC PolicyRule.
-type KubernetesDaemonSetRbacRule struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// API groups containing the resources.
-	// Use "" for core API group.
-	// Example: [""], ["apps"], ["batch"]
-	ApiGroups []string `protobuf:"bytes,1,rep,name=api_groups,json=apiGroups,proto3" json:"api_groups,omitempty"`
-	// *
-	// Resources this rule applies to.
-	// Example: ["pods", "services"], ["deployments"], ["configmaps", "secrets"]
-	Resources []string `protobuf:"bytes,2,rep,name=resources,proto3" json:"resources,omitempty"`
-	// *
-	// Verbs specifying the actions allowed.
-	// Example: ["get", "list", "watch"], ["create", "update", "delete"]
-	Verbs []string `protobuf:"bytes,3,rep,name=verbs,proto3" json:"verbs,omitempty"`
-	// *
-	// Resource names to limit the rule to specific resources.
-	// If empty, the rule applies to all resources of the specified type.
-	// Example: ["my-configmap", "my-secret"]
-	ResourceNames []string `protobuf:"bytes,4,rep,name=resource_names,json=resourceNames,proto3" json:"resource_names,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesDaemonSetRbacRule) Reset() {
-	*x = KubernetesDaemonSetRbacRule{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesDaemonSetRbacRule) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesDaemonSetRbacRule) ProtoMessage() {}
-
-func (x *KubernetesDaemonSetRbacRule) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesDaemonSetRbacRule.ProtoReflect.Descriptor instead.
-func (*KubernetesDaemonSetRbacRule) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *KubernetesDaemonSetRbacRule) GetApiGroups() []string {
-	if x != nil {
-		return x.ApiGroups
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetRbacRule) GetResources() []string {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetRbacRule) GetVerbs() []string {
-	if x != nil {
-		return x.Verbs
-	}
-	return nil
-}
-
-func (x *KubernetesDaemonSetRbacRule) GetResourceNames() []string {
-	if x != nil {
-		return x.ResourceNames
-	}
-	return nil
-}
-
 var File_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/kubernetes/kubernetesdaemonset/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesdaemonset.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a+dev/planton/provider/kubernetes/probe.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xaf\t\n" +
+	"Adev/planton/provider/kubernetes/kubernetesdaemonset/v1/spec.proto\x126dev.planton.provider.kubernetes.kubernetesdaemonset.v1\x1a\x1bbuf/validate/validate.proto\x1a8dev/planton/provider/kubernetes/workload_container.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa0\x05\n" +
 	"\x17KubernetesDaemonSetSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12z\n" +
-	"\tcontainer\x18\x04 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12\x86\x01\n" +
-	"\rnode_selector\x18\x05 \x03(\v2a.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.NodeSelectorEntryR\fnodeSelector\x12w\n" +
-	"\vtolerations\x18\x06 \x03(\v2U.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetTolerationR\vtolerations\x12\x82\x01\n" +
-	"\x0fupdate_strategy\x18\a \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategyR\x0eupdateStrategy\x12*\n" +
-	"\x11min_ready_seconds\x18\b \x01(\x05R\x0fminReadySeconds\x124\n" +
-	"\x16create_service_account\x18\t \x01(\bR\x14createServiceAccount\x120\n" +
-	"\x14service_account_name\x18\n" +
-	" \x01(\tR\x12serviceAccountName\x12\x80\x01\n" +
-	"\vconfig_maps\x18\v \x03(\v2_.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.ConfigMapsEntryR\n" +
-	"configMaps\x12c\n" +
-	"\x04rbac\x18\f \x01(\v2O.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacR\x04rbac\x1a?\n" +
-	"\x11NodeSelectorEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a=\n" +
-	"\x0fConfigMapsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd9\x01\n" +
-	"\x1cKubernetesDaemonSetContainer\x12q\n" +
-	"\x03app\x18\x01 \x01(\v2W.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerAppB\x06\xbaH\x03\xc8\x01\x01R\x03app\x12F\n" +
-	"\bsidecars\x18\x02 \x03(\v2*.dev.planton.provider.kubernetes.ContainerR\bsidecars\"\xc9\b\n" +
-	"\x1fKubernetesDaemonSetContainerApp\x12\x85\x02\n" +
-	"\x05image\x18\x01 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageB\xbd\x01\xbaH\xb9\x01\xba\x01Z\n" +
-	"\x1dspec.container.app.image.repo\x12\x16Image repo is required\x1a!has(this.repo) && this.repo != ''\xba\x01V\n" +
-	"\x1cspec.container.app.image.tag\x12\x15Image tag is required\x1a\x1fhas(this.tag) && this.tag != ''\xc8\x01\x01R\x05image\x12t\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100MiR\tresources\x12?\n" +
-	"\x03env\x18\x03 \x01(\v2-.dev.planton.provider.kubernetes.ContainerEnvR\x03env\x12q\n" +
-	"\x05ports\x18\x04 \x03(\v2[.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerAppPortR\x05ports\x12Q\n" +
-	"\rvolume_mounts\x18\x05 \x03(\v2,.dev.planton.provider.kubernetes.VolumeMountR\fvolumeMounts\x12M\n" +
-	"\x0eliveness_probe\x18\x06 \x01(\v2&.dev.planton.provider.kubernetes.ProbeR\rlivenessProbe\x12O\n" +
-	"\x0freadiness_probe\x18\a \x01(\v2&.dev.planton.provider.kubernetes.ProbeR\x0ereadinessProbe\x12K\n" +
-	"\rstartup_probe\x18\b \x01(\v2&.dev.planton.provider.kubernetes.ProbeR\fstartupProbe\x12\x18\n" +
-	"\acommand\x18\t \x03(\tR\acommand\x12\x12\n" +
-	"\x04args\x18\n" +
-	" \x03(\tR\x04args\x12\x85\x01\n" +
-	"\x10security_context\x18\v \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSecurityContextR\x0fsecurityContext\"\xb9\x04\n" +
-	"#KubernetesDaemonSetContainerAppPort\x12\x82\x02\n" +
-	"\x04name\x18\x01 \x01(\tB\xed\x01\xbaH\xe9\x01\xba\x01\xe2\x01\n" +
-	"\x1dspec.container.app.ports.name\x12\x92\x01Name for ports must only contain lowercase alphanumeric characters and hyphens. Port names must also start and end with an alphanumeric character.\x1a,this.matches('^[a-z0-9][a-z0-9-]*[a-z0-9]$')\xc8\x01\x01R\x04name\x12-\n" +
-	"\x0econtainer_port\x18\x02 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\rcontainerPort\x12\xc0\x01\n" +
-	"\x10network_protocol\x18\x03 \x01(\tB\x94\x01\xbaH\x90\x01\xba\x01\x89\x01\n" +
-	")spec.container.app.ports.network_protocol\x12<The network protocol must be one of \"SCTP\", \"TCP\", or \"UDP\".\x1a\x1ethis in [\"SCTP\", \"TCP\", \"UDP\"]\xc8\x01\x01R\x0fnetworkProtocol\x12\x1b\n" +
-	"\thost_port\x18\x04 \x01(\x05R\bhostPort\"\xe4\x03\n" +
-	"\x1dKubernetesDaemonSetToleration\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x9a\x01\n" +
-	"\boperator\x18\x02 \x01(\tB~\xbaH{\xba\x01x\n" +
-	"\x19spec.tolerations.operator\x120The operator must be one of \"Exists\" or \"Equal\".\x1a)this == \"\" || this in [\"Exists\", \"Equal\"]R\boperator\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\tR\x05value\x12\xce\x01\n" +
-	"\x06effect\x18\x04 \x01(\tB\xb5\x01\xbaH\xb1\x01\xba\x01\xad\x01\n" +
-	"\x17spec.tolerations.effect\x12KThe effect must be one of \"NoSchedule\", \"PreferNoSchedule\", or \"NoExecute\".\x1aEthis == \"\" || this in [\"NoSchedule\", \"PreferNoSchedule\", \"NoExecute\"]R\x06effect\x12-\n" +
-	"\x12toleration_seconds\x18\x05 \x01(\x03R\x11tolerationSeconds\"\xdc\x02\n" +
-	"!KubernetesDaemonSetUpdateStrategy\x12\xb5\x01\n" +
-	"\x04type\x18\x01 \x01(\tB\xa0\x01\xbaH\x9c\x01\xba\x01\x98\x01\n" +
-	"\x19spec.update_strategy.type\x12FThe update strategy type must be one of \"RollingUpdate\" or \"OnDelete\".\x1a3this == \"\" || this in [\"RollingUpdate\", \"OnDelete\"]R\x04type\x12\x7f\n" +
-	"\x0erolling_update\x18\x02 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRollingUpdateR\rrollingUpdate\"h\n" +
-	" KubernetesDaemonSetRollingUpdate\x12'\n" +
-	"\x0fmax_unavailable\x18\x01 \x01(\tR\x0emaxUnavailable\x12\x1b\n" +
-	"\tmax_surge\x18\x02 \x01(\tR\bmaxSurge\"\xe5\x02\n" +
-	"\"KubernetesDaemonSetSecurityContext\x12\x1e\n" +
-	"\n" +
-	"privileged\x18\x01 \x01(\bR\n" +
-	"privileged\x12\x1e\n" +
-	"\vrun_as_user\x18\x02 \x01(\x03R\trunAsUser\x12 \n" +
-	"\frun_as_group\x18\x03 \x01(\x03R\n" +
-	"runAsGroup\x12%\n" +
-	"\x0frun_as_non_root\x18\x04 \x01(\bR\frunAsNonRoot\x129\n" +
-	"\x19read_only_root_filesystem\x18\x05 \x01(\bR\x16readOnlyRootFilesystem\x12{\n" +
-	"\fcapabilities\x18\x06 \x01(\v2W.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetCapabilitiesR\fcapabilities\"G\n" +
-	"\x1fKubernetesDaemonSetCapabilities\x12\x10\n" +
-	"\x03add\x18\x01 \x03(\tR\x03add\x12\x12\n" +
-	"\x04drop\x18\x02 \x03(\tR\x04drop\"\x91\x02\n" +
-	"\x17KubernetesDaemonSetRbac\x12x\n" +
-	"\rcluster_rules\x18\x01 \x03(\v2S.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRuleR\fclusterRules\x12|\n" +
-	"\x0fnamespace_rules\x18\x02 \x03(\v2S.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRuleR\x0enamespaceRules\"\xb5\x01\n" +
-	"\x1bKubernetesDaemonSetRbacRule\x12'\n" +
-	"\n" +
-	"api_groups\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\tapiGroups\x12&\n" +
-	"\tresources\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\tresources\x12\x1e\n" +
-	"\x05verbs\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x05verbs\x12%\n" +
-	"\x0eresource_names\x18\x04 \x03(\tR\rresourceNamesB\xb6\x03\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12z\n" +
+	"\tcontainer\x18\x03 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12>\n" +
+	"\x03pod\x18\x04 \x01(\v2,.dev.planton.provider.kubernetes.WorkloadPodR\x03pod\x12\x82\x01\n" +
+	"\x0fupdate_strategy\x18\x05 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategyR\x0eupdateStrategy\x128\n" +
+	"\x11min_ready_seconds\x18\x06 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x0fminReadySeconds\x88\x01\x01\x12B\n" +
+	"\x16revision_history_limit\x18\a \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\x14revisionHistoryLimit\x88\x01\x01B\x14\n" +
+	"\x12_min_ready_secondsB\x19\n" +
+	"\x17_revision_history_limit\"\xa9\x02\n" +
+	"\x1cKubernetesDaemonSetContainer\x12L\n" +
+	"\x03app\x18\x01 \x01(\v22.dev.planton.provider.kubernetes.WorkloadContainerB\x06\xbaH\x03\xc8\x01\x01R\x03app\x12\xba\x01\n" +
+	"\bsidecars\x18\x02 \x03(\v22.dev.planton.provider.kubernetes.WorkloadContainerBj\xbaHg\xba\x01d\n" +
+	"\x1dspec.container.sidecars.named\x12(Every sidecar container must have a name\x1a\x19this.all(c, c.name != '')R\bsidecars\"\xf4\x03\n" +
+	"!KubernetesDaemonSetUpdateStrategy\x12\xb0\x01\n" +
+	"\x04type\x18\x01 \x01(\tB\x9b\x01\xbaH\x97\x01\xba\x01\x93\x01\n" +
+	"\x19spec.update_strategy.type\x12AUpdate strategy type must be either \"RollingUpdate\" or \"OnDelete\"\x1a3this == '' || this in ['RollingUpdate', 'OnDelete']R\x04type\x12'\n" +
+	"\x0fmax_unavailable\x18\x02 \x01(\tR\x0emaxUnavailable\x12\x1b\n" +
+	"\tmax_surge\x18\x03 \x01(\tR\bmaxSurge:\xd5\x01\xbaH\xd1\x01\x1a\xce\x01\n" +
+	"\"spec.update_strategy.not_both_zero\x12_max_unavailable and max_surge cannot both be 0 — the rollout would be unable to make progress\x1aG!(this.max_unavailable in ['0', '0%'] && this.max_surge in ['0', '0%'])B\xb6\x03\n" +
 	":com.dev.planton.provider.kubernetes.kubernetesdaemonset.v1B\tSpecProtoP\x01Zngithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdaemonset/v1;kubernetesdaemonsetv1\xa2\x02\x05DPPKK\xaa\x026Dev.Planton.Provider.Kubernetes.Kubernetesdaemonset.V1\xca\x026Dev\\Planton\\Provider\\Kubernetes\\Kubernetesdaemonset\\V1\xe2\x02BDev\\Planton\\Provider\\Kubernetes\\Kubernetesdaemonset\\V1\\GPBMetadata\xea\x02;Dev::Planton::Provider::Kubernetes::Kubernetesdaemonset::V1b\x06proto3"
 
 var (
@@ -1090,57 +342,27 @@ func file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawD
 	return file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_goTypes = []any{
-	(*KubernetesDaemonSetSpec)(nil),             // 0: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec
-	(*KubernetesDaemonSetContainer)(nil),        // 1: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer
-	(*KubernetesDaemonSetContainerApp)(nil),     // 2: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp
-	(*KubernetesDaemonSetContainerAppPort)(nil), // 3: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerAppPort
-	(*KubernetesDaemonSetToleration)(nil),       // 4: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetToleration
-	(*KubernetesDaemonSetUpdateStrategy)(nil),   // 5: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy
-	(*KubernetesDaemonSetRollingUpdate)(nil),    // 6: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRollingUpdate
-	(*KubernetesDaemonSetSecurityContext)(nil),  // 7: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSecurityContext
-	(*KubernetesDaemonSetCapabilities)(nil),     // 8: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetCapabilities
-	(*KubernetesDaemonSetRbac)(nil),             // 9: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac
-	(*KubernetesDaemonSetRbacRule)(nil),         // 10: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRule
-	nil,                                         // 11: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.NodeSelectorEntry
-	nil,                                         // 12: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.ConfigMapsEntry
-	(*v1.StringValueOrRef)(nil),                 // 13: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.Container)(nil),                // 14: dev.planton.provider.kubernetes.Container
-	(*kubernetes.ContainerImage)(nil),           // 15: dev.planton.provider.kubernetes.ContainerImage
-	(*kubernetes.ContainerResources)(nil),       // 16: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerEnv)(nil),             // 17: dev.planton.provider.kubernetes.ContainerEnv
-	(*kubernetes.VolumeMount)(nil),              // 18: dev.planton.provider.kubernetes.VolumeMount
-	(*kubernetes.Probe)(nil),                    // 19: dev.planton.provider.kubernetes.Probe
+	(*KubernetesDaemonSetSpec)(nil),           // 0: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec
+	(*KubernetesDaemonSetContainer)(nil),      // 1: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer
+	(*KubernetesDaemonSetUpdateStrategy)(nil), // 2: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy
+	(*v1.StringValueOrRef)(nil),               // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.WorkloadPod)(nil),            // 4: dev.planton.provider.kubernetes.WorkloadPod
+	(*kubernetes.WorkloadContainer)(nil),      // 5: dev.planton.provider.kubernetes.WorkloadContainer
 }
 var file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_depIdxs = []int32{
-	13, // 0: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 1: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer
-	11, // 2: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.NodeSelectorEntry
-	4,  // 3: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.tolerations:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetToleration
-	5,  // 4: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.update_strategy:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy
-	12, // 5: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.ConfigMapsEntry
-	9,  // 6: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.rbac:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac
-	2,  // 7: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer.app:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp
-	14, // 8: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer.sidecars:type_name -> dev.planton.provider.kubernetes.Container
-	15, // 9: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	16, // 10: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	17, // 11: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
-	3,  // 12: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.ports:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerAppPort
-	18, // 13: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
-	19, // 14: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.liveness_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	19, // 15: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.readiness_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	19, // 16: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.startup_probe:type_name -> dev.planton.provider.kubernetes.Probe
-	7,  // 17: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainerApp.security_context:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSecurityContext
-	6,  // 18: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy.rolling_update:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRollingUpdate
-	8,  // 19: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSecurityContext.capabilities:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetCapabilities
-	10, // 20: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac.cluster_rules:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRule
-	10, // 21: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbac.namespace_rules:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetRbacRule
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	3, // 0: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer
+	4, // 2: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.pod:type_name -> dev.planton.provider.kubernetes.WorkloadPod
+	2, // 3: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.update_strategy:type_name -> dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetUpdateStrategy
+	5, // 4: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer.app:type_name -> dev.planton.provider.kubernetes.WorkloadContainer
+	5, // 5: dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetContainer.sidecars:type_name -> dev.planton.provider.kubernetes.WorkloadContainer
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_init() }
@@ -1148,13 +370,14 @@ func file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_init
 	if File_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesdaemonset_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

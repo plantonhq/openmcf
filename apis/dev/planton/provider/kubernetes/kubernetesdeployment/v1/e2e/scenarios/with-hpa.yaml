@@ -26,7 +26,8 @@ spec:
           app_protocol: http
           service_port: 80
   availability:
-    min_replicas: 1
+    replicas: 1
     horizontal_pod_autoscaling:
-      is_enabled: true
-      target_cpu_utilization_percent: 70.0
+      enabled: true
+      max_replicas: 3
+      target_cpu_utilization_percent: 70

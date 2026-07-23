@@ -26,7 +26,8 @@ metadata:
 spec:
   namespace:
     value: bookinfo
-  host: reviews.bookinfo.svc.cluster.local
+  host:
+    value: reviews.bookinfo.svc.cluster.local
   traffic_policy:
     load_balancer:
       simple: LEAST_REQUEST
@@ -43,13 +44,13 @@ planton apply -f destinationrule.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `namespace` | reference | Namespace the DestinationRule is created in. |
-| `host` | string | Registry host the rule applies to (prefer FQDN). |
+| `host` | reference | Registry host the rule applies to (prefer FQDN). Defaults to a `KubernetesService` foreign key resolving the in-cluster FQDN; pass literals with `value:`. |
 
 ### Optional Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `traffic_policy` | object | Load balancing, connection pool, outlier detection, TLS, per-port overrides, tunnel, PROXY protocol. |
+| `traffic_policy` | object | Load balancing, connection pool, outlier detection, TLS, per-port overrides, tunnel, PROXY protocol, retry budget. |
 | `subsets` | list | Named subsets (`name`, `labels`, per-subset `traffic_policy`). |
 | `export_to` | list | Namespaces the rule is visible to (default all). |
 | `workload_selector.match_labels` | map | Pods/VMs the rule applies to; matched by istiod, not a foreign key. |

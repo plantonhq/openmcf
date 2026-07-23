@@ -52,6 +52,13 @@ func createResourceQuota(ctx *pulumi.Context, locals *Locals, namespace *kuberne
 		hard["count/services.loadbalancers"] = fmt.Sprintf("%d", locals.ResourceQuota.LoadBalancers)
 	}
 
+	// Arbitrary extra quota entries (storage, extended resources such as GPUs,
+	// object counts for any API type) merge into the same ResourceQuota object.
+	// Merged last: the spec directs users to keep the typed fields authoritative.
+	for key, value := range locals.ResourceQuota.AdditionalHardLimits {
+		hard[key] = value
+	}
+
 	_, err := kubernetescorev1.NewResourceQuota(
 		ctx,
 		quotaName,

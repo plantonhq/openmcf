@@ -1,230 +1,82 @@
-# Kubernetes Ingress NGINX - Pulumi Module
+# KubernetesIngressNginx Pulumi Module
 
-This Pulumi module deploys the official NGINX Ingress Controller on Kubernetes clusters with cloud-specific optimizations for GKE, EKS, and AKS.
+Installs the ingress-nginx controller from the official Helm chart
+(`ingress-nginx` at `https://kubernetes.github.io/ingress-nginx`) as a real
+Helm release. The typed spec renders into chart values in
+`module/values.go`; the `helm_values` escape hatch merges LAST over them
+with Helm `-f` semantics (maps deep-merge, later document wins, lists
+replace) — the exact semantic twin of the Terraform module's `helm_release`
+with `values = [typed, helm_values]`.
 
-## Overview
+## What the Module Creates
 
-The module provides a simplified interface for deploying ingress controllers with:
+1. **Namespace** (optional) — created with the standard governance labels
+   when `create_namespace` is true; otherwise the namespace must exist.
+   Labels are stamped on this module-created namespace only — never
+   injected into the chart's own resources; Helm owns those
+2. **Helm Release** — named after `metadata.name` (NOT a fixed chart name:
+   multiple controller instances per cluster — public + internal traffic
+   splits, each owning its own IngressClass — are a first-class upstream
+   pattern). The chart's `fullnameOverride` is pinned to the release name
+   so every chart object carries a deterministic, manifest-derived name
+   (`<name>-controller`, `<name>-controller-internal`), which also isolates
+   leader election per instance (the chart's election ID defaults to
+   `<fullname>-leader`)
+3. **Controller Service read** (`Service.Get`) — after the release, the
+   controller Service is read back for the load-balancer address outputs.
+   Gated on the `load_balancer` service type: for `node_port`/`cluster_ip`
+   there is no LB status to read and the address outputs stay empty by
+   design. Reads run through the provider's read path (no awaiters), so
+   this never blocks
 
-- **Multi-Cloud Support**: Automatic configuration for GCP, AWS, and Azure
-- **Load Balancer Integration**: Native cloud load balancer setup
-- **Internal/External Control**: Single flag to toggle private vs public access
-- **Static IP Support**: Cloud-specific static IP assignment
-- **Security Integration**: Security groups (AWS), managed identities (Azure)
+The IngressClass controller identifier derives automatically in
+`module/locals.go`: the chart default `k8s.io/ingress-nginx` for class
+`nginx`, otherwise `k8s.io/<class-name>` — additional controllers isolate
+without the user inventing a vocabulary.
 
-## Key Features
+## Wait / Atomic Posture
 
-1. **Automated Cloud Configuration**
-   - Detects cloud provider from spec
-   - Applies correct annotations automatically
-   - Configures load balancer type (internal/external)
-
-2. **Helm Chart Deployment**
-   - Uses official NGINX Ingress Controller Helm chart
-   - Configurable chart version
-   - Default to tested stable version
-
-3. **Service Setup**
-   - Creates LoadBalancer service
-   - Configures ingress class as default
-   - Watches ingresses without explicit class
-
-4. **Namespace Management**
-   - **Flexible namespace control**: Create new or use existing namespaces
-   - **User-specified names**: Configure custom namespace names
-   - **Label propagation**: Applies resource labels for organization
-   - **RBAC integration**: Works with existing namespace policies
-
-## Module Structure
-
-- `main.go` - Primary resource orchestration
-- `locals.go` - Local variable initialization and transformations
-- `outputs.go` - Stack output constants
-- `vars.go` - Deployment constants (namespace, chart repo, versions)
+The release installs with `Atomic` + `CleanupOnFail` and waits (300s
+timeout) for the release's resources to become ready — a controller that
+never starts (bad image, unschedulable pod, webhook certgen failure) fails
+THIS deploy, not the first Ingress. Helm's readiness check on a
+LoadBalancer-type Service also waits for the cloud LB address, so on
+clusters WITHOUT a cloud LB controller (kind, bare metal) a `load_balancer`
+service type times out loudly here — deliberate: use `node_port`/host
+access on such clusters, and the failure names the real problem instead of
+leaving a silently Pending entry point.
 
 ## Usage
 
-### Basic Example
-
-```go
-import (
-    kubernetesingressnginxv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesingressnginx/v1"
-    "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesingressnginx/v1/iac/pulumi/module"
-    "github.com/plantonhq/planton/apis/dev/planton/shared"
-    foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-    "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-)
-
-func main() {
-    pulumi.Run(func(ctx *pulumi.Context) error {
-        ingressSpec := &kubernetesingressnginxv1.KubernetesIngressNginxSpec{
-            Namespace: &foreignkeyv1.StringValueOrRef{
-                LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-                    Value: "ingress-nginx",
-                },
-            },
-            CreateNamespace: true,
-            ChartVersion:    "4.11.1",
-            Internal:        false,
-        }
-
-        ingress := &kubernetesingressnginxv1.KubernetesIngressNginx{
-            ApiVersion: "kubernetes.planton.dev/v1",
-            Kind:       "KubernetesIngressNginx",
-            Metadata: &shared.CloudResourceMetadata{
-                Name: "my-ingress",
-            },
-            Spec: ingressSpec,
-        }
-
-        stackInput := &kubernetesingressnginxv1.KubernetesIngressNginxStackInput{
-            Target: ingress,
-        }
-
-        if err := module.Resources(ctx, stackInput); err != nil {
-            return err
-        }
-
-        return nil
-    })
-}
+```shell
+planton pulumi up --manifest hack/manifest.yaml --module-dir <path-to-this-module>
 ```
 
-### GKE with Static IP
+## Outputs
 
-```go
-ingressSpec := &kubernetesingressnginxv1.KubernetesIngressNginxSpec{
-    ChartVersion: "4.11.1",
-    Internal:     false,
-    ProviderConfig: &kubernetesingressnginxv1.KubernetesIngressNginxSpec_Gke{
-        Gke: &kubernetesingressnginxv1.KubernetesIngressNginxGkeConfig{
-            StaticIpName: "my-ingress-static-ip",
-        },
-    },
-}
-```
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the controller is installed in |
+| `release_name` | Helm release name (equals `metadata.name`; controller resources are named `<release>-controller`) |
+| `ingress_class_name` | The IngressClass this controller owns — what KubernetesIngress resources reference |
+| `controller_service_name` | The controller's external Service — the traffic entry point |
+| `internal_service_name` | The internal Service (empty unless `service.internal.enabled`) |
+| `load_balancer_ip` | External IP of the cloud LB (providers that populate an IP; empty otherwise) |
+| `load_balancer_hostname` | External hostname of the cloud LB (providers that populate a DNS name; empty otherwise) |
 
-### EKS Internal with Subnets
+## Module Structure
 
-```go
-ingressSpec := &kubernetesingressnginxv1.KubernetesIngressNginxSpec{
-    ChartVersion: "4.11.1",
-    Internal:     true,
-    ProviderConfig: &kubernetesingressnginxv1.KubernetesIngressNginxSpec_Eks{
-        Eks: &kubernetesingressnginxv1.KubernetesIngressNginxEksConfig{
-            SubnetIds: []*foreignkeyv1.StringValueOrRef{
-                {Value: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-abc123"}},
-                {Value: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-def456"}},
-            },
-        },
-    },
-}
-```
-
-## Stack Outputs
-
-The module exports the following outputs:
-
-- `namespace` - Kubernetes namespace where ingress controller is deployed
-- `release_name` - Helm release name
-- `service_name` - Kubernetes service name for the controller
-- `service_type` - Service type (LoadBalancer)
-
-Access outputs after deployment:
-
-```bash
-pulumi stack output namespace
-pulumi stack output service_name
-```
-
-## Debugging
-
-Use the provided debug script:
-
-```bash
-cd iac/pulumi
-./debug.sh
-```
-
-Or manually:
-
-```bash
-cd iac/pulumi
-export PULUMI_CONFIG_PASSPHRASE=""
-pulumi stack select dev
-pulumi preview
-```
-
-## Prerequisites
-
-- Pulumi CLI installed
-- Go 1.21 or later
-- Access to Kubernetes cluster
-- kubectl configured
-
-## Cloud-Specific Prerequisites
-
-### GKE
-- Reserved static IP (if using `static_ip_name`)
-- GKE cluster with workload identity enabled
-
-### EKS
-- IAM role for IRSA (if using `irsa_role_arn_override`)
-- Security groups created
-- Subnets configured
-
-### AKS
-- User-assigned managed identity (if using)
-- Public IP resource (if using `public_ip_name`)
-
-## Verification
-
-After deployment, verify the ingress controller:
-
-```bash
-# Check pods
-kubectl get pods -n kubernetes-ingress-nginx
-
-# Check service and load balancer
-kubectl get svc -n kubernetes-ingress-nginx
-
-# View Helm release
-helm list -n kubernetes-ingress-nginx
-
-# Check ingress class
-kubectl get ingressclass
-```
-
-## Troubleshooting
-
-### Load Balancer Pending
-
-If the service stays in Pending state:
-
-1. Check cloud provider quotas
-2. Verify subnet configuration (for internal LBs)
-3. Check security groups allow ingress traffic
-4. Review controller logs:
-   ```bash
-   kubectl logs -n kubernetes-ingress-nginx -l app.kubernetes.io/component=controller
-   ```
-
-### Static IP Not Assigned
-
-For GKE static IP issues:
-
-```bash
-# Verify IP exists
-gcloud compute addresses list
-
-# Check IP is in correct region
-gcloud compute addresses describe <ip-name> --global
-```
-
-## Additional Resources
-
-- [Pulumi Kubernetes Documentation](https://www.pulumi.com/registry/packages/kubernetes/)
-- [NGINX Ingress Controller](https://kubernetes.github.io/ingress-nginx/)
-- [Helm Chart Values](https://github.com/kubernetes/ingress-nginx/blob/main/charts/ingress-nginx/values.yaml)
-
+- `main.go`: entrypoint that calls the module
+- `module/main.go`: namespace → Helm release → controller Service read →
+  exports
+- `module/values.go`: typed-spec → chart values rendering (ingress-class
+  identity, replicas-vs-autoscaling exclusivity, service shaping,
+  host-network DNS policy, default-TLS `extraArgs` flag, default-backend
+  image split), escape-hatch merge
+- `module/namespace.go`: conditional namespace creation
+- `module/locals.go`: resolved names (release, ingress class + controller
+  value, controller/internal Service names) — kept in lockstep with the
+  Terraform module's `locals.tf`
+- `module/vars.go`: chart identity and the pinned default chart version
+  (kept byte-identical with the Terraform module — cross-engine chart-name
+  drift installs different software per engine)

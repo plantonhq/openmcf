@@ -8,166 +8,122 @@ componentName: "kubernetesperconamysqloperator"
 
 # Kubernetes Percona MySQL Operator
 
-Deploys the Percona Operator for MySQL (Percona XtraDB Cluster) on a Kubernetes cluster using the official `pxc-operator` Helm chart (v1.18.0). The operator enables declarative lifecycle management of Percona XtraDB Cluster instances via PerconaXtraDBCluster custom resources, handling automated provisioning, scaling, backups, and failover of MySQL clusters.
+Installs the Percona Operator for MySQL — based on Percona XtraDB
+Cluster — from the official `pxc-operator` Helm chart, with a typed
+spec over the chart's meaningful configuration surface. The operator
+reconciles `PerconaXtraDBCluster` custom resources into highly
+available MySQL clusters: Galera synchronous multi-primary replication
+with automated failover, HAProxy or ProxySQL query routing, scheduled
+XtraBackup backups with point-in-time recovery, and TLS. This component
+installs the ENGINE; the databases themselves are declared with
+KubernetesMysql resources — one per MySQL cluster.
 
 ## What Gets Created
 
-When you deploy a KubernetesPerconaMysqlOperator resource, Planton provisions:
+- **Namespace** (optional) — the installation namespace, created and
+  owned when `create_namespace` is set
+- **Helm Release** (named `metadata.name`) — the operator Deployment,
+  its RBAC, and the PerconaXtraDBCluster CRDs
+  (PerconaXtraDBCluster / PerconaXtraDBClusterBackup /
+  PerconaXtraDBClusterRestore). The CRDs ship in the chart's
+  Helm-native `crds/` directory: installed on first install, never
+  upgraded or deleted by Helm — uninstalling the release NEVER
+  cascade-deletes the database clusters. The same posture means a
+  `chart_version` upgrade runs new operator code against the EXISTING
+  CRDs — apply the new release's CRDs yourself when an upgrade's
+  release notes call for it.
+- **Validation webhook** (widened-watch arms only) — the operator's
+  cluster-scoped `percona-xtradbcluster-webhook`, rendered by the
+  module rather than left to the operator's own startup registration.
+  Module ownership is what makes uninstall clean: the upstream-created
+  object outlives its operator (Kubernetes never garbage-collects a
+  cluster-scoped dependent of a namespaced owner) and would brick every
+  future PerconaXtraDBCluster admission once its Service is gone. The
+  operator still manages the certificate: it refreshes the CA bundle
+  into the module-declared object at startup. Because the webhook's
+  name is fixed upstream, one cluster carries at most ONE widened-watch
+  operator.
 
-- **Namespace** — created only when `createNamespace` is `true`
-- **Helm Release** — installs the `pxc-operator` Helm chart (v1.18.0) from the Percona Helm repository, deploying the operator pod with configurable CPU and memory resources; the Helm release is named `{metadata.name}-pxc-operator`
-- **Operator Pod** — runs the Percona XtraDB Cluster operator, watching for PerconaXtraDBCluster custom resources and managing their lifecycle
-- **CRDs and RBAC** — Custom Resource Definitions for PerconaXtraDBCluster and associated ClusterRoles, ServiceAccounts, and bindings installed by the Helm chart
+## Watch Scope
+
+By default the operator watches ITS OWN namespace only (the upstream
+default — databases live beside their operator). Two knobs widen it,
+mutually exclusive:
+
+- **`watch.cluster_wide: true`** — one operator manages databases in
+  every namespace (cluster-wide RBAC)
+- **`watch.namespaces: [...]`** — an explicitly fenced set of
+  namespaces
+
+A KubernetesMysql database declared in a namespace the operator does
+not watch is silently never reconciled — install the operator in the
+databases' namespace, or widen the watch.
 
 ## Prerequisites
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, or set `createNamespace` to `true`
-- **Helm-capable cluster** — the cluster must support Helm chart installations (standard for all managed Kubernetes offerings)
+- The cluster must not already run the Percona MySQL operator with
+  overlapping watch scope — the CRDs are cluster-scoped singletons
+- Nothing else: databases, backup stores, and TLS issuers are concerns
+  of the KubernetesMysql resources composed on top
 
 ## Quick Start
-
-Create a file `percona-mysql-operator.yaml`:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesPerconaMysqlOperator
-metadata:
-  name: my-pxc-operator
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesPerconaMysqlOperator.my-pxc-operator
-spec:
-  namespace: percona-system
-  createNamespace: true
-```
-
-Deploy:
-
-```shell
-planton apply -f percona-mysql-operator.yaml
-```
-
-This installs the Percona MySQL Operator into the `percona-system` namespace with default resource limits (1000m CPU / 1Gi memory) and requests (100m CPU / 256Mi memory).
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `string` | Kubernetes namespace where the operator is installed. Can reference a KubernetesNamespace resource via `valueFrom`. | Required |
-| `container` | `object` | Container specification for the operator pod, including resource limits and requests. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying the operator. |
-| `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the operator pod. |
-| `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the operator pod. |
-| `container.resources.requests.cpu` | `string` | `100m` | Minimum guaranteed CPU for the operator pod. |
-| `container.resources.requests.memory` | `string` | `256Mi` | Minimum guaranteed memory for the operator pod. |
-
-> **Note on `valueFrom`**: The `namespace` field is a `StringValueOrRef` type. You can provide a literal string value directly, or use `valueFrom` to reference the output of another Planton resource. See the foreign key reference example below.
-
-## Examples
-
-### Default Operator Installation
-
-Install the Percona MySQL Operator with default resource allocations, creating the target namespace automatically:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMysqlOperator
 metadata:
   name: pxc-operator
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesPerconaMysqlOperator.pxc-operator
-spec:
-  namespace: percona-system
-  createNamespace: true
-  container:
-    resources:
-      limits:
-        cpu: "1000m"
-        memory: "1Gi"
-      requests:
-        cpu: "100m"
-        memory: "256Mi"
-```
-
-### Production Operator with Higher Resource Limits
-
-For production clusters managing many PXC instances, increase the operator's resource allocation to handle the additional reconciliation workload:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesPerconaMysqlOperator
-metadata:
-  name: prod-pxc-operator
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesPerconaMysqlOperator.prod-pxc-operator
-spec:
-  namespace: percona-system
-  container:
-    resources:
-      limits:
-        cpu: "2000m"
-        memory: "2Gi"
-      requests:
-        cpu: "500m"
-        memory: "512Mi"
-```
-
-### Operator with Foreign Key Namespace Reference
-
-Reference an Planton-managed namespace instead of hardcoding the name. The `valueFrom` syntax resolves the namespace name from a KubernetesNamespace resource at deploy time:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesPerconaMysqlOperator
-metadata:
-  name: shared-pxc-operator
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: staging.KubernetesPerconaMysqlOperator.shared-pxc-operator
 spec:
   namespace:
-    valueFrom:
-      kind: KubernetesNamespace
-      name: operators-namespace
-      field: spec.name
-  container:
-    resources:
-      limits:
-        cpu: "1000m"
-        memory: "1Gi"
-      requests:
-        cpu: "200m"
-        memory: "256Mi"
+    value: percona-mysql
+  create_namespace: true
+  disable_telemetry: true
 ```
+
+The operator becomes Available and starts reconciling; KubernetesMysql
+resources declared in the `percona-mysql` namespace turn into running
+Galera clusters.
+
+## Configuration Surface
+
+- **`chart_version`** — the chart pin (default `1.20.0`; chart and
+  operator versions move together). Pin deliberately; upgrades re-run
+  the release with the new chart
+- **`replicas`** — operator pods (default 1); extras are
+  leader-elected warm standbys for the OPERATOR itself, not
+  reconciliation throughput
+- **`watch`** — the scope block above
+- **`max_concurrent_reconciles`** — PerconaXtraDBCluster resources
+  reconciled concurrently (default 1); raise on control planes
+  managing many databases
+- **`s3_workers_limit`** — concurrent S3 workers for backup
+  uploads/deletes across the managed databases (default 10)
+- **`log`** — `structured` (JSON) and `level` (DEBUG / INFO / ERROR)
+- **`disable_telemetry`** — stop the anonymous version/feature pings
+  to check.percona.com
+- **`leader_election`** — election tuning between operator replicas
+  (meaningful only with `replicas` above 1)
+- **`xtrabackup_sidecar`** — run XtraBackup as a sidecar of the
+  database pods instead of separate backup jobs (chart feature gate)
+- **`resources`, `node_selector`, `tolerations`,
+  `image_pull_secrets`, `image`** — operator pod placement, sizing,
+  and image override (registry mirrors, air-gapped clusters)
+- **`helm_values`** — escape hatch: extra chart values merged LAST
+  (Helm `-f` semantics) for the surface beyond the typed fields —
+  never the primary interface, never for secrets
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the operator runs in |
+| `release_name` | Helm release name of the operator (equals `metadata.name`) |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where the Percona MySQL Operator is installed |
+## Next Steps
 
-## Related Components
-
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace via `valueFrom` reference
-- [KubernetesPostgres](/docs/catalog/kubernetes/postgres) — alternative database operator for PostgreSQL workloads
-- [KubernetesHelmRelease](/docs/catalog/kubernetes/helm-release) — alternative for deploying Helm charts with custom configurations
+Declare databases as KubernetesMysql resources — one per MySQL
+cluster, in a namespace the operator watches; the operator reconciles
+them into Galera nodes, proxy Services, and credential Secrets. Pin
+`chart_version` deliberately and upgrade the operator on the
+platform's schedule — removing this component never deletes the CRDs
+or the databases behind them.

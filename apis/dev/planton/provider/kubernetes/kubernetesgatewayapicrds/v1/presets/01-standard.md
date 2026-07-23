@@ -4,14 +4,14 @@ This preset installs the Kubernetes Gateway API CRDs in the standard channel. Th
 
 ## When to Use
 
-- You want to use Gateway, GatewayClass, HTTPRoute, and ReferenceGrant resources
+- You want to use Gateway, GatewayClass, route (HTTP/GRPC/TLS/TCP/UDP), ListenerSet, and ReferenceGrant resources
 - You need the stable/standard set of Gateway API resources
 - Your service mesh or ingress controller supports the Gateway API (e.g., Istio, Envoy Gateway, NGINX Gateway Fabric)
 
 ## Key Configuration Choices
 
-- **Standard channel** -- includes stable resources: Gateway, GatewayClass, HTTPRoute, ReferenceGrant
-- **Version** (`v1.2.1`) -- pinned for reproducibility; check [Gateway API releases](https://github.com/kubernetes-sigs/gateway-api/releases) for updates
+- **Standard channel** -- as of v1.6 includes GatewayClass, Gateway, ListenerSet, HTTPRoute, GRPCRoute, TLSRoute, TCPRoute, UDPRoute, ReferenceGrant, and BackendTLSPolicy
+- **Version** (`v1.6.1`) -- the spec default, and the version the catalog's Gateway API kinds are designed against; check [Gateway API releases](https://github.com/kubernetes-sigs/gateway-api/releases) for updates. Installing an older version narrows what those kinds can deploy (TCPRoute, UDPRoute, and TLSRoute joined the standard channel in v1.6.0, ListenerSet in v1.5.0)
 - **No namespace** -- CRDs are cluster-scoped; no namespace is needed
 
 ## Placeholders to Replace

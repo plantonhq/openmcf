@@ -2,6 +2,8 @@
 
 This document provides a deep technical reference for Amazon FSx for NetApp ONTAP as deployed via the AwsFsxOntapFileSystem API. It covers the file system hierarchy, deployment types, HA pairs, storage options, networking, endpoints, backup strategy, encryption, and cost optimization.
 
+File system creation is a long-running operation — the Terraform provider's default create timeout is 60 minutes; budget deploy windows accordingly.
+
 ---
 
 ## 1. Architecture: File System → SVMs → Volumes

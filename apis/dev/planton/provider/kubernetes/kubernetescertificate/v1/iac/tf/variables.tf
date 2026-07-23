@@ -1,31 +1,21 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string
-    id      = optional(string)
-    org     = optional(string)
-    env     = optional(string)
-    labels  = optional(map(string))
-    tags    = optional(list(string))
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "Specification for KubernetesCertificate"
+  description = "KubernetesCertificate specification"
   type = object({
-    # Namespace where the Certificate resource will be created
-    namespace = string
-
-    # DNS Subject Alternative Names (at least one required)
-    dns_names = list(string)
-
-    # Kubernetes Secret name for the signed certificate and private key
+    namespace   = string
     secret_name = string
-
-    # Issuer reference -- exactly one of cluster_issuer or issuer must be set.
-    # The oneof maps to two optional objects; middleware validation ensures
-    # exactly one is populated.
     issuer_ref = object({
       cluster_issuer = optional(object({
         name = string
@@ -33,25 +23,79 @@ variable "spec" {
       issuer = optional(object({
         name = string
       }))
+      external = optional(object({
+        group = string
+        kind  = string
+        name  = string
+      }))
     })
-
-    # When true, the issued certificate is a CA certificate
-    is_ca = optional(bool, false)
-
-    # Certificate lifetime and renewal timing (optional)
-    duration_config = optional(object({
-      duration     = optional(string, "2160h")
-      renew_before = optional(string, "360h")
+    dns_names       = optional(list(string), [])
+    ip_addresses    = optional(list(string), [])
+    uris            = optional(list(string), [])
+    email_addresses = optional(list(string), [])
+    common_name     = optional(string, "")
+    subject = optional(object({
+      organizations        = optional(list(string), [])
+      organizational_units = optional(list(string), [])
+      countries            = optional(list(string), [])
+      provinces            = optional(list(string), [])
+      localities           = optional(list(string), [])
+      street_addresses     = optional(list(string), [])
+      postal_codes         = optional(list(string), [])
+      serial_number        = optional(string, "")
     }))
-
-    # Private key configuration (optional).
-    # Values should already be in cert-manager CRD format (RSA, PKCS1, Always)
-    # since middleware populates defaults from proto options.
+    literal_subject = optional(string, "")
+    other_names = optional(list(object({
+      oid        = string
+      utf8_value = string
+    })), [])
+    duration                = optional(string)
+    renew_before            = optional(string, "")
+    renew_before_percentage = optional(number)
     private_key = optional(object({
-      algorithm       = optional(string, "RSA")
-      size            = optional(number, 2048)
-      encoding        = optional(string, "PKCS1")
-      rotation_policy = optional(string, "Always")
+      algorithm       = optional(string)
+      size            = optional(number)
+      encoding        = optional(string)
+      rotation_policy = optional(string)
     }))
+    usages                   = optional(list(string), [])
+    encode_usages_in_request = optional(bool, false)
+    is_ca                    = optional(bool, false)
+    signature_algorithm      = optional(string)
+    keystores = optional(object({
+      jks = optional(object({
+        create   = optional(bool, false)
+        alias    = optional(string)
+        password = string
+      }))
+      pkcs12 = optional(object({
+        create   = optional(bool, false)
+        password = string
+        profile  = optional(string)
+      }))
+    }))
+    additional_output_formats = optional(list(object({
+      type = string
+    })), [])
+    name_constraints = optional(object({
+      critical = optional(bool, false)
+      permitted = optional(object({
+        dns_domains     = optional(list(string), [])
+        ip_ranges       = optional(list(string), [])
+        email_addresses = optional(list(string), [])
+        uri_domains     = optional(list(string), [])
+      }))
+      excluded = optional(object({
+        dns_domains     = optional(list(string), [])
+        ip_ranges       = optional(list(string), [])
+        email_addresses = optional(list(string), [])
+        uri_domains     = optional(list(string), [])
+      }))
+    }))
+    secret_template = optional(object({
+      labels      = optional(map(string), {})
+      annotations = optional(map(string), {})
+    }))
+    revision_history_limit = optional(number)
   })
 }

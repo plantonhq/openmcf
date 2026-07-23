@@ -1,0 +1,45 @@
+# Restricted-profile node agent: non-root with a pinned UID, read-only root
+# filesystem with an EmptyDir for /tmp, all capabilities dropped, the
+# runtime-default seccomp filter, and no API token mount.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesDaemonSet
+metadata:
+  name: e2e-ds-hardened
+spec:
+  namespace:
+    value: e2e-ds-hard-ns
+  create_namespace: true
+  container:
+    app:
+      image:
+        repo: busybox
+        tag: "1.36"
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "32Mi"
+        limits:
+          cpu: "50m"
+          memory: "64Mi"
+      command:
+        - /bin/sh
+        - -c
+        - sleep 3600
+      volume_mounts:
+        - name: tmp
+          mount_path: /tmp
+          empty_dir:
+            size_limit: 16Mi
+      security_context:
+        read_only_root_filesystem: true
+        allow_privilege_escalation: false
+        capabilities:
+          drop: ["ALL"]
+  pod:
+    automount_service_account_token: false
+    security_context:
+      run_as_non_root: true
+      run_as_user: 10001
+      run_as_group: 10001
+      seccomp_profile:
+        type: RuntimeDefault

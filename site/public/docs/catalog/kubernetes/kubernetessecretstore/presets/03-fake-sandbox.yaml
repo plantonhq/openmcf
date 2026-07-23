@@ -1,0 +1,14 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSecretStore
+metadata:
+  name: sandbox-fake
+spec:
+  namespace:
+    value: <sandbox-namespace>
+  config:
+    fake:
+      data:
+        - key: database-password
+          value: not-a-real-password
+        - key: api-key
+          value: sandbox-api-key-value

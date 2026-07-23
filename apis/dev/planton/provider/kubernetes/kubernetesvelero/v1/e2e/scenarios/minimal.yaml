@@ -1,0 +1,28 @@
+# Minimal Velero: server + AWS object-store plugin against the in-cluster
+# MinIO fixture (the S3-compatible arm — bucket, endpoint URL, path-style,
+# declared test credentials). Volume snapshots are disabled: kind's
+# local-path provisioner has no snapshot support, so the honest minimal
+# posture is resource backups only. The verifier asserts the server is
+# Available AND the default BackupStorageLocation reaches phase Available —
+# the store handshake actually happened.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesVelero
+metadata:
+  name: e2e-velero-minimal
+  annotations:
+    planton.dev/e2e-prerequisites: "apis/dev/planton/provider/kubernetes/kubernetesvelero/v1/e2e/fixture-minio.yaml"
+spec:
+  namespace:
+    value: velero
+  create_namespace: true
+  backup_storage:
+    s3:
+      bucket: velero-backups
+      region: minio
+      s3_url: http://minio.e2e-velero-minio.svc.cluster.local:9000
+      force_path_style: true
+      access_keys:
+        access_key_id: minioadmin
+        secret_access_key: minioadmin
+  volume_snapshots:
+    enabled: false

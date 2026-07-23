@@ -1,0 +1,34 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesgrpcroute
+spec:
+  # One kubectl_manifest applying the Gateway API GRPCRoute CR. The composed
+  # import ID is apiVersion//kind//name//namespace — apiVersion and kind are
+  # constants of this module (it renders exactly one GVK), declared as
+  # literals.
+  values:
+    - name: api_version
+      derivations:
+        - literal: gateway.networking.k8s.io/v1
+      where_to_find: >-
+        Always "gateway.networking.k8s.io/v1" — the module pins the served
+        standard-channel version.
+    - name: kind
+      derivations:
+        - literal: GRPCRoute
+      where_to_find: Always "GRPCRoute" — the CR kind this module applies.
+    - name: name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: route_name
+      where_to_find: >-
+        The GRPCRoute's metadata.name (equals the Planton resource name) —
+        `kubectl get grpcroutes -A` (NAME column).
+    - name: namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        The namespace the resource lives in — `kubectl get grpcroutes -A`
+        (NAMESPACE column).

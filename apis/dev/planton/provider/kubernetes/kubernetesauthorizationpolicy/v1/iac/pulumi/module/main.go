@@ -56,9 +56,12 @@ func createAuthorizationPolicy(
 	if targetRefs := spec.GetTargetRefs(); len(targetRefs) > 0 {
 		refs := istiosecurityv1.AuthorizationPolicySpecTargetRefsArray{}
 		for _, ref := range targetRefs {
+			// name is a StringValueOrRef foreign key (default: a KubernetesGateway's
+			// name output); the platform resolves valueFrom references before the
+			// module runs, so GetValue() always carries the literal name here.
 			refArgs := istiosecurityv1.AuthorizationPolicySpecTargetRefsArgs{
 				Kind: pulumi.String(ref.GetKind()),
-				Name: pulumi.String(ref.GetName()),
+				Name: pulumi.String(ref.GetName().GetValue()),
 			}
 			if ref.GetGroup() != "" {
 				refArgs.Group = pulumi.String(ref.GetGroup())
@@ -190,6 +193,12 @@ func buildSourceArgs(source *kubernetesauthorizationpolicyv1.KubernetesAuthoriza
 	}
 	if len(source.GetNotRemoteIpBlocks()) > 0 {
 		args.NotRemoteIpBlocks = pulumi.ToStringArray(source.GetNotRemoteIpBlocks())
+	}
+	if len(source.GetTrustDomains()) > 0 {
+		args.TrustDomains = pulumi.ToStringArray(source.GetTrustDomains())
+	}
+	if len(source.GetNotTrustDomains()) > 0 {
+		args.NotTrustDomains = pulumi.ToStringArray(source.GetNotTrustDomains())
 	}
 	return args
 }

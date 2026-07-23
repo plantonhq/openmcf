@@ -8,14 +8,18 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-scheduled-task"
+  - slug: "01-nightly-backup"
     rank: "01"
-    title: "Scheduled Task CronJob"
-    excerpt: "This preset creates a CronJob that runs every 6 hours with a Forbid concurrency policy. The most common CronJob pattern: a periodic task that should not overlap with previous runs."
-  - slug: "02-database-backup"
+    title: "Nightly Backup CronJob"
+    excerpt: "This preset runs a backup every night at 03:00 in an explicit time zone, never overlaps with a still-running previous backup, keeps a week of successful run history, and pulls the database credential..."
+  - slug: "02-frequent-sync"
     rank: "02"
-    title: "Database Backup CronJob"
-    excerpt: "This preset creates a daily database backup CronJob that runs at 2:00 AM UTC. Designed for PostgreSQL backup to S3-compatible storage; adapt the command for your database and storage backend."
+    title: "Frequent Sync CronJob"
+    excerpt: "This preset runs a synchronization task every 15 minutes with semantics tuned for high-frequency, latest-state-wins work: a stale run is replaced rather than protected, and a run that cannot start..."
+  - slug: "03-monthly-report"
+    rank: "03"
+    title: "Monthly Report CronJob (Indexed)"
+    excerpt: "This preset generates a partitioned report on the first of every month: each scheduled run stamps out an Indexed Job with six numbered completions (one per report section, region, or data shard),..."
 ---
 
 # CronJob Presets

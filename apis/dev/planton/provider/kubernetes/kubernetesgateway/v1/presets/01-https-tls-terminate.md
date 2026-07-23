@@ -16,7 +16,7 @@ same namespace attach to it for host/path routing.
 
 - **listeners[0].protocol** (`HTTPS`) -- terminates TLS at the Gateway.
 - **listeners[0].tls.mode** (`Terminate`) -- the Gateway decrypts and requires a certificate.
-- **listeners[0].tls.certificateRefs[0].name** -- the TLS Secret holding the cert/key.
+- **listeners[0].tls.certificateRefs[0].name** -- the TLS Secret holding the cert/key. This is a foreign key: write `value: <secret-name>` for a literal Secret name, or `valueFrom:` (kind `KubernetesCertificate`, fieldPath `status.outputs.secret_name`) to reference a Planton-managed certificate's exported Secret so the Gateway deploys after issuance.
 - **listeners[0].hostname** -- restricts the listener to a single virtual host (SNI/Host).
 - **allowedRoutes.namespaces.from** (`Same`) -- only same-namespace Routes may attach.
 
@@ -32,8 +32,8 @@ same namespace attach to it for host/path routing.
 
 | Placeholder | Description |
 |-------------|-------------|
-| `<app-hostname>` | The public hostname this listener serves, e.g. `app.example.com`. |
-| `<tls-secret-name>` | Name of the `kubernetes.io/tls` Secret holding the certificate and key. |
+| `app.example.com` | The public hostname this listener serves (a literal example value -- hostname patterns are validated, so replace it with your real host). |
+| `<tls-secret-name>` | Name of the `kubernetes.io/tls` Secret holding the certificate and key; or switch to `valueFrom` per the comment in the YAML. |
 
 Set `spec.namespace.value` and `spec.gatewayClassName.value` to your namespace
 and GatewayClass, or replace them with `valueFrom` references to a

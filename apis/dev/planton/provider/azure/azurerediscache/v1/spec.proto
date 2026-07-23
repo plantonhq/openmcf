@@ -20,6 +20,15 @@ import "dev/planton/shared/options/options.proto";
 //   geo-replication via AzureRedisLinkedServer.
 // The tier can be upgraded in place; a DOWNGRADE replaces the cache.
 //
+// **Retirement notice (live-verified).** Azure has announced the retirement
+// of classic Azure Cache for Redis in favor of Azure Managed Redis, and ARM
+// has begun rejecting NEW cache creations region by region ("Azure Cache
+// for Redis is retiring, create Azure Managed Redis instance instead" --
+// observed on new PREMIUM creations in some regions while Basic/Standard
+// creations elsewhere still succeed). Existing caches keep running and this
+// kind remains the right surface for managing them; prefer
+// AzureManagedRedis for NEW deployments.
+//
 // **Sizing.** `capacity` picks the size within the tier's family:
 // C0-C6 (250 MB to 53 GB) for Basic/Standard, P1-P5 (6 GB to 120 GB per
 // shard) for Premium. The family letter ("C" or "P") is derived from the

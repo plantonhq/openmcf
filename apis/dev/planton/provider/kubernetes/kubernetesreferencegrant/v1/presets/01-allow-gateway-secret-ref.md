@@ -17,7 +17,9 @@ placed in the Secret's namespace, authorizes it.
 - **`spec.namespace`** -- the namespace the Secret lives in (the "to" side). The
   grant must be created here.
 - **`from`** -- the Gateway's namespace and kind (`Gateway`,
-  `gateway.networking.k8s.io`) that is trusted to reference in.
+  `gateway.networking.k8s.io`) that is trusted to reference in. The `from`/`to`
+  entries are trust assertions about kinds of resources, so their fields stay
+  plain literal strings (no `value:`/`valueFrom:` wrapping).
 - **`to`** -- `kind: Secret` with `group: ""` (Secret is a core kind). Omit
   `name` to allow all Secrets, or set it to restrict the grant to one Secret.
 
@@ -26,12 +28,13 @@ placed in the Secret's namespace, authorizes it.
 - The Gateway API CRDs are installed (`KubernetesGatewayApiCrds`).
 - The target (Secret) namespace exists (`KubernetesNamespace`).
 
-## Placeholders to Replace
+## Values to Replace
 
-| Placeholder | Description |
-|-------------|-------------|
-| `<cert-namespace>` | Namespace where the TLS Secret lives (e.g. `cert-manager`). |
-| `<gateway-namespace>` | Namespace where the `KubernetesGateway` lives (e.g. `istio-ingress`). |
+| Value | Description |
+|-------|-------------|
+| `cert-manager` | Namespace where the TLS Secret lives (`spec.namespace.value`). |
+| `istio-ingress` | Namespace where the `KubernetesGateway` lives (`from[0].namespace`). |
 
 Set `spec.namespace.value` to your Secret's namespace, or replace it with a
-`valueFrom` reference to a `KubernetesNamespace`.
+`valueFrom` reference to a `KubernetesNamespace`. `from[].namespace` must be a
+literal namespace name (it is a trust boundary, not a resource reference).

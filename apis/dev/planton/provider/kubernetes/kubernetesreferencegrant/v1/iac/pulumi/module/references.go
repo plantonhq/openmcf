@@ -14,9 +14,9 @@ import (
 // a valid, meaningful value here), never omit it.
 //
 // Note: from entries are trust assertions about kinds of resources, not Planton
-// foreign keys (DD-009). from[].namespace is the one genuine cross-resource
-// reference; infra-chart authors express that edge via metadata.relationships
-// (type: uses) when the source namespace is Planton-managed.
+// foreign keys. from[].namespace is the one genuine cross-resource reference;
+// infra-chart authors express that edge via metadata.relationships (type: uses)
+// when the source namespace is Planton-managed.
 func buildFrom(from []*kubernetesreferencegrantv1.KubernetesReferenceGrantFrom) gatewayv1.ReferenceGrantSpecFromArray {
 	arr := gatewayv1.ReferenceGrantSpecFromArray{}
 	for _, f := range from {

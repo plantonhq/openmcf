@@ -1157,7 +1157,7 @@ const file_dev_planton_provider_kubernetes_kubernetesrookcephcluster_v1_spec_pro
 	"\n" +
 	"Gdev/planton/provider/kubernetes/kubernetesrookcephcluster/v1/spec.proto\x12<dev.planton.provider.kubernetes.kubernetesrookcephcluster.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x96\t\n" +
 	"\x1dKubernetesRookCephClusterSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12H\n" +
 	"\x12operator_namespace\x18\x04 \x01(\tB\x14\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\trook-cephH\x00R\x11operatorNamespace\x88\x01\x01\x12E\n" +
 	"\x12helm_chart_version\x18\x05 \x01(\tB\x12\xbaH\x04r\x02\x10\x01\x8a\xa6\x1d\av1.16.6H\x01R\x10helmChartVersion\x88\x01\x01\x12j\n" +

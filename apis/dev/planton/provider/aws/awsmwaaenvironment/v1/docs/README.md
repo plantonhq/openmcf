@@ -537,6 +537,19 @@ MWAA reads all Airflow artifacts from a single S3 bucket (`sourceBucketArn`).
 
 ---
 
+## Provisioning Times
+
+Environment lifecycle operations are exceptionally slow — plan deploy and
+teardown windows accordingly:
+
+- **Create**: commonly runs tens of minutes; the Terraform provider's
+  default create timeout is 120 minutes. A deploy that appears stalled at
+  the 40-minute mark is normal, not hung.
+- **Update / replace**: configuration updates run long too (90-minute
+  default timeout); a `subnetIds` change forces a full environment
+  replacement (20–40 minutes, see ForceNew notes above).
+- **Delete**: up to 90 minutes (default timeout).
+
 ## Service Limits and Quotas
 
 Key MWAA service limits (default, as of 2025):

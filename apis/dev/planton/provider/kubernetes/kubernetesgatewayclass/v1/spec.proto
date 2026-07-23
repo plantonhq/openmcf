@@ -9,7 +9,7 @@ import "dev/planton/provider/kubernetes/gateway_api.proto";
 // a cluster-scoped template that identifies the controller responsible for
 // managing Gateways of this class (e.g. Istio, Envoy Gateway, NGINX).
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 GatewayClassSpec
+// 100% fidelity with the upstream Gateway API v1.6.1 GatewayClassSpec
 // (kubernetes-sigs/gateway-api apis/v1/gatewayclass_types.go). The three
 // upstream fields (controller_name, parameters_ref, description) are flattened
 // after the Planton cluster-scoped envelope.

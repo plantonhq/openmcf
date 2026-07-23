@@ -42,27 +42,958 @@ func TestStackOutputsConformance(t *testing.T) {
 		mustPopulate []string
 	}{
 		{
+			// KubernetesValkey: the official-chart naming contract — the
+			// write/read/headless Services, the endpoint, and the
+			// module-materialized auth Secret handle.
+			name: "KubernetesValkey",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesValkey,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"service":              "session-cache",
+				"read_service":         "session-cache-read",
+				"headless_service":     "session-cache-headless",
+				"kube_endpoint":        "session-cache.team-alpha.svc.cluster.local:6379",
+				"port_forward_command": "kubectl port-forward svc/session-cache -n team-alpha 6379:6379",
+				"username":             "default",
+				"password_secret": map[string]interface{}{
+					"name": "session-cache-auth",
+					"key":  "default",
+				},
+			},
+			mustPopulate: []string{
+				"namespace", "service", "read_service", "headless_service",
+				"kube_endpoint", "port_forward_command", "username",
+				"password_secret",
+			},
+		},
+		{
+			// KubernetesMysql: the PXC naming contract — the proxy write and
+			// read Services, the endpoint, and the operator-managed
+			// system-users Secret's root key.
+			name: "KubernetesMysql",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesMysql,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"cluster_name":         "orders-mysql",
+				"primary_service":      "orders-mysql-haproxy",
+				"replicas_service":     "orders-mysql-haproxy-replicas",
+				"kube_endpoint":        "orders-mysql-haproxy.team-alpha.svc.cluster.local:3306",
+				"port_forward_command": "kubectl port-forward svc/orders-mysql-haproxy -n team-alpha 3306:3306",
+				"root_password_secret": map[string]interface{}{
+					"name": "orders-mysql-secrets",
+					"key":  "root",
+				},
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "primary_service", "replicas_service",
+				"kube_endpoint", "port_forward_command",
+				"root_password_secret",
+			},
+		},
+		{
+			// KubernetesMongodb: the PSMDB naming contract — the replica-set
+			// discovery Service, the endpoint with the driver's replicaSet
+			// parameter source, and the system-users Secret's admin key.
+			name: "KubernetesMongodb",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesMongodb,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"cluster_name":         "orders-mongo",
+				"service":              "orders-mongo-rs0",
+				"kube_endpoint":        "orders-mongo-rs0.team-alpha.svc.cluster.local:27017",
+				"replica_set":          "rs0",
+				"port_forward_command": "kubectl port-forward svc/orders-mongo-rs0 -n team-alpha 27017:27017",
+				"admin_password_secret": map[string]interface{}{
+					"name": "orders-mongo-secrets",
+					"key":  "MONGODB_DATABASE_ADMIN_PASSWORD",
+				},
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "service", "kube_endpoint",
+				"replica_set", "port_forward_command",
+				"admin_password_secret",
+			},
+		},
+		{
+			// KubernetesPerconaMongoOperator: installation identity handles.
+			name: "KubernetesPerconaMongoOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":    "psmdb-operator-system",
+				"release_name": "psmdb-op",
+			},
+			mustPopulate: []string{"namespace", "release_name"},
+		},
+		{
+			// KubernetesPerconaMysqlOperator: installation identity handles.
+			name: "KubernetesPerconaMysqlOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPerconaMysqlOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":    "pxc-operator-system",
+				"release_name": "pxc-op",
+			},
+			mustPopulate: []string{"namespace", "release_name"},
+		},
+		{
+			// KubernetesPostgres: the CloudNativePG naming contract — the
+			// three traffic services, the rw endpoint, and the credential
+			// Secret handles (nested objects that flatten to
+			// password_secret.name etc.).
 			name: "KubernetesPostgres",
 			kind: cloudresourcekind.CloudResourceKind_KubernetesPostgres,
 			rawOutputs: map[string]interface{}{
-				"namespace":            "gosilver-prod",
-				"service":              "gosilver-prod-postgres-master",
-				"port_forward_command": "kubectl port-forward -n gosilver-prod service/gosilver-prod-postgres-master 8080:8080",
-				"kube_endpoint":        "gosilver-prod-postgres-master.gosilver-prod.svc.cluster.local",
-				"external_hostname":    "gosilver-prod-postgres.planton.live",
-				// Nested objects -- the shape that flattens to password_secret.name etc.
+				"namespace":             "team-alpha",
+				"cluster_name":          "orders-db",
+				"rw_service":            "orders-db-rw",
+				"ro_service":            "orders-db-ro",
+				"r_service":             "orders-db-r",
+				"kube_endpoint":         "orders-db-rw.team-alpha.svc.cluster.local:5432",
+				"port_forward_command":  "kubectl port-forward svc/orders-db-rw -n team-alpha 5432:5432",
+				"superuser_secret_name": "orders-db-superuser",
 				"password_secret": map[string]interface{}{
-					"name": "postgres.db-gosilver-prod-postgres.credentials.postgresql.acid.zalan.do",
+					"name": "orders-db-app",
 					"key":  "password",
 				},
 				"username_secret": map[string]interface{}{
-					"name": "postgres.db-gosilver-prod-postgres.credentials.postgresql.acid.zalan.do",
+					"name": "orders-db-app",
 					"key":  "username",
 				},
 			},
 			mustPopulate: []string{
-				"namespace", "service", "port_forward_command", "kube_endpoint",
-				"external_hostname", "password_secret", "username_secret",
+				"namespace", "cluster_name", "rw_service", "ro_service",
+				"r_service", "kube_endpoint", "port_forward_command",
+				"superuser_secret_name", "password_secret", "username_secret",
+			},
+		},
+		{
+			// KubernetesCloudNativePgOperator: install identity plus the
+			// plugin release handle.
+			name: "KubernetesCloudNativePgOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesCloudNativePgOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":                  "cnpg-system",
+				"release_name":               "cnpg",
+				"barman_plugin_release_name": "plugin-barman-cloud",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "barman_plugin_release_name",
+			},
+		},
+		{
+			// KubernetesNamespace: flat scalar outputs from both engines describing
+			// the namespace and which governance objects were applied.
+			name: "KubernetesNamespace",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesNamespace,
+			rawOutputs: map[string]interface{}{
+				"namespace":               "team-alpha",
+				"namespace_id":            "team-alpha",
+				"resource_quotas_applied": "true",
+				"limit_ranges_applied":    "true",
+				"pod_security_standard":   "baseline",
+			},
+			mustPopulate: []string{
+				"namespace", "namespace_id", "resource_quotas_applied",
+				"limit_ranges_applied", "pod_security_standard",
+			},
+		},
+		{
+			// KubernetesConfigMap: flat scalar outputs (name + namespace) from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesConfigMap",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesConfigMap,
+			rawOutputs: map[string]interface{}{
+				"configmap_name": "app-config",
+				"namespace":      "team-alpha",
+			},
+			mustPopulate: []string{"configmap_name", "namespace"},
+		},
+		{
+			// KubernetesSecret: flat scalar outputs (name, namespace, type) from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesSecret",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSecret,
+			rawOutputs: map[string]interface{}{
+				"secret_name":      "registry-cred",
+				"secret_namespace": "team-alpha",
+				"secret_type":      "kubernetes.io/dockerconfigjson",
+			},
+			mustPopulate: []string{"secret_name", "secret_namespace", "secret_type"},
+		},
+		{
+			// KubernetesServiceAccount: identity handles (name, namespace, the
+			// assembled RBAC subject, and the bound cloud identity) from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesServiceAccount",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesServiceAccount,
+			rawOutputs: map[string]interface{}{
+				"service_account_name":     "dns-manager",
+				"namespace":                "team-alpha",
+				"rbac_subject":             "system:serviceaccount:team-alpha:dns-manager",
+				"workload_identity_handle": "arn:aws:iam::123456789012:role/dns-manager",
+			},
+			mustPopulate: []string{
+				"service_account_name", "namespace", "rbac_subject",
+				"workload_identity_handle",
+			},
+		},
+		{
+			// KubernetesRbac: created object names/kinds from both engines must land
+			// on the StackOutputs proto.
+			name: "KubernetesRbac",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesRbac,
+			rawOutputs: map[string]interface{}{
+				"role_name":    "app-reader",
+				"role_kind":    "Role",
+				"binding_name": "app-reader-grant",
+				"binding_kind": "RoleBinding",
+				"namespace":    "team-alpha",
+			},
+			mustPopulate: []string{
+				"role_name", "role_kind", "binding_name", "binding_kind", "namespace",
+			},
+		},
+		{
+			// KubernetesDeployment: workload identity + Service handles from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesDeployment",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesDeployment,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"deployment_name":      "checkout",
+				"service":              "checkout",
+				"selector_labels":      "app=checkout,resource_name=checkout",
+				"port_forward_command": "kubectl port-forward -n team-alpha service/checkout 8080:8080",
+				"kube_endpoint":        "checkout.team-alpha.svc.cluster.local",
+			},
+			mustPopulate: []string{
+				"namespace", "deployment_name", "service", "selector_labels",
+				"port_forward_command", "kube_endpoint",
+			},
+		},
+		{
+			// KubernetesStatefulSet: identity handles plus the per-replica DNS
+			// template from both engines must land on the StackOutputs proto.
+			name: "KubernetesStatefulSet",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesStatefulSet,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"stateful_set_name":    "orders-db",
+				"service":              "orders-db",
+				"selector_labels":      "app=orders-db,resource_name=orders-db",
+				"port_forward_command": "kubectl port-forward -n team-alpha service/orders-db 8080:8080",
+				"kube_endpoint":        "orders-db.team-alpha.svc.cluster.local",
+				"pod_dns_template":     "orders-db-{ordinal}.orders-db.team-alpha.svc.cluster.local",
+			},
+			mustPopulate: []string{
+				"namespace", "stateful_set_name", "service", "selector_labels",
+				"port_forward_command", "kube_endpoint", "pod_dns_template",
+			},
+		},
+		{
+			// KubernetesDaemonSet: object identity + selector labels from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesDaemonSet",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesDaemonSet,
+			rawOutputs: map[string]interface{}{
+				"namespace":       "kube-system",
+				"daemon_set_name": "log-collector",
+				"selector_labels": "app=log-collector,resource_name=log-collector",
+			},
+			mustPopulate: []string{"namespace", "daemon_set_name", "selector_labels"},
+		},
+		{
+			// KubernetesJob: object identity + selector labels from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesJob",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesJob,
+			rawOutputs: map[string]interface{}{
+				"namespace":       "team-alpha",
+				"job_name":        "schema-migrate",
+				"selector_labels": "app=schema-migrate,resource_name=schema-migrate",
+			},
+			mustPopulate: []string{"namespace", "job_name", "selector_labels"},
+		},
+		{
+			// KubernetesCronJob: object identity + the effective schedule from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesCronJob",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesCronJob,
+			rawOutputs: map[string]interface{}{
+				"namespace":     "team-alpha",
+				"cron_job_name": "nightly-backup",
+				"schedule":      "0 3 * * *",
+			},
+			mustPopulate: []string{"namespace", "cron_job_name", "schedule"},
+		},
+		{
+			// KubernetesService: identity + address handles from both engines must
+			// land on the StackOutputs proto. LB handles are exercised with the
+			// hostname form (the ip form flattens through the same scalar path).
+			name: "KubernetesService",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesService,
+			rawOutputs: map[string]interface{}{
+				"service_name":           "checkout",
+				"namespace":              "team-alpha",
+				"type":                   "LoadBalancer",
+				"cluster_ip":             "10.96.14.7",
+				"load_balancer_ip":       "",
+				"load_balancer_hostname": "a1b2c3.elb.us-west-2.amazonaws.com",
+				"kube_endpoint":          "checkout.team-alpha.svc.cluster.local",
+				"port_forward_command":   "kubectl port-forward -n team-alpha service/checkout 80:80",
+			},
+			mustPopulate: []string{
+				"service_name", "namespace", "type", "cluster_ip",
+				"load_balancer_hostname", "kube_endpoint", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesIngress: identity + load-balancer address handles from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesIngress",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesIngress,
+			rawOutputs: map[string]interface{}{
+				"ingress_name":           "checkout-web",
+				"namespace":              "team-alpha",
+				"load_balancer_ip":       "203.0.113.10",
+				"load_balancer_hostname": "",
+				"first_host":             "shop.example.com",
+			},
+			mustPopulate: []string{
+				"ingress_name", "namespace", "load_balancer_ip", "first_host",
+			},
+		},
+		{
+			// KubernetesNetworkPolicy: object identity + the governed directions
+			// from both engines must land on the StackOutputs proto.
+			name: "KubernetesNetworkPolicy",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesNetworkPolicy,
+			rawOutputs: map[string]interface{}{
+				"network_policy_name": "default-deny-all",
+				"namespace":           "team-alpha",
+				"policy_types":        "Ingress,Egress",
+			},
+			mustPopulate: []string{
+				"network_policy_name", "namespace", "policy_types",
+			},
+		},
+		{
+			// KubernetesPersistentVolumeClaim: object identity + the requested
+			// size from both engines must land on the StackOutputs proto.
+			name: "KubernetesPersistentVolumeClaim",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPersistentVolumeClaim,
+			rawOutputs: map[string]interface{}{
+				"pvc_name":        "shared-cache",
+				"namespace":       "team-alpha",
+				"storage_request": "10Gi",
+			},
+			mustPopulate: []string{
+				"pvc_name", "namespace", "storage_request",
+			},
+		},
+		{
+			// KubernetesStorageClass: cluster-scoped identity + provisioner +
+			// the default-class flag (bool) from both engines must land on the
+			// StackOutputs proto.
+			name: "KubernetesStorageClass",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesStorageClass,
+			rawOutputs: map[string]interface{}{
+				"storage_class_name": "fast-ssd",
+				"provisioner":        "ebs.csi.aws.com",
+				"is_default_class":   true,
+			},
+			mustPopulate: []string{
+				"storage_class_name", "provisioner", "is_default_class",
+			},
+		},
+		{
+			// KubernetesResourceQuota: the governance pair's identities; the
+			// LimitRange name is empty when no limit_defaults were configured,
+			// so only the always-present fields are required to populate.
+			name: "KubernetesResourceQuota",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesResourceQuota,
+			rawOutputs: map[string]interface{}{
+				"resource_quota_name": "team-quota",
+				"namespace":           "team-alpha",
+				"limit_range_name":    "team-quota",
+			},
+			mustPopulate: []string{
+				"resource_quota_name", "namespace", "limit_range_name",
+			},
+		},
+		{
+			// KubernetesPriorityClass: cluster-scoped identity + the priority
+			// integer (int32) from both engines must land on the StackOutputs
+			// proto.
+			name: "KubernetesPriorityClass",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPriorityClass,
+			rawOutputs: map[string]interface{}{
+				"priority_class_name": "critical",
+				"value":               1000000,
+			},
+			mustPopulate: []string{
+				"priority_class_name", "value",
+			},
+		},
+		{
+			// KubernetesPodDisruptionBudget: object identity — a budget has no
+			// runtime handles beyond it (the eviction API enforces by selector).
+			name: "KubernetesPodDisruptionBudget",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPodDisruptionBudget,
+			rawOutputs: map[string]interface{}{
+				"pod_disruption_budget_name": "checkout-pdb",
+				"namespace":                  "team-alpha",
+			},
+			mustPopulate: []string{
+				"pod_disruption_budget_name", "namespace",
+			},
+		},
+		{
+			// KubernetesHorizontalPodAutoscaler: object identity + the scale
+			// target handle + the replica bounds (int32s) from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesHorizontalPodAutoscaler",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesHorizontalPodAutoscaler,
+			rawOutputs: map[string]interface{}{
+				"horizontal_pod_autoscaler_name": "checkout-hpa",
+				"namespace":                      "team-alpha",
+				"scale_target":                   "Deployment/checkout",
+				"min_replicas":                   2,
+				"max_replicas":                   20,
+			},
+			mustPopulate: []string{
+				"horizontal_pod_autoscaler_name", "namespace", "scale_target",
+				"min_replicas", "max_replicas",
+			},
+		},
+		{
+			// KubernetesCertManager: install identity + the two composition
+			// seams (controller ServiceAccount for cloud identity bindings,
+			// cluster-resource namespace where ClusterIssuer credentials
+			// live) from both engines must land on the StackOutputs proto.
+			name: "KubernetesCertManager",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesCertManager,
+			rawOutputs: map[string]interface{}{
+				"namespace":                  "cert-manager",
+				"release_name":               "cert-manager",
+				"service_account_name":       "cert-manager",
+				"cluster_resource_namespace": "cert-manager",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_account_name", "cluster_resource_namespace",
+			},
+		},
+		{
+			// KubernetesClusterIssuer: the issuer handle Certificates and
+			// ingress-shim annotations reference, plus the ACME account-key
+			// Secret location, from both engines must land on the proto.
+			name: "KubernetesClusterIssuer",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesClusterIssuer,
+			rawOutputs: map[string]interface{}{
+				"cluster_issuer_name":          "letsencrypt-production",
+				"secrets_namespace":            "cert-manager",
+				"acme_account_key_secret_name": "letsencrypt-production-acme-account-key",
+			},
+			mustPopulate: []string{
+				"cluster_issuer_name", "secrets_namespace", "acme_account_key_secret_name",
+			},
+		},
+		{
+			// KubernetesIssuer: the namespace-scoped issuer handle
+			// same-namespace Certificates reference.
+			name: "KubernetesIssuer",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesIssuer,
+			rawOutputs: map[string]interface{}{
+				"namespace":                    "team-a",
+				"issuer_name":                  "team-a-ca",
+				"acme_account_key_secret_name": "",
+			},
+			mustPopulate: []string{
+				"namespace", "issuer_name",
+			},
+		},
+		{
+			// KubernetesCertificate: the TLS Secret handle every consumer
+			// (Ingress, Gateway, CA issuer) references.
+			name: "KubernetesCertificate",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesCertificate,
+			rawOutputs: map[string]interface{}{
+				"namespace":        "team-a",
+				"certificate_name": "api-cert",
+				"secret_name":      "api-cert-tls",
+			},
+			mustPopulate: []string{
+				"namespace", "certificate_name", "secret_name",
+			},
+		},
+		{
+			// KubernetesExternalDns: the install identity plus the controller
+			// ServiceAccount name — the subject cloud-side keyless bindings
+			// (IRSA trust policy, GKE WI member, Azure federated credential)
+			// reference together with the namespace.
+			name: "KubernetesExternalDns",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesExternalDns,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "external-dns",
+				"release_name":         "external-dns-cloudflare",
+				"service_account_name": "external-dns-cloudflare",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_account_name",
+			},
+		},
+		{
+			// KubernetesExternalSecretsOperator: install identity + the two
+			// composition seams (controller ServiceAccount for ambient cloud
+			// identity, the namespace where ClusterSecretStore credentials
+			// live) from both engines must land on the StackOutputs proto.
+			name: "KubernetesExternalSecretsOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesExternalSecretsOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":                  "external-secrets",
+				"release_name":               "external-secrets",
+				"controller_service_account": "external-secrets",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "controller_service_account",
+			},
+		},
+		{
+			// KubernetesClusterSecretStore: the store handle ExternalSecrets
+			// reference (kind ClusterSecretStore) plus the credential-secret
+			// home namespace.
+			name: "KubernetesClusterSecretStore",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesClusterSecretStore,
+			rawOutputs: map[string]interface{}{
+				"store_name":        "aws-prod",
+				"secrets_namespace": "external-secrets",
+			},
+			mustPopulate: []string{
+				"store_name", "secrets_namespace",
+			},
+		},
+		{
+			// KubernetesSecretStore: the namespaced store handle
+			// same-namespace ExternalSecrets reference.
+			name: "KubernetesSecretStore",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSecretStore,
+			rawOutputs: map[string]interface{}{
+				"store_name": "team-a-gcp",
+				"namespace":  "team-a",
+			},
+			mustPopulate: []string{
+				"store_name", "namespace",
+			},
+		},
+		{
+			// KubernetesExternalSecret: the materialized Secret handle every
+			// workload consumer (env valueFrom, volume secretName) wires to.
+			name: "KubernetesExternalSecret",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesExternalSecret,
+			rawOutputs: map[string]interface{}{
+				"external_secret_name": "app-db-credentials",
+				"namespace":            "team-a",
+				"secret_name":          "app-db-credentials",
+			},
+			mustPopulate: []string{
+				"external_secret_name", "namespace", "secret_name",
+			},
+		},
+		{
+			// KubernetesIngressNginx: install identity + the composition
+			// handles (IngressClass name for KubernetesIngress routing,
+			// controller Service names for DNS/traffic wiring, LB address
+			// once the host cloud provisions it) from both engines must
+			// land on the StackOutputs proto.
+			name: "KubernetesIngressNginx",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesIngressNginx,
+			rawOutputs: map[string]interface{}{
+				"namespace":               "ingress-nginx",
+				"release_name":            "ingress-nginx",
+				"ingress_class_name":      "nginx",
+				"controller_service_name": "ingress-nginx-controller",
+				"internal_service_name":   "",
+				"load_balancer_ip":        "203.0.113.10",
+				"load_balancer_hostname":  "",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "ingress_class_name",
+				"controller_service_name", "load_balancer_ip",
+			},
+		},
+		{
+			// KubernetesMetricsServer: install identity + the APIService /
+			// Service handles the metrics pipeline registers, from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesMetricsServer",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesMetricsServer,
+			rawOutputs: map[string]interface{}{
+				"namespace":        "kube-system",
+				"release_name":     "metrics-server",
+				"service_name":     "metrics-server",
+				"api_service_name": "v1beta1.metrics.k8s.io",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_name", "api_service_name",
+			},
+		},
+		{
+			// KubernetesCilium: install identity + the fixed-name component
+			// handles (hubble relay/ui Services, the "cilium" GatewayClass)
+			// from both engines must land on the StackOutputs proto.
+			name: "KubernetesCilium",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesCilium,
+			rawOutputs: map[string]interface{}{
+				"namespace":                 "kube-system",
+				"release_name":              "cilium",
+				"cluster_name":              "prod-east",
+				"hubble_relay_service_name": "hubble-relay",
+				"hubble_ui_service_name":    "hubble-ui",
+				"gateway_class_name":        "cilium",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "cluster_name",
+				"hubble_relay_service_name", "hubble_ui_service_name", "gateway_class_name",
+			},
+		},
+		{
+			// KubernetesKeda: install identity + the operator service-account
+			// handle keyless cloud bindings are written against, from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesKeda",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKeda,
+			rawOutputs: map[string]interface{}{
+				"namespace":                     "keda",
+				"release_name":                  "keda",
+				"operator_service_account_name": "keda-operator",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "operator_service_account_name",
+			},
+		},
+		{
+			// KubernetesBackendTlsPolicy: the created CR's identity from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesBackendTlsPolicy",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesBackendTlsPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_name": "payments-backend-tls",
+				"namespace":   "payments",
+			},
+			mustPopulate: []string{
+				"policy_name", "namespace",
+			},
+		},
+		{
+			// KubernetesKarpenter: install identity (two fixed-name releases)
+			// + the controller service-account handle IRSA trust policies are
+			// written against, from both engines must land on the
+			// StackOutputs proto.
+			name: "KubernetesKarpenter",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKarpenter,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "kube-system",
+				"release_name":         "karpenter",
+				"crd_release_name":     "karpenter-crd",
+				"service_account_name": "karpenter",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "crd_release_name", "service_account_name",
+			},
+		},
+		{
+			// KubernetesKarpenterNodePool: the created cluster-scoped CR's
+			// identity (the karpenter.sh/nodepool join key) from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesKarpenterNodePool",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKarpenterNodePool,
+			rawOutputs: map[string]interface{}{
+				"node_pool_name": "gp-spot-pool",
+			},
+			mustPopulate: []string{
+				"node_pool_name",
+			},
+		},
+		{
+			// KubernetesKarpenterEc2NodeClass: the created cluster-scoped
+			// CR's identity (what NodePools reference via node_class_ref)
+			// from both engines must land on the StackOutputs proto.
+			name: "KubernetesKarpenterEc2NodeClass",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKarpenterEc2NodeClass,
+			rawOutputs: map[string]interface{}{
+				"node_class_name": "default-al2023",
+			},
+			mustPopulate: []string{
+				"node_class_name",
+			},
+		},
+		{
+			// KubernetesClusterAutoscaler: install identity + the
+			// service-account handle keyless cloud bindings are written
+			// against, from both engines must land on the StackOutputs proto.
+			name: "KubernetesClusterAutoscaler",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesClusterAutoscaler,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "kube-system",
+				"release_name":         "cluster-autoscaler",
+				"service_account_name": "cluster-autoscaler-aws-cluster-autoscaler",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_account_name",
+			},
+		},
+		{
+			// KubernetesVelero: install identity + the server
+			// service-account handle keyless bindings target + the default
+			// BackupStorageLocation name Backups/Schedules reference, from
+			// both engines must land on the StackOutputs proto.
+			name: "KubernetesVelero",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesVelero,
+			rawOutputs: map[string]interface{}{
+				"namespace":                    "velero",
+				"release_name":                 "velero",
+				"service_account_name":         "velero-server",
+				"backup_storage_location_name": "default",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_account_name", "backup_storage_location_name",
+			},
+		},
+		{
+			// KubernetesGatewayApiCrds: install identity (version, channel,
+			// manifest URL) from both engines must land on the StackOutputs proto.
+			name: "KubernetesGatewayApiCrds",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGatewayApiCrds,
+			rawOutputs: map[string]interface{}{
+				"installed_version":      "v1.6.1",
+				"installed_channel":      "standard",
+				"installed_manifest_url": "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/standard-install.yaml",
+			},
+			mustPopulate: []string{
+				"installed_version", "installed_channel", "installed_manifest_url",
+			},
+		},
+		{
+			// KubernetesGatewayClass: class identity (cluster-scoped, no
+			// namespace) from both engines must land on the StackOutputs proto.
+			name: "KubernetesGatewayClass",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGatewayClass,
+			rawOutputs: map[string]interface{}{
+				"gateway_class_name": "istio",
+				"controller_name":    "istio.io/gateway-controller",
+			},
+			mustPopulate: []string{"gateway_class_name", "controller_name"},
+		},
+		{
+			// KubernetesGateway: gateway identity + its class handle from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesGateway",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGateway,
+			rawOutputs: map[string]interface{}{
+				"gateway_name":       "edge-gateway",
+				"namespace":          "gateway-system",
+				"gateway_class_name": "istio",
+			},
+			mustPopulate: []string{"gateway_name", "namespace", "gateway_class_name"},
+		},
+		{
+			// KubernetesListenerSet: listener-set identity + the parent Gateway
+			// handle from both engines must land on the StackOutputs proto.
+			name: "KubernetesListenerSet",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesListenerSet,
+			rawOutputs: map[string]interface{}{
+				"listener_set_name": "team-alpha-listeners",
+				"namespace":         "team-alpha",
+				"gateway_name":      "edge-gateway",
+			},
+			mustPopulate: []string{"listener_set_name", "namespace", "gateway_name"},
+		},
+		{
+			// KubernetesHttpRoute: route identity from both engines must land
+			// on the StackOutputs proto (the route kinds share this shape).
+			name: "KubernetesHttpRoute",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesHttpRoute,
+			rawOutputs: map[string]interface{}{
+				"route_name": "app-route",
+				"namespace":  "team-alpha",
+			},
+			mustPopulate: []string{"route_name", "namespace"},
+		},
+		{
+			name: "KubernetesGrpcRoute",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGrpcRoute,
+			rawOutputs: map[string]interface{}{
+				"route_name": "grpc-route",
+				"namespace":  "team-alpha",
+			},
+			mustPopulate: []string{"route_name", "namespace"},
+		},
+		{
+			name: "KubernetesTcpRoute",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesTcpRoute,
+			rawOutputs: map[string]interface{}{
+				"route_name": "tcp-route",
+				"namespace":  "team-alpha",
+			},
+			mustPopulate: []string{"route_name", "namespace"},
+		},
+		{
+			name: "KubernetesUdpRoute",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesUdpRoute,
+			rawOutputs: map[string]interface{}{
+				"route_name": "udp-route",
+				"namespace":  "team-alpha",
+			},
+			mustPopulate: []string{"route_name", "namespace"},
+		},
+		{
+			name: "KubernetesTlsRoute",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesTlsRoute,
+			rawOutputs: map[string]interface{}{
+				"route_name": "tls-route",
+				"namespace":  "team-alpha",
+			},
+			mustPopulate: []string{"route_name", "namespace"},
+		},
+		{
+			// KubernetesReferenceGrant: grant identity from both engines must
+			// land on the StackOutputs proto.
+			name: "KubernetesReferenceGrant",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesReferenceGrant,
+			rawOutputs: map[string]interface{}{
+				"reference_grant_name": "allow-frontend-routes",
+				"namespace":            "backend",
+			},
+			mustPopulate: []string{"reference_grant_name", "namespace"},
+		},
+		{
+			// KubernetesIstio: the control-plane handles downstream resources
+			// compose against — the GatewayClass name (KubernetesGateway seam),
+			// the trust domain (AuthorizationPolicy principals), the istiod
+			// discovery Service, and the data plane mode — from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesIstio",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesIstio,
+			rawOutputs: map[string]interface{}{
+				"namespace":           "istio-system",
+				"istiod_service_name": "istiod",
+				"revision":            "default",
+				"gateway_class_name":  "istio",
+				"trust_domain":        "cluster.local",
+				"dataplane_mode":      "sidecar",
+			},
+			mustPopulate: []string{
+				"namespace", "istiod_service_name", "revision",
+				"gateway_class_name", "trust_domain", "dataplane_mode",
+			},
+		},
+		{
+			// KubernetesIstioBaseCrds: the installed-release record from both
+			// engines must land on the StackOutputs proto.
+			name: "KubernetesIstioBaseCrds",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesIstioBaseCrds,
+			rawOutputs: map[string]interface{}{
+				"installed_release":      "1.30.3",
+				"installed_manifest_url": "https://raw.githubusercontent.com/istio/istio/1.30.3/manifests/charts/base/files/crd-all.gen.yaml",
+			},
+			mustPopulate: []string{"installed_release", "installed_manifest_url"},
+		},
+		{
+			// KubernetesDestinationRule: CR identity from both engines must
+			// land on the StackOutputs proto (the typed Istio CR kinds share
+			// this shape).
+			name: "KubernetesDestinationRule",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesDestinationRule,
+			rawOutputs: map[string]interface{}{
+				"destination_rule_name": "reviews-circuit-breaker",
+				"namespace":             "team-alpha",
+			},
+			mustPopulate: []string{"destination_rule_name", "namespace"},
+		},
+		{
+			name: "KubernetesServiceEntry",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesServiceEntry,
+			rawOutputs: map[string]interface{}{
+				"service_entry_name": "external-api",
+				"namespace":          "team-alpha",
+			},
+			mustPopulate: []string{"service_entry_name", "namespace"},
+		},
+		{
+			name: "KubernetesPeerAuthentication",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPeerAuthentication,
+			rawOutputs: map[string]interface{}{
+				"peer_authentication_name": "namespace-strict-mtls",
+				"namespace":                "team-alpha",
+			},
+			mustPopulate: []string{"peer_authentication_name", "namespace"},
+		},
+		{
+			name: "KubernetesRequestAuthentication",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesRequestAuthentication,
+			rawOutputs: map[string]interface{}{
+				"request_authentication_name": "jwt-auth",
+				"namespace":                   "team-alpha",
+			},
+			mustPopulate: []string{"request_authentication_name", "namespace"},
+		},
+		{
+			name: "KubernetesAuthorizationPolicy",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesAuthorizationPolicy,
+			rawOutputs: map[string]interface{}{
+				"authorization_policy_name": "require-jwt",
+				"namespace":                 "team-alpha",
+			},
+			mustPopulate: []string{"authorization_policy_name", "namespace"},
+		},
+		{
+			name: "KubernetesTelemetry",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesTelemetry,
+			rawOutputs: map[string]interface{}{
+				"telemetry_name": "mesh-default-tracing",
+				"namespace":      "istio-system",
+			},
+			mustPopulate: []string{"telemetry_name", "namespace"},
+		},
+		{
+			name: "KubernetesEnvoyFilter",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesEnvoyFilter,
+			rawOutputs: map[string]interface{}{
+				"envoy_filter_name": "grpc-web-cors",
+				"namespace":         "istio-system",
+			},
+			mustPopulate: []string{"envoy_filter_name", "namespace"},
+		},
+		{
+			// KubernetesManifest: the anchor namespace + the applied-resource
+			// inventory (a repeated string derived from the input YAML) from
+			// both engines must land on the StackOutputs proto.
+			name: "KubernetesManifest",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesManifest,
+			rawOutputs: map[string]interface{}{
+				"namespace":         "team-alpha",
+				"applied_resources": []interface{}{"v1/ConfigMap/app-config", "apps/v1/Deployment/app"},
+			},
+			mustPopulate: []string{
+				"namespace", "applied_resources",
+			},
+		},
+		{
+			// KubernetesHelmRelease: release identity + Helm-recorded state
+			// (chart/app versions, status, revision int32) from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesHelmRelease",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesHelmRelease,
+			rawOutputs: map[string]interface{}{
+				"namespace":    "podinfo",
+				"release_name": "podinfo",
+				"version":      "6.9.2",
+				"app_version":  "6.9.2",
+				"status":       "deployed",
+				"revision":     1,
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "version", "app_version",
+				"status", "revision",
 			},
 		},
 		{
@@ -3192,21 +4123,6 @@ func TestStackOutputsConformance(t *testing.T) {
 				"security_group_id_for_domain_boundary", "single_sign_on_application_arn",
 				"single_sign_on_managed_application_instance_id",
 			},
-		},
-		{
-			// Guards the externaldns tofu module's output rename to solver_sa: the
-			// module previously emitted "service_account_name", which does not flatten
-			// onto the KubernetesExternalDnsStackOutputs.solver_sa proto field (the
-			// Pulumi module already exported "solver_sa"). Both engines now emit the
-			// same three outputs.
-			name: "KubernetesExternalDns",
-			kind: cloudresourcekind.CloudResourceKind_KubernetesExternalDns,
-			rawOutputs: map[string]interface{}{
-				"namespace":    "external-dns",
-				"release_name": "gosilver-in-external-dns",
-				"solver_sa":    "gosilver-in-external-dns",
-			},
-			mustPopulate: []string{"namespace", "release_name", "solver_sa"},
 		},
 		{
 			// CloudflareR2Bucket: both engines emit the same outputs -- bucket name,

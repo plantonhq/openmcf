@@ -26,9 +26,10 @@ standard pattern for exposing a gRPC API behind a Gateway.
 
 ## Key Configuration Choices
 
-- **`parentRefs`** -- attaches the route to the Gateway by name; add `sectionName` to target a specific listener.
+- **`parentRefs[].name`** -- attaches the route to the Gateway; add `sectionName` to target a specific listener. The name is a foreign key: write `value: <literal>` for an existing Gateway, or `valueFrom:` (kind `KubernetesGateway`, fieldPath `status.outputs.gateway_name`) so the route deploys after its Planton-managed Gateway.
 - **`hostnames`** -- the authority (Host) values that select this route; a leading `*.` is a suffix match.
 - **`method.service`** -- the fully-qualified gRPC service (for example `helloworld.Greeter`); add `method` to match a single RPC, or omit `method` entirely to match all services.
+- **`backendRefs[].name`** -- a foreign key like the parent ref: `value:` for a literal Service name, `valueFrom:` (kind `KubernetesService`, fieldPath `status.outputs.service_name`) for a Planton-managed backend.
 - **`backendRefs[].port`** -- required when the backend is a core Service.
 
 ## Prerequisites
@@ -43,10 +44,10 @@ standard pattern for exposing a gRPC API behind a Gateway.
 
 | Placeholder | Description |
 |-------------|-------------|
-| `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to. |
-| `<api-hostname>` | Public hostname this route serves, e.g. `api.example.com`. |
-| `<grpc-service>` | Fully-qualified gRPC service, e.g. `helloworld.Greeter`. |
-| `<service-name>` | Name of the backend Kubernetes Service. |
+| `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to (inside `name.value`, or switch to `valueFrom`). |
+| `api.example.com` | Public hostname this route serves (a literal example value -- replace with your real host). |
+| `helloworld.Greeter` | Fully-qualified gRPC service (a literal example value -- replace with yours). |
+| `<service-name>` | Name of the backend Kubernetes Service (inside `name.value`, or switch to `valueFrom`). |
 
 Set `spec.namespace.value` to your namespace, or replace it with a `valueFrom`
 reference to a `KubernetesNamespace`.

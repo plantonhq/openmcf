@@ -6,9 +6,16 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: <gateway-name>
+    # Foreign key: `value:` for a literal Gateway name, `valueFrom:` (kind
+    # KubernetesGateway, fieldPath status.outputs.gateway_name) to reference a
+    # Planton-managed Gateway and deploy in dependency order.
+    - name:
+        value: <gateway-name>
       sectionName: tcp
   rules:
     - backendRefs:
-        - name: <service-name>
-          port: <service-port>
+        # Also a foreign key: `value:` for a literal Service name, `valueFrom:`
+        # for a Planton-managed KubernetesService.
+        - name:
+            value: <service-name>
+          port: 5432  # backend Service port, e.g. 5432 for Postgres

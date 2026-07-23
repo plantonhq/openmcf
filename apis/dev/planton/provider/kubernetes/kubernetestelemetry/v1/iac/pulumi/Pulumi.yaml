@@ -1,5 +1,4 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
+name: kubernetes-telemetry
 runtime:
   name: go
 description: Pulumi module that provisions an Istio Telemetry resource from a KubernetesTelemetry manifest.

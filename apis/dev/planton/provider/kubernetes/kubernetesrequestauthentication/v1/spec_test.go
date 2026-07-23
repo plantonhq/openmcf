@@ -41,17 +41,17 @@ func ptr[T any](v T) *T { return &v }
 // jwtRule returns a minimal valid JWT rule: an issuer plus a jwks_uri.
 func jwtRule(issuer, jwksURI string) *KubernetesRequestAuthenticationJwtRule {
 	return &KubernetesRequestAuthenticationJwtRule{
-		Issuer:  issuer,
+		Issuer:  ptr(issuer),
 		JwksUri: ptr(jwksURI),
 	}
 }
 
 // targetRef returns a same-namespace PolicyTargetReference (namespace left empty,
-// as upstream requires in the 1.26 line).
+// as upstream requires in the 1.30 line).
 func targetRef(kind, name string) *kubernetes.KubernetesIstioApiPolicyTargetReference {
 	return &kubernetes.KubernetesIstioApiPolicyTargetReference{
 		Kind: kind,
-		Name: name,
+		Name: literal(name),
 	}
 }
 
@@ -110,7 +110,7 @@ var _ = ginkgo.Describe("KubernetesRequestAuthentication Validation Tests", func
 			ginkgo.It("should not return a validation error", func() {
 				input.Spec.JwtRules = []*KubernetesRequestAuthenticationJwtRule{
 					{
-						Issuer: "https://accounts.example.com",
+						Issuer: ptr("https://accounts.example.com"),
 						Jwks:   ptr(`{"keys":[]}`),
 					},
 				}
@@ -122,7 +122,7 @@ var _ = ginkgo.Describe("KubernetesRequestAuthentication Validation Tests", func
 			ginkgo.It("should not return a validation error", func() {
 				input.Spec.JwtRules = []*KubernetesRequestAuthenticationJwtRule{
 					{
-						Issuer:    "https://accounts.example.com",
+						Issuer:    ptr("https://accounts.example.com"),
 						Audiences: []string{"bookstore.example.com"},
 						JwksUri:   ptr("https://accounts.example.com/jwks.json"),
 						FromHeaders: []*KubernetesRequestAuthenticationJwtHeader{
@@ -233,7 +233,7 @@ var _ = ginkgo.Describe("KubernetesRequestAuthentication Validation Tests", func
 		ginkgo.Context("without a kind", func() {
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.TargetRefs = []*kubernetes.KubernetesIstioApiPolicyTargetReference{
-					{Name: "edge-gateway"},
+					{Name: literal("edge-gateway")},
 				}
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
@@ -254,7 +254,7 @@ var _ = ginkgo.Describe("KubernetesRequestAuthentication Validation Tests", func
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.JwtRules = []*KubernetesRequestAuthenticationJwtRule{
 					{
-						Issuer:  "https://accounts.example.com",
+						Issuer:  ptr("https://accounts.example.com"),
 						JwksUri: ptr("https://accounts.example.com/jwks.json"),
 						Jwks:    ptr(`{"keys":[]}`),
 					},
@@ -263,10 +263,41 @@ var _ = ginkgo.Describe("KubernetesRequestAuthentication Validation Tests", func
 			})
 		})
 
-		ginkgo.Context("with a missing issuer", func() {
-			ginkgo.It("should return a validation error", func() {
+		ginkgo.Context("with a jwks_uri but no issuer", func() {
+			ginkgo.It("should accept the rule (issuer is optional when jwks_uri locates the keys)", func() {
 				input.Spec.JwtRules = []*KubernetesRequestAuthenticationJwtRule{
 					{JwksUri: ptr("https://accounts.example.com/jwks.json")},
+				}
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with neither issuer nor jwks_uri", func() {
+			ginkgo.It("should return a validation error — the verifier cannot locate the signing keys", func() {
+				input.Spec.JwtRules = []*KubernetesRequestAuthenticationJwtRule{
+					{Audiences: []string{"api.example.com"}},
+				}
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with space_delimited_claims", func() {
+			ginkgo.It("should accept claim names (the OAuth2 scope convention)", func() {
+				input.Spec.JwtRules = []*KubernetesRequestAuthenticationJwtRule{
+					{
+						Issuer:               ptr("https://accounts.example.com"),
+						SpaceDelimitedClaims: []string{"scope", "permissions"},
+					},
+				}
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject an empty claim name", func() {
+				input.Spec.JwtRules = []*KubernetesRequestAuthenticationJwtRule{
+					{
+						Issuer:               ptr("https://accounts.example.com"),
+						SpaceDelimitedClaims: []string{""},
+					},
 				}
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
@@ -276,7 +307,7 @@ var _ = ginkgo.Describe("KubernetesRequestAuthentication Validation Tests", func
 			ginkgo.It("should return a validation error", func() {
 				input.Spec.JwtRules = []*KubernetesRequestAuthenticationJwtRule{
 					{
-						Issuer:  "https://accounts.example.com",
+						Issuer:  ptr("https://accounts.example.com"),
 						JwksUri: ptr("ftp://accounts.example.com/jwks.json"),
 					},
 				}

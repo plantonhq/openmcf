@@ -8,6 +8,7 @@ package kubernetes
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -45,8 +46,12 @@ type KubernetesGatewayApiParentReference struct {
 	// namespace of the Route. Cross-namespace references require a
 	// ReferenceGrant in the target namespace.
 	Namespace *string `protobuf:"bytes,3,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
-	// Name of the referent.
-	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	// Name of the referent. Defaults to a KubernetesGateway foreign key: in an
+	// infra chart, wire it with valueFrom against the Gateway resource and the
+	// route deploys after (and follows renames of) its Gateway. When the parent
+	// is not a Planton-managed Gateway (a ListenerSet, a mesh Service, or an
+	// externally created Gateway), pass the literal name with `value:`.
+	Name *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	// Name of a section within the target resource (e.g., a Gateway Listener
 	// name). When unspecified, references the entire resource.
 	//
@@ -110,11 +115,11 @@ func (x *KubernetesGatewayApiParentReference) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesGatewayApiParentReference) GetName() string {
+func (x *KubernetesGatewayApiParentReference) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesGatewayApiParentReference) GetSectionName() string {
@@ -129,6 +134,95 @@ func (x *KubernetesGatewayApiParentReference) GetPort() int32 {
 		return *x.Port
 	}
 	return 0
+}
+
+// KubernetesGatewayApiParentGatewayReference identifies the Gateway a
+// ListenerSet attaches its listeners to. Unlike the route-side
+// ParentReference it has no section_name or port — a ListenerSet always
+// attaches to the Gateway as a whole.
+//
+// Upstream: ParentGatewayReference in apis/v1/listenerset_types.go
+type KubernetesGatewayApiParentGatewayReference struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Group of the referent.
+	//
+	// Upstream default: "gateway.networking.k8s.io"
+	// Group pattern: empty or an RFC 1123 subdomain (max 253).
+	Group *string `protobuf:"bytes,1,opt,name=group,proto3,oneof" json:"group,omitempty"`
+	// Kind of the referent.
+	//
+	// Upstream default: "Gateway"
+	// Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+	Kind *string `protobuf:"bytes,2,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
+	// Namespace of the referent. When unspecified, the ListenerSet's own
+	// namespace is assumed. The parent Gateway must allow attachment from the
+	// ListenerSet's namespace via its allowed_listeners configuration.
+	Namespace *string `protobuf:"bytes,3,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
+	// Name of the parent Gateway. Defaults to a KubernetesGateway foreign key:
+	// in an infra chart, wire it with valueFrom against the Gateway resource so
+	// the ListenerSet deploys after its Gateway. Pass the literal name with
+	// `value:` when the Gateway is not Planton-managed.
+	Name          *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesGatewayApiParentGatewayReference) Reset() {
+	*x = KubernetesGatewayApiParentGatewayReference{}
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesGatewayApiParentGatewayReference) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesGatewayApiParentGatewayReference) ProtoMessage() {}
+
+func (x *KubernetesGatewayApiParentGatewayReference) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesGatewayApiParentGatewayReference.ProtoReflect.Descriptor instead.
+func (*KubernetesGatewayApiParentGatewayReference) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesGatewayApiParentGatewayReference) GetGroup() string {
+	if x != nil && x.Group != nil {
+		return *x.Group
+	}
+	return ""
+}
+
+func (x *KubernetesGatewayApiParentGatewayReference) GetKind() string {
+	if x != nil && x.Kind != nil {
+		return *x.Kind
+	}
+	return ""
+}
+
+func (x *KubernetesGatewayApiParentGatewayReference) GetNamespace() string {
+	if x != nil && x.Namespace != nil {
+		return *x.Namespace
+	}
+	return ""
+}
+
+func (x *KubernetesGatewayApiParentGatewayReference) GetName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Name
+	}
+	return nil
 }
 
 // KubernetesGatewayApiBackendObjectReference defines a reference to a backend
@@ -149,8 +243,12 @@ type KubernetesGatewayApiBackendObjectReference struct {
 	// Upstream default: "Service"
 	// Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
 	Kind *string `protobuf:"bytes,2,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
-	// Name of the referent.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Name of the referent. Defaults to a KubernetesService foreign key: in an
+	// infra chart, wire it with valueFrom against the backend Service and the
+	// route deploys after its backend. When the backend is not a
+	// Planton-managed Service (a custom backend kind, or a Service created
+	// outside Planton), pass the literal name with `value:`.
+	Name *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Namespace of the backend. When unspecified, the local namespace is inferred.
 	// Cross-namespace references require a ReferenceGrant.
 	Namespace *string `protobuf:"bytes,4,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
@@ -162,7 +260,7 @@ type KubernetesGatewayApiBackendObjectReference struct {
 
 func (x *KubernetesGatewayApiBackendObjectReference) Reset() {
 	*x = KubernetesGatewayApiBackendObjectReference{}
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -174,7 +272,7 @@ func (x *KubernetesGatewayApiBackendObjectReference) String() string {
 func (*KubernetesGatewayApiBackendObjectReference) ProtoMessage() {}
 
 func (x *KubernetesGatewayApiBackendObjectReference) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[1]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -187,7 +285,7 @@ func (x *KubernetesGatewayApiBackendObjectReference) ProtoReflect() protoreflect
 
 // Deprecated: Use KubernetesGatewayApiBackendObjectReference.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayApiBackendObjectReference) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesGatewayApiBackendObjectReference) GetGroup() string {
@@ -204,11 +302,11 @@ func (x *KubernetesGatewayApiBackendObjectReference) GetKind() string {
 	return ""
 }
 
-func (x *KubernetesGatewayApiBackendObjectReference) GetName() string {
+func (x *KubernetesGatewayApiBackendObjectReference) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesGatewayApiBackendObjectReference) GetNamespace() string {
@@ -235,10 +333,10 @@ func (x *KubernetesGatewayApiBackendObjectReference) GetPort() int32 {
 // per-route backend ref because each backend additionally carries filters.
 //
 // Field validations mirror the upstream kubebuilder markers on
-// BackendObjectReference (group/kind/name patterns + bounds). As of T08 every
-// shared reference type in this file carries these same group/kind/name rules,
-// so the family is uniform. namespace is intentionally left unconstrained across
-// all of them — a deliberate family-wide convention, not a per-type gap.
+// BackendObjectReference (group/kind patterns + bounds). Every shared
+// reference type in this file carries these same group/kind rules, so the
+// family is uniform. namespace is intentionally left unconstrained across all
+// of them — a deliberate family-wide convention, not a per-type gap.
 type KubernetesGatewayApiBackendRef struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Group of the referent. Empty string infers the core API group.
@@ -251,8 +349,12 @@ type KubernetesGatewayApiBackendRef struct {
 	// Upstream default: "Service".
 	// Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
 	Kind *string `protobuf:"bytes,2,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
-	// Name of the referent (for example a Kubernetes Service name).
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Name of the referent. Defaults to a KubernetesService foreign key: in an
+	// infra chart, wire it with valueFrom against the backend Service and the
+	// route deploys after its backend. When the backend is not a
+	// Planton-managed Service (a custom backend kind, or a Service created
+	// outside Planton), pass the literal name with `value:`.
+	Name *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Namespace of the backend. When unspecified, the local namespace is inferred.
 	// Cross-namespace references require a ReferenceGrant.
 	Namespace *string `protobuf:"bytes,4,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
@@ -269,7 +371,7 @@ type KubernetesGatewayApiBackendRef struct {
 
 func (x *KubernetesGatewayApiBackendRef) Reset() {
 	*x = KubernetesGatewayApiBackendRef{}
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -281,7 +383,7 @@ func (x *KubernetesGatewayApiBackendRef) String() string {
 func (*KubernetesGatewayApiBackendRef) ProtoMessage() {}
 
 func (x *KubernetesGatewayApiBackendRef) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[2]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -294,7 +396,7 @@ func (x *KubernetesGatewayApiBackendRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesGatewayApiBackendRef.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayApiBackendRef) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *KubernetesGatewayApiBackendRef) GetGroup() string {
@@ -311,11 +413,11 @@ func (x *KubernetesGatewayApiBackendRef) GetKind() string {
 	return ""
 }
 
-func (x *KubernetesGatewayApiBackendRef) GetName() string {
+func (x *KubernetesGatewayApiBackendRef) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesGatewayApiBackendRef) GetNamespace() string {
@@ -348,8 +450,16 @@ type KubernetesGatewayApiLocalObjectReference struct {
 	// Group of the referent (e.g., "gateway.networking.k8s.io").
 	// Empty string infers the core API group.
 	//
+	// Upstream requires the KEY to be present, but its Group type explicitly
+	// allows the empty value -- so this is a proto3 `optional` string with a
+	// presence `required` rule: it must be SET (and is therefore emitted to
+	// the rendered CR, whose CRD rejects a missing key) but may be empty.
+	// The `optional` is what keeps the projection faithful: protojson omits
+	// unset proto3 scalars, so a non-optional empty-string group would be
+	// dropped from the manifest and rejected by the API server.
+	//
 	// Group pattern: empty or an RFC 1123 subdomain (max 253).
-	Group string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
+	Group *string `protobuf:"bytes,1,opt,name=group,proto3,oneof" json:"group,omitempty"`
 	// Kind of the referent (e.g., "HTTPRoute" or "Service").
 	//
 	// Upstream models Kind as a required value type.
@@ -363,7 +473,7 @@ type KubernetesGatewayApiLocalObjectReference struct {
 
 func (x *KubernetesGatewayApiLocalObjectReference) Reset() {
 	*x = KubernetesGatewayApiLocalObjectReference{}
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -375,7 +485,7 @@ func (x *KubernetesGatewayApiLocalObjectReference) String() string {
 func (*KubernetesGatewayApiLocalObjectReference) ProtoMessage() {}
 
 func (x *KubernetesGatewayApiLocalObjectReference) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -388,12 +498,12 @@ func (x *KubernetesGatewayApiLocalObjectReference) ProtoReflect() protoreflect.M
 
 // Deprecated: Use KubernetesGatewayApiLocalObjectReference.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayApiLocalObjectReference) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *KubernetesGatewayApiLocalObjectReference) GetGroup() string {
-	if x != nil {
-		return x.Group
+	if x != nil && x.Group != nil {
+		return *x.Group
 	}
 	return ""
 }
@@ -428,8 +538,13 @@ type KubernetesGatewayApiSecretObjectReference struct {
 	// Upstream default: "Secret"
 	// Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
 	Kind *string `protobuf:"bytes,2,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
-	// Name of the referent.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Name of the referent. Defaults to a KubernetesSecret foreign key. The
+	// Secret is typically produced by cert-manager: reference a
+	// KubernetesCertificate's status.outputs.secret_name with valueFrom to wire
+	// a certificate the moment it is issued, or a KubernetesSecret directly for
+	// externally provisioned material. Pass the literal name with `value:` when
+	// the Secret is not Planton-managed.
+	Name *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Namespace of the referenced object. When unspecified, the local namespace
 	// is inferred. Cross-namespace references require a ReferenceGrant.
 	Namespace     *string `protobuf:"bytes,4,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
@@ -439,7 +554,7 @@ type KubernetesGatewayApiSecretObjectReference struct {
 
 func (x *KubernetesGatewayApiSecretObjectReference) Reset() {
 	*x = KubernetesGatewayApiSecretObjectReference{}
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -451,7 +566,7 @@ func (x *KubernetesGatewayApiSecretObjectReference) String() string {
 func (*KubernetesGatewayApiSecretObjectReference) ProtoMessage() {}
 
 func (x *KubernetesGatewayApiSecretObjectReference) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -464,7 +579,7 @@ func (x *KubernetesGatewayApiSecretObjectReference) ProtoReflect() protoreflect.
 
 // Deprecated: Use KubernetesGatewayApiSecretObjectReference.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayApiSecretObjectReference) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *KubernetesGatewayApiSecretObjectReference) GetGroup() string {
@@ -481,11 +596,11 @@ func (x *KubernetesGatewayApiSecretObjectReference) GetKind() string {
 	return ""
 }
 
-func (x *KubernetesGatewayApiSecretObjectReference) GetName() string {
+func (x *KubernetesGatewayApiSecretObjectReference) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesGatewayApiSecretObjectReference) GetNamespace() string {
@@ -501,17 +616,30 @@ func (x *KubernetesGatewayApiSecretObjectReference) GetNamespace() string {
 // Upstream: ObjectReference in apis/v1/object_reference_types.go
 type KubernetesGatewayApiObjectReference struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Group of the referent. Empty string infers the core API group.
+	// Group of the referent. Empty string infers the core API group
+	// (e.g. for ConfigMap CA bundles).
+	//
+	// Upstream requires the KEY to be present, but its Group type explicitly
+	// allows the empty value -- so this is a proto3 `optional` string with a
+	// presence `required` rule: it must be SET (and is therefore emitted to
+	// the rendered CR, whose CRD rejects a missing key) but may be empty.
+	// The `optional` is what keeps the projection faithful: protojson omits
+	// unset proto3 scalars, so a non-optional empty-string group would be
+	// dropped from the manifest and rejected by the API server.
 	//
 	// Group pattern: empty or an RFC 1123 subdomain (max 253).
-	Group string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
+	Group *string `protobuf:"bytes,1,opt,name=group,proto3,oneof" json:"group,omitempty"`
 	// Kind of the referent (e.g., "ConfigMap" or "Service").
 	//
 	// Upstream models Kind as a required value type.
 	// Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
-	// Name of the referent.
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Name of the referent. Defaults to a KubernetesConfigMap foreign key (this
+	// reference's primary use is CA-bundle ConfigMaps for client-certificate
+	// validation): wire it with valueFrom against the ConfigMap resource, or
+	// pass the literal name with `value:` when the object is a different kind
+	// or not Planton-managed.
+	Name *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Namespace of the referenced object. When unspecified, the local namespace
 	// is inferred. Cross-namespace references require a ReferenceGrant.
 	Namespace     *string `protobuf:"bytes,4,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
@@ -521,7 +649,7 @@ type KubernetesGatewayApiObjectReference struct {
 
 func (x *KubernetesGatewayApiObjectReference) Reset() {
 	*x = KubernetesGatewayApiObjectReference{}
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -533,7 +661,7 @@ func (x *KubernetesGatewayApiObjectReference) String() string {
 func (*KubernetesGatewayApiObjectReference) ProtoMessage() {}
 
 func (x *KubernetesGatewayApiObjectReference) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -546,12 +674,12 @@ func (x *KubernetesGatewayApiObjectReference) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use KubernetesGatewayApiObjectReference.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayApiObjectReference) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *KubernetesGatewayApiObjectReference) GetGroup() string {
-	if x != nil {
-		return x.Group
+	if x != nil && x.Group != nil {
+		return *x.Group
 	}
 	return ""
 }
@@ -563,11 +691,11 @@ func (x *KubernetesGatewayApiObjectReference) GetKind() string {
 	return ""
 }
 
-func (x *KubernetesGatewayApiObjectReference) GetName() string {
+func (x *KubernetesGatewayApiObjectReference) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesGatewayApiObjectReference) GetNamespace() string {
@@ -583,10 +711,19 @@ func (x *KubernetesGatewayApiObjectReference) GetNamespace() string {
 // Upstream: ParametersReference in apis/v1/gatewayclass_types.go
 type KubernetesGatewayApiParametersReference struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Group of the referent. Empty string infers the core API group.
+	// Group of the referent. Empty string infers the core API group
+	// (e.g. for ConfigMap parameters).
+	//
+	// Upstream requires the KEY to be present, but its Group type explicitly
+	// allows the empty value -- so this is a proto3 `optional` string with a
+	// presence `required` rule: it must be SET (and is therefore emitted to
+	// the rendered CR, whose CRD rejects a missing key) but may be empty.
+	// The `optional` is what keeps the projection faithful: protojson omits
+	// unset proto3 scalars, so a non-optional empty-string group would be
+	// dropped from the manifest and rejected by the API server.
 	//
 	// Group pattern: empty or an RFC 1123 subdomain (max 253).
-	Group string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
+	Group *string `protobuf:"bytes,1,opt,name=group,proto3,oneof" json:"group,omitempty"`
 	// Kind of the referent.
 	//
 	// Upstream models Kind as a required value type.
@@ -603,7 +740,7 @@ type KubernetesGatewayApiParametersReference struct {
 
 func (x *KubernetesGatewayApiParametersReference) Reset() {
 	*x = KubernetesGatewayApiParametersReference{}
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -615,7 +752,7 @@ func (x *KubernetesGatewayApiParametersReference) String() string {
 func (*KubernetesGatewayApiParametersReference) ProtoMessage() {}
 
 func (x *KubernetesGatewayApiParametersReference) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -628,12 +765,12 @@ func (x *KubernetesGatewayApiParametersReference) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use KubernetesGatewayApiParametersReference.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayApiParametersReference) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *KubernetesGatewayApiParametersReference) GetGroup() string {
-	if x != nil {
-		return x.Group
+	if x != nil && x.Group != nil {
+		return *x.Group
 	}
 	return ""
 }
@@ -657,6 +794,403 @@ func (x *KubernetesGatewayApiParametersReference) GetNamespace() string {
 		return *x.Namespace
 	}
 	return ""
+}
+
+// KubernetesGatewayApiListenerTlsConfig describes the TLS behavior of a
+// listener. Shared by KubernetesGateway listeners and KubernetesListenerSet
+// listener entries — upstream uses one ListenerTLSConfig type for both, so
+// sharing the message here makes drift between the two kinds structurally
+// impossible.
+//
+// Upstream: ListenerTLSConfig in apis/v1/gateway_types.go
+type KubernetesGatewayApiListenerTlsConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How the listener handles the client's TLS session. "Terminate" (default)
+	// decrypts at the Gateway and requires a certificate. "Passthrough" forwards
+	// the encrypted stream untouched (TLSRoute only) and ignores certificate_refs.
+	//
+	// Upstream default: "Terminate". Closed enum: Terminate | Passthrough.
+	Mode *string `protobuf:"bytes,1,opt,name=mode,proto3,oneof" json:"mode,omitempty"`
+	// References to Kubernetes Secrets holding the TLS certificate/key used to
+	// terminate the listener. A single reference to a kubernetes.io/tls Secret
+	// has Core support; multiple references are implementation-specific.
+	//
+	// Each reference's name is a KubernetesSecret foreign key; the Secret is
+	// typically produced by a KubernetesCertificate (cert-manager) — wire
+	// valueFrom against the Certificate's status.outputs.secret_name so the
+	// listener terminates with the issued certificate. See
+	// KubernetesGatewayApiSecretObjectReference.
+	CertificateRefs []*KubernetesGatewayApiSecretObjectReference `protobuf:"bytes,2,rep,name=certificate_refs,json=certificateRefs,proto3" json:"certificate_refs,omitempty"`
+	// Implementation-specific TLS options (for example minimum TLS version or
+	// cipher suites). Keys should be domain-prefixed to avoid ambiguity.
+	//
+	// Upstream key/value: Gateway API AnnotationKey (1-253) / AnnotationValue
+	// (0-4096).
+	Options       map[string]string `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesGatewayApiListenerTlsConfig) Reset() {
+	*x = KubernetesGatewayApiListenerTlsConfig{}
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesGatewayApiListenerTlsConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesGatewayApiListenerTlsConfig) ProtoMessage() {}
+
+func (x *KubernetesGatewayApiListenerTlsConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesGatewayApiListenerTlsConfig.ProtoReflect.Descriptor instead.
+func (*KubernetesGatewayApiListenerTlsConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *KubernetesGatewayApiListenerTlsConfig) GetMode() string {
+	if x != nil && x.Mode != nil {
+		return *x.Mode
+	}
+	return ""
+}
+
+func (x *KubernetesGatewayApiListenerTlsConfig) GetCertificateRefs() []*KubernetesGatewayApiSecretObjectReference {
+	if x != nil {
+		return x.CertificateRefs
+	}
+	return nil
+}
+
+func (x *KubernetesGatewayApiListenerTlsConfig) GetOptions() map[string]string {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+// KubernetesGatewayApiAllowedRoutes defines which Routes may attach to a
+// listener. Shared by KubernetesGateway listeners and KubernetesListenerSet
+// listener entries (one upstream AllowedRoutes type serves both).
+//
+// Upstream: AllowedRoutes in apis/v1/gateway_types.go
+type KubernetesGatewayApiAllowedRoutes struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Namespaces from which Routes may attach. Defaults to the Gateway's own
+	// namespace.
+	Namespaces *KubernetesGatewayApiRouteNamespaces `protobuf:"bytes,1,opt,name=namespaces,proto3" json:"namespaces,omitempty"`
+	// Route kinds allowed to bind to this listener. When empty, allowed kinds
+	// are inferred from the listener protocol.
+	Kinds         []*KubernetesGatewayApiRouteGroupKind `protobuf:"bytes,2,rep,name=kinds,proto3" json:"kinds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesGatewayApiAllowedRoutes) Reset() {
+	*x = KubernetesGatewayApiAllowedRoutes{}
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesGatewayApiAllowedRoutes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesGatewayApiAllowedRoutes) ProtoMessage() {}
+
+func (x *KubernetesGatewayApiAllowedRoutes) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesGatewayApiAllowedRoutes.ProtoReflect.Descriptor instead.
+func (*KubernetesGatewayApiAllowedRoutes) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *KubernetesGatewayApiAllowedRoutes) GetNamespaces() *KubernetesGatewayApiRouteNamespaces {
+	if x != nil {
+		return x.Namespaces
+	}
+	return nil
+}
+
+func (x *KubernetesGatewayApiAllowedRoutes) GetKinds() []*KubernetesGatewayApiRouteGroupKind {
+	if x != nil {
+		return x.Kinds
+	}
+	return nil
+}
+
+// KubernetesGatewayApiRouteNamespaces indicates the namespaces Routes are
+// selected from.
+//
+// Upstream: RouteNamespaces in apis/v1/gateway_types.go
+type KubernetesGatewayApiRouteNamespaces struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Where Routes are selected from: "All" (any namespace), "Selector"
+	// (namespaces matching the selector), or "Same" (the Gateway's namespace).
+	//
+	// Upstream default: "Same". Closed enum: All | Selector | Same.
+	From *string `protobuf:"bytes,1,opt,name=from,proto3,oneof" json:"from,omitempty"`
+	// Namespace label selector. Required (and only honored) when `from` is
+	// "Selector".
+	Selector      *KubernetesGatewayApiLabelSelector `protobuf:"bytes,2,opt,name=selector,proto3" json:"selector,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesGatewayApiRouteNamespaces) Reset() {
+	*x = KubernetesGatewayApiRouteNamespaces{}
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesGatewayApiRouteNamespaces) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesGatewayApiRouteNamespaces) ProtoMessage() {}
+
+func (x *KubernetesGatewayApiRouteNamespaces) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesGatewayApiRouteNamespaces.ProtoReflect.Descriptor instead.
+func (*KubernetesGatewayApiRouteNamespaces) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *KubernetesGatewayApiRouteNamespaces) GetFrom() string {
+	if x != nil && x.From != nil {
+		return *x.From
+	}
+	return ""
+}
+
+func (x *KubernetesGatewayApiRouteNamespaces) GetSelector() *KubernetesGatewayApiLabelSelector {
+	if x != nil {
+		return x.Selector
+	}
+	return nil
+}
+
+// KubernetesGatewayApiRouteGroupKind identifies a Route group and kind allowed
+// on a listener.
+//
+// Upstream: RouteGroupKind in apis/v1/gateway_types.go
+type KubernetesGatewayApiRouteGroupKind struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// API group of the Route. Empty string selects the core API group.
+	//
+	// Upstream default: "gateway.networking.k8s.io".
+	// Group pattern: empty or an RFC 1123 subdomain (max 253).
+	Group *string `protobuf:"bytes,1,opt,name=group,proto3,oneof" json:"group,omitempty"`
+	// Kind of the Route (for example "HTTPRoute", "GRPCRoute", "TLSRoute").
+	//
+	// Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+	Kind          string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesGatewayApiRouteGroupKind) Reset() {
+	*x = KubernetesGatewayApiRouteGroupKind{}
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesGatewayApiRouteGroupKind) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesGatewayApiRouteGroupKind) ProtoMessage() {}
+
+func (x *KubernetesGatewayApiRouteGroupKind) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesGatewayApiRouteGroupKind.ProtoReflect.Descriptor instead.
+func (*KubernetesGatewayApiRouteGroupKind) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *KubernetesGatewayApiRouteGroupKind) GetGroup() string {
+	if x != nil && x.Group != nil {
+		return *x.Group
+	}
+	return ""
+}
+
+func (x *KubernetesGatewayApiRouteGroupKind) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+// KubernetesGatewayApiLabelSelector is a Kubernetes label selector used to
+// choose namespaces (mirrors metav1.LabelSelector). Reused for AllowedRoutes
+// and the Gateway's AllowedListeners namespace selection.
+type KubernetesGatewayApiLabelSelector struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Map of {key,value} pairs. A namespace matches if it carries all of these
+	// labels.
+	MatchLabels map[string]string `protobuf:"bytes,1,rep,name=match_labels,json=matchLabels,proto3" json:"match_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// List of label selector requirements, ANDed together with match_labels.
+	MatchExpressions []*KubernetesGatewayApiLabelSelectorRequirement `protobuf:"bytes,2,rep,name=match_expressions,json=matchExpressions,proto3" json:"match_expressions,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *KubernetesGatewayApiLabelSelector) Reset() {
+	*x = KubernetesGatewayApiLabelSelector{}
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesGatewayApiLabelSelector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesGatewayApiLabelSelector) ProtoMessage() {}
+
+func (x *KubernetesGatewayApiLabelSelector) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesGatewayApiLabelSelector.ProtoReflect.Descriptor instead.
+func (*KubernetesGatewayApiLabelSelector) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *KubernetesGatewayApiLabelSelector) GetMatchLabels() map[string]string {
+	if x != nil {
+		return x.MatchLabels
+	}
+	return nil
+}
+
+func (x *KubernetesGatewayApiLabelSelector) GetMatchExpressions() []*KubernetesGatewayApiLabelSelectorRequirement {
+	if x != nil {
+		return x.MatchExpressions
+	}
+	return nil
+}
+
+// KubernetesGatewayApiLabelSelectorRequirement is a single label selector
+// requirement (mirrors metav1.LabelSelectorRequirement).
+type KubernetesGatewayApiLabelSelectorRequirement struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Label key the requirement applies to.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// Relationship between the key and values: "In", "NotIn", "Exists", or
+	// "DoesNotExist". For "Exists"/"DoesNotExist", values must be empty.
+	Operator string `protobuf:"bytes,2,opt,name=operator,proto3" json:"operator,omitempty"`
+	// Values for the requirement. Must be non-empty for "In"/"NotIn" and empty
+	// for "Exists"/"DoesNotExist".
+	Values        []string `protobuf:"bytes,3,rep,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesGatewayApiLabelSelectorRequirement) Reset() {
+	*x = KubernetesGatewayApiLabelSelectorRequirement{}
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesGatewayApiLabelSelectorRequirement) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesGatewayApiLabelSelectorRequirement) ProtoMessage() {}
+
+func (x *KubernetesGatewayApiLabelSelectorRequirement) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesGatewayApiLabelSelectorRequirement.ProtoReflect.Descriptor instead.
+func (*KubernetesGatewayApiLabelSelectorRequirement) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *KubernetesGatewayApiLabelSelectorRequirement) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *KubernetesGatewayApiLabelSelectorRequirement) GetOperator() string {
+	if x != nil {
+		return x.Operator
+	}
+	return ""
+}
+
+func (x *KubernetesGatewayApiLabelSelectorRequirement) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
 }
 
 // KubernetesGatewayApiSessionPersistence defines session persistence
@@ -689,7 +1223,7 @@ type KubernetesGatewayApiSessionPersistence struct {
 
 func (x *KubernetesGatewayApiSessionPersistence) Reset() {
 	*x = KubernetesGatewayApiSessionPersistence{}
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -701,7 +1235,7 @@ func (x *KubernetesGatewayApiSessionPersistence) String() string {
 func (*KubernetesGatewayApiSessionPersistence) ProtoMessage() {}
 
 func (x *KubernetesGatewayApiSessionPersistence) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -714,7 +1248,7 @@ func (x *KubernetesGatewayApiSessionPersistence) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use KubernetesGatewayApiSessionPersistence.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayApiSessionPersistence) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *KubernetesGatewayApiSessionPersistence) GetSessionName() string {
@@ -774,7 +1308,7 @@ type KubernetesGatewayApiCookieConfig struct {
 
 func (x *KubernetesGatewayApiCookieConfig) Reset() {
 	*x = KubernetesGatewayApiCookieConfig{}
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -786,7 +1320,7 @@ func (x *KubernetesGatewayApiCookieConfig) String() string {
 func (*KubernetesGatewayApiCookieConfig) ProtoMessage() {}
 
 func (x *KubernetesGatewayApiCookieConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -799,7 +1333,7 @@ func (x *KubernetesGatewayApiCookieConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesGatewayApiCookieConfig.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayApiCookieConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *KubernetesGatewayApiCookieConfig) GetLifetimeType() string {
@@ -827,7 +1361,7 @@ type KubernetesGatewayApiFraction struct {
 
 func (x *KubernetesGatewayApiFraction) Reset() {
 	*x = KubernetesGatewayApiFraction{}
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -839,7 +1373,7 @@ func (x *KubernetesGatewayApiFraction) String() string {
 func (*KubernetesGatewayApiFraction) ProtoMessage() {}
 
 func (x *KubernetesGatewayApiFraction) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -852,7 +1386,7 @@ func (x *KubernetesGatewayApiFraction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesGatewayApiFraction.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayApiFraction) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *KubernetesGatewayApiFraction) GetNumerator() int32 {
@@ -873,13 +1407,12 @@ var File_dev_planton_provider_kubernetes_gateway_api_proto protoreflect.FileDesc
 
 const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"\n" +
-	"1dev/planton/provider/kubernetes/gateway_api.proto\x12\x1fdev.planton.provider.kubernetes\x1a\x1bbuf/validate/validate.proto\"\xf9\x03\n" +
+	"1dev/planton/provider/kubernetes/gateway_api.proto\x12\x1fdev.planton.provider.kubernetes\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xca\x04\n" +
 	"#KubernetesGatewayApiParentReference\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
 	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12!\n" +
-	"\tnamespace\x18\x03 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12!\n" +
-	"\x04name\x18\x04 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12u\n" +
+	"\tnamespace\x18\x03 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12r\n" +
+	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x06\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04name\x12u\n" +
 	"\fsection_name\x18\x05 \x01(\tBM\xbaHJrH\x10\x01\x18\xfd\x012A^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x03R\vsectionName\x88\x01\x01\x12$\n" +
 	"\x04port\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x04R\x04port\x88\x01\x01B\b\n" +
 	"\x06_groupB\a\n" +
@@ -887,12 +1420,20 @@ const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"\n" +
 	"_namespaceB\x0f\n" +
 	"\r_section_nameB\a\n" +
-	"\x05_port\"\x82\x05\n" +
+	"\x05_port\"\xc6\x03\n" +
+	"*KubernetesGatewayApiParentGatewayReference\x12i\n" +
+	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
+	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12M\n" +
+	"\tnamespace\x18\x03 \x01(\tB*\xbaH'r%\x10\x01\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$H\x02R\tnamespace\x88\x01\x01\x12r\n" +
+	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x06\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04nameB\b\n" +
+	"\x06_groupB\a\n" +
+	"\x05_kindB\f\n" +
+	"\n" +
+	"_namespace\"\xd3\x05\n" +
 	"*KubernetesGatewayApiBackendObjectReference\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
-	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12!\n" +
-	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12!\n" +
+	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12r\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12!\n" +
 	"\tnamespace\x18\x04 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12$\n" +
 	"\x04port\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x03R\x04port\x88\x01\x01:\x87\x02\xbaH\x83\x02\x1a\x80\x02\n" +
 	",backend_object_ref.port_required_for_service\x12aport must be specified when referencing a core API Service (group is empty and kind is 'Service')\x1am(!has(this.group) || this.group == '') && (!has(this.kind) || this.kind == 'Service') ? has(this.port) : trueB\b\n" +
@@ -900,12 +1441,11 @@ const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"\x05_kindB\f\n" +
 	"\n" +
 	"_namespaceB\a\n" +
-	"\x05_port\"\xa1\x03\n" +
+	"\x05_port\"\xf2\x03\n" +
 	"\x1eKubernetesGatewayApiBackendRef\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
-	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12!\n" +
-	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12!\n" +
+	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12r\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12!\n" +
 	"\tnamespace\x18\x04 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12$\n" +
 	"\x04port\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x03R\x04port\x88\x01\x01\x12(\n" +
 	"\x06weight\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xc0\x84=(\x00H\x04R\x06weight\x88\x01\x01B\b\n" +
@@ -914,38 +1454,74 @@ const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"\n" +
 	"_namespaceB\a\n" +
 	"\x05_portB\t\n" +
-	"\a_weight\"\xfc\x01\n" +
-	"(KubernetesGatewayApiLocalObjectReference\x12d\n" +
-	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\x05group\x12G\n" +
+	"\a_weight\"\x8e\x02\n" +
+	"(KubernetesGatewayApiLocalObjectReference\x12l\n" +
+	"\x05group\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12G\n" +
 	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12!\n" +
 	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\"\xc8\x02\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04nameB\b\n" +
+	"\x06_group\"\x98\x03\n" +
 	")KubernetesGatewayApiSecretObjectReference\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
-	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12!\n" +
-	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12!\n" +
+	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12q\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xa7\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x04name\x12!\n" +
 	"\tnamespace\x18\x04 \x01(\tH\x02R\tnamespace\x88\x01\x01B\b\n" +
 	"\x06_groupB\a\n" +
 	"\x05_kindB\f\n" +
 	"\n" +
-	"_namespace\"\xa8\x02\n" +
-	"#KubernetesGatewayApiObjectReference\x12d\n" +
-	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\x05group\x12G\n" +
+	"_namespace\"\x8d\x03\n" +
+	"#KubernetesGatewayApiObjectReference\x12l\n" +
+	"\x05group\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12G\n" +
+	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12t\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x06\x92\xd4a\x1dstatus.outputs.configmap_nameR\x04name\x12!\n" +
+	"\tnamespace\x18\x04 \x01(\tH\x01R\tnamespace\x88\x01\x01B\b\n" +
+	"\x06_groupB\f\n" +
+	"\n" +
+	"_namespace\"\xbe\x02\n" +
+	"'KubernetesGatewayApiParametersReference\x12l\n" +
+	"\x05group\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12G\n" +
 	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12!\n" +
 	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12!\n" +
-	"\tnamespace\x18\x04 \x01(\tH\x00R\tnamespace\x88\x01\x01B\f\n" +
+	"\tnamespace\x18\x04 \x01(\tH\x01R\tnamespace\x88\x01\x01B\b\n" +
+	"\x06_groupB\f\n" +
 	"\n" +
-	"_namespace\"\xac\x02\n" +
-	"'KubernetesGatewayApiParametersReference\x12d\n" +
-	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\x05group\x12G\n" +
-	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kind\x12!\n" +
-	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12!\n" +
-	"\tnamespace\x18\x04 \x01(\tH\x00R\tnamespace\x88\x01\x01B\f\n" +
+	"_namespace\"\xaf\a\n" +
+	"%KubernetesGatewayApiListenerTlsConfig\x12\xa4\x01\n" +
+	"\x04mode\x18\x01 \x01(\tB\x8a\x01\xbaH\x86\x01\xba\x01\x82\x01\n" +
+	"\x16listener_tls.mode_enum\x124tls mode must be either 'Terminate' or 'Passthrough'\x1a2this == '' || this in ['Terminate', 'Passthrough']H\x00R\x04mode\x88\x01\x01\x12\x7f\n" +
+	"\x10certificate_refs\x18\x02 \x03(\v2J.dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReferenceB\b\xbaH\x05\x92\x01\x02\x10@R\x0fcertificateRefs\x12\xfe\x01\n" +
+	"\aoptions\x18\x03 \x03(\v2S.dev.planton.provider.kubernetes.KubernetesGatewayApiListenerTlsConfig.OptionsEntryB\x8e\x01\xbaH\x8a\x01\x9a\x01\x86\x01\x10\x10\"{ry\x10\x01\x18\xfd\x012r^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]$*\x05r\x03\x18\x80 R\aoptions\x1a:\n" +
+	"\fOptionsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x97\x02\xbaH\x93\x02\x1a\x90\x02\n" +
+	"/listener_tls.terminate_requires_cert_or_options\x12Ucertificate_refs or options must be provided when tls mode is Terminate (the default)\x1a\x85\x01(!has(this.mode) || this.mode == '' || this.mode == 'Terminate') ? (size(this.certificate_refs) > 0 || size(this.options) > 0) : trueB\a\n" +
+	"\x05_mode\"\xee\x01\n" +
+	"!KubernetesGatewayApiAllowedRoutes\x12d\n" +
 	"\n" +
-	"_namespace\"\xd3\x06\n" +
+	"namespaces\x18\x01 \x01(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiRouteNamespacesR\n" +
+	"namespaces\x12c\n" +
+	"\x05kinds\x18\x02 \x03(\v2C.dev.planton.provider.kubernetes.KubernetesGatewayApiRouteGroupKindB\b\xbaH\x05\x92\x01\x02\x10\bR\x05kinds\"\xb4\x02\n" +
+	"#KubernetesGatewayApiRouteNamespaces\x12\xa3\x01\n" +
+	"\x04from\x18\x01 \x01(\tB\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
+	"\x1aroute_namespaces.from_enum\x120from must be one of 'All', 'Selector', or 'Same'\x1a1this == '' || this in ['All', 'Selector', 'Same']H\x00R\x04from\x88\x01\x01\x12^\n" +
+	"\bselector\x18\x02 \x01(\v2B.dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelectorR\bselectorB\a\n" +
+	"\x05_from\"\xe2\x01\n" +
+	"\"KubernetesGatewayApiRouteGroupKind\x12i\n" +
+	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12G\n" +
+	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kindB\b\n" +
+	"\x06_group\"\xd7\x02\n" +
+	"!KubernetesGatewayApiLabelSelector\x12v\n" +
+	"\fmatch_labels\x18\x01 \x03(\v2S.dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelector.MatchLabelsEntryR\vmatchLabels\x12z\n" +
+	"\x11match_expressions\x18\x02 \x03(\v2M.dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelectorRequirementR\x10matchExpressions\x1a>\n" +
+	"\x10MatchLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa0\x02\n" +
+	",KubernetesGatewayApiLabelSelectorRequirement\x12\x18\n" +
+	"\x03key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\x12\xbd\x01\n" +
+	"\boperator\x18\x02 \x01(\tB\xa0\x01\xbaH\x9c\x01\xba\x01\x95\x01\n" +
+	"\x1clabel_selector.operator_enum\x12Boperator must be one of 'In', 'NotIn', 'Exists', or 'DoesNotExist'\x1a1this in ['In', 'NotIn', 'Exists', 'DoesNotExist']\xc8\x01\x01R\boperator\x12\x16\n" +
+	"\x06values\x18\x03 \x03(\tR\x06values\"\xd3\x06\n" +
 	"&KubernetesGatewayApiSessionPersistence\x120\n" +
 	"\fsession_name\x18\x01 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01H\x00R\vsessionName\x88\x01\x01\x12.\n" +
 	"\x10absolute_timeout\x18\x02 \x01(\tH\x01R\x0fabsoluteTimeout\x88\x01\x01\x12&\n" +
@@ -980,26 +1556,49 @@ func file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescGZIP() []byte
 	return file_dev_planton_provider_kubernetes_gateway_api_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_dev_planton_provider_kubernetes_gateway_api_proto_goTypes = []any{
-	(*KubernetesGatewayApiParentReference)(nil),        // 0: dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
-	(*KubernetesGatewayApiBackendObjectReference)(nil), // 1: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
-	(*KubernetesGatewayApiBackendRef)(nil),             // 2: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRef
-	(*KubernetesGatewayApiLocalObjectReference)(nil),   // 3: dev.planton.provider.kubernetes.KubernetesGatewayApiLocalObjectReference
-	(*KubernetesGatewayApiSecretObjectReference)(nil),  // 4: dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
-	(*KubernetesGatewayApiObjectReference)(nil),        // 5: dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference
-	(*KubernetesGatewayApiParametersReference)(nil),    // 6: dev.planton.provider.kubernetes.KubernetesGatewayApiParametersReference
-	(*KubernetesGatewayApiSessionPersistence)(nil),     // 7: dev.planton.provider.kubernetes.KubernetesGatewayApiSessionPersistence
-	(*KubernetesGatewayApiCookieConfig)(nil),           // 8: dev.planton.provider.kubernetes.KubernetesGatewayApiCookieConfig
-	(*KubernetesGatewayApiFraction)(nil),               // 9: dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
+	(*KubernetesGatewayApiParentReference)(nil),          // 0: dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference
+	(*KubernetesGatewayApiParentGatewayReference)(nil),   // 1: dev.planton.provider.kubernetes.KubernetesGatewayApiParentGatewayReference
+	(*KubernetesGatewayApiBackendObjectReference)(nil),   // 2: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
+	(*KubernetesGatewayApiBackendRef)(nil),               // 3: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRef
+	(*KubernetesGatewayApiLocalObjectReference)(nil),     // 4: dev.planton.provider.kubernetes.KubernetesGatewayApiLocalObjectReference
+	(*KubernetesGatewayApiSecretObjectReference)(nil),    // 5: dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
+	(*KubernetesGatewayApiObjectReference)(nil),          // 6: dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference
+	(*KubernetesGatewayApiParametersReference)(nil),      // 7: dev.planton.provider.kubernetes.KubernetesGatewayApiParametersReference
+	(*KubernetesGatewayApiListenerTlsConfig)(nil),        // 8: dev.planton.provider.kubernetes.KubernetesGatewayApiListenerTlsConfig
+	(*KubernetesGatewayApiAllowedRoutes)(nil),            // 9: dev.planton.provider.kubernetes.KubernetesGatewayApiAllowedRoutes
+	(*KubernetesGatewayApiRouteNamespaces)(nil),          // 10: dev.planton.provider.kubernetes.KubernetesGatewayApiRouteNamespaces
+	(*KubernetesGatewayApiRouteGroupKind)(nil),           // 11: dev.planton.provider.kubernetes.KubernetesGatewayApiRouteGroupKind
+	(*KubernetesGatewayApiLabelSelector)(nil),            // 12: dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelector
+	(*KubernetesGatewayApiLabelSelectorRequirement)(nil), // 13: dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelectorRequirement
+	(*KubernetesGatewayApiSessionPersistence)(nil),       // 14: dev.planton.provider.kubernetes.KubernetesGatewayApiSessionPersistence
+	(*KubernetesGatewayApiCookieConfig)(nil),             // 15: dev.planton.provider.kubernetes.KubernetesGatewayApiCookieConfig
+	(*KubernetesGatewayApiFraction)(nil),                 // 16: dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
+	nil,                                                  // 17: dev.planton.provider.kubernetes.KubernetesGatewayApiListenerTlsConfig.OptionsEntry
+	nil,                                                  // 18: dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelector.MatchLabelsEntry
+	(*v1.StringValueOrRef)(nil),                          // 19: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_gateway_api_proto_depIdxs = []int32{
-	8, // 0: dev.planton.provider.kubernetes.KubernetesGatewayApiSessionPersistence.cookie_config:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiCookieConfig
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	19, // 0: dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 1: dev.planton.provider.kubernetes.KubernetesGatewayApiParentGatewayReference.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 2: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 3: dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 4: dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 5: dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 6: dev.planton.provider.kubernetes.KubernetesGatewayApiListenerTlsConfig.certificate_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
+	17, // 7: dev.planton.provider.kubernetes.KubernetesGatewayApiListenerTlsConfig.options:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiListenerTlsConfig.OptionsEntry
+	10, // 8: dev.planton.provider.kubernetes.KubernetesGatewayApiAllowedRoutes.namespaces:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiRouteNamespaces
+	11, // 9: dev.planton.provider.kubernetes.KubernetesGatewayApiAllowedRoutes.kinds:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiRouteGroupKind
+	12, // 10: dev.planton.provider.kubernetes.KubernetesGatewayApiRouteNamespaces.selector:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelector
+	18, // 11: dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelector.match_labels:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelector.MatchLabelsEntry
+	13, // 12: dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelector.match_expressions:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelectorRequirement
+	15, // 13: dev.planton.provider.kubernetes.KubernetesGatewayApiSessionPersistence.cookie_config:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiCookieConfig
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_gateway_api_proto_init() }
@@ -1010,19 +1609,24 @@ func file_dev_planton_provider_kubernetes_gateway_api_proto_init() {
 	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[0].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[1].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[3].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[4].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[5].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[6].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[7].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[8].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[10].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[11].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[14].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[15].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_gateway_api_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc), len(file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

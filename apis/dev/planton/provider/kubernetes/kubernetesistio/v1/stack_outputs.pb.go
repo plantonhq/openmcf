@@ -21,29 +21,39 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// kubernetes-istio stack outputs
+// *
+// KubernetesIstioStackOutputs captures the handles downstream resources compose
+// against once the Istio control plane is installed:
+//   - Gateway API Gateways select the mesh through `gateway_class_name`,
+//   - mesh policy kinds (PeerAuthentication, AuthorizationPolicy, ...) target
+//     workloads whose proxies this control plane programs,
+//   - multi-revision setups discover the control-plane identity through
+//     `revision` and `istiod_service_name`.
 type KubernetesIstioStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which kubernetes-istio is created.
+	// Namespace the control plane is installed in (e.g. "istio-system").
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for kubernetes-istio.
-	// ex: main-kubernetes-istio
-	// in the above example, "main" is the name of the kubernetes-istio
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open kubernetes-istio from developers laptop.
-	// this might come handy when kubernetes-istio ingress is disabled for security reasons.
-	// this is rendered by combining kubernetes_istio_kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/kubernetes_istio_kubernetes_service -n kubernetes_namespace 6379:6379
-	// running the command from this attribute makes it possible to access kubernetes-istio using http://localhost:8080/gitlab
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to kubernetes-istio from the web browser.
-	// ex: main-kubernetes-istio.namespace.svc.cluster.local:6379
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open kubernetes-istio from clients outside kubernetes.
-	// ex: https://gls-planton-pcs-dev-main.data.dev.planton.live:6379/gitlab
-	IngressEndpoint string `protobuf:"bytes,5,opt,name=ingress_endpoint,json=ingressEndpoint,proto3" json:"ingress_endpoint,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Name of the istiod Service in that namespace ("istiod" for the default
+	// revision, "istiod-<revision>" for a named revision) — the discovery address
+	// data-plane proxies and remote clusters connect to.
+	IstiodServiceName string `protobuf:"bytes,2,opt,name=istiod_service_name,json=istiodServiceName,proto3" json:"istiod_service_name,omitempty"`
+	// The control-plane revision installed ("default" when no revision is named).
+	// Workloads pin to a revisioned control plane with the `istio.io/rev` label.
+	Revision string `protobuf:"bytes,3,opt,name=revision,proto3" json:"revision,omitempty"`
+	// Name of the GatewayClass istiod serves ("istio"). Create a KubernetesGateway
+	// with this gateway_class_name and istiod provisions and programs the gateway
+	// deployment automatically — the composition seam for north-south exposure.
+	GatewayClassName string `protobuf:"bytes,4,opt,name=gateway_class_name,json=gatewayClassName,proto3" json:"gateway_class_name,omitempty"`
+	// The mesh's trust domain (the identity root of every workload certificate,
+	// e.g. "cluster.local") — the prefix of principal strings in
+	// KubernetesAuthorizationPolicy rules.
+	TrustDomain string `protobuf:"bytes,5,opt,name=trust_domain,json=trustDomain,proto3" json:"trust_domain,omitempty"`
+	// The data plane mode the mesh was installed with ("sidecar" or "ambient") —
+	// tells composed resources whether workloads enroll via sidecar injection
+	// labels or the ambient dataplane-mode label.
+	DataplaneMode string `protobuf:"bytes,6,opt,name=dataplane_mode,json=dataplaneMode,proto3" json:"dataplane_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesIstioStackOutputs) Reset() {
@@ -83,30 +93,37 @@ func (x *KubernetesIstioStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesIstioStackOutputs) GetService() string {
+func (x *KubernetesIstioStackOutputs) GetIstiodServiceName() string {
 	if x != nil {
-		return x.Service
+		return x.IstiodServiceName
 	}
 	return ""
 }
 
-func (x *KubernetesIstioStackOutputs) GetPortForwardCommand() string {
+func (x *KubernetesIstioStackOutputs) GetRevision() string {
 	if x != nil {
-		return x.PortForwardCommand
+		return x.Revision
 	}
 	return ""
 }
 
-func (x *KubernetesIstioStackOutputs) GetKubeEndpoint() string {
+func (x *KubernetesIstioStackOutputs) GetGatewayClassName() string {
 	if x != nil {
-		return x.KubeEndpoint
+		return x.GatewayClassName
 	}
 	return ""
 }
 
-func (x *KubernetesIstioStackOutputs) GetIngressEndpoint() string {
+func (x *KubernetesIstioStackOutputs) GetTrustDomain() string {
 	if x != nil {
-		return x.IngressEndpoint
+		return x.TrustDomain
+	}
+	return ""
+}
+
+func (x *KubernetesIstioStackOutputs) GetDataplaneMode() string {
+	if x != nil {
+		return x.DataplaneMode
 	}
 	return ""
 }
@@ -115,13 +132,14 @@ var File_dev_planton_provider_kubernetes_kubernetesistio_v1_stack_outputs_proto 
 
 const file_dev_planton_provider_kubernetes_kubernetesistio_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kubernetesistio/v1/stack_outputs.proto\x122dev.planton.provider.kubernetes.kubernetesistio.v1\"\xd7\x01\n" +
+	"Fdev/planton/provider/kubernetes/kubernetesistio/v1/stack_outputs.proto\x122dev.planton.provider.kubernetes.kubernetesistio.v1\"\xff\x01\n" +
 	"\x1bKubernetesIstioStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12)\n" +
-	"\x10ingress_endpoint\x18\x05 \x01(\tR\x0fingressEndpointB\xa2\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12.\n" +
+	"\x13istiod_service_name\x18\x02 \x01(\tR\x11istiodServiceName\x12\x1a\n" +
+	"\brevision\x18\x03 \x01(\tR\brevision\x12,\n" +
+	"\x12gateway_class_name\x18\x04 \x01(\tR\x10gatewayClassName\x12!\n" +
+	"\ftrust_domain\x18\x05 \x01(\tR\vtrustDomain\x12%\n" +
+	"\x0edataplane_mode\x18\x06 \x01(\tR\rdataplaneModeB\xa2\x03\n" +
 	"6com.dev.planton.provider.kubernetes.kubernetesistio.v1B\x11StackOutputsProtoP\x01Zfgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesistio/v1;kubernetesistiov1\xa2\x02\x05DPPKK\xaa\x022Dev.Planton.Provider.Kubernetes.Kubernetesistio.V1\xca\x022Dev\\Planton\\Provider\\Kubernetes\\Kubernetesistio\\V1\xe2\x02>Dev\\Planton\\Provider\\Kubernetes\\Kubernetesistio\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Kubernetes::Kubernetesistio::V1b\x06proto3"
 
 var (

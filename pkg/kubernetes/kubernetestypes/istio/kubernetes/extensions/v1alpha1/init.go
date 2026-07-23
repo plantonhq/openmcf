@@ -21,6 +21,12 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
+	case "kubernetes:extensions.istio.io/v1alpha1:TrafficExtension":
+		r = &TrafficExtension{}
+	case "kubernetes:extensions.istio.io/v1alpha1:TrafficExtensionList":
+		r = &TrafficExtensionList{}
+	case "kubernetes:extensions.istio.io/v1alpha1:TrafficExtensionPatch":
+		r = &TrafficExtensionPatch{}
 	case "kubernetes:extensions.istio.io/v1alpha1:WasmPlugin":
 		r = &WasmPlugin{}
 	case "kubernetes:extensions.istio.io/v1alpha1:WasmPluginList":

@@ -61,7 +61,7 @@ planton apply -f envoyfilter.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `workload_selector.labels` | map | Pod/VM labels the patches apply to. Mutually exclusive with `target_refs`. |
-| `target_refs` | list | Attach to specific resources (`group`/`kind`/`name`); max 16. Mutually exclusive with `workload_selector`. |
+| `target_refs` | list | Attach to specific resources (`group`/`kind`/`name`); max 16. Mutually exclusive with `workload_selector`. Each `name` is a foreign key defaulting to a `KubernetesGateway` reference; pass literals with `value:`. |
 | `config_patches` | list | Ordered patches (`apply_to`, `match`, `patch`). An empty list is a valid no-op. |
 | `priority` | int | Patch-set ordering within a context (default 0). |
 

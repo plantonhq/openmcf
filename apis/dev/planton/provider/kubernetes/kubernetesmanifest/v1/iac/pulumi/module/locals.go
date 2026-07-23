@@ -9,47 +9,59 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds computed values derived from the stack input for use across
+// the module.
 type Locals struct {
-	Namespace          string
-	KubernetesManifest *kubernetesmanifestv1.KubernetesManifest
-	Labels             map[string]string
-	ManifestYAML       string
+	Spec *kubernetesmanifestv1.KubernetesManifestSpec
+
+	// Resource-identity labels stamped on the namespace this module creates.
+	// NEVER injected into the manifest's own documents — the manifest is
+	// applied exactly as the user wrote it.
+	Labels map[string]string
+
+	// The anchor namespace: where namespaced documents without an explicit
+	// metadata.namespace land (resolved literal from the spec's
+	// value-or-ref).
+	Namespace string
+
+	// The applied-resource inventory ("apiVersion/Kind/name" per document,
+	// manifest order), parsed from the input YAML so both engines export an
+	// identical list regardless of how each engine tracks child resources.
+	AppliedResources []string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesmanifestv1.KubernetesManifestStackInput) (*Locals, error) {
-	locals := &Locals{}
-
-	locals.KubernetesManifest = stackInput.Target
-
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesmanifestv1.KubernetesManifestStackInput) (*Locals, error) {
 	target := stackInput.Target
+	spec := target.Spec
 
-	// Labels for namespace and resources
-	locals.Labels = map[string]string{
+	// Resource-identity labels: the kuberneteslabelkeys set, identical to
+	// what the Terraform module stamps for the same manifest.
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesManifest.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// Get namespace from spec, it is a required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
+	appliedResources, err := parseAppliedResources(spec.GetManifestYaml())
+	if err != nil {
+		return nil, err
+	}
 
-	// Export namespace as an output
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	// Store manifest YAML
-	locals.ManifestYAML = target.Spec.ManifestYaml
-
-	return locals, nil
+	return &Locals{
+		Spec:             spec,
+		Labels:           labels,
+		Namespace:        spec.Namespace.GetValue(),
+		AppliedResources: appliedResources,
+	}, nil
 }

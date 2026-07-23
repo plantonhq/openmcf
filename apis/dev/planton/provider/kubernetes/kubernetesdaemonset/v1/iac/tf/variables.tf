@@ -1,254 +1,907 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string
-    id      = optional(string)
-    org     = optional(string)
-    env     = optional(string)
-    labels  = optional(map(string))
-    tags    = optional(list(string))
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
   description = "KubernetesDaemonSet specification"
   type = object({
-    # Kubernetes namespace to deploy the DaemonSet
     namespace = string
-
-    # Flag to indicate if the namespace should be created
     create_namespace = optional(bool, false)
-
-    # The container specifications for the DaemonSet
     container = object({
-      # The main application container specifications
       app = object({
-        # The container image configuration
+        name = optional(string, "")
         image = object({
-          # The repository of the image (e.g., "fluent/fluentd")
-          repo = string
-          # The tag of the image (e.g., "v1.16")
-          tag = string
-          # The name of the image pull secret for private registries
-          pull_secret_name = optional(string)
+          repo = optional(string, "")
+          tag = optional(string, "")
+          pull_secret_name = optional(string, "")
         })
-
-        # The CPU and memory resources allocated to the container
-        resources = object({
-          limits = object({
-            cpu    = string
-            memory = string
-          })
-          requests = object({
-            cpu    = string
-            memory = string
-          })
-        })
-
-        # The environment variables and secrets for the container
+        image_pull_policy = optional(string, "")
+        command = optional(list(string), [])
+        args = optional(list(string), [])
+        working_dir = optional(string, "")
+        ports = optional(list(object({
+          name = string
+          container_port = number
+          network_protocol = optional(string, "")
+          app_protocol = optional(string, "")
+          service_port = optional(number, 0)
+          host_port = optional(number, 0)
+        })), [])
         env = optional(object({
           variables = optional(list(object({
-            name  = string
-            value = optional(string)
-            value_from = optional(object({
-              kind       = optional(string)
-              env        = optional(string)
-              name       = string
-              field_path = optional(string)
-            }))
+            name = string
+            value = optional(string, "")
             config_map_key_ref = optional(object({
-              name     = string
-              key      = string
+              name = string
+              key = string
               optional = optional(bool, false)
             }))
             field_ref = optional(object({
-              api_version = optional(string)
-              field_path  = string
+              api_version = optional(string, "")
+              field_path = string
             }))
             resource_field_ref = optional(object({
-              container_name = optional(string)
-              resource       = string
-              divisor        = optional(string)
+              container_name = optional(string, "")
+              resource = string
+              divisor = optional(string, "")
             }))
           })), [])
           secrets = optional(list(object({
-            name  = string
-            value = optional(string)
+            name = string
+            value = optional(string, "")
             secret_ref = optional(object({
-              namespace = optional(string)
-              name      = string
-              key       = string
-              optional  = optional(bool, false)
-            }))
-            value_from = optional(object({
-              kind       = optional(string)
-              env        = optional(string)
-              name       = string
-              field_path = optional(string)
+              namespace = optional(string, "")
+              name = string
+              key = string
+              optional = optional(bool, false)
             }))
           })), [])
           env_from = optional(list(object({
-            prefix = optional(string)
+            prefix = optional(string, "")
             config_map_ref = optional(object({
-              name     = string
+              name = string
               optional = optional(bool, false)
             }))
             secret_ref = optional(object({
-              name     = string
+              name = string
               optional = optional(bool, false)
             }))
           })), [])
         }))
-
-        # A list of ports to be configured for the container
-        ports = optional(list(object({
-          # The name of the port (e.g., "metrics", "health")
-          name = string
-          # The port number on the container
-          container_port = number
-          # The network protocol (TCP, UDP, SCTP)
-          network_protocol = string
-          # Host port to expose (use with caution)
-          host_port = optional(number)
-        })), [])
-
-        # Volume mounts for the container
+        resources = optional(object({
+          limits = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+          requests = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+        }))
+        liveness_probe = optional(object({
+          initial_delay_seconds = optional(number, 0)
+          period_seconds = optional(number, 0)
+          timeout_seconds = optional(number, 0)
+          success_threshold = optional(number, 0)
+          failure_threshold = optional(number, 0)
+          http_get = optional(object({
+            path = optional(string, "")
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+            scheme = optional(string, "")
+            http_headers = optional(list(object({
+              name = optional(string, "")
+              value = optional(string, "")
+            })), [])
+          }))
+          grpc = optional(object({
+            port = optional(number, 0)
+            service = optional(string, "")
+          }))
+          tcp_socket = optional(object({
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+          }))
+          exec = optional(object({
+            command = optional(list(string), [])
+          }))
+        }))
+        readiness_probe = optional(object({
+          initial_delay_seconds = optional(number, 0)
+          period_seconds = optional(number, 0)
+          timeout_seconds = optional(number, 0)
+          success_threshold = optional(number, 0)
+          failure_threshold = optional(number, 0)
+          http_get = optional(object({
+            path = optional(string, "")
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+            scheme = optional(string, "")
+            http_headers = optional(list(object({
+              name = optional(string, "")
+              value = optional(string, "")
+            })), [])
+          }))
+          grpc = optional(object({
+            port = optional(number, 0)
+            service = optional(string, "")
+          }))
+          tcp_socket = optional(object({
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+          }))
+          exec = optional(object({
+            command = optional(list(string), [])
+          }))
+        }))
+        startup_probe = optional(object({
+          initial_delay_seconds = optional(number, 0)
+          period_seconds = optional(number, 0)
+          timeout_seconds = optional(number, 0)
+          success_threshold = optional(number, 0)
+          failure_threshold = optional(number, 0)
+          http_get = optional(object({
+            path = optional(string, "")
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+            scheme = optional(string, "")
+            http_headers = optional(list(object({
+              name = optional(string, "")
+              value = optional(string, "")
+            })), [])
+          }))
+          grpc = optional(object({
+            port = optional(number, 0)
+            service = optional(string, "")
+          }))
+          tcp_socket = optional(object({
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+          }))
+          exec = optional(object({
+            command = optional(list(string), [])
+          }))
+        }))
         volume_mounts = optional(list(object({
-          name       = string
+          name = string
           mount_path = string
-          read_only  = optional(bool, false)
-          sub_path   = optional(string)
-
-          # ConfigMap volume source
+          read_only = optional(bool, false)
+          sub_path = optional(string, "")
           config_map = optional(object({
-            name         = string
-            key          = optional(string)
-            path         = optional(string)
-            default_mode = optional(number)
+            name = string
+            key = optional(string, "")
+            path = optional(string, "")
+            default_mode = optional(number, 0)
           }))
-
-          # Secret volume source
           secret = optional(object({
-            name         = string
-            key          = optional(string)
-            path         = optional(string)
-            default_mode = optional(number)
+            name = string
+            key = optional(string, "")
+            path = optional(string, "")
+            default_mode = optional(number, 0)
           }))
-
-          # HostPath volume source (common for DaemonSets)
           host_path = optional(object({
             path = string
-            type = optional(string)
+            type = optional(string, "")
           }))
-
-          # EmptyDir volume source
           empty_dir = optional(object({
-            medium     = optional(string)
-            size_limit = optional(string)
+            medium = optional(string, "")
+            size_limit = optional(string, "")
           }))
-
-          # PVC volume source
           pvc = optional(object({
             claim_name = string
-            read_only  = optional(bool, false)
+            read_only = optional(bool, false)
           }))
         })), [])
-
-        # Command to run in the container (overrides ENTRYPOINT)
-        command = optional(list(string), [])
-
-        # Arguments to pass to the command (overrides CMD)
-        args = optional(list(string), [])
-
-        # Security context for the container
+        lifecycle = optional(object({
+          post_start = optional(object({
+            exec = optional(object({
+              command = optional(list(string), [])
+            }))
+            http_get = optional(object({
+              path = optional(string, "")
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+              scheme = optional(string, "")
+              http_headers = optional(list(object({
+                name = optional(string, "")
+                value = optional(string, "")
+              })), [])
+            }))
+            tcp_socket = optional(object({
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+            }))
+            sleep = optional(object({
+              seconds = optional(number, 0)
+            }))
+          }))
+          pre_stop = optional(object({
+            exec = optional(object({
+              command = optional(list(string), [])
+            }))
+            http_get = optional(object({
+              path = optional(string, "")
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+              scheme = optional(string, "")
+              http_headers = optional(list(object({
+                name = optional(string, "")
+                value = optional(string, "")
+              })), [])
+            }))
+            tcp_socket = optional(object({
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+            }))
+            sleep = optional(object({
+              seconds = optional(number, 0)
+            }))
+          }))
+        }))
         security_context = optional(object({
-          privileged                = optional(bool, false)
-          run_as_user               = optional(number)
-          run_as_group              = optional(number)
-          run_as_non_root           = optional(bool)
-          read_only_root_filesystem = optional(bool, false)
+          privileged = optional(bool, false)
+          run_as_user = optional(number)
+          run_as_group = optional(number)
+          run_as_non_root = optional(bool)
+          read_only_root_filesystem = optional(bool)
+          allow_privilege_escalation = optional(bool)
           capabilities = optional(object({
-            add  = optional(list(string), [])
+            add = optional(list(string), [])
             drop = optional(list(string), [])
+          }))
+          seccomp_profile = optional(object({
+            type = string
+            localhost_profile = optional(string, "")
           }))
         }))
       })
-
-      # Sidecar containers (optional)
       sidecars = optional(list(object({
-        name  = string
-        image = string
-        ports = optional(list(object({
-          name           = string
-          container_port = number
-          protocol       = string
-        })), [])
-        resources = object({
-          limits = object({
-            cpu    = string
-            memory = string
-          })
-          requests = object({
-            cpu    = string
-            memory = string
-          })
+        name = optional(string, "")
+        image = object({
+          repo = optional(string, "")
+          tag = optional(string, "")
+          pull_secret_name = optional(string, "")
         })
-        env = optional(list(object({
-          name  = string
-          value = string
+        image_pull_policy = optional(string, "")
+        command = optional(list(string), [])
+        args = optional(list(string), [])
+        working_dir = optional(string, "")
+        ports = optional(list(object({
+          name = string
+          container_port = number
+          network_protocol = optional(string, "")
+          app_protocol = optional(string, "")
+          service_port = optional(number, 0)
+          host_port = optional(number, 0)
         })), [])
+        env = optional(object({
+          variables = optional(list(object({
+            name = string
+            value = optional(string, "")
+            config_map_key_ref = optional(object({
+              name = string
+              key = string
+              optional = optional(bool, false)
+            }))
+            field_ref = optional(object({
+              api_version = optional(string, "")
+              field_path = string
+            }))
+            resource_field_ref = optional(object({
+              container_name = optional(string, "")
+              resource = string
+              divisor = optional(string, "")
+            }))
+          })), [])
+          secrets = optional(list(object({
+            name = string
+            value = optional(string, "")
+            secret_ref = optional(object({
+              namespace = optional(string, "")
+              name = string
+              key = string
+              optional = optional(bool, false)
+            }))
+          })), [])
+          env_from = optional(list(object({
+            prefix = optional(string, "")
+            config_map_ref = optional(object({
+              name = string
+              optional = optional(bool, false)
+            }))
+            secret_ref = optional(object({
+              name = string
+              optional = optional(bool, false)
+            }))
+          })), [])
+        }))
+        resources = optional(object({
+          limits = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+          requests = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+        }))
+        liveness_probe = optional(object({
+          initial_delay_seconds = optional(number, 0)
+          period_seconds = optional(number, 0)
+          timeout_seconds = optional(number, 0)
+          success_threshold = optional(number, 0)
+          failure_threshold = optional(number, 0)
+          http_get = optional(object({
+            path = optional(string, "")
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+            scheme = optional(string, "")
+            http_headers = optional(list(object({
+              name = optional(string, "")
+              value = optional(string, "")
+            })), [])
+          }))
+          grpc = optional(object({
+            port = optional(number, 0)
+            service = optional(string, "")
+          }))
+          tcp_socket = optional(object({
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+          }))
+          exec = optional(object({
+            command = optional(list(string), [])
+          }))
+        }))
+        readiness_probe = optional(object({
+          initial_delay_seconds = optional(number, 0)
+          period_seconds = optional(number, 0)
+          timeout_seconds = optional(number, 0)
+          success_threshold = optional(number, 0)
+          failure_threshold = optional(number, 0)
+          http_get = optional(object({
+            path = optional(string, "")
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+            scheme = optional(string, "")
+            http_headers = optional(list(object({
+              name = optional(string, "")
+              value = optional(string, "")
+            })), [])
+          }))
+          grpc = optional(object({
+            port = optional(number, 0)
+            service = optional(string, "")
+          }))
+          tcp_socket = optional(object({
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+          }))
+          exec = optional(object({
+            command = optional(list(string), [])
+          }))
+        }))
+        startup_probe = optional(object({
+          initial_delay_seconds = optional(number, 0)
+          period_seconds = optional(number, 0)
+          timeout_seconds = optional(number, 0)
+          success_threshold = optional(number, 0)
+          failure_threshold = optional(number, 0)
+          http_get = optional(object({
+            path = optional(string, "")
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+            scheme = optional(string, "")
+            http_headers = optional(list(object({
+              name = optional(string, "")
+              value = optional(string, "")
+            })), [])
+          }))
+          grpc = optional(object({
+            port = optional(number, 0)
+            service = optional(string, "")
+          }))
+          tcp_socket = optional(object({
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+          }))
+          exec = optional(object({
+            command = optional(list(string), [])
+          }))
+        }))
+        volume_mounts = optional(list(object({
+          name = string
+          mount_path = string
+          read_only = optional(bool, false)
+          sub_path = optional(string, "")
+          config_map = optional(object({
+            name = string
+            key = optional(string, "")
+            path = optional(string, "")
+            default_mode = optional(number, 0)
+          }))
+          secret = optional(object({
+            name = string
+            key = optional(string, "")
+            path = optional(string, "")
+            default_mode = optional(number, 0)
+          }))
+          host_path = optional(object({
+            path = string
+            type = optional(string, "")
+          }))
+          empty_dir = optional(object({
+            medium = optional(string, "")
+            size_limit = optional(string, "")
+          }))
+          pvc = optional(object({
+            claim_name = string
+            read_only = optional(bool, false)
+          }))
+        })), [])
+        lifecycle = optional(object({
+          post_start = optional(object({
+            exec = optional(object({
+              command = optional(list(string), [])
+            }))
+            http_get = optional(object({
+              path = optional(string, "")
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+              scheme = optional(string, "")
+              http_headers = optional(list(object({
+                name = optional(string, "")
+                value = optional(string, "")
+              })), [])
+            }))
+            tcp_socket = optional(object({
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+            }))
+            sleep = optional(object({
+              seconds = optional(number, 0)
+            }))
+          }))
+          pre_stop = optional(object({
+            exec = optional(object({
+              command = optional(list(string), [])
+            }))
+            http_get = optional(object({
+              path = optional(string, "")
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+              scheme = optional(string, "")
+              http_headers = optional(list(object({
+                name = optional(string, "")
+                value = optional(string, "")
+              })), [])
+            }))
+            tcp_socket = optional(object({
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+            }))
+            sleep = optional(object({
+              seconds = optional(number, 0)
+            }))
+          }))
+        }))
+        security_context = optional(object({
+          privileged = optional(bool, false)
+          run_as_user = optional(number)
+          run_as_group = optional(number)
+          run_as_non_root = optional(bool)
+          read_only_root_filesystem = optional(bool)
+          allow_privilege_escalation = optional(bool)
+          capabilities = optional(object({
+            add = optional(list(string), [])
+            drop = optional(list(string), [])
+          }))
+          seccomp_profile = optional(object({
+            type = string
+            localhost_profile = optional(string, "")
+          }))
+        }))
       })), [])
     })
-
-    # Node selector for constraining pods to specific nodes
-    node_selector = optional(map(string), {})
-
-    # Tolerations for scheduling on tainted nodes
-    tolerations = optional(list(object({
-      key                = optional(string)
-      operator           = optional(string)
-      value              = optional(string)
-      effect             = optional(string)
-      toleration_seconds = optional(number)
-    })), [])
-
-    # Update strategy for the DaemonSet
-    update_strategy = optional(object({
-      type = string
-      rolling_update = optional(object({
-        max_unavailable = optional(string)
-        max_surge       = optional(string)
+    pod = optional(object({
+      service_account = optional(string, "")
+      automount_service_account_token = optional(bool)
+      image_pull_secrets = optional(list(string), [])
+      init_containers = optional(list(object({
+        name = optional(string, "")
+        image = object({
+          repo = optional(string, "")
+          tag = optional(string, "")
+          pull_secret_name = optional(string, "")
+        })
+        image_pull_policy = optional(string, "")
+        command = optional(list(string), [])
+        args = optional(list(string), [])
+        working_dir = optional(string, "")
+        ports = optional(list(object({
+          name = string
+          container_port = number
+          network_protocol = optional(string, "")
+          app_protocol = optional(string, "")
+          service_port = optional(number, 0)
+          host_port = optional(number, 0)
+        })), [])
+        env = optional(object({
+          variables = optional(list(object({
+            name = string
+            value = optional(string, "")
+            config_map_key_ref = optional(object({
+              name = string
+              key = string
+              optional = optional(bool, false)
+            }))
+            field_ref = optional(object({
+              api_version = optional(string, "")
+              field_path = string
+            }))
+            resource_field_ref = optional(object({
+              container_name = optional(string, "")
+              resource = string
+              divisor = optional(string, "")
+            }))
+          })), [])
+          secrets = optional(list(object({
+            name = string
+            value = optional(string, "")
+            secret_ref = optional(object({
+              namespace = optional(string, "")
+              name = string
+              key = string
+              optional = optional(bool, false)
+            }))
+          })), [])
+          env_from = optional(list(object({
+            prefix = optional(string, "")
+            config_map_ref = optional(object({
+              name = string
+              optional = optional(bool, false)
+            }))
+            secret_ref = optional(object({
+              name = string
+              optional = optional(bool, false)
+            }))
+          })), [])
+        }))
+        resources = optional(object({
+          limits = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+          requests = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+        }))
+        liveness_probe = optional(object({
+          initial_delay_seconds = optional(number, 0)
+          period_seconds = optional(number, 0)
+          timeout_seconds = optional(number, 0)
+          success_threshold = optional(number, 0)
+          failure_threshold = optional(number, 0)
+          http_get = optional(object({
+            path = optional(string, "")
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+            scheme = optional(string, "")
+            http_headers = optional(list(object({
+              name = optional(string, "")
+              value = optional(string, "")
+            })), [])
+          }))
+          grpc = optional(object({
+            port = optional(number, 0)
+            service = optional(string, "")
+          }))
+          tcp_socket = optional(object({
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+          }))
+          exec = optional(object({
+            command = optional(list(string), [])
+          }))
+        }))
+        readiness_probe = optional(object({
+          initial_delay_seconds = optional(number, 0)
+          period_seconds = optional(number, 0)
+          timeout_seconds = optional(number, 0)
+          success_threshold = optional(number, 0)
+          failure_threshold = optional(number, 0)
+          http_get = optional(object({
+            path = optional(string, "")
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+            scheme = optional(string, "")
+            http_headers = optional(list(object({
+              name = optional(string, "")
+              value = optional(string, "")
+            })), [])
+          }))
+          grpc = optional(object({
+            port = optional(number, 0)
+            service = optional(string, "")
+          }))
+          tcp_socket = optional(object({
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+          }))
+          exec = optional(object({
+            command = optional(list(string), [])
+          }))
+        }))
+        startup_probe = optional(object({
+          initial_delay_seconds = optional(number, 0)
+          period_seconds = optional(number, 0)
+          timeout_seconds = optional(number, 0)
+          success_threshold = optional(number, 0)
+          failure_threshold = optional(number, 0)
+          http_get = optional(object({
+            path = optional(string, "")
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+            scheme = optional(string, "")
+            http_headers = optional(list(object({
+              name = optional(string, "")
+              value = optional(string, "")
+            })), [])
+          }))
+          grpc = optional(object({
+            port = optional(number, 0)
+            service = optional(string, "")
+          }))
+          tcp_socket = optional(object({
+            port_number = optional(number, 0)
+            port_name = optional(string, "")
+            host = optional(string, "")
+          }))
+          exec = optional(object({
+            command = optional(list(string), [])
+          }))
+        }))
+        volume_mounts = optional(list(object({
+          name = string
+          mount_path = string
+          read_only = optional(bool, false)
+          sub_path = optional(string, "")
+          config_map = optional(object({
+            name = string
+            key = optional(string, "")
+            path = optional(string, "")
+            default_mode = optional(number, 0)
+          }))
+          secret = optional(object({
+            name = string
+            key = optional(string, "")
+            path = optional(string, "")
+            default_mode = optional(number, 0)
+          }))
+          host_path = optional(object({
+            path = string
+            type = optional(string, "")
+          }))
+          empty_dir = optional(object({
+            medium = optional(string, "")
+            size_limit = optional(string, "")
+          }))
+          pvc = optional(object({
+            claim_name = string
+            read_only = optional(bool, false)
+          }))
+        })), [])
+        lifecycle = optional(object({
+          post_start = optional(object({
+            exec = optional(object({
+              command = optional(list(string), [])
+            }))
+            http_get = optional(object({
+              path = optional(string, "")
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+              scheme = optional(string, "")
+              http_headers = optional(list(object({
+                name = optional(string, "")
+                value = optional(string, "")
+              })), [])
+            }))
+            tcp_socket = optional(object({
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+            }))
+            sleep = optional(object({
+              seconds = optional(number, 0)
+            }))
+          }))
+          pre_stop = optional(object({
+            exec = optional(object({
+              command = optional(list(string), [])
+            }))
+            http_get = optional(object({
+              path = optional(string, "")
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+              scheme = optional(string, "")
+              http_headers = optional(list(object({
+                name = optional(string, "")
+                value = optional(string, "")
+              })), [])
+            }))
+            tcp_socket = optional(object({
+              port_number = optional(number, 0)
+              port_name = optional(string, "")
+              host = optional(string, "")
+            }))
+            sleep = optional(object({
+              seconds = optional(number, 0)
+            }))
+          }))
+        }))
+        security_context = optional(object({
+          privileged = optional(bool, false)
+          run_as_user = optional(number)
+          run_as_group = optional(number)
+          run_as_non_root = optional(bool)
+          read_only_root_filesystem = optional(bool)
+          allow_privilege_escalation = optional(bool)
+          capabilities = optional(object({
+            add = optional(list(string), [])
+            drop = optional(list(string), [])
+          }))
+          seccomp_profile = optional(object({
+            type = string
+            localhost_profile = optional(string, "")
+          }))
+        }))
+      })), [])
+      labels = optional(map(string), {})
+      annotations = optional(map(string), {})
+      scheduling = optional(object({
+        node_selector = optional(map(string), {})
+        tolerations = optional(list(object({
+          key = optional(string, "")
+          operator = optional(string, "")
+          value = optional(string, "")
+          effect = optional(string, "")
+          toleration_seconds = optional(number)
+        })), [])
+        node_affinity = optional(object({
+          required = optional(list(object({
+            match_expressions = list(object({
+              key = string
+              operator = string
+              values = optional(list(string), [])
+            }))
+          })), [])
+          preferred = optional(list(object({
+            weight = optional(number, 0)
+            term = object({
+              match_expressions = list(object({
+                key = string
+                operator = string
+                values = optional(list(string), [])
+              }))
+            })
+          })), [])
+        }))
+        pod_affinity = optional(object({
+          required = optional(list(object({
+            match_labels = optional(map(string), {})
+            topology_key = string
+            namespaces = optional(list(string), [])
+          })), [])
+          preferred = optional(list(object({
+            weight = optional(number, 0)
+            term = object({
+              match_labels = optional(map(string), {})
+              topology_key = string
+              namespaces = optional(list(string), [])
+            })
+          })), [])
+        }))
+        pod_anti_affinity = optional(object({
+          required = optional(list(object({
+            match_labels = optional(map(string), {})
+            topology_key = string
+            namespaces = optional(list(string), [])
+          })), [])
+          preferred = optional(list(object({
+            weight = optional(number, 0)
+            term = object({
+              match_labels = optional(map(string), {})
+              topology_key = string
+              namespaces = optional(list(string), [])
+            })
+          })), [])
+        }))
+        topology_spread_constraints = optional(list(object({
+          max_skew = optional(number, 0)
+          topology_key = string
+          when_unsatisfiable = string
+          match_labels = optional(map(string), {})
+        })), [])
+        scheduler_name = optional(string, "")
       }))
-    }))
-
-    # Minimum ready seconds before pod is considered available
-    min_ready_seconds = optional(number, 0)
-
-    # Whether to create a ServiceAccount
-    create_service_account = optional(bool, false)
-
-    # Name of the ServiceAccount
-    service_account_name = optional(string)
-
-    # ConfigMaps to create alongside the DaemonSet
-    config_maps = optional(map(string), {})
-
-    # RBAC configuration
-    rbac = optional(object({
-      cluster_rules = optional(list(object({
-        api_groups     = list(string)
-        resources      = list(string)
-        verbs          = list(string)
-        resource_names = optional(list(string), [])
+      security_context = optional(object({
+        run_as_user = optional(number)
+        run_as_group = optional(number)
+        run_as_non_root = optional(bool)
+        fs_group = optional(number)
+        fs_group_change_policy = optional(string, "")
+        supplemental_groups = optional(list(number), [])
+        sysctls = optional(list(object({
+          name = string
+          value = string
+        })), [])
+        seccomp_profile = optional(object({
+          type = string
+          localhost_profile = optional(string, "")
+        }))
+      }))
+      termination_grace_period_seconds = optional(number)
+      dns_policy = optional(string, "")
+      dns_config = optional(object({
+        nameservers = optional(list(string), [])
+        searches = optional(list(string), [])
+        options = optional(list(object({
+          name = string
+          value = optional(string, "")
+        })), [])
+      }))
+      host_aliases = optional(list(object({
+        ip = string
+        hostnames = list(string)
       })), [])
-      namespace_rules = optional(list(object({
-        api_groups     = list(string)
-        resources      = list(string)
-        verbs          = list(string)
-        resource_names = optional(list(string), [])
-      })), [])
+      host_network = optional(bool, false)
+      host_pid = optional(bool, false)
+      priority_class_name = optional(string, "")
+      runtime_class_name = optional(string, "")
     }))
+    update_strategy = optional(object({
+      type = optional(string, "")
+      max_unavailable = optional(string, "")
+      max_surge = optional(string, "")
+    }))
+    min_ready_seconds = optional(number)
+    revision_history_limit = optional(number)
   })
 }
-

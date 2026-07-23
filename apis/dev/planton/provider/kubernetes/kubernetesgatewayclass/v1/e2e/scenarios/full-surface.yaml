@@ -1,0 +1,13 @@
+# Full GatewayClassSpec: controller name, parameters reference, description.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGatewayClass
+metadata:
+  name: e2e-gateway-class-full
+spec:
+  controller_name: gateway.envoyproxy.io/gatewayclass-controller
+  parameters_ref:
+    group: ""
+    kind: ConfigMap
+    name: e2e-gwc-params
+    namespace: default
+  description: "Full-surface gateway class"

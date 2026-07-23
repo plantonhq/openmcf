@@ -22,37 +22,47 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// mongodb-kubernetes stack outputs.
+// *
+// Outputs a KubernetesMongodb cluster exports for composition —
+// everything a workload (or an exposure kind) needs to reach the
+// database.
 type KubernetesMongodbStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// namespace specifies the Kubernetes namespace in which the MongoDB cluster is created.
-	// Namespaces are a way to divide cluster resources between multiple users.
+	// *
+	// Namespace the cluster runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for mongodb-kubernetes
-	// ex: main-mongodb-kubernetes
-	// in the above example, "main" is the name of the mongodb-kubernetes
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open mongodb-kubernetes from developers laptop.
-	// this might come handy when mongodb-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining mongodb-kubernetes kubernetes service and namespace
-	// ex: kubectl port-forward svc/mongodb-kubernetes -n kubernetes_namespace 27017:27017
-	// running the command from this attribute makes it possible to access mongodb-kubernetes using http://localhost:8080
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to mongodb-kubernetes locally
-	// ex: main-mongodb-kubernetes.namespace.svc.cluster.local:27017
+	// *
+	// The PerconaServerMongoDB resource name (`metadata.name`) — every
+	// operator-created object derives from it.
+	ClusterName string `protobuf:"bytes,2,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	// *
+	// The Service applications connect to: `<name>-mongos` when sharding
+	// is enabled, otherwise the first replica set's headless Service
+	// (`<name>-<rs>` — drivers discover every member through it).
+	Service string `protobuf:"bytes,3,opt,name=service,proto3" json:"service,omitempty"`
+	// *
+	// In-cluster connection endpoint:
+	// `<service>.<namespace>.svc.cluster.local:27017`. For replica-set
+	// clusters, connect with
+	// `mongodb://<user>:<pass>@<endpoint>/?replicaSet=<rs>` so the driver
+	// follows failovers.
 	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open mongodb-kubernetes from clients outside kubernetes.
-	// ex: https://mdc-planton-pcs-dev-main.data.dev.planton.live:27017
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// endpoint to open mongodb-kubernetes from clients inside kubernetes.
-	// ex: https://mdc-planton-pcs-dev-main.data-internal.dev.planton.live:27017
-	InternalHostname string `protobuf:"bytes,6,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	// mongodb username
-	Username string `protobuf:"bytes,7,opt,name=username,proto3" json:"username,omitempty"`
-	// kubernetes secret key for the password.
-	PasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,8,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// *
+	// The first replica set's name (the driver's replicaSet parameter).
+	// Empty for sharded clusters — mongos needs no replicaSet parameter.
+	ReplicaSet string `protobuf:"bytes,5,opt,name=replica_set,json=replicaSet,proto3" json:"replica_set,omitempty"`
+	// *
+	// kubectl port-forward one-liner for reaching the database from a
+	// workstation.
+	PortForwardCommand string `protobuf:"bytes,6,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	// *
+	// The Kubernetes Secret key holding the database-admin password (the
+	// operator-managed `<name>-secrets` system-users Secret, key
+	// MONGODB_DATABASE_ADMIN_PASSWORD; the paired username key is
+	// MONGODB_DATABASE_ADMIN_USER).
+	AdminPasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,7,opt,name=admin_password_secret,json=adminPasswordSecret,proto3" json:"admin_password_secret,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *KubernetesMongodbStackOutputs) Reset() {
@@ -92,16 +102,16 @@ func (x *KubernetesMongodbStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesMongodbStackOutputs) GetService() string {
+func (x *KubernetesMongodbStackOutputs) GetClusterName() string {
 	if x != nil {
-		return x.Service
+		return x.ClusterName
 	}
 	return ""
 }
 
-func (x *KubernetesMongodbStackOutputs) GetPortForwardCommand() string {
+func (x *KubernetesMongodbStackOutputs) GetService() string {
 	if x != nil {
-		return x.PortForwardCommand
+		return x.Service
 	}
 	return ""
 }
@@ -113,30 +123,23 @@ func (x *KubernetesMongodbStackOutputs) GetKubeEndpoint() string {
 	return ""
 }
 
-func (x *KubernetesMongodbStackOutputs) GetExternalHostname() string {
+func (x *KubernetesMongodbStackOutputs) GetReplicaSet() string {
 	if x != nil {
-		return x.ExternalHostname
+		return x.ReplicaSet
 	}
 	return ""
 }
 
-func (x *KubernetesMongodbStackOutputs) GetInternalHostname() string {
+func (x *KubernetesMongodbStackOutputs) GetPortForwardCommand() string {
 	if x != nil {
-		return x.InternalHostname
+		return x.PortForwardCommand
 	}
 	return ""
 }
 
-func (x *KubernetesMongodbStackOutputs) GetUsername() string {
+func (x *KubernetesMongodbStackOutputs) GetAdminPasswordSecret() *kubernetes.KubernetesSecretKey {
 	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *KubernetesMongodbStackOutputs) GetPasswordSecret() *kubernetes.KubernetesSecretKey {
-	if x != nil {
-		return x.PasswordSecret
+		return x.AdminPasswordSecret
 	}
 	return nil
 }
@@ -145,16 +148,16 @@ var File_dev_planton_provider_kubernetes_kubernetesmongodb_v1_stack_outputs_prot
 
 const file_dev_planton_provider_kubernetes_kubernetesmongodb_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Hdev/planton/provider/kubernetes/kubernetesmongodb/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetesmongodb.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\x83\x03\n" +
+	"Hdev/planton/provider/kubernetes/kubernetesmongodb/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetesmongodb.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\xdc\x02\n" +
 	"\x1dKubernetesMongodbStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\x06 \x01(\tR\x10internalHostname\x12\x1a\n" +
-	"\busername\x18\a \x01(\tR\busername\x12]\n" +
-	"\x0fpassword_secret\x18\b \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x0epasswordSecretB\xb0\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\fcluster_name\x18\x02 \x01(\tR\vclusterName\x12\x18\n" +
+	"\aservice\x18\x03 \x01(\tR\aservice\x12#\n" +
+	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12\x1f\n" +
+	"\vreplica_set\x18\x05 \x01(\tR\n" +
+	"replicaSet\x120\n" +
+	"\x14port_forward_command\x18\x06 \x01(\tR\x12portForwardCommand\x12h\n" +
+	"\x15admin_password_secret\x18\a \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x13adminPasswordSecretB\xb0\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetesmongodb.v1B\x11StackOutputsProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmongodb/v1;kubernetesmongodbv1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetesmongodb.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetesmongodb\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetesmongodb\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetesmongodb::V1b\x06proto3"
 
 var (
@@ -175,7 +178,7 @@ var file_dev_planton_provider_kubernetes_kubernetesmongodb_v1_stack_outputs_prot
 	(*kubernetes.KubernetesSecretKey)(nil), // 1: dev.planton.provider.kubernetes.KubernetesSecretKey
 }
 var file_dev_planton_provider_kubernetes_kubernetesmongodb_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.kubernetes.kubernetesmongodb.v1.KubernetesMongodbStackOutputs.password_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
+	1, // 0: dev.planton.provider.kubernetes.kubernetesmongodb.v1.KubernetesMongodbStackOutputs.admin_password_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

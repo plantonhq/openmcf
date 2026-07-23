@@ -23,10 +23,10 @@ var Command = &cobra.Command{
 	Long: `Serve the Kubernetes client-go ExecCredential protocol
 (client.authentication.k8s.io/v1).
 
-Kubeconfigs rendered by Planton for managed clusters (EKS, GKE) name this
-command as their credential source; the kubernetes and helm providers invoke
-it whenever the current token expires. All inputs arrive via environment
-variables templated into the kubeconfig -- never via arguments.`,
+Kubeconfigs rendered by Planton for managed clusters (EKS, GKE, AKS) name
+this command as their credential source; the kubernetes and helm providers
+invoke it whenever the current token expires. All inputs arrive via
+environment variables templated into the kubeconfig -- never via arguments.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return run(cmd.Context(), cmd.OutOrStdout())
@@ -51,6 +51,14 @@ func run(ctx context.Context, out io.Writer) error {
 	case ProviderGcpGke:
 		token, err = kubetoken.MintGkeToken(ctx, kubetoken.GkeTokenOptions{
 			ServiceAccountKeyJSON: os.Getenv(GkeServiceAccountKeyEnvVar),
+		})
+	case ProviderAzureAks:
+		// An empty client secret selects the ambient Azure credential chain inside
+		// the minter (environment, managed identity, Azure CLI login).
+		token, err = kubetoken.MintAksToken(ctx, kubetoken.AksTokenOptions{
+			TenantID:     os.Getenv(AksTenantIdEnvVar),
+			ClientID:     os.Getenv(AksClientIdEnvVar),
+			ClientSecret: os.Getenv(AksClientSecretEnvVar),
 		})
 	case "":
 		return errors.Errorf("%s is not set; this command is invoked by deploy engines "+

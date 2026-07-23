@@ -2,7 +2,7 @@
 
 ## Overview
 
-This Terraform module creates and manages a Kubernetes Secret with type-safe data variants. It supports all five common Kubernetes secret types: Opaque, TLS, DockerConfigJson, BasicAuth, and SSHAuth.
+This Terraform module creates and manages a Kubernetes Secret with type-safe data variants. It supports all six standard Kubernetes secret types: Opaque, TLS, DockerConfigJson, BasicAuth, SSHAuth, and ServiceAccountToken.
 
 ## Architecture
 
@@ -18,7 +18,7 @@ iac/tf/
 
 ## How It Works
 
-1. **Variable Input**: The `spec` variable accepts exactly one of the five secret type blocks
+1. **Variable Input**: The `spec` variable accepts exactly one of the six secret type blocks
 2. **Type Determination**: `locals.tf` inspects which block is non-null and sets the Kubernetes secret type
 3. **Data Mapping**: The same locals block constructs the data map with correct keys per type
 4. **Resource Creation**: `main.tf` creates a single `kubernetes_secret_v1` resource
@@ -28,11 +28,12 @@ iac/tf/
 
 | Variable Block | Kubernetes Type | Data Keys |
 |---------------|----------------|-----------|
-| `opaque` | `Opaque` | User-defined keys from `data` map |
+| `opaque` | `Opaque` | User-defined keys from `data` (plain strings) and `binary_data` (base64-encoded values) |
 | `tls` | `kubernetes.io/tls` | `tls.crt`, `tls.key` |
 | `docker_config_json` | `kubernetes.io/dockerconfigjson` | `.dockerconfigjson` (constructed JSON) |
 | `basic_auth` | `kubernetes.io/basic-auth` | `username`, `password` |
 | `ssh_auth` | `kubernetes.io/ssh-auth` | `ssh-privatekey` |
+| `service_account_token` | `kubernetes.io/service-account-token` | None — the `kubernetes.io/service-account.name` annotation is set and the cluster's token controller populates `token`, `ca.crt`, and `namespace` |
 
 ## Usage
 

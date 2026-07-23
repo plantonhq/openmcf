@@ -18,10 +18,10 @@ It does not add destinations (that is `ServiceEntry`) and it does not route (tha
 
 ## 2. Source of truth and version
 
-Translated proto-to-proto from the upstream `istio.io/api` clone pinned to tag **1.26.8**
+Translated proto-to-proto from the upstream `istio.io/api` clone pinned to tag **1.30.3**
 (`networking/v1alpha3/destination_rule.proto`; the `v1` CRD is a type alias of `v1alpha3`).
 The local clone is authoritative. The crd2pulumi typed SDK and the CRDs
-installed by `KubernetesIstioBaseCrds` are generated from Istio `release-1.26`, so the
+installed by `KubernetesIstioBaseCrds` are generated from Istio tag `1.30.3`, so the
 proto, the typed Pulumi resource, and the cluster CRD agree on the schema.
 
 DestinationRule is the family's heaviest user of `google.protobuf.Duration`, wrapper types
@@ -89,7 +89,19 @@ upstream sets `duration-validation:none` (cookie `ttl`, the idle timeouts, keepa
 non-negative). Wrapper types become the matching `optional` scalar: outlier `consecutive_*`
 (`UInt32Value` -> `uint32`), `insecure_skip_verify` / locality `enabled` (`BoolValue` ->
 `bool`), warmup `minimum_percent` (0-100) and `aggression` (>= 1) (`DoubleValue` ->
-`double`).
+`double`), and retry-budget `percent` (0-100, `DoubleValue` -> `double`) and
+`min_retry_concurrency` (`UInt32Value` -> `uint32`).
+
+### Retry budget and cookie attributes
+
+`traffic_policy.retry_budget` bounds concurrent retries as a percentage of the sum of
+active and pending requests (`percent`, 0-100, upstream default 20) with a
+`min_retry_concurrency` floor (upstream default 3). Upstream places it on `TrafficPolicy`
+only, so it is available at the destination and subset levels but not in
+`port_level_settings` -- the Planton `PortTrafficPolicy` faithfully omits it. The
+consistent-hash `http_cookie` carries `attributes`: name/value pairs set on the generated
+cookie (e.g. `SameSite=Strict`; an attribute like `Secure` carries no value, so `value` is
+optional).
 
 ### Closed-set strings
 
@@ -131,29 +143,33 @@ marshals to the wrong element type and panics at apply).
 
 ### Terraform
 
-`kubernetes_manifest` with a fully-typed `variable "spec"` and a `locals.tf` that builds the
-manifest by `merge()`-pruning conditional fragments, so UNSET fields are omitted entirely.
-This is required by the DestinationRule CRD's `oneOf` groups (loadBalancer
-simple-vs-consistentHash; consistentHash hashKey/hashAlgorithm arms): emitting a non-chosen
-alternative as an explicit `null` makes the `required`-based `oneOf` arms match ("found 2
-valid alternatives"), and a null object with required subfields (warmup.duration,
-tunnel.target*, httpCookie.name) would be sent as an invalid empty object. Required subfields
-are seeded as the merge base; everything else is pruned. HCL has no functions, so to transform
-each reused leaf exactly once the locals gather every `LoadBalancer`/`ConnectionPool`/
-`OutlierDetection`/`TLS` instance (across all four paths) into a flat map keyed by path,
-transform the map, then look the built leaf back up during assembly.
+`kubectl_manifest` (alekc/kubectl) applied server-side, with a pass-through
+`variable "spec"` typed `any`: the platform's proto-to-tfvars converter emits the
+manifest-shaped (camelCase, null-pruned) spec with `StringValueOrRef` foreign keys
+resolved to literal strings, so the module hands it to the cluster verbatim -- no
+snake-to-camel mapping, null-pruning, or `oneOf` logic in HCL. The apiserver plus Planton
+protovalidate are the schema authority; `locals.tf` only strips the Planton `namespace`
+key (which maps to `metadata.namespace`, not into the CR spec) and renders the identity
+labels.
 
 ## 6. Composability
 
-- **`namespace`** is the one true foreign key: `StringValueOrRef` -> `KubernetesNamespace`
+- **`namespace`** is a foreign key: `StringValueOrRef` -> `KubernetesNamespace`
   (`spec.name`); creates a real DAG edge.
-- **`host`**, **`workload_selector.match_labels`**, and TLS **`credential_name`** are plain
-  runtime references, NOT foreign keys. `host` is a registry name resolved by istiod;
-  `match_labels` is matched against pod labels; `credential_name` is a Secret/cert name
-  resolved by Envoy. None create an automatic DAG edge. An infra-chart author who needs
-  ordering declares it on `metadata.relationships` (`depends_on` -> KubernetesService;
-  `uses` -> KubernetesSecret/KubernetesCertificate). See the README's "Composing in Infra
-  Charts" section.
+- **`host`** is also a foreign key: `StringValueOrRef` defaulting to a `KubernetesService`
+  reference that resolves to the Service's in-cluster FQDN
+  (`status.outputs.kube_endpoint`). Wiring it with `valueFrom` orders the rule after the
+  Service whose traffic it shapes and cannot drift from the Service's actual name. Hosts
+  that are not Planton-managed Services (a ServiceEntry host, an external FQDN, a
+  wildcard) are passed as literals with `value:`; istiod resolves the name against the
+  service registry at runtime either way.
+- **`workload_selector.match_labels`** and TLS **`credential_name`** are plain runtime
+  references, NOT foreign keys. `match_labels` is matched against pod labels;
+  `credential_name` is a Secret/cert name resolved by Envoy. Neither creates an automatic
+  DAG edge. An infra-chart author who needs ordering declares it on
+  `metadata.relationships` (`uses` -> KubernetesSecret/KubernetesCertificate;
+  `depends_on` -> the selected workloads). See the README's "Composing in Infra Charts"
+  section.
 - **Outputs** export the honest `destination_rule_name` + `namespace`; a DestinationRule is
   a policy resource with no controller-reconciled status worth surfacing.
 
@@ -188,4 +204,4 @@ a separate follow-up project.
 ## References
 
 - [Istio DestinationRule reference](https://istio.io/latest/docs/reference/config/networking/destination-rule/)
-- Upstream proto: `istio.io/api` `networking/v1alpha3/destination_rule.proto` @ `1.26.8`
+- Upstream proto: `istio.io/api` `networking/v1alpha3/destination_rule.proto` @ `1.30.3`

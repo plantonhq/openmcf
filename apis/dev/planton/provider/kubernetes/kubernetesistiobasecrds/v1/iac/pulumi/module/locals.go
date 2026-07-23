@@ -26,12 +26,24 @@ func initializeLocals(_ *pulumi.Context, stackInput *kubernetesistiobasecrdsv1.K
 
 	resourceName := metadata.Name + "-istio-base-crds"
 
+	// Planton identity labels — the planton.ai/* convention, identical to the
+	// Terraform module's label set (twin discipline). Note: neither engine
+	// stamps these onto the CRD documents themselves (the bundle applies
+	// verbatim); they identify only module-owned satellites, of which this
+	// module currently has none.
 	labels := map[string]string{
-		"app.kubernetes.io/name":       "istio-base-crds",
-		"app.kubernetes.io/instance":   metadata.Name,
-		"app.kubernetes.io/managed-by": "planton",
-		"app.kubernetes.io/component":  "crds",
-		"istio/release":                IstioRelease,
+		"planton.ai/resource":      "true",
+		"planton.ai/resource-name": metadata.Name,
+		"planton.ai/resource-kind": "KubernetesIstioBaseCrds",
+	}
+	if metadata.Id != "" {
+		labels["planton.ai/resource-id"] = metadata.Id
+	}
+	if metadata.Org != "" {
+		labels["planton.ai/organization"] = metadata.Org
+	}
+	if metadata.Env != "" {
+		labels["planton.ai/environment"] = metadata.Env
 	}
 
 	return &Locals{

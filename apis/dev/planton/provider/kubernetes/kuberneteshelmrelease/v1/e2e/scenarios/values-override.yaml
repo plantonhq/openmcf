@@ -1,0 +1,32 @@
+# Proves the values-merge path end-to-end on both engines: a values_yaml
+# document plus all three --set-style layers, with a release-name override
+# and production lifecycle knobs. The merged values change podinfo's replica
+# count and UI color — if any layer were dropped (the historical failure
+# mode), the install would silently fall back to chart defaults.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesHelmRelease
+metadata:
+  name: e2e-helm-values
+spec:
+  namespace:
+    value: e2e-helm-values-ns
+  create_namespace: true
+  repo: https://stefanprodan.github.io/podinfo
+  chart: podinfo
+  version: 6.9.2
+  release_name: e2e-podinfo-tuned
+  values_yaml: |
+    replicaCount: 2
+    ui:
+      message: values-yaml-layer
+  set:
+    replicaCount: "1"
+    ui.color: "#34577c"
+  set_string:
+    ui.message: set-string-layer
+  set_sensitive:
+    ui.logo: https://example.com/sensitive-logo.png
+  atomic: true
+  cleanup_on_fail: true
+  timeout_seconds: 300
+  description: e2e values-merge proof

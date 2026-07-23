@@ -1,0 +1,57 @@
+# Full-surface test manifest for the offline plan proofs. Exercises explicit
+# policy types, all three peer forms (pod selector, namespace selector with
+# expressions, IP block with except), the AND'd pod+namespace peer, named and
+# numeric ports, and a port range.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesNetworkPolicy
+metadata:
+  name: test-network-policy
+spec:
+  namespace:
+    value: default
+  name: test-network-policy
+  labels:
+    team: platform-engineering
+  pod_selector:
+    match_labels:
+      app: test-app
+  policy_types:
+    - ingress
+    - egress
+  ingress_rules:
+    - from:
+        - pod_selector:
+            match_labels:
+              app: frontend
+        - namespace_selector:
+            match_labels:
+              kubernetes.io/metadata.name: monitoring
+          pod_selector:
+            match_expressions:
+              - key: app
+                operator: In
+                values:
+                  - prometheus
+                  - grafana
+      ports:
+        - protocol: TCP
+          port: "8080"
+        - protocol: TCP
+          port: metrics
+  egress_rules:
+    - to:
+        - namespace_selector: {}
+      ports:
+        - protocol: UDP
+          port: "53"
+        - protocol: TCP
+          port: "53"
+    - to:
+        - ip_block:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+      ports:
+        - protocol: TCP
+          port: "30000"
+          end_port: 32767

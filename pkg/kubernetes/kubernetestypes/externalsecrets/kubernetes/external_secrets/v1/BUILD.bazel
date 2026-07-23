@@ -1,0 +1,32 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "external_secrets",
+    srcs = [
+        "clusterExternalSecret.go",
+        "clusterExternalSecretList.go",
+        "clusterExternalSecretPatch.go",
+        "clusterSecretStore.go",
+        "clusterSecretStoreList.go",
+        "clusterSecretStorePatch.go",
+        "externalSecret.go",
+        "externalSecretList.go",
+        "externalSecretPatch.go",
+        "init.go",
+        "pulumiTypes.go",
+        "pulumiTypes1.go",
+        "pulumiTypes2.go",
+        "pulumiTypes3.go",
+        "secretStore.go",
+        "secretStoreList.go",
+        "secretStorePatch.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/kubernetes/kubernetestypes/externalsecrets/kubernetes/external_secrets/v1",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/meta/v1:meta",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/utilities",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
+    ],
+)

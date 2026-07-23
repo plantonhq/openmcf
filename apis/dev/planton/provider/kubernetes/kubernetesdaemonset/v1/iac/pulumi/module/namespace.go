@@ -8,6 +8,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// namespace conditionally creates the Kubernetes namespace based on the
+// create_namespace flag.
+// Returns the created namespace resource (or nil when create_namespace is false).
+// Terraform equivalent: kubernetes_namespace resource with count.
 func namespace(ctx *pulumi.Context,
 	stackInput *kubernetesdaemonsetv1.KubernetesDaemonSetStackInput,
 	locals *Locals,

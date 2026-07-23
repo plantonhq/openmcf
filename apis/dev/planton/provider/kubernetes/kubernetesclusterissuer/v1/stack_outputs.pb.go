@@ -25,12 +25,16 @@ const (
 // the ClusterIssuer is created.
 type KubernetesClusterIssuerStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the created ClusterIssuer (equals spec.dns_domain).
-	// Use this name in Certificate resources' issuerRef.name field.
+	// Name of the created ClusterIssuer (equals metadata.name). Use it in
+	// Certificate issuerRef.name (kind ClusterIssuer) and in the
+	// cert-manager.io/cluster-issuer ingress-shim annotation.
 	ClusterIssuerName string `protobuf:"bytes,1,opt,name=cluster_issuer_name,json=clusterIssuerName,proto3" json:"cluster_issuer_name,omitempty"`
-	// Name of the ACME account private key Secret
-	// (created by cert-manager in the cert-manager namespace).
-	AcmeAccountKeySecretName string `protobuf:"bytes,2,opt,name=acme_account_key_secret_name,json=acmeAccountKeySecretName,proto3" json:"acme_account_key_secret_name,omitempty"`
+	// Namespace where credential Secrets for this issuer were materialized
+	// (cert-manager's cluster-resource namespace).
+	SecretsNamespace string `protobuf:"bytes,2,opt,name=secrets_namespace,json=secretsNamespace,proto3" json:"secrets_namespace,omitempty"`
+	// Name of the ACME account private key Secret cert-manager creates in the
+	// cluster-resource namespace. Empty for non-ACME backends.
+	AcmeAccountKeySecretName string `protobuf:"bytes,3,opt,name=acme_account_key_secret_name,json=acmeAccountKeySecretName,proto3" json:"acme_account_key_secret_name,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -72,6 +76,13 @@ func (x *KubernetesClusterIssuerStackOutputs) GetClusterIssuerName() string {
 	return ""
 }
 
+func (x *KubernetesClusterIssuerStackOutputs) GetSecretsNamespace() string {
+	if x != nil {
+		return x.SecretsNamespace
+	}
+	return ""
+}
+
 func (x *KubernetesClusterIssuerStackOutputs) GetAcmeAccountKeySecretName() string {
 	if x != nil {
 		return x.AcmeAccountKeySecretName
@@ -83,10 +94,11 @@ var File_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_stack_output
 
 const file_dev_planton_provider_kubernetes_kubernetesclusterissuer_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ndev/planton/provider/kubernetes/kubernetesclusterissuer/v1/stack_outputs.proto\x12:dev.planton.provider.kubernetes.kubernetesclusterissuer.v1\"\x95\x01\n" +
+	"Ndev/planton/provider/kubernetes/kubernetesclusterissuer/v1/stack_outputs.proto\x12:dev.planton.provider.kubernetes.kubernetesclusterissuer.v1\"\xc2\x01\n" +
 	"#KubernetesClusterIssuerStackOutputs\x12.\n" +
-	"\x13cluster_issuer_name\x18\x01 \x01(\tR\x11clusterIssuerName\x12>\n" +
-	"\x1cacme_account_key_secret_name\x18\x02 \x01(\tR\x18acmeAccountKeySecretNameB\xda\x03\n" +
+	"\x13cluster_issuer_name\x18\x01 \x01(\tR\x11clusterIssuerName\x12+\n" +
+	"\x11secrets_namespace\x18\x02 \x01(\tR\x10secretsNamespace\x12>\n" +
+	"\x1cacme_account_key_secret_name\x18\x03 \x01(\tR\x18acmeAccountKeySecretNameB\xda\x03\n" +
 	">com.dev.planton.provider.kubernetes.kubernetesclusterissuer.v1B\x11StackOutputsProtoP\x01Zvgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclusterissuer/v1;kubernetesclusterissuerv1\xa2\x02\x05DPPKK\xaa\x02:Dev.Planton.Provider.Kubernetes.Kubernetesclusterissuer.V1\xca\x02:Dev\\Planton\\Provider\\Kubernetes\\Kubernetesclusterissuer\\V1\xe2\x02FDev\\Planton\\Provider\\Kubernetes\\Kubernetesclusterissuer\\V1\\GPBMetadata\xea\x02?Dev::Planton::Provider::Kubernetes::Kubernetesclusterissuer::V1b\x06proto3"
 
 var (

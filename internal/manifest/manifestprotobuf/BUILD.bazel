@@ -18,7 +18,7 @@ go_test(
     srcs = ["field_setter_test.go"],
     embed = [":manifestprotobuf"],
     deps = [
-        "//apis/dev/planton/provider/kubernetes/kubernetesredis/v1:kubernetesredis",
+        "//apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1:kubernetesvalkey",
         "@com_github_stretchr_testify//assert",
         "@org_golang_google_protobuf//proto",
     ],

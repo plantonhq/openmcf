@@ -33,7 +33,7 @@ const (
 //
 // 100% fidelity with the upstream istio.io/api RequestAuthentication
 // (security/v1beta1/request_authentication.proto, served as security.istio.io/v1),
-// pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly
+// pinned to the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly
 // after the Planton namespaced envelope (namespace); there is no
 // nested `request_authentication` sub-message.
 //
@@ -150,8 +150,11 @@ func (x *KubernetesRequestAuthenticationSpec) GetJwtRules() []*KubernetesRequest
 type KubernetesRequestAuthenticationJwtRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The issuer that issued the JWT (the `iss` claim). A JWT with a different issuer
-	// is rejected. Required. Example: `https://foobar.auth0.com`.
-	Issuer string `protobuf:"bytes,1,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	// is rejected. Example: `https://foobar.auth0.com`. May be omitted only when
+	// `jwks_uri` is set (at least one of the two is required — enforced below,
+	// mirroring the istiod webhook's "issuer or jwksUri must be non-empty" rejection);
+	// issuer-less rules validate any issuer against the fixed key set.
+	Issuer *string `protobuf:"bytes,1,opt,name=issuer,proto3,oneof" json:"issuer,omitempty"`
 	// The JWT audiences (`aud` claim) allowed to access. A JWT carrying any of these
 	// audiences is accepted; when empty, the workload's service name is accepted.
 	Audiences []string `protobuf:"bytes,2,rep,name=audiences,proto3" json:"audiences,omitempty"`
@@ -185,9 +188,13 @@ type KubernetesRequestAuthenticationJwtRule struct {
 	// Maximum time the resolver spends fetching the JWKS. A google.protobuf.Duration
 	// string (e.g. "5s", "1500ms", "1m30s"); durations are modeled as strings.
 	// Upstream default is 5s and minimum is 1ms.
-	Timeout       *string `protobuf:"bytes,11,opt,name=timeout,proto3,oneof" json:"timeout,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Timeout *string `protobuf:"bytes,11,opt,name=timeout,proto3,oneof" json:"timeout,omitempty"`
+	// JWT claim names whose string values should be treated as SPACE-DELIMITED lists
+	// (the OAuth2 `scope` claim convention, e.g. "read write admin") when matched by
+	// authorization policies and claim-to-header operations. Upstream allows up to 64.
+	SpaceDelimitedClaims []string `protobuf:"bytes,12,rep,name=space_delimited_claims,json=spaceDelimitedClaims,proto3" json:"space_delimited_claims,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *KubernetesRequestAuthenticationJwtRule) Reset() {
@@ -221,8 +228,8 @@ func (*KubernetesRequestAuthenticationJwtRule) Descriptor() ([]byte, []int) {
 }
 
 func (x *KubernetesRequestAuthenticationJwtRule) GetIssuer() string {
-	if x != nil {
-		return x.Issuer
+	if x != nil && x.Issuer != nil {
+		return *x.Issuer
 	}
 	return ""
 }
@@ -295,6 +302,13 @@ func (x *KubernetesRequestAuthenticationJwtRule) GetTimeout() string {
 		return *x.Timeout
 	}
 	return ""
+}
+
+func (x *KubernetesRequestAuthenticationJwtRule) GetSpaceDelimitedClaims() []string {
+	if x != nil {
+		return x.SpaceDelimitedClaims
+	}
+	return nil
 }
 
 // KubernetesRequestAuthenticationJwtHeader is an HTTP header location to extract a
@@ -419,31 +433,32 @@ const file_dev_planton_provider_kubernetes_kubernetesrequestauthentication_v1_sp
 	"\n" +
 	"Mdev/planton/provider/kubernetes/kubernetesrequestauthentication/v1/spec.proto\x12Bdev.planton.provider.kubernetes.kubernetesrequestauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x9f\x05\n" +
 	"#KubernetesRequestAuthenticationSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
 	"\bselector\x18\x03 \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\bselector\x12s\n" +
 	"\vtarget_refs\x18\x04 \x03(\v2H.dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReferenceB\b\xbaH\x05\x92\x01\x02\x10\x10R\n" +
 	"targetRefs\x12\x92\x01\n" +
 	"\tjwt_rules\x18\x05 \x03(\v2j.dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtRuleB\t\xbaH\x06\x92\x01\x03\x10\x80 R\bjwtRules:\xa0\x01\xbaH\x9c\x01\x1a\x99\x01\n" +
-	"/request_authentication.selector_xor_target_refs\x121at most one of selector or target_refs may be set\x1a3!(has(this.selector) && size(this.target_refs) > 0)\"\xb6\n" +
-	"\n" +
-	"&KubernetesRequestAuthenticationJwtRule\x12\"\n" +
-	"\x06issuer\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06issuer\x12*\n" +
+	"/request_authentication.selector_xor_target_refs\x121at most one of selector or target_refs may be set\x1a3!(has(this.selector) && size(this.target_refs) > 0)\"\xdf\f\n" +
+	"&KubernetesRequestAuthenticationJwtRule\x12$\n" +
+	"\x06issuer\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01H\x00R\x06issuer\x88\x01\x01\x12*\n" +
 	"\taudiences\x18\x02 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\taudiences\x12\xda\x01\n" +
 	"\bjwks_uri\x18\x03 \x01(\tB\xb9\x01\xbaH\xb5\x01\xba\x01\xac\x01\n" +
-	"/request_authentication_jwt_rule.jwks_uri_scheme\x120jwks_uri must use the http:// or https:// scheme\x1aGthis == '' || this.startsWith('http://') || this.startsWith('https://')r\x03\x18\x80\x10H\x00R\ajwksUri\x88\x01\x01\x12\x17\n" +
-	"\x04jwks\x18\x04 \x01(\tH\x01R\x04jwks\x88\x01\x01\x12\x8f\x01\n" +
+	"/request_authentication_jwt_rule.jwks_uri_scheme\x120jwks_uri must use the http:// or https:// scheme\x1aGthis == '' || this.startsWith('http://') || this.startsWith('https://')r\x03\x18\x80\x10H\x01R\ajwksUri\x88\x01\x01\x12\x17\n" +
+	"\x04jwks\x18\x04 \x01(\tH\x02R\x04jwks\x88\x01\x01\x12\x8f\x01\n" +
 	"\ffrom_headers\x18\x05 \x03(\v2l.dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationJwtHeaderR\vfromHeaders\x12-\n" +
 	"\vfrom_params\x18\x06 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\n" +
 	"fromParams\x12/\n" +
 	"\ffrom_cookies\x18\a \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\vfromCookies\x12<\n" +
-	"\x18output_payload_to_header\x18\b \x01(\tH\x02R\x15outputPayloadToHeader\x88\x01\x01\x129\n" +
-	"\x16forward_original_token\x18\t \x01(\bH\x03R\x14forwardOriginalToken\x88\x01\x01\x12\xa7\x01\n" +
+	"\x18output_payload_to_header\x18\b \x01(\tH\x03R\x15outputPayloadToHeader\x88\x01\x01\x129\n" +
+	"\x16forward_original_token\x18\t \x01(\bH\x04R\x14forwardOriginalToken\x88\x01\x01\x12\xa7\x01\n" +
 	"\x17output_claim_to_headers\x18\n" +
 	" \x03(\v2p.dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationClaimToHeaderR\x14outputClaimToHeaders\x12\xc4\x01\n" +
 	"\atimeout\x18\v \x01(\tB\xa4\x01\xbaH\xa0\x01\xba\x01\x9c\x01\n" +
-	"+request_authentication_jwt_rule.timeout_min\x12<timeout must be a valid duration of at least 1ms (e.g. \"5s\")\x1a/this == '' || duration(this) >= duration('1ms')H\x04R\atimeout\x88\x01\x01:\x8f\x01\xbaH\x8b\x01\x1a\x88\x01\n" +
-	"1request_authentication_jwt_rule.jwks_uri_xor_jwks\x12*at most one of jwks_uri or jwks may be set\x1a'!(has(this.jwks_uri) && has(this.jwks))B\v\n" +
+	"+request_authentication_jwt_rule.timeout_min\x12<timeout must be a valid duration of at least 1ms (e.g. \"5s\")\x1a/this == '' || duration(this) >= duration('1ms')H\x05R\atimeout\x88\x01\x01\x12D\n" +
+	"\x16space_delimited_claims\x18\f \x03(\tB\x0e\xbaH\v\x92\x01\b\x10@\"\x04r\x02\x10\x01R\x14spaceDelimitedClaims:\xe5\x02\xbaH\xe1\x02\x1a\x88\x01\n" +
+	"1request_authentication_jwt_rule.jwks_uri_xor_jwks\x12*at most one of jwks_uri or jwks may be set\x1a'!(has(this.jwks_uri) && has(this.jwks))\x1a\xd3\x01\n" +
+	"2request_authentication_jwt_rule.issuer_or_jwks_uri\x12uat least one of issuer or jwks_uri must be set — without either, the verifier has no way to locate the signing keys\x1a&has(this.issuer) || has(this.jwks_uri)B\t\n" +
+	"\a_issuerB\v\n" +
 	"\t_jwks_uriB\a\n" +
 	"\x05_jwksB\x1b\n" +
 	"\x19_output_payload_to_headerB\x19\n" +

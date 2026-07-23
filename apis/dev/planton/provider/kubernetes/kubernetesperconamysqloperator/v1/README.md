@@ -1,123 +1,95 @@
-# Overview
+# Kubernetes Percona MySQL Operator
 
-The **Percona Operator for MySQL Kubernetes API resource** is designed to deploy and manage the Percona Operator for MySQL within Kubernetes environments. This resource provides a consistent interface for deploying the operator that enables the management of MySQL database clusters on Kubernetes.
+## When NOT to Use This
 
-## Why We Created This API Resource
+**This component installs the ENGINE, not a database.** It deploys the
+Percona Operator for MySQL (based on Percona XtraDB Cluster) — the
+controller that reconciles `PerconaXtraDBCluster` custom resources into
+running Galera clusters. To get an actual MySQL database, deploy this
+first, then declare a KubernetesMysql.
 
-Deploying the Percona Operator for MySQL manually in Kubernetes can be complex, requiring specific knowledge of Helm charts, CRD installations, and operator configuration. The Percona Server MySQL Operator API resource simplifies this process by offering a standardized, declarative approach to deploying the operator. This resource allows teams to:
+Also not the right component when:
 
-- **Efficiently Deploy the Operator**: Simplify the process of deploying the Percona Operator for MySQL on Kubernetes by abstracting away the complexities of Helm chart configurations.
-- **Enable MySQL Management**: Once deployed, the operator enables teams to easily deploy and manage MySQL clusters with group replication, asynchronous replication, and high availability using the PerconaServerMySQL CRD.
-- **Ensure Consistency**: Provide a standardized way to deploy the operator across different environments and clusters.
-- **Optimize Resource Management**: Configure operator resource requirements to match your cluster's capacity.
+- **You want a MySQL database** — that is KubernetesMysql; this component
+  is the operator it requires.
+- **You want a managed cloud database** — use the host cloud's managed
+  MySQL kinds; this operator is for running MySQL ON the cluster.
+- **You need a second widened-watch operator on the same cluster** — the
+  operator's CR-validation webhook is a single fixed-name cluster-scoped
+  object, so one cluster carries at most ONE operator with a widened
+  watch scope (own-namespace installs can coexist freely).
 
-## Key Features
+## What It Deploys
 
-### Kubernetes Cluster Integration
+One Helm release of the official `pxc-operator` chart (pinned 1.20.0 —
+chart and operator versions move together), named after `metadata.name`.
+The release renders the operator Deployment, its ServiceAccount, and
+watch-scoped RBAC.
 
-- **Target Cluster Configuration**: This resource integrates seamlessly with Planton's Kubernetes cluster credential management system, ensuring that the operator is deployed to the correct cluster.
-- **Namespace Isolation**: The operator is deployed in a dedicated namespace for clean resource separation.
+### Watch scope decides almost everything
 
-### Namespace Management
+- **Default (no `watch` block):** the operator watches its OWN namespace
+  only, with a namespaced Role. KubernetesMysql databases must be
+  declared in that same namespace.
+- **`watch.cluster_wide: true`:** one operator reconciles databases in
+  every namespace, with a ClusterRole.
+- **`watch.namespaces: [...]`:** an explicit namespace fence (the listed
+  namespaces must already exist).
 
-The component provides flexible namespace management through the `create_namespace` flag:
+The two widened arms are mutually exclusive with each other (validated at
+the spec), and they change the RBAC grain the chart renders — which in
+turn changes the validation-webhook posture below.
 
-#### Automatic Namespace Creation (`create_namespace: true`)
+### CRD lifecycle
 
-When enabled, the component automatically creates the specified namespace before deploying the operator. This is the recommended approach for new deployments.
+The chart ships the `PerconaXtraDBCluster`, `PerconaXtraDBClusterBackup`,
+and `PerconaXtraDBClusterRestore` CRDs in its Helm-native `crds/`
+directory: installed on first install, never upgraded or deleted by Helm.
+Uninstalling the operator therefore NEVER cascade-deletes the database
+clusters — they simply stop being reconciled until an operator returns.
+Operator upgrades via `chart_version` run new operator code against the
+existing CRDs.
 
-**Use cases:**
-- Initial operator installation in a new cluster
-- Development and testing environments
-- Simplified deployment where namespace creation is delegated to the component
+### The validation webhook is module-owned (widened watch)
 
-**Example:**
-```yaml
-spec:
-  namespace:
-    value: percona-mysql-operator
-  create_namespace: true
-```
+With cluster-scoped RBAC, the upstream operator registers ONE fixed-name,
+cluster-scoped `ValidatingWebhookConfiguration`
+(`percona-xtradbcluster-webhook`, failurePolicy Fail) pointing at a
+Service in its own namespace — and nothing upstream ever removes it: the
+object cannot ride the Deployment's ownerReference (Kubernetes never
+garbage-collects a cluster-scoped dependent of a namespaced owner), and
+an operator that finds it already present refreshes only the CA bundle,
+never the service pointer. Left to the operator, uninstalling it strands
+a Fail-closed webhook whose service no longer exists — bricking every
+future `PerconaXtraDBCluster` admission in the cluster.
 
-#### Using Existing Namespace (`create_namespace: false`)
+This module therefore renders the webhook itself in the widened-watch
+arms: created before the operator (whose startup registration then merely
+refreshes the CA bundle), deleted with the resource. Destroying the
+operator leaves the cluster clean. Own-namespace installs render nothing
+— there the chart's namespaced Role denies the registration and the
+webhook never exists, the upstream posture.
 
-When disabled, the component expects the namespace to already exist in the cluster. The operator will be deployed into the existing namespace without attempting to create it.
+## Configuration Surface
 
-**Use cases:**
-- Namespaces managed separately (e.g., by platform team or GitOps)
-- Namespaces with pre-configured policies, quotas, or network policies
-- Multi-component deployments where namespace is shared
-- Environments with strict RBAC where component lacks namespace creation permissions
+Control-plane sizing (`replicas`, `resources`), reconcile concurrency
+(`max_concurrent_reconciles`, `s3_workers_limit`), logging
+(`log.structured`, `log.level`), telemetry opt-out (`disable_telemetry`),
+leader-election timing, the XtraBackup-sidecar feature gate, scheduling
+(`node_selector`, `tolerations`), private-registry images (`image`,
+`image_pull_secrets`), and the `helm_values` escape hatch (merged last,
+Helm `-f` semantics) on top of the typed surface.
 
-**Prerequisites:**
-- Namespace must exist before operator deployment
-- Namespace must be accessible with provided credentials
-- Verify namespace exists: `kubectl get namespace <namespace-name>`
+## Outputs
 
-**Example:**
-```yaml
-spec:
-  namespace:
-    value: percona-mysql-operator
-  create_namespace: false
-```
+| Output | Meaning |
+|---|---|
+| `namespace` | Namespace the operator runs in |
+| `release_name` | Helm release name (`metadata.name`) |
 
-**Important:** If `create_namespace` is set to `false` and the namespace doesn't exist, the deployment will fail.
-
-### Operator Configuration
-
-#### Resource Management
-
-- **Configurable Resources**: Define CPU and memory allocation for the operator pod to ensure optimal performance. The recommended default values are:
-  - **CPU Requests**: `100m`
-  - **Memory Requests**: `256Mi`
-  - **CPU Limits**: `1000m` (1 CPU core)
-  - **Memory Limits**: `1Gi`
-
-#### Automated CRD Installation
-
-- **CRD Management**: The operator automatically installs the required MySQL Custom Resource Definitions (CRDs), including:
-  - `PerconaServerMySQL` - For deploying MySQL clusters with group replication or asynchronous replication
-  - `PerconaServerMySQLBackup` - For managing backups
-  - `PerconaServerMySQLRestore` - For restore operations
-
-#### Cluster-Wide Watching
-
-- **Multi-Namespace Support**: The operator watches all namespaces by default, allowing MySQL clusters to be deployed in any namespace within the cluster.
-
-### Helm Chart Based Deployment
-
-- **Official Percona Chart**: Deploys using the official Percona Helm chart from `https://percona.github.io/percona-helm-charts/`
-- **Version Control**: Uses a specific, tested version of the operator ensuring stability and predictability.
-- **Atomic Deployments**: Helm releases are deployed atomically with automatic rollback on failure.
-
-## Benefits
-
-- **Simplicity**: This resource streamlines operator deployment, making it easier for DevOps teams to set up MySQL management capabilities in Kubernetes.
-- **Foundation for MySQL**: Provides the necessary operator infrastructure that enables deploying actual MySQL clusters using the MySQLKubernetes workload resource.
-- **Production Ready**: Configured with sensible defaults and production-grade deployment patterns including proper timeouts, cleanup on failure, and resource limits.
-- **Consistent Deployment**: Ensures the operator is deployed consistently across all environments using infrastructure-as-code principles.
-
-## Use Cases
-
-The Percona Operator for MySQL is essential for teams that need to:
-
-1. **Deploy MySQL Clusters**: Run relational database workloads with ACID compliance
-2. **Manage MySQL at Scale**: Operate multiple MySQL clusters across different namespaces
-3. **Automate Database Operations**: Leverage the operator for automated cluster management, scaling, backups, and updates
-4. **Run Application Workloads**: Support web applications, microservices, and transactional workloads
-5. **High Availability**: Deploy MySQL with group replication for automatic failover and high availability
-
-## Next Steps
-
-After deploying the Percona Operator, you can:
-
-1. Deploy MySQL clusters using the `MySQLKubernetes` workload resource
-2. Create MySQL databases for your applications
-3. Configure group replication or asynchronous replication clusters
-4. Set up automated backups and monitoring
-5. Monitor operator and cluster health through Kubernetes tools
-
+Databases compose against the CRDs the operator installs — declare a
+[KubernetesMysql](../kubernetesmysql/v1/README.md) with its namespace
+inside the operator's watch scope.
 
 ---
 

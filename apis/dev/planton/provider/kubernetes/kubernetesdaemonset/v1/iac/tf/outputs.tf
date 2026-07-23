@@ -1,20 +1,19 @@
+# Stack outputs — must flatten onto KubernetesDaemonSetStackOutputs
+# (stack_outputs.proto) identically to the Pulumi module's exports.
+# DaemonSets have no Service or ingress, so the composition surface is the
+# object identity and its selector labels.
+
 output "namespace" {
-  description = "The Kubernetes namespace the DaemonSet is deployed in."
+  description = "The namespace the workload was deployed into"
   value       = local.namespace
 }
 
-output "daemonset_name" {
-  description = "The name of the Kubernetes DaemonSet."
+output "daemon_set_name" {
+  description = "The name of the DaemonSet object as created in the cluster"
   value       = var.metadata.name
 }
 
-output "service_account_name" {
-  description = "The name of the ServiceAccount used by the DaemonSet."
-  value       = var.spec.create_service_account ? local.service_account_name : null
+output "selector_labels" {
+  description = "The pod selector labels as a sorted k=v,k=v string — ready for NetworkPolicy podSelectors, kubectl -l, and pod-affinity terms"
+  value       = local.selector_labels_string
 }
-
-output "labels" {
-  description = "The labels applied to the DaemonSet resources."
-  value       = local.final_labels
-}
-

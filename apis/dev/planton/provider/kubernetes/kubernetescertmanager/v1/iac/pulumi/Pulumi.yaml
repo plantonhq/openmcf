@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-cert-manager
+runtime: go
+description: cert-manager installation from the official Helm chart with typed configuration and workload-identity DNS-01

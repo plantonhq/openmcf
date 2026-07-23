@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesconfigmap.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetesconfigmap/v1/spec.proto";
+import "dev/planton/provider/kubernetes/kubernetesconfigmap/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+/**
+ * **KubernetesConfigMap** defines a Kubernetes ConfigMap resource following the Kubernetes
+ * Resource Model (KRM). A ConfigMap carries non-confidential configuration — text entries,
+ * property files, or binary payloads — that pods consume as environment variables or mounted
+ * files. It is the non-secret mirror of KubernetesSecret.
+ */
+message KubernetesConfigMap {
+  // API version for this resource.
+  // Always set to "kubernetes.planton.dev/v1".
+  string api_version = 1 [(buf.validate.field).string.const = "kubernetes.planton.dev/v1"];
+
+  // Resource kind identifier.
+  // Always set to "KubernetesConfigMap".
+  string kind = 2 [(buf.validate.field).string.const = "KubernetesConfigMap"];
+
+  // Metadata for the ConfigMap resource.
+  // Includes standard fields like name, organization, environment, etc.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Specification of the desired state for the ConfigMap.
+  // Defines the target namespace, data entries, and immutability.
+  KubernetesConfigMapSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Status of the ConfigMap resource.
+  // Contains outputs populated after deployment.
+  KubernetesConfigMapStatus status = 5;
+}
+
+/**
+ * **KubernetesConfigMapStatus** captures the runtime status of a ConfigMap deployment,
+ * including the outputs generated after the ConfigMap is created.
+ */
+message KubernetesConfigMapStatus {
+  // Outputs from the ConfigMap deployment.
+  // Contains the ConfigMap name and namespace for downstream composition.
+  KubernetesConfigMapStackOutputs outputs = 1;
+}

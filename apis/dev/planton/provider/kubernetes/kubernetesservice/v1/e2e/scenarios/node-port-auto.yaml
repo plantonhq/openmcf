@@ -3,7 +3,8 @@ kind: KubernetesService
 metadata:
   name: e2e-svc-np-auto
 spec:
-  namespace: default
+  namespace:
+    value: default
   name: e2e-svc-np-auto
   type: node_port
   selector:

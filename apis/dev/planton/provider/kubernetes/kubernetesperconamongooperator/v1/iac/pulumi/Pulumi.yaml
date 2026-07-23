@@ -1,7 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
-
+name: kubernetes-percona-mongo-operator
+runtime: go
+description: Percona Operator for MongoDB installation from the official psmdb-operator Helm chart — reconciles PerconaServerMongoDB resources into replica sets and sharded clusters with automated failover and Percona Backup for MongoDB

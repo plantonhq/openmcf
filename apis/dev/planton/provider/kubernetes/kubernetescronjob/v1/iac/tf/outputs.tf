@@ -1,24 +1,17 @@
+# Stack outputs — must flatten onto KubernetesCronJobStackOutputs
+# (stack_outputs.proto) identically to the Pulumi module's exports.
+
 output "namespace" {
-  description = "The Kubernetes namespace where the CronJob is deployed"
+  description = "The namespace the CronJob was created in"
   value       = local.namespace
 }
 
-output "cronjob_name" {
-  description = "The name of the CronJob resource"
-  value       = kubernetes_cron_job_v1.this.metadata[0].name
-}
-
-output "service_account_name" {
-  description = "The service account used by the CronJob"
-  value       = kubernetes_service_account.this.metadata[0].name
-}
-
-output "resource_id" {
-  description = "The unique resource ID for this CronJob"
-  value       = local.resource_id
+output "cron_job_name" {
+  description = "The name of the CronJob object as created in the cluster"
+  value       = var.metadata.name
 }
 
 output "schedule" {
-  description = "The cron schedule for the CronJob"
+  description = "The effective cron expression the CronJob runs on — the deployed truth for dependents and audits"
   value       = var.spec.schedule
 }

@@ -30,7 +30,7 @@ const (
 // (except cross-namespace Gateway-route attachment) require a ReferenceGrant in
 // the referenced (the "to") namespace.
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 ReferenceGrantSpec
+// 100% fidelity with the upstream Gateway API v1.6.1 ReferenceGrantSpec
 // (kubernetes-sigs/gateway-api apis/v1/referencegrant_types.go), standard channel,
 // served as gateway.networking.k8s.io/v1. Upstream spec fields are flattened after
 // the Planton namespaced envelope (namespace).
@@ -127,7 +127,7 @@ type KubernetesReferenceGrantFrom struct {
 	// unset proto3 scalars, so a non-optional empty-string group would be dropped
 	// and rejected by the API server. Pattern: empty or an RFC 1123 subdomain (253).
 	//
-	// INFRA-CHART COMPOSABILITY (DD-009): group is a trust assertion about a KIND of
+	// INFRA-CHART COMPOSABILITY: group is a trust assertion about a KIND of
 	// resource, not a pointer to a specific Planton resource instance -- do NOT add a
 	// metadata.relationships hint for it.
 	Group *string `protobuf:"bytes,1,opt,name=group,proto3,oneof" json:"group,omitempty"`
@@ -136,19 +136,19 @@ type KubernetesReferenceGrantFrom struct {
 	// TLSRoute / UDPRoute (when permitting a BackendObjectReference). Pattern: 1-63
 	// chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$.
 	//
-	// INFRA-CHART COMPOSABILITY (DD-009): kind is a trust assertion about a KIND, not
+	// INFRA-CHART COMPOSABILITY: kind is a trust assertion about a KIND, not
 	// an instance pointer -- no metadata.relationships hint applies.
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
 	// Namespace of the referent: the source namespace trusted to reference into this
 	// grant's namespace. Required. Pattern: an RFC 1123 label (1-63 chars).
 	//
-	// INFRA-CHART COMPOSABILITY (DD-009): this is the one genuine cross-resource
+	// INFRA-CHART COMPOSABILITY: this is the one genuine cross-resource
 	// reference in from/to -- it names another KubernetesNamespace. It stays a PLAIN
-	// string (not a StringValueOrRef foreign key) because it is a field inside an
-	// array of multi-field upstream objects; wrapping it would break 100% fidelity
-	// (DD-001) and distort the typed CRD shape (dont-do #6). Because a plain string
-	// creates NO automatic DAG edge, when the source namespace is Planton-managed an
-	// infra-chart author should express the edge via metadata.relationships, e.g.:
+	// string (not a StringValueOrRef foreign key): the grant trusts a namespace by
+	// its literal name (the trust boundary), it does not consume another resource's
+	// output. Because a plain string creates NO automatic DAG edge, when the source
+	// namespace is Planton-managed an infra-chart author should express the edge
+	// via metadata.relationships, e.g.:
 	//
 	//	metadata:
 	//	  relationships:
@@ -223,14 +223,14 @@ type KubernetesReferenceGrantTo struct {
 	// SET (so protojson emits it and the CRD accepts the resource) but may be empty.
 	// Pattern: empty or an RFC 1123 subdomain (max 253).
 	//
-	// INFRA-CHART COMPOSABILITY (DD-009): a trust assertion about a KIND, not an
+	// INFRA-CHART COMPOSABILITY: a trust assertion about a KIND, not an
 	// instance pointer -- no metadata.relationships hint applies.
 	Group *string `protobuf:"bytes,1,opt,name=group,proto3,oneof" json:"group,omitempty"`
 	// Kind of the referent. Required. Core-supported target kinds: Secret (when
 	// permitting a SecretObjectReference) and Service (when permitting a
 	// BackendObjectReference). Pattern: 1-63 chars.
 	//
-	// INFRA-CHART COMPOSABILITY (DD-009): a trust assertion about a KIND, not an
+	// INFRA-CHART COMPOSABILITY: a trust assertion about a KIND, not an
 	// instance pointer -- no metadata.relationships hint applies.
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
 	// Name of the referent. When unspecified, the grant refers to ALL resources of
@@ -239,7 +239,7 @@ type KubernetesReferenceGrantTo struct {
 	// "all resources" -- is distinct from any concrete name). Upstream ObjectName
 	// has a length bound only (1-253) and no character pattern, so none is invented.
 	//
-	// INFRA-CHART COMPOSABILITY (DD-009): even when set, this is an in-namespace
+	// INFRA-CHART COMPOSABILITY: even when set, this is an in-namespace
 	// filter on the trust grant, not a deploy-ordered Planton foreign key -- no
 	// metadata.relationships hint applies.
 	Name          *string `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
@@ -304,7 +304,7 @@ const file_dev_planton_provider_kubernetes_kubernetesreferencegrant_v1_spec_prot
 	"\n" +
 	"Fdev/planton/provider/kubernetes/kubernetesreferencegrant/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetesreferencegrant.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xfa\x02\n" +
 	"\x1cKubernetesReferenceGrantSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12y\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12y\n" +
 	"\x04from\x18\x03 \x03(\v2Y.dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantFromB\n" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x04from\x12s\n" +
 	"\x02to\x18\x04 \x03(\v2W.dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantToB\n" +

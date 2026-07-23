@@ -15,7 +15,7 @@ import "dev/planton/shared/options/options.proto";
 //
 // 100% fidelity with the upstream istio.io/api DestinationRule
 // (networking/v1alpha3/destination_rule.proto, served as networking.istio.io/v1), pinned
-// to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
+// to the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly after the
 // Planton namespaced envelope (namespace); there is no nested
 // `destination_rule` sub-message.
 //
@@ -45,18 +45,18 @@ message KubernetesDestinationRuleSpec {
   // Required. Prefer a fully-qualified name (e.g. `reviews.prod.svc.cluster.local`) over a
   // short name, which istiod resolves relative to this rule's namespace.
   //
-  // INFRA-CHART COMPOSABILITY: host is a PLAIN string reference resolved by istiod
-  // against the service registry at runtime, NOT an Planton foreign key (StringValueOrRef).
-  // It creates NO automatic DAG edge to the target KubernetesService / KubernetesServiceEntry.
-  // To order this DestinationRule after the service it configures in an infra chart, an
-  // author MUST express the dependency via metadata.relationships, e.g.:
-  //   metadata:
-  //     relationships:
-  //       - kind: KubernetesService
-  //         name: "{{ values.service }}"
-  //         type: depends_on
-  // See the component's "Composing in Infra Charts" docs for the full pattern.
-  string host = 3 [(buf.validate.field).required = true];
+  // INFRA-CHART COMPOSABILITY: host is a foreign key defaulting to a KubernetesService
+  // reference that resolves to the Service's in-cluster FQDN
+  // (`<name>.<namespace>.svc.cluster.local`) — wiring it with valueFrom orders this
+  // DestinationRule after the Service whose traffic it shapes and can never drift from
+  // the Service's actual name. For hosts that are not Planton-managed Services (a
+  // ServiceEntry host, an external FQDN, a wildcard), pass the literal host with
+  // `value:` — istiod resolves it against the service registry at runtime either way.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.kube_endpoint"
+  ];
 
   // Traffic policies (load balancing, connection pool sizes, outlier detection, TLS) applied
   // to traffic destined for the host, across all ports unless overridden per port.
@@ -121,6 +121,28 @@ message KubernetesDestinationRuleTrafficPolicy {
 
   // Upstream PROXY protocol settings.
   KubernetesDestinationRuleProxyProtocol proxy_protocol = 7;
+
+  // Limits concurrent retries in relation to the number of active requests — a
+  // relative alternative to a fixed retry cap: under low load few retries are
+  // allowed, under high load proportionally more, without a thundering-herd
+  // amplification. Applies at the destination and subset levels (upstream places it
+  // on TrafficPolicy, not on port-level settings).
+  KubernetesDestinationRuleRetryBudget retry_budget = 8;
+}
+
+// KubernetesDestinationRuleRetryBudget bounds concurrent retries as a share of active
+// traffic. Faithful to upstream TrafficPolicy.RetryBudget.
+message KubernetesDestinationRuleRetryBudget {
+  // Limit on concurrent retries as a percentage of the sum of active requests and
+  // active pending requests (0-100). Upstream default: 20.
+  optional double percent = 1 [(buf.validate.field).double = {
+    gte: 0
+    lte: 100
+  }];
+
+  // Minimum number of concurrent retries allowed regardless of `percent` — keeps
+  // retries possible when active-request counts are near zero. Upstream default: 3.
+  optional uint32 min_retry_concurrency = 2;
 }
 
 // KubernetesDestinationRulePortTrafficPolicy applies traffic settings to one specific port
@@ -260,6 +282,20 @@ message KubernetesDestinationRuleHttpCookie {
     message: "ttl must be a valid, non-negative duration (e.g. \"0s\", \"1h\")"
     expression: "this == '' || duration(this) >= duration('0s')"
   }];
+
+  // Additional attributes set on the generated cookie (e.g. SameSite=Strict, Secure).
+  // Each attribute has a required name and an optional value.
+  repeated KubernetesDestinationRuleHttpCookieAttribute attributes = 4;
+}
+
+// KubernetesDestinationRuleHttpCookieAttribute is one attribute on a generated
+// consistent-hash cookie. Faithful to upstream ConsistentHashLB.HTTPCookie's attributes.
+message KubernetesDestinationRuleHttpCookieAttribute {
+  // The name of the cookie attribute. Required.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The optional value of the cookie attribute (an attribute like `Secure` carries none).
+  optional string value = 2;
 }
 
 // KubernetesDestinationRuleRingHash configures the ring-hash algorithm.

@@ -87,6 +87,45 @@ var _ = ginkgo.Describe("KubernetesNamespaceSpec validations", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
+		ginkgo.It("accepts custom quotas with additional hard limits", func() {
+			spec := &KubernetesNamespaceSpec{
+				Name: "gpu-namespace",
+				ResourceProfile: &KubernetesNamespaceResourceProfile{
+					ProfileConfig: &KubernetesNamespaceResourceProfile_Custom{
+						Custom: &KubernetesNamespaceCustomQuotas{
+							Cpu: &KubernetesNamespaceCpuQuota{
+								Requests: "4",
+								Limits:   "8",
+							},
+							AdditionalHardLimits: map[string]string{
+								"requests.nvidia.com/gpu": "4",
+								"count/jobs.batch":        "30",
+							},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts custom quotas with only additional hard limits (no cpu or memory)", func() {
+			spec := &KubernetesNamespaceSpec{
+				Name: "extended-quota-namespace",
+				ResourceProfile: &KubernetesNamespaceResourceProfile{
+					ProfileConfig: &KubernetesNamespaceResourceProfile_Custom{
+						Custom: &KubernetesNamespaceCustomQuotas{
+							AdditionalHardLimits: map[string]string{
+								"requests.storage": "500Gi",
+							},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
 		ginkgo.It("accepts a spec with network isolation enabled", func() {
 			spec := &KubernetesNamespaceSpec{
 				Name: "secure-namespace",
@@ -325,6 +364,40 @@ var _ = ginkgo.Describe("KubernetesNamespaceSpec validations", func() {
 								DefaultCpuLimit:      "500m",
 								DefaultMemoryRequest: "128Mi",
 								DefaultMemoryLimit:   "512Mi",
+							},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an additional hard limit with an empty key", func() {
+			spec := &KubernetesNamespaceSpec{
+				Name: "custom-namespace",
+				ResourceProfile: &KubernetesNamespaceResourceProfile{
+					ProfileConfig: &KubernetesNamespaceResourceProfile_Custom{
+						Custom: &KubernetesNamespaceCustomQuotas{
+							AdditionalHardLimits: map[string]string{
+								"": "4",
+							},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an additional hard limit with an empty value", func() {
+			spec := &KubernetesNamespaceSpec{
+				Name: "custom-namespace",
+				ResourceProfile: &KubernetesNamespaceResourceProfile{
+					ProfileConfig: &KubernetesNamespaceResourceProfile_Custom{
+						Custom: &KubernetesNamespaceCustomQuotas{
+							AdditionalHardLimits: map[string]string{
+								"requests.nvidia.com/gpu": "",
 							},
 						},
 					},

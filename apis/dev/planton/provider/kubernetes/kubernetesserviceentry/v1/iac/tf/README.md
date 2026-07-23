@@ -1,6 +1,6 @@
 # KubernetesServiceEntry Terraform Module
 
-Creates a namespaced Istio `ServiceEntry` via the `kubernetes_manifest` resource. The
+Creates a namespaced Istio `ServiceEntry` via the `kubectl_manifest` resource. The
 Istio CRDs must already be installed on the target cluster (see
 `KubernetesIstioBaseCrds`), a running istiod is required to program the registry (see
 `KubernetesIstio`), and the target namespace must exist (see `KubernetesNamespace`).
@@ -22,12 +22,13 @@ terraform apply -var-file=terraform.tfvars.json
 
 ## Inputs
 
-See `variables.tf` for the full variable specification. `namespace` is a plain string:
-the platform resolves its `StringValueOrRef` foreign key to a literal before Terraform
-runs. `hosts` is required; `addresses`, `ports`, `location`, `resolution`,
-`endpoints`, `export_to`, `subject_alt_names`, and `workload_selector` are optional and
-null-pruned, so unset fields are omitted from the manifest and upstream defaults flow
-through. `endpoints` and `workload_selector` are mutually exclusive.
+See `variables.tf` for the variable specification. `variable "spec"` is typed `any` and
+passed through verbatim: the platform's proto-to-tfvars converter emits the
+manifest-shaped (camelCase, null-pruned) spec with the `namespace` `StringValueOrRef`
+foreign key resolved to a literal before Terraform runs, so unset fields are omitted
+from the manifest and upstream defaults flow through. `locals.tf` only strips the
+Planton `namespace` key (which maps to `metadata.namespace`) and renders the identity
+labels.
 
 ## Outputs
 

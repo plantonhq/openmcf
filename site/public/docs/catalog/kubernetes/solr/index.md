@@ -272,4 +272,4 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace via `valueFrom` reference
 - [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — application deployments that consume Solr as a search backend
-- [KubernetesRedis](/docs/catalog/kubernetes/redis) — complementary caching layer often paired with Solr for search applications
+- [KubernetesValkey](/docs/catalog/kubernetes/valkey) — complementary Redis-compatible caching layer often paired with Solr for search applications

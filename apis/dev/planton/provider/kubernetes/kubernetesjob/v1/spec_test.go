@@ -6,386 +6,415 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	"google.golang.org/protobuf/proto"
 )
 
-func TestKubernetesJob(t *testing.T) {
-	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "KubernetesJob Suite")
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
 }
 
-var _ = ginkgo.Describe("KubernetesJob Custom Validation Tests", func() {
-	var input *KubernetesJob
+func validContainer() *kubernetes.WorkloadContainer {
+	return &kubernetes.WorkloadContainer{
+		Image: &kubernetes.ContainerImage{
+			Repo: "ghcr.io/acme/migrator",
+			Tag:  "v3.0.1",
+		},
+	}
+}
 
-	ginkgo.BeforeEach(func() {
-		input = &KubernetesJob{
-			ApiVersion: "kubernetes.planton.dev/v1",
-			Kind:       "KubernetesJob",
-			Metadata: &shared.CloudResourceMetadata{
-				Name: "my-batch-job",
-			},
-			Spec: &KubernetesJobSpec{
-				Namespace: &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-						Value: "test-namespace",
-					},
-				},
+func validSpec() *KubernetesJobSpec {
+	return &KubernetesJobSpec{
+		Namespace: literal("batch"),
+		Container: &KubernetesJobContainer{
+			App: validContainer(),
+		},
+	}
+}
+
+func TestKubernetesJobSpec(t *testing.T) {
+	gomega.RegisterFailHandler(ginkgo.Fail)
+	ginkgo.RunSpecs(t, "KubernetesJobSpec Validation Suite")
+}
+
+var _ = ginkgo.Describe("KubernetesJobSpec validations", func() {
+
+	ginkgo.Context("When valid specs are provided", func() {
+
+		ginkgo.It("accepts a minimal spec with namespace and app container", func() {
+			err := protovalidate.Validate(validSpec())
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a full-featured indexed batch job with policies, sidecars, and scheduling", func() {
+			app := validContainer()
+			app.Name = "worker"
+			spec := &KubernetesJobSpec{
+				Namespace:       literal("batch"),
 				CreateNamespace: true,
-				Image: &kubernetes.ContainerImage{
-					Repo: "busybox",
-					Tag:  "latest",
-				},
-				Resources: &kubernetes.ContainerResources{
-					Limits: &kubernetes.CpuMemory{
-						Cpu:    "1000m",
-						Memory: "1Gi",
-					},
-					Requests: &kubernetes.CpuMemory{
-						Cpu:    "50m",
-						Memory: "100Mi",
-					},
-				},
-				Env: &kubernetes.ContainerEnv{
-					Variables: []*kubernetes.EnvVar{
+				Container: &KubernetesJobContainer{
+					App: app,
+					Sidecars: []*kubernetes.WorkloadContainer{
 						{
-							Name:   "BATCH_SIZE",
-							Source: &kubernetes.EnvVar_Value{Value: "1000"},
-						},
-					},
-					Secrets: []*kubernetes.SecretEnvVar{
-						{
-							Name:   "API_KEY",
-							Source: &kubernetes.SecretEnvVar_Value{Value: "secret_value"},
+							Name: "log-shipper",
+							Image: &kubernetes.ContainerImage{
+								Repo: "ghcr.io/acme/fluent-bit",
+								Tag:  "2.2.0",
+							},
 						},
 					},
 				},
-				CompletionMode: proto.String("NonIndexed"),
-				RestartPolicy:  proto.String("Never"),
-			},
-		}
-	})
-
-	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("kubernetes_job with create_namespace=true", func() {
-			ginkgo.It("should not return a validation error", func() {
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("kubernetes_job with create_namespace=false", func() {
-			ginkgo.It("should not return a validation error", func() {
-				input.Spec.CreateNamespace = false
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("kubernetes_job with restart_policy=OnFailure", func() {
-			ginkgo.It("should not return a validation error", func() {
-				input.Spec.RestartPolicy = proto.String("OnFailure")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("kubernetes_job with completion_mode=Indexed", func() {
-			ginkgo.It("should not return a validation error", func() {
-				input.Spec.CompletionMode = proto.String("Indexed")
-				input.Spec.Completions = proto.Uint32(5)
-				input.Spec.Parallelism = proto.Uint32(3)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("kubernetes_job with parallel execution", func() {
-			ginkgo.It("should not return a validation error", func() {
-				input.Spec.Parallelism = proto.Uint32(10)
-				input.Spec.Completions = proto.Uint32(100)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("kubernetes_job with active_deadline_seconds", func() {
-			ginkgo.It("should not return a validation error", func() {
-				input.Spec.ActiveDeadlineSeconds = proto.Uint64(3600)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("kubernetes_job with ttl_seconds_after_finished", func() {
-			ginkgo.It("should not return a validation error", func() {
-				input.Spec.TtlSecondsAfterFinished = proto.Uint32(86400)
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-	})
-
-	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("kubernetes_job with invalid restart_policy", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.RestartPolicy = proto.String("Always")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("kubernetes_job with invalid completion_mode", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.CompletionMode = proto.String("Invalid")
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-		})
-	})
-
-	ginkgo.Describe("Environment secrets validation", func() {
-		ginkgo.Context("When secrets have direct string values", func() {
-			ginkgo.It("should pass validation", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Secrets: []*kubernetes.SecretEnvVar{
-						{
-							Name:   "DATABASE_PASSWORD",
-							Source: &kubernetes.SecretEnvVar_Value{Value: "my-password"},
-						},
+				Pod: &kubernetes.WorkloadPod{
+					ServiceAccount: literal("batch-identity"),
+					Scheduling: &kubernetes.WorkloadScheduling{
+						NodeSelector: map[string]string{"workload-tier": "batch"},
 					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("When secrets have Kubernetes Secret references", func() {
-			ginkgo.It("should pass validation with valid secret ref", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Secrets: []*kubernetes.SecretEnvVar{
+				},
+				Parallelism:             proto.Int32(4),
+				Completions:             proto.Int32(8),
+				CompletionMode:          proto.String("Indexed"),
+				BackoffLimit:            proto.Int32(3),
+				BackoffLimitPerIndex:    proto.Uint32(2),
+				MaxFailedIndexes:        proto.Uint32(1),
+				ActiveDeadlineSeconds:   proto.Int64(3600),
+				TtlSecondsAfterFinished: proto.Int32(86400),
+				RestartPolicy:           proto.String("Never"),
+				PodFailurePolicy: &KubernetesJobPodFailurePolicy{
+					Rules: []*KubernetesJobPodFailurePolicyRule{
 						{
-							Name: "DATABASE_PASSWORD",
-							Source: &kubernetes.SecretEnvVar_SecretRef{
-								SecretRef: &kubernetes.KubernetesSecretKeyRef{
-									Name: "my-app-secrets",
-									Key:  "db-password",
-								},
+							Action: "FailJob",
+							OnExitCodes: &KubernetesJobPodFailurePolicyOnExitCodes{
+								ContainerName: "worker",
+								Operator:      "In",
+								Values:        []int32{42},
+							},
+						},
+						{
+							Action: "Ignore",
+							OnPodConditions: []*KubernetesJobPodFailurePolicyOnPodCondition{
+								{Type: "DisruptionTarget", Status: proto.String("True")},
 							},
 						},
 					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+				},
+				SuccessPolicy: &KubernetesJobSuccessPolicy{
+					Rules: []*KubernetesJobSuccessPolicyRule{
+						{
+							SucceededIndexes: "0-2,4",
+							SucceededCount:   proto.Int32(3),
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("When secrets have mixed types", func() {
-			ginkgo.It("should pass validation with both string values and secret refs", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Secrets: []*kubernetes.SecretEnvVar{
-						{
-							Name:   "DEBUG_TOKEN",
-							Source: &kubernetes.SecretEnvVar_Value{Value: "debug-only-token"},
-						},
-						{
-							Name: "DATABASE_PASSWORD",
-							Source: &kubernetes.SecretEnvVar_SecretRef{
-								SecretRef: &kubernetes.KubernetesSecretKeyRef{
-									Name: "postgres-credentials",
-									Key:  "password",
-								},
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("accepts the OnFailure restart policy", func() {
+			spec := validSpec()
+			spec.RestartPolicy = proto.String("OnFailure")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("When secret ref is missing required fields", func() {
-			ginkgo.It("should fail validation when name is missing", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Secrets: []*kubernetes.SecretEnvVar{
-						{
-							Name: "DATABASE_PASSWORD",
-							Source: &kubernetes.SecretEnvVar_SecretRef{
-								SecretRef: &kubernetes.KubernetesSecretKeyRef{
-									Name: "",
-									Key:  "password",
-								},
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("accepts the NonIndexed completion mode", func() {
+			spec := validSpec()
+			spec.CompletionMode = proto.String("NonIndexed")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 
-			ginkgo.It("should fail validation when key is missing", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Secrets: []*kubernetes.SecretEnvVar{
-						{
-							Name: "DATABASE_PASSWORD",
-							Source: &kubernetes.SecretEnvVar_SecretRef{
-								SecretRef: &kubernetes.KubernetesSecretKeyRef{
-									Name: "my-secret",
-									Key:  "",
-								},
-							},
+		ginkgo.It("accepts a pod failure policy rule with the NotIn exit-code operator", func() {
+			spec := validSpec()
+			spec.PodFailurePolicy = &KubernetesJobPodFailurePolicy{
+				Rules: []*KubernetesJobPodFailurePolicyRule{
+					{
+						Action: "Count",
+						OnExitCodes: &KubernetesJobPodFailurePolicyOnExitCodes{
+							Operator: "NotIn",
+							Values:   []int32{143},
 						},
 					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a success policy rule with only a succeeded count", func() {
+			spec := validSpec()
+			spec.SuccessPolicy = &KubernetesJobSuccessPolicy{
+				Rules: []*KubernetesJobSuccessPolicyRule{
+					{SucceededCount: proto.Int32(1)},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a success policy rule with only a single succeeded index", func() {
+			spec := validSpec()
+			spec.SuccessPolicy = &KubernetesJobSuccessPolicy{
+				Rules: []*KubernetesJobSuccessPolicyRule{
+					{SucceededIndexes: "0"},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a suspended job", func() {
+			spec := validSpec()
+			spec.Suspend = true
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 	})
 
-	ginkgo.Describe("Environment variables validation", func() {
-		ginkgo.Context("When variables have direct string values", func() {
-			ginkgo.It("should pass validation", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Variables: []*kubernetes.EnvVar{
-						{
-							Name:   "INPUT_FILE",
-							Source: &kubernetes.EnvVar_Value{Value: "/data/input.csv"},
-						},
-						{
-							Name:   "OUTPUT_FILE",
-							Source: &kubernetes.EnvVar_Value{Value: "/data/output.csv"},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+	ginkgo.Context("When invalid specs are provided", func() {
+
+		ginkgo.It("rejects a spec without a namespace", func() {
+			spec := validSpec()
+			spec.Namespace = nil
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.Context("When variables have valueFrom references", func() {
-			ginkgo.It("should pass validation with valid valueFrom ref", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Variables: []*kubernetes.EnvVar{
-						{
-							Name: "DATABASE_HOST",
-							Source: &kubernetes.EnvVar_ValueFrom{
-								ValueFrom: &foreignkeyv1.ValueFromRef{
-									Name: "my-postgres",
-								},
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("rejects a spec without a container", func() {
+			spec := validSpec()
+			spec.Container = nil
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.Context("When variables have mixed types", func() {
-			ginkgo.It("should pass validation with both direct values and valueFrom refs", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Variables: []*kubernetes.EnvVar{
-						{
-							Name:   "BATCH_SIZE",
-							Source: &kubernetes.EnvVar_Value{Value: "1000"},
-						},
-						{
-							Name: "DATABASE_HOST",
-							Source: &kubernetes.EnvVar_ValueFrom{
-								ValueFrom: &foreignkeyv1.ValueFromRef{
-									Name: "my-postgres",
-								},
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("rejects a container group without an app container", func() {
+			spec := validSpec()
+			spec.Container = &KubernetesJobContainer{}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.Context("When valueFrom ref is missing required name", func() {
-			ginkgo.It("should fail validation", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Variables: []*kubernetes.EnvVar{
-						{
-							Name: "DATABASE_HOST",
-							Source: &kubernetes.EnvVar_ValueFrom{
-								ValueFrom: &foreignkeyv1.ValueFromRef{
-									Name: "",
-								},
-							},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-		})
-	})
-
-	ginkgo.Describe("Environment variable name validation", func() {
-		ginkgo.Context("When env var name starts with a digit", func() {
-			ginkgo.It("should fail validation", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Variables: []*kubernetes.EnvVar{
-						{
-							Name:   "1BAD_NAME",
-							Source: &kubernetes.EnvVar_Value{Value: "value"},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an app image without a repo", func() {
+			spec := validSpec()
+			spec.Container.App.Image = &kubernetes.ContainerImage{Tag: "v3.0.1"}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.Context("When env var name contains a hyphen", func() {
-			ginkgo.It("should fail validation", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Variables: []*kubernetes.EnvVar{
-						{
-							Name:   "BAD-NAME",
-							Source: &kubernetes.EnvVar_Value{Value: "value"},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an unnamed sidecar", func() {
+			spec := validSpec()
+			spec.Container.Sidecars = []*kubernetes.WorkloadContainer{
+				{
+					Image: &kubernetes.ContainerImage{Repo: "busybox", Tag: "1.36"},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.Context("When secret env var name starts with a digit", func() {
-			ginkgo.It("should fail validation", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Secrets: []*kubernetes.SecretEnvVar{
-						{
-							Name:   "2BAD_SECRET",
-							Source: &kubernetes.SecretEnvVar_Value{Value: "secret"},
-						},
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects an unknown completion mode", func() {
+			spec := validSpec()
+			spec.CompletionMode = proto.String("Partitioned")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.Context("When secret env var name contains a hyphen", func() {
-			ginkgo.It("should fail validation", func() {
-				input.Spec.Env = &kubernetes.ContainerEnv{
-					Secrets: []*kubernetes.SecretEnvVar{
-						{
-							Name:   "BAD-SECRET",
-							Source: &kubernetes.SecretEnvVar_Value{Value: "secret"},
+		ginkgo.It("rejects the Always restart policy", func() {
+			spec := validSpec()
+			spec.RestartPolicy = proto.String("Always")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a negative parallelism", func() {
+			spec := validSpec()
+			spec.Parallelism = proto.Int32(-1)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a negative backoff limit", func() {
+			spec := validSpec()
+			spec.BackoffLimit = proto.Int32(-1)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an active deadline below 1 second", func() {
+			spec := validSpec()
+			spec.ActiveDeadlineSeconds = proto.Int64(0)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a negative ttl_seconds_after_finished", func() {
+			spec := validSpec()
+			spec.TtlSecondsAfterFinished = proto.Int32(-1)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a pod failure policy with no rules", func() {
+			spec := validSpec()
+			spec.PodFailurePolicy = &KubernetesJobPodFailurePolicy{}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a pod failure policy rule with an unknown action", func() {
+			spec := validSpec()
+			spec.PodFailurePolicy = &KubernetesJobPodFailurePolicy{
+				Rules: []*KubernetesJobPodFailurePolicyRule{
+					{
+						Action: "Retry",
+						OnExitCodes: &KubernetesJobPodFailurePolicyOnExitCodes{
+							Operator: "In",
+							Values:   []int32{42},
 						},
 					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a pod failure policy rule with no trigger", func() {
+			spec := validSpec()
+			spec.PodFailurePolicy = &KubernetesJobPodFailurePolicy{
+				Rules: []*KubernetesJobPodFailurePolicyRule{
+					{Action: "FailJob"},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a pod failure policy rule with both triggers set", func() {
+			spec := validSpec()
+			spec.PodFailurePolicy = &KubernetesJobPodFailurePolicy{
+				Rules: []*KubernetesJobPodFailurePolicyRule{
+					{
+						Action: "FailJob",
+						OnExitCodes: &KubernetesJobPodFailurePolicyOnExitCodes{
+							Operator: "In",
+							Values:   []int32{42},
+						},
+						OnPodConditions: []*KubernetesJobPodFailurePolicyOnPodCondition{
+							{Type: "DisruptionTarget"},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an on_exit_codes trigger with an unknown operator", func() {
+			spec := validSpec()
+			spec.PodFailurePolicy = &KubernetesJobPodFailurePolicy{
+				Rules: []*KubernetesJobPodFailurePolicyRule{
+					{
+						Action: "FailJob",
+						OnExitCodes: &KubernetesJobPodFailurePolicyOnExitCodes{
+							Operator: "Equals",
+							Values:   []int32{42},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an on_exit_codes trigger with no values", func() {
+			spec := validSpec()
+			spec.PodFailurePolicy = &KubernetesJobPodFailurePolicy{
+				Rules: []*KubernetesJobPodFailurePolicyRule{
+					{
+						Action: "FailJob",
+						OnExitCodes: &KubernetesJobPodFailurePolicyOnExitCodes{
+							Operator: "In",
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an on_pod_conditions pattern with an unknown status", func() {
+			spec := validSpec()
+			spec.PodFailurePolicy = &KubernetesJobPodFailurePolicy{
+				Rules: []*KubernetesJobPodFailurePolicyRule{
+					{
+						Action: "Ignore",
+						OnPodConditions: []*KubernetesJobPodFailurePolicyOnPodCondition{
+							{Type: "DisruptionTarget", Status: proto.String("Maybe")},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an on_pod_conditions pattern without a type", func() {
+			spec := validSpec()
+			spec.PodFailurePolicy = &KubernetesJobPodFailurePolicy{
+				Rules: []*KubernetesJobPodFailurePolicyRule{
+					{
+						Action: "Ignore",
+						OnPodConditions: []*KubernetesJobPodFailurePolicyOnPodCondition{
+							{Status: proto.String("True")},
+						},
+					},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a success policy with no rules", func() {
+			spec := validSpec()
+			spec.SuccessPolicy = &KubernetesJobSuccessPolicy{}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a success policy rule with neither criterion", func() {
+			spec := validSpec()
+			spec.SuccessPolicy = &KubernetesJobSuccessPolicy{
+				Rules: []*KubernetesJobSuccessPolicyRule{
+					{},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects malformed succeeded_indexes", func() {
+			spec := validSpec()
+			spec.SuccessPolicy = &KubernetesJobSuccessPolicy{
+				Rules: []*KubernetesJobSuccessPolicyRule{
+					{SucceededIndexes: "0-2,"},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a succeeded count below 1", func() {
+			spec := validSpec()
+			spec.SuccessPolicy = &KubernetesJobSuccessPolicy{
+				Rules: []*KubernetesJobSuccessPolicyRule{
+					{SucceededCount: proto.Int32(0)},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 	})
 })

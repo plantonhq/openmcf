@@ -1,293 +1,242 @@
-# Helm Release Deployment: From Imperative Commands to Production-Grade Automation
+# Kubernetes Helm Release: Research Documentation
 
 ## Introduction
 
-"Just run `helm install` and you're done" might work for a developer's local cluster, but it's a recipe for disaster in production. The story of Helm deployment methods is the story of learning—often painfully—that managing application state in Kubernetes requires more than a powerful CLI. It requires continuous reconciliation, automated drift correction, and a single source of truth.
+Start with the boundary, because it defines the component: **if the catalog has a first-class component for what you are deploying, use it — not this.** Typed components validate their configuration before anything reaches a cluster, export composable outputs, and teach their trade-offs field by field. A generic chart install does none of that: the chart's own values surface is the configuration contract, and Kubernetes learns about a bad value only when the chart's rendered resources misbehave.
 
-This document explores how the industry evolved from manual `helm` commands to the modern GitOps controllers that power production Kubernetes platforms today. Understanding this progression isn't just historical curiosity—it directly informs why Planton's HelmRelease API is designed the way it is, and what trade-offs we deliberately chose.
+**KubernetesHelmRelease** is the catalog's sole intentional passthrough. It exists for exactly one situation: the chart you need has no catalog component. In that situation, it installs the upstream chart as a *real* Helm release — not a client-side render of the chart's templates. The distinction matters and is the component's central design decision, so the rest of this document keeps returning to it.
 
-## The Evolution of Helm Deployment Methods
+Three structural facts define the component:
 
-### Level 0: The Manual CLI Pattern (The Anti-Pattern)
+- **The chart's values surface is the contract.** The spec cannot validate `replicaCount` or `ingress.hosts[0].host` — those keys belong to the chart. What the spec *can* validate, it does: chart identity is complete and pinned, override layers have defined precedence, and mutually exclusive lifecycle flags are rejected before deploy.
+- **Both engines create a real Helm release.** Hooks run, the release secret is written to the namespace, history is recorded, and `helm list` / `helm status` see the release exactly as if the Helm CLI had installed it.
+- **The values model is Helm's own.** A values file (`values_yaml`) plus `--set`-style overrides (`set`, `set_string`, `set_sensitive`), merged with fixed precedence identically on both engines.
 
-Every Helm deployment starts the same way: someone runs `helm install my-app my-chart`. This works beautifully... once. The problems emerge immediately after:
+## Evolution and Historical Context
 
-**The Configuration Drift Problem**: A developer runs `helm upgrade my-app --set replicas=3` to fix a production issue. The cluster now runs 3 replicas, but Git still says 2. Which is the truth? When the next deploy happens, the replica count silently reverts to 2. One study found that 44% of developers have experienced drift-related outages.
+### Helm 2, Tiller, and the move client-side
 
-**The "Where's My Release?" Problem**: Kubernetes doesn't track Helm releases in its API. If you lose your Helm state (stored in Secrets), you lose the ability to upgrade or rollback. Manual deployments have no audit trail—who deployed what, when, and why?
+Helm 2 (2016) installed charts through Tiller, an in-cluster server component with broad permissions that quickly became the canonical Kubernetes security objection. Helm 3 (2019) removed Tiller entirely: the client renders and applies, and release state moved from ConfigMaps in Tiller's namespace to Secrets in the release's own namespace. That release secret is now the durable record of "a Helm release exists here" — the thing `helm list` enumerates, `helm rollback` consults, and any tool claiming to install "a Helm release" must produce.
 
-**The Verdict**: Manual Helm commands are excellent for learning and local development. They are actively harmful in shared or production environments.
+### Release vs. render: the fault line in IaC Helm support
 
-### Level 1: The Scripting Layer (Shell Scripts and Makefiles)
+Every IaC tool that touches Helm faces the same fork:
 
-The first "fix" teams implement is wrapping Helm commands in scripts. A typical Makefile might contain:
+- **Render-only**: run `helm template` semantics client-side, apply the resulting manifests as individual resources. The IaC engine tracks each resource, which gives fine-grained diffs — but no release secret is written, chart hooks never run, and `helm list` shows nothing. Charts that rely on hooks (database migrations, admission-webhook certificate bootstrapping, pre-delete cleanup) break silently.
+- **Real release**: drive Helm's install/upgrade code path. Hooks run, history accrues, Helm tooling works — the release is a first-class Helm object that happens to be managed by IaC.
 
-```makefile
-deploy-prod:
-    helm upgrade --install my-app my-chart \
-        --values values-base.yaml \
-        --values values-prod.yaml \
-        --wait --timeout=10m
+Pulumi ships both (`helm.v3.Chart` renders; `helm.v3.Release` installs); Terraform's `helm_release` has always been a real release. Which side of the fork a tool sits on is the single most consequential fact about it, and it is routinely discovered in production when a hook does not fire.
+
+### OCI registries as chart distribution
+
+Helm 3.8 (2022) made OCI registry support generally available, and chart publishing has been migrating from index-file HTTPS repositories to OCI registries (GHCR, ECR, ACR, Artifact Registry) since. The two forms differ mechanically — an HTTPS repo serves an `index.yaml` and the chart name is looked up in it; an OCI chart is pulled directly as `<registry-path>/<chart>:<version>` — but conceptually a chart consumer should not care. Any current chart-install surface must accept both.
+
+### The `--set` coercion footgun
+
+Helm's `--set` parser (the `strvals` package) coerces as it parses: `true` and `false` become booleans, digit strings become numbers, `null` deletes a key. This is convenient right up until someone sets `image.tag=1.30` and the tag arrives at the template as the float `1.3`. Helm's own answer is `--set-string` (parse the path, keep the value a literal string), and any faithful modeling of Helm's values surface must carry both forms — plus `--set`'s deliberate use of `null` to *remove* a default the chart ships with.
+
+## The Semantics in Detail
+
+### The four values layers
+
+Helm merges values from lowest to highest precedence: the chart's built-in defaults, then values files, then `--set`-family flags. The component models this exactly:
+
+1. **`values_yaml`** — a YAML document, the equivalent of a values file passed with `-f`. Full expressiveness: nested maps, lists, numbers, booleans. Applied first.
+2. **`set`** — dotted-path overrides with Helm's `--set` coercion (`"true"` → bool, digits → number, `"null"` deletes the key). Paths support list indexing (`ingress.hosts[0].host`).
+3. **`set_string`** — same paths, values always kept as literal strings. The footgun-avoider for version-like tags.
+4. **`set_sensitive`** — literal strings like `set_string`, but marked secret: kept out of rendered plans and state where each engine supports it. Highest precedence.
+
+Both engines merge these layers in exactly this order and hand Helm one final values map, so the same manifest installs byte-identical releases on either engine.
+
+### Release identity and the release secret
+
+The release name defaults to the resource's `metadata.name`, overridable with `release_name` (validated to Helm's 53-character release-name limit). The namespace holds the release secret; `create_namespace` decides whether the component creates (and labels, and eventually deletes) that namespace or expects it to exist.
+
+### Lifecycle knobs
+
+The spec exposes Helm's install/upgrade behavior surface: `atomic` (failed deploys roll back completely), `cleanup_on_fail` (failed upgrades delete newly created resources), `skip_await` (return once the release is recorded, without waiting for readiness), `wait_for_jobs`, `timeout_seconds`, `skip_crds`, `dependency_update`, `max_history`, `replace`, `force_update`, `reuse_values` / `reset_values` (upgrade-time values handling), `disable_webhooks` (chart hooks), `disable_openapi_validation`, `take_ownership` (adopt resources an earlier tool created), and a free-form `description`.
+
+Two pairings are contradictions, and the spec rejects them at validation rather than letting Helm fail later: `atomic` with `skip_await` (atomic must wait to know whether to roll back) and `reuse_values` with `reset_values` (one keeps the previous release's values, the other discards them).
+
+### Version pinning is mandatory
+
+`version` is required. An unpinned install resolves "whatever the repo serves today," which makes the manifest non-reproducible — and reproducibility is the point of declaring the release as a manifest at all. This is the spec disagreeing, deliberately, with `helm install`'s own default behavior.
+
+## Deployment Methods Landscape
+
+### Level 0: Helm CLI
+
+```shell
+helm repo add podinfo https://stefanprodan.github.io/podinfo
+helm install podinfo podinfo/podinfo --version 6.9.2 -n podinfo --create-namespace \
+  --set replicaCount=2
 ```
 
-This achieves repeatability—the same script produces the same result. But it fundamentally fails to solve the state management problem. A script is a **push-based** mechanism: it runs, executes commands, and exits. It has no long-running process to monitor the cluster. If someone manually deletes a resource or changes a value after the script completes, that drift persists indefinitely.
+**Pros:** the reference implementation; everything works.
 
-**The Shell Escaping Nightmare**: Scripts that try to pass complex values through `--set` flags quickly encounter shell escaping hell. Passing JSON configuration or strings with quotes requires navigating multiple layers of escaping—shell syntax, Helm's value parser, and YAML's rules—often resulting in cryptic template rendering failures.
+**Cons:** imperative — the install exists only in the cluster and the shell history; no drift detection, no review, no reproducibility unless every flag is scripted and versioned by hand.
 
-**The Verdict**: Scripting adds repeatability but doesn't add resilience. It's a small step forward, not a solution.
+**Verdict:** right for exploration; the thing declarative management replaces.
 
-### Level 2: Infrastructure-as-Code (The External State Trap)
+### Level 1: GitOps Helm controllers (Flux HelmRelease, Argo CD)
 
-The next logical evolution is to treat Helm releases as resources in a broader IaC system like Terraform or Pulumi.
+Flux's HelmRelease CRD drives real Helm installs from Git. Argo CD, notably, sits on the *render* side of the fork: it templates charts and applies the output, with hook emulation that differs from Helm's semantics.
 
-#### The Terraform Helm Provider: A Three-Body Problem
+**Pros:** declarative, continuous reconciliation, Git as the source of truth.
 
-Terraform's `helm_release` resource appears ideal—Terraform is declarative, stateful, and production-proven. But the community verdict is brutal: "Do not use helm via terraform, just don't! It will ruin your day everyday."
+**Cons:** requires operating the GitOps control plane itself; secrets management and multi-cluster credentials become that platform's problem.
 
-The issue is a **three-body state problem**:
-1. Terraform maintains state in its `tfstate` file
-2. Helm maintains state in cluster Secrets
-3. Kubernetes maintains actual resource state in etcd
+**Verdict:** excellent where a GitOps platform is already the deployment substrate; a heavy prerequisite where it is not.
 
-When these three sources of truth inevitably desynchronize—during failed upgrades, network issues, or state corruption—the system enters a painful-to-debug failure mode. State lock contention, inability to apply plans, and manual intervention become routine.
+### Level 2: Terraform
 
-#### Pulumi's Evolution: From Template-Only to Native SDK
+```hcl
+resource "helm_release" "podinfo" {
+  name       = "podinfo"
+  repository = "https://stefanprodan.github.io/podinfo"
+  chart      = "podinfo"
+  version    = "6.9.2"
+  namespace  = "podinfo"
 
-Pulumi's journey provides a perfect case study. Pulumi initially offered a `Chart` resource that rendered Helm templates and managed resources directly, bypassing Helm's lifecycle. This "template-only" model broke Helm hooks—pre-install scripts, post-upgrade jobs, and lifecycle management that complex charts depend on.
+  values = [file("values.yaml")]
 
-In response, Pulumi introduced the `Release` resource, which uses the Helm SDK natively and "directly offloads all responsibility of orchestration and lifecycle management to Helm itself." This architectural shift—from external management to native integration—is the industry's verdict: **respect Helm's authority as a package manager**.
+  set = [{ name = "replicaCount", value = "2" }]
+}
+```
 
-**The Verdict**: External IaC tools create competing sources of truth. The solution must be in-cluster, not external.
+**Pros:** a real Helm release with full IaC lifecycle; `set_sensitive` masks individual secret values in plan output; provider 3.x supports `--take-ownership` for adopting existing resources.
 
-### Level 3: The Production Solution (In-Cluster GitOps Controllers)
+**Cons:** values are strings-in-HCL; the chart's contract is still unvalidated until Helm renders.
 
-This is where the evolution culminates. Modern production platforms use **in-cluster, Kubernetes-native controllers** that watch for Custom Resources and perform continuous reconciliation.
+**Verdict:** production-grade; the semantics this component's Terraform module wraps directly.
 
-The architecture is elegant:
-- A Custom Resource Definition (like FluxCD's `HelmRelease` or ArgoCD's `Application`) defines the desired state
-- An in-cluster controller watches for these CRDs
-- When a CRD is created or updated (typically via a Git commit), the controller uses the Helm SDK to install or upgrade the release
-- The controller runs a **continuous reconciliation loop**, detecting and correcting drift automatically
+### Level 3: Pulumi
 
-This model solves every problem from the previous levels:
-- **Drift**: The controller continuously compares desired state (in the CRD) with live state (in etcd) and auto-corrects
-- **State**: The single source of truth is the declarative CRD, stored in Git
-- **Lifecycle**: The controller uses the native Helm SDK, respecting the full chart lifecycle including hooks and tests
+```go
+helmv3.NewRelease(ctx, "podinfo", &helmv3.ReleaseArgs{
+    Chart:   pulumi.String("podinfo"),
+    Version: pulumi.String("6.9.2"),
+    RepositoryOpts: &helmv3.RepositoryOptsArgs{
+        Repo: pulumi.String("https://stefanprodan.github.io/podinfo"),
+    },
+    Values: pulumi.Map{"replicaCount": pulumi.Int(2)},
+})
+```
 
-## GitOps Controllers: FluxCD vs ArgoCD
+**Pros:** a real Helm release (`helm.v3.Release`, not the render-only `helm.v3.Chart`); values as native language maps; secrets machinery for sensitive values.
 
-The two dominant, CNCF-graduated GitOps platforms are FluxCD and ArgoCD. While both achieve continuous reconciliation, they have fundamentally different philosophies about how to treat Helm charts.
+**Cons:** same unvalidated chart contract; the Release resource's diff is coarser than per-resource tracking.
 
-### FluxCD: The "Helm-Native Actuator"
+**Verdict:** production-grade; the semantics this component's Pulumi module wraps directly.
 
-FluxCD is a modular GitOps toolkit. For Helm deployments, it uses two specialized controllers:
-- **source-controller**: Fetches and caches Helm charts from repositories (HTTP or OCI)
-- **helm-controller**: Watches `HelmRelease` CRDs and uses the Helm SDK to perform native Helm operations
+### Comparative Analysis
 
-**Philosophy**: FluxCD treats Helm as a trusted package manager. When reconciling a `HelmRelease`, it calls `helm install`, `helm upgrade`, and `helm rollback` via the SDK. This means all Helm hooks—pre-install, post-upgrade, test—execute correctly, just as if a human ran the Helm CLI.
+| Aspect | Helm CLI | Flux/Argo | Terraform | Pulumi | Planton |
+|--------|----------|-----------|-----------|--------|---------|
+| Real Helm release (hooks, secret, `helm list`) | Yes | Flux yes; Argo renders | Yes | Release yes; Chart renders | Yes, both engines |
+| Declarative + reviewable | No | Yes | Yes | Yes | Yes |
+| Version pinning enforced | No | No | No | No | Yes (required field) |
+| Contradictory-flag checks before deploy | No | No | No | No | Yes (CEL) |
+| set / set-string / set-sensitive layers | Flags | Partial | Yes | Manual | Yes, typed, fixed precedence |
+| Engine choice per deploy | N/A | N/A | TF only | Pulumi only | Both, identical result |
 
-**Drift Detection**: FluxCD reconciles at a defined interval. Since version 2.2.0, it includes robust drift detection, allowing it to "detect and correct cluster state drift from the desired release state" by re-applying the desired configuration.
+## The Planton Approach
 
-**Strengths**:
-- Full Helm lifecycle fidelity (hooks work correctly)
-- Modular, toolkit-based architecture
-- Excellent for platform teams building custom GitOps workflows
+### The boundary is the design
 
-**Trade-offs**:
-- CLI-first; web UI (like Capacitor) is optional and third-party
-- Multi-tenancy requires manual Kubernetes RBAC configuration
+The component's own documentation leads with when *not* to use it, and that is deliberate. A first-class catalog component always wins where one exists: it validates before deploy and composes through typed outputs. KubernetesHelmRelease is scoped to the remainder — the long tail of charts no component covers — and it makes that remainder as safe as a generic passthrough can be: identity pinned, precedence fixed, contradictions rejected, secrets marked.
 
-### ArgoCD: The "Helm-as-Template" Platform
+### A real release on both engines
 
-ArgoCD takes the opposite approach. Its documentation states unambiguously: **"Helm is only used to inflate charts with helm template. The lifecycle of the application is handled by Argo CD instead of Helm."**
+Both modules install through the real-release primitive — `helm_release` on Terraform, `helm.v3.Release` on Pulumi. The render-only `helm.v3.Chart` was deliberately rejected: it silently skips hooks and leaves nothing for Helm tooling to manage. After a deploy, `helm list -n <namespace>` shows the release, `helm status` shows its state and description, and `helm rollback` works, whichever engine installed it.
 
-When ArgoCD reconciles an `Application` CRD pointing to a Helm chart, it:
-1. Runs `helm template` to generate raw Kubernetes manifests
-2. Passes those manifests to its own GitOps engine
-3. Performs a diff and synchronizes resources using its own logic
+### One merge, two engines
 
-**Critical Trade-off**: This model **breaks Helm hooks**. Pre-install scripts, post-upgrade jobs, and lifecycle events don't execute. For charts that depend on hooks (many database charts use pre-install hooks for permission setup), this is a dealbreaker.
+The values layers merge with the documented precedence — `values_yaml`, then `set`, then `set_string`, then `set_sensitive` — on both engines, through different mechanics that reach the same result:
 
-**Why Do This?** ArgoCD gains two significant advantages:
-1. **Superior Diffing**: By rendering manifests itself, ArgoCD provides a precise, resource-by-resource diff in its web UI before syncing
-2. **Multi-Source Composition**: ArgoCD can pull a chart from a public OCI registry and `valueFiles` from a separate, private Git repository—a powerful enterprise pattern for overlaying private configuration on public charts
+- The **Pulumi module** merges module-side: it parses `values_yaml`, then applies each override entry with Helm's own `strvals` parser (`ParseInto` for `set`, `ParseIntoString` for the string layers), in sorted-key order, and hands the Release one final map.
+- The **Terraform module** rides the provider's native mechanisms: `values = [values_yaml]`, `set` entries as type-`auto` attributes, `set_string` entries as type-`string`, `set_sensitive` as its own attribute — which the provider merges in exactly the same order, also via Helm's `strvals`.
 
-**Strengths**:
-- Rich, full-featured web UI (the primary adoption driver)
-- Built-in multi-tenancy (AppProjects, RBAC, SSO)
-- Multi-cluster management from a single control plane
-- Self-healing with continuous drift correction
+Because both paths run Helm's own parser on override entries, dotted-path syntax and type coercion behave identically. Map iteration is lexical on both sides, keeping even same-path collisions deterministic.
 
-**Trade-offs**:
-- No Helm hook support
-- More opinionated and monolithic than Flux
+### Namespace ownership
 
-### The Comparison Table
+`create_namespace: true` creates the namespace as an explicit module-owned resource stamped with the standard Planton governance labels — not via `helm_release`'s own create-namespace flag, which would create an unlabeled namespace. Both engines stamp identical labels; the release itself carries a dependency on the namespace so ordering is guaranteed.
 
-| Feature | FluxCD | ArgoCD | Recommendation |
-|---------|--------|--------|----------------|
-| **Helm Philosophy** | Helm-native (uses SDK) | Helm-as-template (renders only) | Flux for fidelity, Argo for features |
-| **Helm Hooks** | Full support | None (uses its own sync hooks) | Flux if charts rely on hooks |
-| **Value Overrides** | Inline or ConfigMaps/Secrets | Inline, valueFiles, or multi-source | Argo for enterprise overlay patterns |
-| **User Interface** | CLI-first (third-party UIs) | Rich web UI (core feature) | Argo for teams wanting visual management |
-| **Drift Detection** | Yes (reconciliation interval) | Yes (self-healing mode) | Both excellent |
-| **Multi-Tenancy** | Manual (Kubernetes RBAC) | Built-in (AppProjects, RBAC, SSO) | Argo for large, multi-team platforms |
-| **Multi-Cluster** | Per-cluster installation | Single control plane for fleet management | Argo for platform operators |
-| **Production Use Case** | Platform teams, Helm-native fidelity | Application teams, UI-driven workflows | Choose based on team needs |
+### Secrets, two grains
 
-**The Strategic Choice**: FluxCD is best for teams that prioritize Helm-native fidelity and want a modular toolkit. ArgoCD is best for teams that want a feature-rich, UI-driven "platform-in-a-box" for application developers.
+`repository_password` and `set_sensitive` are marked sensitive in the spec. The Terraform provider masks `set_sensitive` entries individually in plans and state. The Pulumi module cannot mask individual keys inside one merged values map, so when any `set_sensitive` entry is present it marks the *whole* merged values map secret in state — coarser than Terraform's per-entry masking, but it errs on the safe side. This is a documented behavioral difference, not a parity exception: the release Helm installs is identical.
 
-## Production-Grade Best Practices
+### One parity exception, failed loudly
 
-### Version Pinning: The Immutability Principle
+`take_ownership` (Helm's `--take-ownership`: skip existing-resource conflict checks and adopt matching resources into the release — the migration knob for pointing a release at resources an earlier tool created) is currently honored by the **Terraform provisioner only**. The Pulumi engine's pinned pulumi-kubernetes SDK predates the flag, and a set field must never be silently dropped — so the Pulumi module rejects a spec with `take_ownership: true` loudly at deploy, with an error that routes the user to the Terraform provisioner or to dropping the flag. The exception dissolves at the next pulumi-kubernetes SDK upgrade.
 
-The cardinal rule of production deployments: **pin all versions**. A declarative manifest must be a precise, repeatable snapshot.
+### Defaults resolved module-side
 
-Helm uses semantic versioning (SemVer 2.0) for chart versions. Both the `version` field in `Chart.yaml` and the `image.tag` in `values.yaml` must be exact, immutable values like `1.1.5`, never floating tags like `latest` or version ranges like `^1.2.0`.
+The optional knobs with Helm defaults — `timeout_seconds` (300) and `max_history` (10) — are resolved in each module's locals so both engines send identical values whether or not the spec set the fields. The deployed release never depends on which engine applied it.
 
-**Common Anti-Patterns**:
-- **Floating Image Tags**: Using `latest` breaks declarative immutability. The artifact can change without any Git commit, making rollbacks and audits impossible.
-- **SemVer Ranges in Production**: While useful in development or staging to absorb patch releases automatically, production manifests must be explicitly pinned. A Git commit should be required to change versions—that's the correct GitOps pattern.
+## Implementation Landscape
 
-**Planton's Choice**: Our `chart_version` field is a required string that does not resolve ranges. This enforces immutability at the API level, forcing explicit version changes through Git commits.
+### Pulumi Module Architecture
 
-### Secrets Management: The Decoupled Pattern
+The Pulumi module (`iac/pulumi/module/`) follows the standard Planton pattern:
 
-Storing plain-text secrets in `values.yaml` files and committing them to Git is a critical security violation. A robust solution allows secrets to be stored in Git, but in an encrypted state. The architectural question is: which component decrypts them?
+- **`main.go`**: Orchestrates provider init, the optional namespace, the `helm.v3.Release` (with the `take_ownership` rejection and the chart-reference resolution: OCI repos join `<repo>/<chart>`; HTTPS repos ride repository opts), and output export
+- **`values.go`**: The module-side values merge — `values_yaml` parsed, then `set` / `set_string` / `set_sensitive` applied via Helm's `strvals` in sorted-key order
+- **`locals.go`**: Release-name resolution, namespace resolution, governance labels, and the Helm defaults for `timeout_seconds` / `max_history`
+- **`namespace.go`**: The conditional, labeled namespace
+- **`outputs.go`**: Exports namespace, release name, chart version, appVersion, status, and revision — read from the Release's recorded status, not echoed from the spec
 
-#### Pattern 1: Coupled Decryption (Mozilla SOPS)
+### Terraform Module Architecture
 
-SOPS encrypts values within a YAML file (not the whole file). A developer runs `sops -e values.yaml` and commits the encrypted result. The GitOps controller must be SOPS-aware and have access to decryption keys (AWS KMS, GCP KMS, PGP) to decrypt the file in-memory before passing values to Helm.
+The Terraform module (`iac/tf/`) mirrors the Pulumi logic:
 
-**Impact**: This couples the HelmRelease controller to the decryption process, dramatically increasing complexity and the controller's security surface.
+- **`variables.tf`**: Mirrors `spec.proto` fields as Terraform variables
+- **`locals.tf`**: The same release-name / namespace / labels / defaults resolution
+- **`main.tf`**: The conditional, labeled `kubernetes_namespace_v1`
+- **`helm_release.tf`**: The `helm_release` resource — values list plus `set` / `set_sensitive` attributes, every lifecycle knob mapped 1:1 with the Pulumi module's arguments, including `take_ownership`
+- **`outputs.tf`**: The same six outputs, read from the release's recorded metadata
 
-#### Pattern 2: Decoupled Materialization (Sealed Secrets and External Secrets Operator)
+### Resource Count
 
-This is the cleaner, more composable pattern. It delegates secret management to a specialized controller:
+The component creates at most **two Kubernetes-level resources**: the optional namespace and the Helm release itself. Everything the chart creates belongs to Helm — the modules deliberately never reach into the chart's own resources (no label injection, no per-resource management).
 
-**Bitnami Sealed Secrets**:
-- Uses asymmetric encryption (public/private key pair)
-- Developer encrypts a standard Secret manifest with `kubeseal` CLI using a public key
-- Commits the resulting `SealedSecret` CRD to Git
-- In-cluster `sealed-secrets-controller` decrypts it with its private key and materializes a native Kubernetes Secret
+## Production Best Practices
 
-**External Secrets Operator (ESO)**:
-- Syncs secrets from external stores (AWS Secrets Manager, Azure Key Vault, HashiCorp Vault)
-- Developer commits an `ExternalSecret` CRD that defines what to fetch
-- ESO controller authenticates to the external store and materializes a native Secret
+### Chart identity
 
-In both cases, the HelmRelease controller is **completely unaware** of the encryption. The `values.yaml` simply references the materialized Secret using standard chart patterns like `existingSecretName: my-app-secret`.
+1. **Pin the version — the spec makes you.** Then treat version bumps as reviewed changes: read the chart's release notes; a chart upgrade is an application upgrade
+2. **Prefer the chart's canonical repository.** Mirrors and re-publishers lag; for OCI, the reference is `<repo>/<chart>:<version>` — verify it with `helm show chart` before committing the manifest
 
-| Method | Encryption Model | Impact on HelmRelease API |
-|--------|------------------|---------------------------|
-| **Sealed Secrets** | Asymmetric (public/private key) | **None** (references native Secret) |
-| **SOPS** | Symmetric (via Cloud KMS, PGP) | **High** (controller must decrypt) |
-| **External Secrets Operator** | None (syncs from external stores) | **None** (references native Secret) |
+### Values discipline
 
-**Planton's Choice**: We follow the decoupled model. Planton's HelmRelease API does not implement SOPS-style decryption. We document integration with ESO and Sealed Secrets as the recommended patterns. This keeps our API simple, secure, and focused on deploying charts.
+1. **Keep non-secret configuration in `values_yaml`** where reviewers see structure, and reserve `set` / `set_string` for the handful of targeted overrides that vary per environment
+2. **Use `set_string` for anything version-like.** `image.tag: "1.30"` through `set` arrives as the number 1.3 — the classic Helm coercion incident
+3. **Secrets go in `set_sensitive`, never `values_yaml`.** The values document is plain text in the manifest and in state; the sensitive layer exists so secrets are marked at the source
 
-### Release Lifecycle: Atomic Operations and Rollbacks
+### Lifecycle
 
-Production deployments must be transactional. A partially-applied, broken release is unacceptable.
+1. **`atomic: true` and `cleanup_on_fail: true` for production releases** — a failed upgrade that rolls back completely is an incident; one that strands half a release is an outage
+2. **Leave awaiting on** (the default) unless the deploy is deliberately fire-and-forget; `skip_await` trades readiness knowledge for speed and cannot be combined with `atomic`
+3. **`take_ownership` is a migration tool, not a steady state** — use it to adopt resources an earlier tool created, on the Terraform provisioner, then drop the flag
 
-**Key Helm Flags**:
-- `--wait`: Instructs Helm to wait (up to a timeout) for all resources to become "ready" before marking the release successful. Without this, Helm "fires and forgets."
-- `--atomic`: Enables `--wait` and automatically triggers a rollback to the previous revision if the wait condition fails. This prevents releases from being left in a broken state.
-- `--timeout`: Specifies how long to wait before failing the operation.
+### Operational awareness
 
-**Planton's Choice**: Our HelmRelease API includes these as first-class fields (`atomic`, `wait`, `timeout`). They are not "advanced" features—they are core requirements for production safety.
+1. **The release is a real Helm release** — `helm list`, `helm status`, `helm history`, `helm rollback` all work. Use `helm status` first when a deploy misbehaves; the `description` field surfaces there
+2. **Chart errors surface at render or at readiness, not at validation.** The spec validates its own contract (identity, precedence, flag sanity); a typo'd chart value is between you and the chart
 
-### Chart Repositories: OCI vs HTTP
+## Conclusion
 
-Helm supports two repository models:
+KubernetesHelmRelease is a deliberately bounded component: the catalog's one intentional passthrough, for charts no first-class component covers, and never the recommended path where one exists. Within that boundary it is uncompromising — a real Helm release on both engines (hooks, history, `helm list`), Helm's exact four-layer values model with fixed precedence and identical merge behavior everywhere, required version pinning, contradictory flags rejected before deploy, secrets marked at the source, and the single engine gap (`take_ownership` on Pulumi's pinned SDK) converted from silent omission into a loud, routed failure.
 
-**HTTP Repositories** (Traditional): Simple HTTP servers hosting `.tgz` charts and an `index.yaml` catalog.
+## References
 
-**OCI Registries** (Modern): Stores charts in OCI-compliant registries (Harbor, Amazon ECR, Google Artifact Registry) as standard artifacts alongside container images.
-
-**Benefits of OCI**:
-- Unified registry and authentication model for both images and charts
-- Content-addressable, immutable storage
-- Re-uses the battle-tested security models of container registries
-
-**Planton's Choice**: Our `repo` field supports both `https://` and `oci://` prefixes. OCI support is non-negotiable for a modern deployment tool.
-
-## What Planton Supports (And Why)
-
-Planton's HelmRelease API is intentionally minimal, opinionated, and focused on the 80% use case.
-
-### The Core Specification
-
-Our `HelmReleaseSpec` includes:
-- **`repo`**: The chart repository URL (supports `https://` and `oci://`)
-- **`name`**: The chart name
-- **`version`**: The exact chart version (no SemVer range resolution)
-- **`values`**: A map of key-value pairs for customization
-
-This maps directly to Helm's "Three Big Concepts": Repository (where), Chart (what), and Release (the instance).
-
-### What We Deliberately Omit from V1
-
-To keep the API clean and implementable, we exclude 20% "power-user" features:
-
-**Post-Renderers**: Allows piping Helm's output through another tool (like Kustomize) for last-mile changes. This is an escape hatch for poorly-designed charts and would require the controller to manage external binaries, STDIN/STDOUT piping, and complex error handling.
-
-**Helm Hook Customization**: Advanced debugging features like disabling specific hooks suggest a problem with the chart, not the deployment.
-
-**`tpl` Function in Values**: Passing template strings as values leads to un-debuggable, "meta-templated" charts. Values should contain data, not code.
-
-### The Philosophy: Simple, Secure, Production-Ready
-
-Planton's HelmRelease API follows the **GitOps pull model**. CI pipelines do not run `helm install`. Instead, they:
-1. Build and push container images
-2. Commit changes to Git (updating `chart_version` or `image.tag` in the manifest)
-
-The HelmRelease controller detects the Git commit and pulls the new configuration, triggering the Helm deployment.
-
-This model ensures:
-- **Single Source of Truth**: Git is the source of truth, not CI logs
-- **Auditability**: Every deployment is a Git commit with a full history
-- **Declarative State**: The cluster converges toward the desired state in Git
-
-## Ecosystem Integration
-
-### CI/CD Pipelines
-
-Modern GitOps pipelines (GitHub Actions, GitLab CI, Tekton) follow the pull model. The CI system's responsibility is to:
-1. Run tests and build artifacts
-2. Update a Git repository with the new chart version or image tag
-3. Let the HelmRelease controller handle the actual deployment
-
-**Environment Promotion**: Promoting from dev → staging → prod is a series of Git commits or pull requests. A developer opens a PR to change the production manifest to the chart version validated in staging.
-
-### Monitoring and Observability
-
-**Application Monitoring**: The Helm chart should expose application-level metrics (e.g., Prometheus endpoints) configured via values.
-
-**Release Monitoring**: The HelmRelease controller must expose a `/metrics` endpoint with Prometheus metrics like `planton_helm_release_reconciliation_status`. This allows operators to monitor the health of the deployment system itself—"Did the last 10 upgrades succeed?"
-
-### Dependency Management
-
-"Umbrella charts" (charts that list other charts as dependencies in `Chart.yaml`) are fully supported. The HelmRelease controller doesn't need to be aware of this—Helm itself resolves, downloads, and installs dependencies when installing the parent chart.
-
-### Licensing
-
-The entire Helm deployment ecosystem is open source:
-- **Helm**: Apache 2.0
-- **FluxCD**: Apache 2.0
-- **ArgoCD**: Apache 2.0
-
-This de-risks adoption and ensures no vendor lock-in. Both FluxCD and ArgoCD are CNCF Graduated projects with strong commercial support markets (Akuity, Codefresh, and InfraCloud for Argo; Weaveworks historically for Flux).
-
-## Conclusion: Why Declarative, In-Cluster, Helm-Native
-
-The evolution from manual commands to in-cluster controllers isn't arbitrary—it's the result of learning from production failures. Manual commands drift. Scripts can't reconcile. External IaC creates state conflicts. The only architecturally sound solution is a Kubernetes-native controller that runs inside the cluster, uses the Helm SDK natively, and continuously reconciles desired state with actual state.
-
-Planton's HelmRelease API embodies this lesson. We provide a minimal, production-ready interface that:
-- Enforces version pinning through a non-ranged `version` field
-- Decouples secrets management (no built-in SOPS, integrate with ESO or Sealed Secrets)
-- Supports modern OCI registries alongside traditional HTTP repos
-- Includes safety-critical flags (`atomic`, `wait`, `timeout`) as first-class fields
-
-This isn't the API that deploys the most charts—it's the API that deploys charts safely, predictably, and at scale.
-
+- [Helm Documentation](https://helm.sh/docs/)
+- [Helm Values Files and `--set`](https://helm.sh/docs/chart_template_guide/values_files/)
+- [Helm `--set` Value Parsing (strvals)](https://helm.sh/docs/intro/using_helm/#the-format-and-limitations-of---set)
+- [Helm OCI Registry Support](https://helm.sh/docs/topics/registries/)
+- [Helm Chart Hooks](https://helm.sh/docs/topics/charts_hooks/)
+- [Terraform helm_release Resource](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release)
+- [Pulumi Kubernetes helm.v3.Release](https://www.pulumi.com/registry/packages/kubernetes/api-docs/helm/v3/release/)
+- [Pulumi: Chart vs. Release](https://www.pulumi.com/registry/packages/kubernetes/how-to-guides/choosing-the-right-helm-resource-for-your-use-case/)
+- [podinfo (the presets' demo chart)](https://github.com/stefanprodan/podinfo)

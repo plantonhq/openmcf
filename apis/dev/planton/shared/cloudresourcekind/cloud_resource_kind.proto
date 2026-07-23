@@ -64,8 +64,8 @@ message CloudResourceKindMeta {
   //in reverse order; a component may pin a prerequisite's exact config via an
   //e2e/fixtures/ override, which wins over the registry entry. this is also
   //used by the platform for dependency ordering in infra charts.
-  //example: KubernetesPostgres needs KubernetesZalandoPostgresOperator
-  //because it creates acid.zalan.do/v1 postgresql CRDs.
+  //example: KubernetesPostgres needs KubernetesCloudNativePgOperator
+  //because it creates postgresql.cnpg.io/v1 Cluster resources.
   repeated CloudResourceKind prerequisites = 7;
 
   //set ONLY for kinds whose spec is a direct projection of a single Kubernetes
@@ -2595,287 +2595,194 @@ enum CloudResourceKind {
     id_prefix: "gcpdisk"
   }];
 
-  // 800–999: Kubernetes resources
-  KubernetesArgocd = 800 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sargo"
-  }];
-  KubernetesCronJob = 801 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8scron"
-  }];
-  KubernetesElasticsearch = 802 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8ses"
-    prerequisites: [KubernetesElasticOperator]
-  }];
-  KubernetesGitlab = 803 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sgl"
-  }];
-  KubernetesGrafana = 804 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sgfn"
-  }];
-  KubernetesHelmRelease = 805 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8shelm"
-  }];
-  KubernetesJenkins = 806 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sjkn"
-  }];
-  KubernetesKafka = 807 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8skaf"
-    prerequisites: [KubernetesStrimziKafkaOperator]
-  }];
-  KubernetesKeycloak = 808 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8skc"
-  }];
-  KubernetesLocust = 809 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sloc"
-  }];
-  KubernetesDeployment = 810 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sdpl"
-    is_service_kind: true
-  }];
-  KubernetesMongodb = 811 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8smdb"
-    prerequisites: [KubernetesPerconaMongoOperator]
-  }];
-  KubernetesNeo4j = 812 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sneo"
-  }];
-  KubernetesOpenFga = 813 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sfga"
-  }];
-  KubernetesPostgres = 814 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8spg"
-    prerequisites: [KubernetesZalandoPostgresOperator]
-  }];
-  KubernetesPrometheus = 815 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sprom"
-  }];
-  KubernetesRedis = 816 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sred"
-  }];
-  KubernetesSignoz = 817 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8ssgz"
-  }];
-  KubernetesSolr = 818 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8ssolr"
-    prerequisites: [KubernetesSolrOperator]
-  }];
-  KubernetesTemporal = 819 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8stprl"
-  }];
-  KubernetesNats = 820 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8snats"
-  }];
-  KubernetesCertManager = 821 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8scm"
-  }];
-  KubernetesElasticOperator = 822 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8selaop"
-  }];
-  KubernetesExternalDns = 823 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sextdns"
-  }];
-  KubernetesIngressNginx = 824 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sngx"
-  }];
-  KubernetesIstio = 825 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sist"
-  }];
-  KubernetesStrimziKafkaOperator = 826 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sstzop"
-  }];
-  KubernetesZalandoPostgresOperator = 827 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8szlop"
-  }];
-  KubernetesSolrOperator = 828 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sslrop"
-  }];
-  KubernetesExternalSecrets = 829 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sextsec"
-  }];
-  KubernetesClickHouse = 830 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sclkhs"
-    prerequisites: [KubernetesAltinityOperator]
-  }];
-  KubernetesAltinityOperator = 831 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8saltop"
-  }];
-  KubernetesPerconaPostgresOperator = 832 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sprcnpgop"
-  }];
-  KubernetesPerconaMongoOperator = 833 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sprcnmdbop"
-  }];
-  KubernetesPerconaMysqlOperator = 834 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sprcnmysqlop"
-  }];
-  KubernetesHarbor = 835 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8shrbr"
-  }];
-  KubernetesNamespace = 836 [(kind_meta) = {
+  // 800–999: Kubernetes resources, organized in family sub-bands
+  // (830–869 also hosts CNI/autoscaling/DR addons; 930–949 reserved for
+  // analytics & ML; 990–999 reserved for growth)
+  // 800–829: Kubernetes building blocks (core API primitives)
+  KubernetesNamespace = 800 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sns"
     container_kind: true
   }];
-  KubernetesGatewayApiCrds = 837 [(kind_meta) = {
+  KubernetesDeployment = 801 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8sgwcrds"
+    id_prefix: "k8sdpl"
+    is_service_kind: true
   }];
-  KubernetesTektonOperator = 838 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8stktnop"
-  }];
-  KubernetesTekton = 839 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8stktn"
-  }];
-  KubernetesStatefulSet = 840 [(kind_meta) = {
+  KubernetesStatefulSet = 802 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8ssts"
     is_service_kind: true
   }];
-  KubernetesDaemonSet = 841 [(kind_meta) = {
+  KubernetesDaemonSet = 803 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sds"
   }];
-  KubernetesManifest = 842 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8smfst"
-  }];
-  KubernetesGhaRunnerScaleSetController = 843 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sgharsc"
-  }];
-  KubernetesGhaRunnerScaleSet = 844 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sgharss"
-  }];
-  KubernetesOpenBao = 845 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sbao"
-  }];
-  KubernetesJob = 846 [(kind_meta) = {
+  KubernetesJob = 804 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sjob"
   }];
-  KubernetesRookCephOperator = 847 [(kind_meta) = {
+  KubernetesCronJob = 805 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8srookop"
+    id_prefix: "k8scron"
+    is_service_kind: true
   }];
-  KubernetesRookCephCluster = 848 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8srookcl"
-  }];
-  KubernetesService = 849 [(kind_meta) = {
+  KubernetesService = 806 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8ssvc"
   }];
-  KubernetesSecret = 850 [(kind_meta) = {
+  KubernetesSecret = 807 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8ssec"
   }];
-  KubernetesClusterIssuer = 851 [(kind_meta) = {
+  KubernetesManifest = 808 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8smfst"
+  }];
+  KubernetesHelmRelease = 809 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8shelm"
+  }];
+  KubernetesConfigMap = 810 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8scfg"
+  }];
+  KubernetesServiceAccount = 811 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssa"
+  }];
+  // Bundles the RBAC grant grain (Role/ClusterRole + its binding) into one
+  // component: "grant these permissions to these subjects in this scope".
+  KubernetesRbac = 812 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srbac"
+  }];
+  KubernetesIngress = 813 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sing"
+  }];
+  KubernetesNetworkPolicy = 814 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8snp"
+  }];
+  KubernetesPersistentVolumeClaim = 815 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8spvc"
+  }];
+  KubernetesStorageClass = 816 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssc"
+  }];
+  // Manages the namespace-governance pair: the ResourceQuota plus an
+  // optional companion LimitRange (per-object defaults/bounds) — two API
+  // objects, one governance story.
+  KubernetesResourceQuota = 817 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srq"
+  }];
+  KubernetesPriorityClass = 818 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8spc"
+  }];
+  KubernetesPodDisruptionBudget = 819 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8spdb"
+  }];
+  KubernetesHorizontalPodAutoscaler = 820 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8shpa"
+  }];
+  // 830–869: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh, CNI/autoscaling/DR)
+  KubernetesCertManager = 830 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8scm"
+  }];
+  // KubernetesCertManager is a prerequisite for the three cert-manager CR
+  // kinds below: ClusterIssuer/Issuer/Certificate are cert-manager custom
+  // resources — without the controller and its CRDs they cannot be applied.
+  KubernetesClusterIssuer = 831 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sci"
+    prerequisites: [KubernetesCertManager]
   }];
-  KubernetesIssuer = 852 [(kind_meta) = {
+  KubernetesIssuer = 832 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8siss"
+    prerequisites: [KubernetesCertManager]
   }];
-  KubernetesCertificate = 853 [(kind_meta) = {
+  KubernetesCertificate = 833 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8scrt"
+    prerequisites: [KubernetesCertManager]
   }];
-  KubernetesGatewayClass = 854 [(kind_meta) = {
+  KubernetesExternalDns = 834 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sextdns"
+  }];
+  KubernetesExternalSecretsOperator = 835 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sextsec"
+  }];
+  // KubernetesExternalSecretsOperator is a prerequisite for the three
+  // external-secrets CR kinds below: ClusterSecretStore/SecretStore/
+  // ExternalSecret are external-secrets custom resources — without the
+  // operator and its CRDs they cannot be applied.
+  KubernetesClusterSecretStore = 836 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8scss"
+    prerequisites: [KubernetesExternalSecretsOperator]
+  }];
+  KubernetesSecretStore = 837 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssst"
+    prerequisites: [KubernetesExternalSecretsOperator]
+  }];
+  KubernetesExternalSecret = 838 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sxsec"
+    prerequisites: [KubernetesExternalSecretsOperator]
+  }];
+  KubernetesIngressNginx = 839 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sngx"
+  }];
+  KubernetesGatewayApiCrds = 840 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sgwcrds"
+  }];
+  KubernetesGatewayClass = 841 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgwc"
@@ -2885,7 +2792,7 @@ enum CloudResourceKind {
       kind: "GatewayClass"
     }
   }];
-  KubernetesGateway = 855 [(kind_meta) = {
+  KubernetesGateway = 842 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgw"
@@ -2895,7 +2802,17 @@ enum CloudResourceKind {
       kind: "Gateway"
     }
   }];
-  KubernetesHttpRoute = 856 [(kind_meta) = {
+  KubernetesListenerSet = 843 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8slset"
+    prerequisites: [KubernetesGatewayApiCrds]
+    kubernetes_manifest_projection: {
+      api_version: "gateway.networking.k8s.io/v1"
+      kind: "ListenerSet"
+    }
+  }];
+  KubernetesHttpRoute = 844 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8shrt"
@@ -2905,7 +2822,7 @@ enum CloudResourceKind {
       kind: "HTTPRoute"
     }
   }];
-  KubernetesGrpcRoute = 857 [(kind_meta) = {
+  KubernetesGrpcRoute = 845 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgrt"
@@ -2915,17 +2832,27 @@ enum CloudResourceKind {
       kind: "GRPCRoute"
     }
   }];
-  KubernetesTcpRoute = 858 [(kind_meta) = {
+  KubernetesTcpRoute = 846 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8strt"
     prerequisites: [KubernetesGatewayApiCrds]
     kubernetes_manifest_projection: {
-      api_version: "gateway.networking.k8s.io/v1alpha2"
+      api_version: "gateway.networking.k8s.io/v1"
       kind: "TCPRoute"
     }
   }];
-  KubernetesTlsRoute = 859 [(kind_meta) = {
+  KubernetesUdpRoute = 847 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8surt"
+    prerequisites: [KubernetesGatewayApiCrds]
+    kubernetes_manifest_projection: {
+      api_version: "gateway.networking.k8s.io/v1"
+      kind: "UDPRoute"
+    }
+  }];
+  KubernetesTlsRoute = 848 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stlsrt"
@@ -2935,7 +2862,7 @@ enum CloudResourceKind {
       kind: "TLSRoute"
     }
   }];
-  KubernetesReferenceGrant = 860 [(kind_meta) = {
+  KubernetesReferenceGrant = 849 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8srefgrt"
@@ -2945,11 +2872,31 @@ enum CloudResourceKind {
       kind: "ReferenceGrant"
     }
   }];
-
+  KubernetesBackendTlsPolicy = 850 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sbtls"
+    prerequisites: [KubernetesGatewayApiCrds]
+    kubernetes_manifest_projection: {
+      api_version: "gateway.networking.k8s.io/v1"
+      kind: "BackendTLSPolicy"
+    }
+  }];
+  KubernetesIstioBaseCrds = 851 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sistcrds"
+  }];
+  KubernetesIstio = 852 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sist"
+  }];
   // Istio API components (mesh traffic policy, security, telemetry). The seven typed
-  // resources below require the Istio CRDs on the cluster, provided by the lightweight
-  // CRDs-only KubernetesIstioBaseCrds (868) — NOT the full mesh KubernetesIstio (825).
-  KubernetesDestinationRule = 861 [(kind_meta) = {
+  // resources below (853–859) require the Istio CRDs on the cluster, provided by the
+  // lightweight CRDs-only KubernetesIstioBaseCrds (851) — NOT the full mesh
+  // KubernetesIstio (852).
+  KubernetesDestinationRule = 853 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sdr"
@@ -2959,7 +2906,7 @@ enum CloudResourceKind {
       kind: "DestinationRule"
     }
   }];
-  KubernetesServiceEntry = 862 [(kind_meta) = {
+  KubernetesServiceEntry = 854 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sse"
@@ -2969,7 +2916,7 @@ enum CloudResourceKind {
       kind: "ServiceEntry"
     }
   }];
-  KubernetesPeerAuthentication = 863 [(kind_meta) = {
+  KubernetesPeerAuthentication = 855 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8spa"
@@ -2979,7 +2926,7 @@ enum CloudResourceKind {
       kind: "PeerAuthentication"
     }
   }];
-  KubernetesRequestAuthentication = 864 [(kind_meta) = {
+  KubernetesRequestAuthentication = 856 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sra"
@@ -2989,7 +2936,7 @@ enum CloudResourceKind {
       kind: "RequestAuthentication"
     }
   }];
-  KubernetesAuthorizationPolicy = 865 [(kind_meta) = {
+  KubernetesAuthorizationPolicy = 857 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sauthz"
@@ -2999,7 +2946,7 @@ enum CloudResourceKind {
       kind: "AuthorizationPolicy"
     }
   }];
-  KubernetesTelemetry = 866 [(kind_meta) = {
+  KubernetesTelemetry = 858 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stel"
@@ -3009,7 +2956,7 @@ enum CloudResourceKind {
       kind: "Telemetry"
     }
   }];
-  KubernetesEnvoyFilter = 867 [(kind_meta) = {
+  KubernetesEnvoyFilter = 859 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sef"
@@ -3019,10 +2966,237 @@ enum CloudResourceKind {
       kind: "EnvoyFilter"
     }
   }];
-  KubernetesIstioBaseCrds = 868 [(kind_meta) = {
+  KubernetesMetricsServer = 860 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8sistcrds"
+    id_prefix: "k8smetsrv"
+  }];
+  KubernetesCilium = 861 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8scil"
+  }];
+  KubernetesKeda = 862 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skeda"
+  }];
+  KubernetesKarpenter = 863 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skarp"
+  }];
+  KubernetesKarpenterNodePool = 864 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skarpnp"
+    prerequisites: [KubernetesKarpenter]
+    kubernetes_manifest_projection: {
+      api_version: "karpenter.sh/v1"
+      kind: "NodePool"
+    }
+  }];
+  KubernetesKarpenterEc2NodeClass = 865 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skarpenc"
+    prerequisites: [KubernetesKarpenter]
+    kubernetes_manifest_projection: {
+      api_version: "karpenter.k8s.aws/v1"
+      kind: "EC2NodeClass"
+    }
+  }];
+  KubernetesClusterAutoscaler = 866 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8scas"
+  }];
+  KubernetesVelero = 867 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8svel"
+  }];
+  // 870–889: Kubernetes observability
+  KubernetesPrometheus = 870 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sprom"
+  }];
+  KubernetesGrafana = 871 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sgfn"
+  }];
+  KubernetesSignoz = 872 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssgz"
+  }];
+  // 890–899: Kubernetes security, policy, and identity
+  KubernetesKeycloak = 890 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skc"
+  }];
+  KubernetesOpenBao = 891 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sbao"
+  }];
+  KubernetesOpenFga = 892 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sfga"
+  }];
+  // 900–929: Kubernetes data platforms
+  KubernetesCloudNativePgOperator = 900 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8scnpgop"
+  }];
+  KubernetesPostgres = 901 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8spg"
+    prerequisites: [KubernetesCloudNativePgOperator]
+  }];
+  KubernetesValkey = 902 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8svlk"
+  }];
+  KubernetesPerconaMysqlOperator = 903 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sprcnmysqlop"
+  }];
+  KubernetesMysql = 904 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8smysql"
+    prerequisites: [KubernetesPerconaMysqlOperator]
+  }];
+  KubernetesPerconaMongoOperator = 905 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sprcnmdbop"
+  }];
+  KubernetesMongodb = 906 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8smdb"
+    prerequisites: [KubernetesPerconaMongoOperator]
+  }];
+  KubernetesStrimziKafkaOperator = 907 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sstzop"
+  }];
+  KubernetesKafka = 908 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skaf"
+    prerequisites: [KubernetesStrimziKafkaOperator]
+  }];
+  KubernetesElasticOperator = 909 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8selaop"
+  }];
+  KubernetesElasticsearch = 910 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ses"
+    prerequisites: [KubernetesElasticOperator]
+  }];
+  KubernetesAltinityOperator = 911 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8saltop"
+  }];
+  KubernetesClickHouse = 912 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sclkhs"
+    prerequisites: [KubernetesAltinityOperator]
+  }];
+  KubernetesSolrOperator = 913 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sslrop"
+  }];
+  KubernetesSolr = 914 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssolr"
+    prerequisites: [KubernetesSolrOperator]
+  }];
+  KubernetesNeo4j = 915 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sneo"
+  }];
+  KubernetesRookCephOperator = 916 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srookop"
+  }];
+  KubernetesRookCephCluster = 917 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srookcl"
+  }];
+  // 950–969: Kubernetes GitOps and CI/CD
+  KubernetesArgocd = 950 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sargo"
+  }];
+  KubernetesTektonOperator = 951 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8stktnop"
+  }];
+  KubernetesTekton = 952 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8stktn"
+  }];
+  KubernetesGhaRunnerScaleSetController = 953 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sgharsc"
+  }];
+  KubernetesGhaRunnerScaleSet = 954 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sgharss"
+  }];
+  KubernetesHarbor = 955 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8shrbr"
+  }];
+  KubernetesJenkins = 956 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sjkn"
+  }];
+  // 970–989: Kubernetes app platforms
+  KubernetesTemporal = 970 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8stprl"
+  }];
+  KubernetesNats = 971 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8snats"
+  }];
+  KubernetesLocust = 972 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sloc"
   }];
 
   // 1200–1499: DigitalOcean resources

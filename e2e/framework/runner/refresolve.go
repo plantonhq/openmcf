@@ -2,6 +2,7 @@ package runner
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -94,19 +95,21 @@ func ResolveManifestRefs(manifestPath string, depOutputs DependencyOutputs) (str
 		return "", errors.Wrap(err, "failed to convert resolved manifest to yaml")
 	}
 
-	// A temp file (not next to the scenario) so scenario discovery never picks it up.
-	tmpFile, err := os.CreateTemp("", "planton-e2e-resolved-*.yaml")
+	// A temp file (not next to the scenario, so discovery never picks it up)
+	// that KEEPS the scenario's basename: verifier dispatch keys behavioral
+	// variants off the scenario name in the manifest path, and a
+	// random-only temp name would silently demote every reference-carrying
+	// behavioral scenario to its plain verifier (the same identity contract
+	// the token-expansion copy honors).
+	tmpDir, err := os.MkdirTemp("", "planton-e2e-resolved-*")
 	if err != nil {
-		return "", errors.Wrap(err, "failed to create temp file for resolved manifest")
+		return "", errors.Wrap(err, "failed to create temp dir for resolved manifest")
 	}
-	if _, err := tmpFile.Write(yamlBytes); err != nil {
-		tmpFile.Close()
+	tmpPath := filepath.Join(tmpDir, filepath.Base(manifestPath))
+	if err := os.WriteFile(tmpPath, yamlBytes, 0o600); err != nil {
 		return "", errors.Wrap(err, "failed to write resolved manifest")
 	}
-	if err := tmpFile.Close(); err != nil {
-		return "", errors.Wrap(err, "failed to close resolved manifest")
-	}
-	return tmpFile.Name(), nil
+	return tmpPath, nil
 }
 
 // resolveRefsInMessage replaces value_from arms on the message's StringValueOrRef

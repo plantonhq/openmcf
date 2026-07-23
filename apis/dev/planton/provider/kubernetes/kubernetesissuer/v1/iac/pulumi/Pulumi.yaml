@@ -1,4 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
+name: kubernetes-issuer
+runtime: go
+description: cert-manager namespace-scoped Issuer with the full signing-backend surface (ACME, CA, self-signed, Vault)

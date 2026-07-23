@@ -1,0 +1,343 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesbackendtlspolicy.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+// KubernetesBackendTlsPolicySpec defines a Kubernetes Gateway API
+// BackendTLSPolicy: the standard way to tell a Gateway implementation to
+// originate TLS to the backends BEHIND the gateway and verify the
+// certificate they present. Routes decide WHERE traffic goes; this policy
+// decides HOW the gateway-to-backend hop is secured. It is a Direct policy
+// attachment: it targets Services (Core support), optionally narrowed to a
+// single named Service port through section_name.
+//
+// The trust anchor comes from exactly one of two arms: ca_certificate_refs
+// (bring your own CA bundle — the Core shape is one ConfigMap carrying the
+// PEM bundle in a key named `ca.crt`, which is exactly what a cert-manager
+// CA chain materializes) or well_known_ca_certificates: "System" (trust the
+// implementation's system store — for backends serving publicly-issued
+// certificates). The hostname is mandatory and is used as the SNI for the
+// backend connection and, unless subject_alt_names is set, as the identity
+// the backend certificate must prove.
+//
+// IMPORTANT: the policy only takes effect when the Gateway's controller
+// IMPLEMENTS BackendTLSPolicy — support is still uneven across
+// implementations (verify your gateway controller's documentation). A
+// policy targeting a Service behind a non-implementing gateway is accepted
+// by the API server and then silently ignored: the gateway keeps sending
+// plaintext (or its own default TLS posture) to the backend.
+//
+// 100% fidelity with the upstream Gateway API v1.6.1 BackendTLSPolicySpec
+// (kubernetes-sigs/gateway-api apis/v1/backendtlspolicy_types.go), standard
+// channel. BackendTLSPolicy is served as gateway.networking.k8s.io/v1 (the
+// v1alpha3 version is deprecated upstream and no longer served).
+message KubernetesBackendTlsPolicySpec {
+  // Namespace in which the BackendTLSPolicy is created. A BackendTLSPolicy
+  // can only target Services in ITS OWN namespace (upstream forbids
+  // cross-namespace targetRefs for this policy), so create the policy in the
+  // namespace of the backend Services it secures.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  // The backend Services this policy applies to, in the policy's own
+  // namespace. Core support targets a Service; section_name narrows a
+  // reference to one named Service port (omit it to cover every port).
+  // Upstream note: implementations SHOULD support a single targetRef —
+  // multiple entries are accepted by the API but the safest portable shape
+  // is one.
+  //
+  // The two list rules mirror the CRD's own CEL exactly: refs to the same
+  // target must all carry a section_name (or none of them), and no two refs
+  // to the same target may carry the same section_name.
+  repeated KubernetesBackendTlsPolicyTargetReference target_refs = 2 [
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 16
+    },
+    (buf.validate.field).cel = {
+      id: "spec.target_refs.section_name_presence"
+      message: "section_name must be specified on every reference (or on none) when target_refs includes 2 or more references to the same target"
+      expression: "this.all(p1, this.all(p2, (p1.group == p2.group && p1.kind == p2.kind && p1.name == p2.name) ? ((!has(p1.section_name) || p1.section_name == '') == (!has(p2.section_name) || p2.section_name == '')) : true))"
+    },
+    (buf.validate.field).cel = {
+      id: "spec.target_refs.section_name_unique"
+      message: "section_name must be unique when target_refs includes 2 or more references to the same target"
+      expression: "this.all(p1, this.exists_one(p2, p1.group == p2.group && p1.kind == p2.kind && p1.name == p2.name && (((!has(p1.section_name) || p1.section_name == '') && (!has(p2.section_name) || p2.section_name == '')) || (has(p1.section_name) && has(p2.section_name) && p1.section_name == p2.section_name))))"
+    }
+  ];
+
+  // How the gateway validates the TLS handshake with the backend: the trust
+  // anchor (CA bundle XOR system store), the SNI/authentication hostname,
+  // and optional Subject Alternative Names.
+  KubernetesBackendTlsPolicyValidation validation = 3 [(buf.validate.field).required = true];
+
+  // Implementation-specific TLS options for the gateway-to-backend
+  // connection (for example a vendor's minimum-TLS-version knob). Keys
+  // should be domain-prefixed to avoid ambiguity. Upstream support:
+  // Implementation-specific.
+  //
+  // Upstream key/value: Gateway API AnnotationKey (1-253) / AnnotationValue
+  // (0-4096).
+  map<string, string> options = 4 [(buf.validate.field).map = {
+    max_pairs: 16
+    keys: {
+      string: {
+        min_len: 1
+        max_len: 253
+        pattern: "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]$"
+      }
+    }
+    values: {
+      string: {max_len: 4096}
+    }
+  }];
+}
+
+// KubernetesBackendTlsPolicyTargetReference identifies the local (same
+// namespace) resource the policy attaches to, optionally narrowed to one
+// section of it.
+//
+// Upstream: LocalPolicyTargetReferenceWithSectionName in
+// apis/v1/policy_types.go. This message is deliberately local to this kind:
+// the shared KubernetesGatewayApiLocalObjectReference serves
+// implementation-specific extension refs and carries a plain-string name,
+// while a policy target's name is a real foreign key to the Service it
+// secures.
+message KubernetesBackendTlsPolicyTargetReference {
+  // Group of the target resource. Services live in the core API group —
+  // the empty string.
+  //
+  // Upstream requires the KEY to be present, but its Group type explicitly
+  // allows the empty value -- so this is a proto3 `optional` string with a
+  // presence `required` rule: it must be SET (and is therefore emitted to
+  // the rendered CR, whose CRD rejects a missing key) but may be empty.
+  // The `optional` is what keeps the projection faithful: protojson omits
+  // unset proto3 scalars, so a non-optional empty-string group would be
+  // dropped from the manifest and rejected by the API server.
+  //
+  // Group pattern: empty or an RFC 1123 subdomain (max 253).
+  optional string group = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 253
+      pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+    }
+  ];
+
+  // Kind of the target resource. Core support: "Service".
+  //
+  // Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+  string kind = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 63
+      pattern: "^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$"
+    }
+  ];
+
+  // Name of the target resource. Defaults to a KubernetesService foreign
+  // key — wire it with valueFrom in an infra chart and the policy deploys
+  // after the Service it secures. Pass the literal name with `value:` when
+  // the target is not Planton-managed.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.service_name"
+  ];
+
+  // Name of a section within the target resource. When unspecified, the
+  // policy targets the entire resource. For a Service target this is a
+  // PORT NAME — the policy then applies only to connections to that port.
+  // A section_name that does not exist on the target makes the policy fail
+  // to attach (surfaced through the policy's ResolvedRefs condition).
+  //
+  // Upstream SectionName constraints: 1-253 chars, lowercase RFC 1123
+  // subdomain.
+  optional string section_name = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+  }];
+}
+
+// KubernetesBackendTlsPolicyValidation configures how the gateway validates
+// the backend's TLS handshake.
+//
+// Upstream: BackendTLSPolicyValidation in apis/v1/backendtlspolicy_types.go.
+message KubernetesBackendTlsPolicyValidation {
+  // The trust-anchor arms are exactly-one-of, mirrored from the CRD's own
+  // two CEL rules (must not both be set; one must be set).
+  option (buf.validate.message).cel = {
+    id: "spec.validation.trust_anchor_exclusive"
+    message: "ca_certificate_refs and well_known_ca_certificates are mutually exclusive — bring your own CA bundle OR trust the system store, not both"
+    expression: "!(size(this.ca_certificate_refs) > 0 && has(this.well_known_ca_certificates) && this.well_known_ca_certificates != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.validation.trust_anchor_required"
+    message: "either ca_certificate_refs (a CA-bundle ConfigMap) or well_known_ca_certificates (\"System\") must be specified — without a trust anchor the gateway cannot verify the backend"
+    expression: "size(this.ca_certificate_refs) > 0 || (has(this.well_known_ca_certificates) && this.well_known_ca_certificates != '')"
+  };
+
+  // References to same-namespace objects carrying the PEM-encoded CA bundle
+  // that signs the backend's serving certificate. Core support: ONE
+  // ConfigMap with the bundle in a key named `ca.crt` (more refs, other
+  // kinds, or multi-certificate bundles are implementation-specific). A
+  // cert-manager CA chain composes here: the root Certificate's ConfigMap
+  // (or a trust-manager Bundle target) is the natural referent.
+  repeated KubernetesBackendTlsPolicyCaCertificateReference ca_certificate_refs = 1 [(buf.validate.field).repeated.max_items = 8];
+
+  // Trust a well-known CA set instead of bringing a bundle. "System" (the
+  // one upstream-defined value) trusts the implementation's system
+  // certificate store — the arm for backends serving publicly-issued
+  // certificates. Implementations may define their own domain-prefixed sets
+  // (e.g. "mycompany.com/my-custom-ca-certificates"). Upstream support:
+  // Implementation-specific.
+  //
+  // json_name pins the CRD's exact key: protojson would derive
+  // "wellKnownCaCertificates" from the field name, but the upstream key is
+  // "wellKnownCACertificates" (capital CA) and the API server rejects the
+  // miscased key as undeclared — the faithful-projection contract includes
+  // acronym casing.
+  optional string well_known_ca_certificates = 2 [
+    json_name = "wellKnownCACertificates",
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 253
+      pattern: "^(System|([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]))$"
+    }
+  ];
+
+  // Hostname for the backend connection, doing double duty (upstream Core):
+  // it is sent as the SNI (RFC 6066), and — unless subject_alt_names is set
+  // — it is the identity the backend certificate must match. When
+  // subject_alt_names IS set, this hostname only selects the certificate;
+  // add it to subject_alt_names if it should also authenticate.
+  string hostname = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 253
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+    }
+  ];
+
+  // Subject Alternative Names the backend certificate must contain at least
+  // one of. Set this when the backend's certificate identity differs from
+  // the SNI hostname — the SPIFFE-ID pattern in mTLS meshes is the common
+  // case. Upstream support: Extended.
+  repeated KubernetesBackendTlsPolicySubjectAltName subject_alt_names = 4 [(buf.validate.field).repeated.max_items = 5];
+}
+
+// KubernetesBackendTlsPolicyCaCertificateReference identifies a
+// same-namespace object carrying the CA bundle (Core: a ConfigMap with key
+// `ca.crt`).
+//
+// Upstream: LocalObjectReference in apis/v1/object_reference_types.go —
+// deliberately NOT the shared KubernetesGatewayApiLocalObjectReference,
+// whose plain-string name serves arbitrary extension objects; a CA
+// reference's name is a real foreign key to the ConfigMap that carries the
+// bundle.
+message KubernetesBackendTlsPolicyCaCertificateReference {
+  // Group of the referent. ConfigMaps live in the core API group — the
+  // empty string.
+  //
+  // Upstream requires the KEY to be present, but its Group type explicitly
+  // allows the empty value -- so this is a proto3 `optional` string with a
+  // presence `required` rule: it must be SET (and is therefore emitted to
+  // the rendered CR, whose CRD rejects a missing key) but may be empty.
+  //
+  // Group pattern: empty or an RFC 1123 subdomain (max 253).
+  optional string group = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 253
+      pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+    }
+  ];
+
+  // Kind of the referent. Core support: "ConfigMap" (the CA bundle in a key
+  // named `ca.crt`); other kinds are implementation-specific.
+  //
+  // Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+  string kind = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 63
+      pattern: "^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$"
+    }
+  ];
+
+  // Name of the referent, in the policy's own namespace (cross-namespace CA
+  // references are upstream-invalid for this policy). Defaults to a
+  // KubernetesConfigMap foreign key — wire it with valueFrom against the
+  // ConfigMap carrying the CA bundle.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesConfigMap,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.configmap_name"
+  ];
+}
+
+// KubernetesBackendTlsPolicySubjectAltName is one Subject Alternative Name
+// the backend certificate may prove: a DNS hostname or a full URI (SPIFFE
+// IDs are the common URI case).
+//
+// Upstream: SubjectAltName in apis/v1/backendtlspolicy_types.go. The four
+// CEL rules mirror the CRD's own type/value pairing rules exactly.
+message KubernetesBackendTlsPolicySubjectAltName {
+  option (buf.validate.message).cel = {
+    id: "spec.san.hostname_required_for_type"
+    message: "hostname is required when type is 'Hostname'"
+    expression: "!(this.type == 'Hostname' && (!has(this.hostname) || this.hostname == ''))"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.san.hostname_forbidden_for_type"
+    message: "hostname must not be set when type is not 'Hostname'"
+    expression: "!(this.type != 'Hostname' && has(this.hostname) && this.hostname != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.san.uri_required_for_type"
+    message: "uri is required when type is 'URI'"
+    expression: "!(this.type == 'URI' && (!has(this.uri) || this.uri == ''))"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.san.uri_forbidden_for_type"
+    message: "uri must not be set when type is not 'URI'"
+    expression: "!(this.type != 'URI' && has(this.uri) && this.uri != '')"
+  };
+
+  // Format of this Subject Alternative Name. Closed upstream enum:
+  // "Hostname" | "URI". Always required.
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.san.type_enum"
+      message: "type must be either 'Hostname' or 'URI'"
+      expression: "this in ['Hostname', 'URI']"
+    }
+  ];
+
+  // SAN in DNS name format (wildcard first label allowed). Required when
+  // type is "Hostname", forbidden otherwise.
+  optional string hostname = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^(\\*\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+  }];
+
+  // SAN in full URI format — scheme and scheme-specific part are both
+  // mandatory (e.g. "spiffe://mycluster.example.com/ns/myns/sa/svc1sa").
+  // Required when type is "URI", forbidden otherwise.
+  optional string uri = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^(([^:/?#]+):)(//([^/?#]*))([^?#]*)(\\?([^#]*))?(#(.*))?"
+  }];
+}

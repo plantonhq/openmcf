@@ -41,9 +41,14 @@ data "http" "istio_base_crds" {
 # the large CRD schemas Istio ships.
 ##############################################
 resource "kubectl_manifest" "istio_base_crds" {
+  # Keyed by each CRD's OWN NAME (never the split index): the name is the
+  # document's identity, so state addresses stay stable across bundle
+  # reorderings AND the address key feeds the composed import ID blind
+  # (from_address_key in the import map).
   for_each = {
-    for idx, doc in split("---", data.http.istio_base_crds.response_body) : idx => doc
-    if trimspace(doc) != "" && can(yamldecode(doc))
+    for doc in split("---", data.http.istio_base_crds.response_body) :
+    yamldecode(doc).metadata.name => doc
+    if trimspace(doc) != "" && can(yamldecode(doc).metadata.name)
   }
 
   yaml_body = each.value

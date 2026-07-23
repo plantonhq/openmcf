@@ -1,89 +1,147 @@
-##############################################
-# locals.tf
+# Computed values shared across the module's resources.
 #
-# Includes logic for:
-#  - Deriving resource_id, labels, namespace
-#  - Determining ingress hostnames
-#  - Creating image_pull_secret_data from
-#    docker_credential (if provider == "gcp_artifact_registry").
-##############################################
+# The load-bearing decisions here:
+#  - selector_labels are the IMMUTABLE pod-selection identity (metadata.name
+#    based) — the Deployment selector, the Service selector, and the PDB
+#    selector all use exactly this set. The version label is deliberately NOT
+#    part of it: selectors are immutable on apps/v1 Deployments while version
+#    changes on every pipeline run.
+#  - all_containers normalizes the app container (default name "app") and the
+#    sidecars into ONE uniform list, so deployment.tf renders every container
+#    through a single dynamic block — identical semantics for app and sidecars.
+#  - pod_volumes derives the pod-level volume list from the union of every
+#    container's mounts, de-duplicated by name (two containers sharing an
+#    EmptyDir declare the same mount name and source).
 
 locals {
-  # Derive a stable resource ID (prefer `metadata.id`, fallback to `metadata.name`)
   resource_id = (
     var.metadata.id != null && var.metadata.id != ""
     ? var.metadata.id
     : var.metadata.name
   )
 
-  # Selector labels use metadata.name to ensure each deployment's pods are uniquely identified.
-  # This prevents traffic routing conflicts when multiple deployments share a namespace.
   selector_labels = {
     "app"           = var.metadata.name
     "resource_name" = var.metadata.name
   }
 
-  # Base labels include selector labels plus metadata
   base_labels = merge(local.selector_labels, {
     "resource"      = "true"
     "resource_id"   = local.resource_id
-    "resource_kind" = "microservice_kubernetes"
+    "resource_kind" = "KubernetesDeployment"
   })
 
-  # Organization label only if var.metadata.org is non-empty
   org_label = (
     var.metadata.org != null && var.metadata.org != ""
   ) ? { "organization" = var.metadata.org } : {}
 
-  # Environment label only if var.metadata.env is non-empty
   env_label = (
-    var.metadata.env != null &&
-    try(var.metadata.env, "") != ""
+    var.metadata.env != null && try(var.metadata.env, "") != ""
   ) ? { "environment" = var.metadata.env } : {}
 
-  # Merge base, org, and environment labels
-  final_labels = merge(local.base_labels, local.org_label, local.env_label)
+  # The deployment track (deploy-target contract: pipelines set spec.version
+  # from the git branch). A plain label, never a selector key.
+  version_label = (
+    try(var.spec.version, "") != ""
+  ) ? { "version" = var.spec.version } : {}
 
-  # Get namespace from spec
+  final_labels = merge(local.base_labels, local.org_label, local.env_label, local.version_label)
+
   namespace = var.spec.namespace
 
-  # Computed resource names to avoid conflicts when multiple instances share a namespace
-  # Format: {metadata.name}-{purpose}
-  # Users can prefix metadata.name with component type if needed (e.g., "deploy-my-app")
-  env_secret_name                   = "${var.metadata.name}-env-secrets"
-  image_pull_secret_name            = "${var.metadata.name}-image-pull"
-  ingress_certificate_name          = "${var.metadata.name}-ingress-cert"
-  external_gateway_name             = "${var.metadata.name}-external"
-  internal_gateway_name             = "${var.metadata.name}-internal"
-  http_external_redirect_route_name = "${var.metadata.name}-http-external-redirect"
-  https_external_route_name         = "${var.metadata.name}-https-external"
-  http_internal_redirect_route_name = "${var.metadata.name}-http-internal-redirect"
-  https_internal_route_name         = "${var.metadata.name}-https-internal"
+  # Satellite resource names, prefixed with metadata.name so multiple
+  # instances sharing a namespace never collide.
+  env_secret_name        = "${var.metadata.name}-env-secrets"
+  image_pull_secret_name = "${var.metadata.name}-image-pull"
 
-  # Use metadata.name for service name to avoid conflicts when multiple deployments share a namespace
+  # ---------------------------------------------------------------------------
+  # Container normalization: app first (named "app" unless the spec names it),
+  # then sidecars in declared order. Kubernetes shows containers in declaration
+  # order and tooling conventionally treats the first as primary.
+  # ---------------------------------------------------------------------------
+  app_container = merge(var.spec.container.app, {
+    name = try(var.spec.container.app.name, "") != "" ? var.spec.container.app.name : "app"
+  })
+
+  all_containers = concat([local.app_container], try(var.spec.container.sidecars, []))
+
+  init_containers = try(var.spec.pod.init_containers, [])
+
+  # Literal secret env values across ALL containers (app, sidecars, init),
+  # materialized into one workload-scoped Secret. secretRef entries are wired
+  # directly as env references and never pass through this map.
+  env_secret_data = merge([
+    for c in concat(local.all_containers, local.init_containers) : {
+      for s in try(c.env.secrets, []) : s.name => s.value
+      if try(s.value, "") != "" && try(s.secret_ref, null) == null
+    }
+  ]...)
+
+  # Pod-level volumes: union of every container's mounts, first declaration of
+  # a name wins. A mount with NO source references a volume defined elsewhere
+  # (not applicable on Deployments, but the shape is shared across workload
+  # kinds) and contributes no pod volume.
+  volume_mounts_flat = flatten([
+    for c in concat(local.all_containers, local.init_containers) : try(c.volume_mounts, [])
+  ])
+
+  pod_volumes = {
+    for vm in local.volume_mounts_flat : vm.name => vm...
+  }
+
+  # Pod-level image pull secrets: spec-listed names plus the module-created
+  # docker-config secret when configured. ServiceAccount-attached pull secrets
+  # need no entry here.
+  image_pull_secret_names = concat(
+    try(var.spec.pod.image_pull_secrets, []),
+    local.create_image_pull_secret ? [local.image_pull_secret_name] : []
+  )
+
+  create_image_pull_secret = try(var.docker_config_json, "") != ""
+
+  # Pod template labels: controller labels win over user pod labels so a user
+  # label can never break pod selection.
+  pod_template_labels = merge(try(var.spec.pod.labels, {}), local.final_labels)
+
+  # ---------------------------------------------------------------------------
+  # Service wiring. The Service is only created when the app container exposes
+  # ports; service_port defaults to container_port so the common "expose as-is"
+  # case needs no extra configuration.
+  # ---------------------------------------------------------------------------
+  app_ports = try(var.spec.container.app.ports, [])
+
+  service_ports = [
+    for p in local.app_ports : {
+      name         = p.name
+      protocol     = try(p.network_protocol, "") != "" ? p.network_protocol : "TCP"
+      port         = try(p.service_port, 0) > 0 ? p.service_port : p.container_port
+      target_port  = p.container_port
+      app_protocol = try(p.app_protocol, "") != "" ? p.app_protocol : null
+    }
+  ]
+
+  create_service = length(local.app_ports) > 0
+
   kube_service_name = var.metadata.name
+  kube_service_fqdn = local.create_service ? "${local.kube_service_name}.${local.namespace}.svc.cluster.local" : ""
 
-  # Internal DNS name for the service
-  kube_service_fqdn = "${local.kube_service_name}.${local.namespace}.svc.cluster.local"
+  kube_port_forward_command = local.create_service ? "kubectl port-forward -n ${local.namespace} service/${local.kube_service_name} 8080:8080" : ""
 
-  # Handy port-forward command
-  kube_port_forward_command = "kubectl port-forward -n ${local.namespace} service/${local.kube_service_name} 8080:8080"
+  # Selector labels rendered as a deterministic sorted "k=v,k=v" string — the
+  # exact syntax kubectl -l and NetworkPolicy tooling accept.
+  selector_labels_string = join(",", [for k in sort(keys(local.selector_labels)) : "${k}=${local.selector_labels[k]}"])
 
-  # Safely handle optional ingress values
-  ingress_is_enabled = try(var.spec.ingress.is_enabled, false)
-  ingress_dns_domain = try(var.spec.ingress.dns_domain, "")
+  # Availability with Kubernetes-consistent fallbacks.
+  replicas = try(var.spec.availability.replicas, null) != null ? var.spec.availability.replicas : 1
 
-  # External hostname (null if not applicable)
-  ingress_external_hostname = (
-    local.ingress_is_enabled && local.ingress_dns_domain != ""
-  ) ? "${local.resource_id}.${local.ingress_dns_domain}" : null
+  strategy_type = try(var.spec.availability.strategy.type, "") != "" ? var.spec.availability.strategy.type : "RollingUpdate"
 
-  # Internal hostname (null if not applicable)
-  ingress_internal_hostname = (
-    local.ingress_is_enabled && local.ingress_dns_domain != ""
-  ) ? "${local.resource_id}-internal.${local.ingress_dns_domain}" : null
+  hpa_enabled = try(var.spec.availability.horizontal_pod_autoscaling.enabled, false)
+  pdb_enabled = try(var.spec.availability.pod_disruption_budget.enabled, false)
+}
 
-  # For certificate creation
-  ingress_cert_cluster_issuer_name = local.ingress_dns_domain != "" ? local.ingress_dns_domain : null
-  ingress_cert_secret_name         = local.resource_id
+variable "docker_config_json" {
+  description = "Docker registry credential (dockerconfigjson) injected by the platform at deploy time; empty when pulling public images or when pull secrets are attached to the ServiceAccount."
+  type        = string
+  default     = ""
 }

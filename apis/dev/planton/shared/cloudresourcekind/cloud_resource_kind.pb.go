@@ -854,79 +854,125 @@ const (
 	// 730–739: GCP compute overflow (the 600–622 foundation sub-band that
 	// holds GcpComputeInstance is fully allocated)
 	CloudResourceKind_GcpComputeDisk CloudResourceKind = 730
-	// 800–999: Kubernetes resources
-	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 800
-	CloudResourceKind_KubernetesCronJob                     CloudResourceKind = 801
-	CloudResourceKind_KubernetesElasticsearch               CloudResourceKind = 802
-	CloudResourceKind_KubernetesGitlab                      CloudResourceKind = 803
-	CloudResourceKind_KubernetesGrafana                     CloudResourceKind = 804
-	CloudResourceKind_KubernetesHelmRelease                 CloudResourceKind = 805
-	CloudResourceKind_KubernetesJenkins                     CloudResourceKind = 806
-	CloudResourceKind_KubernetesKafka                       CloudResourceKind = 807
-	CloudResourceKind_KubernetesKeycloak                    CloudResourceKind = 808
-	CloudResourceKind_KubernetesLocust                      CloudResourceKind = 809
-	CloudResourceKind_KubernetesDeployment                  CloudResourceKind = 810
-	CloudResourceKind_KubernetesMongodb                     CloudResourceKind = 811
-	CloudResourceKind_KubernetesNeo4j                       CloudResourceKind = 812
-	CloudResourceKind_KubernetesOpenFga                     CloudResourceKind = 813
-	CloudResourceKind_KubernetesPostgres                    CloudResourceKind = 814
-	CloudResourceKind_KubernetesPrometheus                  CloudResourceKind = 815
-	CloudResourceKind_KubernetesRedis                       CloudResourceKind = 816
-	CloudResourceKind_KubernetesSignoz                      CloudResourceKind = 817
-	CloudResourceKind_KubernetesSolr                        CloudResourceKind = 818
-	CloudResourceKind_KubernetesTemporal                    CloudResourceKind = 819
-	CloudResourceKind_KubernetesNats                        CloudResourceKind = 820
-	CloudResourceKind_KubernetesCertManager                 CloudResourceKind = 821
-	CloudResourceKind_KubernetesElasticOperator             CloudResourceKind = 822
-	CloudResourceKind_KubernetesExternalDns                 CloudResourceKind = 823
-	CloudResourceKind_KubernetesIngressNginx                CloudResourceKind = 824
-	CloudResourceKind_KubernetesIstio                       CloudResourceKind = 825
-	CloudResourceKind_KubernetesStrimziKafkaOperator        CloudResourceKind = 826
-	CloudResourceKind_KubernetesZalandoPostgresOperator     CloudResourceKind = 827
-	CloudResourceKind_KubernetesSolrOperator                CloudResourceKind = 828
-	CloudResourceKind_KubernetesExternalSecrets             CloudResourceKind = 829
-	CloudResourceKind_KubernetesClickHouse                  CloudResourceKind = 830
-	CloudResourceKind_KubernetesAltinityOperator            CloudResourceKind = 831
-	CloudResourceKind_KubernetesPerconaPostgresOperator     CloudResourceKind = 832
-	CloudResourceKind_KubernetesPerconaMongoOperator        CloudResourceKind = 833
-	CloudResourceKind_KubernetesPerconaMysqlOperator        CloudResourceKind = 834
-	CloudResourceKind_KubernetesHarbor                      CloudResourceKind = 835
-	CloudResourceKind_KubernetesNamespace                   CloudResourceKind = 836
-	CloudResourceKind_KubernetesGatewayApiCrds              CloudResourceKind = 837
-	CloudResourceKind_KubernetesTektonOperator              CloudResourceKind = 838
-	CloudResourceKind_KubernetesTekton                      CloudResourceKind = 839
-	CloudResourceKind_KubernetesStatefulSet                 CloudResourceKind = 840
-	CloudResourceKind_KubernetesDaemonSet                   CloudResourceKind = 841
-	CloudResourceKind_KubernetesManifest                    CloudResourceKind = 842
-	CloudResourceKind_KubernetesGhaRunnerScaleSetController CloudResourceKind = 843
-	CloudResourceKind_KubernetesGhaRunnerScaleSet           CloudResourceKind = 844
-	CloudResourceKind_KubernetesOpenBao                     CloudResourceKind = 845
-	CloudResourceKind_KubernetesJob                         CloudResourceKind = 846
-	CloudResourceKind_KubernetesRookCephOperator            CloudResourceKind = 847
-	CloudResourceKind_KubernetesRookCephCluster             CloudResourceKind = 848
-	CloudResourceKind_KubernetesService                     CloudResourceKind = 849
-	CloudResourceKind_KubernetesSecret                      CloudResourceKind = 850
-	CloudResourceKind_KubernetesClusterIssuer               CloudResourceKind = 851
-	CloudResourceKind_KubernetesIssuer                      CloudResourceKind = 852
-	CloudResourceKind_KubernetesCertificate                 CloudResourceKind = 853
-	CloudResourceKind_KubernetesGatewayClass                CloudResourceKind = 854
-	CloudResourceKind_KubernetesGateway                     CloudResourceKind = 855
-	CloudResourceKind_KubernetesHttpRoute                   CloudResourceKind = 856
-	CloudResourceKind_KubernetesGrpcRoute                   CloudResourceKind = 857
-	CloudResourceKind_KubernetesTcpRoute                    CloudResourceKind = 858
-	CloudResourceKind_KubernetesTlsRoute                    CloudResourceKind = 859
-	CloudResourceKind_KubernetesReferenceGrant              CloudResourceKind = 860
+	// 800–999: Kubernetes resources, organized in family sub-bands
+	// (830–869 also hosts CNI/autoscaling/DR addons; 930–949 reserved for
+	// analytics & ML; 990–999 reserved for growth)
+	// 800–829: Kubernetes building blocks (core API primitives)
+	CloudResourceKind_KubernetesNamespace      CloudResourceKind = 800
+	CloudResourceKind_KubernetesDeployment     CloudResourceKind = 801
+	CloudResourceKind_KubernetesStatefulSet    CloudResourceKind = 802
+	CloudResourceKind_KubernetesDaemonSet      CloudResourceKind = 803
+	CloudResourceKind_KubernetesJob            CloudResourceKind = 804
+	CloudResourceKind_KubernetesCronJob        CloudResourceKind = 805
+	CloudResourceKind_KubernetesService        CloudResourceKind = 806
+	CloudResourceKind_KubernetesSecret         CloudResourceKind = 807
+	CloudResourceKind_KubernetesManifest       CloudResourceKind = 808
+	CloudResourceKind_KubernetesHelmRelease    CloudResourceKind = 809
+	CloudResourceKind_KubernetesConfigMap      CloudResourceKind = 810
+	CloudResourceKind_KubernetesServiceAccount CloudResourceKind = 811
+	// Bundles the RBAC grant grain (Role/ClusterRole + its binding) into one
+	// component: "grant these permissions to these subjects in this scope".
+	CloudResourceKind_KubernetesRbac                  CloudResourceKind = 812
+	CloudResourceKind_KubernetesIngress               CloudResourceKind = 813
+	CloudResourceKind_KubernetesNetworkPolicy         CloudResourceKind = 814
+	CloudResourceKind_KubernetesPersistentVolumeClaim CloudResourceKind = 815
+	CloudResourceKind_KubernetesStorageClass          CloudResourceKind = 816
+	// Manages the namespace-governance pair: the ResourceQuota plus an
+	// optional companion LimitRange (per-object defaults/bounds) — two API
+	// objects, one governance story.
+	CloudResourceKind_KubernetesResourceQuota           CloudResourceKind = 817
+	CloudResourceKind_KubernetesPriorityClass           CloudResourceKind = 818
+	CloudResourceKind_KubernetesPodDisruptionBudget     CloudResourceKind = 819
+	CloudResourceKind_KubernetesHorizontalPodAutoscaler CloudResourceKind = 820
+	// 830–869: Kubernetes foundation addons (certs, DNS, secrets, ingress, Gateway API, mesh, CNI/autoscaling/DR)
+	CloudResourceKind_KubernetesCertManager CloudResourceKind = 830
+	// KubernetesCertManager is a prerequisite for the three cert-manager CR
+	// kinds below: ClusterIssuer/Issuer/Certificate are cert-manager custom
+	// resources — without the controller and its CRDs they cannot be applied.
+	CloudResourceKind_KubernetesClusterIssuer           CloudResourceKind = 831
+	CloudResourceKind_KubernetesIssuer                  CloudResourceKind = 832
+	CloudResourceKind_KubernetesCertificate             CloudResourceKind = 833
+	CloudResourceKind_KubernetesExternalDns             CloudResourceKind = 834
+	CloudResourceKind_KubernetesExternalSecretsOperator CloudResourceKind = 835
+	// KubernetesExternalSecretsOperator is a prerequisite for the three
+	// external-secrets CR kinds below: ClusterSecretStore/SecretStore/
+	// ExternalSecret are external-secrets custom resources — without the
+	// operator and its CRDs they cannot be applied.
+	CloudResourceKind_KubernetesClusterSecretStore CloudResourceKind = 836
+	CloudResourceKind_KubernetesSecretStore        CloudResourceKind = 837
+	CloudResourceKind_KubernetesExternalSecret     CloudResourceKind = 838
+	CloudResourceKind_KubernetesIngressNginx       CloudResourceKind = 839
+	CloudResourceKind_KubernetesGatewayApiCrds     CloudResourceKind = 840
+	CloudResourceKind_KubernetesGatewayClass       CloudResourceKind = 841
+	CloudResourceKind_KubernetesGateway            CloudResourceKind = 842
+	CloudResourceKind_KubernetesListenerSet        CloudResourceKind = 843
+	CloudResourceKind_KubernetesHttpRoute          CloudResourceKind = 844
+	CloudResourceKind_KubernetesGrpcRoute          CloudResourceKind = 845
+	CloudResourceKind_KubernetesTcpRoute           CloudResourceKind = 846
+	CloudResourceKind_KubernetesUdpRoute           CloudResourceKind = 847
+	CloudResourceKind_KubernetesTlsRoute           CloudResourceKind = 848
+	CloudResourceKind_KubernetesReferenceGrant     CloudResourceKind = 849
+	CloudResourceKind_KubernetesBackendTlsPolicy   CloudResourceKind = 850
+	CloudResourceKind_KubernetesIstioBaseCrds      CloudResourceKind = 851
+	CloudResourceKind_KubernetesIstio              CloudResourceKind = 852
 	// Istio API components (mesh traffic policy, security, telemetry). The seven typed
-	// resources below require the Istio CRDs on the cluster, provided by the lightweight
-	// CRDs-only KubernetesIstioBaseCrds (868) — NOT the full mesh KubernetesIstio (825).
-	CloudResourceKind_KubernetesDestinationRule       CloudResourceKind = 861
-	CloudResourceKind_KubernetesServiceEntry          CloudResourceKind = 862
-	CloudResourceKind_KubernetesPeerAuthentication    CloudResourceKind = 863
-	CloudResourceKind_KubernetesRequestAuthentication CloudResourceKind = 864
-	CloudResourceKind_KubernetesAuthorizationPolicy   CloudResourceKind = 865
-	CloudResourceKind_KubernetesTelemetry             CloudResourceKind = 866
-	CloudResourceKind_KubernetesEnvoyFilter           CloudResourceKind = 867
-	CloudResourceKind_KubernetesIstioBaseCrds         CloudResourceKind = 868
+	// resources below (853–859) require the Istio CRDs on the cluster, provided by the
+	// lightweight CRDs-only KubernetesIstioBaseCrds (851) — NOT the full mesh
+	// KubernetesIstio (852).
+	CloudResourceKind_KubernetesDestinationRule       CloudResourceKind = 853
+	CloudResourceKind_KubernetesServiceEntry          CloudResourceKind = 854
+	CloudResourceKind_KubernetesPeerAuthentication    CloudResourceKind = 855
+	CloudResourceKind_KubernetesRequestAuthentication CloudResourceKind = 856
+	CloudResourceKind_KubernetesAuthorizationPolicy   CloudResourceKind = 857
+	CloudResourceKind_KubernetesTelemetry             CloudResourceKind = 858
+	CloudResourceKind_KubernetesEnvoyFilter           CloudResourceKind = 859
+	CloudResourceKind_KubernetesMetricsServer         CloudResourceKind = 860
+	CloudResourceKind_KubernetesCilium                CloudResourceKind = 861
+	CloudResourceKind_KubernetesKeda                  CloudResourceKind = 862
+	CloudResourceKind_KubernetesKarpenter             CloudResourceKind = 863
+	CloudResourceKind_KubernetesKarpenterNodePool     CloudResourceKind = 864
+	CloudResourceKind_KubernetesKarpenterEc2NodeClass CloudResourceKind = 865
+	CloudResourceKind_KubernetesClusterAutoscaler     CloudResourceKind = 866
+	CloudResourceKind_KubernetesVelero                CloudResourceKind = 867
+	// 870–889: Kubernetes observability
+	CloudResourceKind_KubernetesPrometheus CloudResourceKind = 870
+	CloudResourceKind_KubernetesGrafana    CloudResourceKind = 871
+	CloudResourceKind_KubernetesSignoz     CloudResourceKind = 872
+	// 890–899: Kubernetes security, policy, and identity
+	CloudResourceKind_KubernetesKeycloak CloudResourceKind = 890
+	CloudResourceKind_KubernetesOpenBao  CloudResourceKind = 891
+	CloudResourceKind_KubernetesOpenFga  CloudResourceKind = 892
+	// 900–929: Kubernetes data platforms
+	CloudResourceKind_KubernetesCloudNativePgOperator CloudResourceKind = 900
+	CloudResourceKind_KubernetesPostgres              CloudResourceKind = 901
+	CloudResourceKind_KubernetesValkey                CloudResourceKind = 902
+	CloudResourceKind_KubernetesPerconaMysqlOperator  CloudResourceKind = 903
+	CloudResourceKind_KubernetesMysql                 CloudResourceKind = 904
+	CloudResourceKind_KubernetesPerconaMongoOperator  CloudResourceKind = 905
+	CloudResourceKind_KubernetesMongodb               CloudResourceKind = 906
+	CloudResourceKind_KubernetesStrimziKafkaOperator  CloudResourceKind = 907
+	CloudResourceKind_KubernetesKafka                 CloudResourceKind = 908
+	CloudResourceKind_KubernetesElasticOperator       CloudResourceKind = 909
+	CloudResourceKind_KubernetesElasticsearch         CloudResourceKind = 910
+	CloudResourceKind_KubernetesAltinityOperator      CloudResourceKind = 911
+	CloudResourceKind_KubernetesClickHouse            CloudResourceKind = 912
+	CloudResourceKind_KubernetesSolrOperator          CloudResourceKind = 913
+	CloudResourceKind_KubernetesSolr                  CloudResourceKind = 914
+	CloudResourceKind_KubernetesNeo4j                 CloudResourceKind = 915
+	CloudResourceKind_KubernetesRookCephOperator      CloudResourceKind = 916
+	CloudResourceKind_KubernetesRookCephCluster       CloudResourceKind = 917
+	// 950–969: Kubernetes GitOps and CI/CD
+	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 950
+	CloudResourceKind_KubernetesTektonOperator              CloudResourceKind = 951
+	CloudResourceKind_KubernetesTekton                      CloudResourceKind = 952
+	CloudResourceKind_KubernetesGhaRunnerScaleSetController CloudResourceKind = 953
+	CloudResourceKind_KubernetesGhaRunnerScaleSet           CloudResourceKind = 954
+	CloudResourceKind_KubernetesHarbor                      CloudResourceKind = 955
+	CloudResourceKind_KubernetesJenkins                     CloudResourceKind = 956
+	// 970–989: Kubernetes app platforms
+	CloudResourceKind_KubernetesTemporal CloudResourceKind = 970
+	CloudResourceKind_KubernetesNats     CloudResourceKind = 971
+	CloudResourceKind_KubernetesLocust   CloudResourceKind = 972
 	// 1200–1499: DigitalOcean resources
 	CloudResourceKind_DigitalOceanAppPlatformService CloudResourceKind = 1200
 	CloudResourceKind_DigitalOceanBucket             CloudResourceKind = 1201
@@ -1434,75 +1480,99 @@ var (
 		720:  "GcpCloudRunJob",
 		721:  "GcpServerlessVpcConnector",
 		730:  "GcpComputeDisk",
-		800:  "KubernetesArgocd",
-		801:  "KubernetesCronJob",
-		802:  "KubernetesElasticsearch",
-		803:  "KubernetesGitlab",
-		804:  "KubernetesGrafana",
-		805:  "KubernetesHelmRelease",
-		806:  "KubernetesJenkins",
-		807:  "KubernetesKafka",
-		808:  "KubernetesKeycloak",
-		809:  "KubernetesLocust",
-		810:  "KubernetesDeployment",
-		811:  "KubernetesMongodb",
-		812:  "KubernetesNeo4j",
-		813:  "KubernetesOpenFga",
-		814:  "KubernetesPostgres",
-		815:  "KubernetesPrometheus",
-		816:  "KubernetesRedis",
-		817:  "KubernetesSignoz",
-		818:  "KubernetesSolr",
-		819:  "KubernetesTemporal",
-		820:  "KubernetesNats",
-		821:  "KubernetesCertManager",
-		822:  "KubernetesElasticOperator",
-		823:  "KubernetesExternalDns",
-		824:  "KubernetesIngressNginx",
-		825:  "KubernetesIstio",
-		826:  "KubernetesStrimziKafkaOperator",
-		827:  "KubernetesZalandoPostgresOperator",
-		828:  "KubernetesSolrOperator",
-		829:  "KubernetesExternalSecrets",
-		830:  "KubernetesClickHouse",
-		831:  "KubernetesAltinityOperator",
-		832:  "KubernetesPerconaPostgresOperator",
-		833:  "KubernetesPerconaMongoOperator",
-		834:  "KubernetesPerconaMysqlOperator",
-		835:  "KubernetesHarbor",
-		836:  "KubernetesNamespace",
-		837:  "KubernetesGatewayApiCrds",
-		838:  "KubernetesTektonOperator",
-		839:  "KubernetesTekton",
-		840:  "KubernetesStatefulSet",
-		841:  "KubernetesDaemonSet",
-		842:  "KubernetesManifest",
-		843:  "KubernetesGhaRunnerScaleSetController",
-		844:  "KubernetesGhaRunnerScaleSet",
-		845:  "KubernetesOpenBao",
-		846:  "KubernetesJob",
-		847:  "KubernetesRookCephOperator",
-		848:  "KubernetesRookCephCluster",
-		849:  "KubernetesService",
-		850:  "KubernetesSecret",
-		851:  "KubernetesClusterIssuer",
-		852:  "KubernetesIssuer",
-		853:  "KubernetesCertificate",
-		854:  "KubernetesGatewayClass",
-		855:  "KubernetesGateway",
-		856:  "KubernetesHttpRoute",
-		857:  "KubernetesGrpcRoute",
-		858:  "KubernetesTcpRoute",
-		859:  "KubernetesTlsRoute",
-		860:  "KubernetesReferenceGrant",
-		861:  "KubernetesDestinationRule",
-		862:  "KubernetesServiceEntry",
-		863:  "KubernetesPeerAuthentication",
-		864:  "KubernetesRequestAuthentication",
-		865:  "KubernetesAuthorizationPolicy",
-		866:  "KubernetesTelemetry",
-		867:  "KubernetesEnvoyFilter",
-		868:  "KubernetesIstioBaseCrds",
+		800:  "KubernetesNamespace",
+		801:  "KubernetesDeployment",
+		802:  "KubernetesStatefulSet",
+		803:  "KubernetesDaemonSet",
+		804:  "KubernetesJob",
+		805:  "KubernetesCronJob",
+		806:  "KubernetesService",
+		807:  "KubernetesSecret",
+		808:  "KubernetesManifest",
+		809:  "KubernetesHelmRelease",
+		810:  "KubernetesConfigMap",
+		811:  "KubernetesServiceAccount",
+		812:  "KubernetesRbac",
+		813:  "KubernetesIngress",
+		814:  "KubernetesNetworkPolicy",
+		815:  "KubernetesPersistentVolumeClaim",
+		816:  "KubernetesStorageClass",
+		817:  "KubernetesResourceQuota",
+		818:  "KubernetesPriorityClass",
+		819:  "KubernetesPodDisruptionBudget",
+		820:  "KubernetesHorizontalPodAutoscaler",
+		830:  "KubernetesCertManager",
+		831:  "KubernetesClusterIssuer",
+		832:  "KubernetesIssuer",
+		833:  "KubernetesCertificate",
+		834:  "KubernetesExternalDns",
+		835:  "KubernetesExternalSecretsOperator",
+		836:  "KubernetesClusterSecretStore",
+		837:  "KubernetesSecretStore",
+		838:  "KubernetesExternalSecret",
+		839:  "KubernetesIngressNginx",
+		840:  "KubernetesGatewayApiCrds",
+		841:  "KubernetesGatewayClass",
+		842:  "KubernetesGateway",
+		843:  "KubernetesListenerSet",
+		844:  "KubernetesHttpRoute",
+		845:  "KubernetesGrpcRoute",
+		846:  "KubernetesTcpRoute",
+		847:  "KubernetesUdpRoute",
+		848:  "KubernetesTlsRoute",
+		849:  "KubernetesReferenceGrant",
+		850:  "KubernetesBackendTlsPolicy",
+		851:  "KubernetesIstioBaseCrds",
+		852:  "KubernetesIstio",
+		853:  "KubernetesDestinationRule",
+		854:  "KubernetesServiceEntry",
+		855:  "KubernetesPeerAuthentication",
+		856:  "KubernetesRequestAuthentication",
+		857:  "KubernetesAuthorizationPolicy",
+		858:  "KubernetesTelemetry",
+		859:  "KubernetesEnvoyFilter",
+		860:  "KubernetesMetricsServer",
+		861:  "KubernetesCilium",
+		862:  "KubernetesKeda",
+		863:  "KubernetesKarpenter",
+		864:  "KubernetesKarpenterNodePool",
+		865:  "KubernetesKarpenterEc2NodeClass",
+		866:  "KubernetesClusterAutoscaler",
+		867:  "KubernetesVelero",
+		870:  "KubernetesPrometheus",
+		871:  "KubernetesGrafana",
+		872:  "KubernetesSignoz",
+		890:  "KubernetesKeycloak",
+		891:  "KubernetesOpenBao",
+		892:  "KubernetesOpenFga",
+		900:  "KubernetesCloudNativePgOperator",
+		901:  "KubernetesPostgres",
+		902:  "KubernetesValkey",
+		903:  "KubernetesPerconaMysqlOperator",
+		904:  "KubernetesMysql",
+		905:  "KubernetesPerconaMongoOperator",
+		906:  "KubernetesMongodb",
+		907:  "KubernetesStrimziKafkaOperator",
+		908:  "KubernetesKafka",
+		909:  "KubernetesElasticOperator",
+		910:  "KubernetesElasticsearch",
+		911:  "KubernetesAltinityOperator",
+		912:  "KubernetesClickHouse",
+		913:  "KubernetesSolrOperator",
+		914:  "KubernetesSolr",
+		915:  "KubernetesNeo4j",
+		916:  "KubernetesRookCephOperator",
+		917:  "KubernetesRookCephCluster",
+		950:  "KubernetesArgocd",
+		951:  "KubernetesTektonOperator",
+		952:  "KubernetesTekton",
+		953:  "KubernetesGhaRunnerScaleSetController",
+		954:  "KubernetesGhaRunnerScaleSet",
+		955:  "KubernetesHarbor",
+		956:  "KubernetesJenkins",
+		970:  "KubernetesTemporal",
+		971:  "KubernetesNats",
+		972:  "KubernetesLocust",
 		1200: "DigitalOceanAppPlatformService",
 		1201: "DigitalOceanBucket",
 		1202: "DigitalOceanContainerRegistry",
@@ -1999,75 +2069,99 @@ var (
 		"GcpCloudRunJob":                                 720,
 		"GcpServerlessVpcConnector":                      721,
 		"GcpComputeDisk":                                 730,
-		"KubernetesArgocd":                               800,
-		"KubernetesCronJob":                              801,
-		"KubernetesElasticsearch":                        802,
-		"KubernetesGitlab":                               803,
-		"KubernetesGrafana":                              804,
-		"KubernetesHelmRelease":                          805,
-		"KubernetesJenkins":                              806,
-		"KubernetesKafka":                                807,
-		"KubernetesKeycloak":                             808,
-		"KubernetesLocust":                               809,
-		"KubernetesDeployment":                           810,
-		"KubernetesMongodb":                              811,
-		"KubernetesNeo4j":                                812,
-		"KubernetesOpenFga":                              813,
-		"KubernetesPostgres":                             814,
-		"KubernetesPrometheus":                           815,
-		"KubernetesRedis":                                816,
-		"KubernetesSignoz":                               817,
-		"KubernetesSolr":                                 818,
-		"KubernetesTemporal":                             819,
-		"KubernetesNats":                                 820,
-		"KubernetesCertManager":                          821,
-		"KubernetesElasticOperator":                      822,
-		"KubernetesExternalDns":                          823,
-		"KubernetesIngressNginx":                         824,
-		"KubernetesIstio":                                825,
-		"KubernetesStrimziKafkaOperator":                 826,
-		"KubernetesZalandoPostgresOperator":              827,
-		"KubernetesSolrOperator":                         828,
-		"KubernetesExternalSecrets":                      829,
-		"KubernetesClickHouse":                           830,
-		"KubernetesAltinityOperator":                     831,
-		"KubernetesPerconaPostgresOperator":              832,
-		"KubernetesPerconaMongoOperator":                 833,
-		"KubernetesPerconaMysqlOperator":                 834,
-		"KubernetesHarbor":                               835,
-		"KubernetesNamespace":                            836,
-		"KubernetesGatewayApiCrds":                       837,
-		"KubernetesTektonOperator":                       838,
-		"KubernetesTekton":                               839,
-		"KubernetesStatefulSet":                          840,
-		"KubernetesDaemonSet":                            841,
-		"KubernetesManifest":                             842,
-		"KubernetesGhaRunnerScaleSetController":          843,
-		"KubernetesGhaRunnerScaleSet":                    844,
-		"KubernetesOpenBao":                              845,
-		"KubernetesJob":                                  846,
-		"KubernetesRookCephOperator":                     847,
-		"KubernetesRookCephCluster":                      848,
-		"KubernetesService":                              849,
-		"KubernetesSecret":                               850,
-		"KubernetesClusterIssuer":                        851,
-		"KubernetesIssuer":                               852,
-		"KubernetesCertificate":                          853,
-		"KubernetesGatewayClass":                         854,
-		"KubernetesGateway":                              855,
-		"KubernetesHttpRoute":                            856,
-		"KubernetesGrpcRoute":                            857,
-		"KubernetesTcpRoute":                             858,
-		"KubernetesTlsRoute":                             859,
-		"KubernetesReferenceGrant":                       860,
-		"KubernetesDestinationRule":                      861,
-		"KubernetesServiceEntry":                         862,
-		"KubernetesPeerAuthentication":                   863,
-		"KubernetesRequestAuthentication":                864,
-		"KubernetesAuthorizationPolicy":                  865,
-		"KubernetesTelemetry":                            866,
-		"KubernetesEnvoyFilter":                          867,
-		"KubernetesIstioBaseCrds":                        868,
+		"KubernetesNamespace":                            800,
+		"KubernetesDeployment":                           801,
+		"KubernetesStatefulSet":                          802,
+		"KubernetesDaemonSet":                            803,
+		"KubernetesJob":                                  804,
+		"KubernetesCronJob":                              805,
+		"KubernetesService":                              806,
+		"KubernetesSecret":                               807,
+		"KubernetesManifest":                             808,
+		"KubernetesHelmRelease":                          809,
+		"KubernetesConfigMap":                            810,
+		"KubernetesServiceAccount":                       811,
+		"KubernetesRbac":                                 812,
+		"KubernetesIngress":                              813,
+		"KubernetesNetworkPolicy":                        814,
+		"KubernetesPersistentVolumeClaim":                815,
+		"KubernetesStorageClass":                         816,
+		"KubernetesResourceQuota":                        817,
+		"KubernetesPriorityClass":                        818,
+		"KubernetesPodDisruptionBudget":                  819,
+		"KubernetesHorizontalPodAutoscaler":              820,
+		"KubernetesCertManager":                          830,
+		"KubernetesClusterIssuer":                        831,
+		"KubernetesIssuer":                               832,
+		"KubernetesCertificate":                          833,
+		"KubernetesExternalDns":                          834,
+		"KubernetesExternalSecretsOperator":              835,
+		"KubernetesClusterSecretStore":                   836,
+		"KubernetesSecretStore":                          837,
+		"KubernetesExternalSecret":                       838,
+		"KubernetesIngressNginx":                         839,
+		"KubernetesGatewayApiCrds":                       840,
+		"KubernetesGatewayClass":                         841,
+		"KubernetesGateway":                              842,
+		"KubernetesListenerSet":                          843,
+		"KubernetesHttpRoute":                            844,
+		"KubernetesGrpcRoute":                            845,
+		"KubernetesTcpRoute":                             846,
+		"KubernetesUdpRoute":                             847,
+		"KubernetesTlsRoute":                             848,
+		"KubernetesReferenceGrant":                       849,
+		"KubernetesBackendTlsPolicy":                     850,
+		"KubernetesIstioBaseCrds":                        851,
+		"KubernetesIstio":                                852,
+		"KubernetesDestinationRule":                      853,
+		"KubernetesServiceEntry":                         854,
+		"KubernetesPeerAuthentication":                   855,
+		"KubernetesRequestAuthentication":                856,
+		"KubernetesAuthorizationPolicy":                  857,
+		"KubernetesTelemetry":                            858,
+		"KubernetesEnvoyFilter":                          859,
+		"KubernetesMetricsServer":                        860,
+		"KubernetesCilium":                               861,
+		"KubernetesKeda":                                 862,
+		"KubernetesKarpenter":                            863,
+		"KubernetesKarpenterNodePool":                    864,
+		"KubernetesKarpenterEc2NodeClass":                865,
+		"KubernetesClusterAutoscaler":                    866,
+		"KubernetesVelero":                               867,
+		"KubernetesPrometheus":                           870,
+		"KubernetesGrafana":                              871,
+		"KubernetesSignoz":                               872,
+		"KubernetesKeycloak":                             890,
+		"KubernetesOpenBao":                              891,
+		"KubernetesOpenFga":                              892,
+		"KubernetesCloudNativePgOperator":                900,
+		"KubernetesPostgres":                             901,
+		"KubernetesValkey":                               902,
+		"KubernetesPerconaMysqlOperator":                 903,
+		"KubernetesMysql":                                904,
+		"KubernetesPerconaMongoOperator":                 905,
+		"KubernetesMongodb":                              906,
+		"KubernetesStrimziKafkaOperator":                 907,
+		"KubernetesKafka":                                908,
+		"KubernetesElasticOperator":                      909,
+		"KubernetesElasticsearch":                        910,
+		"KubernetesAltinityOperator":                     911,
+		"KubernetesClickHouse":                           912,
+		"KubernetesSolrOperator":                         913,
+		"KubernetesSolr":                                 914,
+		"KubernetesNeo4j":                                915,
+		"KubernetesRookCephOperator":                     916,
+		"KubernetesRookCephCluster":                      917,
+		"KubernetesArgocd":                               950,
+		"KubernetesTektonOperator":                       951,
+		"KubernetesTekton":                               952,
+		"KubernetesGhaRunnerScaleSetController":          953,
+		"KubernetesGhaRunnerScaleSet":                    954,
+		"KubernetesHarbor":                               955,
+		"KubernetesJenkins":                              956,
+		"KubernetesTemporal":                             970,
+		"KubernetesNats":                                 971,
+		"KubernetesLocust":                               972,
 		"DigitalOceanAppPlatformService":                 1200,
 		"DigitalOceanBucket":                             1201,
 		"DigitalOceanContainerRegistry":                  1202,
@@ -2329,8 +2423,8 @@ type CloudResourceKindMeta struct {
 	// in reverse order; a component may pin a prerequisite's exact config via an
 	// e2e/fixtures/ override, which wins over the registry entry. this is also
 	// used by the platform for dependency ordering in infra charts.
-	// example: KubernetesPostgres needs KubernetesZalandoPostgresOperator
-	// because it creates acid.zalan.do/v1 postgresql CRDs.
+	// example: KubernetesPostgres needs KubernetesCloudNativePgOperator
+	// because it creates postgresql.cnpg.io/v1 Cluster resources.
 	Prerequisites []CloudResourceKind `protobuf:"varint,7,rep,packed,name=prerequisites,proto3,enum=dev.planton.shared.cloudresourcekind.CloudResourceKind" json:"prerequisites,omitempty"`
 	// set ONLY for kinds whose spec is a direct projection of a single Kubernetes
 	// custom resource -- i.e. the Terraform module is a thin `kubernetes_manifest`
@@ -2525,7 +2619,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xa9\xd4\x01\n" +
+	"\x02v1\x10\x01*\xa2\xdf\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2856,91 +2950,121 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x0eGcpCloudRunJob\x10\xd0\x05\x1a\x13\xa2\xf7\x04\x0f\b\x12\x10\x01\"\tcldrunjob\x12:\n" +
 	"\x19GcpServerlessVpcConnector\x10\xd1\x05\x1a\x1a\xa2\xf7\x04\x16\b\x12\x10\x01\"\n" +
 	"gcpvpcconn:\x04\xe2\x04\xe3\x04\x12&\n" +
-	"\x0eGcpComputeDisk\x10\xda\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpdisk\x12(\n" +
-	"\x10KubernetesArgocd\x10\xa0\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x12)\n" +
-	"\x11KubernetesCronJob\x10\xa1\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8scron\x121\n" +
-	"\x17KubernetesElasticsearch\x10\xa2\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\xb6\x06\x12&\n" +
-	"\x10KubernetesGitlab\x10\xa3\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8sgl\x12(\n" +
-	"\x11KubernetesGrafana\x10\xa4\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sgfn\x12-\n" +
-	"\x15KubernetesHelmRelease\x10\xa5\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shelm\x12(\n" +
-	"\x11KubernetesJenkins\x10\xa6\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sjkn\x12*\n" +
-	"\x0fKubernetesKafka\x10\xa7\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8skaf:\x02\xba\x06\x12(\n" +
-	"\x12KubernetesKeycloak\x10\xa8\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8skc\x12'\n" +
-	"\x10KubernetesLocust\x10\xa9\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sloc\x12-\n" +
-	"\x14KubernetesDeployment\x10\xaa\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\x06k8sdpl(\x01\x12,\n" +
-	"\x11KubernetesMongodb\x10\xab\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8smdb:\x02\xc1\x06\x12&\n" +
-	"\x0fKubernetesNeo4j\x10\xac\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sneo\x12(\n" +
-	"\x11KubernetesOpenFga\x10\xad\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sfga\x12,\n" +
-	"\x12KubernetesPostgres\x10\xae\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8spg:\x02\xbb\x06\x12,\n" +
-	"\x14KubernetesPrometheus\x10\xaf\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sprom\x12&\n" +
-	"\x0fKubernetesRedis\x10\xb0\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sred\x12'\n" +
-	"\x10KubernetesSignoz\x10\xb1\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssgz\x12*\n" +
-	"\x0eKubernetesSolr\x10\xb2\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8ssolr:\x02\xbc\x06\x12*\n" +
-	"\x12KubernetesTemporal\x10\xb3\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stprl\x12&\n" +
-	"\x0eKubernetesNats\x10\xb4\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8snats\x12+\n" +
-	"\x15KubernetesCertManager\x10\xb5\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8scm\x122\n" +
-	"\x19KubernetesElasticOperator\x10\xb6\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8selaop\x12/\n" +
-	"\x15KubernetesExternalDns\x10\xb7\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sextdns\x12-\n" +
-	"\x16KubernetesIngressNginx\x10\xb8\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sngx\x12&\n" +
-	"\x0fKubernetesIstio\x10\xb9\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sist\x127\n" +
-	"\x1eKubernetesStrimziKafkaOperator\x10\xba\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sstzop\x129\n" +
-	"!KubernetesZalandoPostgresOperator\x10\xbb\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8szlop\x12/\n" +
-	"\x16KubernetesSolrOperator\x10\xbc\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sslrop\x123\n" +
-	"\x19KubernetesExternalSecrets\x10\xbd\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sextsec\x121\n" +
-	"\x14KubernetesClickHouse\x10\xbe\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sclkhs:\x02\xbf\x06\x123\n" +
-	"\x1aKubernetesAltinityOperator\x10\xbf\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8saltop\x12=\n" +
-	"!KubernetesPerconaPostgresOperator\x10\xc0\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\vk8sprcnpgop\x12;\n" +
-	"\x1eKubernetesPerconaMongoOperator\x10\xc1\x06\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\fk8sprcnmdbop\x12=\n" +
-	"\x1eKubernetesPerconaMysqlOperator\x10\xc2\x06\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\x0ek8sprcnmysqlop\x12(\n" +
-	"\x10KubernetesHarbor\x10\xc3\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shrbr\x12+\n" +
-	"\x13KubernetesNamespace\x10\xc4\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\x05k8sns0\x01\x122\n" +
-	"\x18KubernetesGatewayApiCrds\x10\xc5\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgwcrds\x122\n" +
-	"\x18KubernetesTektonOperator\x10\xc6\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12(\n" +
-	"\x10KubernetesTekton\x10\xc7\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stktn\x12.\n" +
-	"\x15KubernetesStatefulSet\x10\xc8\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\x06k8ssts(\x01\x12)\n" +
-	"\x13KubernetesDaemonSet\x10\xc9\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8sds\x12*\n" +
-	"\x12KubernetesManifest\x10\xca\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8smfst\x12?\n" +
-	"%KubernetesGhaRunnerScaleSetController\x10\xcb\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharsc\x125\n" +
-	"\x1bKubernetesGhaRunnerScaleSet\x10\xcc\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharss\x12(\n" +
-	"\x11KubernetesOpenBao\x10\xcd\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sbao\x12$\n" +
-	"\rKubernetesJob\x10\xce\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sjob\x124\n" +
-	"\x1aKubernetesRookCephOperator\x10\xcf\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookop\x123\n" +
-	"\x19KubernetesRookCephCluster\x10\xd0\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookcl\x12(\n" +
-	"\x11KubernetesService\x10\xd1\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssvc\x12'\n" +
-	"\x10KubernetesSecret\x10\xd2\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssec\x12-\n" +
-	"\x17KubernetesClusterIssuer\x10\xd3\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8sci\x12'\n" +
-	"\x10KubernetesIssuer\x10\xd4\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8siss\x12,\n" +
-	"\x15KubernetesCertificate\x10\xd5\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scrt\x12_\n" +
-	"\x16KubernetesGatewayClass\x10\xd6\x06\x1aB\xa2\xf7\x04>\b\x13\x10\x01\"\x06k8sgwc:\x02\xc5\x06B,\n" +
+	"\x0eGcpComputeDisk\x10\xda\x05\x1a\x11\xa2\xf7\x04\r\b\x12\x10\x01\"\agcpdisk\x12+\n" +
+	"\x13KubernetesNamespace\x10\xa0\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\x05k8sns0\x01\x12-\n" +
+	"\x14KubernetesDeployment\x10\xa1\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\x06k8sdpl(\x01\x12.\n" +
+	"\x15KubernetesStatefulSet\x10\xa2\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\x06k8ssts(\x01\x12)\n" +
+	"\x13KubernetesDaemonSet\x10\xa3\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8sds\x12$\n" +
+	"\rKubernetesJob\x10\xa4\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sjob\x12+\n" +
+	"\x11KubernetesCronJob\x10\xa5\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\ak8scron(\x01\x12(\n" +
+	"\x11KubernetesService\x10\xa6\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssvc\x12'\n" +
+	"\x10KubernetesSecret\x10\xa7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssec\x12*\n" +
+	"\x12KubernetesManifest\x10\xa8\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8smfst\x12-\n" +
+	"\x15KubernetesHelmRelease\x10\xa9\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shelm\x12*\n" +
+	"\x13KubernetesConfigMap\x10\xaa\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scfg\x12.\n" +
+	"\x18KubernetesServiceAccount\x10\xab\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8ssa\x12&\n" +
+	"\x0eKubernetesRbac\x10\xac\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8srbac\x12(\n" +
+	"\x11KubernetesIngress\x10\xad\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sing\x12-\n" +
+	"\x17KubernetesNetworkPolicy\x10\xae\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8snp\x126\n" +
+	"\x1fKubernetesPersistentVolumeClaim\x10\xaf\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8spvc\x12,\n" +
+	"\x16KubernetesStorageClass\x10\xb0\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8ssc\x12-\n" +
+	"\x17KubernetesResourceQuota\x10\xb1\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8srq\x12-\n" +
+	"\x17KubernetesPriorityClass\x10\xb2\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8spc\x124\n" +
+	"\x1dKubernetesPodDisruptionBudget\x10\xb3\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8spdb\x128\n" +
+	"!KubernetesHorizontalPodAutoscaler\x10\xb4\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8shpa\x12+\n" +
+	"\x15KubernetesCertManager\x10\xbe\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8scm\x121\n" +
+	"\x17KubernetesClusterIssuer\x10\xbf\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8sci:\x02\xbe\x06\x12+\n" +
+	"\x10KubernetesIssuer\x10\xc0\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8siss:\x02\xbe\x06\x120\n" +
+	"\x15KubernetesCertificate\x10\xc1\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8scrt:\x02\xbe\x06\x12/\n" +
+	"\x15KubernetesExternalDns\x10\xc2\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sextdns\x12;\n" +
+	"!KubernetesExternalSecretsOperator\x10\xc3\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sextsec\x127\n" +
+	"\x1cKubernetesClusterSecretStore\x10\xc4\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8scss:\x02\xc3\x06\x120\n" +
+	"\x15KubernetesSecretStore\x10\xc5\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8ssst:\x02\xc3\x06\x124\n" +
+	"\x18KubernetesExternalSecret\x10\xc6\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8sxsec:\x02\xc3\x06\x12-\n" +
+	"\x16KubernetesIngressNginx\x10\xc7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sngx\x122\n" +
+	"\x18KubernetesGatewayApiCrds\x10\xc8\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgwcrds\x12_\n" +
+	"\x16KubernetesGatewayClass\x10\xc9\x06\x1aB\xa2\xf7\x04>\b\x13\x10\x01\"\x06k8sgwc:\x02\xc8\x06B,\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\fGatewayClass\x12T\n" +
-	"\x11KubernetesGateway\x10\xd7\x06\x1a<\xa2\xf7\x048\b\x13\x10\x01\"\x05k8sgw:\x02\xc5\x06B'\n" +
-	"\x1cgateway.networking.k8s.io/v1\x12\aGateway\x12Y\n" +
-	"\x13KubernetesHttpRoute\x10\xd8\x06\x1a?\xa2\xf7\x04;\b\x13\x10\x01\"\x06k8shrt:\x02\xc5\x06B)\n" +
+	"\x11KubernetesGateway\x10\xca\x06\x1a<\xa2\xf7\x048\b\x13\x10\x01\"\x05k8sgw:\x02\xc8\x06B'\n" +
+	"\x1cgateway.networking.k8s.io/v1\x12\aGateway\x12^\n" +
+	"\x15KubernetesListenerSet\x10\xcb\x06\x1aB\xa2\xf7\x04>\b\x13\x10\x01\"\ak8slset:\x02\xc8\x06B+\n" +
+	"\x1cgateway.networking.k8s.io/v1\x12\vListenerSet\x12Y\n" +
+	"\x13KubernetesHttpRoute\x10\xcc\x06\x1a?\xa2\xf7\x04;\b\x13\x10\x01\"\x06k8shrt:\x02\xc8\x06B)\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\tHTTPRoute\x12Y\n" +
-	"\x13KubernetesGrpcRoute\x10\xd9\x06\x1a?\xa2\xf7\x04;\b\x13\x10\x01\"\x06k8sgrt:\x02\xc5\x06B)\n" +
-	"\x1cgateway.networking.k8s.io/v1\x12\tGRPCRoute\x12]\n" +
-	"\x12KubernetesTcpRoute\x10\xda\x06\x1aD\xa2\xf7\x04@\b\x13\x10\x01\"\x06k8strt:\x02\xc5\x06B.\n" +
-	"\"gateway.networking.k8s.io/v1alpha2\x12\bTCPRoute\x12Y\n" +
-	"\x12KubernetesTlsRoute\x10\xdb\x06\x1a@\xa2\xf7\x04<\b\x13\x10\x01\"\bk8stlsrt:\x02\xc5\x06B(\n" +
+	"\x13KubernetesGrpcRoute\x10\xcd\x06\x1a?\xa2\xf7\x04;\b\x13\x10\x01\"\x06k8sgrt:\x02\xc8\x06B)\n" +
+	"\x1cgateway.networking.k8s.io/v1\x12\tGRPCRoute\x12W\n" +
+	"\x12KubernetesTcpRoute\x10\xce\x06\x1a>\xa2\xf7\x04:\b\x13\x10\x01\"\x06k8strt:\x02\xc8\x06B(\n" +
+	"\x1cgateway.networking.k8s.io/v1\x12\bTCPRoute\x12W\n" +
+	"\x12KubernetesUdpRoute\x10\xcf\x06\x1a>\xa2\xf7\x04:\b\x13\x10\x01\"\x06k8surt:\x02\xc8\x06B(\n" +
+	"\x1cgateway.networking.k8s.io/v1\x12\bUDPRoute\x12Y\n" +
+	"\x12KubernetesTlsRoute\x10\xd0\x06\x1a@\xa2\xf7\x04<\b\x13\x10\x01\"\bk8stlsrt:\x02\xc8\x06B(\n" +
 	"\x1cgateway.networking.k8s.io/v1\x12\bTLSRoute\x12f\n" +
-	"\x18KubernetesReferenceGrant\x10\xdc\x06\x1aG\xa2\xf7\x04C\b\x13\x10\x01\"\tk8srefgrt:\x02\xc5\x06B.\n" +
-	"\x1cgateway.networking.k8s.io/v1\x12\x0eReferenceGrant\x12^\n" +
-	"\x19KubernetesDestinationRule\x10\xdd\x06\x1a>\xa2\xf7\x04:\b\x13\x10\x01\"\x05k8sdr:\x02\xe4\x06B)\n" +
+	"\x18KubernetesReferenceGrant\x10\xd1\x06\x1aG\xa2\xf7\x04C\b\x13\x10\x01\"\tk8srefgrt:\x02\xc8\x06B.\n" +
+	"\x1cgateway.networking.k8s.io/v1\x12\x0eReferenceGrant\x12h\n" +
+	"\x1aKubernetesBackendTlsPolicy\x10\xd2\x06\x1aG\xa2\xf7\x04C\b\x13\x10\x01\"\ak8sbtls:\x02\xc8\x06B0\n" +
+	"\x1cgateway.networking.k8s.io/v1\x12\x10BackendTLSPolicy\x122\n" +
+	"\x17KubernetesIstioBaseCrds\x10\xd3\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\n" +
+	"k8sistcrds\x12&\n" +
+	"\x0fKubernetesIstio\x10\xd4\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sist\x12^\n" +
+	"\x19KubernetesDestinationRule\x10\xd5\x06\x1a>\xa2\xf7\x04:\b\x13\x10\x01\"\x05k8sdr:\x02\xd3\x06B)\n" +
 	"\x16networking.istio.io/v1\x12\x0fDestinationRule\x12X\n" +
-	"\x16KubernetesServiceEntry\x10\xde\x06\x1a;\xa2\xf7\x047\b\x13\x10\x01\"\x05k8sse:\x02\xe4\x06B&\n" +
+	"\x16KubernetesServiceEntry\x10\xd6\x06\x1a;\xa2\xf7\x047\b\x13\x10\x01\"\x05k8sse:\x02\xd3\x06B&\n" +
 	"\x16networking.istio.io/v1\x12\fServiceEntry\x12b\n" +
-	"\x1cKubernetesPeerAuthentication\x10\xdf\x06\x1a?\xa2\xf7\x04;\b\x13\x10\x01\"\x05k8spa:\x02\xe4\x06B*\n" +
+	"\x1cKubernetesPeerAuthentication\x10\xd7\x06\x1a?\xa2\xf7\x04;\b\x13\x10\x01\"\x05k8spa:\x02\xd3\x06B*\n" +
 	"\x14security.istio.io/v1\x12\x12PeerAuthentication\x12h\n" +
-	"\x1fKubernetesRequestAuthentication\x10\xe0\x06\x1aB\xa2\xf7\x04>\b\x13\x10\x01\"\x05k8sra:\x02\xe4\x06B-\n" +
+	"\x1fKubernetesRequestAuthentication\x10\xd8\x06\x1aB\xa2\xf7\x04>\b\x13\x10\x01\"\x05k8sra:\x02\xd3\x06B-\n" +
 	"\x14security.istio.io/v1\x12\x15RequestAuthentication\x12g\n" +
-	"\x1dKubernetesAuthorizationPolicy\x10\xe1\x06\x1aC\xa2\xf7\x04?\b\x13\x10\x01\"\bk8sauthz:\x02\xe4\x06B+\n" +
+	"\x1dKubernetesAuthorizationPolicy\x10\xd9\x06\x1aC\xa2\xf7\x04?\b\x13\x10\x01\"\bk8sauthz:\x02\xd3\x06B+\n" +
 	"\x14security.istio.io/v1\x12\x13AuthorizationPolicy\x12R\n" +
-	"\x13KubernetesTelemetry\x10\xe2\x06\x1a8\xa2\xf7\x044\b\x13\x10\x01\"\x06k8stel:\x02\xe4\x06B\"\n" +
+	"\x13KubernetesTelemetry\x10\xda\x06\x1a8\xa2\xf7\x044\b\x13\x10\x01\"\x06k8stel:\x02\xd3\x06B\"\n" +
 	"\x15telemetry.istio.io/v1\x12\tTelemetry\x12\\\n" +
-	"\x15KubernetesEnvoyFilter\x10\xe3\x06\x1a@\xa2\xf7\x04<\b\x13\x10\x01\"\x05k8sef:\x02\xe4\x06B+\n" +
-	"\x1cnetworking.istio.io/v1alpha3\x12\vEnvoyFilter\x122\n" +
-	"\x17KubernetesIstioBaseCrds\x10\xe4\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\n" +
-	"k8sistcrds\x124\n" +
+	"\x15KubernetesEnvoyFilter\x10\xdb\x06\x1a@\xa2\xf7\x04<\b\x13\x10\x01\"\x05k8sef:\x02\xd3\x06B+\n" +
+	"\x1cnetworking.istio.io/v1alpha3\x12\vEnvoyFilter\x121\n" +
+	"\x17KubernetesMetricsServer\x10\xdc\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8smetsrv\x12'\n" +
+	"\x10KubernetesCilium\x10\xdd\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scil\x12&\n" +
+	"\x0eKubernetesKeda\x10\xde\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8skeda\x12+\n" +
+	"\x13KubernetesKarpenter\x10\xdf\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8skarp\x12V\n" +
+	"\x1bKubernetesKarpenterNodePool\x10\xe0\x06\x1a4\xa2\xf7\x040\b\x13\x10\x01\"\tk8skarpnp:\x02\xdf\x06B\x1b\n" +
+	"\x0fkarpenter.sh/v1\x12\bNodePool\x12d\n" +
+	"\x1fKubernetesKarpenterEc2NodeClass\x10\xe1\x06\x1a>\xa2\xf7\x04:\b\x13\x10\x01\"\n" +
+	"k8skarpenc:\x02\xdf\x06B$\n" +
+	"\x14karpenter.k8s.aws/v1\x12\fEC2NodeClass\x122\n" +
+	"\x1bKubernetesClusterAutoscaler\x10\xe2\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scas\x12'\n" +
+	"\x10KubernetesVelero\x10\xe3\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svel\x12,\n" +
+	"\x14KubernetesPrometheus\x10\xe6\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sprom\x12(\n" +
+	"\x11KubernetesGrafana\x10\xe7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sgfn\x12'\n" +
+	"\x10KubernetesSignoz\x10\xe8\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssgz\x12(\n" +
+	"\x12KubernetesKeycloak\x10\xfa\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8skc\x12(\n" +
+	"\x11KubernetesOpenBao\x10\xfb\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sbao\x12(\n" +
+	"\x11KubernetesOpenFga\x10\xfc\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sfga\x129\n" +
+	"\x1fKubernetesCloudNativePgOperator\x10\x84\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8scnpgop\x12,\n" +
+	"\x12KubernetesPostgres\x10\x85\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8spg:\x02\x84\a\x12'\n" +
+	"\x10KubernetesValkey\x10\x86\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svlk\x12=\n" +
+	"\x1eKubernetesPerconaMysqlOperator\x10\x87\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\x0ek8sprcnmysqlop\x12,\n" +
+	"\x0fKubernetesMysql\x10\x88\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8smysql:\x02\x87\a\x12;\n" +
+	"\x1eKubernetesPerconaMongoOperator\x10\x89\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\fk8sprcnmdbop\x12,\n" +
+	"\x11KubernetesMongodb\x10\x8a\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8smdb:\x02\x89\a\x127\n" +
+	"\x1eKubernetesStrimziKafkaOperator\x10\x8b\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sstzop\x12*\n" +
+	"\x0fKubernetesKafka\x10\x8c\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8skaf:\x02\x8b\a\x122\n" +
+	"\x19KubernetesElasticOperator\x10\x8d\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8selaop\x121\n" +
+	"\x17KubernetesElasticsearch\x10\x8e\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\x8d\a\x123\n" +
+	"\x1aKubernetesAltinityOperator\x10\x8f\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8saltop\x121\n" +
+	"\x14KubernetesClickHouse\x10\x90\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sclkhs:\x02\x8f\a\x12/\n" +
+	"\x16KubernetesSolrOperator\x10\x91\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sslrop\x12*\n" +
+	"\x0eKubernetesSolr\x10\x92\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8ssolr:\x02\x91\a\x12&\n" +
+	"\x0fKubernetesNeo4j\x10\x93\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sneo\x124\n" +
+	"\x1aKubernetesRookCephOperator\x10\x94\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookop\x123\n" +
+	"\x19KubernetesRookCephCluster\x10\x95\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookcl\x12(\n" +
+	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x122\n" +
+	"\x18KubernetesTektonOperator\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12(\n" +
+	"\x10KubernetesTekton\x10\xb8\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stktn\x12?\n" +
+	"%KubernetesGhaRunnerScaleSetController\x10\xb9\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharsc\x125\n" +
+	"\x1bKubernetesGhaRunnerScaleSet\x10\xba\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharss\x12(\n" +
+	"\x10KubernetesHarbor\x10\xbb\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shrbr\x12(\n" +
+	"\x11KubernetesJenkins\x10\xbc\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sjkn\x12*\n" +
+	"\x12KubernetesTemporal\x10\xca\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stprl\x12&\n" +
+	"\x0eKubernetesNats\x10\xcb\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8snats\x12'\n" +
+	"\x10KubernetesLocust\x10\xcc\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sloc\x124\n" +
 	"\x1eDigitalOceanAppPlatformService\x10\xb0\t\x1a\x0f\xa2\xf7\x04\v\b\x11\x10\x01\"\x05doapp\x12(\n" +
 	"\x12DigitalOceanBucket\x10\xb1\t\x1a\x0f\xa2\xf7\x04\v\b\x11\x10\x01\"\x05dobkt\x122\n" +
 	"\x1dDigitalOceanContainerRegistry\x10\xb2\t\x1a\x0e\xa2\xf7\x04\n" +

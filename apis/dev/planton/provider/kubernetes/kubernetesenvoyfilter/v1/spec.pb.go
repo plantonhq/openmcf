@@ -34,7 +34,7 @@ const (
 // 100% fidelity with the upstream istio.io/api EnvoyFilter
 // (networking/v1alpha3/envoy_filter.proto, served as networking.istio.io/v1alpha3 — this
 // is the only typed Istio API component still on v1alpha3; it has NOT graduated to v1),
-// pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after
+// pinned to the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly after
 // the Planton namespaced envelope (namespace); there is no nested
 // `envoy_filter` sub-message.
 //
@@ -242,17 +242,17 @@ func (x *KubernetesEnvoyFilterConfigPatch) GetPatch() *KubernetesEnvoyFilterPatc
 // KubernetesEnvoyFilterEnvoyConfigObjectMatch is one or more conditions to be met before a
 // patch is applied. Faithful to the upstream EnvoyConfigObjectMatch.
 //
-// The upstream `oneof object_types { listener | route_configuration | cluster }` is flattened
-// into three sibling message fields. Because flattening loses the proto `oneof`'s
-// implicit at-most-one guarantee (and the generated CRD does not re-encode it as an
-// XValidation), the rule is restored here as a message-level CEL — this preserves upstream
-// semantics, it is not extra validation.
+// The upstream `oneof object_types { listener | route_configuration | cluster | waypoint }`
+// is flattened into four sibling message fields. Because flattening loses the proto
+// `oneof`'s implicit at-most-one guarantee (and the generated CRD does not re-encode it as
+// an XValidation), the rule is restored here as a message-level CEL — this preserves
+// upstream semantics, it is not extra validation.
 type KubernetesEnvoyFilterEnvoyConfigObjectMatch struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The config-generation context to match on: istiod generates Envoy config in the context
-	// of a gateway, inbound sidecar traffic, or outbound sidecar traffic. Unset matches ANY
-	// (all listeners/routes/clusters in both sidecars and gateways) upstream. external standard
-	// exception — matches the Istio EnvoyFilter.PatchContext enum.
+	// of a gateway, inbound sidecar traffic, outbound sidecar traffic, or an ambient waypoint
+	// proxy. Unset matches ANY (all objects in sidecars, gateways, and waypoints) upstream.
+	// external standard exception — matches the Istio EnvoyFilter.PatchContext enum.
 	Context *string `protobuf:"bytes,1,opt,name=context,proto3,oneof" json:"context,omitempty"`
 	// Match on properties of the proxy itself (istio proxy version and/or node metadata).
 	Proxy *KubernetesEnvoyFilterProxyMatch `protobuf:"bytes,2,opt,name=proxy,proto3" json:"proxy,omitempty"`
@@ -261,7 +261,10 @@ type KubernetesEnvoyFilterEnvoyConfigObjectMatch struct {
 	// Match on Envoy HTTP route configuration attributes.
 	RouteConfiguration *KubernetesEnvoyFilterRouteConfigurationMatch `protobuf:"bytes,4,opt,name=route_configuration,json=routeConfiguration,proto3" json:"route_configuration,omitempty"`
 	// Match on Envoy cluster attributes.
-	Cluster       *KubernetesEnvoyFilterClusterMatch `protobuf:"bytes,5,opt,name=cluster,proto3" json:"cluster,omitempty"`
+	Cluster *KubernetesEnvoyFilterClusterMatch `protobuf:"bytes,5,opt,name=cluster,proto3" json:"cluster,omitempty"`
+	// Match on ambient waypoint-proxy attributes (a filter within the waypoint's
+	// filter chain, a service port, or a named route).
+	Waypoint      *KubernetesEnvoyFilterWaypointMatch `protobuf:"bytes,6,opt,name=waypoint,proto3" json:"waypoint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -331,6 +334,230 @@ func (x *KubernetesEnvoyFilterEnvoyConfigObjectMatch) GetCluster() *KubernetesEn
 	return nil
 }
 
+func (x *KubernetesEnvoyFilterEnvoyConfigObjectMatch) GetWaypoint() *KubernetesEnvoyFilterWaypointMatch {
+	if x != nil {
+		return x.Waypoint
+	}
+	return nil
+}
+
+// KubernetesEnvoyFilterWaypointMatch matches conditions on an ambient waypoint proxy's
+// generated configuration. Faithful to the upstream EnvoyFilter waypoint match member.
+type KubernetesEnvoyFilterWaypointMatch struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The name of a specific filter (optionally a sub-filter within it) to apply the
+	// patch to.
+	Filter *KubernetesEnvoyFilterWaypointFilterMatch `protobuf:"bytes,1,opt,name=filter,proto3" json:"filter,omitempty"`
+	// The service port to match on (1-65535).
+	PortNumber *uint32 `protobuf:"varint,2,opt,name=port_number,json=portNumber,proto3,oneof" json:"port_number,omitempty"`
+	// Match a specific route by name (the default generated Route objects are named
+	// `default`).
+	Route         *KubernetesEnvoyFilterWaypointRouteMatch `protobuf:"bytes,3,opt,name=route,proto3" json:"route,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesEnvoyFilterWaypointMatch) Reset() {
+	*x = KubernetesEnvoyFilterWaypointMatch{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesEnvoyFilterWaypointMatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesEnvoyFilterWaypointMatch) ProtoMessage() {}
+
+func (x *KubernetesEnvoyFilterWaypointMatch) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesEnvoyFilterWaypointMatch.ProtoReflect.Descriptor instead.
+func (*KubernetesEnvoyFilterWaypointMatch) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesEnvoyFilterWaypointMatch) GetFilter() *KubernetesEnvoyFilterWaypointFilterMatch {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+func (x *KubernetesEnvoyFilterWaypointMatch) GetPortNumber() uint32 {
+	if x != nil && x.PortNumber != nil {
+		return *x.PortNumber
+	}
+	return 0
+}
+
+func (x *KubernetesEnvoyFilterWaypointMatch) GetRoute() *KubernetesEnvoyFilterWaypointRouteMatch {
+	if x != nil {
+		return x.Route
+	}
+	return nil
+}
+
+// KubernetesEnvoyFilterWaypointFilterMatch names a filter (and optionally the next-level
+// sub-filter) within the waypoint's filter chain.
+type KubernetesEnvoyFilterWaypointFilterMatch struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The filter name to match on.
+	Name *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	// The next-level filter within this filter to match on.
+	SubFilter     *KubernetesEnvoyFilterWaypointSubFilterMatch `protobuf:"bytes,2,opt,name=sub_filter,json=subFilter,proto3" json:"sub_filter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesEnvoyFilterWaypointFilterMatch) Reset() {
+	*x = KubernetesEnvoyFilterWaypointFilterMatch{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesEnvoyFilterWaypointFilterMatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesEnvoyFilterWaypointFilterMatch) ProtoMessage() {}
+
+func (x *KubernetesEnvoyFilterWaypointFilterMatch) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesEnvoyFilterWaypointFilterMatch.ProtoReflect.Descriptor instead.
+func (*KubernetesEnvoyFilterWaypointFilterMatch) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesEnvoyFilterWaypointFilterMatch) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
+	}
+	return ""
+}
+
+func (x *KubernetesEnvoyFilterWaypointFilterMatch) GetSubFilter() *KubernetesEnvoyFilterWaypointSubFilterMatch {
+	if x != nil {
+		return x.SubFilter
+	}
+	return nil
+}
+
+// KubernetesEnvoyFilterWaypointSubFilterMatch names the next-level filter within a
+// matched waypoint filter.
+type KubernetesEnvoyFilterWaypointSubFilterMatch struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The filter name to match on.
+	Name          *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesEnvoyFilterWaypointSubFilterMatch) Reset() {
+	*x = KubernetesEnvoyFilterWaypointSubFilterMatch{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesEnvoyFilterWaypointSubFilterMatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesEnvoyFilterWaypointSubFilterMatch) ProtoMessage() {}
+
+func (x *KubernetesEnvoyFilterWaypointSubFilterMatch) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesEnvoyFilterWaypointSubFilterMatch.ProtoReflect.Descriptor instead.
+func (*KubernetesEnvoyFilterWaypointSubFilterMatch) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesEnvoyFilterWaypointSubFilterMatch) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
+	}
+	return ""
+}
+
+// KubernetesEnvoyFilterWaypointRouteMatch matches a specific route within the waypoint's
+// generated route configuration.
+type KubernetesEnvoyFilterWaypointRouteMatch struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The route name to match on (default generated Route objects are named `default`).
+	Name          *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesEnvoyFilterWaypointRouteMatch) Reset() {
+	*x = KubernetesEnvoyFilterWaypointRouteMatch{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesEnvoyFilterWaypointRouteMatch) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesEnvoyFilterWaypointRouteMatch) ProtoMessage() {}
+
+func (x *KubernetesEnvoyFilterWaypointRouteMatch) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesEnvoyFilterWaypointRouteMatch.ProtoReflect.Descriptor instead.
+func (*KubernetesEnvoyFilterWaypointRouteMatch) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesEnvoyFilterWaypointRouteMatch) GetName() string {
+	if x != nil && x.Name != nil {
+		return *x.Name
+	}
+	return ""
+}
+
 // KubernetesEnvoyFilterProxyMatch matches one or more properties of the proxy. Faithful to
 // the upstream EnvoyFilter.ProxyMatch.
 type KubernetesEnvoyFilterProxyMatch struct {
@@ -347,7 +574,7 @@ type KubernetesEnvoyFilterProxyMatch struct {
 
 func (x *KubernetesEnvoyFilterProxyMatch) Reset() {
 	*x = KubernetesEnvoyFilterProxyMatch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -359,7 +586,7 @@ func (x *KubernetesEnvoyFilterProxyMatch) String() string {
 func (*KubernetesEnvoyFilterProxyMatch) ProtoMessage() {}
 
 func (x *KubernetesEnvoyFilterProxyMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -372,7 +599,7 @@ func (x *KubernetesEnvoyFilterProxyMatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesEnvoyFilterProxyMatch.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterProxyMatch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *KubernetesEnvoyFilterProxyMatch) GetProxyVersion() string {
@@ -412,7 +639,7 @@ type KubernetesEnvoyFilterClusterMatch struct {
 
 func (x *KubernetesEnvoyFilterClusterMatch) Reset() {
 	*x = KubernetesEnvoyFilterClusterMatch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -424,7 +651,7 @@ func (x *KubernetesEnvoyFilterClusterMatch) String() string {
 func (*KubernetesEnvoyFilterClusterMatch) ProtoMessage() {}
 
 func (x *KubernetesEnvoyFilterClusterMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -437,7 +664,7 @@ func (x *KubernetesEnvoyFilterClusterMatch) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use KubernetesEnvoyFilterClusterMatch.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterClusterMatch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *KubernetesEnvoyFilterClusterMatch) GetPortNumber() uint32 {
@@ -494,7 +721,7 @@ type KubernetesEnvoyFilterRouteConfigurationMatch struct {
 
 func (x *KubernetesEnvoyFilterRouteConfigurationMatch) Reset() {
 	*x = KubernetesEnvoyFilterRouteConfigurationMatch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -506,7 +733,7 @@ func (x *KubernetesEnvoyFilterRouteConfigurationMatch) String() string {
 func (*KubernetesEnvoyFilterRouteConfigurationMatch) ProtoMessage() {}
 
 func (x *KubernetesEnvoyFilterRouteConfigurationMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -519,7 +746,7 @@ func (x *KubernetesEnvoyFilterRouteConfigurationMatch) ProtoReflect() protorefle
 
 // Deprecated: Use KubernetesEnvoyFilterRouteConfigurationMatch.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterRouteConfigurationMatch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *KubernetesEnvoyFilterRouteConfigurationMatch) GetPortNumber() uint32 {
@@ -575,7 +802,7 @@ type KubernetesEnvoyFilterVirtualHostMatch struct {
 
 func (x *KubernetesEnvoyFilterVirtualHostMatch) Reset() {
 	*x = KubernetesEnvoyFilterVirtualHostMatch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -587,7 +814,7 @@ func (x *KubernetesEnvoyFilterVirtualHostMatch) String() string {
 func (*KubernetesEnvoyFilterVirtualHostMatch) ProtoMessage() {}
 
 func (x *KubernetesEnvoyFilterVirtualHostMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -600,7 +827,7 @@ func (x *KubernetesEnvoyFilterVirtualHostMatch) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use KubernetesEnvoyFilterVirtualHostMatch.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterVirtualHostMatch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *KubernetesEnvoyFilterVirtualHostMatch) GetName() string {
@@ -640,7 +867,7 @@ type KubernetesEnvoyFilterRouteMatch struct {
 
 func (x *KubernetesEnvoyFilterRouteMatch) Reset() {
 	*x = KubernetesEnvoyFilterRouteMatch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -652,7 +879,7 @@ func (x *KubernetesEnvoyFilterRouteMatch) String() string {
 func (*KubernetesEnvoyFilterRouteMatch) ProtoMessage() {}
 
 func (x *KubernetesEnvoyFilterRouteMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -665,7 +892,7 @@ func (x *KubernetesEnvoyFilterRouteMatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesEnvoyFilterRouteMatch.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterRouteMatch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *KubernetesEnvoyFilterRouteMatch) GetName() string {
@@ -706,7 +933,7 @@ type KubernetesEnvoyFilterListenerMatch struct {
 
 func (x *KubernetesEnvoyFilterListenerMatch) Reset() {
 	*x = KubernetesEnvoyFilterListenerMatch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -718,7 +945,7 @@ func (x *KubernetesEnvoyFilterListenerMatch) String() string {
 func (*KubernetesEnvoyFilterListenerMatch) ProtoMessage() {}
 
 func (x *KubernetesEnvoyFilterListenerMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -731,7 +958,7 @@ func (x *KubernetesEnvoyFilterListenerMatch) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use KubernetesEnvoyFilterListenerMatch.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterListenerMatch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *KubernetesEnvoyFilterListenerMatch) GetPortNumber() uint32 {
@@ -791,7 +1018,7 @@ type KubernetesEnvoyFilterFilterChainMatch struct {
 
 func (x *KubernetesEnvoyFilterFilterChainMatch) Reset() {
 	*x = KubernetesEnvoyFilterFilterChainMatch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -803,7 +1030,7 @@ func (x *KubernetesEnvoyFilterFilterChainMatch) String() string {
 func (*KubernetesEnvoyFilterFilterChainMatch) ProtoMessage() {}
 
 func (x *KubernetesEnvoyFilterFilterChainMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -816,7 +1043,7 @@ func (x *KubernetesEnvoyFilterFilterChainMatch) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use KubernetesEnvoyFilterFilterChainMatch.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterFilterChainMatch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *KubernetesEnvoyFilterFilterChainMatch) GetName() string {
@@ -876,7 +1103,7 @@ type KubernetesEnvoyFilterFilterMatch struct {
 
 func (x *KubernetesEnvoyFilterFilterMatch) Reset() {
 	*x = KubernetesEnvoyFilterFilterMatch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -888,7 +1115,7 @@ func (x *KubernetesEnvoyFilterFilterMatch) String() string {
 func (*KubernetesEnvoyFilterFilterMatch) ProtoMessage() {}
 
 func (x *KubernetesEnvoyFilterFilterMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -901,7 +1128,7 @@ func (x *KubernetesEnvoyFilterFilterMatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesEnvoyFilterFilterMatch.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterFilterMatch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{10}
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *KubernetesEnvoyFilterFilterMatch) GetName() string {
@@ -931,7 +1158,7 @@ type KubernetesEnvoyFilterSubFilterMatch struct {
 
 func (x *KubernetesEnvoyFilterSubFilterMatch) Reset() {
 	*x = KubernetesEnvoyFilterSubFilterMatch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -943,7 +1170,7 @@ func (x *KubernetesEnvoyFilterSubFilterMatch) String() string {
 func (*KubernetesEnvoyFilterSubFilterMatch) ProtoMessage() {}
 
 func (x *KubernetesEnvoyFilterSubFilterMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -956,7 +1183,7 @@ func (x *KubernetesEnvoyFilterSubFilterMatch) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use KubernetesEnvoyFilterSubFilterMatch.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterSubFilterMatch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{11}
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *KubernetesEnvoyFilterSubFilterMatch) GetName() string {
@@ -1005,7 +1232,7 @@ type KubernetesEnvoyFilterPatch struct {
 
 func (x *KubernetesEnvoyFilterPatch) Reset() {
 	*x = KubernetesEnvoyFilterPatch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1017,7 +1244,7 @@ func (x *KubernetesEnvoyFilterPatch) String() string {
 func (*KubernetesEnvoyFilterPatch) ProtoMessage() {}
 
 func (x *KubernetesEnvoyFilterPatch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1030,7 +1257,7 @@ func (x *KubernetesEnvoyFilterPatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesEnvoyFilterPatch.ProtoReflect.Descriptor instead.
 func (*KubernetesEnvoyFilterPatch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{12}
+	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *KubernetesEnvoyFilterPatch) GetOperation() string {
@@ -1060,7 +1287,7 @@ const file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_r
 	"\n" +
 	"Cdev/planton/provider/kubernetes/kubernetesenvoyfilter/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xde\x05\n" +
 	"\x19KubernetesEnvoyFilterSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12z\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12z\n" +
 	"\x11workload_selector\x18\x03 \x01(\v2M.dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelectorR\x10workloadSelector\x12\x81\x01\n" +
 	"\x0econfig_patches\x18\x04 \x03(\v2Z.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatchR\rconfigPatches\x12\x1f\n" +
 	"\bpriority\x18\x05 \x01(\x05H\x00R\bpriority\x88\x01\x01\x12s\n" +
@@ -1073,16 +1300,34 @@ const file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_r
 	"HTTP_ROUTER\aCLUSTERR\x10EXTENSION_CONFIGR\tBOOTSTRAPR\x0fLISTENER_FILTERH\x00R\aapplyTo\x88\x01\x01\x12{\n" +
 	"\x05match\x18\x02 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatchR\x05match\x12j\n" +
 	"\x05patch\x18\x03 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatchR\x05patchB\v\n" +
-	"\t_apply_to\"\xa8\a\n" +
-	"+KubernetesEnvoyFilterEnvoyConfigObjectMatch\x12U\n" +
-	"\acontext\x18\x01 \x01(\tB6\xbaH3r1R\x03ANYR\x0fSIDECAR_INBOUNDR\x10SIDECAR_OUTBOUNDR\aGATEWAYH\x00R\acontext\x88\x01\x01\x12o\n" +
+	"\t_apply_to\"\xa1\b\n" +
+	"+KubernetesEnvoyFilterEnvoyConfigObjectMatch\x12_\n" +
+	"\acontext\x18\x01 \x01(\tB@\xbaH=r;R\x03ANYR\x0fSIDECAR_INBOUNDR\x10SIDECAR_OUTBOUNDR\aGATEWAYR\bWAYPOINTH\x00R\acontext\x88\x01\x01\x12o\n" +
 	"\x05proxy\x18\x02 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatchR\x05proxy\x12x\n" +
 	"\blistener\x18\x03 \x01(\v2\\.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatchR\blistener\x12\x97\x01\n" +
 	"\x13route_configuration\x18\x04 \x01(\v2f.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatchR\x12routeConfiguration\x12u\n" +
-	"\acluster\x18\x05 \x01(\v2[.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterClusterMatchR\acluster:\x99\x02\xbaH\x95\x02\x1a\x92\x02\n" +
-	"+envoy_filter_match.object_types_at_most_one\x12Cat most one of listener, route_configuration, or cluster may be set\x1a\x9d\x01!(has(this.listener) && has(this.route_configuration)) && !(has(this.listener) && has(this.cluster)) && !(has(this.route_configuration) && has(this.cluster))B\n" +
+	"\acluster\x18\x05 \x01(\v2[.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterClusterMatchR\acluster\x12x\n" +
+	"\bwaypoint\x18\x06 \x01(\v2\\.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointMatchR\bwaypoint:\x8e\x02\xbaH\x8a\x02\x1a\x87\x02\n" +
+	"+envoy_filter_match.object_types_at_most_one\x12Mat most one of listener, route_configuration, cluster, or waypoint may be set\x1a\x88\x01(has(this.listener) ? 1 : 0) + (has(this.route_configuration) ? 1 : 0) + (has(this.cluster) ? 1 : 0) + (has(this.waypoint) ? 1 : 0) <= 1B\n" +
 	"\n" +
-	"\b_context\"\xa0\x02\n" +
+	"\b_context\"\xdc\x02\n" +
+	"\"KubernetesEnvoyFilterWaypointMatch\x12z\n" +
+	"\x06filter\x18\x01 \x01(\v2b.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointFilterMatchR\x06filter\x121\n" +
+	"\vport_number\x18\x02 \x01(\rB\v\xbaH\b*\x06\x18\xff\xff\x03(\x01H\x00R\n" +
+	"portNumber\x88\x01\x01\x12w\n" +
+	"\x05route\x18\x03 \x01(\v2a.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointRouteMatchR\x05routeB\x0e\n" +
+	"\f_port_number\"\xd3\x01\n" +
+	"(KubernetesEnvoyFilterWaypointFilterMatch\x12\x17\n" +
+	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x84\x01\n" +
+	"\n" +
+	"sub_filter\x18\x02 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointSubFilterMatchR\tsubFilterB\a\n" +
+	"\x05_name\"O\n" +
+	"+KubernetesEnvoyFilterWaypointSubFilterMatch\x12\x17\n" +
+	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01B\a\n" +
+	"\x05_name\"K\n" +
+	"'KubernetesEnvoyFilterWaypointRouteMatch\x12\x17\n" +
+	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01B\a\n" +
+	"\x05_name\"\xa0\x02\n" +
 	"\x1fKubernetesEnvoyFilterProxyMatch\x12(\n" +
 	"\rproxy_version\x18\x01 \x01(\tH\x00R\fproxyVersion\x88\x01\x01\x12\x83\x01\n" +
 	"\bmetadata\x18\x02 \x03(\v2g.dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.MetadataEntryR\bmetadata\x1a;\n" +
@@ -1176,50 +1421,58 @@ func file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_ra
 	return file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_goTypes = []any{
 	(*KubernetesEnvoyFilterSpec)(nil),                               // 0: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec
 	(*KubernetesEnvoyFilterConfigPatch)(nil),                        // 1: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch
 	(*KubernetesEnvoyFilterEnvoyConfigObjectMatch)(nil),             // 2: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch
-	(*KubernetesEnvoyFilterProxyMatch)(nil),                         // 3: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch
-	(*KubernetesEnvoyFilterClusterMatch)(nil),                       // 4: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterClusterMatch
-	(*KubernetesEnvoyFilterRouteConfigurationMatch)(nil),            // 5: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatch
-	(*KubernetesEnvoyFilterVirtualHostMatch)(nil),                   // 6: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterVirtualHostMatch
-	(*KubernetesEnvoyFilterRouteMatch)(nil),                         // 7: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteMatch
-	(*KubernetesEnvoyFilterListenerMatch)(nil),                      // 8: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatch
-	(*KubernetesEnvoyFilterFilterChainMatch)(nil),                   // 9: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterChainMatch
-	(*KubernetesEnvoyFilterFilterMatch)(nil),                        // 10: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterMatch
-	(*KubernetesEnvoyFilterSubFilterMatch)(nil),                     // 11: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSubFilterMatch
-	(*KubernetesEnvoyFilterPatch)(nil),                              // 12: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch
-	nil,                                                             // 13: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.MetadataEntry
-	(*v1.StringValueOrRef)(nil),                                     // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesIstioApiNetworkingWorkloadSelector)(nil), // 15: dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
-	(*kubernetes.KubernetesIstioApiPolicyTargetReference)(nil),      // 16: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
-	(*structpb.Struct)(nil),                                         // 17: google.protobuf.Struct
+	(*KubernetesEnvoyFilterWaypointMatch)(nil),                      // 3: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointMatch
+	(*KubernetesEnvoyFilterWaypointFilterMatch)(nil),                // 4: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointFilterMatch
+	(*KubernetesEnvoyFilterWaypointSubFilterMatch)(nil),             // 5: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointSubFilterMatch
+	(*KubernetesEnvoyFilterWaypointRouteMatch)(nil),                 // 6: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointRouteMatch
+	(*KubernetesEnvoyFilterProxyMatch)(nil),                         // 7: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch
+	(*KubernetesEnvoyFilterClusterMatch)(nil),                       // 8: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterClusterMatch
+	(*KubernetesEnvoyFilterRouteConfigurationMatch)(nil),            // 9: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatch
+	(*KubernetesEnvoyFilterVirtualHostMatch)(nil),                   // 10: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterVirtualHostMatch
+	(*KubernetesEnvoyFilterRouteMatch)(nil),                         // 11: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteMatch
+	(*KubernetesEnvoyFilterListenerMatch)(nil),                      // 12: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatch
+	(*KubernetesEnvoyFilterFilterChainMatch)(nil),                   // 13: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterChainMatch
+	(*KubernetesEnvoyFilterFilterMatch)(nil),                        // 14: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterMatch
+	(*KubernetesEnvoyFilterSubFilterMatch)(nil),                     // 15: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSubFilterMatch
+	(*KubernetesEnvoyFilterPatch)(nil),                              // 16: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch
+	nil,                                                             // 17: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.MetadataEntry
+	(*v1.StringValueOrRef)(nil),                                     // 18: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesIstioApiNetworkingWorkloadSelector)(nil), // 19: dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
+	(*kubernetes.KubernetesIstioApiPolicyTargetReference)(nil),      // 20: dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
+	(*structpb.Struct)(nil),                                         // 21: google.protobuf.Struct
 }
 var file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_depIdxs = []int32{
-	14, // 0: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	15, // 1: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.workload_selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
+	18, // 0: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 1: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.workload_selector:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiNetworkingWorkloadSelector
 	1,  // 2: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.config_patches:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch
-	16, // 3: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.target_refs:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
+	20, // 3: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.target_refs:type_name -> dev.planton.provider.kubernetes.KubernetesIstioApiPolicyTargetReference
 	2,  // 4: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch.match:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch
-	12, // 5: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch.patch:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch
-	3,  // 6: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.proxy:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch
-	8,  // 7: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.listener:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatch
-	5,  // 8: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.route_configuration:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatch
-	4,  // 9: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.cluster:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterClusterMatch
-	13, // 10: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.metadata:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.MetadataEntry
-	6,  // 11: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatch.vhost:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterVirtualHostMatch
-	7,  // 12: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterVirtualHostMatch.route:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteMatch
-	9,  // 13: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatch.filter_chain:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterChainMatch
-	10, // 14: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterChainMatch.filter:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterMatch
-	11, // 15: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterMatch.sub_filter:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSubFilterMatch
-	17, // 16: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch.value:type_name -> google.protobuf.Struct
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	16, // 5: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterConfigPatch.patch:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch
+	7,  // 6: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.proxy:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch
+	12, // 7: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.listener:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatch
+	9,  // 8: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.route_configuration:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatch
+	8,  // 9: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.cluster:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterClusterMatch
+	3,  // 10: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterEnvoyConfigObjectMatch.waypoint:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointMatch
+	4,  // 11: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointMatch.filter:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointFilterMatch
+	6,  // 12: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointMatch.route:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointRouteMatch
+	5,  // 13: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointFilterMatch.sub_filter:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterWaypointSubFilterMatch
+	17, // 14: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.metadata:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterProxyMatch.MetadataEntry
+	10, // 15: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteConfigurationMatch.vhost:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterVirtualHostMatch
+	11, // 16: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterVirtualHostMatch.route:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterRouteMatch
+	13, // 17: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterListenerMatch.filter_chain:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterChainMatch
+	14, // 18: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterChainMatch.filter:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterMatch
+	15, // 19: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterFilterMatch.sub_filter:type_name -> dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSubFilterMatch
+	21, // 20: dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterPatch.value:type_name -> google.protobuf.Struct
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_init() }
@@ -1240,13 +1493,17 @@ func file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_in
 	file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[11].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[14].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[15].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesenvoyfilter_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,7 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
-
+name: kubernetes-manifest
+runtime: go
+description: Raw Kubernetes manifest deployment with namespace anchoring and readiness await control

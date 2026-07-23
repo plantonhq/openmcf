@@ -2697,6 +2697,12 @@ type GatewaySpec struct {
 	// request to "foo.example.com" SHOULD only be routed using routes attached
 	// to the "foo.example.com" Listener (and not the "*.example.com" Listener).
 	//
+	// If traffic to a Gateway does not match any Listener's hostname (or if
+	// the Listener does not specify a hostname and the request does not match
+	// any attached Route), the request MUST be rejected. The specific mechanism
+	// for rejection depends on the protocol: HTTP returns a 404 status code,
+	// while gRPC returns an Unimplemented status code.
+	//
 	// This concept is known as "Listener Isolation", and it is an Extended feature
 	// of Gateway API. Implementations that do not support Listener Isolation MUST
 	// clearly document this, and MUST NOT claim support for the
@@ -2900,6 +2906,12 @@ type GatewaySpecArgs struct {
 	// For example, if Listeners are defined for "foo.example.com" and "*.example.com", a
 	// request to "foo.example.com" SHOULD only be routed using routes attached
 	// to the "foo.example.com" Listener (and not the "*.example.com" Listener).
+	//
+	// If traffic to a Gateway does not match any Listener's hostname (or if
+	// the Listener does not specify a hostname and the request does not match
+	// any attached Route), the request MUST be rejected. The specific mechanism
+	// for rejection depends on the protocol: HTTP returns a 404 status code,
+	// while gRPC returns an Unimplemented status code.
 	//
 	// This concept is known as "Listener Isolation", and it is an Extended feature
 	// of Gateway API. Implementations that do not support Listener Isolation MUST
@@ -3182,6 +3194,12 @@ func (o GatewaySpecOutput) Infrastructure() GatewaySpecInfrastructurePtrOutput {
 // request to "foo.example.com" SHOULD only be routed using routes attached
 // to the "foo.example.com" Listener (and not the "*.example.com" Listener).
 //
+// If traffic to a Gateway does not match any Listener's hostname (or if
+// the Listener does not specify a hostname and the request does not match
+// any attached Route), the request MUST be rejected. The specific mechanism
+// for rejection depends on the protocol: HTTP returns a 404 status code,
+// while gRPC returns an Unimplemented status code.
+//
 // This concept is known as "Listener Isolation", and it is an Extended feature
 // of Gateway API. Implementations that do not support Listener Isolation MUST
 // clearly document this, and MUST NOT claim support for the
@@ -3432,6 +3450,12 @@ func (o GatewaySpecPtrOutput) Infrastructure() GatewaySpecInfrastructurePtrOutpu
 // For example, if Listeners are defined for "foo.example.com" and "*.example.com", a
 // request to "foo.example.com" SHOULD only be routed using routes attached
 // to the "foo.example.com" Listener (and not the "*.example.com" Listener).
+//
+// If traffic to a Gateway does not match any Listener's hostname (or if
+// the Listener does not specify a hostname and the request does not match
+// any attached Route), the request MUST be rejected. The specific mechanism
+// for rejection depends on the protocol: HTTP returns a 404 status code,
+// while gRPC returns an Unimplemented status code.
 //
 // This concept is known as "Listener Isolation", and it is an Extended feature
 // of Gateway API. Implementations that do not support Listener Isolation MUST
@@ -9634,6 +9658,12 @@ type GatewaySpecPatch struct {
 	// request to "foo.example.com" SHOULD only be routed using routes attached
 	// to the "foo.example.com" Listener (and not the "*.example.com" Listener).
 	//
+	// If traffic to a Gateway does not match any Listener's hostname (or if
+	// the Listener does not specify a hostname and the request does not match
+	// any attached Route), the request MUST be rejected. The specific mechanism
+	// for rejection depends on the protocol: HTTP returns a 404 status code,
+	// while gRPC returns an Unimplemented status code.
+	//
 	// This concept is known as "Listener Isolation", and it is an Extended feature
 	// of Gateway API. Implementations that do not support Listener Isolation MUST
 	// clearly document this, and MUST NOT claim support for the
@@ -9837,6 +9867,12 @@ type GatewaySpecPatchArgs struct {
 	// For example, if Listeners are defined for "foo.example.com" and "*.example.com", a
 	// request to "foo.example.com" SHOULD only be routed using routes attached
 	// to the "foo.example.com" Listener (and not the "*.example.com" Listener).
+	//
+	// If traffic to a Gateway does not match any Listener's hostname (or if
+	// the Listener does not specify a hostname and the request does not match
+	// any attached Route), the request MUST be rejected. The specific mechanism
+	// for rejection depends on the protocol: HTTP returns a 404 status code,
+	// while gRPC returns an Unimplemented status code.
 	//
 	// This concept is known as "Listener Isolation", and it is an Extended feature
 	// of Gateway API. Implementations that do not support Listener Isolation MUST
@@ -10119,6 +10155,12 @@ func (o GatewaySpecPatchOutput) Infrastructure() GatewaySpecInfrastructurePatchP
 // request to "foo.example.com" SHOULD only be routed using routes attached
 // to the "foo.example.com" Listener (and not the "*.example.com" Listener).
 //
+// If traffic to a Gateway does not match any Listener's hostname (or if
+// the Listener does not specify a hostname and the request does not match
+// any attached Route), the request MUST be rejected. The specific mechanism
+// for rejection depends on the protocol: HTTP returns a 404 status code,
+// while gRPC returns an Unimplemented status code.
+//
 // This concept is known as "Listener Isolation", and it is an Extended feature
 // of Gateway API. Implementations that do not support Listener Isolation MUST
 // clearly document this, and MUST NOT claim support for the
@@ -10369,6 +10411,12 @@ func (o GatewaySpecPatchPtrOutput) Infrastructure() GatewaySpecInfrastructurePat
 // For example, if Listeners are defined for "foo.example.com" and "*.example.com", a
 // request to "foo.example.com" SHOULD only be routed using routes attached
 // to the "foo.example.com" Listener (and not the "*.example.com" Listener).
+//
+// If traffic to a Gateway does not match any Listener's hostname (or if
+// the Listener does not specify a hostname and the request does not match
+// any attached Route), the request MUST be rejected. The specific mechanism
+// for rejection depends on the protocol: HTTP returns a 404 status code,
+// while gRPC returns an Unimplemented status code.
 //
 // This concept is known as "Listener Isolation", and it is an Extended feature
 // of Gateway API. Implementations that do not support Listener Isolation MUST
@@ -20659,9 +20707,9 @@ type HTTPRouteSpecRulesBackendRefsFiltersCors struct {
 	// Multiple header names in the value of the `Access-Control-Allow-Headers`
 	// response header are separated by a comma (",").
 	//
-	// When the `AllowHeaders` field is configured with one or more headers, the
+	// When the `allowHeaders` field is configured with one or more headers, the
 	// gateway must return the `Access-Control-Allow-Headers` response header
-	// which value is present in the `AllowHeaders` field.
+	// which value is present in the `allowHeaders` field.
 	//
 	// If any header name in the `Access-Control-Request-Headers` request header
 	// is not included in the list of header names specified by the response
@@ -20673,21 +20721,20 @@ type HTTPRouteSpecRulesBackendRefsFiltersCors struct {
 	// client side.
 	//
 	// A wildcard indicates that the requests with all HTTP headers are allowed.
-	// If config contains the wildcard "*" in allowHeaders and the request is
-	// not credentialed, the `Access-Control-Allow-Headers` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Headers from the request.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Headers` response header. When
-	// also the `AllowCredentials` field is true and `AllowHeaders` field
-	// is specified with the `*` wildcard, the gateway must specify one or more
-	// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-	// header. The value of the header `Access-Control-Allow-Headers` is same as
-	// the `Access-Control-Request-Headers` header provided by the client. If
-	// the header `Access-Control-Request-Headers` is not included in the
-	// request, the gateway will omit the `Access-Control-Allow-Headers`
-	// response header, instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Headers` request header.
+	//
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Headers` response header. Instead, it must
+	// return one or more header names matching the value of the
+	// `Access-Control-Request-Headers` request header.
+	// If the `Access-Control-Request-Headers` header is not present in the
+	// request, the gateway must omit the `Access-Control-Allow-Headers`
+	// response header.
 	//
 	// Support: Extended
 	AllowHeaders []string `pulumi:"allowHeaders"`
@@ -20706,32 +20753,29 @@ type HTTPRouteSpecRulesBackendRefsFiltersCors struct {
 	// A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 	// CORS-safelisted methods are always allowed, regardless of whether they
-	// are specified in the `AllowMethods` field.
+	// are specified in the `allowMethods` field.
 	//
-	// When the `AllowMethods` field is configured with one or more methods, the
+	// When the `allowMethods` field is configured with one or more methods, the
 	// gateway must return the `Access-Control-Allow-Methods` response header
-	// which value is present in the `AllowMethods` field.
+	// which value is present in the `allowMethods` field.
 	//
 	// If the HTTP method of the `Access-Control-Request-Method` request header
 	// is not included in the list of methods specified by the response header
 	// `Access-Control-Allow-Methods`, it will present an error on the client
 	// side.
 	//
-	// If config contains the wildcard "*" in allowMethods and the request is
-	// not credentialed, the `Access-Control-Allow-Methods` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Method from the request.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Method` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Methods` response header. When
-	// also the `AllowCredentials` field is true and `AllowMethods` field
-	// specified with the `*` wildcard, the gateway must specify one HTTP method
-	// in the value of the Access-Control-Allow-Methods response header. The
-	// value of the header `Access-Control-Allow-Methods` is same as the
-	// `Access-Control-Request-Method` header provided by the client. If the
-	// header `Access-Control-Request-Method` is not included in the request,
-	// the gateway will omit the `Access-Control-Allow-Methods` response header,
-	// instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Methods` response header. Instead, it must
+	// return a single HTTP method matching the value of the
+	// `Access-Control-Request-Method` request header.
+	// If the `Access-Control-Request-Method` header is not present in the request,
+	// the gateway must omit the `Access-Control-Allow-Methods` response header.
 	//
 	// Support: Extended
 	AllowMethods []string `pulumi:"allowMethods"`
@@ -20760,7 +20804,7 @@ type HTTPRouteSpecRulesBackendRefsFiltersCors struct {
 	// An origin value that includes _only_ the `*` character indicates requests
 	// from all `Origin`s are allowed.
 	//
-	// When the `AllowOrigins` field is configured with multiple origins, it
+	// When the `allowOrigins` field is configured with multiple origins, it
 	// means the server supports clients from multiple origins. If the request
 	// `Origin` matches the configured allowed origins, the gateway must return
 	// the given `Origin` and sets value of the header
@@ -20782,19 +20826,15 @@ type HTTPRouteSpecRulesBackendRefsFiltersCors struct {
 	// `Access-Control-Allow-Origin` to the same value as the `Origin`
 	// header provided by the client.
 	//
-	// When config has the wildcard ("*") in allowOrigins, and the request
-	// is not credentialed (e.g., it is a preflight request), the
-	// `Access-Control-Allow-Origin` response header either contains the
-	// wildcard as well or the Origin from the request.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Origin` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Origin` response header. When
-	// also the `AllowCredentials` field is true and `AllowOrigins` field
-	// specified with the `*` wildcard, the gateway must return a single origin
-	// in the value of the `Access-Control-Allow-Origin` response header,
-	// instead of specifying the `*` wildcard. The value of the header
-	// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-	// the client.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Origin` response header. Instead, it must
+	// return a single origin matching the value of the `Origin` request header.
 	//
 	// Support: Extended
 	AllowOrigins []string `pulumi:"allowOrigins"`
@@ -20814,7 +20854,7 @@ type HTTPRouteSpecRulesBackendRefsFiltersCors struct {
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 	// The CORS-safelisted response headers are exposed to client by default.
 	//
-	// When an HTTP header name is specified using the `ExposeHeaders` field,
+	// When an HTTP header name is specified using the `exposeHeaders` field,
 	// this additional header will be exposed as part of the response to the
 	// client.
 	//
@@ -20824,12 +20864,15 @@ type HTTPRouteSpecRulesBackendRefsFiltersCors struct {
 	// response header are separated by a comma (",").
 	//
 	// A wildcard indicates that the responses with all HTTP headers are exposed
-	// to clients. The `Access-Control-Expose-Headers` response header can only
-	// use `*` wildcard as value when the request is not credentialed.
+	// to clients.
 	//
-	// When the `exposeHeaders` config field contains the "*" wildcard and
-	// the request is credentialed, the gateway cannot use the `*` wildcard in
-	// the `Access-Control-Expose-Headers` response header.
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+	// response header can contain the wildcard `*`.
+	//
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+	// in the `Access-Control-Expose-Headers` response header.
 	//
 	// Support: Extended
 	ExposeHeaders []string `pulumi:"exposeHeaders"`
@@ -20884,9 +20927,9 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsArgs struct {
 	// Multiple header names in the value of the `Access-Control-Allow-Headers`
 	// response header are separated by a comma (",").
 	//
-	// When the `AllowHeaders` field is configured with one or more headers, the
+	// When the `allowHeaders` field is configured with one or more headers, the
 	// gateway must return the `Access-Control-Allow-Headers` response header
-	// which value is present in the `AllowHeaders` field.
+	// which value is present in the `allowHeaders` field.
 	//
 	// If any header name in the `Access-Control-Request-Headers` request header
 	// is not included in the list of header names specified by the response
@@ -20898,21 +20941,20 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsArgs struct {
 	// client side.
 	//
 	// A wildcard indicates that the requests with all HTTP headers are allowed.
-	// If config contains the wildcard "*" in allowHeaders and the request is
-	// not credentialed, the `Access-Control-Allow-Headers` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Headers from the request.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Headers` response header. When
-	// also the `AllowCredentials` field is true and `AllowHeaders` field
-	// is specified with the `*` wildcard, the gateway must specify one or more
-	// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-	// header. The value of the header `Access-Control-Allow-Headers` is same as
-	// the `Access-Control-Request-Headers` header provided by the client. If
-	// the header `Access-Control-Request-Headers` is not included in the
-	// request, the gateway will omit the `Access-Control-Allow-Headers`
-	// response header, instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Headers` request header.
+	//
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Headers` response header. Instead, it must
+	// return one or more header names matching the value of the
+	// `Access-Control-Request-Headers` request header.
+	// If the `Access-Control-Request-Headers` header is not present in the
+	// request, the gateway must omit the `Access-Control-Allow-Headers`
+	// response header.
 	//
 	// Support: Extended
 	AllowHeaders pulumi.StringArrayInput `pulumi:"allowHeaders"`
@@ -20931,32 +20973,29 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsArgs struct {
 	// A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 	// CORS-safelisted methods are always allowed, regardless of whether they
-	// are specified in the `AllowMethods` field.
+	// are specified in the `allowMethods` field.
 	//
-	// When the `AllowMethods` field is configured with one or more methods, the
+	// When the `allowMethods` field is configured with one or more methods, the
 	// gateway must return the `Access-Control-Allow-Methods` response header
-	// which value is present in the `AllowMethods` field.
+	// which value is present in the `allowMethods` field.
 	//
 	// If the HTTP method of the `Access-Control-Request-Method` request header
 	// is not included in the list of methods specified by the response header
 	// `Access-Control-Allow-Methods`, it will present an error on the client
 	// side.
 	//
-	// If config contains the wildcard "*" in allowMethods and the request is
-	// not credentialed, the `Access-Control-Allow-Methods` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Method from the request.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Method` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Methods` response header. When
-	// also the `AllowCredentials` field is true and `AllowMethods` field
-	// specified with the `*` wildcard, the gateway must specify one HTTP method
-	// in the value of the Access-Control-Allow-Methods response header. The
-	// value of the header `Access-Control-Allow-Methods` is same as the
-	// `Access-Control-Request-Method` header provided by the client. If the
-	// header `Access-Control-Request-Method` is not included in the request,
-	// the gateway will omit the `Access-Control-Allow-Methods` response header,
-	// instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Methods` response header. Instead, it must
+	// return a single HTTP method matching the value of the
+	// `Access-Control-Request-Method` request header.
+	// If the `Access-Control-Request-Method` header is not present in the request,
+	// the gateway must omit the `Access-Control-Allow-Methods` response header.
 	//
 	// Support: Extended
 	AllowMethods pulumi.StringArrayInput `pulumi:"allowMethods"`
@@ -20985,7 +21024,7 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsArgs struct {
 	// An origin value that includes _only_ the `*` character indicates requests
 	// from all `Origin`s are allowed.
 	//
-	// When the `AllowOrigins` field is configured with multiple origins, it
+	// When the `allowOrigins` field is configured with multiple origins, it
 	// means the server supports clients from multiple origins. If the request
 	// `Origin` matches the configured allowed origins, the gateway must return
 	// the given `Origin` and sets value of the header
@@ -21007,19 +21046,15 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsArgs struct {
 	// `Access-Control-Allow-Origin` to the same value as the `Origin`
 	// header provided by the client.
 	//
-	// When config has the wildcard ("*") in allowOrigins, and the request
-	// is not credentialed (e.g., it is a preflight request), the
-	// `Access-Control-Allow-Origin` response header either contains the
-	// wildcard as well or the Origin from the request.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Origin` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Origin` response header. When
-	// also the `AllowCredentials` field is true and `AllowOrigins` field
-	// specified with the `*` wildcard, the gateway must return a single origin
-	// in the value of the `Access-Control-Allow-Origin` response header,
-	// instead of specifying the `*` wildcard. The value of the header
-	// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-	// the client.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Origin` response header. Instead, it must
+	// return a single origin matching the value of the `Origin` request header.
 	//
 	// Support: Extended
 	AllowOrigins pulumi.StringArrayInput `pulumi:"allowOrigins"`
@@ -21039,7 +21074,7 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsArgs struct {
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 	// The CORS-safelisted response headers are exposed to client by default.
 	//
-	// When an HTTP header name is specified using the `ExposeHeaders` field,
+	// When an HTTP header name is specified using the `exposeHeaders` field,
 	// this additional header will be exposed as part of the response to the
 	// client.
 	//
@@ -21049,12 +21084,15 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsArgs struct {
 	// response header are separated by a comma (",").
 	//
 	// A wildcard indicates that the responses with all HTTP headers are exposed
-	// to clients. The `Access-Control-Expose-Headers` response header can only
-	// use `*` wildcard as value when the request is not credentialed.
+	// to clients.
 	//
-	// When the `exposeHeaders` config field contains the "*" wildcard and
-	// the request is credentialed, the gateway cannot use the `*` wildcard in
-	// the `Access-Control-Expose-Headers` response header.
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+	// response header can contain the wildcard `*`.
+	//
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+	// in the `Access-Control-Expose-Headers` response header.
 	//
 	// Support: Extended
 	ExposeHeaders pulumi.StringArrayInput `pulumi:"exposeHeaders"`
@@ -21177,9 +21215,9 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) AllowCredentials() pulum
 // Multiple header names in the value of the `Access-Control-Allow-Headers`
 // response header are separated by a comma (",").
 //
-// When the `AllowHeaders` field is configured with one or more headers, the
+// When the `allowHeaders` field is configured with one or more headers, the
 // gateway must return the `Access-Control-Allow-Headers` response header
-// which value is present in the `AllowHeaders` field.
+// which value is present in the `allowHeaders` field.
 //
 // If any header name in the `Access-Control-Request-Headers` request header
 // is not included in the list of header names specified by the response
@@ -21191,21 +21229,20 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) AllowCredentials() pulum
 // client side.
 //
 // A wildcard indicates that the requests with all HTTP headers are allowed.
-// If config contains the wildcard "*" in allowHeaders and the request is
-// not credentialed, the `Access-Control-Allow-Headers` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Headers from the request.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Headers` response header. When
-// also the `AllowCredentials` field is true and `AllowHeaders` field
-// is specified with the `*` wildcard, the gateway must specify one or more
-// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-// header. The value of the header `Access-Control-Allow-Headers` is same as
-// the `Access-Control-Request-Headers` header provided by the client. If
-// the header `Access-Control-Request-Headers` is not included in the
-// request, the gateway will omit the `Access-Control-Allow-Headers`
-// response header, instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Headers` request header.
+//
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Headers` response header. Instead, it must
+// return one or more header names matching the value of the
+// `Access-Control-Request-Headers` request header.
+// If the `Access-Control-Request-Headers` header is not present in the
+// request, the gateway must omit the `Access-Control-Allow-Headers`
+// response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) AllowHeaders() pulumi.StringArrayOutput {
@@ -21227,32 +21264,29 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) AllowHeaders() pulumi.St
 // A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 // CORS-safelisted methods are always allowed, regardless of whether they
-// are specified in the `AllowMethods` field.
+// are specified in the `allowMethods` field.
 //
-// When the `AllowMethods` field is configured with one or more methods, the
+// When the `allowMethods` field is configured with one or more methods, the
 // gateway must return the `Access-Control-Allow-Methods` response header
-// which value is present in the `AllowMethods` field.
+// which value is present in the `allowMethods` field.
 //
 // If the HTTP method of the `Access-Control-Request-Method` request header
 // is not included in the list of methods specified by the response header
 // `Access-Control-Allow-Methods`, it will present an error on the client
 // side.
 //
-// If config contains the wildcard "*" in allowMethods and the request is
-// not credentialed, the `Access-Control-Allow-Methods` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Method from the request.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Method` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Methods` response header. When
-// also the `AllowCredentials` field is true and `AllowMethods` field
-// specified with the `*` wildcard, the gateway must specify one HTTP method
-// in the value of the Access-Control-Allow-Methods response header. The
-// value of the header `Access-Control-Allow-Methods` is same as the
-// `Access-Control-Request-Method` header provided by the client. If the
-// header `Access-Control-Request-Method` is not included in the request,
-// the gateway will omit the `Access-Control-Allow-Methods` response header,
-// instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Methods` response header. Instead, it must
+// return a single HTTP method matching the value of the
+// `Access-Control-Request-Method` request header.
+// If the `Access-Control-Request-Method` header is not present in the request,
+// the gateway must omit the `Access-Control-Allow-Methods` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) AllowMethods() pulumi.StringArrayOutput {
@@ -21284,7 +21318,7 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) AllowMethods() pulumi.St
 // An origin value that includes _only_ the `*` character indicates requests
 // from all `Origin`s are allowed.
 //
-// When the `AllowOrigins` field is configured with multiple origins, it
+// When the `allowOrigins` field is configured with multiple origins, it
 // means the server supports clients from multiple origins. If the request
 // `Origin` matches the configured allowed origins, the gateway must return
 // the given `Origin` and sets value of the header
@@ -21306,19 +21340,15 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) AllowMethods() pulumi.St
 // `Access-Control-Allow-Origin` to the same value as the `Origin`
 // header provided by the client.
 //
-// When config has the wildcard ("*") in allowOrigins, and the request
-// is not credentialed (e.g., it is a preflight request), the
-// `Access-Control-Allow-Origin` response header either contains the
-// wildcard as well or the Origin from the request.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Origin` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Origin` response header. When
-// also the `AllowCredentials` field is true and `AllowOrigins` field
-// specified with the `*` wildcard, the gateway must return a single origin
-// in the value of the `Access-Control-Allow-Origin` response header,
-// instead of specifying the `*` wildcard. The value of the header
-// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-// the client.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Origin` response header. Instead, it must
+// return a single origin matching the value of the `Origin` request header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) AllowOrigins() pulumi.StringArrayOutput {
@@ -21341,7 +21371,7 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) AllowOrigins() pulumi.St
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 // The CORS-safelisted response headers are exposed to client by default.
 //
-// When an HTTP header name is specified using the `ExposeHeaders` field,
+// When an HTTP header name is specified using the `exposeHeaders` field,
 // this additional header will be exposed as part of the response to the
 // client.
 //
@@ -21351,12 +21381,15 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) AllowOrigins() pulumi.St
 // response header are separated by a comma (",").
 //
 // A wildcard indicates that the responses with all HTTP headers are exposed
-// to clients. The `Access-Control-Expose-Headers` response header can only
-// use `*` wildcard as value when the request is not credentialed.
+// to clients.
 //
-// When the `exposeHeaders` config field contains the "*" wildcard and
-// the request is credentialed, the gateway cannot use the `*` wildcard in
-// the `Access-Control-Expose-Headers` response header.
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+// response header can contain the wildcard `*`.
+//
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+// in the `Access-Control-Expose-Headers` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsOutput) ExposeHeaders() pulumi.StringArrayOutput {
@@ -21431,9 +21464,9 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) AllowCredentials() pu
 // Multiple header names in the value of the `Access-Control-Allow-Headers`
 // response header are separated by a comma (",").
 //
-// When the `AllowHeaders` field is configured with one or more headers, the
+// When the `allowHeaders` field is configured with one or more headers, the
 // gateway must return the `Access-Control-Allow-Headers` response header
-// which value is present in the `AllowHeaders` field.
+// which value is present in the `allowHeaders` field.
 //
 // If any header name in the `Access-Control-Request-Headers` request header
 // is not included in the list of header names specified by the response
@@ -21445,21 +21478,20 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) AllowCredentials() pu
 // client side.
 //
 // A wildcard indicates that the requests with all HTTP headers are allowed.
-// If config contains the wildcard "*" in allowHeaders and the request is
-// not credentialed, the `Access-Control-Allow-Headers` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Headers from the request.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Headers` response header. When
-// also the `AllowCredentials` field is true and `AllowHeaders` field
-// is specified with the `*` wildcard, the gateway must specify one or more
-// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-// header. The value of the header `Access-Control-Allow-Headers` is same as
-// the `Access-Control-Request-Headers` header provided by the client. If
-// the header `Access-Control-Request-Headers` is not included in the
-// request, the gateway will omit the `Access-Control-Allow-Headers`
-// response header, instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Headers` request header.
+//
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Headers` response header. Instead, it must
+// return one or more header names matching the value of the
+// `Access-Control-Request-Headers` request header.
+// If the `Access-Control-Request-Headers` header is not present in the
+// request, the gateway must omit the `Access-Control-Allow-Headers`
+// response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) AllowHeaders() pulumi.StringArrayOutput {
@@ -21486,32 +21518,29 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) AllowHeaders() pulumi
 // A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 // CORS-safelisted methods are always allowed, regardless of whether they
-// are specified in the `AllowMethods` field.
+// are specified in the `allowMethods` field.
 //
-// When the `AllowMethods` field is configured with one or more methods, the
+// When the `allowMethods` field is configured with one or more methods, the
 // gateway must return the `Access-Control-Allow-Methods` response header
-// which value is present in the `AllowMethods` field.
+// which value is present in the `allowMethods` field.
 //
 // If the HTTP method of the `Access-Control-Request-Method` request header
 // is not included in the list of methods specified by the response header
 // `Access-Control-Allow-Methods`, it will present an error on the client
 // side.
 //
-// If config contains the wildcard "*" in allowMethods and the request is
-// not credentialed, the `Access-Control-Allow-Methods` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Method from the request.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Method` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Methods` response header. When
-// also the `AllowCredentials` field is true and `AllowMethods` field
-// specified with the `*` wildcard, the gateway must specify one HTTP method
-// in the value of the Access-Control-Allow-Methods response header. The
-// value of the header `Access-Control-Allow-Methods` is same as the
-// `Access-Control-Request-Method` header provided by the client. If the
-// header `Access-Control-Request-Method` is not included in the request,
-// the gateway will omit the `Access-Control-Allow-Methods` response header,
-// instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Methods` response header. Instead, it must
+// return a single HTTP method matching the value of the
+// `Access-Control-Request-Method` request header.
+// If the `Access-Control-Request-Method` header is not present in the request,
+// the gateway must omit the `Access-Control-Allow-Methods` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) AllowMethods() pulumi.StringArrayOutput {
@@ -21548,7 +21577,7 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) AllowMethods() pulumi
 // An origin value that includes _only_ the `*` character indicates requests
 // from all `Origin`s are allowed.
 //
-// When the `AllowOrigins` field is configured with multiple origins, it
+// When the `allowOrigins` field is configured with multiple origins, it
 // means the server supports clients from multiple origins. If the request
 // `Origin` matches the configured allowed origins, the gateway must return
 // the given `Origin` and sets value of the header
@@ -21570,19 +21599,15 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) AllowMethods() pulumi
 // `Access-Control-Allow-Origin` to the same value as the `Origin`
 // header provided by the client.
 //
-// When config has the wildcard ("*") in allowOrigins, and the request
-// is not credentialed (e.g., it is a preflight request), the
-// `Access-Control-Allow-Origin` response header either contains the
-// wildcard as well or the Origin from the request.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Origin` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Origin` response header. When
-// also the `AllowCredentials` field is true and `AllowOrigins` field
-// specified with the `*` wildcard, the gateway must return a single origin
-// in the value of the `Access-Control-Allow-Origin` response header,
-// instead of specifying the `*` wildcard. The value of the header
-// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-// the client.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Origin` response header. Instead, it must
+// return a single origin matching the value of the `Origin` request header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) AllowOrigins() pulumi.StringArrayOutput {
@@ -21610,7 +21635,7 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) AllowOrigins() pulumi
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 // The CORS-safelisted response headers are exposed to client by default.
 //
-// When an HTTP header name is specified using the `ExposeHeaders` field,
+// When an HTTP header name is specified using the `exposeHeaders` field,
 // this additional header will be exposed as part of the response to the
 // client.
 //
@@ -21620,12 +21645,15 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) AllowOrigins() pulumi
 // response header are separated by a comma (",").
 //
 // A wildcard indicates that the responses with all HTTP headers are exposed
-// to clients. The `Access-Control-Expose-Headers` response header can only
-// use `*` wildcard as value when the request is not credentialed.
+// to clients.
 //
-// When the `exposeHeaders` config field contains the "*" wildcard and
-// the request is credentialed, the gateway cannot use the `*` wildcard in
-// the `Access-Control-Expose-Headers` response header.
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+// response header can contain the wildcard `*`.
+//
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+// in the `Access-Control-Expose-Headers` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPtrOutput) ExposeHeaders() pulumi.StringArrayOutput {
@@ -21683,9 +21711,9 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatch struct {
 	// Multiple header names in the value of the `Access-Control-Allow-Headers`
 	// response header are separated by a comma (",").
 	//
-	// When the `AllowHeaders` field is configured with one or more headers, the
+	// When the `allowHeaders` field is configured with one or more headers, the
 	// gateway must return the `Access-Control-Allow-Headers` response header
-	// which value is present in the `AllowHeaders` field.
+	// which value is present in the `allowHeaders` field.
 	//
 	// If any header name in the `Access-Control-Request-Headers` request header
 	// is not included in the list of header names specified by the response
@@ -21697,21 +21725,20 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatch struct {
 	// client side.
 	//
 	// A wildcard indicates that the requests with all HTTP headers are allowed.
-	// If config contains the wildcard "*" in allowHeaders and the request is
-	// not credentialed, the `Access-Control-Allow-Headers` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Headers from the request.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Headers` response header. When
-	// also the `AllowCredentials` field is true and `AllowHeaders` field
-	// is specified with the `*` wildcard, the gateway must specify one or more
-	// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-	// header. The value of the header `Access-Control-Allow-Headers` is same as
-	// the `Access-Control-Request-Headers` header provided by the client. If
-	// the header `Access-Control-Request-Headers` is not included in the
-	// request, the gateway will omit the `Access-Control-Allow-Headers`
-	// response header, instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Headers` request header.
+	//
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Headers` response header. Instead, it must
+	// return one or more header names matching the value of the
+	// `Access-Control-Request-Headers` request header.
+	// If the `Access-Control-Request-Headers` header is not present in the
+	// request, the gateway must omit the `Access-Control-Allow-Headers`
+	// response header.
 	//
 	// Support: Extended
 	AllowHeaders []string `pulumi:"allowHeaders"`
@@ -21730,32 +21757,29 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatch struct {
 	// A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 	// CORS-safelisted methods are always allowed, regardless of whether they
-	// are specified in the `AllowMethods` field.
+	// are specified in the `allowMethods` field.
 	//
-	// When the `AllowMethods` field is configured with one or more methods, the
+	// When the `allowMethods` field is configured with one or more methods, the
 	// gateway must return the `Access-Control-Allow-Methods` response header
-	// which value is present in the `AllowMethods` field.
+	// which value is present in the `allowMethods` field.
 	//
 	// If the HTTP method of the `Access-Control-Request-Method` request header
 	// is not included in the list of methods specified by the response header
 	// `Access-Control-Allow-Methods`, it will present an error on the client
 	// side.
 	//
-	// If config contains the wildcard "*" in allowMethods and the request is
-	// not credentialed, the `Access-Control-Allow-Methods` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Method from the request.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Method` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Methods` response header. When
-	// also the `AllowCredentials` field is true and `AllowMethods` field
-	// specified with the `*` wildcard, the gateway must specify one HTTP method
-	// in the value of the Access-Control-Allow-Methods response header. The
-	// value of the header `Access-Control-Allow-Methods` is same as the
-	// `Access-Control-Request-Method` header provided by the client. If the
-	// header `Access-Control-Request-Method` is not included in the request,
-	// the gateway will omit the `Access-Control-Allow-Methods` response header,
-	// instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Methods` response header. Instead, it must
+	// return a single HTTP method matching the value of the
+	// `Access-Control-Request-Method` request header.
+	// If the `Access-Control-Request-Method` header is not present in the request,
+	// the gateway must omit the `Access-Control-Allow-Methods` response header.
 	//
 	// Support: Extended
 	AllowMethods []string `pulumi:"allowMethods"`
@@ -21784,7 +21808,7 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatch struct {
 	// An origin value that includes _only_ the `*` character indicates requests
 	// from all `Origin`s are allowed.
 	//
-	// When the `AllowOrigins` field is configured with multiple origins, it
+	// When the `allowOrigins` field is configured with multiple origins, it
 	// means the server supports clients from multiple origins. If the request
 	// `Origin` matches the configured allowed origins, the gateway must return
 	// the given `Origin` and sets value of the header
@@ -21806,19 +21830,15 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatch struct {
 	// `Access-Control-Allow-Origin` to the same value as the `Origin`
 	// header provided by the client.
 	//
-	// When config has the wildcard ("*") in allowOrigins, and the request
-	// is not credentialed (e.g., it is a preflight request), the
-	// `Access-Control-Allow-Origin` response header either contains the
-	// wildcard as well or the Origin from the request.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Origin` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Origin` response header. When
-	// also the `AllowCredentials` field is true and `AllowOrigins` field
-	// specified with the `*` wildcard, the gateway must return a single origin
-	// in the value of the `Access-Control-Allow-Origin` response header,
-	// instead of specifying the `*` wildcard. The value of the header
-	// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-	// the client.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Origin` response header. Instead, it must
+	// return a single origin matching the value of the `Origin` request header.
 	//
 	// Support: Extended
 	AllowOrigins []string `pulumi:"allowOrigins"`
@@ -21838,7 +21858,7 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatch struct {
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 	// The CORS-safelisted response headers are exposed to client by default.
 	//
-	// When an HTTP header name is specified using the `ExposeHeaders` field,
+	// When an HTTP header name is specified using the `exposeHeaders` field,
 	// this additional header will be exposed as part of the response to the
 	// client.
 	//
@@ -21848,12 +21868,15 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatch struct {
 	// response header are separated by a comma (",").
 	//
 	// A wildcard indicates that the responses with all HTTP headers are exposed
-	// to clients. The `Access-Control-Expose-Headers` response header can only
-	// use `*` wildcard as value when the request is not credentialed.
+	// to clients.
 	//
-	// When the `exposeHeaders` config field contains the "*" wildcard and
-	// the request is credentialed, the gateway cannot use the `*` wildcard in
-	// the `Access-Control-Expose-Headers` response header.
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+	// response header can contain the wildcard `*`.
+	//
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+	// in the `Access-Control-Expose-Headers` response header.
 	//
 	// Support: Extended
 	ExposeHeaders []string `pulumi:"exposeHeaders"`
@@ -21908,9 +21931,9 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatchArgs struct {
 	// Multiple header names in the value of the `Access-Control-Allow-Headers`
 	// response header are separated by a comma (",").
 	//
-	// When the `AllowHeaders` field is configured with one or more headers, the
+	// When the `allowHeaders` field is configured with one or more headers, the
 	// gateway must return the `Access-Control-Allow-Headers` response header
-	// which value is present in the `AllowHeaders` field.
+	// which value is present in the `allowHeaders` field.
 	//
 	// If any header name in the `Access-Control-Request-Headers` request header
 	// is not included in the list of header names specified by the response
@@ -21922,21 +21945,20 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatchArgs struct {
 	// client side.
 	//
 	// A wildcard indicates that the requests with all HTTP headers are allowed.
-	// If config contains the wildcard "*" in allowHeaders and the request is
-	// not credentialed, the `Access-Control-Allow-Headers` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Headers from the request.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Headers` response header. When
-	// also the `AllowCredentials` field is true and `AllowHeaders` field
-	// is specified with the `*` wildcard, the gateway must specify one or more
-	// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-	// header. The value of the header `Access-Control-Allow-Headers` is same as
-	// the `Access-Control-Request-Headers` header provided by the client. If
-	// the header `Access-Control-Request-Headers` is not included in the
-	// request, the gateway will omit the `Access-Control-Allow-Headers`
-	// response header, instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Headers` request header.
+	//
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Headers` response header. Instead, it must
+	// return one or more header names matching the value of the
+	// `Access-Control-Request-Headers` request header.
+	// If the `Access-Control-Request-Headers` header is not present in the
+	// request, the gateway must omit the `Access-Control-Allow-Headers`
+	// response header.
 	//
 	// Support: Extended
 	AllowHeaders pulumi.StringArrayInput `pulumi:"allowHeaders"`
@@ -21955,32 +21977,29 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatchArgs struct {
 	// A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 	// CORS-safelisted methods are always allowed, regardless of whether they
-	// are specified in the `AllowMethods` field.
+	// are specified in the `allowMethods` field.
 	//
-	// When the `AllowMethods` field is configured with one or more methods, the
+	// When the `allowMethods` field is configured with one or more methods, the
 	// gateway must return the `Access-Control-Allow-Methods` response header
-	// which value is present in the `AllowMethods` field.
+	// which value is present in the `allowMethods` field.
 	//
 	// If the HTTP method of the `Access-Control-Request-Method` request header
 	// is not included in the list of methods specified by the response header
 	// `Access-Control-Allow-Methods`, it will present an error on the client
 	// side.
 	//
-	// If config contains the wildcard "*" in allowMethods and the request is
-	// not credentialed, the `Access-Control-Allow-Methods` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Method from the request.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Method` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Methods` response header. When
-	// also the `AllowCredentials` field is true and `AllowMethods` field
-	// specified with the `*` wildcard, the gateway must specify one HTTP method
-	// in the value of the Access-Control-Allow-Methods response header. The
-	// value of the header `Access-Control-Allow-Methods` is same as the
-	// `Access-Control-Request-Method` header provided by the client. If the
-	// header `Access-Control-Request-Method` is not included in the request,
-	// the gateway will omit the `Access-Control-Allow-Methods` response header,
-	// instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Methods` response header. Instead, it must
+	// return a single HTTP method matching the value of the
+	// `Access-Control-Request-Method` request header.
+	// If the `Access-Control-Request-Method` header is not present in the request,
+	// the gateway must omit the `Access-Control-Allow-Methods` response header.
 	//
 	// Support: Extended
 	AllowMethods pulumi.StringArrayInput `pulumi:"allowMethods"`
@@ -22009,7 +22028,7 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatchArgs struct {
 	// An origin value that includes _only_ the `*` character indicates requests
 	// from all `Origin`s are allowed.
 	//
-	// When the `AllowOrigins` field is configured with multiple origins, it
+	// When the `allowOrigins` field is configured with multiple origins, it
 	// means the server supports clients from multiple origins. If the request
 	// `Origin` matches the configured allowed origins, the gateway must return
 	// the given `Origin` and sets value of the header
@@ -22031,19 +22050,15 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatchArgs struct {
 	// `Access-Control-Allow-Origin` to the same value as the `Origin`
 	// header provided by the client.
 	//
-	// When config has the wildcard ("*") in allowOrigins, and the request
-	// is not credentialed (e.g., it is a preflight request), the
-	// `Access-Control-Allow-Origin` response header either contains the
-	// wildcard as well or the Origin from the request.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Origin` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Origin` response header. When
-	// also the `AllowCredentials` field is true and `AllowOrigins` field
-	// specified with the `*` wildcard, the gateway must return a single origin
-	// in the value of the `Access-Control-Allow-Origin` response header,
-	// instead of specifying the `*` wildcard. The value of the header
-	// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-	// the client.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Origin` response header. Instead, it must
+	// return a single origin matching the value of the `Origin` request header.
 	//
 	// Support: Extended
 	AllowOrigins pulumi.StringArrayInput `pulumi:"allowOrigins"`
@@ -22063,7 +22078,7 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatchArgs struct {
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 	// The CORS-safelisted response headers are exposed to client by default.
 	//
-	// When an HTTP header name is specified using the `ExposeHeaders` field,
+	// When an HTTP header name is specified using the `exposeHeaders` field,
 	// this additional header will be exposed as part of the response to the
 	// client.
 	//
@@ -22073,12 +22088,15 @@ type HTTPRouteSpecRulesBackendRefsFiltersCorsPatchArgs struct {
 	// response header are separated by a comma (",").
 	//
 	// A wildcard indicates that the responses with all HTTP headers are exposed
-	// to clients. The `Access-Control-Expose-Headers` response header can only
-	// use `*` wildcard as value when the request is not credentialed.
+	// to clients.
 	//
-	// When the `exposeHeaders` config field contains the "*" wildcard and
-	// the request is credentialed, the gateway cannot use the `*` wildcard in
-	// the `Access-Control-Expose-Headers` response header.
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+	// response header can contain the wildcard `*`.
+	//
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+	// in the `Access-Control-Expose-Headers` response header.
 	//
 	// Support: Extended
 	ExposeHeaders pulumi.StringArrayInput `pulumi:"exposeHeaders"`
@@ -22201,9 +22219,9 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) AllowCredentials() 
 // Multiple header names in the value of the `Access-Control-Allow-Headers`
 // response header are separated by a comma (",").
 //
-// When the `AllowHeaders` field is configured with one or more headers, the
+// When the `allowHeaders` field is configured with one or more headers, the
 // gateway must return the `Access-Control-Allow-Headers` response header
-// which value is present in the `AllowHeaders` field.
+// which value is present in the `allowHeaders` field.
 //
 // If any header name in the `Access-Control-Request-Headers` request header
 // is not included in the list of header names specified by the response
@@ -22215,21 +22233,20 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) AllowCredentials() 
 // client side.
 //
 // A wildcard indicates that the requests with all HTTP headers are allowed.
-// If config contains the wildcard "*" in allowHeaders and the request is
-// not credentialed, the `Access-Control-Allow-Headers` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Headers from the request.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Headers` response header. When
-// also the `AllowCredentials` field is true and `AllowHeaders` field
-// is specified with the `*` wildcard, the gateway must specify one or more
-// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-// header. The value of the header `Access-Control-Allow-Headers` is same as
-// the `Access-Control-Request-Headers` header provided by the client. If
-// the header `Access-Control-Request-Headers` is not included in the
-// request, the gateway will omit the `Access-Control-Allow-Headers`
-// response header, instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Headers` request header.
+//
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Headers` response header. Instead, it must
+// return one or more header names matching the value of the
+// `Access-Control-Request-Headers` request header.
+// If the `Access-Control-Request-Headers` header is not present in the
+// request, the gateway must omit the `Access-Control-Allow-Headers`
+// response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) AllowHeaders() pulumi.StringArrayOutput {
@@ -22251,32 +22268,29 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) AllowHeaders() pulu
 // A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 // CORS-safelisted methods are always allowed, regardless of whether they
-// are specified in the `AllowMethods` field.
+// are specified in the `allowMethods` field.
 //
-// When the `AllowMethods` field is configured with one or more methods, the
+// When the `allowMethods` field is configured with one or more methods, the
 // gateway must return the `Access-Control-Allow-Methods` response header
-// which value is present in the `AllowMethods` field.
+// which value is present in the `allowMethods` field.
 //
 // If the HTTP method of the `Access-Control-Request-Method` request header
 // is not included in the list of methods specified by the response header
 // `Access-Control-Allow-Methods`, it will present an error on the client
 // side.
 //
-// If config contains the wildcard "*" in allowMethods and the request is
-// not credentialed, the `Access-Control-Allow-Methods` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Method from the request.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Method` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Methods` response header. When
-// also the `AllowCredentials` field is true and `AllowMethods` field
-// specified with the `*` wildcard, the gateway must specify one HTTP method
-// in the value of the Access-Control-Allow-Methods response header. The
-// value of the header `Access-Control-Allow-Methods` is same as the
-// `Access-Control-Request-Method` header provided by the client. If the
-// header `Access-Control-Request-Method` is not included in the request,
-// the gateway will omit the `Access-Control-Allow-Methods` response header,
-// instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Methods` response header. Instead, it must
+// return a single HTTP method matching the value of the
+// `Access-Control-Request-Method` request header.
+// If the `Access-Control-Request-Method` header is not present in the request,
+// the gateway must omit the `Access-Control-Allow-Methods` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) AllowMethods() pulumi.StringArrayOutput {
@@ -22308,7 +22322,7 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) AllowMethods() pulu
 // An origin value that includes _only_ the `*` character indicates requests
 // from all `Origin`s are allowed.
 //
-// When the `AllowOrigins` field is configured with multiple origins, it
+// When the `allowOrigins` field is configured with multiple origins, it
 // means the server supports clients from multiple origins. If the request
 // `Origin` matches the configured allowed origins, the gateway must return
 // the given `Origin` and sets value of the header
@@ -22330,19 +22344,15 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) AllowMethods() pulu
 // `Access-Control-Allow-Origin` to the same value as the `Origin`
 // header provided by the client.
 //
-// When config has the wildcard ("*") in allowOrigins, and the request
-// is not credentialed (e.g., it is a preflight request), the
-// `Access-Control-Allow-Origin` response header either contains the
-// wildcard as well or the Origin from the request.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Origin` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Origin` response header. When
-// also the `AllowCredentials` field is true and `AllowOrigins` field
-// specified with the `*` wildcard, the gateway must return a single origin
-// in the value of the `Access-Control-Allow-Origin` response header,
-// instead of specifying the `*` wildcard. The value of the header
-// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-// the client.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Origin` response header. Instead, it must
+// return a single origin matching the value of the `Origin` request header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) AllowOrigins() pulumi.StringArrayOutput {
@@ -22365,7 +22375,7 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) AllowOrigins() pulu
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 // The CORS-safelisted response headers are exposed to client by default.
 //
-// When an HTTP header name is specified using the `ExposeHeaders` field,
+// When an HTTP header name is specified using the `exposeHeaders` field,
 // this additional header will be exposed as part of the response to the
 // client.
 //
@@ -22375,12 +22385,15 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) AllowOrigins() pulu
 // response header are separated by a comma (",").
 //
 // A wildcard indicates that the responses with all HTTP headers are exposed
-// to clients. The `Access-Control-Expose-Headers` response header can only
-// use `*` wildcard as value when the request is not credentialed.
+// to clients.
 //
-// When the `exposeHeaders` config field contains the "*" wildcard and
-// the request is credentialed, the gateway cannot use the `*` wildcard in
-// the `Access-Control-Expose-Headers` response header.
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+// response header can contain the wildcard `*`.
+//
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+// in the `Access-Control-Expose-Headers` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchOutput) ExposeHeaders() pulumi.StringArrayOutput {
@@ -22455,9 +22468,9 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) AllowCredentials
 // Multiple header names in the value of the `Access-Control-Allow-Headers`
 // response header are separated by a comma (",").
 //
-// When the `AllowHeaders` field is configured with one or more headers, the
+// When the `allowHeaders` field is configured with one or more headers, the
 // gateway must return the `Access-Control-Allow-Headers` response header
-// which value is present in the `AllowHeaders` field.
+// which value is present in the `allowHeaders` field.
 //
 // If any header name in the `Access-Control-Request-Headers` request header
 // is not included in the list of header names specified by the response
@@ -22469,21 +22482,20 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) AllowCredentials
 // client side.
 //
 // A wildcard indicates that the requests with all HTTP headers are allowed.
-// If config contains the wildcard "*" in allowHeaders and the request is
-// not credentialed, the `Access-Control-Allow-Headers` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Headers from the request.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Headers` response header. When
-// also the `AllowCredentials` field is true and `AllowHeaders` field
-// is specified with the `*` wildcard, the gateway must specify one or more
-// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-// header. The value of the header `Access-Control-Allow-Headers` is same as
-// the `Access-Control-Request-Headers` header provided by the client. If
-// the header `Access-Control-Request-Headers` is not included in the
-// request, the gateway will omit the `Access-Control-Allow-Headers`
-// response header, instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Headers` request header.
+//
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Headers` response header. Instead, it must
+// return one or more header names matching the value of the
+// `Access-Control-Request-Headers` request header.
+// If the `Access-Control-Request-Headers` header is not present in the
+// request, the gateway must omit the `Access-Control-Allow-Headers`
+// response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) AllowHeaders() pulumi.StringArrayOutput {
@@ -22510,32 +22522,29 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) AllowHeaders() p
 // A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 // CORS-safelisted methods are always allowed, regardless of whether they
-// are specified in the `AllowMethods` field.
+// are specified in the `allowMethods` field.
 //
-// When the `AllowMethods` field is configured with one or more methods, the
+// When the `allowMethods` field is configured with one or more methods, the
 // gateway must return the `Access-Control-Allow-Methods` response header
-// which value is present in the `AllowMethods` field.
+// which value is present in the `allowMethods` field.
 //
 // If the HTTP method of the `Access-Control-Request-Method` request header
 // is not included in the list of methods specified by the response header
 // `Access-Control-Allow-Methods`, it will present an error on the client
 // side.
 //
-// If config contains the wildcard "*" in allowMethods and the request is
-// not credentialed, the `Access-Control-Allow-Methods` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Method from the request.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Method` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Methods` response header. When
-// also the `AllowCredentials` field is true and `AllowMethods` field
-// specified with the `*` wildcard, the gateway must specify one HTTP method
-// in the value of the Access-Control-Allow-Methods response header. The
-// value of the header `Access-Control-Allow-Methods` is same as the
-// `Access-Control-Request-Method` header provided by the client. If the
-// header `Access-Control-Request-Method` is not included in the request,
-// the gateway will omit the `Access-Control-Allow-Methods` response header,
-// instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Methods` response header. Instead, it must
+// return a single HTTP method matching the value of the
+// `Access-Control-Request-Method` request header.
+// If the `Access-Control-Request-Method` header is not present in the request,
+// the gateway must omit the `Access-Control-Allow-Methods` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) AllowMethods() pulumi.StringArrayOutput {
@@ -22572,7 +22581,7 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) AllowMethods() p
 // An origin value that includes _only_ the `*` character indicates requests
 // from all `Origin`s are allowed.
 //
-// When the `AllowOrigins` field is configured with multiple origins, it
+// When the `allowOrigins` field is configured with multiple origins, it
 // means the server supports clients from multiple origins. If the request
 // `Origin` matches the configured allowed origins, the gateway must return
 // the given `Origin` and sets value of the header
@@ -22594,19 +22603,15 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) AllowMethods() p
 // `Access-Control-Allow-Origin` to the same value as the `Origin`
 // header provided by the client.
 //
-// When config has the wildcard ("*") in allowOrigins, and the request
-// is not credentialed (e.g., it is a preflight request), the
-// `Access-Control-Allow-Origin` response header either contains the
-// wildcard as well or the Origin from the request.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Origin` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Origin` response header. When
-// also the `AllowCredentials` field is true and `AllowOrigins` field
-// specified with the `*` wildcard, the gateway must return a single origin
-// in the value of the `Access-Control-Allow-Origin` response header,
-// instead of specifying the `*` wildcard. The value of the header
-// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-// the client.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Origin` response header. Instead, it must
+// return a single origin matching the value of the `Origin` request header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) AllowOrigins() pulumi.StringArrayOutput {
@@ -22634,7 +22639,7 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) AllowOrigins() p
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 // The CORS-safelisted response headers are exposed to client by default.
 //
-// When an HTTP header name is specified using the `ExposeHeaders` field,
+// When an HTTP header name is specified using the `exposeHeaders` field,
 // this additional header will be exposed as part of the response to the
 // client.
 //
@@ -22644,12 +22649,15 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) AllowOrigins() p
 // response header are separated by a comma (",").
 //
 // A wildcard indicates that the responses with all HTTP headers are exposed
-// to clients. The `Access-Control-Expose-Headers` response header can only
-// use `*` wildcard as value when the request is not credentialed.
+// to clients.
 //
-// When the `exposeHeaders` config field contains the "*" wildcard and
-// the request is credentialed, the gateway cannot use the `*` wildcard in
-// the `Access-Control-Expose-Headers` response header.
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+// response header can contain the wildcard `*`.
+//
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+// in the `Access-Control-Expose-Headers` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesBackendRefsFiltersCorsPatchPtrOutput) ExposeHeaders() pulumi.StringArrayOutput {
@@ -24891,6 +24899,10 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorPtrOutput) Percent() pu
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRef struct {
 	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
 	// When unspecified or empty string, core API group is inferred.
@@ -24964,6 +24976,10 @@ type HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefInput interface 
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefArgs struct {
 	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
 	// When unspecified or empty string, core API group is inferred.
@@ -25079,6 +25095,10 @@ func (i *httprouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefPtrType) ToH
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefOutput struct{ *pulumi.OutputState }
 
 func (HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefOutput) ElementType() reflect.Type {
@@ -25277,6 +25297,10 @@ func (o HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefPtrOutput) Po
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefPatch struct {
 	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
 	// When unspecified or empty string, core API group is inferred.
@@ -25350,6 +25374,10 @@ type HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefPatchInput inter
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefPatchArgs struct {
 	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
 	// When unspecified or empty string, core API group is inferred.
@@ -25465,6 +25493,10 @@ func (i *httprouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefPatchPtrType
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefPatchOutput struct{ *pulumi.OutputState }
 
 func (HTTPRouteSpecRulesBackendRefsFiltersRequestMirrorBackendRefPatchOutput) ElementType() reflect.Type {
@@ -30364,9 +30396,9 @@ type HTTPRouteSpecRulesFiltersCors struct {
 	// Multiple header names in the value of the `Access-Control-Allow-Headers`
 	// response header are separated by a comma (",").
 	//
-	// When the `AllowHeaders` field is configured with one or more headers, the
+	// When the `allowHeaders` field is configured with one or more headers, the
 	// gateway must return the `Access-Control-Allow-Headers` response header
-	// which value is present in the `AllowHeaders` field.
+	// which value is present in the `allowHeaders` field.
 	//
 	// If any header name in the `Access-Control-Request-Headers` request header
 	// is not included in the list of header names specified by the response
@@ -30378,21 +30410,20 @@ type HTTPRouteSpecRulesFiltersCors struct {
 	// client side.
 	//
 	// A wildcard indicates that the requests with all HTTP headers are allowed.
-	// If config contains the wildcard "*" in allowHeaders and the request is
-	// not credentialed, the `Access-Control-Allow-Headers` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Headers from the request.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Headers` response header. When
-	// also the `AllowCredentials` field is true and `AllowHeaders` field
-	// is specified with the `*` wildcard, the gateway must specify one or more
-	// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-	// header. The value of the header `Access-Control-Allow-Headers` is same as
-	// the `Access-Control-Request-Headers` header provided by the client. If
-	// the header `Access-Control-Request-Headers` is not included in the
-	// request, the gateway will omit the `Access-Control-Allow-Headers`
-	// response header, instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Headers` request header.
+	//
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Headers` response header. Instead, it must
+	// return one or more header names matching the value of the
+	// `Access-Control-Request-Headers` request header.
+	// If the `Access-Control-Request-Headers` header is not present in the
+	// request, the gateway must omit the `Access-Control-Allow-Headers`
+	// response header.
 	//
 	// Support: Extended
 	AllowHeaders []string `pulumi:"allowHeaders"`
@@ -30411,32 +30442,29 @@ type HTTPRouteSpecRulesFiltersCors struct {
 	// A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 	// CORS-safelisted methods are always allowed, regardless of whether they
-	// are specified in the `AllowMethods` field.
+	// are specified in the `allowMethods` field.
 	//
-	// When the `AllowMethods` field is configured with one or more methods, the
+	// When the `allowMethods` field is configured with one or more methods, the
 	// gateway must return the `Access-Control-Allow-Methods` response header
-	// which value is present in the `AllowMethods` field.
+	// which value is present in the `allowMethods` field.
 	//
 	// If the HTTP method of the `Access-Control-Request-Method` request header
 	// is not included in the list of methods specified by the response header
 	// `Access-Control-Allow-Methods`, it will present an error on the client
 	// side.
 	//
-	// If config contains the wildcard "*" in allowMethods and the request is
-	// not credentialed, the `Access-Control-Allow-Methods` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Method from the request.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Method` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Methods` response header. When
-	// also the `AllowCredentials` field is true and `AllowMethods` field
-	// specified with the `*` wildcard, the gateway must specify one HTTP method
-	// in the value of the Access-Control-Allow-Methods response header. The
-	// value of the header `Access-Control-Allow-Methods` is same as the
-	// `Access-Control-Request-Method` header provided by the client. If the
-	// header `Access-Control-Request-Method` is not included in the request,
-	// the gateway will omit the `Access-Control-Allow-Methods` response header,
-	// instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Methods` response header. Instead, it must
+	// return a single HTTP method matching the value of the
+	// `Access-Control-Request-Method` request header.
+	// If the `Access-Control-Request-Method` header is not present in the request,
+	// the gateway must omit the `Access-Control-Allow-Methods` response header.
 	//
 	// Support: Extended
 	AllowMethods []string `pulumi:"allowMethods"`
@@ -30465,7 +30493,7 @@ type HTTPRouteSpecRulesFiltersCors struct {
 	// An origin value that includes _only_ the `*` character indicates requests
 	// from all `Origin`s are allowed.
 	//
-	// When the `AllowOrigins` field is configured with multiple origins, it
+	// When the `allowOrigins` field is configured with multiple origins, it
 	// means the server supports clients from multiple origins. If the request
 	// `Origin` matches the configured allowed origins, the gateway must return
 	// the given `Origin` and sets value of the header
@@ -30487,19 +30515,15 @@ type HTTPRouteSpecRulesFiltersCors struct {
 	// `Access-Control-Allow-Origin` to the same value as the `Origin`
 	// header provided by the client.
 	//
-	// When config has the wildcard ("*") in allowOrigins, and the request
-	// is not credentialed (e.g., it is a preflight request), the
-	// `Access-Control-Allow-Origin` response header either contains the
-	// wildcard as well or the Origin from the request.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Origin` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Origin` response header. When
-	// also the `AllowCredentials` field is true and `AllowOrigins` field
-	// specified with the `*` wildcard, the gateway must return a single origin
-	// in the value of the `Access-Control-Allow-Origin` response header,
-	// instead of specifying the `*` wildcard. The value of the header
-	// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-	// the client.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Origin` response header. Instead, it must
+	// return a single origin matching the value of the `Origin` request header.
 	//
 	// Support: Extended
 	AllowOrigins []string `pulumi:"allowOrigins"`
@@ -30519,7 +30543,7 @@ type HTTPRouteSpecRulesFiltersCors struct {
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 	// The CORS-safelisted response headers are exposed to client by default.
 	//
-	// When an HTTP header name is specified using the `ExposeHeaders` field,
+	// When an HTTP header name is specified using the `exposeHeaders` field,
 	// this additional header will be exposed as part of the response to the
 	// client.
 	//
@@ -30529,12 +30553,15 @@ type HTTPRouteSpecRulesFiltersCors struct {
 	// response header are separated by a comma (",").
 	//
 	// A wildcard indicates that the responses with all HTTP headers are exposed
-	// to clients. The `Access-Control-Expose-Headers` response header can only
-	// use `*` wildcard as value when the request is not credentialed.
+	// to clients.
 	//
-	// When the `exposeHeaders` config field contains the "*" wildcard and
-	// the request is credentialed, the gateway cannot use the `*` wildcard in
-	// the `Access-Control-Expose-Headers` response header.
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+	// response header can contain the wildcard `*`.
+	//
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+	// in the `Access-Control-Expose-Headers` response header.
 	//
 	// Support: Extended
 	ExposeHeaders []string `pulumi:"exposeHeaders"`
@@ -30589,9 +30616,9 @@ type HTTPRouteSpecRulesFiltersCorsArgs struct {
 	// Multiple header names in the value of the `Access-Control-Allow-Headers`
 	// response header are separated by a comma (",").
 	//
-	// When the `AllowHeaders` field is configured with one or more headers, the
+	// When the `allowHeaders` field is configured with one or more headers, the
 	// gateway must return the `Access-Control-Allow-Headers` response header
-	// which value is present in the `AllowHeaders` field.
+	// which value is present in the `allowHeaders` field.
 	//
 	// If any header name in the `Access-Control-Request-Headers` request header
 	// is not included in the list of header names specified by the response
@@ -30603,21 +30630,20 @@ type HTTPRouteSpecRulesFiltersCorsArgs struct {
 	// client side.
 	//
 	// A wildcard indicates that the requests with all HTTP headers are allowed.
-	// If config contains the wildcard "*" in allowHeaders and the request is
-	// not credentialed, the `Access-Control-Allow-Headers` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Headers from the request.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Headers` response header. When
-	// also the `AllowCredentials` field is true and `AllowHeaders` field
-	// is specified with the `*` wildcard, the gateway must specify one or more
-	// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-	// header. The value of the header `Access-Control-Allow-Headers` is same as
-	// the `Access-Control-Request-Headers` header provided by the client. If
-	// the header `Access-Control-Request-Headers` is not included in the
-	// request, the gateway will omit the `Access-Control-Allow-Headers`
-	// response header, instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Headers` request header.
+	//
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Headers` response header. Instead, it must
+	// return one or more header names matching the value of the
+	// `Access-Control-Request-Headers` request header.
+	// If the `Access-Control-Request-Headers` header is not present in the
+	// request, the gateway must omit the `Access-Control-Allow-Headers`
+	// response header.
 	//
 	// Support: Extended
 	AllowHeaders pulumi.StringArrayInput `pulumi:"allowHeaders"`
@@ -30636,32 +30662,29 @@ type HTTPRouteSpecRulesFiltersCorsArgs struct {
 	// A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 	// CORS-safelisted methods are always allowed, regardless of whether they
-	// are specified in the `AllowMethods` field.
+	// are specified in the `allowMethods` field.
 	//
-	// When the `AllowMethods` field is configured with one or more methods, the
+	// When the `allowMethods` field is configured with one or more methods, the
 	// gateway must return the `Access-Control-Allow-Methods` response header
-	// which value is present in the `AllowMethods` field.
+	// which value is present in the `allowMethods` field.
 	//
 	// If the HTTP method of the `Access-Control-Request-Method` request header
 	// is not included in the list of methods specified by the response header
 	// `Access-Control-Allow-Methods`, it will present an error on the client
 	// side.
 	//
-	// If config contains the wildcard "*" in allowMethods and the request is
-	// not credentialed, the `Access-Control-Allow-Methods` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Method from the request.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Method` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Methods` response header. When
-	// also the `AllowCredentials` field is true and `AllowMethods` field
-	// specified with the `*` wildcard, the gateway must specify one HTTP method
-	// in the value of the Access-Control-Allow-Methods response header. The
-	// value of the header `Access-Control-Allow-Methods` is same as the
-	// `Access-Control-Request-Method` header provided by the client. If the
-	// header `Access-Control-Request-Method` is not included in the request,
-	// the gateway will omit the `Access-Control-Allow-Methods` response header,
-	// instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Methods` response header. Instead, it must
+	// return a single HTTP method matching the value of the
+	// `Access-Control-Request-Method` request header.
+	// If the `Access-Control-Request-Method` header is not present in the request,
+	// the gateway must omit the `Access-Control-Allow-Methods` response header.
 	//
 	// Support: Extended
 	AllowMethods pulumi.StringArrayInput `pulumi:"allowMethods"`
@@ -30690,7 +30713,7 @@ type HTTPRouteSpecRulesFiltersCorsArgs struct {
 	// An origin value that includes _only_ the `*` character indicates requests
 	// from all `Origin`s are allowed.
 	//
-	// When the `AllowOrigins` field is configured with multiple origins, it
+	// When the `allowOrigins` field is configured with multiple origins, it
 	// means the server supports clients from multiple origins. If the request
 	// `Origin` matches the configured allowed origins, the gateway must return
 	// the given `Origin` and sets value of the header
@@ -30712,19 +30735,15 @@ type HTTPRouteSpecRulesFiltersCorsArgs struct {
 	// `Access-Control-Allow-Origin` to the same value as the `Origin`
 	// header provided by the client.
 	//
-	// When config has the wildcard ("*") in allowOrigins, and the request
-	// is not credentialed (e.g., it is a preflight request), the
-	// `Access-Control-Allow-Origin` response header either contains the
-	// wildcard as well or the Origin from the request.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Origin` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Origin` response header. When
-	// also the `AllowCredentials` field is true and `AllowOrigins` field
-	// specified with the `*` wildcard, the gateway must return a single origin
-	// in the value of the `Access-Control-Allow-Origin` response header,
-	// instead of specifying the `*` wildcard. The value of the header
-	// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-	// the client.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Origin` response header. Instead, it must
+	// return a single origin matching the value of the `Origin` request header.
 	//
 	// Support: Extended
 	AllowOrigins pulumi.StringArrayInput `pulumi:"allowOrigins"`
@@ -30744,7 +30763,7 @@ type HTTPRouteSpecRulesFiltersCorsArgs struct {
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 	// The CORS-safelisted response headers are exposed to client by default.
 	//
-	// When an HTTP header name is specified using the `ExposeHeaders` field,
+	// When an HTTP header name is specified using the `exposeHeaders` field,
 	// this additional header will be exposed as part of the response to the
 	// client.
 	//
@@ -30754,12 +30773,15 @@ type HTTPRouteSpecRulesFiltersCorsArgs struct {
 	// response header are separated by a comma (",").
 	//
 	// A wildcard indicates that the responses with all HTTP headers are exposed
-	// to clients. The `Access-Control-Expose-Headers` response header can only
-	// use `*` wildcard as value when the request is not credentialed.
+	// to clients.
 	//
-	// When the `exposeHeaders` config field contains the "*" wildcard and
-	// the request is credentialed, the gateway cannot use the `*` wildcard in
-	// the `Access-Control-Expose-Headers` response header.
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+	// response header can contain the wildcard `*`.
+	//
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+	// in the `Access-Control-Expose-Headers` response header.
 	//
 	// Support: Extended
 	ExposeHeaders pulumi.StringArrayInput `pulumi:"exposeHeaders"`
@@ -30882,9 +30904,9 @@ func (o HTTPRouteSpecRulesFiltersCorsOutput) AllowCredentials() pulumi.BoolPtrOu
 // Multiple header names in the value of the `Access-Control-Allow-Headers`
 // response header are separated by a comma (",").
 //
-// When the `AllowHeaders` field is configured with one or more headers, the
+// When the `allowHeaders` field is configured with one or more headers, the
 // gateway must return the `Access-Control-Allow-Headers` response header
-// which value is present in the `AllowHeaders` field.
+// which value is present in the `allowHeaders` field.
 //
 // If any header name in the `Access-Control-Request-Headers` request header
 // is not included in the list of header names specified by the response
@@ -30896,21 +30918,20 @@ func (o HTTPRouteSpecRulesFiltersCorsOutput) AllowCredentials() pulumi.BoolPtrOu
 // client side.
 //
 // A wildcard indicates that the requests with all HTTP headers are allowed.
-// If config contains the wildcard "*" in allowHeaders and the request is
-// not credentialed, the `Access-Control-Allow-Headers` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Headers from the request.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Headers` response header. When
-// also the `AllowCredentials` field is true and `AllowHeaders` field
-// is specified with the `*` wildcard, the gateway must specify one or more
-// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-// header. The value of the header `Access-Control-Allow-Headers` is same as
-// the `Access-Control-Request-Headers` header provided by the client. If
-// the header `Access-Control-Request-Headers` is not included in the
-// request, the gateway will omit the `Access-Control-Allow-Headers`
-// response header, instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Headers` request header.
+//
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Headers` response header. Instead, it must
+// return one or more header names matching the value of the
+// `Access-Control-Request-Headers` request header.
+// If the `Access-Control-Request-Headers` header is not present in the
+// request, the gateway must omit the `Access-Control-Allow-Headers`
+// response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsOutput) AllowHeaders() pulumi.StringArrayOutput {
@@ -30932,32 +30953,29 @@ func (o HTTPRouteSpecRulesFiltersCorsOutput) AllowHeaders() pulumi.StringArrayOu
 // A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 // CORS-safelisted methods are always allowed, regardless of whether they
-// are specified in the `AllowMethods` field.
+// are specified in the `allowMethods` field.
 //
-// When the `AllowMethods` field is configured with one or more methods, the
+// When the `allowMethods` field is configured with one or more methods, the
 // gateway must return the `Access-Control-Allow-Methods` response header
-// which value is present in the `AllowMethods` field.
+// which value is present in the `allowMethods` field.
 //
 // If the HTTP method of the `Access-Control-Request-Method` request header
 // is not included in the list of methods specified by the response header
 // `Access-Control-Allow-Methods`, it will present an error on the client
 // side.
 //
-// If config contains the wildcard "*" in allowMethods and the request is
-// not credentialed, the `Access-Control-Allow-Methods` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Method from the request.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Method` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Methods` response header. When
-// also the `AllowCredentials` field is true and `AllowMethods` field
-// specified with the `*` wildcard, the gateway must specify one HTTP method
-// in the value of the Access-Control-Allow-Methods response header. The
-// value of the header `Access-Control-Allow-Methods` is same as the
-// `Access-Control-Request-Method` header provided by the client. If the
-// header `Access-Control-Request-Method` is not included in the request,
-// the gateway will omit the `Access-Control-Allow-Methods` response header,
-// instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Methods` response header. Instead, it must
+// return a single HTTP method matching the value of the
+// `Access-Control-Request-Method` request header.
+// If the `Access-Control-Request-Method` header is not present in the request,
+// the gateway must omit the `Access-Control-Allow-Methods` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsOutput) AllowMethods() pulumi.StringArrayOutput {
@@ -30989,7 +31007,7 @@ func (o HTTPRouteSpecRulesFiltersCorsOutput) AllowMethods() pulumi.StringArrayOu
 // An origin value that includes _only_ the `*` character indicates requests
 // from all `Origin`s are allowed.
 //
-// When the `AllowOrigins` field is configured with multiple origins, it
+// When the `allowOrigins` field is configured with multiple origins, it
 // means the server supports clients from multiple origins. If the request
 // `Origin` matches the configured allowed origins, the gateway must return
 // the given `Origin` and sets value of the header
@@ -31011,19 +31029,15 @@ func (o HTTPRouteSpecRulesFiltersCorsOutput) AllowMethods() pulumi.StringArrayOu
 // `Access-Control-Allow-Origin` to the same value as the `Origin`
 // header provided by the client.
 //
-// When config has the wildcard ("*") in allowOrigins, and the request
-// is not credentialed (e.g., it is a preflight request), the
-// `Access-Control-Allow-Origin` response header either contains the
-// wildcard as well or the Origin from the request.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Origin` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Origin` response header. When
-// also the `AllowCredentials` field is true and `AllowOrigins` field
-// specified with the `*` wildcard, the gateway must return a single origin
-// in the value of the `Access-Control-Allow-Origin` response header,
-// instead of specifying the `*` wildcard. The value of the header
-// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-// the client.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Origin` response header. Instead, it must
+// return a single origin matching the value of the `Origin` request header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsOutput) AllowOrigins() pulumi.StringArrayOutput {
@@ -31046,7 +31060,7 @@ func (o HTTPRouteSpecRulesFiltersCorsOutput) AllowOrigins() pulumi.StringArrayOu
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 // The CORS-safelisted response headers are exposed to client by default.
 //
-// When an HTTP header name is specified using the `ExposeHeaders` field,
+// When an HTTP header name is specified using the `exposeHeaders` field,
 // this additional header will be exposed as part of the response to the
 // client.
 //
@@ -31056,12 +31070,15 @@ func (o HTTPRouteSpecRulesFiltersCorsOutput) AllowOrigins() pulumi.StringArrayOu
 // response header are separated by a comma (",").
 //
 // A wildcard indicates that the responses with all HTTP headers are exposed
-// to clients. The `Access-Control-Expose-Headers` response header can only
-// use `*` wildcard as value when the request is not credentialed.
+// to clients.
 //
-// When the `exposeHeaders` config field contains the "*" wildcard and
-// the request is credentialed, the gateway cannot use the `*` wildcard in
-// the `Access-Control-Expose-Headers` response header.
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+// response header can contain the wildcard `*`.
+//
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+// in the `Access-Control-Expose-Headers` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsOutput) ExposeHeaders() pulumi.StringArrayOutput {
@@ -31136,9 +31153,9 @@ func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) AllowCredentials() pulumi.BoolPt
 // Multiple header names in the value of the `Access-Control-Allow-Headers`
 // response header are separated by a comma (",").
 //
-// When the `AllowHeaders` field is configured with one or more headers, the
+// When the `allowHeaders` field is configured with one or more headers, the
 // gateway must return the `Access-Control-Allow-Headers` response header
-// which value is present in the `AllowHeaders` field.
+// which value is present in the `allowHeaders` field.
 //
 // If any header name in the `Access-Control-Request-Headers` request header
 // is not included in the list of header names specified by the response
@@ -31150,21 +31167,20 @@ func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) AllowCredentials() pulumi.BoolPt
 // client side.
 //
 // A wildcard indicates that the requests with all HTTP headers are allowed.
-// If config contains the wildcard "*" in allowHeaders and the request is
-// not credentialed, the `Access-Control-Allow-Headers` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Headers from the request.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Headers` response header. When
-// also the `AllowCredentials` field is true and `AllowHeaders` field
-// is specified with the `*` wildcard, the gateway must specify one or more
-// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-// header. The value of the header `Access-Control-Allow-Headers` is same as
-// the `Access-Control-Request-Headers` header provided by the client. If
-// the header `Access-Control-Request-Headers` is not included in the
-// request, the gateway will omit the `Access-Control-Allow-Headers`
-// response header, instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Headers` request header.
+//
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Headers` response header. Instead, it must
+// return one or more header names matching the value of the
+// `Access-Control-Request-Headers` request header.
+// If the `Access-Control-Request-Headers` header is not present in the
+// request, the gateway must omit the `Access-Control-Allow-Headers`
+// response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) AllowHeaders() pulumi.StringArrayOutput {
@@ -31191,32 +31207,29 @@ func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) AllowHeaders() pulumi.StringArra
 // A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 // CORS-safelisted methods are always allowed, regardless of whether they
-// are specified in the `AllowMethods` field.
+// are specified in the `allowMethods` field.
 //
-// When the `AllowMethods` field is configured with one or more methods, the
+// When the `allowMethods` field is configured with one or more methods, the
 // gateway must return the `Access-Control-Allow-Methods` response header
-// which value is present in the `AllowMethods` field.
+// which value is present in the `allowMethods` field.
 //
 // If the HTTP method of the `Access-Control-Request-Method` request header
 // is not included in the list of methods specified by the response header
 // `Access-Control-Allow-Methods`, it will present an error on the client
 // side.
 //
-// If config contains the wildcard "*" in allowMethods and the request is
-// not credentialed, the `Access-Control-Allow-Methods` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Method from the request.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Method` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Methods` response header. When
-// also the `AllowCredentials` field is true and `AllowMethods` field
-// specified with the `*` wildcard, the gateway must specify one HTTP method
-// in the value of the Access-Control-Allow-Methods response header. The
-// value of the header `Access-Control-Allow-Methods` is same as the
-// `Access-Control-Request-Method` header provided by the client. If the
-// header `Access-Control-Request-Method` is not included in the request,
-// the gateway will omit the `Access-Control-Allow-Methods` response header,
-// instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Methods` response header. Instead, it must
+// return a single HTTP method matching the value of the
+// `Access-Control-Request-Method` request header.
+// If the `Access-Control-Request-Method` header is not present in the request,
+// the gateway must omit the `Access-Control-Allow-Methods` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) AllowMethods() pulumi.StringArrayOutput {
@@ -31253,7 +31266,7 @@ func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) AllowMethods() pulumi.StringArra
 // An origin value that includes _only_ the `*` character indicates requests
 // from all `Origin`s are allowed.
 //
-// When the `AllowOrigins` field is configured with multiple origins, it
+// When the `allowOrigins` field is configured with multiple origins, it
 // means the server supports clients from multiple origins. If the request
 // `Origin` matches the configured allowed origins, the gateway must return
 // the given `Origin` and sets value of the header
@@ -31275,19 +31288,15 @@ func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) AllowMethods() pulumi.StringArra
 // `Access-Control-Allow-Origin` to the same value as the `Origin`
 // header provided by the client.
 //
-// When config has the wildcard ("*") in allowOrigins, and the request
-// is not credentialed (e.g., it is a preflight request), the
-// `Access-Control-Allow-Origin` response header either contains the
-// wildcard as well or the Origin from the request.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Origin` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Origin` response header. When
-// also the `AllowCredentials` field is true and `AllowOrigins` field
-// specified with the `*` wildcard, the gateway must return a single origin
-// in the value of the `Access-Control-Allow-Origin` response header,
-// instead of specifying the `*` wildcard. The value of the header
-// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-// the client.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Origin` response header. Instead, it must
+// return a single origin matching the value of the `Origin` request header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) AllowOrigins() pulumi.StringArrayOutput {
@@ -31315,7 +31324,7 @@ func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) AllowOrigins() pulumi.StringArra
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 // The CORS-safelisted response headers are exposed to client by default.
 //
-// When an HTTP header name is specified using the `ExposeHeaders` field,
+// When an HTTP header name is specified using the `exposeHeaders` field,
 // this additional header will be exposed as part of the response to the
 // client.
 //
@@ -31325,12 +31334,15 @@ func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) AllowOrigins() pulumi.StringArra
 // response header are separated by a comma (",").
 //
 // A wildcard indicates that the responses with all HTTP headers are exposed
-// to clients. The `Access-Control-Expose-Headers` response header can only
-// use `*` wildcard as value when the request is not credentialed.
+// to clients.
 //
-// When the `exposeHeaders` config field contains the "*" wildcard and
-// the request is credentialed, the gateway cannot use the `*` wildcard in
-// the `Access-Control-Expose-Headers` response header.
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+// response header can contain the wildcard `*`.
+//
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+// in the `Access-Control-Expose-Headers` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPtrOutput) ExposeHeaders() pulumi.StringArrayOutput {
@@ -31388,9 +31400,9 @@ type HTTPRouteSpecRulesFiltersCorsPatch struct {
 	// Multiple header names in the value of the `Access-Control-Allow-Headers`
 	// response header are separated by a comma (",").
 	//
-	// When the `AllowHeaders` field is configured with one or more headers, the
+	// When the `allowHeaders` field is configured with one or more headers, the
 	// gateway must return the `Access-Control-Allow-Headers` response header
-	// which value is present in the `AllowHeaders` field.
+	// which value is present in the `allowHeaders` field.
 	//
 	// If any header name in the `Access-Control-Request-Headers` request header
 	// is not included in the list of header names specified by the response
@@ -31402,21 +31414,20 @@ type HTTPRouteSpecRulesFiltersCorsPatch struct {
 	// client side.
 	//
 	// A wildcard indicates that the requests with all HTTP headers are allowed.
-	// If config contains the wildcard "*" in allowHeaders and the request is
-	// not credentialed, the `Access-Control-Allow-Headers` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Headers from the request.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Headers` response header. When
-	// also the `AllowCredentials` field is true and `AllowHeaders` field
-	// is specified with the `*` wildcard, the gateway must specify one or more
-	// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-	// header. The value of the header `Access-Control-Allow-Headers` is same as
-	// the `Access-Control-Request-Headers` header provided by the client. If
-	// the header `Access-Control-Request-Headers` is not included in the
-	// request, the gateway will omit the `Access-Control-Allow-Headers`
-	// response header, instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Headers` request header.
+	//
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Headers` response header. Instead, it must
+	// return one or more header names matching the value of the
+	// `Access-Control-Request-Headers` request header.
+	// If the `Access-Control-Request-Headers` header is not present in the
+	// request, the gateway must omit the `Access-Control-Allow-Headers`
+	// response header.
 	//
 	// Support: Extended
 	AllowHeaders []string `pulumi:"allowHeaders"`
@@ -31435,32 +31446,29 @@ type HTTPRouteSpecRulesFiltersCorsPatch struct {
 	// A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 	// CORS-safelisted methods are always allowed, regardless of whether they
-	// are specified in the `AllowMethods` field.
+	// are specified in the `allowMethods` field.
 	//
-	// When the `AllowMethods` field is configured with one or more methods, the
+	// When the `allowMethods` field is configured with one or more methods, the
 	// gateway must return the `Access-Control-Allow-Methods` response header
-	// which value is present in the `AllowMethods` field.
+	// which value is present in the `allowMethods` field.
 	//
 	// If the HTTP method of the `Access-Control-Request-Method` request header
 	// is not included in the list of methods specified by the response header
 	// `Access-Control-Allow-Methods`, it will present an error on the client
 	// side.
 	//
-	// If config contains the wildcard "*" in allowMethods and the request is
-	// not credentialed, the `Access-Control-Allow-Methods` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Method from the request.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Method` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Methods` response header. When
-	// also the `AllowCredentials` field is true and `AllowMethods` field
-	// specified with the `*` wildcard, the gateway must specify one HTTP method
-	// in the value of the Access-Control-Allow-Methods response header. The
-	// value of the header `Access-Control-Allow-Methods` is same as the
-	// `Access-Control-Request-Method` header provided by the client. If the
-	// header `Access-Control-Request-Method` is not included in the request,
-	// the gateway will omit the `Access-Control-Allow-Methods` response header,
-	// instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Methods` response header. Instead, it must
+	// return a single HTTP method matching the value of the
+	// `Access-Control-Request-Method` request header.
+	// If the `Access-Control-Request-Method` header is not present in the request,
+	// the gateway must omit the `Access-Control-Allow-Methods` response header.
 	//
 	// Support: Extended
 	AllowMethods []string `pulumi:"allowMethods"`
@@ -31489,7 +31497,7 @@ type HTTPRouteSpecRulesFiltersCorsPatch struct {
 	// An origin value that includes _only_ the `*` character indicates requests
 	// from all `Origin`s are allowed.
 	//
-	// When the `AllowOrigins` field is configured with multiple origins, it
+	// When the `allowOrigins` field is configured with multiple origins, it
 	// means the server supports clients from multiple origins. If the request
 	// `Origin` matches the configured allowed origins, the gateway must return
 	// the given `Origin` and sets value of the header
@@ -31511,19 +31519,15 @@ type HTTPRouteSpecRulesFiltersCorsPatch struct {
 	// `Access-Control-Allow-Origin` to the same value as the `Origin`
 	// header provided by the client.
 	//
-	// When config has the wildcard ("*") in allowOrigins, and the request
-	// is not credentialed (e.g., it is a preflight request), the
-	// `Access-Control-Allow-Origin` response header either contains the
-	// wildcard as well or the Origin from the request.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Origin` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Origin` response header. When
-	// also the `AllowCredentials` field is true and `AllowOrigins` field
-	// specified with the `*` wildcard, the gateway must return a single origin
-	// in the value of the `Access-Control-Allow-Origin` response header,
-	// instead of specifying the `*` wildcard. The value of the header
-	// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-	// the client.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Origin` response header. Instead, it must
+	// return a single origin matching the value of the `Origin` request header.
 	//
 	// Support: Extended
 	AllowOrigins []string `pulumi:"allowOrigins"`
@@ -31543,7 +31547,7 @@ type HTTPRouteSpecRulesFiltersCorsPatch struct {
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 	// The CORS-safelisted response headers are exposed to client by default.
 	//
-	// When an HTTP header name is specified using the `ExposeHeaders` field,
+	// When an HTTP header name is specified using the `exposeHeaders` field,
 	// this additional header will be exposed as part of the response to the
 	// client.
 	//
@@ -31553,12 +31557,15 @@ type HTTPRouteSpecRulesFiltersCorsPatch struct {
 	// response header are separated by a comma (",").
 	//
 	// A wildcard indicates that the responses with all HTTP headers are exposed
-	// to clients. The `Access-Control-Expose-Headers` response header can only
-	// use `*` wildcard as value when the request is not credentialed.
+	// to clients.
 	//
-	// When the `exposeHeaders` config field contains the "*" wildcard and
-	// the request is credentialed, the gateway cannot use the `*` wildcard in
-	// the `Access-Control-Expose-Headers` response header.
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+	// response header can contain the wildcard `*`.
+	//
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+	// in the `Access-Control-Expose-Headers` response header.
 	//
 	// Support: Extended
 	ExposeHeaders []string `pulumi:"exposeHeaders"`
@@ -31613,9 +31620,9 @@ type HTTPRouteSpecRulesFiltersCorsPatchArgs struct {
 	// Multiple header names in the value of the `Access-Control-Allow-Headers`
 	// response header are separated by a comma (",").
 	//
-	// When the `AllowHeaders` field is configured with one or more headers, the
+	// When the `allowHeaders` field is configured with one or more headers, the
 	// gateway must return the `Access-Control-Allow-Headers` response header
-	// which value is present in the `AllowHeaders` field.
+	// which value is present in the `allowHeaders` field.
 	//
 	// If any header name in the `Access-Control-Request-Headers` request header
 	// is not included in the list of header names specified by the response
@@ -31627,21 +31634,20 @@ type HTTPRouteSpecRulesFiltersCorsPatchArgs struct {
 	// client side.
 	//
 	// A wildcard indicates that the requests with all HTTP headers are allowed.
-	// If config contains the wildcard "*" in allowHeaders and the request is
-	// not credentialed, the `Access-Control-Allow-Headers` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Headers from the request.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Headers` response header. When
-	// also the `AllowCredentials` field is true and `AllowHeaders` field
-	// is specified with the `*` wildcard, the gateway must specify one or more
-	// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-	// header. The value of the header `Access-Control-Allow-Headers` is same as
-	// the `Access-Control-Request-Headers` header provided by the client. If
-	// the header `Access-Control-Request-Headers` is not included in the
-	// request, the gateway will omit the `Access-Control-Allow-Headers`
-	// response header, instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Headers` request header.
+	//
+	// If the configuration contains the wildcard `*` in `allowHeaders` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Headers` response header. Instead, it must
+	// return one or more header names matching the value of the
+	// `Access-Control-Request-Headers` request header.
+	// If the `Access-Control-Request-Headers` header is not present in the
+	// request, the gateway must omit the `Access-Control-Allow-Headers`
+	// response header.
 	//
 	// Support: Extended
 	AllowHeaders pulumi.StringArrayInput `pulumi:"allowHeaders"`
@@ -31660,32 +31666,29 @@ type HTTPRouteSpecRulesFiltersCorsPatchArgs struct {
 	// A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 	// CORS-safelisted methods are always allowed, regardless of whether they
-	// are specified in the `AllowMethods` field.
+	// are specified in the `allowMethods` field.
 	//
-	// When the `AllowMethods` field is configured with one or more methods, the
+	// When the `allowMethods` field is configured with one or more methods, the
 	// gateway must return the `Access-Control-Allow-Methods` response header
-	// which value is present in the `AllowMethods` field.
+	// which value is present in the `allowMethods` field.
 	//
 	// If the HTTP method of the `Access-Control-Request-Method` request header
 	// is not included in the list of methods specified by the response header
 	// `Access-Control-Allow-Methods`, it will present an error on the client
 	// side.
 	//
-	// If config contains the wildcard "*" in allowMethods and the request is
-	// not credentialed, the `Access-Control-Allow-Methods` response header
-	// can either use the `*` wildcard or the value of
-	// Access-Control-Request-Method from the request.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Access-Control-Request-Method` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Methods` response header. When
-	// also the `AllowCredentials` field is true and `AllowMethods` field
-	// specified with the `*` wildcard, the gateway must specify one HTTP method
-	// in the value of the Access-Control-Allow-Methods response header. The
-	// value of the header `Access-Control-Allow-Methods` is same as the
-	// `Access-Control-Request-Method` header provided by the client. If the
-	// header `Access-Control-Request-Method` is not included in the request,
-	// the gateway will omit the `Access-Control-Allow-Methods` response header,
-	// instead of specifying the `*` wildcard.
+	// If the configuration contains the wildcard `*` in `allowMethods` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Methods` response header. Instead, it must
+	// return a single HTTP method matching the value of the
+	// `Access-Control-Request-Method` request header.
+	// If the `Access-Control-Request-Method` header is not present in the request,
+	// the gateway must omit the `Access-Control-Allow-Methods` response header.
 	//
 	// Support: Extended
 	AllowMethods pulumi.StringArrayInput `pulumi:"allowMethods"`
@@ -31714,7 +31717,7 @@ type HTTPRouteSpecRulesFiltersCorsPatchArgs struct {
 	// An origin value that includes _only_ the `*` character indicates requests
 	// from all `Origin`s are allowed.
 	//
-	// When the `AllowOrigins` field is configured with multiple origins, it
+	// When the `allowOrigins` field is configured with multiple origins, it
 	// means the server supports clients from multiple origins. If the request
 	// `Origin` matches the configured allowed origins, the gateway must return
 	// the given `Origin` and sets value of the header
@@ -31736,19 +31739,15 @@ type HTTPRouteSpecRulesFiltersCorsPatchArgs struct {
 	// `Access-Control-Allow-Origin` to the same value as the `Origin`
 	// header provided by the client.
 	//
-	// When config has the wildcard ("*") in allowOrigins, and the request
-	// is not credentialed (e.g., it is a preflight request), the
-	// `Access-Control-Allow-Origin` response header either contains the
-	// wildcard as well or the Origin from the request.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+	// response header may either contain the wildcard `*` or echo the value
+	// of the `Origin` request header.
 	//
-	// When the request is credentialed, the gateway must not specify the `*`
-	// wildcard in the `Access-Control-Allow-Origin` response header. When
-	// also the `AllowCredentials` field is true and `AllowOrigins` field
-	// specified with the `*` wildcard, the gateway must return a single origin
-	// in the value of the `Access-Control-Allow-Origin` response header,
-	// instead of specifying the `*` wildcard. The value of the header
-	// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-	// the client.
+	// If the configuration contains the wildcard `*` in `allowOrigins` and
+	// `allowCredentials` is set to `true`, the gateway must not return `*`
+	// in the `Access-Control-Allow-Origin` response header. Instead, it must
+	// return a single origin matching the value of the `Origin` request header.
 	//
 	// Support: Extended
 	AllowOrigins pulumi.StringArrayInput `pulumi:"allowOrigins"`
@@ -31768,7 +31767,7 @@ type HTTPRouteSpecRulesFiltersCorsPatchArgs struct {
 	// (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 	// The CORS-safelisted response headers are exposed to client by default.
 	//
-	// When an HTTP header name is specified using the `ExposeHeaders` field,
+	// When an HTTP header name is specified using the `exposeHeaders` field,
 	// this additional header will be exposed as part of the response to the
 	// client.
 	//
@@ -31778,12 +31777,15 @@ type HTTPRouteSpecRulesFiltersCorsPatchArgs struct {
 	// response header are separated by a comma (",").
 	//
 	// A wildcard indicates that the responses with all HTTP headers are exposed
-	// to clients. The `Access-Control-Expose-Headers` response header can only
-	// use `*` wildcard as value when the request is not credentialed.
+	// to clients.
 	//
-	// When the `exposeHeaders` config field contains the "*" wildcard and
-	// the request is credentialed, the gateway cannot use the `*` wildcard in
-	// the `Access-Control-Expose-Headers` response header.
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+	// response header can contain the wildcard `*`.
+	//
+	// If the configuration contains the wildcard `*` in `exposeHeaders` and
+	// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+	// in the `Access-Control-Expose-Headers` response header.
 	//
 	// Support: Extended
 	ExposeHeaders pulumi.StringArrayInput `pulumi:"exposeHeaders"`
@@ -31906,9 +31908,9 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) AllowCredentials() pulumi.Bool
 // Multiple header names in the value of the `Access-Control-Allow-Headers`
 // response header are separated by a comma (",").
 //
-// When the `AllowHeaders` field is configured with one or more headers, the
+// When the `allowHeaders` field is configured with one or more headers, the
 // gateway must return the `Access-Control-Allow-Headers` response header
-// which value is present in the `AllowHeaders` field.
+// which value is present in the `allowHeaders` field.
 //
 // If any header name in the `Access-Control-Request-Headers` request header
 // is not included in the list of header names specified by the response
@@ -31920,21 +31922,20 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) AllowCredentials() pulumi.Bool
 // client side.
 //
 // A wildcard indicates that the requests with all HTTP headers are allowed.
-// If config contains the wildcard "*" in allowHeaders and the request is
-// not credentialed, the `Access-Control-Allow-Headers` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Headers from the request.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Headers` response header. When
-// also the `AllowCredentials` field is true and `AllowHeaders` field
-// is specified with the `*` wildcard, the gateway must specify one or more
-// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-// header. The value of the header `Access-Control-Allow-Headers` is same as
-// the `Access-Control-Request-Headers` header provided by the client. If
-// the header `Access-Control-Request-Headers` is not included in the
-// request, the gateway will omit the `Access-Control-Allow-Headers`
-// response header, instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Headers` request header.
+//
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Headers` response header. Instead, it must
+// return one or more header names matching the value of the
+// `Access-Control-Request-Headers` request header.
+// If the `Access-Control-Request-Headers` header is not present in the
+// request, the gateway must omit the `Access-Control-Allow-Headers`
+// response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) AllowHeaders() pulumi.StringArrayOutput {
@@ -31956,32 +31957,29 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) AllowHeaders() pulumi.StringAr
 // A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 // CORS-safelisted methods are always allowed, regardless of whether they
-// are specified in the `AllowMethods` field.
+// are specified in the `allowMethods` field.
 //
-// When the `AllowMethods` field is configured with one or more methods, the
+// When the `allowMethods` field is configured with one or more methods, the
 // gateway must return the `Access-Control-Allow-Methods` response header
-// which value is present in the `AllowMethods` field.
+// which value is present in the `allowMethods` field.
 //
 // If the HTTP method of the `Access-Control-Request-Method` request header
 // is not included in the list of methods specified by the response header
 // `Access-Control-Allow-Methods`, it will present an error on the client
 // side.
 //
-// If config contains the wildcard "*" in allowMethods and the request is
-// not credentialed, the `Access-Control-Allow-Methods` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Method from the request.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Method` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Methods` response header. When
-// also the `AllowCredentials` field is true and `AllowMethods` field
-// specified with the `*` wildcard, the gateway must specify one HTTP method
-// in the value of the Access-Control-Allow-Methods response header. The
-// value of the header `Access-Control-Allow-Methods` is same as the
-// `Access-Control-Request-Method` header provided by the client. If the
-// header `Access-Control-Request-Method` is not included in the request,
-// the gateway will omit the `Access-Control-Allow-Methods` response header,
-// instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Methods` response header. Instead, it must
+// return a single HTTP method matching the value of the
+// `Access-Control-Request-Method` request header.
+// If the `Access-Control-Request-Method` header is not present in the request,
+// the gateway must omit the `Access-Control-Allow-Methods` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) AllowMethods() pulumi.StringArrayOutput {
@@ -32013,7 +32011,7 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) AllowMethods() pulumi.StringAr
 // An origin value that includes _only_ the `*` character indicates requests
 // from all `Origin`s are allowed.
 //
-// When the `AllowOrigins` field is configured with multiple origins, it
+// When the `allowOrigins` field is configured with multiple origins, it
 // means the server supports clients from multiple origins. If the request
 // `Origin` matches the configured allowed origins, the gateway must return
 // the given `Origin` and sets value of the header
@@ -32035,19 +32033,15 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) AllowMethods() pulumi.StringAr
 // `Access-Control-Allow-Origin` to the same value as the `Origin`
 // header provided by the client.
 //
-// When config has the wildcard ("*") in allowOrigins, and the request
-// is not credentialed (e.g., it is a preflight request), the
-// `Access-Control-Allow-Origin` response header either contains the
-// wildcard as well or the Origin from the request.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Origin` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Origin` response header. When
-// also the `AllowCredentials` field is true and `AllowOrigins` field
-// specified with the `*` wildcard, the gateway must return a single origin
-// in the value of the `Access-Control-Allow-Origin` response header,
-// instead of specifying the `*` wildcard. The value of the header
-// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-// the client.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Origin` response header. Instead, it must
+// return a single origin matching the value of the `Origin` request header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) AllowOrigins() pulumi.StringArrayOutput {
@@ -32070,7 +32064,7 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) AllowOrigins() pulumi.StringAr
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 // The CORS-safelisted response headers are exposed to client by default.
 //
-// When an HTTP header name is specified using the `ExposeHeaders` field,
+// When an HTTP header name is specified using the `exposeHeaders` field,
 // this additional header will be exposed as part of the response to the
 // client.
 //
@@ -32080,12 +32074,15 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) AllowOrigins() pulumi.StringAr
 // response header are separated by a comma (",").
 //
 // A wildcard indicates that the responses with all HTTP headers are exposed
-// to clients. The `Access-Control-Expose-Headers` response header can only
-// use `*` wildcard as value when the request is not credentialed.
+// to clients.
 //
-// When the `exposeHeaders` config field contains the "*" wildcard and
-// the request is credentialed, the gateway cannot use the `*` wildcard in
-// the `Access-Control-Expose-Headers` response header.
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+// response header can contain the wildcard `*`.
+//
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+// in the `Access-Control-Expose-Headers` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPatchOutput) ExposeHeaders() pulumi.StringArrayOutput {
@@ -32160,9 +32157,9 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) AllowCredentials() pulumi.B
 // Multiple header names in the value of the `Access-Control-Allow-Headers`
 // response header are separated by a comma (",").
 //
-// When the `AllowHeaders` field is configured with one or more headers, the
+// When the `allowHeaders` field is configured with one or more headers, the
 // gateway must return the `Access-Control-Allow-Headers` response header
-// which value is present in the `AllowHeaders` field.
+// which value is present in the `allowHeaders` field.
 //
 // If any header name in the `Access-Control-Request-Headers` request header
 // is not included in the list of header names specified by the response
@@ -32174,21 +32171,20 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) AllowCredentials() pulumi.B
 // client side.
 //
 // A wildcard indicates that the requests with all HTTP headers are allowed.
-// If config contains the wildcard "*" in allowHeaders and the request is
-// not credentialed, the `Access-Control-Allow-Headers` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Headers from the request.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Headers` response header. When
-// also the `AllowCredentials` field is true and `AllowHeaders` field
-// is specified with the `*` wildcard, the gateway must specify one or more
-// HTTP headers in the value of the `Access-Control-Allow-Headers` response
-// header. The value of the header `Access-Control-Allow-Headers` is same as
-// the `Access-Control-Request-Headers` header provided by the client. If
-// the header `Access-Control-Request-Headers` is not included in the
-// request, the gateway will omit the `Access-Control-Allow-Headers`
-// response header, instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Headers`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Headers` request header.
+//
+// If the configuration contains the wildcard `*` in `allowHeaders` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Headers` response header. Instead, it must
+// return one or more header names matching the value of the
+// `Access-Control-Request-Headers` request header.
+// If the `Access-Control-Request-Headers` header is not present in the
+// request, the gateway must omit the `Access-Control-Allow-Headers`
+// response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) AllowHeaders() pulumi.StringArrayOutput {
@@ -32215,32 +32211,29 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) AllowHeaders() pulumi.Strin
 // A CORS-safelisted method is a method that is `GET`, `HEAD`, or `POST`.
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-method) The
 // CORS-safelisted methods are always allowed, regardless of whether they
-// are specified in the `AllowMethods` field.
+// are specified in the `allowMethods` field.
 //
-// When the `AllowMethods` field is configured with one or more methods, the
+// When the `allowMethods` field is configured with one or more methods, the
 // gateway must return the `Access-Control-Allow-Methods` response header
-// which value is present in the `AllowMethods` field.
+// which value is present in the `allowMethods` field.
 //
 // If the HTTP method of the `Access-Control-Request-Method` request header
 // is not included in the list of methods specified by the response header
 // `Access-Control-Allow-Methods`, it will present an error on the client
 // side.
 //
-// If config contains the wildcard "*" in allowMethods and the request is
-// not credentialed, the `Access-Control-Allow-Methods` response header
-// can either use the `*` wildcard or the value of
-// Access-Control-Request-Method from the request.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Methods`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Access-Control-Request-Method` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Methods` response header. When
-// also the `AllowCredentials` field is true and `AllowMethods` field
-// specified with the `*` wildcard, the gateway must specify one HTTP method
-// in the value of the Access-Control-Allow-Methods response header. The
-// value of the header `Access-Control-Allow-Methods` is same as the
-// `Access-Control-Request-Method` header provided by the client. If the
-// header `Access-Control-Request-Method` is not included in the request,
-// the gateway will omit the `Access-Control-Allow-Methods` response header,
-// instead of specifying the `*` wildcard.
+// If the configuration contains the wildcard `*` in `allowMethods` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Methods` response header. Instead, it must
+// return a single HTTP method matching the value of the
+// `Access-Control-Request-Method` request header.
+// If the `Access-Control-Request-Method` header is not present in the request,
+// the gateway must omit the `Access-Control-Allow-Methods` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) AllowMethods() pulumi.StringArrayOutput {
@@ -32277,7 +32270,7 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) AllowMethods() pulumi.Strin
 // An origin value that includes _only_ the `*` character indicates requests
 // from all `Origin`s are allowed.
 //
-// When the `AllowOrigins` field is configured with multiple origins, it
+// When the `allowOrigins` field is configured with multiple origins, it
 // means the server supports clients from multiple origins. If the request
 // `Origin` matches the configured allowed origins, the gateway must return
 // the given `Origin` and sets value of the header
@@ -32299,19 +32292,15 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) AllowMethods() pulumi.Strin
 // `Access-Control-Allow-Origin` to the same value as the `Origin`
 // header provided by the client.
 //
-// When config has the wildcard ("*") in allowOrigins, and the request
-// is not credentialed (e.g., it is a preflight request), the
-// `Access-Control-Allow-Origin` response header either contains the
-// wildcard as well or the Origin from the request.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `false`, the `Access-Control-Allow-Origin`
+// response header may either contain the wildcard `*` or echo the value
+// of the `Origin` request header.
 //
-// When the request is credentialed, the gateway must not specify the `*`
-// wildcard in the `Access-Control-Allow-Origin` response header. When
-// also the `AllowCredentials` field is true and `AllowOrigins` field
-// specified with the `*` wildcard, the gateway must return a single origin
-// in the value of the `Access-Control-Allow-Origin` response header,
-// instead of specifying the `*` wildcard. The value of the header
-// `Access-Control-Allow-Origin` is same as the `Origin` header provided by
-// the client.
+// If the configuration contains the wildcard `*` in `allowOrigins` and
+// `allowCredentials` is set to `true`, the gateway must not return `*`
+// in the `Access-Control-Allow-Origin` response header. Instead, it must
+// return a single origin matching the value of the `Origin` request header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) AllowOrigins() pulumi.StringArrayOutput {
@@ -32339,7 +32328,7 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) AllowOrigins() pulumi.Strin
 // (See https://fetch.spec.whatwg.org/#cors-safelisted-response-header-name)
 // The CORS-safelisted response headers are exposed to client by default.
 //
-// When an HTTP header name is specified using the `ExposeHeaders` field,
+// When an HTTP header name is specified using the `exposeHeaders` field,
 // this additional header will be exposed as part of the response to the
 // client.
 //
@@ -32349,12 +32338,15 @@ func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) AllowOrigins() pulumi.Strin
 // response header are separated by a comma (",").
 //
 // A wildcard indicates that the responses with all HTTP headers are exposed
-// to clients. The `Access-Control-Expose-Headers` response header can only
-// use `*` wildcard as value when the request is not credentialed.
+// to clients.
 //
-// When the `exposeHeaders` config field contains the "*" wildcard and
-// the request is credentialed, the gateway cannot use the `*` wildcard in
-// the `Access-Control-Expose-Headers` response header.
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `false`, the `Access-Control-Expose-Headers`
+// response header can contain the wildcard `*`.
+//
+// If the configuration contains the wildcard `*` in `exposeHeaders` and
+// `allowCredentials` is set to `true`, the gateway cannot use the `*`
+// in the `Access-Control-Expose-Headers` response header.
 //
 // Support: Extended
 func (o HTTPRouteSpecRulesFiltersCorsPatchPtrOutput) ExposeHeaders() pulumi.StringArrayOutput {
@@ -34592,6 +34584,10 @@ func (o HTTPRouteSpecRulesFiltersRequestMirrorPtrOutput) Percent() pulumi.IntPtr
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesFiltersRequestMirrorBackendRef struct {
 	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
 	// When unspecified or empty string, core API group is inferred.
@@ -34665,6 +34661,10 @@ type HTTPRouteSpecRulesFiltersRequestMirrorBackendRefInput interface {
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesFiltersRequestMirrorBackendRefArgs struct {
 	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
 	// When unspecified or empty string, core API group is inferred.
@@ -34780,6 +34780,10 @@ func (i *httprouteSpecRulesFiltersRequestMirrorBackendRefPtrType) ToHTTPRouteSpe
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesFiltersRequestMirrorBackendRefOutput struct{ *pulumi.OutputState }
 
 func (HTTPRouteSpecRulesFiltersRequestMirrorBackendRefOutput) ElementType() reflect.Type {
@@ -34978,6 +34982,10 @@ func (o HTTPRouteSpecRulesFiltersRequestMirrorBackendRefPtrOutput) Port() pulumi
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesFiltersRequestMirrorBackendRefPatch struct {
 	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
 	// When unspecified or empty string, core API group is inferred.
@@ -35051,6 +35059,10 @@ type HTTPRouteSpecRulesFiltersRequestMirrorBackendRefPatchInput interface {
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesFiltersRequestMirrorBackendRefPatchArgs struct {
 	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
 	// When unspecified or empty string, core API group is inferred.
@@ -35166,6 +35178,10 @@ func (i *httprouteSpecRulesFiltersRequestMirrorBackendRefPatchPtrType) ToHTTPRou
 // Support: Extended for Kubernetes Service
 //
 // Support: Implementation-specific for any other resource
+//
+// If the backend service requires TLS, use BackendTLSPolicy to tell the
+// implementation to supply the TLS details to be used to connect to that
+// backend.
 type HTTPRouteSpecRulesFiltersRequestMirrorBackendRefPatchOutput struct{ *pulumi.OutputState }
 
 func (HTTPRouteSpecRulesFiltersRequestMirrorBackendRefPatchOutput) ElementType() reflect.Type {

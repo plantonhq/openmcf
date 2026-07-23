@@ -4,7 +4,8 @@ metadata:
   name: e2e-sec-ssh
 spec:
   name: e2e-sec-ssh
-  namespace: default
+  namespace:
+    value: default
   ssh_auth:
     ssh_private_key: |
       -----BEGIN OPENSSH PRIVATE KEY-----

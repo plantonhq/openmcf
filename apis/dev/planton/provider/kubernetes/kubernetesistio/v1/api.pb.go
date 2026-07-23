@@ -23,7 +23,11 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// kubernetes-istio
+// KubernetesIstio installs the Istio service-mesh control plane (istiod + the
+// Istio CRDs, plus the CNI agent and ztunnel node proxies in ambient mode) from
+// the official Helm charts. Gateways and routes compose from the Gateway API
+// kinds (istiod implements the `istio` GatewayClass); mesh traffic policy
+// composes from the typed Istio kinds (DestinationRule, AuthorizationPolicy, ...).
 type KubernetesIstio struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version
@@ -105,7 +109,7 @@ func (x *KubernetesIstio) GetStatus() *KubernetesIstioStatus {
 	return nil
 }
 
-// kubernetes-istio status.
+// KubernetesIstioStatus holds the deployment status and outputs.
 type KubernetesIstioStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// stack-outputs

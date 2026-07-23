@@ -12,6 +12,10 @@ presets:
     rank: "01"
     title: "Standard Gateway API CRDs"
     excerpt: "This preset installs the Kubernetes Gateway API CRDs in the standard channel. The Gateway API is the next-generation Kubernetes API for managing ingress and service mesh traffic, replacing the legacy..."
+  - slug: "02-experimental"
+    rank: "02"
+    title: "Experimental Gateway API CRDs"
+    excerpt: "This preset installs the Kubernetes Gateway API CRDs in the experimental channel. It contains everything the standard channel has, plus resources and fields that are still under active development."
 ---
 
 # Gateway API CRDs Presets

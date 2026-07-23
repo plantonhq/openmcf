@@ -28,7 +28,7 @@ Gateway can front several protocols, each attaching its own Route kind.
 
 - **Three listeners with unique name + port + protocol** -- required for listeners to be distinct.
 - **http (port 80, HTTP)** -- cleartext entry; commonly paired with an HTTPRoute that redirects to HTTPS.
-- **https (port 443, HTTPS, Terminate)** -- TLS termination with a certificate Secret.
+- **https (port 443, HTTPS, Terminate)** -- TLS termination with a certificate Secret. The `certificateRefs[].name` is a foreign key: `value:` for a literal Secret name, `valueFrom:` to wire a Planton-managed `KubernetesCertificate`'s exported Secret.
 - **postgres (port 5432, TCP)** -- raw TCP forwarding; attach a `TCPRoute` to reach the backend.
 
 ## Prerequisites
@@ -42,8 +42,8 @@ Gateway can front several protocols, each attaching its own Route kind.
 
 | Placeholder | Description |
 |-------------|-------------|
-| `<app-hostname>` | The public hostname the HTTPS listener serves, e.g. `app.example.com`. |
-| `<tls-secret-name>` | Name of the `kubernetes.io/tls` Secret holding the certificate and key. |
+| `app.example.com` | The public hostname the HTTPS listener serves (a literal example value -- replace with your real host). |
+| `<tls-secret-name>` | Name of the `kubernetes.io/tls` Secret holding the certificate and key; or switch to `valueFrom` per the comment in the YAML. |
 
 Note: not every controller supports TCP listeners. Remove the `postgres`
 listener if your controller is HTTP-only, or consult its documentation.

@@ -26,6 +26,7 @@ go_test(
     srcs = ["spec_test.go"],
     embed = [":kubernetescertmanager"],
     deps = [
+        "//apis/dev/planton/provider/kubernetes",
         "//apis/dev/planton/shared",
         "//apis/dev/planton/shared/foreignkey/v1:foreignkey",
         "@build_buf_go_protovalidate//:protovalidate",

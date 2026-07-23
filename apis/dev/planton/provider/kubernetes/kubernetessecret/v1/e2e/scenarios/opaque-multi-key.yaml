@@ -4,7 +4,8 @@ metadata:
   name: e2e-sec-multikey
 spec:
   name: e2e-sec-multikey
-  namespace: default
+  namespace:
+    value: default
   labels:
     team: platform
   opaque:

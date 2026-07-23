@@ -33,9 +33,9 @@ a RequestAuthentication that validates tokens plus an AuthorizationPolicy that r
 ## 2. Source of truth and version
 
 Translated proto-to-proto from the upstream `istio.io/api` clone pinned to tag
-**1.26.8** (`security/v1beta1/authorization_policy.proto`). The local clone is
+**1.30.3** (`security/v1beta1/authorization_policy.proto`). The local clone is
 authoritative; no specs are pulled from the internet. The crd2pulumi typed SDK and
-the CRDs installed by `KubernetesIstioBaseCrds` are likewise on Istio `release-1.26`, so
+the CRDs installed by `KubernetesIstioBaseCrds` are likewise on Istio tag `1.30.3`, so
 the proto, the typed Pulumi resource, and the cluster CRD all agree on the schema.
 
 ## 3. Planton spec shape (fidelity decisions)
@@ -54,7 +54,7 @@ gaps (e.g. upstream `Source.service_accounts` is field 11).
 | `rules` (`Rule`) | `rules` (`KubernetesAuthorizationPolicyRule`) | Repeated, max 512; nested messages below. |
 | `Rule.From` | `KubernetesAuthorizationPolicyRuleFrom` | Wrapper `{ source }` (preserves CRD JSON `from: [{source}]`). Max 512. |
 | `Rule.To` | `KubernetesAuthorizationPolicyRuleTo` | Wrapper `{ operation }`. |
-| `Source` | `KubernetesAuthorizationPolicySource` | 12 identity/IP match lists + exclusivity CEL. |
+| `Source` | `KubernetesAuthorizationPolicySource` | 14 identity/IP/trust-domain match lists + exclusivity CEL. |
 | `Operation` | `KubernetesAuthorizationPolicyOperation` | 8 host/port/method/path match lists. |
 | `Condition` | `KubernetesAuthorizationPolicyCondition` | `key` (required), `values`, `not_values`. |
 | `action` (`Action` enum) | `action` (`string`) | Closed set: ALLOW/DENY/AUDIT/CUSTOM. |
@@ -67,6 +67,14 @@ means "match every workload in the namespace", which is valid. So this is an "at
 one" rule. Modeled as a message-level CEL
 (`!(has(this.selector) && size(this.target_refs) > 0)`) over the two public fields. The
 hidden singular `targetRef` is not modeled.
+
+### Trust-domain matching
+
+`Source.trust_domains` / `not_trust_domains` match any workload whose peer identity
+belongs to one of the listed trust domains (the mesh's identity root, e.g.
+`cluster.local`) -- a coarse-grained alternative to enumerating `principals` when the
+intent is "any workload in this mesh/domain". Like `principals` and `namespaces`,
+they read the peer certificate and therefore require mTLS.
 
 ### The from/to wrappers
 
@@ -124,13 +132,19 @@ validated surface; enforcing it would reject configs the CRD accepts).
 
 - **`namespace`** is the one true foreign key: `StringValueOrRef` ->
   `KubernetesNamespace` (`spec.name`). Literal or `valueFrom`; creates a real DAG edge.
-- **`selector.match_labels`** and **`target_refs`** are plain runtime references, NOT
-  foreign keys. istiod resolves them against the cluster at runtime; neither creates an
-  automatic DAG edge. Wrapping them in `StringValueOrRef` would break upstream fidelity
-  (a label map / a multi-field reference, not a scalar) and distort the typed CRD shape.
-  An infra-chart author who needs ordering must declare it on `metadata.relationships`
-  (`uses`/`depends_on` -> KubernetesDeployment / KubernetesGateway / KubernetesService /
-  KubernetesServiceEntry). See the component README's "Composing in Infra Charts"
+- **`target_refs[].name`** is also a foreign key: `StringValueOrRef` defaulting to a
+  `KubernetesGateway` reference (`status.outputs.gateway_name`), since the dominant
+  target for these policies is a Gateway (ingress authz). Wiring it with `valueFrom`
+  gives the chart a real dependency edge from the policy to the gateway it protects.
+  When the target is a Service, a ServiceEntry, or any resource not managed as a
+  Planton kind, the literal name is passed with `value:` -- istiod resolves
+  group/kind/name against the cluster at runtime either way.
+- **`selector.match_labels`** is a plain label match, NOT a foreign key. istiod
+  matches it against pod labels at runtime; it creates no automatic DAG edge. Wrapping
+  it in `StringValueOrRef` would break upstream fidelity (a label map, not a scalar)
+  and distort the typed CRD shape. An infra-chart author who needs ordering after the
+  selected workloads must declare it on `metadata.relationships` (`depends_on` ->
+  KubernetesDeployment). See the component README's "Composing in Infra Charts"
   section.
 
 ## 5. IaC implementation
@@ -145,12 +159,13 @@ Both engines are feature-equal and emit the same `security.istio.io/v1`
   `selector`, `target_refs`, `rules` (with the `from.source` / `to.operation` / `when`
   builders), `action`, and `provider` are only attached when present; `action` uses the
   proto3 `optional` pointer to distinguish unset from empty.
-- **Terraform** uses `kubernetes_manifest` with a fully-typed `variable "spec"` and a
-  deeply null-pruned `locals.tf`. Each list element is assembled with `merge()` so only
-  the fields the user set reach the manifest; nested optionals are read through `?:`
-  guards (HCL `&&` does not short-circuit). Snake_case spec fields map to the CRD's
-  camelCase (`targetRefs`, `requestPrincipals`, `serviceAccounts`, `notServiceAccounts`,
-  `ipBlocks`, `remoteIpBlocks`, `notValues`, ...).
+- **Terraform** uses `kubectl_manifest` (alekc/kubectl) applied server-side, with a
+  pass-through `variable "spec"` typed `any`: the platform's proto-to-tfvars converter
+  emits the manifest-shaped (camelCase, null-pruned) spec with `StringValueOrRef`
+  foreign keys (`namespace`, `target_refs[].name`) resolved to literal strings, so the
+  module hands it to the cluster verbatim. `locals.tf` only strips the Planton
+  `namespace` key (which maps to `metadata.namespace`) and renders the identity
+  labels.
 
 ## 6. E2E
 
@@ -162,6 +177,12 @@ Both engines are feature-equal and emit the same `security.istio.io/v1`
   AuthorizationPolicy CR exists after apply and is gone after destroy
   (`authorizationpolicies.security.istio.io`), via the `ResourceExistenceVerifier`
   dispatched from `aa_e2e/verify/verifier.go`.
+- **Behavioral scenario** (`e2e/scenarios/behavioral-deny.yaml`): with a real mesh
+  installed (`KubernetesIstio`) and two meshed workloads (an injected client and
+  backend), live enforcement is proven end to end -- the client's request to the
+  backend is denied (RBAC 403) while a DENY policy on the backend exists, and
+  succeeds after its removal. This proves enforcement in the data plane, not just
+  object existence.
 
 ## 7. Future experience surface (kept open, not built here)
 
@@ -177,4 +198,4 @@ integration itself is a separate follow-up project.
 
 - [Istio AuthorizationPolicy reference](https://istio.io/latest/docs/reference/config/security/authorization-policy/)
 - [Istio authorization concepts](https://istio.io/latest/docs/concepts/security/#authorization)
-- Upstream proto: `istio.io/api` `security/v1beta1/authorization_policy.proto` @ `1.26.8`
+- Upstream proto: `istio.io/api` `security/v1beta1/authorization_policy.proto` @ `1.30.3`

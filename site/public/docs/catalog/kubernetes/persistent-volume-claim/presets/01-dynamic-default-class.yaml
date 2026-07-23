@@ -1,0 +1,9 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPersistentVolumeClaim
+metadata:
+  name: app-data
+spec:
+  namespace:
+    value: "<your-namespace>"
+  name: app-data
+  storage_request: 10Gi

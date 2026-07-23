@@ -21,19 +21,37 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesIngressNginxStackOutputs defines the outputs for the Ingress Nginx stack.
+// KubernetesIngressNginxStackOutputs captures observable outputs after the
+// ingress-nginx controller installation.
 type KubernetesIngressNginxStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The namespace where the Ingress Nginx is deployed.
+	// Kubernetes namespace the controller was installed into.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// The name of the release, typically the Helm release name.
+	// Helm release name (= metadata.name; controller resources are named
+	// "<release>-controller").
 	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
-	// The name of the service created by the Ingress Nginx controller.
-	ServiceName string `protobuf:"bytes,3,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	// The type of service, e.g., "LoadBalancer", "ClusterIP", etc.
-	ServiceType   string `protobuf:"bytes,4,opt,name=service_type,json=serviceType,proto3" json:"service_type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Name of the IngressClass this controller owns — what KubernetesIngress
+	// resources reference in `ingress_class_name` to route through this
+	// controller.
+	IngressClassName string `protobuf:"bytes,3,opt,name=ingress_class_name,json=ingressClassName,proto3" json:"ingress_class_name,omitempty"`
+	// Name of the controller's external Service (the traffic entry point;
+	// type per spec.service.type). External-dns and manual DNS records point
+	// at this Service's address.
+	ControllerServiceName string `protobuf:"bytes,4,opt,name=controller_service_name,json=controllerServiceName,proto3" json:"controller_service_name,omitempty"`
+	// Name of the controller's internal Service — populated only when
+	// spec.service.internal.enabled is true.
+	InternalServiceName string `protobuf:"bytes,5,opt,name=internal_service_name,json=internalServiceName,proto3" json:"internal_service_name,omitempty"`
+	// External IP address of the controller's LoadBalancer, once the host
+	// cloud provisions it (GCP/Azure populate an IP). Empty on clusters
+	// without a cloud LB controller (e.g. kind) and on providers that
+	// populate a hostname instead.
+	LoadBalancerIp string `protobuf:"bytes,6,opt,name=load_balancer_ip,json=loadBalancerIp,proto3" json:"load_balancer_ip,omitempty"`
+	// External hostname of the controller's LoadBalancer (AWS ELB/NLB
+	// populate a DNS name). Empty when the provider populates an IP, and on
+	// clusters without a cloud LB controller.
+	LoadBalancerHostname string `protobuf:"bytes,7,opt,name=load_balancer_hostname,json=loadBalancerHostname,proto3" json:"load_balancer_hostname,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *KubernetesIngressNginxStackOutputs) Reset() {
@@ -80,16 +98,37 @@ func (x *KubernetesIngressNginxStackOutputs) GetReleaseName() string {
 	return ""
 }
 
-func (x *KubernetesIngressNginxStackOutputs) GetServiceName() string {
+func (x *KubernetesIngressNginxStackOutputs) GetIngressClassName() string {
 	if x != nil {
-		return x.ServiceName
+		return x.IngressClassName
 	}
 	return ""
 }
 
-func (x *KubernetesIngressNginxStackOutputs) GetServiceType() string {
+func (x *KubernetesIngressNginxStackOutputs) GetControllerServiceName() string {
 	if x != nil {
-		return x.ServiceType
+		return x.ControllerServiceName
+	}
+	return ""
+}
+
+func (x *KubernetesIngressNginxStackOutputs) GetInternalServiceName() string {
+	if x != nil {
+		return x.InternalServiceName
+	}
+	return ""
+}
+
+func (x *KubernetesIngressNginxStackOutputs) GetLoadBalancerIp() string {
+	if x != nil {
+		return x.LoadBalancerIp
+	}
+	return ""
+}
+
+func (x *KubernetesIngressNginxStackOutputs) GetLoadBalancerHostname() string {
+	if x != nil {
+		return x.LoadBalancerHostname
 	}
 	return ""
 }
@@ -98,12 +137,15 @@ var File_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_stack_outputs
 
 const file_dev_planton_provider_kubernetes_kubernetesingressnginx_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Mdev/planton/provider/kubernetes/kubernetesingressnginx/v1/stack_outputs.proto\x129dev.planton.provider.kubernetes.kubernetesingressnginx.v1\"\xab\x01\n" +
+	"Mdev/planton/provider/kubernetes/kubernetesingressnginx/v1/stack_outputs.proto\x129dev.planton.provider.kubernetes.kubernetesingressnginx.v1\"\xdf\x02\n" +
 	"\"KubernetesIngressNginxStackOutputs\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
-	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12!\n" +
-	"\fservice_name\x18\x03 \x01(\tR\vserviceName\x12!\n" +
-	"\fservice_type\x18\x04 \x01(\tR\vserviceTypeB\xd3\x03\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12,\n" +
+	"\x12ingress_class_name\x18\x03 \x01(\tR\x10ingressClassName\x126\n" +
+	"\x17controller_service_name\x18\x04 \x01(\tR\x15controllerServiceName\x122\n" +
+	"\x15internal_service_name\x18\x05 \x01(\tR\x13internalServiceName\x12(\n" +
+	"\x10load_balancer_ip\x18\x06 \x01(\tR\x0eloadBalancerIp\x124\n" +
+	"\x16load_balancer_hostname\x18\a \x01(\tR\x14loadBalancerHostnameB\xd3\x03\n" +
 	"=com.dev.planton.provider.kubernetes.kubernetesingressnginx.v1B\x11StackOutputsProtoP\x01Ztgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesingressnginx/v1;kubernetesingressnginxv1\xa2\x02\x05DPPKK\xaa\x029Dev.Planton.Provider.Kubernetes.Kubernetesingressnginx.V1\xca\x029Dev\\Planton\\Provider\\Kubernetes\\Kubernetesingressnginx\\V1\xe2\x02EDev\\Planton\\Provider\\Kubernetes\\Kubernetesingressnginx\\V1\\GPBMetadata\xea\x02>Dev::Planton::Provider::Kubernetes::Kubernetesingressnginx::V1b\x06proto3"
 
 var (

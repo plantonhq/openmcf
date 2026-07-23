@@ -21,7 +21,10 @@ func createSecret(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderR
 			},
 			Type:       pulumi.String(locals.SecretType),
 			StringData: pulumi.ToStringMap(locals.SecretData),
-			Immutable:  pulumi.Bool(locals.Immutable),
+			// Data expects base64-encoded values; StringData expects plain strings.
+			// Both may be set at once (e.g., an Opaque secret mixing UTF-8 and binary entries).
+			Data:      pulumi.ToStringMap(locals.SecretBinaryData),
+			Immutable: pulumi.Bool(locals.Immutable),
 		},
 		pulumi.Provider(provider),
 	)

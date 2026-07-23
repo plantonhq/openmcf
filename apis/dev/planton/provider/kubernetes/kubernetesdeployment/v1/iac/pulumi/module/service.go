@@ -8,23 +8,38 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// service fronts the Deployment's pods with a ClusterIP Service, one Service
+// port per app-container port. No Service is created when the app container
+// exposes no ports (workers, consumers).
 func service(ctx *pulumi.Context, locals *Locals,
 	kubernetesProvider pulumi.ProviderResource, createdDeployment *appsv1.Deployment, namespaceDeps []pulumi.ResourceOption) error {
 
-	//if the service ports are empty, we don't need to create a service
-	if len(locals.KubernetesDeployment.Spec.Container.App.Ports) == 0 {
+	appPorts := locals.KubernetesDeployment.Spec.Container.App.Ports
+	if len(appPorts) == 0 {
 		return nil
 	}
 
-	portsArray := make(kubernetescorev1.ServicePortArray, 0)
-	for _, p := range locals.KubernetesDeployment.Spec.Container.App.Ports {
-		portsArray = append(portsArray, &kubernetescorev1.ServicePortArgs{
-			Name:        pulumi.String(p.Name),
-			Protocol:    pulumi.String(p.NetworkProtocol),
-			Port:        pulumi.Int(p.ServicePort),
-			TargetPort:  pulumi.Int(p.ContainerPort),
-			AppProtocol: pulumi.String(p.AppProtocol),
-		})
+	portsArray := make(kubernetescorev1.ServicePortArray, 0, len(appPorts))
+	for _, p := range appPorts {
+		// service_port defaults to the container port when unset, so the common
+		// "expose as-is" case needs no extra configuration.
+		servicePort := p.ServicePort
+		if servicePort == 0 {
+			servicePort = p.ContainerPort
+		}
+
+		portArgs := &kubernetescorev1.ServicePortArgs{
+			Name:       pulumi.String(p.Name),
+			Port:       pulumi.Int(servicePort),
+			TargetPort: pulumi.Int(p.ContainerPort),
+		}
+		if p.NetworkProtocol != "" {
+			portArgs.Protocol = pulumi.String(p.NetworkProtocol)
+		}
+		if p.AppProtocol != "" {
+			portArgs.AppProtocol = pulumi.String(p.AppProtocol)
+		}
+		portsArray = append(portsArray, portArgs)
 	}
 
 	serviceArgs := &kubernetescorev1.ServiceArgs{
@@ -49,7 +64,7 @@ func service(ctx *pulumi.Context, locals *Locals,
 		serviceArgs,
 		svcOpts...)
 	if err != nil {
-		return errors.Wrap(err, "failed to add service")
+		return errors.Wrap(err, "failed to create service")
 	}
 	return nil
 }

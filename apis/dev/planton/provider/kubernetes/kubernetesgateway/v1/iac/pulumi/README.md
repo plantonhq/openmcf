@@ -39,12 +39,6 @@ export STACK_INPUT_YAML_FILE=../hack/manifest.yaml
 pulumi up
 ```
 
-## Debug
-
-```bash
-bash debug.sh ../hack/manifest.yaml
-```
-
 ## Outputs
 
 | Output | Description |
@@ -61,8 +55,6 @@ pulumi/
 ├── Pulumi.yaml          # Pulumi project configuration
 ├── Makefile             # Build automation
 ├── README.md            # This file
-├── overview.md          # Architecture overview
-├── debug.sh             # Local preview helper
 └── module/
     ├── main.go          # Resource creation (typed NewGateway)
     ├── locals.go        # Computed values + resolved foreign keys
@@ -73,6 +65,13 @@ pulumi/
     ├── addresses.go     # Requested-address mapping
     └── selectors.go     # Namespace label-selector mapping
 ```
+
+The Gateway's `StringValueOrRef` foreign keys (`namespace`,
+`gateway_class_name`, listener `certificateRefs[].name`, frontend
+`caCertificateRefs[].name`) arrive resolved to literal strings in the stack
+input; the module reads their final values directly. No await/wait logic is
+attached: Accepted/Programmed conditions belong to the Gateway controller's
+reconciliation, not to applying the resource.
 
 ## References
 

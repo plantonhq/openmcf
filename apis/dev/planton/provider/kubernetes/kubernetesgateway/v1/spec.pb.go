@@ -29,7 +29,7 @@ const (
 // Listeners (logical endpoints with a port, protocol, and optional TLS) to
 // addresses, managed by the controller behind a GatewayClass.
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 GatewaySpec
+// 100% fidelity with the upstream Gateway API v1.6.1 GatewaySpec
 // (kubernetes-sigs/gateway-api apis/v1/gateway_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
 // (namespace). The experimental `defaultScope` field is
@@ -59,8 +59,8 @@ type KubernetesGatewaySpec struct {
 	// Gateway. Upstream support level: Extended.
 	Infrastructure *KubernetesGatewayInfrastructure `protobuf:"bytes,6,opt,name=infrastructure,proto3" json:"infrastructure,omitempty"`
 	// Controls which ListenerSets may attach to this Gateway. Defaults to
-	// allowing none. ListenerSet itself is not yet an Planton resource; this
-	// field is retained for full spec fidelity and forward compatibility.
+	// allowing none — a Gateway must opt in before any KubernetesListenerSet
+	// can merge additional listeners into it.
 	AllowedListeners *KubernetesGatewayAllowedListeners `protobuf:"bytes,7,opt,name=allowed_listeners,json=allowedListeners,proto3" json:"allowed_listeners,omitempty"`
 	// Gateway-wide TLS configuration: client-certificate validation for inbound
 	// (frontend) HTTPS traffic and client-certificate material for outbound
@@ -181,12 +181,17 @@ type KubernetesGatewayListener struct {
 	// Pattern: ^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$|<domain>/<path>
 	Protocol string `protobuf:"bytes,4,opt,name=protocol,proto3" json:"protocol,omitempty"`
 	// TLS configuration for this listener. Required for HTTPS and TLS protocols;
-	// must be absent for HTTP, TCP, and UDP (enforced above).
-	Tls *KubernetesGatewayListenerTlsConfig `protobuf:"bytes,5,opt,name=tls,proto3" json:"tls,omitempty"`
+	// must be absent for HTTP, TCP, and UDP (enforced above). Certificate
+	// references default to KubernetesSecret foreign keys — wire valueFrom
+	// against a KubernetesCertificate's status.outputs.secret_name to terminate
+	// with cert-manager-issued material. Shared Gateway API type (also used by
+	// KubernetesListenerSet listener entries).
+	Tls *kubernetes.KubernetesGatewayApiListenerTlsConfig `protobuf:"bytes,5,opt,name=tls,proto3" json:"tls,omitempty"`
 	// Restricts which Routes (by kind and namespace) may attach to this
 	// listener. When unset, the controller selects routes by listener protocol
-	// and the same namespace as the Gateway.
-	AllowedRoutes *KubernetesGatewayAllowedRoutes `protobuf:"bytes,6,opt,name=allowed_routes,json=allowedRoutes,proto3" json:"allowed_routes,omitempty"`
+	// and the same namespace as the Gateway. Shared Gateway API type (also used
+	// by KubernetesListenerSet listener entries).
+	AllowedRoutes *kubernetes.KubernetesGatewayApiAllowedRoutes `protobuf:"bytes,6,opt,name=allowed_routes,json=allowedRoutes,proto3" json:"allowed_routes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -249,419 +254,16 @@ func (x *KubernetesGatewayListener) GetProtocol() string {
 	return ""
 }
 
-func (x *KubernetesGatewayListener) GetTls() *KubernetesGatewayListenerTlsConfig {
+func (x *KubernetesGatewayListener) GetTls() *kubernetes.KubernetesGatewayApiListenerTlsConfig {
 	if x != nil {
 		return x.Tls
 	}
 	return nil
 }
 
-func (x *KubernetesGatewayListener) GetAllowedRoutes() *KubernetesGatewayAllowedRoutes {
+func (x *KubernetesGatewayListener) GetAllowedRoutes() *kubernetes.KubernetesGatewayApiAllowedRoutes {
 	if x != nil {
 		return x.AllowedRoutes
-	}
-	return nil
-}
-
-// KubernetesGatewayListenerTlsConfig describes the TLS behavior of a listener.
-//
-// Upstream: ListenerTLSConfig in apis/v1/gateway_types.go
-type KubernetesGatewayListenerTlsConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// How the listener handles the client's TLS session. "Terminate" (default)
-	// decrypts at the Gateway and requires a certificate. "Passthrough" forwards
-	// the encrypted stream untouched (TLSRoute only) and ignores certificate_refs.
-	//
-	// Upstream default: "Terminate". Closed enum: Terminate | Passthrough.
-	Mode *string `protobuf:"bytes,1,opt,name=mode,proto3,oneof" json:"mode,omitempty"`
-	// References to Kubernetes Secrets holding the TLS certificate/key used to
-	// terminate the listener. A single reference to a kubernetes.io/tls Secret
-	// has Core support; multiple references are implementation-specific.
-	//
-	// INFRA-CHART COMPOSABILITY (DD-009): certificate_refs is a PLAIN reference, not
-	// an Planton foreign key (StringValueOrRef). It is an array of multi-field
-	// upstream objects, so wrapping its scalars would break 100% upstream fidelity
-	// (DD-001) and distort the typed CRD shape (dont-do #6). The referenced Secret
-	// is typically created by a KubernetesCertificate (cert-manager). Because a
-	// plain name creates NO automatic DAG edge, an infra-chart author MUST express
-	// the Gateway -> Certificate dependency via metadata.relationships, e.g.:
-	//
-	//	metadata:
-	//	  relationships:
-	//	    - kind: KubernetesCertificate
-	//	      name: "{{ values.domain }}-cert"
-	//	      type: uses
-	//
-	// The plain `name` here is then the literal Secret name
-	// (KubernetesCertificate.status.outputs.secret_name). See the component's
-	// "Composing in Infra Charts" docs for the full pattern.
-	CertificateRefs []*kubernetes.KubernetesGatewayApiSecretObjectReference `protobuf:"bytes,2,rep,name=certificate_refs,json=certificateRefs,proto3" json:"certificate_refs,omitempty"`
-	// Implementation-specific TLS options (for example minimum TLS version or
-	// cipher suites). Keys should be domain-prefixed to avoid ambiguity.
-	//
-	// Upstream key/value: Gateway API AnnotationKey (1-253) / AnnotationValue
-	// (0-4096).
-	Options       map[string]string `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesGatewayListenerTlsConfig) Reset() {
-	*x = KubernetesGatewayListenerTlsConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGatewayListenerTlsConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGatewayListenerTlsConfig) ProtoMessage() {}
-
-func (x *KubernetesGatewayListenerTlsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGatewayListenerTlsConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesGatewayListenerTlsConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesGatewayListenerTlsConfig) GetMode() string {
-	if x != nil && x.Mode != nil {
-		return *x.Mode
-	}
-	return ""
-}
-
-func (x *KubernetesGatewayListenerTlsConfig) GetCertificateRefs() []*kubernetes.KubernetesGatewayApiSecretObjectReference {
-	if x != nil {
-		return x.CertificateRefs
-	}
-	return nil
-}
-
-func (x *KubernetesGatewayListenerTlsConfig) GetOptions() map[string]string {
-	if x != nil {
-		return x.Options
-	}
-	return nil
-}
-
-// KubernetesGatewayAllowedRoutes defines which Routes may attach to a listener.
-//
-// Upstream: AllowedRoutes in apis/v1/gateway_types.go
-type KubernetesGatewayAllowedRoutes struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Namespaces from which Routes may attach. Defaults to the Gateway's own
-	// namespace.
-	Namespaces *KubernetesGatewayRouteNamespaces `protobuf:"bytes,1,opt,name=namespaces,proto3" json:"namespaces,omitempty"`
-	// Route kinds allowed to bind to this listener. When empty, allowed kinds
-	// are inferred from the listener protocol.
-	Kinds         []*KubernetesGatewayRouteGroupKind `protobuf:"bytes,2,rep,name=kinds,proto3" json:"kinds,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesGatewayAllowedRoutes) Reset() {
-	*x = KubernetesGatewayAllowedRoutes{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGatewayAllowedRoutes) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGatewayAllowedRoutes) ProtoMessage() {}
-
-func (x *KubernetesGatewayAllowedRoutes) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGatewayAllowedRoutes.ProtoReflect.Descriptor instead.
-func (*KubernetesGatewayAllowedRoutes) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *KubernetesGatewayAllowedRoutes) GetNamespaces() *KubernetesGatewayRouteNamespaces {
-	if x != nil {
-		return x.Namespaces
-	}
-	return nil
-}
-
-func (x *KubernetesGatewayAllowedRoutes) GetKinds() []*KubernetesGatewayRouteGroupKind {
-	if x != nil {
-		return x.Kinds
-	}
-	return nil
-}
-
-// KubernetesGatewayRouteNamespaces indicates the namespaces Routes are
-// selected from.
-//
-// Upstream: RouteNamespaces in apis/v1/gateway_types.go
-type KubernetesGatewayRouteNamespaces struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Where Routes are selected from: "All" (any namespace), "Selector"
-	// (namespaces matching the selector), or "Same" (the Gateway's namespace).
-	//
-	// Upstream default: "Same". Closed enum: All | Selector | Same.
-	From *string `protobuf:"bytes,1,opt,name=from,proto3,oneof" json:"from,omitempty"`
-	// Namespace label selector. Required (and only honored) when `from` is
-	// "Selector".
-	Selector      *KubernetesGatewayLabelSelector `protobuf:"bytes,2,opt,name=selector,proto3" json:"selector,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesGatewayRouteNamespaces) Reset() {
-	*x = KubernetesGatewayRouteNamespaces{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGatewayRouteNamespaces) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGatewayRouteNamespaces) ProtoMessage() {}
-
-func (x *KubernetesGatewayRouteNamespaces) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGatewayRouteNamespaces.ProtoReflect.Descriptor instead.
-func (*KubernetesGatewayRouteNamespaces) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *KubernetesGatewayRouteNamespaces) GetFrom() string {
-	if x != nil && x.From != nil {
-		return *x.From
-	}
-	return ""
-}
-
-func (x *KubernetesGatewayRouteNamespaces) GetSelector() *KubernetesGatewayLabelSelector {
-	if x != nil {
-		return x.Selector
-	}
-	return nil
-}
-
-// KubernetesGatewayRouteGroupKind identifies a Route group and kind allowed on
-// a listener.
-//
-// Upstream: RouteGroupKind in apis/v1/gateway_types.go
-type KubernetesGatewayRouteGroupKind struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// API group of the Route. Empty string selects the core API group.
-	//
-	// Upstream default: "gateway.networking.k8s.io".
-	// Group pattern: empty or an RFC 1123 subdomain (max 253).
-	Group *string `protobuf:"bytes,1,opt,name=group,proto3,oneof" json:"group,omitempty"`
-	// Kind of the Route (for example "HTTPRoute", "GRPCRoute", "TLSRoute").
-	//
-	// Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
-	Kind          string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesGatewayRouteGroupKind) Reset() {
-	*x = KubernetesGatewayRouteGroupKind{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGatewayRouteGroupKind) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGatewayRouteGroupKind) ProtoMessage() {}
-
-func (x *KubernetesGatewayRouteGroupKind) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGatewayRouteGroupKind.ProtoReflect.Descriptor instead.
-func (*KubernetesGatewayRouteGroupKind) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *KubernetesGatewayRouteGroupKind) GetGroup() string {
-	if x != nil && x.Group != nil {
-		return *x.Group
-	}
-	return ""
-}
-
-func (x *KubernetesGatewayRouteGroupKind) GetKind() string {
-	if x != nil {
-		return x.Kind
-	}
-	return ""
-}
-
-// KubernetesGatewayLabelSelector is a Kubernetes label selector used to choose
-// namespaces (mirrors metav1.LabelSelector). Reused for both AllowedRoutes and
-// AllowedListeners namespace selection.
-type KubernetesGatewayLabelSelector struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Map of {key,value} pairs. A namespace matches if it carries all of these
-	// labels.
-	MatchLabels map[string]string `protobuf:"bytes,1,rep,name=match_labels,json=matchLabels,proto3" json:"match_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// List of label selector requirements, ANDed together with match_labels.
-	MatchExpressions []*KubernetesGatewayLabelSelectorRequirement `protobuf:"bytes,2,rep,name=match_expressions,json=matchExpressions,proto3" json:"match_expressions,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
-}
-
-func (x *KubernetesGatewayLabelSelector) Reset() {
-	*x = KubernetesGatewayLabelSelector{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGatewayLabelSelector) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGatewayLabelSelector) ProtoMessage() {}
-
-func (x *KubernetesGatewayLabelSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGatewayLabelSelector.ProtoReflect.Descriptor instead.
-func (*KubernetesGatewayLabelSelector) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *KubernetesGatewayLabelSelector) GetMatchLabels() map[string]string {
-	if x != nil {
-		return x.MatchLabels
-	}
-	return nil
-}
-
-func (x *KubernetesGatewayLabelSelector) GetMatchExpressions() []*KubernetesGatewayLabelSelectorRequirement {
-	if x != nil {
-		return x.MatchExpressions
-	}
-	return nil
-}
-
-// KubernetesGatewayLabelSelectorRequirement is a single label selector
-// requirement (mirrors metav1.LabelSelectorRequirement).
-type KubernetesGatewayLabelSelectorRequirement struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Label key the requirement applies to.
-	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// Relationship between the key and values: "In", "NotIn", "Exists", or
-	// "DoesNotExist". For "Exists"/"DoesNotExist", values must be empty.
-	Operator string `protobuf:"bytes,2,opt,name=operator,proto3" json:"operator,omitempty"`
-	// Values for the requirement. Must be non-empty for "In"/"NotIn" and empty
-	// for "Exists"/"DoesNotExist".
-	Values        []string `protobuf:"bytes,3,rep,name=values,proto3" json:"values,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesGatewayLabelSelectorRequirement) Reset() {
-	*x = KubernetesGatewayLabelSelectorRequirement{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGatewayLabelSelectorRequirement) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGatewayLabelSelectorRequirement) ProtoMessage() {}
-
-func (x *KubernetesGatewayLabelSelectorRequirement) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGatewayLabelSelectorRequirement.ProtoReflect.Descriptor instead.
-func (*KubernetesGatewayLabelSelectorRequirement) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *KubernetesGatewayLabelSelectorRequirement) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *KubernetesGatewayLabelSelectorRequirement) GetOperator() string {
-	if x != nil {
-		return x.Operator
-	}
-	return ""
-}
-
-func (x *KubernetesGatewayLabelSelectorRequirement) GetValues() []string {
-	if x != nil {
-		return x.Values
 	}
 	return nil
 }
@@ -686,7 +288,7 @@ type KubernetesGatewayAddress struct {
 
 func (x *KubernetesGatewayAddress) Reset() {
 	*x = KubernetesGatewayAddress{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -698,7 +300,7 @@ func (x *KubernetesGatewayAddress) String() string {
 func (*KubernetesGatewayAddress) ProtoMessage() {}
 
 func (x *KubernetesGatewayAddress) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -711,7 +313,7 @@ func (x *KubernetesGatewayAddress) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesGatewayAddress.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayAddress) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesGatewayAddress) GetType() string {
@@ -738,7 +340,11 @@ type KubernetesGatewayInfrastructure struct {
 	//
 	// Upstream key/value: Gateway API LabelKey (1-253) / LabelValue (0-63).
 	Labels map[string]string `protobuf:"bytes,1,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Annotations applied to created resources. Up to 8 entries.
+	// Annotations applied to created resources. Up to 16 entries. This is the
+	// Gateway's per-cloud injection surface: the controller propagates these
+	// annotations to the LoadBalancer Service (or equivalent) it creates, so
+	// cloud LB behavior (internal vs internet-facing, NLB attributes, static
+	// IPs) is selected exactly as it is on a Service of type LoadBalancer.
 	//
 	// Upstream key/value: Gateway API AnnotationKey (1-253) / AnnotationValue
 	// (0-4096).
@@ -752,7 +358,7 @@ type KubernetesGatewayInfrastructure struct {
 
 func (x *KubernetesGatewayInfrastructure) Reset() {
 	*x = KubernetesGatewayInfrastructure{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -764,7 +370,7 @@ func (x *KubernetesGatewayInfrastructure) String() string {
 func (*KubernetesGatewayInfrastructure) ProtoMessage() {}
 
 func (x *KubernetesGatewayInfrastructure) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -777,7 +383,7 @@ func (x *KubernetesGatewayInfrastructure) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesGatewayInfrastructure.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayInfrastructure) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *KubernetesGatewayInfrastructure) GetLabels() map[string]string {
@@ -809,8 +415,19 @@ func (x *KubernetesGatewayInfrastructure) GetParametersRef() *KubernetesGatewayL
 // ParametersReference).
 type KubernetesGatewayLocalParametersReference struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// API group of the referent.
-	Group string `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
+	// API group of the referent. Empty string infers the core API group
+	// (e.g. for ConfigMap parameters).
+	//
+	// Upstream requires the KEY to be present but allows the empty value --
+	// so this is a proto3 `optional` string with a presence `required` rule:
+	// it must be SET (and is therefore emitted to the rendered CR, whose CRD
+	// rejects a missing key) but may be empty. The `optional` is what keeps
+	// the projection faithful: protojson omits unset proto3 scalars, so a
+	// non-optional empty-string group would be dropped from the manifest and
+	// rejected by the API server.
+	//
+	// Group pattern: empty or an RFC 1123 subdomain (max 253).
+	Group *string `protobuf:"bytes,1,opt,name=group,proto3,oneof" json:"group,omitempty"`
 	// Kind of the referent.
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
 	// Name of the referent (1-253 chars).
@@ -821,7 +438,7 @@ type KubernetesGatewayLocalParametersReference struct {
 
 func (x *KubernetesGatewayLocalParametersReference) Reset() {
 	*x = KubernetesGatewayLocalParametersReference{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -833,7 +450,7 @@ func (x *KubernetesGatewayLocalParametersReference) String() string {
 func (*KubernetesGatewayLocalParametersReference) ProtoMessage() {}
 
 func (x *KubernetesGatewayLocalParametersReference) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[10]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -846,12 +463,12 @@ func (x *KubernetesGatewayLocalParametersReference) ProtoReflect() protoreflect.
 
 // Deprecated: Use KubernetesGatewayLocalParametersReference.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayLocalParametersReference) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{10}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *KubernetesGatewayLocalParametersReference) GetGroup() string {
-	if x != nil {
-		return x.Group
+	if x != nil && x.Group != nil {
+		return *x.Group
 	}
 	return ""
 }
@@ -884,7 +501,7 @@ type KubernetesGatewayAllowedListeners struct {
 
 func (x *KubernetesGatewayAllowedListeners) Reset() {
 	*x = KubernetesGatewayAllowedListeners{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -896,7 +513,7 @@ func (x *KubernetesGatewayAllowedListeners) String() string {
 func (*KubernetesGatewayAllowedListeners) ProtoMessage() {}
 
 func (x *KubernetesGatewayAllowedListeners) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -909,7 +526,7 @@ func (x *KubernetesGatewayAllowedListeners) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use KubernetesGatewayAllowedListeners.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayAllowedListeners) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{11}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *KubernetesGatewayAllowedListeners) GetNamespaces() *KubernetesGatewayListenerNamespaces {
@@ -931,14 +548,14 @@ type KubernetesGatewayListenerNamespaces struct {
 	From *string `protobuf:"bytes,1,opt,name=from,proto3,oneof" json:"from,omitempty"`
 	// Namespace label selector. Required (and only honored) when `from` is
 	// "Selector".
-	Selector      *KubernetesGatewayLabelSelector `protobuf:"bytes,2,opt,name=selector,proto3" json:"selector,omitempty"`
+	Selector      *kubernetes.KubernetesGatewayApiLabelSelector `protobuf:"bytes,2,opt,name=selector,proto3" json:"selector,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesGatewayListenerNamespaces) Reset() {
 	*x = KubernetesGatewayListenerNamespaces{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -950,7 +567,7 @@ func (x *KubernetesGatewayListenerNamespaces) String() string {
 func (*KubernetesGatewayListenerNamespaces) ProtoMessage() {}
 
 func (x *KubernetesGatewayListenerNamespaces) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -963,7 +580,7 @@ func (x *KubernetesGatewayListenerNamespaces) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use KubernetesGatewayListenerNamespaces.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayListenerNamespaces) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{12}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *KubernetesGatewayListenerNamespaces) GetFrom() string {
@@ -973,7 +590,7 @@ func (x *KubernetesGatewayListenerNamespaces) GetFrom() string {
 	return ""
 }
 
-func (x *KubernetesGatewayListenerNamespaces) GetSelector() *KubernetesGatewayLabelSelector {
+func (x *KubernetesGatewayListenerNamespaces) GetSelector() *kubernetes.KubernetesGatewayApiLabelSelector {
 	if x != nil {
 		return x.Selector
 	}
@@ -996,7 +613,7 @@ type KubernetesGatewayTlsConfig struct {
 
 func (x *KubernetesGatewayTlsConfig) Reset() {
 	*x = KubernetesGatewayTlsConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[13]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1008,7 +625,7 @@ func (x *KubernetesGatewayTlsConfig) String() string {
 func (*KubernetesGatewayTlsConfig) ProtoMessage() {}
 
 func (x *KubernetesGatewayTlsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[13]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1021,7 +638,7 @@ func (x *KubernetesGatewayTlsConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesGatewayTlsConfig.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayTlsConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{13}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *KubernetesGatewayTlsConfig) GetBackend() *KubernetesGatewayBackendTls {
@@ -1052,7 +669,7 @@ type KubernetesGatewayBackendTls struct {
 
 func (x *KubernetesGatewayBackendTls) Reset() {
 	*x = KubernetesGatewayBackendTls{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[14]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1064,7 +681,7 @@ func (x *KubernetesGatewayBackendTls) String() string {
 func (*KubernetesGatewayBackendTls) ProtoMessage() {}
 
 func (x *KubernetesGatewayBackendTls) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[14]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1077,7 +694,7 @@ func (x *KubernetesGatewayBackendTls) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesGatewayBackendTls.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayBackendTls) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{14}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *KubernetesGatewayBackendTls) GetClientCertificateRef() *kubernetes.KubernetesGatewayApiSecretObjectReference {
@@ -1105,7 +722,7 @@ type KubernetesGatewayFrontendTlsConfig struct {
 
 func (x *KubernetesGatewayFrontendTlsConfig) Reset() {
 	*x = KubernetesGatewayFrontendTlsConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[15]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1117,7 +734,7 @@ func (x *KubernetesGatewayFrontendTlsConfig) String() string {
 func (*KubernetesGatewayFrontendTlsConfig) ProtoMessage() {}
 
 func (x *KubernetesGatewayFrontendTlsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[15]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1130,7 +747,7 @@ func (x *KubernetesGatewayFrontendTlsConfig) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use KubernetesGatewayFrontendTlsConfig.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayFrontendTlsConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{15}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *KubernetesGatewayFrontendTlsConfig) GetDefault() *KubernetesGatewayFrontendTlsValidationConfig {
@@ -1163,7 +780,7 @@ type KubernetesGatewayTlsPortConfig struct {
 
 func (x *KubernetesGatewayTlsPortConfig) Reset() {
 	*x = KubernetesGatewayTlsPortConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[16]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1175,7 +792,7 @@ func (x *KubernetesGatewayTlsPortConfig) String() string {
 func (*KubernetesGatewayTlsPortConfig) ProtoMessage() {}
 
 func (x *KubernetesGatewayTlsPortConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[16]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1188,7 +805,7 @@ func (x *KubernetesGatewayTlsPortConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesGatewayTlsPortConfig.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayTlsPortConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{16}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *KubernetesGatewayTlsPortConfig) GetPort() int32 {
@@ -1220,7 +837,7 @@ type KubernetesGatewayFrontendTlsValidationConfig struct {
 
 func (x *KubernetesGatewayFrontendTlsValidationConfig) Reset() {
 	*x = KubernetesGatewayFrontendTlsValidationConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[17]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1232,7 +849,7 @@ func (x *KubernetesGatewayFrontendTlsValidationConfig) String() string {
 func (*KubernetesGatewayFrontendTlsValidationConfig) ProtoMessage() {}
 
 func (x *KubernetesGatewayFrontendTlsValidationConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[17]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1245,7 +862,7 @@ func (x *KubernetesGatewayFrontendTlsValidationConfig) ProtoReflect() protorefle
 
 // Deprecated: Use KubernetesGatewayFrontendTlsValidationConfig.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayFrontendTlsValidationConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{17}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *KubernetesGatewayFrontendTlsValidationConfig) GetValidation() *KubernetesGatewayFrontendTlsValidation {
@@ -1262,7 +879,8 @@ func (x *KubernetesGatewayFrontendTlsValidationConfig) GetValidation() *Kubernet
 type KubernetesGatewayFrontendTlsValidation struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// References to ConfigMaps holding PEM-encoded CA bundles used as trust
-	// anchors for client certificates. At least one, up to eight.
+	// anchors for client certificates. At least one, up to sixteen. Each
+	// reference's name defaults to a KubernetesConfigMap foreign key.
 	CaCertificateRefs []*kubernetes.KubernetesGatewayApiObjectReference `protobuf:"bytes,1,rep,name=ca_certificate_refs,json=caCertificateRefs,proto3" json:"ca_certificate_refs,omitempty"`
 	// How strictly client certificates are validated. "AllowValidOnly" (default)
 	// accepts only connections presenting a valid client certificate.
@@ -1277,7 +895,7 @@ type KubernetesGatewayFrontendTlsValidation struct {
 
 func (x *KubernetesGatewayFrontendTlsValidation) Reset() {
 	*x = KubernetesGatewayFrontendTlsValidation{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[18]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1289,7 +907,7 @@ func (x *KubernetesGatewayFrontendTlsValidation) String() string {
 func (*KubernetesGatewayFrontendTlsValidation) ProtoMessage() {}
 
 func (x *KubernetesGatewayFrontendTlsValidation) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[18]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1302,7 +920,7 @@ func (x *KubernetesGatewayFrontendTlsValidation) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use KubernetesGatewayFrontendTlsValidation.ProtoReflect.Descriptor instead.
 func (*KubernetesGatewayFrontendTlsValidation) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{18}
+	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *KubernetesGatewayFrontendTlsValidation) GetCaCertificateRefs() []*kubernetes.KubernetesGatewayApiObjectReference {
@@ -1325,8 +943,8 @@ const file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDe
 	"\n" +
 	"?dev/planton/provider/kubernetes/kubernetesgateway/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xa3\x0f\n" +
 	"\x15KubernetesGatewaySpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x92\x01\n" +
-	"\x12gateway_class_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x06\x92\xd4a!status.outputs.gateway_class_nameR\x10gatewayClassName\x12y\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12\x92\x01\n" +
+	"\x12gateway_class_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xc9\x06\x92\xd4a!status.outputs.gateway_class_nameR\x10gatewayClassName\x12y\n" +
 	"\tlisteners\x18\x04 \x03(\v2O.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerB\n" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10@R\tlisteners\x12v\n" +
 	"\taddresses\x18\x05 \x03(\v2N.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAddressB\b\xbaH\x05\x92\x01\x02\x10\x10R\taddresses\x12}\n" +
@@ -1336,54 +954,19 @@ const file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDe
 	"\x1dgateway.listener_names_unique\x124each listener name must be unique within the Gateway\x1aIthis.listeners.all(l1, this.listeners.exists_one(l2, l1.name == l2.name))\x1a\xd8\x02\n" +
 	".gateway.listener_port_protocol_hostname_unique\x12Leach listener must have a unique combination of port, protocol, and hostname\x1a\xd7\x01this.listeners.all(l1, this.listeners.exists_one(l2, l1.port == l2.port && l1.protocol == l2.protocol && (has(l1.hostname) && has(l2.hostname) ? l1.hostname == l2.hostname : !has(l1.hostname) && !has(l2.hostname))))\x1a\xb0\x02\n" +
 	"\x1bgateway.ip_addresses_unique\x12-each requested IPAddress value must be unique\x1a\xe1\x01this.addresses.all(a1, ((!has(a1.type) || a1.type == '' || a1.type == 'IPAddress') && a1.value != '') ? this.addresses.exists_one(a2, (!has(a2.type) || a2.type == '' || a2.type == 'IPAddress') && a2.value == a1.value) : true)\x1a\xf3\x01\n" +
-	"!gateway.hostname_addresses_unique\x124each requested Hostname address value must be unique\x1a\x97\x01this.addresses.all(a1, (a1.type == 'Hostname' && a1.value != '') ? this.addresses.exists_one(a2, a2.type == 'Hostname' && a2.value == a1.value) : true)\"\xca\v\n" +
+	"!gateway.hostname_addresses_unique\x124each requested Hostname address value must be unique\x1a\x97\x01this.addresses.all(a1, (a1.type == 'Hostname' && a1.value != '') ? this.addresses.exists_one(a2, a2.type == 'Hostname' && a2.value == a1.value) : true)\"\xa6\v\n" +
 	"\x19KubernetesGatewayListener\x12d\n" +
 	"\x04name\x18\x01 \x01(\tBP\xbaHM\xc8\x01\x01rH\x10\x01\x18\xfd\x012A^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\x04name\x12u\n" +
 	"\bhostname\x18\x02 \x01(\tBT\xbaHQrO\x10\x01\x18\xfd\x012H^(\\*\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\bhostname\x88\x01\x01\x12\"\n" +
 	"\x04port\x18\x03 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01R\x04port\x12\xa4\x01\n" +
-	"\bprotocol\x18\x04 \x01(\tB\x87\x01\xbaH\x83\x01\xc8\x01\x01r~\x10\x01\x18\xff\x012w^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$|[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\\/[A-Za-z0-9]+$R\bprotocol\x12j\n" +
-	"\x03tls\x18\x05 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfigR\x03tls\x12{\n" +
-	"\x0eallowed_routes\x18\x06 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutesR\rallowedRoutes:\x8e\x06\xbaH\x8a\x06\x1a\xa0\x01\n" +
+	"\bprotocol\x18\x04 \x01(\tB\x87\x01\xbaH\x83\x01\xc8\x01\x01r~\x10\x01\x18\xff\x012w^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$|[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\\/[A-Za-z0-9]+$R\bprotocol\x12X\n" +
+	"\x03tls\x18\x05 \x01(\v2F.dev.planton.provider.kubernetes.KubernetesGatewayApiListenerTlsConfigR\x03tls\x12i\n" +
+	"\x0eallowed_routes\x18\x06 \x01(\v2B.dev.planton.provider.kubernetes.KubernetesGatewayApiAllowedRoutesR\rallowedRoutes:\x8e\x06\xbaH\x8a\x06\x1a\xa0\x01\n" +
 	"%listener.tls_not_allowed_for_protocol\x126tls must not be set when protocol is HTTP, TCP, or UDP\x1a?this.protocol in ['HTTP', 'TCP', 'UDP'] ? !has(this.tls) : true\x1a\xef\x01\n" +
 	"&listener.https_requires_terminate_mode\x12Atls mode must be Terminate (or left unset) when protocol is HTTPS\x1a\x81\x01(this.protocol == 'HTTPS' && has(this.tls)) ? (!has(this.tls.mode) || this.tls.mode == '' || this.tls.mode == 'Terminate') : true\x1a\xb6\x01\n" +
 	"#listener.tls_protocol_requires_mode\x121tls and tls.mode must be set when protocol is TLS\x1a\\this.protocol == 'TLS' ? (has(this.tls) && has(this.tls.mode) && this.tls.mode != '') : true\x1a\xb9\x01\n" +
 	"*listener.hostname_not_allowed_for_protocol\x124hostname must not be set when protocol is TCP or UDP\x1aUthis.protocol in ['TCP', 'UDP'] ? (!has(this.hostname) || this.hostname == '') : trueB\v\n" +
-	"\t_hostname\"\xbe\a\n" +
-	"\"KubernetesGatewayListenerTlsConfig\x12\xa4\x01\n" +
-	"\x04mode\x18\x01 \x01(\tB\x8a\x01\xbaH\x86\x01\xba\x01\x82\x01\n" +
-	"\x16listener_tls.mode_enum\x124tls mode must be either 'Terminate' or 'Passthrough'\x1a2this == '' || this in ['Terminate', 'Passthrough']H\x00R\x04mode\x88\x01\x01\x12\x7f\n" +
-	"\x10certificate_refs\x18\x02 \x03(\v2J.dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReferenceB\b\xbaH\x05\x92\x01\x02\x10@R\x0fcertificateRefs\x12\x90\x02\n" +
-	"\aoptions\x18\x03 \x03(\v2e.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.OptionsEntryB\x8e\x01\xbaH\x8a\x01\x9a\x01\x86\x01\x10\x10\"{ry\x10\x01\x18\xfd\x012r^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]$*\x05r\x03\x18\x80 R\aoptions\x1a:\n" +
-	"\fOptionsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x97\x02\xbaH\x93\x02\x1a\x90\x02\n" +
-	"/listener_tls.terminate_requires_cert_or_options\x12Ucertificate_refs or options must be provided when tls mode is Terminate (the default)\x1a\x85\x01(!has(this.mode) || this.mode == '' || this.mode == 'Terminate') ? (size(this.certificate_refs) > 0 || size(this.options) > 0) : trueB\a\n" +
-	"\x05_mode\"\x8f\x02\n" +
-	"\x1eKubernetesGatewayAllowedRoutes\x12v\n" +
-	"\n" +
-	"namespaces\x18\x01 \x01(\v2V.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteNamespacesR\n" +
-	"namespaces\x12u\n" +
-	"\x05kinds\x18\x02 \x03(\v2U.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteGroupKindB\b\xbaH\x05\x92\x01\x02\x10\bR\x05kinds\"\xc3\x02\n" +
-	" KubernetesGatewayRouteNamespaces\x12\xa3\x01\n" +
-	"\x04from\x18\x01 \x01(\tB\x89\x01\xbaH\x85\x01\xba\x01\x81\x01\n" +
-	"\x1aroute_namespaces.from_enum\x120from must be one of 'All', 'Selector', or 'Same'\x1a1this == '' || this in ['All', 'Selector', 'Same']H\x00R\x04from\x88\x01\x01\x12p\n" +
-	"\bselector\x18\x02 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelectorR\bselectorB\a\n" +
-	"\x05_from\"\xdf\x01\n" +
-	"\x1fKubernetesGatewayRouteGroupKind\x12i\n" +
-	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12G\n" +
-	"\x04kind\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$R\x04kindB\b\n" +
-	"\x06_group\"\xfa\x02\n" +
-	"\x1eKubernetesGatewayLabelSelector\x12\x88\x01\n" +
-	"\fmatch_labels\x18\x01 \x03(\v2e.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.MatchLabelsEntryR\vmatchLabels\x12\x8c\x01\n" +
-	"\x11match_expressions\x18\x02 \x03(\v2_.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelectorRequirementR\x10matchExpressions\x1a>\n" +
-	"\x10MatchLabelsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9d\x02\n" +
-	")KubernetesGatewayLabelSelectorRequirement\x12\x18\n" +
-	"\x03key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\x12\xbd\x01\n" +
-	"\boperator\x18\x02 \x01(\tB\xa0\x01\xbaH\x9c\x01\xba\x01\x95\x01\n" +
-	"\x1clabel_selector.operator_enum\x12Boperator must be one of 'In', 'NotIn', 'Exists', or 'DoesNotExist'\x1a1this in ['In', 'NotIn', 'Exists', 'DoesNotExist']\xc8\x01\x01R\boperator\x12\x16\n" +
-	"\x06values\x18\x03 \x03(\tR\x06values\"\xf7\x03\n" +
+	"\t_hostname\"\xf7\x03\n" +
 	"\x18KubernetesGatewayAddress\x12\xac\x01\n" +
 	"\x04type\x18\x01 \x01(\tB\x92\x01\xbaH\x8e\x01r\x8b\x01\x10\x01\x18\xfd\x012\x83\x01^Hostname|IPAddress|NamedAddress|[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\\/[A-Za-z0-9\\/\\-._~%!$&'()*+,;=:]+$H\x00R\x04type\x88\x01\x01\x12\x1e\n" +
 	"\x05value\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xfd\x01R\x05value:\x82\x02\xbaH\xfe\x01\x1a\xfb\x01\n" +
@@ -1391,27 +974,28 @@ const file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDe
 	"\x05_type\"\xcd\x06\n" +
 	"\x1fKubernetesGatewayInfrastructure\x12\x89\x02\n" +
 	"\x06labels\x18\x01 \x03(\v2a.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.LabelsEntryB\x8d\x01\xbaH\x89\x01\x9a\x01\x85\x01\x10\b\"{ry\x10\x01\x18\xfd\x012r^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]$*\x04r\x02\x18?R\x06labels\x12\x99\x02\n" +
-	"\vannotations\x18\x02 \x03(\v2f.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.AnnotationsEntryB\x8e\x01\xbaH\x8a\x01\x9a\x01\x86\x01\x10\b\"{ry\x10\x01\x18\xfd\x012r^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]$*\x05r\x03\x18\x80 R\vannotations\x12\x86\x01\n" +
+	"\vannotations\x18\x02 \x03(\v2f.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.AnnotationsEntryB\x8e\x01\xbaH\x8a\x01\x9a\x01\x86\x01\x10\x10\"{ry\x10\x01\x18\xfd\x012r^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]$*\x05r\x03\x18\x80 R\vannotations\x12\x86\x01\n" +
 	"\x0eparameters_ref\x18\x03 \x01(\v2_.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLocalParametersReferenceR\rparametersRef\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
 	"\x10AnnotationsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x88\x01\n" +
-	")KubernetesGatewayLocalParametersReference\x12\x1c\n" +
-	"\x05group\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05group\x12\x1a\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe2\x01\n" +
+	")KubernetesGatewayLocalParametersReference\x12l\n" +
+	"\x05group\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12\x1a\n" +
 	"\x04kind\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04kind\x12!\n" +
 	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\"\x9e\x01\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04nameB\b\n" +
+	"\x06_group\"\x9e\x01\n" +
 	"!KubernetesGatewayAllowedListeners\x12y\n" +
 	"\n" +
 	"namespaces\x18\x01 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespacesR\n" +
-	"namespaces\"\xd9\x02\n" +
+	"namespaces\"\xc7\x02\n" +
 	"#KubernetesGatewayListenerNamespaces\x12\xb6\x01\n" +
 	"\x04from\x18\x01 \x01(\tB\x9c\x01\xbaH\x98\x01\xba\x01\x94\x01\n" +
-	"\x1dlistener_namespaces.from_enum\x128from must be one of 'All', 'Selector', 'Same', or 'None'\x1a9this == '' || this in ['All', 'Selector', 'Same', 'None']H\x00R\x04from\x88\x01\x01\x12p\n" +
-	"\bselector\x18\x02 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelectorR\bselectorB\a\n" +
+	"\x1dlistener_namespaces.from_enum\x128from must be one of 'All', 'Selector', 'Same', or 'None'\x1a9this == '' || this in ['All', 'Selector', 'Same', 'None']H\x00R\x04from\x88\x01\x01\x12^\n" +
+	"\bselector\x18\x02 \x01(\v2B.dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelectorR\bselectorB\a\n" +
 	"\x05_from\"\xff\x01\n" +
 	"\x1aKubernetesGatewayTlsConfig\x12k\n" +
 	"\abackend\x18\x01 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTlsR\abackend\x12t\n" +
@@ -1431,7 +1015,7 @@ const file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDe
 	"validation\"\x80\x03\n" +
 	"&KubernetesGatewayFrontendTlsValidation\x12\x80\x01\n" +
 	"\x13ca_certificate_refs\x18\x01 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReferenceB\n" +
-	"\xbaH\a\x92\x01\x04\b\x01\x10\bR\x11caCertificateRefs\x12\xc9\x01\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x10R\x11caCertificateRefs\x12\xc9\x01\n" +
 	"\x04mode\x18\x02 \x01(\tB\xaf\x01\xbaH\xab\x01\xba\x01\xa7\x01\n" +
 	"!frontend_tls_validation.mode_enum\x12?mode must be either 'AllowValidOnly' or 'AllowInsecureFallback'\x1aAthis == '' || this in ['AllowValidOnly', 'AllowInsecureFallback']H\x00R\x04mode\x88\x01\x01B\a\n" +
 	"\x05_modeB\xa8\x03\n" +
@@ -1449,70 +1033,58 @@ func file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDes
 	return file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_goTypes = []any{
 	(*KubernetesGatewaySpec)(nil),                        // 0: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec
 	(*KubernetesGatewayListener)(nil),                    // 1: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener
-	(*KubernetesGatewayListenerTlsConfig)(nil),           // 2: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig
-	(*KubernetesGatewayAllowedRoutes)(nil),               // 3: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutes
-	(*KubernetesGatewayRouteNamespaces)(nil),             // 4: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteNamespaces
-	(*KubernetesGatewayRouteGroupKind)(nil),              // 5: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteGroupKind
-	(*KubernetesGatewayLabelSelector)(nil),               // 6: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector
-	(*KubernetesGatewayLabelSelectorRequirement)(nil),    // 7: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelectorRequirement
-	(*KubernetesGatewayAddress)(nil),                     // 8: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAddress
-	(*KubernetesGatewayInfrastructure)(nil),              // 9: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure
-	(*KubernetesGatewayLocalParametersReference)(nil),    // 10: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLocalParametersReference
-	(*KubernetesGatewayAllowedListeners)(nil),            // 11: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedListeners
-	(*KubernetesGatewayListenerNamespaces)(nil),          // 12: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespaces
-	(*KubernetesGatewayTlsConfig)(nil),                   // 13: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig
-	(*KubernetesGatewayBackendTls)(nil),                  // 14: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTls
-	(*KubernetesGatewayFrontendTlsConfig)(nil),           // 15: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig
-	(*KubernetesGatewayTlsPortConfig)(nil),               // 16: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig
-	(*KubernetesGatewayFrontendTlsValidationConfig)(nil), // 17: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
-	(*KubernetesGatewayFrontendTlsValidation)(nil),       // 18: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation
-	nil,                         // 19: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.OptionsEntry
-	nil,                         // 20: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.MatchLabelsEntry
-	nil,                         // 21: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.LabelsEntry
-	nil,                         // 22: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.AnnotationsEntry
-	(*v1.StringValueOrRef)(nil), // 23: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesGatewayApiSecretObjectReference)(nil), // 24: dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
-	(*kubernetes.KubernetesGatewayApiObjectReference)(nil),       // 25: dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference
+	(*KubernetesGatewayAddress)(nil),                     // 2: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAddress
+	(*KubernetesGatewayInfrastructure)(nil),              // 3: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure
+	(*KubernetesGatewayLocalParametersReference)(nil),    // 4: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLocalParametersReference
+	(*KubernetesGatewayAllowedListeners)(nil),            // 5: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedListeners
+	(*KubernetesGatewayListenerNamespaces)(nil),          // 6: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespaces
+	(*KubernetesGatewayTlsConfig)(nil),                   // 7: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig
+	(*KubernetesGatewayBackendTls)(nil),                  // 8: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTls
+	(*KubernetesGatewayFrontendTlsConfig)(nil),           // 9: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig
+	(*KubernetesGatewayTlsPortConfig)(nil),               // 10: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig
+	(*KubernetesGatewayFrontendTlsValidationConfig)(nil), // 11: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
+	(*KubernetesGatewayFrontendTlsValidation)(nil),       // 12: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation
+	nil,                         // 13: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.LabelsEntry
+	nil,                         // 14: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.AnnotationsEntry
+	(*v1.StringValueOrRef)(nil), // 15: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesGatewayApiListenerTlsConfig)(nil),     // 16: dev.planton.provider.kubernetes.KubernetesGatewayApiListenerTlsConfig
+	(*kubernetes.KubernetesGatewayApiAllowedRoutes)(nil),         // 17: dev.planton.provider.kubernetes.KubernetesGatewayApiAllowedRoutes
+	(*kubernetes.KubernetesGatewayApiLabelSelector)(nil),         // 18: dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelector
+	(*kubernetes.KubernetesGatewayApiSecretObjectReference)(nil), // 19: dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
+	(*kubernetes.KubernetesGatewayApiObjectReference)(nil),       // 20: dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference
 }
 var file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_depIdxs = []int32{
-	23, // 0: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	23, // 1: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.gateway_class_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 0: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 1: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.gateway_class_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 2: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.listeners:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener
-	8,  // 3: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.addresses:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAddress
-	9,  // 4: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.infrastructure:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure
-	11, // 5: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.allowed_listeners:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedListeners
-	13, // 6: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig
-	2,  // 7: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig
-	3,  // 8: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener.allowed_routes:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutes
-	24, // 9: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.certificate_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
-	19, // 10: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.options:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerTlsConfig.OptionsEntry
-	4,  // 11: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutes.namespaces:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteNamespaces
-	5,  // 12: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedRoutes.kinds:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteGroupKind
-	6,  // 13: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayRouteNamespaces.selector:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector
-	20, // 14: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.match_labels:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.MatchLabelsEntry
-	7,  // 15: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector.match_expressions:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelectorRequirement
-	21, // 16: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.labels:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.LabelsEntry
-	22, // 17: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.AnnotationsEntry
-	10, // 18: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.parameters_ref:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLocalParametersReference
-	12, // 19: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedListeners.namespaces:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespaces
-	6,  // 20: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespaces.selector:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLabelSelector
-	14, // 21: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig.backend:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTls
-	15, // 22: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig.frontend:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig
-	24, // 23: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTls.client_certificate_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
-	17, // 24: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig.default:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
-	16, // 25: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig.per_port:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig
-	17, // 26: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
-	18, // 27: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig.validation:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation
-	25, // 28: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation.ca_certificate_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference
-	29, // [29:29] is the sub-list for method output_type
-	29, // [29:29] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	2,  // 3: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.addresses:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAddress
+	3,  // 4: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.infrastructure:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure
+	5,  // 5: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.allowed_listeners:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedListeners
+	7,  // 6: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig
+	16, // 7: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener.tls:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiListenerTlsConfig
+	17, // 8: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListener.allowed_routes:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiAllowedRoutes
+	13, // 9: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.labels:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.LabelsEntry
+	14, // 10: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.AnnotationsEntry
+	4,  // 11: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayInfrastructure.parameters_ref:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayLocalParametersReference
+	6,  // 12: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayAllowedListeners.namespaces:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespaces
+	18, // 13: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayListenerNamespaces.selector:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiLabelSelector
+	8,  // 14: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig.backend:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTls
+	9,  // 15: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsConfig.frontend:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig
+	19, // 16: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayBackendTls.client_certificate_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiSecretObjectReference
+	11, // 17: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig.default:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
+	10, // 18: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsConfig.per_port:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig
+	11, // 19: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayTlsPortConfig.tls:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig
+	12, // 20: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidationConfig.validation:type_name -> dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation
+	20, // 21: dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewayFrontendTlsValidation.ca_certificate_refs:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiObjectReference
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_init() }
@@ -1523,17 +1095,15 @@ func file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_init()
 	file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesgateway_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

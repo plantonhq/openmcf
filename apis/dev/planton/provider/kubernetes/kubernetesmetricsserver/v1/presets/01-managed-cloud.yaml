@@ -1,0 +1,8 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMetricsServer
+metadata:
+  name: metrics-server
+spec:
+  namespace:
+    value: kube-system
+  createNamespace: false

@@ -1,0 +1,213 @@
+apiVersion: iac.planton.dev/v1
+kind: ProviderImportCatalog
+metadata:
+  name: kubernetes
+spec:
+  # Import-ID formats per Kubernetes resource type, as documented by the
+  # upstream terraform-provider-kubernetes / pulumi-kubernetes providers. The
+  # FORMAT lives here (provider knowledge, shared by every component); which
+  # concrete value fills each {placeholder} lives in the owning component's
+  # import-map.yaml. Correctness is machine-proven by the E2E import
+  # round-trip (deploy a fixture, set state aside, re-import blind, plan must
+  # show zero diff) -- never by review alone.
+  #
+  # Kubernetes import IDs are uniform and simple: namespaced objects import
+  # as "<namespace>/<name>", cluster-scoped objects as "<name>". There is no
+  # scan-side correspondence here (cloud_control_type_name is an AWS-only
+  # concept); cluster discovery happens through the Kubernetes API itself.
+  resource_types:
+    # --- Core (namespace-scoped) --------------------------------------------
+    - terraform_type: kubernetes_config_map_v1
+      pulumi_type: kubernetes:core/v1:ConfigMap
+      id_format: "{config_map_namespace}/{config_map_name}"
+    - terraform_type: kubernetes_secret_v1
+      pulumi_type: kubernetes:core/v1:Secret
+      id_format: "{secret_namespace}/{secret_name}"
+      # Provider lifecycle knob (block until the token controller populates a
+      # service-account token Secret); configuration-only, never cluster-side.
+      config_only_attributes: [wait_for_service_account_token]
+    - terraform_type: kubernetes_service_account_v1
+      pulumi_type: kubernetes:core/v1:ServiceAccount
+      id_format: "{service_account_namespace}/{service_account_name}"
+    - terraform_type: kubernetes_resource_quota_v1
+      pulumi_type: kubernetes:core/v1:ResourceQuota
+      id_format: "{resource_quota_namespace}/{resource_quota_name}"
+    - terraform_type: kubernetes_limit_range_v1
+      pulumi_type: kubernetes:core/v1:LimitRange
+      id_format: "{limit_range_namespace}/{limit_range_name}"
+    - terraform_type: kubernetes_network_policy_v1
+      pulumi_type: kubernetes:networking.k8s.io/v1:NetworkPolicy
+      id_format: "{network_policy_namespace}/{network_policy_name}"
+    - terraform_type: kubernetes_ingress_v1
+      pulumi_type: kubernetes:networking.k8s.io/v1:Ingress
+      id_format: "{ingress_namespace}/{ingress_name}"
+      # Same provider-side lifecycle knob as kubernetes_service_v1: exists only
+      # in configuration, never in the cluster, so import can never carry it.
+      config_only_attributes: [wait_for_load_balancer]
+    - terraform_type: kubernetes_persistent_volume_claim_v1
+      pulumi_type: kubernetes:core/v1:PersistentVolumeClaim
+      id_format: "{pvc_namespace}/{pvc_name}"
+      # Provider lifecycle knob (block apply until the claim binds);
+      # configuration-only, never cluster-side -- and deliberately false in
+      # the module (WaitForFirstConsumer claims are correctly Pending).
+      config_only_attributes: [wait_until_bound]
+
+    # --- Core (cluster-scoped) ----------------------------------------------
+    - terraform_type: kubernetes_namespace_v1
+      pulumi_type: kubernetes:core/v1:Namespace
+      id_format: "{namespace_name}"
+    # Workload kinds also create their namespace through this type when
+    # create_namespace is set; the plain (non-_v1) resource shares the format.
+    - terraform_type: kubernetes_namespace
+      pulumi_type: kubernetes:core/v1:Namespace
+      id_format: "{namespace_name}"
+    - terraform_type: kubernetes_storage_class_v1
+      pulumi_type: kubernetes:storage.k8s.io/v1:StorageClass
+      id_format: "{storage_class_name}"
+    - terraform_type: kubernetes_priority_class_v1
+      pulumi_type: kubernetes:scheduling.k8s.io/v1:PriorityClass
+      id_format: "{priority_class_name}"
+
+    # --- Workloads (namespace-scoped) ----------------------------------------
+    # wait_for_rollout on the workload types is a Terraform-provider lifecycle
+    # knob (block apply until the rollout completes) that exists only in
+    # configuration -- the cluster never stores it, so import can never carry it.
+    - terraform_type: kubernetes_deployment_v1
+      pulumi_type: kubernetes:apps/v1:Deployment
+      id_format: "{deployment_namespace}/{deployment_name}"
+      config_only_attributes: [wait_for_rollout]
+    - terraform_type: kubernetes_stateful_set_v1
+      pulumi_type: kubernetes:apps/v1:StatefulSet
+      id_format: "{stateful_set_namespace}/{stateful_set_name}"
+      config_only_attributes: [wait_for_rollout]
+      # The provider's importer does not read spec.updateStrategy back into
+      # state (the cluster object carries it; the post-import plan re-adds the
+      # exact configured values as a server-side no-op). Declared as a dotted
+      # sub-path so the rest of the spec stays under the round-trip oracle.
+      write_normalized_attributes: ["spec.update_strategy"]
+    - terraform_type: kubernetes_daemon_set_v1
+      pulumi_type: kubernetes:apps/v1:DaemonSet
+      id_format: "{daemon_set_namespace}/{daemon_set_name}"
+      config_only_attributes: [wait_for_rollout]
+    - terraform_type: kubernetes_job_v1
+      pulumi_type: kubernetes:batch/v1:Job
+      id_format: "{job_namespace}/{job_name}"
+    - terraform_type: kubernetes_cron_job_v1
+      pulumi_type: kubernetes:batch/v1:CronJob
+      id_format: "{cron_job_namespace}/{cron_job_name}"
+
+    # --- Workload satellites --------------------------------------------------
+    - terraform_type: kubernetes_service_v1
+      pulumi_type: kubernetes:core/v1:Service
+      id_format: "{service_namespace}/{service_name}"
+      # wait_for_load_balancer is a Terraform-provider lifecycle knob (block
+      # apply until LB ingress appears) that exists only in configuration --
+      # the cluster never stores it, so import can never carry it.
+      config_only_attributes: [wait_for_load_balancer]
+    - terraform_type: kubernetes_horizontal_pod_autoscaler_v2
+      pulumi_type: kubernetes:autoscaling/v2:HorizontalPodAutoscaler
+      id_format: "{hpa_namespace}/{hpa_name}"
+    - terraform_type: kubernetes_pod_disruption_budget_v1
+      pulumi_type: kubernetes:policy/v1:PodDisruptionBudget
+      id_format: "{pdb_namespace}/{pdb_name}"
+
+    # --- Helm ------------------------------------------------------------------
+    - terraform_type: helm_release
+      pulumi_type: kubernetes:helm.sh/v3:Release
+      id_format: "{release_namespace}/{release_name}"
+      # Helm persists the release manifest and values in the release secret,
+      # but NOT how it was installed: the provider documents that on import
+      # the repository is left unset and every other provider-specific
+      # attribute is filled with its DEFAULT, so any configured non-default
+      # value re-appears in the first post-import plan as an in-place update
+      # (a server-side no-op — the release was installed from those same
+      # values). All such install-time attributes are config-only.
+      config_only_attributes:
+        - repository
+        - repository_username
+        - repository_password
+        - values
+        - set
+        - set_sensitive
+        - wait
+        - wait_for_jobs
+        - timeout
+        - atomic
+        - cleanup_on_fail
+        - create_namespace
+        - dependency_update
+        - disable_openapi_validation
+        - disable_webhooks
+        - force_update
+        - max_history
+        - replace
+        - reset_values
+        - reuse_values
+        - skip_crds
+        - take_ownership
+        - description
+        - lint
+
+    # --- Typed custom resources (kubectl_manifest) -----------------------------
+    # Every typed-CR module (cert-manager issuers/certificates, external-secrets
+    # stores/secrets, Gateway API kinds) applies through alekc/kubectl's
+    # kubectl_manifest, whose importer takes a COMPOSED ID:
+    # apiVersion//kind//name for cluster-scoped CRs, plus //namespace for
+    # namespaced ones. The "//" delimiter is the provider's own (an apiVersion
+    # can itself contain a slash), and the importer REJECTS a trailing "//" --
+    # which is why the namespace rides in an optional [bracketed] segment group
+    # that disappears wholesale when the CR is cluster-scoped. apiVersion and
+    # kind are constants of each module (a typed-CR module renders exactly one
+    # GVK), declared per component via the literal derivation.
+    - terraform_type: kubectl_manifest
+      pulumi_type: ""
+      id_format: "{api_version}//{kind}//{name}[//{namespace}]"
+      # The importer reconstructs yaml_body from the live object and resets
+      # every provider-side knob to its schema default -- none of these exist
+      # cluster-side, so a configured non-default value re-appears in the
+      # first post-import plan as an in-place update (a server-side no-op).
+      config_only_attributes:
+        - server_side_apply
+        - force_conflicts
+        - force_new
+        - apply_only
+        - wait
+        - wait_for
+        - wait_for_rollout
+        - validate_schema
+        - field_manager
+        - upgrade_api_version
+        - override_namespace
+        - sensitive_fields
+        - ignore_fields
+        - delete_cascade
+        - timeouts
+        - show_drift_values
+        - drift_engine
+        - mask_paths
+        # yaml_body itself is write-normalized rather than config-only: the
+        # importer stores the STRIPPED LIVE object (server defaults included,
+        # volatile metadata removed), so the first post-import plan re-asserts
+        # the module's rendered manifest -- a server-side no-op that
+        # converges on the second plan.
+      write_normalized_attributes:
+        - yaml_body
+        - yaml_body_parsed
+
+    # --- RBAC ----------------------------------------------------------------
+    - terraform_type: kubernetes_role_v1
+      pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:Role
+      id_format: "{role_namespace}/{role_name}"
+    - terraform_type: kubernetes_role_binding_v1
+      pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:RoleBinding
+      id_format: "{role_binding_namespace}/{role_binding_name}"
+    - terraform_type: kubernetes_cluster_role_v1
+      pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:ClusterRole
+      id_format: "{cluster_role_name}"
+    - terraform_type: kubernetes_cluster_role_binding_v1
+      pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:ClusterRoleBinding
+      id_format: "{cluster_role_binding_name}"
+    # --- Admission registration (cluster-scoped) ------------------------------
+    - terraform_type: kubernetes_validating_webhook_configuration_v1
+      pulumi_type: kubernetes:admissionregistration.k8s.io/v1:ValidatingWebhookConfiguration
+      id_format: "{validating_webhook_configuration_name}"

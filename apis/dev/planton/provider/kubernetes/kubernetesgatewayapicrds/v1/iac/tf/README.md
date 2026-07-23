@@ -4,7 +4,11 @@ This Terraform module installs Kubernetes Gateway API CRDs on any Kubernetes clu
 
 ## Overview
 
-The module fetches and applies the official Gateway API CRD manifests from the [kubernetes-sigs/gateway-api](https://github.com/kubernetes-sigs/gateway-api) releases to the target cluster.
+The module fetches the official Gateway API CRD manifests from the
+[kubernetes-sigs/gateway-api](https://github.com/kubernetes-sigs/gateway-api)
+releases (via the `http` data source) and applies each document through the
+`kubectl_manifest` resource (alekc/kubectl provider) with server-side apply,
+which handles the multi-document CRD bundle and large CRD schemas cleanly.
 
 ## Prerequisites
 
@@ -33,7 +37,7 @@ module "gateway_api_crds" {
   }
 
   spec = {
-    version = "v1.2.1"
+    version = "v1.6.1"
     install_channel = {
       channel = "standard"
     }
@@ -52,7 +56,7 @@ module "gateway_api_crds" {
   }
 
   spec = {
-    version = "v1.2.1"
+    version = "v1.6.1"
     install_channel = {
       channel = "experimental"
     }
@@ -91,7 +95,7 @@ module "gateway_api_crds" {
 
 | Field | Description | Default |
 |-------|-------------|---------|
-| version | Gateway API version | `"v1.2.1"` |
+| version | Gateway API version | `"v1.6.1"` |
 | install_channel.channel | `standard` or `experimental` | `"standard"` |
 
 ## Outputs
@@ -104,20 +108,23 @@ module "gateway_api_crds" {
 
 ## Installed CRDs
 
-### Standard Channel
+### Standard Channel (as of Gateway API v1.6)
 
 - `gatewayclasses.gateway.networking.k8s.io`
 - `gateways.gateway.networking.k8s.io`
+- `listenersets.gateway.networking.k8s.io`
 - `httproutes.gateway.networking.k8s.io`
 - `grpcroutes.gateway.networking.k8s.io`
 - `tlsroutes.gateway.networking.k8s.io`
+- `tcproutes.gateway.networking.k8s.io`
+- `udproutes.gateway.networking.k8s.io`
 - `referencegrants.gateway.networking.k8s.io`
+- `backendtlspolicies.gateway.networking.k8s.io`
 
 ### Experimental Channel (includes standard)
 
-- All standard CRDs, plus:
-- `tcproutes.gateway.networking.k8s.io`
-- `udproutes.gateway.networking.k8s.io`
+- All standard CRDs (with experimental fields), plus experimental resources
+  such as `xbackends`, `xbackendtrafficpolicies`, and `xmeshes`.
 
 ## Troubleshooting
 

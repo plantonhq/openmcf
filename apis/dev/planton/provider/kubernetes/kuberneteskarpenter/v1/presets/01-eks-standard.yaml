@@ -1,0 +1,27 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarpenter
+metadata:
+  name: karpenter
+spec:
+  namespace:
+    value: kube-system # upstream's recommended home since v1 — system-critical eviction umbrella
+  createNamespace: false # kube-system already exists
+  chartVersion: "1.14.0" # spec default — pin deliberately; upgrades re-run both releases
+  crds:
+    install: true # spec default — the companion karpenter-crd release keeps CRDs upgradable
+    # spec default — uninstalling does NOT cascade-delete every NodePool /
+    # EC2NodeClass / NodeClaim declaration in the cluster.
+    keepOnUninstall: true
+  cluster:
+    name: '<eks-cluster-name>'
+    # Endpoint and CA are discovered at startup via DescribeCluster — no
+    # need to declare them for an EKS control plane.
+    eksControlPlane: true
+  aws:
+    # IRSA: the role's trust policy must allow the cluster's OIDC provider
+    # and the "karpenter" service account. Replace the account id and role
+    # name with your controller role.
+    irsaRoleArn: arn:aws:iam::123456789012:role/karpenter-controller
+    # SQS queue receiving EC2 interruption events (spot interruptions,
+    # maintenance, rebalance) so Karpenter drains ahead of them.
+    interruptionQueue: karpenter-interruptions

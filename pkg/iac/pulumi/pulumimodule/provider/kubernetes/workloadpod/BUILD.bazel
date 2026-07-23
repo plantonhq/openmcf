@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "workloadpod",
+    srcs = [
+        "container.go",
+        "pod.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/workloadpod",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//apis/dev/planton/provider/kubernetes",
+        "//pkg/iac/pulumi/pulumimodule/provider/kubernetes/containerenv",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/core/v1:core",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/meta/v1:meta",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
+    ],
+)

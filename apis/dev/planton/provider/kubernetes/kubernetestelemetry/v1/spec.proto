@@ -12,7 +12,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 //
 // 100% fidelity with the upstream istio.io/api Telemetry
 // (telemetry/v1alpha1/telemetry.proto, served as telemetry.istio.io/v1), pinned to
-// the 1.26 line (tag 1.26.8). Upstream spec fields are flattened directly after the
+// the 1.30 line (tag 1.30.3). Upstream spec fields are flattened directly after the
 // Planton namespaced envelope (namespace); there is no nested
 // `telemetry` sub-message.
 //
@@ -128,6 +128,13 @@ message KubernetesTelemetryTracing {
   // channel); carried for full fidelity since the CRD accepts it. Faithful to the
   // upstream `google.protobuf.BoolValue` (optional scalar).
   optional bool use_request_id_for_trace_sampling = 7;
+
+  // When true, trace context headers (`traceparent`/`tracestate` for W3C,
+  // `X-B3-*` for Zipkin) are NOT propagated in forwarded requests — spans still
+  // report locally but downstream services start fresh traces. Defaults to false
+  // (context propagates). Faithful to the upstream `google.protobuf.BoolValue`
+  // (optional scalar).
+  optional bool disable_context_propagation = 8;
 }
 
 // KubernetesTelemetryTracingSelector narrows a tracing rule to a traffic direction.
@@ -149,17 +156,17 @@ message KubernetesTelemetryTracingSelector {
 }
 
 // KubernetesTelemetryCustomTag adds one custom tag to a trace span from exactly one
-// source. Istio models this as a `oneof { literal, environment, header }`; Planton
-// keeps each member as an optional sibling field with an "at most one" rule, 1:1 with
-// the CRD JSON (the upstream CRD itself models this as an OpenAPI `oneOf`, not a
-// discriminator). Faithful to the upstream Telemetry.Tracing.CustomTag message.
+// source. Istio models this as a `oneof { literal, environment, header, formatter }`;
+// Planton keeps each member as an optional sibling field with an "at most one" rule,
+// 1:1 with the CRD JSON (the upstream CRD itself models this as an OpenAPI `oneOf`,
+// not a discriminator). Faithful to the upstream Telemetry.Tracing.CustomTag message.
 message KubernetesTelemetryCustomTag {
   // At most one source may be set. Mirrors the upstream CRD oneOf over
-  // literal/environment/header.
+  // literal/environment/header/formatter.
   option (buf.validate.message).cel = {
     id: "telemetry_custom_tag.at_most_one_source"
-    message: "at most one of literal, environment, or header may be set"
-    expression: "(has(this.literal) ? 1 : 0) + (has(this.environment) ? 1 : 0) + (has(this.header) ? 1 : 0) <= 1"
+    message: "at most one of literal, environment, header, or formatter may be set"
+    expression: "(has(this.literal) ? 1 : 0) + (has(this.environment) ? 1 : 0) + (has(this.header) ? 1 : 0) + (has(this.formatter) ? 1 : 0) <= 1"
   };
 
   // Adds the same hard-coded value to each span.
@@ -170,6 +177,11 @@ message KubernetesTelemetryCustomTag {
 
   // Adds the value of a request header to each span.
   KubernetesTelemetryCustomTagRequestHeader header = 3;
+
+  // Adds a value computed by an access-log substitution formatter expression
+  // (e.g. `%PROTOCOL%`, `%REQ(:path)%` — the same command operators HTTP access
+  // logging uses), evaluated per request.
+  KubernetesTelemetryCustomTagFormatter formatter = 4;
 }
 
 // KubernetesTelemetryCustomTagLiteral supplies a custom tag from a literal value.
@@ -207,6 +219,18 @@ message KubernetesTelemetryCustomTagRequestHeader {
   string default_value = 2;
 }
 
+// KubernetesTelemetryCustomTagFormatter supplies a custom tag from an access-log
+// substitution formatter expression. Faithful to the upstream
+// Telemetry.Tracing.CustomTag Formatter member.
+message KubernetesTelemetryCustomTagFormatter {
+  // The formatter expression to evaluate (same command operators as HTTP access
+  // logging, e.g. `%PROTOCOL%`, `%REQ(:authority)%`). Required.
+  string value = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+}
+
 // KubernetesTelemetryProviderRef binds a telemetry rule to a named provider declared
 // in the mesh's MeshConfig extension providers. Faithful to the upstream
 // Telemetry.ProviderRef message; reused by tracing, metrics, and access logging.
@@ -231,8 +255,9 @@ message KubernetesTelemetryMetrics {
   repeated KubernetesTelemetryMetricsOverride overrides = 2;
 
   // The interval between TCP metrics reports. Defaults to `5s` upstream. Modeled as a
-  // duration string (DD-008); must be a valid duration of at least 1ms, mirroring the
-  // upstream CRD XValidation `duration(self) >= duration('1ms')`.
+  // duration string (the catalog's convention for every upstream Duration field);
+  // must be a valid duration of at least 1ms, mirroring the upstream CRD XValidation
+  // `duration(self) >= duration('1ms')`.
   optional string reporting_interval = 3 [(buf.validate.field).cel = {
     id: "telemetry_metrics.reporting_interval_min"
     message: "reporting_interval must be a valid duration of at least 1ms (e.g. \"5s\")"

@@ -6,6 +6,7 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	kubernetesprovider "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
@@ -15,6 +16,16 @@ func TestKubernetesIssuer(t *testing.T) {
 	ginkgo.RunSpecs(t, "KubernetesIssuer Suite")
 }
 
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+// The deep per-backend contract coverage (solver shapes, credential pairing,
+// vault auth) lives in the KubernetesClusterIssuer suite — the config message
+// is shared, so those rules hold identically here. This suite locks the
+// Issuer-specific surface: the namespace FK and one acceptance per backend.
 var _ = ginkgo.Describe("KubernetesIssuer Validation Tests", func() {
 	var input *KubernetesIssuer
 
@@ -22,110 +33,104 @@ var _ = ginkgo.Describe("KubernetesIssuer Validation Tests", func() {
 		input = &KubernetesIssuer{
 			ApiVersion: "kubernetes.planton.dev/v1",
 			Kind:       "KubernetesIssuer",
-			Metadata: &shared.CloudResourceMetadata{
-				Name: "test-issuer",
-			},
+			Metadata:   &shared.CloudResourceMetadata{Name: "test-issuer"},
 			Spec: &KubernetesIssuerSpec{
-				Namespace: &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-						Value: "cert-manager",
-					},
-				},
-				IssuerType: &KubernetesIssuerSpec_Ca{
-					Ca: &CaIssuerConfig{
-						CaSecretName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "root-ca-secret",
-							},
-						},
+				Namespace: literal("team-a"),
+				Config: &kubernetesprovider.CertManagerIssuerConfig{
+					Backend: &kubernetesprovider.CertManagerIssuerConfig_SelfSigned{
+						SelfSigned: &kubernetesprovider.CertManagerSelfSignedConfig{},
 					},
 				},
 			},
 		}
 	})
 
-	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("with CA issuer", func() {
-			ginkgo.It("should not return a validation error", func() {
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+	ginkgo.Describe("valid configurations", func() {
+		ginkgo.It("accepts a self-signed backend", func() {
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.Succeed())
 		})
 
-		ginkgo.Context("with SelfSigned issuer", func() {
-			ginkgo.It("should not return a validation error", func() {
-				input.Spec.IssuerType = &KubernetesIssuerSpec_SelfSigned{
-					SelfSigned: &SelfSignedIssuerConfig{},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-	})
-
-	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("missing issuer_type", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.IssuerType = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("accepts a CA backend (the internal-PKI pattern)", func() {
+			input.Spec.Config = &kubernetesprovider.CertManagerIssuerConfig{
+				Backend: &kubernetesprovider.CertManagerIssuerConfig_Ca{
+					Ca: &kubernetesprovider.CertManagerCaConfig{CaSecretName: literal("team-a-root-ca")},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.Succeed())
 		})
 
-		ginkgo.Context("missing namespace", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.Namespace = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("empty namespace value", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.Namespace = &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-						Value: "",
+		ginkgo.It("accepts an ACME backend with a solver", func() {
+			input.Spec.Config = &kubernetesprovider.CertManagerIssuerConfig{
+				Backend: &kubernetesprovider.CertManagerIssuerConfig_Acme{
+					Acme: &kubernetesprovider.CertManagerAcmeConfig{
+						Email: "team-a@example.com",
+						Solvers: []*kubernetesprovider.CertManagerAcmeSolver{{
+							Challenge: &kubernetesprovider.CertManagerAcmeSolver_Dns01{
+								Dns01: &kubernetesprovider.CertManagerAcmeDns01Solver{
+									Provider: &kubernetesprovider.CertManagerAcmeDns01Solver_Digitalocean{
+										Digitalocean: &kubernetesprovider.CertManagerDns01DigitalOcean{Token: "do-token"},
+									},
+								},
+							},
+						}},
 					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.Succeed())
 		})
 
-		ginkgo.Context("missing ca_secret_name for CA issuer", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.IssuerType = &KubernetesIssuerSpec_Ca{
-					Ca: &CaIssuerConfig{
-						CaSecretName: nil,
-					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("empty ca_secret_name value for CA issuer", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.IssuerType = &KubernetesIssuerSpec_Ca{
-					Ca: &CaIssuerConfig{
-						CaSecretName: &foreignkeyv1.StringValueOrRef{
-							LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-								Value: "",
+		ginkgo.It("accepts a Vault backend with AppRole auth", func() {
+			input.Spec.Config = &kubernetesprovider.CertManagerIssuerConfig{
+				Backend: &kubernetesprovider.CertManagerIssuerConfig_Vault{
+					Vault: &kubernetesprovider.CertManagerVaultConfig{
+						Server: "https://vault.example.com:8200",
+						Path:   "pki_int/sign/team-a",
+						Auth: &kubernetesprovider.CertManagerVaultConfig_AppRoleAuth{
+							AppRoleAuth: &kubernetesprovider.CertManagerVaultAppRoleAuth{
+								Path:     "approle",
+								RoleId:   "role-id",
+								SecretId: "secret-id",
 							},
 						},
 					},
-				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.Succeed())
+		})
+	})
+
+	ginkgo.Describe("required fields", func() {
+		ginkgo.It("rejects a missing namespace", func() {
+			input.Spec.Namespace = nil
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.Succeed())
 		})
 
-		ginkgo.Context("missing metadata", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Metadata = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("rejects a missing config", func() {
+			input.Spec.Config = nil
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.Succeed())
+		})
+
+		ginkgo.It("rejects a config with no backend selected", func() {
+			input.Spec.Config = &kubernetesprovider.CertManagerIssuerConfig{}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.Succeed())
+		})
+
+		ginkgo.It("rejects a Vault AppRole auth missing the secret id", func() {
+			input.Spec.Config = &kubernetesprovider.CertManagerIssuerConfig{
+				Backend: &kubernetesprovider.CertManagerIssuerConfig_Vault{
+					Vault: &kubernetesprovider.CertManagerVaultConfig{
+						Server: "https://vault.example.com:8200",
+						Path:   "pki_int/sign/team-a",
+						Auth: &kubernetesprovider.CertManagerVaultConfig_AppRoleAuth{
+							AppRoleAuth: &kubernetesprovider.CertManagerVaultAppRoleAuth{
+								Path:   "approle",
+								RoleId: "role-id",
+							},
+						},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.Succeed())
 		})
 	})
 })

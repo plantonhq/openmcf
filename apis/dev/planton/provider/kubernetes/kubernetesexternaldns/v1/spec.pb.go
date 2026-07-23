@@ -8,6 +8,7 @@ package kubernetesexternaldnsv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -24,28 +25,207 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesExternalDnsSpec defines configuration for ExternalDNS on any cluster.
+// *
+// **KubernetesExternalDnsSpec** installs ExternalDNS — the controller that
+// watches Kubernetes resources (Services, Ingresses, Gateway API routes, ...)
+// and publishes matching DNS records into a DNS provider — from the official
+// Helm chart (`external-dns` at https://kubernetes-sigs.github.io/external-dns/).
+//
+// Kubernetes is a dual provider: the cluster runs IN one environment while the
+// DNS zone often lives in ANOTHER (an EKS cluster publishing to Cloudflare, a
+// GKE cluster publishing to Route 53). This spec therefore separates the two
+// halves cleanly: `dns_provider` selects WHERE records are written, and
+// `workload_identity` (plus per-provider static credentials) selects HOW the
+// controller authenticates — any host/provider combination is expressible.
+//
+// One installation manages one DNS provider. Clusters that publish to several
+// providers (or with different TXT owner IDs) deploy MULTIPLE instances of
+// this component — the release is named after `metadata.name`, so instances
+// coexist naturally; give each its own `txt_owner_id` so their registries
+// never fight over record ownership.
+//
+// The typed fields cover the chart's meaningful configuration surface;
+// `helm_values` remains as the escape hatch for values beyond them (merged
+// last, Helm `-f` semantics, identical on both engines) — a safety valve,
+// never the primary interface.
 type KubernetesExternalDnsSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// ExternalDNS version such as "v0.19.0". Used to set the image tag.
-	ExternalDnsVersion *string `protobuf:"bytes,4,opt,name=external_dns_version,json=externalDnsVersion,proto3,oneof" json:"external_dns_version,omitempty"`
-	// Helm chart version to deploy. If not specified, uses the default version.
-	HelmChartVersion *string `protobuf:"bytes,5,opt,name=helm_chart_version,json=helmChartVersion,proto3,oneof" json:"helm_chart_version,omitempty"`
-	// provider-specific glue. Only one may be set.
+	// *
+	// Namespace to install ExternalDNS into ("external-dns" by convention).
+	// Accepts a literal namespace name or a reference to a KubernetesNamespace
+	// resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton governance
+	// labels) before installing and deleted with the resource. When false, the
+	// namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (chart releases are cut separately from the
+	// controller: chart 1.21.x ships controller v0.21.x — the chart's
+	// appVersion decides the image tag unless image_tag overrides it). Pin
+	// deliberately; upgrades re-run the release with the new chart. Pick
+	// versions from the chart repository's index (`helm search repo`): the
+	// served chart is the contract — the upstream source tree's Chart.yaml
+	// can claim a version at a tag that was never served.
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// The DNS provider records are written to. Exactly one must be set — one
+	// installation manages one provider (deploy multiple instances of this
+	// component for multi-provider clusters).
 	//
-	// Types that are valid to be assigned to ProviderConfig:
+	// Providers beyond these arms (Akamai, OVH, Scaleway, RFC2136, ...) are
+	// upstream's out-of-tree/webhook territory: run them through the `webhook`
+	// arm with the provider's webhook image, exactly as upstream prescribes.
 	//
-	//	*KubernetesExternalDnsSpec_Gke
-	//	*KubernetesExternalDnsSpec_Eks
-	//	*KubernetesExternalDnsSpec_Aks
+	// Types that are valid to be assigned to DnsProvider:
+	//
+	//	*KubernetesExternalDnsSpec_AwsRoute53
+	//	*KubernetesExternalDnsSpec_GoogleCloudDns
+	//	*KubernetesExternalDnsSpec_AzureDns
 	//	*KubernetesExternalDnsSpec_Cloudflare
-	ProviderConfig isKubernetesExternalDnsSpec_ProviderConfig `protobuf_oneof:"provider_config"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	//	*KubernetesExternalDnsSpec_Webhook
+	//	*KubernetesExternalDnsSpec_InMemory
+	DnsProvider isKubernetesExternalDnsSpec_DnsProvider `protobuf_oneof:"dns_provider"`
+	// *
+	// Binds the controller ServiceAccount to a cloud identity for KEYLESS
+	// provider authentication (Route 53 via EKS IRSA, Cloud DNS via GKE
+	// Workload Identity, Azure DNS via AKS Workload Identity). Provider arms
+	// whose static credentials are left empty authenticate through this
+	// identity (or the node's ambient identity). Not used by token-based
+	// providers (Cloudflare) or the webhook/in-memory arms.
+	WorkloadIdentity *kubernetes.KubernetesWorkloadIdentity `protobuf:"bytes,10,opt,name=workload_identity,json=workloadIdentity,proto3" json:"workload_identity,omitempty"`
+	// *
+	// Kubernetes resource types the controller watches for DNS names. Chart
+	// default: ["service", "ingress"]. Add Gateway API route sources
+	// ("gateway-httproute", ...) when routes carry the hostnames, or "crd" to
+	// manage records declaratively via DNSEndpoint objects.
+	Sources []string `protobuf:"bytes,11,rep,name=sources,proto3" json:"sources,omitempty"`
+	// *
+	// How aggressively cluster state is pushed to the DNS zone.
+	// "upsert-only" (default): create and update records, never delete —
+	// the safe default for zones shared with records managed elsewhere.
+	// "sync": full reconciliation including deletes of records this instance
+	// owns (per the TXT registry) — the right choice for dedicated zones.
+	// "create-only": create and never touch again.
+	Policy *string `protobuf:"bytes,12,opt,name=policy,proto3,oneof" json:"policy,omitempty"`
+	// *
+	// How record ownership is tracked, so multiple ExternalDNS instances (and
+	// humans) can share a zone without overwriting each other.
+	// "txt" (default): a TXT record per managed name carries the owner ID.
+	// "noop": no ownership tracking — the instance considers every record in
+	// the zone fair game; only for zones this instance exclusively owns.
+	// "dynamodb": ownership tracked in a DynamoDB table (AWS deployments that
+	// must keep zones free of TXT metadata).
+	// "aws-sd": AWS Cloud Map service discovery instead of Route 53 zones.
+	Registry *string `protobuf:"bytes,13,opt,name=registry,proto3,oneof" json:"registry,omitempty"`
+	// *
+	// Identifier this instance writes into the ownership registry (TXT or
+	// DynamoDB). Every instance sharing a zone MUST have a distinct owner ID —
+	// it is what stops one instance from deleting another's records under the
+	// "sync" policy. Upstream default: "default".
+	TxtOwnerId string `protobuf:"bytes,14,opt,name=txt_owner_id,json=txtOwnerId,proto3" json:"txt_owner_id,omitempty"`
+	// *
+	// Prefix for ownership TXT record names (e.g. "edns-"), keeping them
+	// visually grouped and avoiding CNAME collisions (a TXT record cannot
+	// coexist with a CNAME of the same name — prefixing sidesteps that).
+	// May contain the "%{record_type}" template. Mutually exclusive with
+	// txt_suffix.
+	TxtPrefix string `protobuf:"bytes,15,opt,name=txt_prefix,json=txtPrefix,proto3" json:"txt_prefix,omitempty"`
+	// *
+	// Suffix appended to the host portion of ownership TXT record names.
+	// May contain the "%{record_type}" template. Mutually exclusive with
+	// txt_prefix.
+	TxtSuffix string `protobuf:"bytes,16,opt,name=txt_suffix,json=txtSuffix,proto3" json:"txt_suffix,omitempty"`
+	// *
+	// DynamoDB table name for the "dynamodb" registry. Upstream default:
+	// "external-dns". Only meaningful when registry is "dynamodb".
+	DynamodbTable string `protobuf:"bytes,17,opt,name=dynamodb_table,json=dynamodbTable,proto3" json:"dynamodb_table,omitempty"`
+	// *
+	// AWS region of the DynamoDB registry table. Only meaningful when registry
+	// is "dynamodb".
+	DynamodbRegion string `protobuf:"bytes,18,opt,name=dynamodb_region,json=dynamodbRegion,proto3" json:"dynamodb_region,omitempty"`
+	// *
+	// Restrict management to zones/records whose domain ends with one of these
+	// suffixes (e.g. "example.com"). Empty = every zone the provider
+	// credentials can see. The first guardrail against touching unrelated
+	// zones in a shared account.
+	DomainFilters []string `protobuf:"bytes,19,rep,name=domain_filters,json=domainFilters,proto3" json:"domain_filters,omitempty"`
+	// *
+	// Domains to explicitly exclude, carving exceptions out of domain_filters
+	// (e.g. filter "example.com" but exclude "internal.example.com").
+	ExcludeDomains []string `protobuf:"bytes,20,rep,name=exclude_domains,json=excludeDomains,proto3" json:"exclude_domains,omitempty"`
+	// *
+	// Only manage resources whose annotations match this selector (e.g.
+	// "external-dns.alpha.kubernetes.io/include=true"). Empty = no annotation
+	// gating. Label-selector syntax.
+	AnnotationFilter string `protobuf:"bytes,21,opt,name=annotation_filter,json=annotationFilter,proto3" json:"annotation_filter,omitempty"`
+	// *
+	// Only manage resources matching this label selector (more efficient than
+	// annotation_filter — filtering happens API-side). Empty = no label gating.
+	LabelFilter string `protobuf:"bytes,22,opt,name=label_filter,json=labelFilter,proto3" json:"label_filter,omitempty"`
+	// *
+	// DNS record types the controller manages. Upstream default: A, AAAA,
+	// CNAME. Extend deliberately (e.g. add "NS") — every listed type is
+	// subject to the sync policy including deletes.
+	ManagedRecordTypes []string `protobuf:"bytes,23,rep,name=managed_record_types,json=managedRecordTypes,proto3" json:"managed_record_types,omitempty"`
+	// *
+	// Reconciliation interval (Go duration, e.g. "1m", "5m"). Chart default:
+	// "1m". Raise it for providers with tight API rate limits.
+	Interval *string `protobuf:"bytes,24,opt,name=interval,proto3,oneof" json:"interval,omitempty"`
+	// *
+	// When true, a source create/update/delete triggers reconciliation
+	// immediately instead of waiting for the next interval — snappier record
+	// propagation at the cost of more provider API calls.
+	TriggerLoopOnEvent bool `protobuf:"varint,25,opt,name=trigger_loop_on_event,json=triggerLoopOnEvent,proto3" json:"trigger_loop_on_event,omitempty"`
+	// *
+	// When true, the controller runs namespace-scoped: it watches only its own
+	// namespace and gets a Role instead of a ClusterRole. For multi-tenant
+	// clusters where each team runs its own instance.
+	Namespaced bool `protobuf:"varint,26,opt,name=namespaced,proto3" json:"namespaced,omitempty"`
+	// *
+	// Log verbosity. Chart default: "info".
+	LogLevel *string `protobuf:"bytes,27,opt,name=log_level,json=logLevel,proto3,oneof" json:"log_level,omitempty"`
+	// *
+	// Log output format. Chart default: "text"; "json" for log pipelines.
+	LogFormat *string `protobuf:"bytes,28,opt,name=log_format,json=logFormat,proto3,oneof" json:"log_format,omitempty"`
+	// *
+	// Controller container CPU/memory requests and limits. Empty = chart
+	// defaults (no explicit resources).
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,29,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Node selector for the controller pod. Empty = chart default.
+	NodeSelector map[string]string `protobuf:"bytes,30,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for the controller pod.
+	Tolerations []*kubernetes.WorkloadToleration `protobuf:"bytes,31,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	// *
+	// PriorityClass for the controller pod (e.g. "system-cluster-critical" on
+	// clusters where DNS publication is infrastructure-critical).
+	PriorityClassName string `protobuf:"bytes,32,opt,name=priority_class_name,json=priorityClassName,proto3" json:"priority_class_name,omitempty"`
+	// *
+	// Prometheus metrics exposure. The metrics port (7979) is always served;
+	// the ServiceMonitor is opt-in and requires the Prometheus operator CRDs
+	// on the cluster.
+	Prometheus *KubernetesExternalDnsPrometheus `protobuf:"bytes,33,opt,name=prometheus,proto3" json:"prometheus,omitempty"`
+	// *
+	// Full image repository override (registry + path) for the controller
+	// image — the air-gapped/mirror knob. Empty = the chart default
+	// (registry.k8s.io/external-dns/external-dns).
+	ImageRepository string `protobuf:"bytes,34,opt,name=image_repository,json=imageRepository,proto3" json:"image_repository,omitempty"`
+	// *
+	// Controller image tag override. Empty = the chart's appVersion (the
+	// controller release the pinned chart was cut for) — override only to hold
+	// the controller back or roll it forward independently of the chart.
+	ImageTag string `protobuf:"bytes,35,opt,name=image_tag,json=imageTag,proto3" json:"image_tag,omitempty"`
+	// *
+	// Escape hatch: additional chart values as a YAML document, merged LAST
+	// over everything the typed fields render (Helm `-f` semantics, identical
+	// on both engines). For the chart surface beyond the typed fields — never
+	// the substitute for them. Do not put secrets here.
+	HelmValues    string `protobuf:"bytes,36,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesExternalDnsSpec) Reset() {
@@ -92,225 +272,602 @@ func (x *KubernetesExternalDnsSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesExternalDnsSpec) GetExternalDnsVersion() string {
-	if x != nil && x.ExternalDnsVersion != nil {
-		return *x.ExternalDnsVersion
+func (x *KubernetesExternalDnsSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
 	}
 	return ""
 }
 
-func (x *KubernetesExternalDnsSpec) GetHelmChartVersion() string {
-	if x != nil && x.HelmChartVersion != nil {
-		return *x.HelmChartVersion
-	}
-	return ""
-}
-
-func (x *KubernetesExternalDnsSpec) GetProviderConfig() isKubernetesExternalDnsSpec_ProviderConfig {
+func (x *KubernetesExternalDnsSpec) GetDnsProvider() isKubernetesExternalDnsSpec_DnsProvider {
 	if x != nil {
-		return x.ProviderConfig
+		return x.DnsProvider
 	}
 	return nil
 }
 
-func (x *KubernetesExternalDnsSpec) GetGke() *KubernetesExternalDnsGkeConfig {
+func (x *KubernetesExternalDnsSpec) GetAwsRoute53() *KubernetesExternalDnsAwsRoute53 {
 	if x != nil {
-		if x, ok := x.ProviderConfig.(*KubernetesExternalDnsSpec_Gke); ok {
-			return x.Gke
+		if x, ok := x.DnsProvider.(*KubernetesExternalDnsSpec_AwsRoute53); ok {
+			return x.AwsRoute53
 		}
 	}
 	return nil
 }
 
-func (x *KubernetesExternalDnsSpec) GetEks() *KubernetesExternalDnsEksConfig {
+func (x *KubernetesExternalDnsSpec) GetGoogleCloudDns() *KubernetesExternalDnsGoogleCloudDns {
 	if x != nil {
-		if x, ok := x.ProviderConfig.(*KubernetesExternalDnsSpec_Eks); ok {
-			return x.Eks
+		if x, ok := x.DnsProvider.(*KubernetesExternalDnsSpec_GoogleCloudDns); ok {
+			return x.GoogleCloudDns
 		}
 	}
 	return nil
 }
 
-func (x *KubernetesExternalDnsSpec) GetAks() *KubernetesExternalDnsAksConfig {
+func (x *KubernetesExternalDnsSpec) GetAzureDns() *KubernetesExternalDnsAzureDns {
 	if x != nil {
-		if x, ok := x.ProviderConfig.(*KubernetesExternalDnsSpec_Aks); ok {
-			return x.Aks
+		if x, ok := x.DnsProvider.(*KubernetesExternalDnsSpec_AzureDns); ok {
+			return x.AzureDns
 		}
 	}
 	return nil
 }
 
-func (x *KubernetesExternalDnsSpec) GetCloudflare() *KubernetesExternalDnsCloudflareConfig {
+func (x *KubernetesExternalDnsSpec) GetCloudflare() *KubernetesExternalDnsCloudflare {
 	if x != nil {
-		if x, ok := x.ProviderConfig.(*KubernetesExternalDnsSpec_Cloudflare); ok {
+		if x, ok := x.DnsProvider.(*KubernetesExternalDnsSpec_Cloudflare); ok {
 			return x.Cloudflare
 		}
 	}
 	return nil
 }
 
-type isKubernetesExternalDnsSpec_ProviderConfig interface {
-	isKubernetesExternalDnsSpec_ProviderConfig()
-}
-
-type KubernetesExternalDnsSpec_Gke struct {
-	Gke *KubernetesExternalDnsGkeConfig `protobuf:"bytes,200,opt,name=gke,proto3,oneof"`
-}
-
-type KubernetesExternalDnsSpec_Eks struct {
-	Eks *KubernetesExternalDnsEksConfig `protobuf:"bytes,201,opt,name=eks,proto3,oneof"`
-}
-
-type KubernetesExternalDnsSpec_Aks struct {
-	Aks *KubernetesExternalDnsAksConfig `protobuf:"bytes,202,opt,name=aks,proto3,oneof"`
-}
-
-type KubernetesExternalDnsSpec_Cloudflare struct {
-	Cloudflare *KubernetesExternalDnsCloudflareConfig `protobuf:"bytes,203,opt,name=cloudflare,proto3,oneof"`
-}
-
-func (*KubernetesExternalDnsSpec_Gke) isKubernetesExternalDnsSpec_ProviderConfig() {}
-
-func (*KubernetesExternalDnsSpec_Eks) isKubernetesExternalDnsSpec_ProviderConfig() {}
-
-func (*KubernetesExternalDnsSpec_Aks) isKubernetesExternalDnsSpec_ProviderConfig() {}
-
-func (*KubernetesExternalDnsSpec_Cloudflare) isKubernetesExternalDnsSpec_ProviderConfig() {}
-
-// KubernetesExternalDnsGkeConfig defines configuration for ExternalDNS on GKE with Google Cloud DNS.
-type KubernetesExternalDnsGkeConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The GCP project that hosts the DNS zone and the GKE cluster.
-	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// The GCP DNS zone ID to use for ExternalDNS.
-	DnsZoneId     *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=dns_zone_id,json=dnsZoneId,proto3" json:"dns_zone_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesExternalDnsGkeConfig) Reset() {
-	*x = KubernetesExternalDnsGkeConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesExternalDnsGkeConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesExternalDnsGkeConfig) ProtoMessage() {}
-
-func (x *KubernetesExternalDnsGkeConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[1]
+func (x *KubernetesExternalDnsSpec) GetWebhook() *KubernetesExternalDnsWebhook {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
+		if x, ok := x.DnsProvider.(*KubernetesExternalDnsSpec_Webhook); ok {
+			return x.Webhook
 		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesExternalDnsGkeConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesExternalDnsGkeConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *KubernetesExternalDnsGkeConfig) GetProjectId() *v1.StringValueOrRef {
-	if x != nil {
-		return x.ProjectId
 	}
 	return nil
 }
 
-func (x *KubernetesExternalDnsGkeConfig) GetDnsZoneId() *v1.StringValueOrRef {
+func (x *KubernetesExternalDnsSpec) GetInMemory() *KubernetesExternalDnsInMemory {
 	if x != nil {
-		return x.DnsZoneId
-	}
-	return nil
-}
-
-// KubernetesExternalDnsEksConfig defines configuration for ExternalDNS on EKS with AWS Route53 .
-type KubernetesExternalDnsEksConfig struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Route53ZoneId *v1.StringValueOrRef   `protobuf:"bytes,1,opt,name=route53_zone_id,json=route53ZoneId,proto3" json:"route53_zone_id,omitempty"`
-	// Optional existing IAM role ARN for IRSA; auto-created if blank.
-	IrsaRoleArnOverride string `protobuf:"bytes,2,opt,name=irsa_role_arn_override,json=irsaRoleArnOverride,proto3" json:"irsa_role_arn_override,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
-}
-
-func (x *KubernetesExternalDnsEksConfig) Reset() {
-	*x = KubernetesExternalDnsEksConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesExternalDnsEksConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesExternalDnsEksConfig) ProtoMessage() {}
-
-func (x *KubernetesExternalDnsEksConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
+		if x, ok := x.DnsProvider.(*KubernetesExternalDnsSpec_InMemory); ok {
+			return x.InMemory
 		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesExternalDnsEksConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesExternalDnsEksConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesExternalDnsEksConfig) GetRoute53ZoneId() *v1.StringValueOrRef {
-	if x != nil {
-		return x.Route53ZoneId
 	}
 	return nil
 }
 
-func (x *KubernetesExternalDnsEksConfig) GetIrsaRoleArnOverride() string {
+func (x *KubernetesExternalDnsSpec) GetWorkloadIdentity() *kubernetes.KubernetesWorkloadIdentity {
 	if x != nil {
-		return x.IrsaRoleArnOverride
+		return x.WorkloadIdentity
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsSpec) GetSources() []string {
+	if x != nil {
+		return x.Sources
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsSpec) GetPolicy() string {
+	if x != nil && x.Policy != nil {
+		return *x.Policy
 	}
 	return ""
 }
 
-// KubernetesExternalDnsAksConfig defines configuration for ExternalDNS on AKS with Azure DNS.
-type KubernetesExternalDnsAksConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure DNS zone ID to use for ExternalDNS.
-	DnsZoneId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=dns_zone_id,json=dnsZoneId,proto3" json:"dns_zone_id,omitempty"`
-	// The Azure Managed Identity client ID to use for ExternalDNS.
-	ManagedIdentityClientId string `protobuf:"bytes,2,opt,name=managed_identity_client_id,json=managedIdentityClientId,proto3" json:"managed_identity_client_id,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+func (x *KubernetesExternalDnsSpec) GetRegistry() string {
+	if x != nil && x.Registry != nil {
+		return *x.Registry
+	}
+	return ""
 }
 
-func (x *KubernetesExternalDnsAksConfig) Reset() {
-	*x = KubernetesExternalDnsAksConfig{}
+func (x *KubernetesExternalDnsSpec) GetTxtOwnerId() string {
+	if x != nil {
+		return x.TxtOwnerId
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetTxtPrefix() string {
+	if x != nil {
+		return x.TxtPrefix
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetTxtSuffix() string {
+	if x != nil {
+		return x.TxtSuffix
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetDynamodbTable() string {
+	if x != nil {
+		return x.DynamodbTable
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetDynamodbRegion() string {
+	if x != nil {
+		return x.DynamodbRegion
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetDomainFilters() []string {
+	if x != nil {
+		return x.DomainFilters
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsSpec) GetExcludeDomains() []string {
+	if x != nil {
+		return x.ExcludeDomains
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsSpec) GetAnnotationFilter() string {
+	if x != nil {
+		return x.AnnotationFilter
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetLabelFilter() string {
+	if x != nil {
+		return x.LabelFilter
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetManagedRecordTypes() []string {
+	if x != nil {
+		return x.ManagedRecordTypes
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsSpec) GetInterval() string {
+	if x != nil && x.Interval != nil {
+		return *x.Interval
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetTriggerLoopOnEvent() bool {
+	if x != nil {
+		return x.TriggerLoopOnEvent
+	}
+	return false
+}
+
+func (x *KubernetesExternalDnsSpec) GetNamespaced() bool {
+	if x != nil {
+		return x.Namespaced
+	}
+	return false
+}
+
+func (x *KubernetesExternalDnsSpec) GetLogLevel() string {
+	if x != nil && x.LogLevel != nil {
+		return *x.LogLevel
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetLogFormat() string {
+	if x != nil && x.LogFormat != nil {
+		return *x.LogFormat
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsSpec) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsSpec) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsSpec) GetPriorityClassName() string {
+	if x != nil {
+		return x.PriorityClassName
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetPrometheus() *KubernetesExternalDnsPrometheus {
+	if x != nil {
+		return x.Prometheus
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsSpec) GetImageRepository() string {
+	if x != nil {
+		return x.ImageRepository
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetImageTag() string {
+	if x != nil {
+		return x.ImageTag
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsSpec) GetHelmValues() string {
+	if x != nil {
+		return x.HelmValues
+	}
+	return ""
+}
+
+type isKubernetesExternalDnsSpec_DnsProvider interface {
+	isKubernetesExternalDnsSpec_DnsProvider()
+}
+
+type KubernetesExternalDnsSpec_AwsRoute53 struct {
+	// *
+	// AWS Route 53. Keyless on EKS via `workload_identity.eks` (IRSA) —
+	// the production posture; static keys are the fallback for non-EKS hosts
+	// without ambient AWS credentials.
+	AwsRoute53 *KubernetesExternalDnsAwsRoute53 `protobuf:"bytes,4,opt,name=aws_route53,json=awsRoute53,proto3,oneof"`
+}
+
+type KubernetesExternalDnsSpec_GoogleCloudDns struct {
+	// *
+	// Google Cloud DNS. Keyless on GKE via `workload_identity.gke`
+	// (Workload Identity); a service-account key is the fallback for
+	// non-GKE hosts.
+	GoogleCloudDns *KubernetesExternalDnsGoogleCloudDns `protobuf:"bytes,5,opt,name=google_cloud_dns,json=googleCloudDns,proto3,oneof"`
+}
+
+type KubernetesExternalDnsSpec_AzureDns struct {
+	// *
+	// Azure DNS (public or private zones). Keyless on AKS via
+	// `workload_identity.aks` (Azure AD Workload Identity) or a node
+	// managed identity; a service-principal secret is the fallback.
+	AzureDns *KubernetesExternalDnsAzureDns `protobuf:"bytes,6,opt,name=azure_dns,json=azureDns,proto3,oneof"`
+}
+
+type KubernetesExternalDnsSpec_Cloudflare struct {
+	// *
+	// Cloudflare DNS. Always token-authenticated (Cloudflare has no
+	// workload-identity federation with Kubernetes clusters) — the canonical
+	// cross-cloud arm: any cluster, records in Cloudflare.
+	Cloudflare *KubernetesExternalDnsCloudflare `protobuf:"bytes,7,opt,name=cloudflare,proto3,oneof"`
+}
+
+type KubernetesExternalDnsSpec_Webhook struct {
+	// *
+	// Webhook provider — upstream's extension architecture for every DNS
+	// provider that is not in-tree. Runs the provider's webhook implementation
+	// as a sidecar container next to the controller.
+	Webhook *KubernetesExternalDnsWebhook `protobuf:"bytes,8,opt,name=webhook,proto3,oneof"`
+}
+
+type KubernetesExternalDnsSpec_InMemory struct {
+	// *
+	// In-memory provider — upstream's built-in sandbox. Records live only in
+	// the controller pod's memory (lost on restart, visible in logs/metrics).
+	// For evaluating source/filter/policy behavior without touching any real
+	// DNS zone; never for production.
+	InMemory *KubernetesExternalDnsInMemory `protobuf:"bytes,9,opt,name=in_memory,json=inMemory,proto3,oneof"`
+}
+
+func (*KubernetesExternalDnsSpec_AwsRoute53) isKubernetesExternalDnsSpec_DnsProvider() {}
+
+func (*KubernetesExternalDnsSpec_GoogleCloudDns) isKubernetesExternalDnsSpec_DnsProvider() {}
+
+func (*KubernetesExternalDnsSpec_AzureDns) isKubernetesExternalDnsSpec_DnsProvider() {}
+
+func (*KubernetesExternalDnsSpec_Cloudflare) isKubernetesExternalDnsSpec_DnsProvider() {}
+
+func (*KubernetesExternalDnsSpec_Webhook) isKubernetesExternalDnsSpec_DnsProvider() {}
+
+func (*KubernetesExternalDnsSpec_InMemory) isKubernetesExternalDnsSpec_DnsProvider() {}
+
+// *
+// AWS Route 53 provider configuration.
+//
+// Authentication order: static keys below when set; otherwise the
+// ServiceAccount's ambient AWS identity — `workload_identity.eks` (IRSA) on
+// EKS, or the node role elsewhere.
+type KubernetesExternalDnsAwsRoute53 struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// AWS region for the Route 53 API client (Route 53 itself is global, but
+	// the SDK requires a region, and the DynamoDB registry uses it). E.g.
+	// "us-east-1".
+	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
+	// *
+	// Restrict management to these hosted zones. Accepts literal zone IDs
+	// (e.g. "Z104533312EOZ72FQZ4TT") or references to AwsRoute53Zone
+	// resources — in an infra chart the zone and this component deploy in one
+	// run with the ID flowing in as a reference. Empty = every zone the
+	// credentials can see (filter with domain_filters at minimum).
+	ZoneIdFilters []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=zone_id_filters,json=zoneIdFilters,proto3" json:"zone_id_filters,omitempty"`
+	// *
+	// Filter for zones of this type. Empty = both.
+	ZoneType *string `protobuf:"bytes,3,opt,name=zone_type,json=zoneType,proto3,oneof" json:"zone_type,omitempty"`
+	// *
+	// IAM role to assume for Route 53 calls (full ARN) — the cross-account
+	// pattern: the controller authenticates in the cluster's account, then
+	// assumes this role in the account that owns the zones. Accepts a literal
+	// ARN or a reference to an AwsIamRole resource's output.
+	AssumeRole *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=assume_role,json=assumeRole,proto3" json:"assume_role,omitempty"`
+	// *
+	// External ID presented when assuming assume_role (the confused-deputy
+	// guard some role trust policies require).
+	AssumeRoleExternalId string `protobuf:"bytes,5,opt,name=assume_role_external_id,json=assumeRoleExternalId,proto3" json:"assume_role_external_id,omitempty"`
+	// *
+	// Static AWS access key ID. Prefer keyless (workload_identity.eks / node
+	// role) — set static keys only for clusters with no ambient AWS identity.
+	// Both halves of the key pair must be set together; the module
+	// materializes them as a Kubernetes Secret wired into the controller
+	// environment.
+	AccessKeyId string `protobuf:"bytes,6,opt,name=access_key_id,json=accessKeyId,proto3" json:"access_key_id,omitempty"`
+	// *
+	// Static AWS secret access key (the secret half of the key pair).
+	SecretAccessKey string `protobuf:"bytes,7,opt,name=secret_access_key,json=secretAccessKey,proto3" json:"secret_access_key,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesExternalDnsAwsRoute53) Reset() {
+	*x = KubernetesExternalDnsAwsRoute53{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesExternalDnsAwsRoute53) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesExternalDnsAwsRoute53) ProtoMessage() {}
+
+func (x *KubernetesExternalDnsAwsRoute53) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesExternalDnsAwsRoute53.ProtoReflect.Descriptor instead.
+func (*KubernetesExternalDnsAwsRoute53) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesExternalDnsAwsRoute53) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsAwsRoute53) GetZoneIdFilters() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.ZoneIdFilters
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsAwsRoute53) GetZoneType() string {
+	if x != nil && x.ZoneType != nil {
+		return *x.ZoneType
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsAwsRoute53) GetAssumeRole() *v1.StringValueOrRef {
+	if x != nil {
+		return x.AssumeRole
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsAwsRoute53) GetAssumeRoleExternalId() string {
+	if x != nil {
+		return x.AssumeRoleExternalId
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsAwsRoute53) GetAccessKeyId() string {
+	if x != nil {
+		return x.AccessKeyId
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsAwsRoute53) GetSecretAccessKey() string {
+	if x != nil {
+		return x.SecretAccessKey
+	}
+	return ""
+}
+
+// *
+// Google Cloud DNS provider configuration.
+//
+// Authentication order: the service-account key below when set; otherwise
+// the ServiceAccount's ambient GCP identity — `workload_identity.gke`
+// (Workload Identity) on GKE, or the node service account elsewhere.
+type KubernetesExternalDnsGoogleCloudDns struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// GCP project that owns the Cloud DNS zones. Accepts a literal project ID
+	// or a reference to a GcpProject resource's output.
+	Project *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
+	// *
+	// Restrict management to these Cloud DNS zones (zone names/IDs). Accepts
+	// literals or references to GcpDnsZone resources. Empty = every zone in
+	// the project.
+	ZoneIdFilters []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=zone_id_filters,json=zoneIdFilters,proto3" json:"zone_id_filters,omitempty"`
+	// *
+	// Filter for zones with this visibility. Empty = both.
+	ZoneVisibility *string `protobuf:"bytes,3,opt,name=zone_visibility,json=zoneVisibility,proto3,oneof" json:"zone_visibility,omitempty"`
+	// *
+	// Static GCP service-account key (JSON). Prefer keyless
+	// (workload_identity.gke) — set a key only for clusters with no ambient
+	// GCP identity. The module materializes it as a Kubernetes Secret mounted
+	// into the controller with GOOGLE_APPLICATION_CREDENTIALS pointed at it.
+	ServiceAccountKeyJson string `protobuf:"bytes,4,opt,name=service_account_key_json,json=serviceAccountKeyJson,proto3" json:"service_account_key_json,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *KubernetesExternalDnsGoogleCloudDns) Reset() {
+	*x = KubernetesExternalDnsGoogleCloudDns{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesExternalDnsGoogleCloudDns) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesExternalDnsGoogleCloudDns) ProtoMessage() {}
+
+func (x *KubernetesExternalDnsGoogleCloudDns) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesExternalDnsGoogleCloudDns.ProtoReflect.Descriptor instead.
+func (*KubernetesExternalDnsGoogleCloudDns) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesExternalDnsGoogleCloudDns) GetProject() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Project
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsGoogleCloudDns) GetZoneIdFilters() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.ZoneIdFilters
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsGoogleCloudDns) GetZoneVisibility() string {
+	if x != nil && x.ZoneVisibility != nil {
+		return *x.ZoneVisibility
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsGoogleCloudDns) GetServiceAccountKeyJson() string {
+	if x != nil {
+		return x.ServiceAccountKeyJson
+	}
+	return ""
+}
+
+// *
+// Azure DNS provider configuration (public or private zones).
+//
+// The controller reads Azure settings from a mounted azure.json file — the
+// module materializes it (as a Kubernetes Secret) from the fields below.
+// Authentication order: service-principal secret when set; otherwise Azure
+// AD Workload Identity when `workload_identity.aks` is set; otherwise the
+// node's (or user-assigned) managed identity.
+type KubernetesExternalDnsAzureDns struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Resource group that contains the DNS zones.
+	ResourceGroup string `protobuf:"bytes,1,opt,name=resource_group,json=resourceGroup,proto3" json:"resource_group,omitempty"`
+	// *
+	// Azure subscription that owns the zones.
+	SubscriptionId string `protobuf:"bytes,2,opt,name=subscription_id,json=subscriptionId,proto3" json:"subscription_id,omitempty"`
+	// *
+	// Entra (Azure AD) tenant. Required for service-principal auth; optional
+	// otherwise.
+	TenantId string `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// *
+	// When true, manage Azure Private DNS zones (the "azure-private-dns"
+	// upstream provider) instead of public zones.
+	PrivateZones bool `protobuf:"varint,4,opt,name=private_zones,json=privateZones,proto3" json:"private_zones,omitempty"`
+	// *
+	// Restrict management to these DNS zones. Accepts literal zone IDs or
+	// references to AzureDnsZone resources. Empty = every zone in the
+	// resource group.
+	ZoneIdFilters []*v1.StringValueOrRef `protobuf:"bytes,5,rep,name=zone_id_filters,json=zoneIdFilters,proto3" json:"zone_id_filters,omitempty"`
+	// *
+	// Client ID of a user-assigned managed identity to authenticate with
+	// (azure.json useManagedIdentityExtension). For AKS clusters using
+	// kubelet/user-assigned identities rather than Workload Identity.
+	ManagedIdentityClientId string `protobuf:"bytes,6,opt,name=managed_identity_client_id,json=managedIdentityClientId,proto3" json:"managed_identity_client_id,omitempty"`
+	// *
+	// Service-principal application (client) ID. Both halves of the
+	// service-principal credential must be set together; the module wires
+	// them into azure.json.
+	ClientId string `protobuf:"bytes,7,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// *
+	// Service-principal client secret (the secret half).
+	ClientSecret  string `protobuf:"bytes,8,opt,name=client_secret,json=clientSecret,proto3" json:"client_secret,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesExternalDnsAzureDns) Reset() {
+	*x = KubernetesExternalDnsAzureDns{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesExternalDnsAksConfig) String() string {
+func (x *KubernetesExternalDnsAzureDns) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesExternalDnsAksConfig) ProtoMessage() {}
+func (*KubernetesExternalDnsAzureDns) ProtoMessage() {}
 
-func (x *KubernetesExternalDnsAksConfig) ProtoReflect() protoreflect.Message {
+func (x *KubernetesExternalDnsAzureDns) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -322,54 +879,112 @@ func (x *KubernetesExternalDnsAksConfig) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesExternalDnsAksConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesExternalDnsAksConfig) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesExternalDnsAzureDns.ProtoReflect.Descriptor instead.
+func (*KubernetesExternalDnsAzureDns) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *KubernetesExternalDnsAksConfig) GetDnsZoneId() *v1.StringValueOrRef {
+func (x *KubernetesExternalDnsAzureDns) GetResourceGroup() string {
 	if x != nil {
-		return x.DnsZoneId
+		return x.ResourceGroup
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsAzureDns) GetSubscriptionId() string {
+	if x != nil {
+		return x.SubscriptionId
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsAzureDns) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsAzureDns) GetPrivateZones() bool {
+	if x != nil {
+		return x.PrivateZones
+	}
+	return false
+}
+
+func (x *KubernetesExternalDnsAzureDns) GetZoneIdFilters() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.ZoneIdFilters
 	}
 	return nil
 }
 
-func (x *KubernetesExternalDnsAksConfig) GetManagedIdentityClientId() string {
+func (x *KubernetesExternalDnsAzureDns) GetManagedIdentityClientId() string {
 	if x != nil {
 		return x.ManagedIdentityClientId
 	}
 	return ""
 }
 
-// KubernetesExternalDnsCloudflareConfig defines configuration for ExternalDNS with Cloudflare DNS.
-type KubernetesExternalDnsCloudflareConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Cloudflare API token for authentication (scoped with Zone:Zone:Read and Zone:DNS:Edit permissions).
-	ApiToken string `protobuf:"bytes,1,opt,name=api_token,json=apiToken,proto3" json:"api_token,omitempty"`
-	// Cloudflare DNS zone ID to manage. ExternalDNS will only manage records in this zone.
-	DnsZoneId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=dns_zone_id,json=dnsZoneId,proto3" json:"dns_zone_id,omitempty"`
-	// Enable Cloudflare proxy (orange cloud) for all managed DNS records.
-	// When enabled, traffic routes through Cloudflare's edge network for DDoS protection, WAF, and CDN.
-	// Default: false
-	IsProxied     bool `protobuf:"varint,3,opt,name=is_proxied,json=isProxied,proto3" json:"is_proxied,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+func (x *KubernetesExternalDnsAzureDns) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
 }
 
-func (x *KubernetesExternalDnsCloudflareConfig) Reset() {
-	*x = KubernetesExternalDnsCloudflareConfig{}
+func (x *KubernetesExternalDnsAzureDns) GetClientSecret() string {
+	if x != nil {
+		return x.ClientSecret
+	}
+	return ""
+}
+
+// *
+// Cloudflare DNS provider configuration. Token-authenticated — create an API
+// token scoped to Zone:Read + DNS:Edit on the zones this instance manages.
+type KubernetesExternalDnsCloudflare struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Cloudflare API token. The module materializes it as a Kubernetes Secret
+	// wired into the controller environment (CF_API_TOKEN) — it never appears
+	// in chart values or pod specs. Note: the controller validates the token
+	// at first zone sync, not at startup — a revoked/invalid token surfaces as
+	// a crash-looping pod with a Cloudflare 4xx in its logs.
+	ApiToken string `protobuf:"bytes,1,opt,name=api_token,json=apiToken,proto3" json:"api_token,omitempty"`
+	// *
+	// Restrict management to these Cloudflare zones. Accepts literal zone IDs
+	// or references to CloudflareDnsZone resources. Empty = every zone the
+	// token can see.
+	ZoneIdFilters []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=zone_id_filters,json=zoneIdFilters,proto3" json:"zone_id_filters,omitempty"`
+	// *
+	// When true, created records are proxied through Cloudflare (orange
+	// cloud): CDN/WAF in front of the record. Per-resource override via the
+	// external-dns.alpha.kubernetes.io/cloudflare-proxied annotation.
+	Proxied bool `protobuf:"varint,3,opt,name=proxied,proto3" json:"proxied,omitempty"`
+	// *
+	// DNS records fetched per Cloudflare API page. Upstream default: 100;
+	// raise (max 5000) for zones with thousands of records to cut sync-loop
+	// API calls.
+	DnsRecordsPerPage *uint32 `protobuf:"varint,4,opt,name=dns_records_per_page,json=dnsRecordsPerPage,proto3,oneof" json:"dns_records_per_page,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *KubernetesExternalDnsCloudflare) Reset() {
+	*x = KubernetesExternalDnsCloudflare{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesExternalDnsCloudflareConfig) String() string {
+func (x *KubernetesExternalDnsCloudflare) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesExternalDnsCloudflareConfig) ProtoMessage() {}
+func (*KubernetesExternalDnsCloudflare) ProtoMessage() {}
 
-func (x *KubernetesExternalDnsCloudflareConfig) ProtoReflect() protoreflect.Message {
+func (x *KubernetesExternalDnsCloudflare) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -381,68 +996,381 @@ func (x *KubernetesExternalDnsCloudflareConfig) ProtoReflect() protoreflect.Mess
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesExternalDnsCloudflareConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesExternalDnsCloudflareConfig) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesExternalDnsCloudflare.ProtoReflect.Descriptor instead.
+func (*KubernetesExternalDnsCloudflare) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *KubernetesExternalDnsCloudflareConfig) GetApiToken() string {
+func (x *KubernetesExternalDnsCloudflare) GetApiToken() string {
 	if x != nil {
 		return x.ApiToken
 	}
 	return ""
 }
 
-func (x *KubernetesExternalDnsCloudflareConfig) GetDnsZoneId() *v1.StringValueOrRef {
+func (x *KubernetesExternalDnsCloudflare) GetZoneIdFilters() []*v1.StringValueOrRef {
 	if x != nil {
-		return x.DnsZoneId
+		return x.ZoneIdFilters
 	}
 	return nil
 }
 
-func (x *KubernetesExternalDnsCloudflareConfig) GetIsProxied() bool {
+func (x *KubernetesExternalDnsCloudflare) GetProxied() bool {
 	if x != nil {
-		return x.IsProxied
+		return x.Proxied
 	}
 	return false
+}
+
+func (x *KubernetesExternalDnsCloudflare) GetDnsRecordsPerPage() uint32 {
+	if x != nil && x.DnsRecordsPerPage != nil {
+		return *x.DnsRecordsPerPage
+	}
+	return 0
+}
+
+// *
+// Webhook provider configuration — upstream's extension architecture for
+// out-of-tree DNS providers. The controller runs with --provider=webhook and
+// the provider's own implementation runs as a sidecar container serving the
+// webhook API on localhost.
+type KubernetesExternalDnsWebhook struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Webhook provider image repository (e.g. a provider's published
+	// external-dns webhook image).
+	ImageRepository string `protobuf:"bytes,1,opt,name=image_repository,json=imageRepository,proto3" json:"image_repository,omitempty"`
+	// *
+	// Webhook provider image tag.
+	ImageTag string `protobuf:"bytes,2,opt,name=image_tag,json=imageTag,proto3" json:"image_tag,omitempty"`
+	// *
+	// Arguments passed to the webhook container (provider-specific
+	// configuration).
+	Args []string `protobuf:"bytes,3,rep,name=args,proto3" json:"args,omitempty"`
+	// *
+	// Environment variables for the webhook container. Values land in chart
+	// values as-is — put secrets in Kubernetes Secrets and reference them via
+	// helm_values env entries with valueFrom instead of inlining them here.
+	Env map[string]string `protobuf:"bytes,4,rep,name=env,proto3" json:"env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Webhook container CPU/memory requests and limits.
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,5,opt,name=resources,proto3" json:"resources,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesExternalDnsWebhook) Reset() {
+	*x = KubernetesExternalDnsWebhook{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesExternalDnsWebhook) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesExternalDnsWebhook) ProtoMessage() {}
+
+func (x *KubernetesExternalDnsWebhook) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesExternalDnsWebhook.ProtoReflect.Descriptor instead.
+func (*KubernetesExternalDnsWebhook) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesExternalDnsWebhook) GetImageRepository() string {
+	if x != nil {
+		return x.ImageRepository
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsWebhook) GetImageTag() string {
+	if x != nil {
+		return x.ImageTag
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsWebhook) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsWebhook) GetEnv() map[string]string {
+	if x != nil {
+		return x.Env
+	}
+	return nil
+}
+
+func (x *KubernetesExternalDnsWebhook) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+// *
+// In-memory provider configuration — upstream's built-in sandbox provider.
+type KubernetesExternalDnsInMemory struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Zones to pre-create in the in-memory store (e.g. "example.org").
+	// Records for names outside these zones are skipped, mirroring real
+	// provider zone matching.
+	Zones         []string `protobuf:"bytes,1,rep,name=zones,proto3" json:"zones,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesExternalDnsInMemory) Reset() {
+	*x = KubernetesExternalDnsInMemory{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesExternalDnsInMemory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesExternalDnsInMemory) ProtoMessage() {}
+
+func (x *KubernetesExternalDnsInMemory) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesExternalDnsInMemory.ProtoReflect.Descriptor instead.
+func (*KubernetesExternalDnsInMemory) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesExternalDnsInMemory) GetZones() []string {
+	if x != nil {
+		return x.Zones
+	}
+	return nil
+}
+
+// *
+// Prometheus metrics configuration.
+type KubernetesExternalDnsPrometheus struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Create a ServiceMonitor for scrape discovery. Requires the Prometheus
+	// operator CRDs (e.g. kube-prometheus-stack) on the cluster — the release
+	// FAILS to install without them.
+	ServiceMonitor bool `protobuf:"varint,1,opt,name=service_monitor,json=serviceMonitor,proto3" json:"service_monitor,omitempty"`
+	// *
+	// Scrape interval for the ServiceMonitor (e.g. "1m"). Empty = Prometheus
+	// default.
+	ServiceMonitorInterval string `protobuf:"bytes,2,opt,name=service_monitor_interval,json=serviceMonitorInterval,proto3" json:"service_monitor_interval,omitempty"`
+	// *
+	// Extra labels on the ServiceMonitor — how a Prometheus instance's
+	// serviceMonitorSelector finds it (e.g. {"release": "kube-prometheus-stack"}).
+	ServiceMonitorLabels map[string]string `protobuf:"bytes,3,rep,name=service_monitor_labels,json=serviceMonitorLabels,proto3" json:"service_monitor_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *KubernetesExternalDnsPrometheus) Reset() {
+	*x = KubernetesExternalDnsPrometheus{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesExternalDnsPrometheus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesExternalDnsPrometheus) ProtoMessage() {}
+
+func (x *KubernetesExternalDnsPrometheus) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesExternalDnsPrometheus.ProtoReflect.Descriptor instead.
+func (*KubernetesExternalDnsPrometheus) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesExternalDnsPrometheus) GetServiceMonitor() bool {
+	if x != nil {
+		return x.ServiceMonitor
+	}
+	return false
+}
+
+func (x *KubernetesExternalDnsPrometheus) GetServiceMonitorInterval() string {
+	if x != nil {
+		return x.ServiceMonitorInterval
+	}
+	return ""
+}
+
+func (x *KubernetesExternalDnsPrometheus) GetServiceMonitorLabels() map[string]string {
+	if x != nil {
+		return x.ServiceMonitorLabels
+	}
+	return nil
 }
 
 var File_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetesexternaldns/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesexternaldns.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xca\x06\n" +
+	"Cdev/planton/provider/kubernetes/kubernetesexternaldns/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetesexternaldns.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/workload_identity.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd5\x1e\n" +
 	"\x19KubernetesExternalDnsSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12B\n" +
-	"\x14external_dns_version\x18\x04 \x01(\tB\v\x8a\xa6\x1d\av0.19.0H\x01R\x12externalDnsVersion\x88\x01\x01\x12=\n" +
-	"\x12helm_chart_version\x18\x05 \x01(\tB\n" +
-	"\x8a\xa6\x1d\x061.19.0H\x02R\x10helmChartVersion\x88\x01\x01\x12m\n" +
-	"\x03gke\x18\xc8\x01 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfigH\x00R\x03gke\x12m\n" +
-	"\x03eks\x18\xc9\x01 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsEksConfigH\x00R\x03eks\x12m\n" +
-	"\x03aks\x18\xca\x01 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAksConfigH\x00R\x03aks\x12\x82\x01\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
+	"\rchart_version\x18\x03 \x01(\tB\n" +
+	"\x8a\xa6\x1d\x061.21.1H\x01R\fchartVersion\x88\x01\x01\x12|\n" +
+	"\vaws_route53\x18\x04 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAwsRoute53H\x00R\n" +
+	"awsRoute53\x12\x89\x01\n" +
+	"\x10google_cloud_dns\x18\x05 \x01(\v2].dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGoogleCloudDnsH\x00R\x0egoogleCloudDns\x12v\n" +
+	"\tazure_dns\x18\x06 \x01(\v2W.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAzureDnsH\x00R\bazureDns\x12{\n" +
 	"\n" +
-	"cloudflare\x18\xcb\x01 \x01(\v2_.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareConfigH\x00R\n" +
-	"cloudflareB\x11\n" +
-	"\x0fprovider_configB\x17\n" +
-	"\x15_external_dns_versionB\x15\n" +
-	"\x13_helm_chart_version\"\x98\x02\n" +
-	"\x1eKubernetesExternalDnsGkeConfig\x12{\n" +
+	"cloudflare\x18\a \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareH\x00R\n" +
+	"cloudflare\x12r\n" +
+	"\awebhook\x18\b \x01(\v2V.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsWebhookH\x00R\awebhook\x12v\n" +
+	"\tin_memory\x18\t \x01(\v2W.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsInMemoryH\x00R\binMemory\x12h\n" +
+	"\x11workload_identity\x18\n" +
+	" \x01(\v2;.dev.planton.provider.kubernetes.KubernetesWorkloadIdentityR\x10workloadIdentity\x12\x8d\x03\n" +
+	"\asources\x18\v \x03(\tB\xf2\x02\xbaH\xee\x02\x92\x01\xea\x02\"\xe7\x02r\xe4\x02R\aserviceR\aingressR\x04nodeR\x03podR\x11gateway-httprouteR\x11gateway-grpcrouteR\x10gateway-tlsrouteR\x10gateway-tcprouteR\x10gateway-udprouteR\ristio-gatewayR\x14istio-virtualserviceR\x11contour-httpproxyR\n" +
+	"gloo-proxyR\x04fakeR\tconnectorR\x03crdR\x05emptyR\x12skipper-routegroupR\x0fopenshift-routeR\x0fambassador-hostR\x0fkong-tcpingressR\x10f5-virtualserverR\x12f5-transportserverR\rtraefik-proxyR\funstructuredR\asources\x12Q\n" +
+	"\x06policy\x18\f \x01(\tB4\xbaH\"r R\vcreate-onlyR\x04syncR\vupsert-only\x8a\xa6\x1d\vupsert-onlyH\x02R\x06policy\x88\x01\x01\x12J\n" +
+	"\bregistry\x18\r \x01(\tB)\xbaH\x1fr\x1dR\x03txtR\x04noopR\bdynamodbR\x06aws-sd\x8a\xa6\x1d\x03txtH\x03R\bregistry\x88\x01\x01\x12 \n" +
+	"\ftxt_owner_id\x18\x0e \x01(\tR\n" +
+	"txtOwnerId\x12\x1d\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12y\n" +
-	"\vdns_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x04\x92\xd4a\x16status.outputs.zone_idR\tdnsZoneId\"\xd9\x01\n" +
-	"\x1eKubernetesExternalDnsEksConfig\x12\x81\x01\n" +
-	"\x0froute53_zone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\rroute53ZoneId\x123\n" +
-	"\x16irsa_role_arn_override\x18\x02 \x01(\tR\x13irsaRoleArnOverride\"\xd8\x01\n" +
-	"\x1eKubernetesExternalDnsAksConfig\x12y\n" +
-	"\vdns_zone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x94\x03\x92\xd4a\x16status.outputs.zone_idR\tdnsZoneId\x12;\n" +
-	"\x1amanaged_identity_client_id\x18\x02 \x01(\tR\x17managedIdentityClientId\"\xea\x01\n" +
-	"%KubernetesExternalDnsCloudflareConfig\x12'\n" +
+	"txt_prefix\x18\x0f \x01(\tR\ttxtPrefix\x12\x1d\n" +
+	"\n" +
+	"txt_suffix\x18\x10 \x01(\tR\ttxtSuffix\x12%\n" +
+	"\x0edynamodb_table\x18\x11 \x01(\tR\rdynamodbTable\x12'\n" +
+	"\x0fdynamodb_region\x18\x12 \x01(\tR\x0edynamodbRegion\x12%\n" +
+	"\x0edomain_filters\x18\x13 \x03(\tR\rdomainFilters\x12'\n" +
+	"\x0fexclude_domains\x18\x14 \x03(\tR\x0eexcludeDomains\x12+\n" +
+	"\x11annotation_filter\x18\x15 \x01(\tR\x10annotationFilter\x12!\n" +
+	"\flabel_filter\x18\x16 \x01(\tR\vlabelFilter\x120\n" +
+	"\x14managed_record_types\x18\x17 \x03(\tR\x12managedRecordTypes\x12X\n" +
+	"\binterval\x18\x18 \x01(\tB7\xbaH.r,2*^([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$\x8a\xa6\x1d\x021mH\x04R\binterval\x88\x01\x01\x121\n" +
+	"\x15trigger_loop_on_event\x18\x19 \x01(\bR\x12triggerLoopOnEvent\x12\x1e\n" +
+	"\n" +
+	"namespaced\x18\x1a \x01(\bR\n" +
+	"namespaced\x12Z\n" +
+	"\tlog_level\x18\x1b \x01(\tB8\xbaH-r+R\x05panicR\x05debugR\x04infoR\awarningR\x05errorR\x05fatal\x8a\xa6\x1d\x04infoH\x05R\blogLevel\x88\x01\x01\x12=\n" +
+	"\n" +
+	"log_format\x18\x1c \x01(\tB\x19\xbaH\x0er\fR\x04textR\x04json\x8a\xa6\x1d\x04textH\x06R\tlogFormat\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x1d \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\x8a\x01\n" +
+	"\rnode_selector\x18\x1e \x03(\v2e.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x1f \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x12.\n" +
+	"\x13priority_class_name\x18  \x01(\tR\x11priorityClassName\x12y\n" +
+	"\n" +
+	"prometheus\x18! \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsPrometheusR\n" +
+	"prometheus\x12)\n" +
+	"\x10image_repository\x18\" \x01(\tR\x0fimageRepository\x12\x1b\n" +
+	"\timage_tag\x18# \x01(\tR\bimageTag\x12\x1f\n" +
+	"\vhelm_values\x18$ \x01(\tR\n" +
+	"helmValues\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xac\x06\xbaH\xa8\x06\x1a\xc4\x02\n" +
+	"\x1dexternaldns.provider_required\x12\x91\x01Select the DNS provider records are written to — set exactly one of aws_route53, google_cloud_dns, azure_dns, cloudflare, webhook, or in_memory\x1a\x8e\x01has(this.aws_route53) || has(this.google_cloud_dns) || has(this.azure_dns) || has(this.cloudflare) || has(this.webhook) || has(this.in_memory)\x1a\xc6\x01\n" +
+	"!externaldns.txt_prefix_xor_suffix\x12ntxt_prefix and txt_suffix are mutually exclusive — ownership TXT names can be prefixed or suffixed, not both\x1a1!(this.txt_prefix != '' && this.txt_suffix != '')\x1a\x95\x02\n" +
+	"&externaldns.dynamodb_requires_registry\x12ydynamodb_table and dynamodb_region configure the \"dynamodb\" registry — set registry to \"dynamodb\" or clear these fields\x1ap(this.dynamodb_table == '' && this.dynamodb_region == '') || (has(this.registry) && this.registry == 'dynamodb')B\x0e\n" +
+	"\fdns_providerB\x10\n" +
+	"\x0e_chart_versionB\t\n" +
+	"\a_policyB\v\n" +
+	"\t_registryB\v\n" +
+	"\t_intervalB\f\n" +
+	"\n" +
+	"_log_levelB\r\n" +
+	"\v_log_format\"\xc1\x05\n" +
+	"\x1fKubernetesExternalDnsAwsRoute53\x12\x16\n" +
+	"\x06region\x18\x01 \x01(\tR\x06region\x12{\n" +
+	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\rzoneIdFilters\x12:\n" +
+	"\tzone_type\x18\x03 \x01(\tB\x18\xbaH\x15r\x13R\x00R\x06publicR\aprivateH\x00R\bzoneType\x88\x01\x01\x12u\n" +
+	"\vassume_role\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\n" +
+	"assumeRole\x125\n" +
+	"\x17assume_role_external_id\x18\x05 \x01(\tR\x14assumeRoleExternalId\x12\"\n" +
+	"\raccess_key_id\x18\x06 \x01(\tR\vaccessKeyId\x120\n" +
+	"\x11secret_access_key\x18\a \x01(\tB\x04\xa0\xa6\x1d\x01R\x0fsecretAccessKey:\xba\x01\xbaH\xb6\x01\x1a\xb3\x01\n" +
+	"\"externaldns.aws.static_keys_paired\x12Oaccess_key_id and secret_access_key form one credential — set both or neither\x1a<(this.access_key_id == '') == (this.secret_access_key == '')B\f\n" +
+	"\n" +
+	"_zone_type\"\xb5\x03\n" +
+	"#KubernetesExternalDnsGoogleCloudDns\x12v\n" +
+	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\aproject\x12{\n" +
+	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdd\x04\x92\xd4a\x16status.outputs.zone_idR\rzoneIdFilters\x12F\n" +
+	"\x0fzone_visibility\x18\x03 \x01(\tB\x18\xbaH\x15r\x13R\x00R\x06publicR\aprivateH\x00R\x0ezoneVisibility\x88\x01\x01\x12=\n" +
+	"\x18service_account_key_json\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x15serviceAccountKeyJsonB\x12\n" +
+	"\x10_zone_visibility\"\xb0\x06\n" +
+	"\x1dKubernetesExternalDnsAzureDns\x12-\n" +
+	"\x0eresource_group\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rresourceGroup\x12/\n" +
+	"\x0fsubscription_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0esubscriptionId\x12\x1b\n" +
+	"\ttenant_id\x18\x03 \x01(\tR\btenantId\x12#\n" +
+	"\rprivate_zones\x18\x04 \x01(\bR\fprivateZones\x12{\n" +
+	"\x0fzone_id_filters\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x94\x03\x92\xd4a\x16status.outputs.zone_idR\rzoneIdFilters\x12;\n" +
+	"\x1amanaged_identity_client_id\x18\x06 \x01(\tR\x17managedIdentityClientId\x12\x1b\n" +
+	"\tclient_id\x18\a \x01(\tR\bclientId\x12)\n" +
+	"\rclient_secret\x18\b \x01(\tB\x04\xa0\xa6\x1d\x01R\fclientSecret:\xea\x02\xbaH\xe6\x02\x1a\xae\x01\n" +
+	"\x1bexternaldns.azure.sp_paired\x12Yclient_id and client_secret form one service-principal credential — set both or neither\x1a4(this.client_id == '') == (this.client_secret == '')\x1a\xb2\x01\n" +
+	"$externaldns.azure.sp_requires_tenant\x12\\Service-principal authentication needs tenant_id — the Entra tenant the principal lives in\x1a,this.client_id == '' || this.tenant_id != ''\"\xba\x02\n" +
+	"\x1fKubernetesExternalDnsCloudflare\x12'\n" +
 	"\tapi_token\x18\x01 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bapiToken\x12y\n" +
-	"\vdns_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\tdnsZoneId\x12\x1d\n" +
-	"\n" +
-	"is_proxied\x18\x03 \x01(\bR\tisProxiedB\xc4\x03\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bapiToken\x12{\n" +
+	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\rzoneIdFilters\x12\x18\n" +
+	"\aproxied\x18\x03 \x01(\bR\aproxied\x12>\n" +
+	"\x14dns_records_per_page\x18\x04 \x01(\rB\b\xbaH\x05*\x03\x18\x88'H\x00R\x11dnsRecordsPerPage\x88\x01\x01B\x17\n" +
+	"\x15_dns_records_per_page\"\x80\x03\n" +
+	"\x1cKubernetesExternalDnsWebhook\x121\n" +
+	"\x10image_repository\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fimageRepository\x12\x1b\n" +
+	"\timage_tag\x18\x02 \x01(\tR\bimageTag\x12\x12\n" +
+	"\x04args\x18\x03 \x03(\tR\x04args\x12q\n" +
+	"\x03env\x18\x04 \x03(\v2_.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsWebhook.EnvEntryR\x03env\x12Q\n" +
+	"\tresources\x18\x05 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x1a6\n" +
+	"\bEnvEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"5\n" +
+	"\x1dKubernetesExternalDnsInMemory\x12\x14\n" +
+	"\x05zones\x18\x01 \x03(\tR\x05zones\"\xf9\x02\n" +
+	"\x1fKubernetesExternalDnsPrometheus\x12'\n" +
+	"\x0fservice_monitor\x18\x01 \x01(\bR\x0eserviceMonitor\x128\n" +
+	"\x18service_monitor_interval\x18\x02 \x01(\tR\x16serviceMonitorInterval\x12\xa9\x01\n" +
+	"\x16service_monitor_labels\x18\x03 \x03(\v2s.dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsPrometheus.ServiceMonitorLabelsEntryR\x14serviceMonitorLabels\x1aG\n" +
+	"\x19ServiceMonitorLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xc4\x03\n" +
 	"<com.dev.planton.provider.kubernetes.kubernetesexternaldns.v1B\tSpecProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternaldns/v1;kubernetesexternaldnsv1\xa2\x02\x05DPPKK\xaa\x028Dev.Planton.Provider.Kubernetes.Kubernetesexternaldns.V1\xca\x028Dev\\Planton\\Provider\\Kubernetes\\Kubernetesexternaldns\\V1\xe2\x02DDev\\Planton\\Provider\\Kubernetes\\Kubernetesexternaldns\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Kubernetes::Kubernetesexternaldns::V1b\x06proto3"
 
 var (
@@ -457,31 +1385,51 @@ func file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_ra
 	return file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_goTypes = []any{
 	(*KubernetesExternalDnsSpec)(nil),             // 0: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec
-	(*KubernetesExternalDnsGkeConfig)(nil),        // 1: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfig
-	(*KubernetesExternalDnsEksConfig)(nil),        // 2: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsEksConfig
-	(*KubernetesExternalDnsAksConfig)(nil),        // 3: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAksConfig
-	(*KubernetesExternalDnsCloudflareConfig)(nil), // 4: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareConfig
-	(*v1.StringValueOrRef)(nil),                   // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*KubernetesExternalDnsAwsRoute53)(nil),       // 1: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAwsRoute53
+	(*KubernetesExternalDnsGoogleCloudDns)(nil),   // 2: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGoogleCloudDns
+	(*KubernetesExternalDnsAzureDns)(nil),         // 3: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAzureDns
+	(*KubernetesExternalDnsCloudflare)(nil),       // 4: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflare
+	(*KubernetesExternalDnsWebhook)(nil),          // 5: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsWebhook
+	(*KubernetesExternalDnsInMemory)(nil),         // 6: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsInMemory
+	(*KubernetesExternalDnsPrometheus)(nil),       // 7: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsPrometheus
+	nil,                                           // 8: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.NodeSelectorEntry
+	nil,                                           // 9: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsWebhook.EnvEntry
+	nil,                                           // 10: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsPrometheus.ServiceMonitorLabelsEntry
+	(*v1.StringValueOrRef)(nil),                   // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.KubernetesWorkloadIdentity)(nil), // 12: dev.planton.provider.kubernetes.KubernetesWorkloadIdentity
+	(*kubernetes.ContainerResources)(nil),         // 13: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),         // 14: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_depIdxs = []int32{
-	5,  // 0: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 1: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.gke:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfig
-	2,  // 2: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.eks:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsEksConfig
-	3,  // 3: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.aks:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAksConfig
-	4,  // 4: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.cloudflare:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareConfig
-	5,  // 5: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfig.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 6: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGkeConfig.dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 7: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsEksConfig.route53_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 8: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAksConfig.dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 9: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareConfig.dns_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	11, // 0: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.aws_route53:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAwsRoute53
+	2,  // 2: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.google_cloud_dns:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGoogleCloudDns
+	3,  // 3: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.azure_dns:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAzureDns
+	4,  // 4: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.cloudflare:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflare
+	5,  // 5: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.webhook:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsWebhook
+	6,  // 6: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.in_memory:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsInMemory
+	12, // 7: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.workload_identity:type_name -> dev.planton.provider.kubernetes.KubernetesWorkloadIdentity
+	13, // 8: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	8,  // 9: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.NodeSelectorEntry
+	14, // 10: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	7,  // 11: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.prometheus:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsPrometheus
+	11, // 12: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAwsRoute53.zone_id_filters:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 13: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAwsRoute53.assume_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 14: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGoogleCloudDns.project:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 15: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsGoogleCloudDns.zone_id_filters:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 16: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAzureDns.zone_id_filters:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 17: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflare.zone_id_filters:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 18: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsWebhook.env:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsWebhook.EnvEntry
+	13, // 19: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsWebhook.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	10, // 20: dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsPrometheus.service_monitor_labels:type_name -> dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsPrometheus.ServiceMonitorLabelsEntry
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_init() }
@@ -490,18 +1438,23 @@ func file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_in
 		return
 	}
 	file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[0].OneofWrappers = []any{
-		(*KubernetesExternalDnsSpec_Gke)(nil),
-		(*KubernetesExternalDnsSpec_Eks)(nil),
-		(*KubernetesExternalDnsSpec_Aks)(nil),
+		(*KubernetesExternalDnsSpec_AwsRoute53)(nil),
+		(*KubernetesExternalDnsSpec_GoogleCloudDns)(nil),
+		(*KubernetesExternalDnsSpec_AzureDns)(nil),
 		(*KubernetesExternalDnsSpec_Cloudflare)(nil),
+		(*KubernetesExternalDnsSpec_Webhook)(nil),
+		(*KubernetesExternalDnsSpec_InMemory)(nil),
 	}
+	file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

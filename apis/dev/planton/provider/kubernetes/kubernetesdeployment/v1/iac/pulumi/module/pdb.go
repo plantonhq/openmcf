@@ -14,15 +14,19 @@ import (
 func podDisruptionBudget(ctx *pulumi.Context, locals *Locals,
 	kubernetesProvider pulumi.ProviderResource, namespaceDeps []pulumi.ResourceOption) error {
 
-	// Check if PDB is enabled
-	pdbConfig := locals.KubernetesDeployment.Spec.Availability.PodDisruptionBudget
-	if pdbConfig == nil || !pdbConfig.Enabled {
+	// The whole availability block is optional; nothing to guard when absent.
+	availability := locals.KubernetesDeployment.Spec.Availability
+	if availability == nil || availability.PodDisruptionBudget == nil || !availability.PodDisruptionBudget.Enabled {
 		return nil
 	}
+	pdbConfig := availability.PodDisruptionBudget
 
+	// The PDB must select on the workload's SELECTOR labels — the same immutable
+	// set the Deployment selects pods with. Matching the full governance label set
+	// would silently guard zero pods if a non-selector label ever drifts.
 	pdbSpec := &policyv1.PodDisruptionBudgetSpecArgs{
 		Selector: &metav1.LabelSelectorArgs{
-			MatchLabels: pulumi.ToStringMap(locals.Labels),
+			MatchLabels: pulumi.ToStringMap(locals.SelectorLabels),
 		},
 	}
 

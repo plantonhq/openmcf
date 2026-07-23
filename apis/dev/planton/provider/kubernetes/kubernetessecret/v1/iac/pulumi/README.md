@@ -2,7 +2,7 @@
 
 ## Overview
 
-This Pulumi module creates and manages a Kubernetes Secret with type-safe data variants. It supports all five common Kubernetes secret types: Opaque, TLS, DockerConfigJson, BasicAuth, and SSHAuth.
+This Pulumi module creates and manages a Kubernetes Secret with type-safe data variants. It supports all six standard Kubernetes secret types: Opaque, TLS, DockerConfigJson, BasicAuth, SSHAuth, and ServiceAccountToken.
 
 ## Architecture
 
@@ -34,11 +34,12 @@ iac/pulumi/
 
 | Proto Variant | Kubernetes Type | Data Keys |
 |--------------|----------------|-----------|
-| `opaque` | `Opaque` | User-defined keys from `data` map |
+| `opaque` | `Opaque` | User-defined keys from `data` (plain strings) and `binary_data` (base64-encoded values) |
 | `tls` | `kubernetes.io/tls` | `tls.crt`, `tls.key` |
 | `docker_config_json` | `kubernetes.io/dockerconfigjson` | `.dockerconfigjson` (constructed JSON) |
 | `basic_auth` | `kubernetes.io/basic-auth` | `username`, `password` |
 | `ssh_auth` | `kubernetes.io/ssh-auth` | `ssh-privatekey` |
+| `service_account_token` | `kubernetes.io/service-account-token` | None — the `kubernetes.io/service-account.name` annotation is set and the cluster's token controller populates `token`, `ca.crt`, and `namespace` |
 
 ## Usage
 

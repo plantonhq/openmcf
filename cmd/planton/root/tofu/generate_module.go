@@ -16,17 +16,19 @@ var GenerateModule = &cobra.Command{
 	Use:   "generate-module <deployment-component>",
 	Short: "Generate the full thin Terraform module for a Kubernetes-CRD-projection kind",
 	Long: `The "generate-module" command emits the complete iac/tf Terraform module
-(variables.tf, locals.tf, main.tf, provider.tf, outputs.tf) for a deployment
-component whose spec is a direct projection of a single Kubernetes custom
-resource -- i.e. a kind annotated with kubernetes_manifest_projection in
+(variables.tf, backend.tf, locals.tf, main.tf, provider.tf, outputs.tf) for a
+deployment component whose spec is a direct projection of a single Kubernetes
+custom resource -- i.e. a kind annotated with kubernetes_manifest_projection in
 CloudResourceKindMeta (Istio, Gateway API, etc.).
 
-The module is a thin kubernetes_manifest passthrough: variable "spec" is typed
-'any' and handed to the CR verbatim, because the proto->tfvars converter already
-emits the manifest-shaped (camelCase, null-pruned) spec. This removes the
-hand-written snake->camel / null-prune / oneOf locals.tf that CRD modules
-previously carried. Kinds without the projection annotation are rejected (use
-the standard 'generate-variables' + provider-resource module pattern instead).`,
+The module is a thin kubectl_manifest (alekc/kubectl) passthrough: variable
+"spec" is typed 'any' and handed to the CR verbatim, because the proto->tfvars
+converter already emits the manifest-shaped (camelCase, null-pruned) spec with
+StringValueOrRef foreign keys resolved to literal strings. kubectl_manifest
+needs no cluster connection at plan time, so the CR can be planned before its
+CRDs exist (single-run infra charts, offline plan proofs). Kinds without the
+projection annotation are rejected (use the standard 'generate-variables' +
+provider-resource module pattern instead).`,
 	Example: `
   # Write the module into the component's iac/tf directory
   planton tofu generate-module KubernetesDestinationRule \

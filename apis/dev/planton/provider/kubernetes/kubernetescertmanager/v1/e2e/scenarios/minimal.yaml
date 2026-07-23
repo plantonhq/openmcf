@@ -1,0 +1,11 @@
+# Chart-default install: namespace + release, CRDs included (the Planton
+# default), nothing tuned. Verifies the three component Deployments become
+# Available and the core CRDs are Established.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesCertManager
+metadata:
+  name: e2e-cm-minimal
+spec:
+  namespace:
+    value: cert-manager
+  createNamespace: true

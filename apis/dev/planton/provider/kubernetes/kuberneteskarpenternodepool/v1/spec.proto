@@ -1,0 +1,359 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskarpenternodepool.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+// KubernetesKarpenterNodePoolSpec declares a Karpenter NodePool — the fleet
+// shape Karpenter provisions machines from. A NodePool answers "what nodes
+// may exist": the instance-type/zone/capacity-type constraints
+// (requirements), the taints and labels new nodes carry, how long nodes
+// live, how aggressively under-used nodes are consolidated away, and the
+// resource ceiling the pool may reach. Clusters routinely run several —
+// a default on-demand pool, a spot pool, a GPU pool — and Karpenter picks
+// among them by weight.
+//
+// The cloud-level machine template (AMIs, subnets, security groups, IAM)
+// lives in the NodeClass the pool references through node_class_ref —
+// KubernetesKarpenterEc2NodeClass on AWS.
+//
+// The rendered NodePool is CLUSTER-SCOPED (no namespace) and named after
+// metadata.name. 100% fidelity with the upstream karpenter.sh/v1 NodePool
+// CRD at the pinned release (aws/karpenter-provider-aws
+// pkg/apis/crds/karpenter.sh_nodepools.yaml); the CRD's own CEL rules are
+// mirrored below so mistakes surface at validate time, not at apply.
+message KubernetesKarpenterNodePoolSpec {
+  // Template for the nodes this pool launches: the node's class reference,
+  // scheduling requirements, taints, labels, and lifetime.
+  //
+  // Deliberately FLATTER than the CRD: upstream nests these under
+  // template.metadata (labels/annotations) and template.spec (everything
+  // else); this spec folds both levels into one message because the split
+  // carries no meaning for a manifest author. Both IaC modules rebuild the
+  // CRD's exact nesting when rendering — when diffing this spec against the
+  // upstream CRD, compare against the UNION of template.metadata and
+  // template.spec fields.
+  KubernetesKarpenterNodePoolTemplate template = 1 [(buf.validate.field).required = true];
+
+  // Disruption policy: when Karpenter may consolidate or replace nodes it
+  // provisioned from this pool, and how many may be disrupted at once.
+  KubernetesKarpenterNodePoolDisruption disruption = 2;
+
+  // Resource ceiling for the whole pool, as Kubernetes quantities keyed by
+  // resource name (e.g. cpu: "1000", memory: "1000Gi", nodes: "10").
+  // Provisioning stops when a limit is reached. Upstream: only
+  // limits.nodes is supported when replicas (static mode) is set.
+  map<string, string> limits = 3 [(buf.validate.field).map = {
+    values: {
+      string: {pattern: "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$"}
+    }
+  }];
+
+  // Priority of this pool relative to other pools during scheduling —
+  // higher weights are considered first (1-100; a pool with no weight is
+  // weight 0). Not supported when replicas (static mode) is set.
+  optional int32 weight = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // ALPHA (static capacity): maintain a FIXED number of nodes instead of
+  // scaling on pod demand. When set, disruption consolidation settings and
+  // weight are ignored/forbidden, and only limits.nodes is allowed.
+  // Requires the staticCapacity feature gate on the Karpenter controller.
+  optional int64 replicas = 5 [(buf.validate.field).int64.gte = 0];
+
+  // Mirrors the CRD's own static-mode rules so a manifest the API server
+  // would reject never leaves validation.
+  option (buf.validate.message).cel = {
+    id: "spec.static_limits_nodes_only"
+    message: "only the 'nodes' limit is supported on static NodePools (replicas set) — remove other limits or unset replicas"
+    expression: "!has(this.replicas) || (size(this.limits) == 0 || (size(this.limits) == 1 && 'nodes' in this.limits))"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.static_weight_forbidden"
+    message: "weight is not supported on static NodePools (replicas set) — static pools are not ranked, remove one of the two"
+    expression: "!has(this.replicas) || !has(this.weight)"
+  };
+}
+
+// KubernetesKarpenterNodePoolTemplate is the NodeClaim template: what each
+// node launched from this pool looks like.
+message KubernetesKarpenterNodePoolTemplate {
+  // Labels applied to every node the pool launches (max 100). The
+  // karpenter.sh and karpenter.k8s.aws label domains are restricted to
+  // Karpenter's own well-known keys, and kubernetes.io/hostname can never
+  // be set — mirrored from the CRD.
+  map<string, string> labels = 1 [
+    (buf.validate.field).map = {
+      max_pairs: 100
+      values: {
+        string: {
+          max_len: 63
+          pattern: "^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$"
+        }
+      }
+    },
+    (buf.validate.field).cel = {
+      id: "spec.template.labels.restricted_domains"
+      message: "labels in the karpenter.sh domain are restricted to karpenter.sh/capacity-type, kubernetes.io/hostname can never be set, and karpenter.sh/nodepool is controller-owned"
+      expression: "this.all(k, k != 'kubernetes.io/hostname' && k != 'karpenter.sh/nodepool' && (k == 'karpenter.sh/capacity-type' || !k.matches('^([^/]*\\\\.)?karpenter\\\\.sh/')))"
+    }
+  ];
+
+  // Annotations applied to every node the pool launches.
+  map<string, string> annotations = 2;
+
+  // Reference to the NodeClass carrying the cloud-level machine template.
+  // Defaults address the AWS provider's EC2NodeClass.
+  KubernetesKarpenterNodePoolNodeClassRef node_class_ref = 3 [(buf.validate.field).required = true];
+
+  // Scheduling requirements constraining what nodes the pool may launch
+  // (instance families, zones, capacity type, architecture, ...). Layered
+  // with labels and applied to every node. At least one requirement is the
+  // practical minimum — an unconstrained pool launches anything.
+  repeated KubernetesKarpenterNodePoolRequirement requirements = 4 [
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 100
+    },
+    (buf.validate.field).cel = {
+      id: "spec.template.requirements.in_needs_values"
+      message: "requirements with operator 'In' must have at least one value"
+      expression: "this.all(x, x.operator == 'In' ? x.values.size() != 0 : true)"
+    },
+    (buf.validate.field).cel = {
+      id: "spec.template.requirements.numeric_single_value"
+      message: "requirements with operator 'Gt', 'Lt', 'Gte' or 'Lte' must have exactly one non-negative integer value"
+      expression: "this.all(x, (x.operator == 'Gt' || x.operator == 'Lt' || x.operator == 'Gte' || x.operator == 'Lte') ? (x.values.size() == 1 && int(x.values[0]) >= 0) : true)"
+    },
+    (buf.validate.field).cel = {
+      id: "spec.template.requirements.min_values_satisfiable"
+      message: "requirements with min_values must list at least that many values"
+      expression: "this.all(x, (x.operator == 'In' && has(x.min_values)) ? x.values.size() >= x.min_values : true)"
+    }
+  ];
+
+  // Taints applied to every node — pods must tolerate them to schedule
+  // onto the pool (the standard dedicated-pool pattern).
+  repeated KubernetesKarpenterNodePoolTaint taints = 5;
+
+  // Taints applied at startup and expected to be removed shortly by a
+  // tolerating DaemonSet (initialization ordering). Unlike taints, pods do
+  // NOT need to tolerate these for the pool to provision for them.
+  repeated KubernetesKarpenterNodePoolTaint startup_taints = 6;
+
+  // Maximum node lifetime measured from creation (Go duration limited to
+  // s/m/h, or "Never"). CRD default: "720h" (30 days) — expiry is
+  // Karpenter's eventually-consistent node-recycling mechanism.
+  optional string expire_after = 7 [
+    (dev.planton.shared.options.default) = "720h",
+    (buf.validate.field).cel = {
+      id: "spec.template.expire_after_format"
+      message: "expire_after must be a duration using s/m/h units (e.g. \"720h\") or \"Never\""
+      expression: "this == '' || this.matches('^(([0-9]+(s|m|h))+|Never)$')"
+    }
+  ];
+
+  // Ceiling on how long node draining may take before pods are forcefully
+  // terminated (duration, s/m/h). Overrides pod terminationGracePeriod
+  // math and bypasses blocking PDBs once reached — the cluster admin's
+  // guarantee that nodes CAN be cycled. Empty = wait indefinitely.
+  optional string termination_grace_period = 8 [(buf.validate.field).cel = {
+    id: "spec.template.termination_grace_period_format"
+    message: "termination_grace_period must be a duration using s/m/h units (e.g. \"48h\")"
+    expression: "this == '' || this.matches('^([0-9]+(s|m|h))+$')"
+  }];
+}
+
+// KubernetesKarpenterNodePoolNodeClassRef references the provider-specific
+// NodeClass. group and kind are immutable on the live API after creation.
+message KubernetesKarpenterNodePoolNodeClassRef {
+  // API group of the NodeClass. AWS provider: "karpenter.k8s.aws".
+  optional string group = 1 [
+    (dev.planton.shared.options.default) = "karpenter.k8s.aws",
+    (buf.validate.field).string = {
+      max_len: 253
+      pattern: "^[^/]*$"
+    },
+    (buf.validate.field).cel = {
+      id: "spec.template.node_class_ref.group_not_empty"
+      message: "node_class_ref group may not be empty"
+      expression: "this != ''"
+    }
+  ];
+
+  // Kind of the NodeClass. AWS provider: "EC2NodeClass".
+  optional string kind = 2 [
+    (dev.planton.shared.options.default) = "EC2NodeClass",
+    (buf.validate.field).cel = {
+      id: "spec.template.node_class_ref.kind_not_empty"
+      message: "node_class_ref kind may not be empty"
+      expression: "this != ''"
+    }
+  ];
+
+  // Name of the NodeClass. Defaults to a KubernetesKarpenterEc2NodeClass
+  // foreign key — wire it with valueFrom in an infra chart and the pool
+  // deploys after its machine template. Pass the literal name with
+  // `value:` when the NodeClass is not Planton-managed.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKarpenterEc2NodeClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.node_class_name"
+  ];
+}
+
+// KubernetesKarpenterNodePoolRequirement is one scheduling requirement —
+// a node-selector term with Karpenter's extended operators.
+message KubernetesKarpenterNodePoolRequirement {
+  // Label key the requirement applies to (a well-known scheduling key such
+  // as karpenter.sh/capacity-type, node.kubernetes.io/instance-type,
+  // topology.kubernetes.io/zone, kubernetes.io/arch, or any
+  // karpenter.k8s.aws/instance-* discovery key). The karpenter.sh and
+  // karpenter.k8s.aws domains are restricted to their well-known keys;
+  // kubernetes.io/hostname and karpenter.sh/nodepool can never be
+  // constrained — mirrored from the CRD.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 316
+      pattern: "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*(\\/))?([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$"
+    },
+    (buf.validate.field).cel = {
+      id: "spec.requirement.key_restricted"
+      message: "kubernetes.io/hostname and karpenter.sh/nodepool cannot be constrained; the karpenter.sh domain only allows karpenter.sh/capacity-type"
+      expression: "this != 'kubernetes.io/hostname' && this != 'karpenter.sh/nodepool' && (this == 'karpenter.sh/capacity-type' || !this.matches('^([^/]*\\\\.)?karpenter\\\\.sh/'))"
+    }
+  ];
+
+  // Relationship between the key and the values: In, NotIn, Exists,
+  // DoesNotExist, Gt, Lt, Gte or Lte (the numeric operators take exactly
+  // one integer value).
+  string operator = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.requirement.operator_enum"
+      message: "operator must be one of 'In', 'NotIn', 'Exists', 'DoesNotExist', 'Gt', 'Lt', 'Gte' or 'Lte'"
+      expression: "this in ['In', 'NotIn', 'Exists', 'DoesNotExist', 'Gt', 'Lt', 'Gte', 'Lte']"
+    }
+  ];
+
+  // Values for the operator (non-empty for In/NotIn; empty for
+  // Exists/DoesNotExist; a single integer for Gt/Lt/Gte/Lte).
+  repeated string values = 3 [(buf.validate.field).repeated.items.string = {
+    max_len: 63
+    pattern: "^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$"
+  }];
+
+  // ALPHA: minimum number of distinct values the requirement must span in
+  // the launched fleet — the instance-type-diversity knob for spot pools
+  // (1-50).
+  optional int32 min_values = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 50
+  }];
+}
+
+// KubernetesKarpenterNodePoolTaint is a node taint (same shape as core
+// Kubernetes taints).
+message KubernetesKarpenterNodePoolTaint {
+  // Taint key.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      pattern: "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*(\\/))?([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$"
+    }
+  ];
+
+  // Taint value (optional).
+  string value = 2 [(buf.validate.field).string.pattern = "^(([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*(\\/))?([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$"];
+
+  // Effect on pods that do not tolerate the taint: NoSchedule,
+  // PreferNoSchedule or NoExecute.
+  string effect = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.taint.effect_enum"
+      message: "effect must be one of 'NoSchedule', 'PreferNoSchedule' or 'NoExecute'"
+      expression: "this in ['NoSchedule', 'PreferNoSchedule', 'NoExecute']"
+    }
+  ];
+}
+
+// KubernetesKarpenterNodePoolDisruption controls when Karpenter may disrupt
+// nodes it provisioned from this pool.
+message KubernetesKarpenterNodePoolDisruption {
+  // Which nodes consolidation may disrupt: "WhenEmptyOrUnderutilized" (CRD
+  // default — replace or remove nodes whenever cheaper capacity fits the
+  // pods), "WhenEmpty" (only nodes with no workload pods) or "Balanced".
+  // Ignored in static mode (replicas set).
+  optional string consolidation_policy = 1 [
+    (dev.planton.shared.options.default) = "WhenEmptyOrUnderutilized",
+    (buf.validate.field).cel = {
+      id: "spec.disruption.consolidation_policy_enum"
+      message: "consolidation_policy must be one of 'WhenEmpty', 'WhenEmptyOrUnderutilized' or 'Balanced'"
+      expression: "this == '' || this in ['WhenEmpty', 'WhenEmptyOrUnderutilized', 'Balanced']"
+    }
+  ];
+
+  // How long a node must be underutilized/empty before consolidation acts
+  // (duration s/m/h, or "Never" to disable consolidation). CRD default:
+  // "0s" (immediate).
+  optional string consolidate_after = 2 [
+    (dev.planton.shared.options.default) = "0s",
+    (buf.validate.field).cel = {
+      id: "spec.disruption.consolidate_after_format"
+      message: "consolidate_after must be a duration using s/m/h units (e.g. \"5m\") or \"Never\""
+      expression: "this == '' || this.matches('^(([0-9]+(s|m|h))+|Never)$')"
+    }
+  ];
+
+  // Budgets limiting how many of the pool's nodes may be disrupted at
+  // once, optionally on a schedule (e.g. business hours). CRD default when
+  // omitted: one always-active budget of "10%". Multiple active budgets
+  // apply the most restrictive value.
+  repeated KubernetesKarpenterNodePoolDisruptionBudget budgets = 3 [
+    (buf.validate.field).repeated.max_items = 50,
+    (buf.validate.field).cel = {
+      id: "spec.disruption.budgets.schedule_duration_pairing"
+      message: "a budget's schedule and duration must be set together — the schedule starts the window, the duration ends it"
+      expression: "this.all(x, has(x.schedule) == has(x.duration))"
+    }
+  ];
+}
+
+// KubernetesKarpenterNodePoolDisruptionBudget bounds concurrent disruption.
+message KubernetesKarpenterNodePoolDisruptionBudget {
+  // Maximum nodes of this pool that may be disrupting at once — an
+  // absolute count ("2") or a percentage ("10%"). "0" blocks disruption
+  // entirely while the budget is active.
+  string nodes = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^((100|[0-9]{1,2})%|[0-9]+)$"
+  ];
+
+  // Cron schedule (upstream cronjob syntax, or @hourly/@daily/...) at
+  // which the budget becomes active. Timezones are not supported. Omitted
+  // = always active. Must be set together with duration.
+  optional string schedule = 2 [(buf.validate.field).string.pattern = "^(@(annually|yearly|monthly|weekly|daily|midnight|hourly))|((.+)\\s(.+)\\s(.+)\\s(.+)\\s(.+))$"];
+
+  // How long the budget stays active after each schedule hit (minutes and
+  // hours only — cron cannot express seconds). Must be set together with
+  // schedule.
+  optional string duration = 3 [(buf.validate.field).string.pattern = "^((([0-9]+(h|m))|([0-9]+h[0-9]+m))(0s)?)$"];
+
+  // Disruption reasons the budget applies to (Underutilized, Empty,
+  // Drifted). Empty list = all reasons.
+  repeated string reasons = 4 [
+    (buf.validate.field).repeated.max_items = 50,
+    (buf.validate.field).repeated.items.cel = {
+      id: "spec.disruption.budget.reason_enum"
+      message: "each budget reason must be one of 'Underutilized', 'Empty' or 'Drifted'"
+      expression: "this in ['Underutilized', 'Empty', 'Drifted']"
+    }
+  ];
+}

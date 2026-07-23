@@ -15,7 +15,7 @@ go_library(
         "//apis/dev/planton/provider/kubernetes",
         "//apis/dev/planton/provider/kubernetes/kubernetestcproute/v1:kubernetestcproute",
         "//pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider",
-        "//pkg/kubernetes/kubernetestypes/gatewayapis/kubernetes/gateway/v1alpha2",
+        "//pkg/kubernetes/kubernetestypes/gatewayapis/kubernetes/gateway/v1:gateway",
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes",
         "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/meta/v1:meta",

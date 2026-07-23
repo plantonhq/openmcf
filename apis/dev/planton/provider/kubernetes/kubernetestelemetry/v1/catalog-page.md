@@ -47,7 +47,7 @@ planton apply -f telemetry.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `selector.match_labels` | map | Pods/VMs the config applies to; matched by istiod, not a foreign key. Mutually exclusive with `target_refs`. |
-| `target_refs` | list | Attach to Gateway/Service/ServiceEntry instead of a selector (max 16). |
+| `target_refs` | list | Attach to Gateway/Service/ServiceEntry instead of a selector (max 16). Each `name` is a foreign key defaulting to a `KubernetesGateway` reference; pass literals with `value:`. |
 | `tracing` | list | Sampling, providers, custom span tags, span-reporting toggles. |
 | `metrics` | list | Providers, per-metric overrides (enable/disable + tag dimensions), reporting interval. |
 | `access_logging` | list | Providers, enable/disable, CEL filter. |

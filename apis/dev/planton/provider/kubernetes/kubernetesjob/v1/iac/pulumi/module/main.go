@@ -7,64 +7,53 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources is the main entry point for creating all necessary Kubernetes resources
-// for a Job, based on the KubernetesJob API resource definition.
+// Resources deploys a KubernetesJob: an optional namespace, the env and
+// image-pull satellite Secrets, and the batch/v1 Job itself.
+//
+// Identity and configuration are composed, not created: pods run as the
+// ServiceAccount referenced in spec.pod.service_account, and config files are
+// mounted from ConfigMaps owned by the first-class KubernetesConfigMap kind.
+// This module never creates ServiceAccounts, RBAC objects, ConfigMaps,
+// certificates, gateways, or routes — Jobs front no traffic.
 func Resources(ctx *pulumi.Context, stackInput *kubernetesjobv1.KubernetesJobStackInput) error {
-	// Initialize local references
 	locals, err := initializeLocals(ctx, stackInput)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialize locals")
 	}
 
-	// Create a Pulumi Kubernetes provider from the given credentials
-	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
-		ctx,
-		stackInput.ProviderConfig,
-		"kubernetes",
-	)
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
+		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to create Kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
-	// Conditionally create namespace based on create_namespace flag
 	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	// Build conditional namespace dependency (Pulumi equivalent of Terraform depends_on).
-	// When create_namespace is false, createdNamespace is nil and namespaceDeps is empty.
+	// Conditional namespace dependency (Pulumi equivalent of Terraform depends_on):
+	// empty when the namespace pre-exists or is owned by a KubernetesNamespace resource.
 	var namespaceDeps []pulumi.ResourceOption
 	if createdNamespace != nil {
 		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
 	}
 
-	// Create the main secret resource
+	// Satellite secrets are created BEFORE the Job: pods reference them by name
+	// at startup, and a pod that starts before its env secret exists crashes —
+	// for a Job that failure burns retries from the backoff budget.
 	if err := secret(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create secret")
+		return errors.Wrap(err, "failed to create env secret")
 	}
 
-	// Create an image pull secret if Docker credentials are provided
-	if locals.ImagePullSecretData != nil {
-		if err := createImagePullSecret(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-			return errors.Wrap(err, "failed to create image pull secret")
-		}
-	}
-
-	// Create ConfigMaps
-	_, err = configMaps(ctx, locals, kubernetesProvider, namespaceDeps)
+	createdImagePullSecret, err := imagePullSecret(ctx, locals, kubernetesProvider, namespaceDeps)
 	if err != nil {
-		return errors.Wrap(err, "failed to create configmaps")
+		return errors.Wrap(err, "failed to create image pull secret")
 	}
 
-	// Create the Job resource
-	_, err = job(ctx, locals, kubernetesProvider, namespaceDeps)
-	if err != nil {
+	if _, err := job(ctx, locals, kubernetesProvider, createdImagePullSecret, namespaceDeps); err != nil {
 		return errors.Wrap(err, "failed to create job")
 	}
-
-	// Export outputs
-	exportOutputs(ctx, locals)
 
 	return nil
 }

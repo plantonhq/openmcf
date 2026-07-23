@@ -35,6 +35,33 @@ not restricted.
 
 If updating a component required knowledge this rule or its flow rules did not give you — an undocumented mechanism you had to reverse-engineer, a wrong or misleading implication, a missing step, or a stale path — amend this rule, the relevant flow rule, or `architecture/deployment-component.md` in the same session, as timeless guidance (never naming a project or a task), so the next agent never has to re-learn it. The workflow is expected to get sharper with every use.
 
+## Knowledge lands where its READER lives (NON-NEGOTIABLE)
+
+The clause above covers WORKFLOW lessons — knowledge the next *building*
+agent needs. Most lessons a session earns (especially live-E2E sessions) are
+CONFIGURATION lessons: knowledge the next *configuring* agent, or the human
+reading the docs, needs at the moment they write a manifest. Those never
+belong in this rule — an agent configuring a component does not read forge
+workflows. Before a session ends, classify every lesson by its reader and
+land it in that reader's surface:
+
+| Reader | Surface | Example of what belongs there |
+|---|---|---|
+| An agent (or human) WRITING a manifest | The spec proto's field comments | "the EBS CSI driver refuses to clone unencrypted source volumes", "reusing a backup name against a bucket holding prior records fails — records outlive the CR" |
+| An agent MAINTAINING a module | Module comments (both engines) at the mechanism they explain | "this guard is null-safe because tfvars emits null for unset optionals" |
+| A human EVALUATING or OPERATING the component | `docs/README.md`, the catalog page, presets' explainers | operational recipes (a min-0 tainted burst node group), cross-component prerequisites (an annotation set that requires a controller installed) |
+| The next BUILDING agent | This rule / flow rules / doctrine | engine mechanics, gate design, projection idioms |
+
+The test: *if a future manifest could repeat the mistake, the warning must
+sit on the field the manifest author will be reading when they make it.*
+A lesson recorded only in a workflow rule (or worse, only in a session
+record) is considered NOT captured. Live-caught constraints that upstream
+docs do not state (a cloud API rejection, a controller behavior, a timing
+reality) are the highest-value comments in the catalog — they are the
+knowledge nobody else has written down. Keep the comments timeless and
+evidence-flavored ("verified live: ..."), never narrating who learned it or
+when.
+
 ## When to Use Update
 
 Use update when you need to:
@@ -348,6 +375,189 @@ Based on scenario:
   stack outputs). When touching an older kind, diff the two engines' tag
   maps against the current convention and converge both in the same
   session.
+- **Never read a proto oneof through an interface assertion in module code**:
+  asserting `x.Source.(interface{ GetValue() string })` compiles and silently
+  matches NOTHING — generated oneof wrapper structs carry plain fields, not
+  getters, so the branch never runs and the dependent resource is silently
+  skipped. Every offline gate stays green; the failure surfaces live as a
+  missing satellite (e.g. an env Secret that never materializes, wedging pod
+  startup until the engine's readiness await times out). Switch on the
+  concrete wrapper type (`case *Msg_Value:`) or call the getter on the PARENT
+  message (`s.GetValue()`), never an interface assertion on the oneof field.
+- **In Terraform locals that render CR specs or Helm values, assemble
+  conditional objects with the null-prune idiom — never conditional-merge
+  idioms**: write every conditional entry as `key = cond ? value : null`
+  inside ONE object literal and prune with
+  `{ for k, v in {...} : k => v if v != null }`. The two tempting
+  alternatives are both broken, each with a different failure mode:
+  `cond ? {…} : {}` ternaries pass `terraform validate` but fail at PLAN
+  with "inconsistent conditional result types" whenever the branches carry
+  different attribute sets — and a CHAINED per-arm ternary
+  (`t == "a" ? {…} : t == "b" ? {…} : null`) selecting between differently
+  shaped objects is the same failure wearing a oneof costume: render ONE
+  object literal carrying every arm's keys (each key gated on its arm,
+  `null` otherwise) and null-prune it; and `merge(concat(cond ? [{…}] : [], …)...)`
+  silently UNIFIES primitive-only sibling objects into `map(string)` — the
+  ternary converts each tuple to a list, and concat's element-type
+  unification then coerces numbers and booleans to strings
+  (`size: "4096"`, `create: "true"`), which server-side apply rejects (or
+  worse, a chart tolerates) only at deploy time. The null-prune form keeps
+  every value's type because a for-expression over an object literal
+  produces an object, never a unified map. When a leaf map legitimately
+  holds only same-typed strings (identity labels, secret data), plain
+  merge with `cond ? {k = v} : {}` is safe — the hazard is mixed primitive
+  types.
+- **crd2pulumi cannot type a CRD field that is a map of NESTED objects**
+  (name-keyed maps whose values are objects — e.g. backup-storage maps):
+  it generates `map[string]map[string]string`, which structurally cannot
+  carry the nested bodies, and any adapter smuggling heterogeneous values
+  through the generated input type PANICS at runtime inside the provider's
+  input marshaling. When a rebuild meets such a CRD, render the whole CR
+  via `apiextensions.NewCustomResource` + `kubernetes.UntypedArgs` (plain
+  nested maps mirroring the Terraform `yamlencode` locals) and delete the
+  unconsumed generated package — full text in the forge rule's Phase 5.
+- **Operators that create cluster-scoped singletons at RUNTIME (fixed-name
+  webhooks and the like) need the MODULE to own those objects** — created
+  before the release, deleted with the resource, operator-managed fields
+  ignored, `pulumi.com/patchForce` on the Pulumi side — because Kubernetes
+  never garbage-collects a cluster-scoped dependent of a namespaced owner
+  and uninstall otherwise strands a Fail-closed webhook that bricks the
+  cluster. Full text in the forge rule's Phase 5.
+- **`try(x, "") != ""` does NOT guard an `optional` scalar inside a PRESENT
+  block**: proto `optional` fields arrive in tfvars as `null` (a present key
+  with a null value), so `try()` succeeds, returns null, and `null != ""` is
+  TRUE — the null then reaches the string template and fails the plan with
+  "Invalid template interpolation value" (or worse, renders on an engine
+  that tolerates it — a live-only cross-engine divergence, since generated
+  Go getters return `""` for unset optionals and the Pulumi module stays
+  correct). The null-safe read for optional scalars is
+  `try(coalesce(var.spec.block.field), "")`: coalesce rejects a lone
+  null/empty argument and `try` turns that rejection into `""`. The offline
+  `tofu plan` proofs must include a manifest where the optional field's
+  PARENT BLOCK is present but the optional scalar itself is omitted — the
+  absent-block case alone never exercises this trap.
+- **Pin Helm charts against the CHART REPOSITORY INDEX, never the vendored
+  Chart.yaml at an app tag**: chart releases are cut separately from
+  application releases, so the `Chart.yaml` inside an upstream repo at app
+  tag vX.Y.Z routinely still declares the PREVIOUS chart version (and the
+  served chart for app vX.Y.Z may not exist yet). A module that pins the
+  vendored number installs an older chart than the one designed against —
+  and every offline gate stays green because the version is just a string.
+  Verify what the repository actually serves
+  (`curl <repo-url>/index.yaml`, match the entry's `appVersion`) and pin
+  THAT chart version in the spec default and both modules' fallbacks.
+  **OCI-served charts have no index.yaml** — verify through the registry's
+  tags API instead (`curl "https://<registry>/v2/<repo>/tags/list"` with a
+  pull-scope bearer token from the registry's `/token` endpoint, or
+  `helm show chart oci://<repo>/<chart> --version <v>`), and READ the
+  served chart itself when designing (pull the chart tgz; the vendored
+  copy at the repo tag lags the same way). OCI charts also wire
+  differently per engine: the Terraform helm provider takes
+  `repository = "oci://<registry>/<namespace>"` plus the bare `chart`
+  name and joins them internally, while Pulumi's helm Release takes the
+  fully JOINED `oci://…/<chart>` as the chart reference with NO
+  repository opts — the two-sided pattern (with comments at both sites)
+  lives in the kuberneteshelmrelease modules and every OCI-backed typed
+  kind since.
+- **Read the upstream's DEPRECATION notices during every pin reconcile, and
+  model the REPLACEMENT architecture — never a surface with an announced
+  removal**: mature upstreams fork their configuration surfaces (a built-in
+  mechanism deprecated in favor of a plugin/extension architecture, an
+  in-tree arm split into its own CRD) and announce the removal several
+  minors out. Typing the deprecated surface ships a spec whose backbone
+  dies on a routine upstream upgrade — a breaking spec change later, on
+  upstream's schedule instead of ours — and every kind that copies the
+  shape inherits the regret. CloudNativePG is the worked example: its
+  in-tree `barmanObjectStore` backup stanza is deprecated with a removal
+  announced two minors ahead, so the typed backup surface models the
+  Barman Cloud plugin architecture (a separate plugin deployment beside
+  the operator, an `ObjectStore` CR per backup destination, `plugins`
+  wiring on the Cluster) even though the in-tree stanza still validates at
+  the pinned release. Check the release notes and the CRD's own
+  deprecation markers at every pin jump; when the replacement needs a
+  companion deployment (the plugin), it belongs on the OPERATOR kind as a
+  typed arm, and its external dependencies (cert-manager for plugin TLS)
+  are documented — never hidden.
+- **Custom resources apply through `kubectl_manifest` (alekc/kubectl), not
+  the hashicorp provider's `kubernetes_manifest`**: `kubernetes_manifest`
+  requires a reachable cluster AND the CRD's OpenAPI schema at PLAN time,
+  so a CR can never be planned before its operator/CRDs are installed —
+  which breaks single-run infra charts (operator + CR together) and makes
+  offline plan proofs impossible. `kubectl_manifest` renders from
+  `yaml_body` with no plan-time cluster dependency, applies server-side,
+  and supports import (`apiVersion//kind//name[//namespace]`). When a kind's
+  scenarios need the operator present, declare it as a registry
+  prerequisite (`CloudResourceKindMeta.prerequisites`) — the E2E harness
+  deploys prerequisite fixtures automatically, and a fixture manifest can
+  chain further fixtures it references via the
+  `planton.dev/e2e-prerequisites` annotation.
+- **kubectl_manifest kinds ARE import-mappable — use the composed-ID
+  vocabulary, never skip the map**: the kubernetes provider catalog carries a
+  `kubectl_manifest` row whose id_format is
+  `"{api_version}//{kind}//{name}[//{namespace}]"`. A typed-CR module renders
+  exactly one GVK, so the component map declares `api_version` and `kind`
+  with the `literal` derivation; `name` derives from metadata.name (plus the
+  kind's name stack output); `namespace` derives from the namespace stack
+  output / spec field for namespaced kinds and is left derivation-less for
+  cluster-scoped kinds — the bracketed `[//{namespace}]` segment group then
+  drops wholesale, which matters because the kubectl importer REJECTS a
+  trailing `//`. Modules that materialize convention-named satellite Secrets
+  key their `for_each` by the SECRET NAME, so `from_address_key` derives the
+  `{secret_name}` placeholder blind. The importer reconstructs `yaml_body`
+  from the STRIPPED LIVE object and resets every provider-side knob to its
+  schema default, so the catalog row declares those knobs config-only and
+  `yaml_body`/`yaml_body_parsed` write-normalized — the first post-import
+  plan re-asserting the module's rendered manifest is a server-side no-op.
+- **When a module declares SEVERAL resources of one type whose ID
+  placeholders carry different values** (a control-plane module installing
+  multiple Helm releases — each release's `{release_name}` is a different
+  constant), scope the import-map declarations per Terraform logical
+  resource name via `tofu_resource_name`: the declaration scoped to the
+  address's logical name wins, unscoped declarations are the fallback, and
+  the offline conformance guard rejects a scope that names no real module
+  resource. Same discipline for module-owned multi-document bundles: key the
+  `kubectl_manifest` `for_each` by each document's OWN NAME (never the split
+  index — positional keys are not identity and cannot feed an import ID), so
+  `from_address_key` derives the `{name}` placeholder blind and state
+  addresses survive bundle reorderings.
+- **`from_address_key` only serves `for_each` resources — count-indexed
+  singletons need their own scoped derivation**: a conditional satellite
+  written as `count = cond ? 1 : 0` has address key `0`, which cannot feed
+  an import ID, and the failure is invisible offline (conformance checks
+  placeholder coverage, not derivability of a live name) — only the blind
+  round-trip lane catches it ("values [x] not derivable"). When a module
+  mixes `for_each` satellite families (keyed by the FULL object name) with
+  count-indexed singletons (a backup-credentials Secret, a region Secret),
+  keep the unscoped `from_address_key` declaration as the fallback for the
+  families and add a `tofu_resource_name`-scoped declaration per singleton
+  — deterministic satellite names are metadata.name plus a fixed suffix, so
+  `from_metadata_name_suffix` derives each one blind.
+- **Helm cannot adopt CRDs that already exist without its ownership
+  metadata**: a chart that templates CRDs fails to install onto a cluster
+  where another tool (or a CRDs-only installer kind) already applied them
+  ("invalid ownership metadata"). When a component family carries BOTH a
+  CRDs-only installer kind and a full install kind, the full kind must apply
+  the CRD bundle ITSELF (server-side apply, module-owned, outside the Helm
+  release — exclude the chart's copies, e.g. istio base's
+  `base.excludedCRDs`) so both kinds co-own the CRDs and the CRDs-only →
+  full-install migration is a plain redeploy instead of a hard conflict.
+- **When an engine provider cannot express a spec field, fail the plan — never
+  silently drop it**: alongside the `PARITY-EXCEPTION:` twin comments, add a
+  Terraform `lifecycle { precondition }` on the resource that rejects a set
+  value with an error naming the gap and the working engine. A documented
+  divergence that silently ignores user intent still deploys different
+  behavior per engine; a loud plan failure routes the user before anything
+  ships. (Keep the kind's hack manifest free of those fields — the offline
+  plan proof runs through both engines from one manifest.)
+  The same discipline runs in the OTHER direction: when the PULUMI side is
+  the one that cannot express a field (the pinned SDK predates a provider
+  argument the Terraform provider already ships), the Pulumi module returns
+  a loud error when the field is set — naming the gap, the working engine,
+  and that the exception dissolves at the next SDK upgrade — instead of
+  omitting the argument silently. Verify expressibility against the PINNED
+  SDK version in go.mod (`$(go env GOMODCACHE)/...@<pinned>/...`), never
+  against an upstream clone's newer branch: the clone shows where the
+  provider is going, the pin decides what the module can do today.
 - **Verify the Pulumi module sets the cloud name argument explicitly**
   (`Name`/`AlarmName`/equivalent from `metadata.name`): modules authored
   before the explicit-naming mandate rely on Pulumi auto-naming, which

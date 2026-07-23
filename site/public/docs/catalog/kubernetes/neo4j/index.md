@@ -221,4 +221,4 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace via `valueFrom` reference
 - [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — application deployments that connect to Neo4j as a graph database backend
-- [KubernetesExternalDns](/docs/catalog/kubernetes/external-dns) — manages DNS records for the LoadBalancer ingress hostname
+- [KubernetesExternalDns](/docs/catalog/kubernetes/kubernetesexternaldns) — manages DNS records for the LoadBalancer ingress hostname

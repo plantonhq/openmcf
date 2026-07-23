@@ -10,94 +10,94 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep: same resource names, same
+// rendered CR body, same Secret names/keys/types.
 type Locals struct {
-	IngressExternalHostname  string
-	KubePortForwardCommand   string
-	KubeServiceFqdn          string
-	KubeServiceName          string
-	KubernetesMongodb        *kubernetesmongodbv1.KubernetesMongodb
-	Namespace                string
-	MongodbPodSelectorLabels map[string]string
-	Labels                   map[string]string
+	KubernetesMongodb *kubernetesmongodbv1.KubernetesMongodb
+	Spec              *kubernetesmongodbv1.KubernetesMongodbSpec
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	PasswordSecretName    string
-	ExternalLbServiceName string
+	// Resource-identity labels stamped on every module-created object
+	// (namespace, the PerconaServerMongoDB CR, credential Secrets). The
+	// operator derives ITS objects' identity from the CR name; these labels
+	// tie the whole family back to the Planton resource.
+	Labels map[string]string
+
+	// Namespace the cluster lives in (resolved literal from the spec's
+	// value-or-ref).
+	Namespace string
+
+	// ClusterName is metadata.name — the naming root the operator derives
+	// every object from: pods `<name>-<rs>-N`, the per-set headless
+	// Services `<name>-<rs>`, the mongos Service `<name>-mongos`, and the
+	// system-users Secret `<name>-secrets`.
+	ClusterName string
+
+	// UsersSecretName is the system-users Secret rendered explicitly as
+	// spec.secrets.users — per-cluster naming, not the operator's shared
+	// "percona-server-mongodb-users" fallback.
+	UsersSecretName string
+
+	ShardingEnabled     bool
+	FirstReplicaSetName string
+	ServiceName         string
+	KubeEndpoint        string
+	ReplicaSetOutput    string
+	PortForwardCommand  string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesmongodbv1.KubernetesMongodbStackInput) *Locals {
-	locals := &Locals{}
-
-	locals.KubernetesMongodb = stackInput.Target
-
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesmongodbv1.KubernetesMongodbStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	locals.Labels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesMongodb.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// get namespace from spec, it is required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
+	namespace := spec.Namespace.GetValue()
+	clusterName := target.Metadata.Name
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	locals.PasswordSecretName = fmt.Sprintf("%s-password", target.Metadata.Name)
-	locals.ExternalLbServiceName = fmt.Sprintf("%s-external-lb", target.Metadata.Name)
+	shardingEnabled := spec.GetSharding().GetEnabled()
+	firstReplicaSetName := spec.GetReplicaSets()[0].GetName()
 
-	// export namespace as an output
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	ctx.Export(OpUsername, pulumi.String(vars.RootUsername))
-	ctx.Export(OpPasswordSecretName, pulumi.String(locals.PasswordSecretName))
-	ctx.Export(OpPasswordSecretKey, pulumi.String(vars.MongodbRootPasswordKey))
-
-	locals.KubeServiceName = target.Metadata.Name
-
-	// Percona operator uses these labels for pod selection
-	// These labels are automatically applied by the operator to MongoDB pods
-	locals.MongodbPodSelectorLabels = map[string]string{
-		"app.kubernetes.io/name":       "percona-server-mongodb",
-		"app.kubernetes.io/instance":   target.Metadata.Name,
-		"app.kubernetes.io/managed-by": "percona-server-mongodb-operator",
+	serviceName := fmt.Sprintf("%s-%s", clusterName, firstReplicaSetName)
+	if shardingEnabled {
+		serviceName = clusterName + "-mongos"
 	}
 
-	//export kubernetes service name
-	ctx.Export(OpService, pulumi.String(locals.KubeServiceName))
-
-	locals.KubeServiceFqdn = fmt.Sprintf("%s.%s.svc.cluster.local", locals.KubeServiceName, locals.Namespace)
-
-	//export kubernetes endpoint
-	ctx.Export(OpKubeEndpoint, pulumi.String(locals.KubeServiceFqdn))
-
-	locals.KubePortForwardCommand = fmt.Sprintf("kubectl port-forward -n %s service/%s 8080:8080",
-		locals.Namespace, target.Metadata.Name)
-
-	//export kube-port-forward command
-	ctx.Export(OpPortForwardCommand, pulumi.String(locals.KubePortForwardCommand))
-
-	if target.Spec.Ingress == nil ||
-		!target.Spec.Ingress.Enabled ||
-		target.Spec.Ingress.Hostname == "" {
-		return locals
+	replicaSetOutput := firstReplicaSetName
+	if shardingEnabled {
+		replicaSetOutput = ""
 	}
 
-	locals.IngressExternalHostname = target.Spec.Ingress.Hostname
+	kubeEndpoint := fmt.Sprintf("%s.%s.svc.cluster.local:%d", serviceName, namespace, vars.MongoDBPort)
 
-	ctx.Export(OpExternalHostname, pulumi.String(locals.IngressExternalHostname))
-
-	return locals
+	return &Locals{
+		KubernetesMongodb:   target,
+		Spec:                spec,
+		Labels:              labels,
+		Namespace:           namespace,
+		ClusterName:         clusterName,
+		UsersSecretName:     clusterName + "-secrets",
+		ShardingEnabled:     shardingEnabled,
+		FirstReplicaSetName: firstReplicaSetName,
+		ServiceName:         serviceName,
+		KubeEndpoint:        kubeEndpoint,
+		ReplicaSetOutput:    replicaSetOutput,
+		PortForwardCommand: fmt.Sprintf(
+			"kubectl port-forward svc/%s -n %s %d:%d",
+			serviceName, namespace, vars.MongoDBPort, vars.MongoDBPort),
+	}
 }

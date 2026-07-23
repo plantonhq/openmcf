@@ -18,8 +18,8 @@ variable "metadata" {
 variable "spec" {
   description = "KubernetesGatewayApiCrds specification"
   type = object({
-    # Gateway API version to install (e.g., "v1.2.1", "v1.3.0")
-    version = optional(string, "v1.2.1")
+    # Gateway API version to install (e.g., "v1.6.1")
+    version = optional(string, "v1.6.1")
 
     # Installation channel configuration
     install_channel = optional(object({
@@ -28,7 +28,7 @@ variable "spec" {
     }), { channel = "standard" })
   })
   default = {
-    version         = "v1.2.1"
+    version         = "v1.6.1"
     install_channel = { channel = "standard" }
   }
 }

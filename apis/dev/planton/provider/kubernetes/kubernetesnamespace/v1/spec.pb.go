@@ -448,8 +448,19 @@ type KubernetesNamespaceCustomQuotas struct {
 	ObjectCounts *KubernetesNamespaceObjectCountQuotas `protobuf:"bytes,3,opt,name=object_counts,json=objectCounts,proto3" json:"object_counts,omitempty"`
 	// Default resource requests/limits for containers without explicit values
 	DefaultLimits *KubernetesNamespaceDefaultLimits `protobuf:"bytes,4,opt,name=default_limits,json=defaultLimits,proto3" json:"default_limits,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// *
+	// Additional ResourceQuota hard limits beyond the typed CPU/memory/object-count fields,
+	// as quota resource name → quantity. Kubernetes models quota as an open map, so anything
+	// it accepts is expressible here: storage ("requests.storage": "500Gi",
+	// "<class>.storageclass.storage.k8s.io/requests.storage": "100Gi"), extended resources
+	// ("requests.nvidia.com/gpu": "4"), object counts for any resource
+	// ("count/jobs.batch": "30"), and scoped ephemeral storage. Entries here are merged into
+	// the same ResourceQuota; keys that collide with the typed fields are rejected by the
+	// cluster, so keep the typed fields authoritative for CPU, memory, and the standard
+	// object counts.
+	AdditionalHardLimits map[string]string `protobuf:"bytes,5,rep,name=additional_hard_limits,json=additionalHardLimits,proto3" json:"additional_hard_limits,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *KubernetesNamespaceCustomQuotas) Reset() {
@@ -506,6 +517,13 @@ func (x *KubernetesNamespaceCustomQuotas) GetObjectCounts() *KubernetesNamespace
 func (x *KubernetesNamespaceCustomQuotas) GetDefaultLimits() *KubernetesNamespaceDefaultLimits {
 	if x != nil {
 		return x.DefaultLimits
+	}
+	return nil
+}
+
+func (x *KubernetesNamespaceCustomQuotas) GetAdditionalHardLimits() map[string]string {
+	if x != nil {
+		return x.AdditionalHardLimits
 	}
 	return nil
 }
@@ -1001,12 +1019,16 @@ const file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_raw
 	"\x05large\x10\x03\x12\n" +
 	"\n" +
 	"\x06xlarge\x10\x04B\x10\n" +
-	"\x0eprofile_config\"\xfd\x03\n" +
+	"\x0eprofile_config\"\x84\x06\n" +
 	"\x1fKubernetesNamespaceCustomQuotas\x12e\n" +
 	"\x03cpu\x18\x01 \x01(\v2S.dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceCpuQuotaR\x03cpu\x12n\n" +
 	"\x06memory\x18\x02 \x01(\v2V.dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceMemoryQuotaR\x06memory\x12\x81\x01\n" +
 	"\robject_counts\x18\x03 \x01(\v2\\.dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceObjectCountQuotasR\fobjectCounts\x12\x7f\n" +
-	"\x0edefault_limits\x18\x04 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceDefaultLimitsR\rdefaultLimits\"c\n" +
+	"\x0edefault_limits\x18\x04 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceDefaultLimitsR\rdefaultLimits\x12\xbb\x01\n" +
+	"\x16additional_hard_limits\x18\x05 \x03(\v2q.dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceCustomQuotas.AdditionalHardLimitsEntryB\x12\xbaH\x0f\x9a\x01\f\"\x04r\x02\x10\x01*\x04r\x02\x10\x01R\x14additionalHardLimits\x1aG\n" +
+	"\x19AdditionalHardLimitsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"c\n" +
 	"\x1bKubernetesNamespaceCpuQuota\x12#\n" +
 	"\brequests\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\brequests\x12\x1f\n" +
 	"\x06limits\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06limits\"f\n" +
@@ -1058,7 +1080,7 @@ func file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_rawD
 }
 
 var file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_goTypes = []any{
 	(KubernetesNamespaceSpec_KubernetesNamespacePodSecurityStandard)(0),          // 0: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceSpec.KubernetesNamespacePodSecurityStandard
 	(KubernetesNamespaceResourceProfile_KubernetesNamespaceBuiltInProfile)(0),    // 1: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceResourceProfile.KubernetesNamespaceBuiltInProfile
@@ -1074,6 +1096,7 @@ var file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_goTyp
 	(*KubernetesNamespaceServiceMeshConfig)(nil),                                 // 11: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceServiceMeshConfig
 	nil, // 12: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceSpec.LabelsEntry
 	nil, // 13: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceSpec.AnnotationsEntry
+	nil, // 14: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceCustomQuotas.AdditionalHardLimitsEntry
 }
 var file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_depIdxs = []int32{
 	12, // 0: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceSpec.labels:type_name -> dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceSpec.LabelsEntry
@@ -1088,12 +1111,13 @@ var file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_depId
 	7,  // 9: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceCustomQuotas.memory:type_name -> dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceMemoryQuota
 	8,  // 10: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceCustomQuotas.object_counts:type_name -> dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceObjectCountQuotas
 	9,  // 11: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceCustomQuotas.default_limits:type_name -> dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceDefaultLimits
-	2,  // 12: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceServiceMeshConfig.mesh_type:type_name -> dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceServiceMeshConfig.KubernetesNamespaceServiceMeshType
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	14, // 12: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceCustomQuotas.additional_hard_limits:type_name -> dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceCustomQuotas.AdditionalHardLimitsEntry
+	2,  // 13: dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceServiceMeshConfig.mesh_type:type_name -> dev.planton.provider.kubernetes.kubernetesnamespace.v1.KubernetesNamespaceServiceMeshConfig.KubernetesNamespaceServiceMeshType
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_init() }
@@ -1111,7 +1135,7 @@ func file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_init
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesnamespace_v1_spec_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,45 +1,52 @@
-locals {
-  # If metadata.id is non-empty, use that. Otherwise use metadata.name.
-  resource_id = (
-    var.metadata.id != null && var.metadata.id != ""
-    ? var.metadata.id
-    : var.metadata.name
-  )
+# Computed values shared across the module.
 
-  # Base labels
-  base_labels = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_kind" = "helm_release"
+locals {
+  # Resource-identity labels: the kuberneteslabelkeys set, identical to what
+  # the Pulumi module stamps for the same manifest. Stamped on the namespace
+  # this module creates — never injected into the chart's own resources
+  # (Helm owns those).
+  identity_labels_base = {
+    "planton.ai/resource" = "true"
+    "planton.ai/name"     = var.metadata.name
+    "planton.ai/kind"     = "KubernetesHelmRelease"
   }
 
-  # Organization label if org is provided
-  org_label = (
-    var.metadata.org != null && var.metadata.org != ""
-    ) ? {
-    "organization" = var.metadata.org
-  } : {}
+  id_label = (
+    var.metadata.id != null && try(var.metadata.id, "") != ""
+  ) ? { "planton.ai/id" = var.metadata.id } : {}
 
-  # Environment label if env is provided and env.id is non-empty
+  org_label = (
+    var.metadata.org != null && try(var.metadata.org, "") != ""
+  ) ? { "planton.ai/organization" = var.metadata.org } : {}
+
   env_label = (
     var.metadata.env != null && try(var.metadata.env, "") != ""
-    ) ? {
-    "environment" = var.metadata.env
-  } : {}
+  ) ? { "planton.ai/environment" = var.metadata.env } : {}
 
-  # Merge all into final_labels
-  final_labels = merge(local.base_labels, local.org_label, local.env_label)
+  labels = merge(
+    local.identity_labels_base,
+    local.id_label,
+    local.org_label,
+    local.env_label,
+  )
 
-  # Namespace from spec.namespace (StringValueOrRef), with fallback to resource_id
-  namespace_name = try(var.spec.namespace.value, local.resource_id)
-
-  # Flag to determine if namespace should be created. Defaults to false (namespace must
-  # pre-exist) to match the proto3 zero value -- an unset create_namespace serializes away.
+  # The namespace the release installs into (the generator flattens the
+  # spec's value-or-ref to a plain string) and whether this module creates
+  # it.
+  namespace_name   = var.spec.namespace
   create_namespace = try(var.spec.create_namespace, false)
 
-  # The helm release fields for direct reference:
-  helm_repo    = var.spec.repo
-  helm_chart   = var.spec.name
-  helm_version = var.spec.version
-  # helm_values  = var.spec.values
+  # The Helm release name: spec.release_name when set, otherwise the
+  # resource's metadata.name — identical resolution in the Pulumi module.
+  release_name = try(var.spec.release_name, "") != "" ? var.spec.release_name : var.metadata.name
+
+  # Helm's own defaults resolved for the optional knobs so both engines send
+  # identical values whether or not the spec set the fields (the Pulumi
+  # module resolves the same defaults in its locals).
+  timeout_seconds = try(var.spec.timeout_seconds, null) != null ? var.spec.timeout_seconds : 300
+  max_history     = try(var.spec.max_history, null) != null ? var.spec.max_history : 10
+
+  # skip_await inverts helm_release's wait flag (the Pulumi module passes
+  # SkipAwait directly). Both engines default to awaiting readiness.
+  wait = !try(var.spec.skip_await, false)
 }

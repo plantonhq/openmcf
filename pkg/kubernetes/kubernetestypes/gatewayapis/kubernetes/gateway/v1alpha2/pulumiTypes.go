@@ -375,32 +375,9 @@ type TCPRouteSpec struct {
 	// allowed by something in the namespace they are referring to. For example,
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable other kinds of cross-namespace reference.
-	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
 	ParentRefs []TCPRouteSpecParentRefs `pulumi:"parentRefs"`
 	// Rules are a list of TCP matchers and actions.
 	Rules []TCPRouteSpecRules `pulumi:"rules"`
-	// UseDefaultGateways indicates the default Gateway scope to use for this
-	// Route. If unset (the default) or set to None, the Route will not be
-	// attached to any default Gateway; if set, it will be attached to any
-	// default Gateway supporting the named scope, subject to the usual rules
-	// about which Routes a Gateway is allowed to claim.
-	//
-	// Think carefully before using this functionality! The set of default
-	// Gateways supporting the requested scope can change over time without
-	// any notice to the Route author, and in many situations it will not be
-	// appropriate to request a default Gateway for a given Route -- for
-	// example, a Route with specific security requirements should almost
-	// certainly not use a default Gateway.
-	UseDefaultGateways *string `pulumi:"useDefaultGateways"`
 }
 
 // TCPRouteSpecInput is an input type that accepts TCPRouteSpecArgs and TCPRouteSpecOutput values.
@@ -466,32 +443,9 @@ type TCPRouteSpecArgs struct {
 	// allowed by something in the namespace they are referring to. For example,
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable other kinds of cross-namespace reference.
-	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
 	ParentRefs TCPRouteSpecParentRefsArrayInput `pulumi:"parentRefs"`
 	// Rules are a list of TCP matchers and actions.
 	Rules TCPRouteSpecRulesArrayInput `pulumi:"rules"`
-	// UseDefaultGateways indicates the default Gateway scope to use for this
-	// Route. If unset (the default) or set to None, the Route will not be
-	// attached to any default Gateway; if set, it will be attached to any
-	// default Gateway supporting the named scope, subject to the usual rules
-	// about which Routes a Gateway is allowed to claim.
-	//
-	// Think carefully before using this functionality! The set of default
-	// Gateways supporting the requested scope can change over time without
-	// any notice to the Route author, and in many situations it will not be
-	// appropriate to request a default Gateway for a given Route -- for
-	// example, a Route with specific security requirements should almost
-	// certainly not use a default Gateway.
-	UseDefaultGateways pulumi.StringPtrInput `pulumi:"useDefaultGateways"`
 }
 
 func (TCPRouteSpecArgs) ElementType() reflect.Type {
@@ -622,16 +576,6 @@ func (o TCPRouteSpecOutput) ToTCPRouteSpecPtrOutputWithContext(ctx context.Conte
 // allowed by something in the namespace they are referring to. For example,
 // Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 // generic way to enable other kinds of cross-namespace reference.
-//
-// ParentRefs from a Route to a Service in the same namespace are "producer"
-// routes, which apply default routing rules to inbound connections from
-// any namespace to the Service.
-//
-// ParentRefs from a Route to a Service in a different namespace are
-// "consumer" routes, and these routing rules are only applied to outbound
-// connections originating from the same namespace as the Route, for which
-// the intended destination of the connections are a Service targeted as a
-// ParentRef of the Route.
 func (o TCPRouteSpecOutput) ParentRefs() TCPRouteSpecParentRefsArrayOutput {
 	return o.ApplyT(func(v TCPRouteSpec) []TCPRouteSpecParentRefs { return v.ParentRefs }).(TCPRouteSpecParentRefsArrayOutput)
 }
@@ -639,22 +583,6 @@ func (o TCPRouteSpecOutput) ParentRefs() TCPRouteSpecParentRefsArrayOutput {
 // Rules are a list of TCP matchers and actions.
 func (o TCPRouteSpecOutput) Rules() TCPRouteSpecRulesArrayOutput {
 	return o.ApplyT(func(v TCPRouteSpec) []TCPRouteSpecRules { return v.Rules }).(TCPRouteSpecRulesArrayOutput)
-}
-
-// UseDefaultGateways indicates the default Gateway scope to use for this
-// Route. If unset (the default) or set to None, the Route will not be
-// attached to any default Gateway; if set, it will be attached to any
-// default Gateway supporting the named scope, subject to the usual rules
-// about which Routes a Gateway is allowed to claim.
-//
-// Think carefully before using this functionality! The set of default
-// Gateways supporting the requested scope can change over time without
-// any notice to the Route author, and in many situations it will not be
-// appropriate to request a default Gateway for a given Route -- for
-// example, a Route with specific security requirements should almost
-// certainly not use a default Gateway.
-func (o TCPRouteSpecOutput) UseDefaultGateways() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v TCPRouteSpec) *string { return v.UseDefaultGateways }).(pulumi.StringPtrOutput)
 }
 
 type TCPRouteSpecPtrOutput struct{ *pulumi.OutputState }
@@ -731,16 +659,6 @@ func (o TCPRouteSpecPtrOutput) Elem() TCPRouteSpecOutput {
 // allowed by something in the namespace they are referring to. For example,
 // Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 // generic way to enable other kinds of cross-namespace reference.
-//
-// ParentRefs from a Route to a Service in the same namespace are "producer"
-// routes, which apply default routing rules to inbound connections from
-// any namespace to the Service.
-//
-// ParentRefs from a Route to a Service in a different namespace are
-// "consumer" routes, and these routing rules are only applied to outbound
-// connections originating from the same namespace as the Route, for which
-// the intended destination of the connections are a Service targeted as a
-// ParentRef of the Route.
 func (o TCPRouteSpecPtrOutput) ParentRefs() TCPRouteSpecParentRefsArrayOutput {
 	return o.ApplyT(func(v *TCPRouteSpec) []TCPRouteSpecParentRefs {
 		if v == nil {
@@ -758,27 +676,6 @@ func (o TCPRouteSpecPtrOutput) Rules() TCPRouteSpecRulesArrayOutput {
 		}
 		return v.Rules
 	}).(TCPRouteSpecRulesArrayOutput)
-}
-
-// UseDefaultGateways indicates the default Gateway scope to use for this
-// Route. If unset (the default) or set to None, the Route will not be
-// attached to any default Gateway; if set, it will be attached to any
-// default Gateway supporting the named scope, subject to the usual rules
-// about which Routes a Gateway is allowed to claim.
-//
-// Think carefully before using this functionality! The set of default
-// Gateways supporting the requested scope can change over time without
-// any notice to the Route author, and in many situations it will not be
-// appropriate to request a default Gateway for a given Route -- for
-// example, a Route with specific security requirements should almost
-// certainly not use a default Gateway.
-func (o TCPRouteSpecPtrOutput) UseDefaultGateways() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *TCPRouteSpec) *string {
-		if v == nil {
-			return nil
-		}
-		return v.UseDefaultGateways
-	}).(pulumi.StringPtrOutput)
 }
 
 // ParentReference identifies an API object (usually a Gateway) that can be considered
@@ -823,16 +720,6 @@ type TCPRouteSpecParentRefs struct {
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable any other kind of cross-namespace reference.
 	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
-	//
 	// Support: Core
 	Namespace *string `pulumi:"namespace"`
 	// Port is the network port this Route targets. It can be interpreted
@@ -845,10 +732,6 @@ type TCPRouteSpecParentRefs struct {
 	// as opposed to a listener(s) whose port(s) may be changed. When both Port
 	// and SectionName are specified, the name and port of the selected listener
 	// must match both specified values.
-	//
-	// When the parent resource is a Service, this targets a specific port in the
-	// Service spec. When both Port (experimental) and SectionName are specified,
-	// the name and port of the selected port must match both specified values.
 	//
 	// Implementations MAY choose to support other parent resources.
 	// Implementations supporting other types of parent resources MUST clearly
@@ -944,16 +827,6 @@ type TCPRouteSpecParentRefsArgs struct {
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable any other kind of cross-namespace reference.
 	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
-	//
 	// Support: Core
 	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
 	// Port is the network port this Route targets. It can be interpreted
@@ -966,10 +839,6 @@ type TCPRouteSpecParentRefsArgs struct {
 	// as opposed to a listener(s) whose port(s) may be changed. When both Port
 	// and SectionName are specified, the name and port of the selected listener
 	// must match both specified values.
-	//
-	// When the parent resource is a Service, this targets a specific port in the
-	// Service spec. When both Port (experimental) and SectionName are specified,
-	// the name and port of the selected port must match both specified values.
 	//
 	// Implementations MAY choose to support other parent resources.
 	// Implementations supporting other types of parent resources MUST clearly
@@ -1113,16 +982,6 @@ func (o TCPRouteSpecParentRefsOutput) Name() pulumi.StringPtrOutput {
 // Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 // generic way to enable any other kind of cross-namespace reference.
 //
-// ParentRefs from a Route to a Service in the same namespace are "producer"
-// routes, which apply default routing rules to inbound connections from
-// any namespace to the Service.
-//
-// ParentRefs from a Route to a Service in a different namespace are
-// "consumer" routes, and these routing rules are only applied to outbound
-// connections originating from the same namespace as the Route, for which
-// the intended destination of the connections are a Service targeted as a
-// ParentRef of the Route.
-//
 // Support: Core
 func (o TCPRouteSpecParentRefsOutput) Namespace() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v TCPRouteSpecParentRefs) *string { return v.Namespace }).(pulumi.StringPtrOutput)
@@ -1138,10 +997,6 @@ func (o TCPRouteSpecParentRefsOutput) Namespace() pulumi.StringPtrOutput {
 // as opposed to a listener(s) whose port(s) may be changed. When both Port
 // and SectionName are specified, the name and port of the selected listener
 // must match both specified values.
-//
-// When the parent resource is a Service, this targets a specific port in the
-// Service spec. When both Port (experimental) and SectionName are specified,
-// the name and port of the selected port must match both specified values.
 //
 // Implementations MAY choose to support other parent resources.
 // Implementations supporting other types of parent resources MUST clearly
@@ -1250,16 +1105,6 @@ type TCPRouteSpecParentRefsPatch struct {
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable any other kind of cross-namespace reference.
 	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
-	//
 	// Support: Core
 	Namespace *string `pulumi:"namespace"`
 	// Port is the network port this Route targets. It can be interpreted
@@ -1272,10 +1117,6 @@ type TCPRouteSpecParentRefsPatch struct {
 	// as opposed to a listener(s) whose port(s) may be changed. When both Port
 	// and SectionName are specified, the name and port of the selected listener
 	// must match both specified values.
-	//
-	// When the parent resource is a Service, this targets a specific port in the
-	// Service spec. When both Port (experimental) and SectionName are specified,
-	// the name and port of the selected port must match both specified values.
 	//
 	// Implementations MAY choose to support other parent resources.
 	// Implementations supporting other types of parent resources MUST clearly
@@ -1371,16 +1212,6 @@ type TCPRouteSpecParentRefsPatchArgs struct {
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable any other kind of cross-namespace reference.
 	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
-	//
 	// Support: Core
 	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
 	// Port is the network port this Route targets. It can be interpreted
@@ -1393,10 +1224,6 @@ type TCPRouteSpecParentRefsPatchArgs struct {
 	// as opposed to a listener(s) whose port(s) may be changed. When both Port
 	// and SectionName are specified, the name and port of the selected listener
 	// must match both specified values.
-	//
-	// When the parent resource is a Service, this targets a specific port in the
-	// Service spec. When both Port (experimental) and SectionName are specified,
-	// the name and port of the selected port must match both specified values.
 	//
 	// Implementations MAY choose to support other parent resources.
 	// Implementations supporting other types of parent resources MUST clearly
@@ -1540,16 +1367,6 @@ func (o TCPRouteSpecParentRefsPatchOutput) Name() pulumi.StringPtrOutput {
 // Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 // generic way to enable any other kind of cross-namespace reference.
 //
-// ParentRefs from a Route to a Service in the same namespace are "producer"
-// routes, which apply default routing rules to inbound connections from
-// any namespace to the Service.
-//
-// ParentRefs from a Route to a Service in a different namespace are
-// "consumer" routes, and these routing rules are only applied to outbound
-// connections originating from the same namespace as the Route, for which
-// the intended destination of the connections are a Service targeted as a
-// ParentRef of the Route.
-//
 // Support: Core
 func (o TCPRouteSpecParentRefsPatchOutput) Namespace() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v TCPRouteSpecParentRefsPatch) *string { return v.Namespace }).(pulumi.StringPtrOutput)
@@ -1565,10 +1382,6 @@ func (o TCPRouteSpecParentRefsPatchOutput) Namespace() pulumi.StringPtrOutput {
 // as opposed to a listener(s) whose port(s) may be changed. When both Port
 // and SectionName are specified, the name and port of the selected listener
 // must match both specified values.
-//
-// When the parent resource is a Service, this targets a specific port in the
-// Service spec. When both Port (experimental) and SectionName are specified,
-// the name and port of the selected port must match both specified values.
 //
 // Implementations MAY choose to support other parent resources.
 // Implementations supporting other types of parent resources MUST clearly
@@ -1687,32 +1500,9 @@ type TCPRouteSpecPatch struct {
 	// allowed by something in the namespace they are referring to. For example,
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable other kinds of cross-namespace reference.
-	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
 	ParentRefs []TCPRouteSpecParentRefsPatch `pulumi:"parentRefs"`
 	// Rules are a list of TCP matchers and actions.
 	Rules []TCPRouteSpecRulesPatch `pulumi:"rules"`
-	// UseDefaultGateways indicates the default Gateway scope to use for this
-	// Route. If unset (the default) or set to None, the Route will not be
-	// attached to any default Gateway; if set, it will be attached to any
-	// default Gateway supporting the named scope, subject to the usual rules
-	// about which Routes a Gateway is allowed to claim.
-	//
-	// Think carefully before using this functionality! The set of default
-	// Gateways supporting the requested scope can change over time without
-	// any notice to the Route author, and in many situations it will not be
-	// appropriate to request a default Gateway for a given Route -- for
-	// example, a Route with specific security requirements should almost
-	// certainly not use a default Gateway.
-	UseDefaultGateways *string `pulumi:"useDefaultGateways"`
 }
 
 // TCPRouteSpecPatchInput is an input type that accepts TCPRouteSpecPatchArgs and TCPRouteSpecPatchOutput values.
@@ -1778,32 +1568,9 @@ type TCPRouteSpecPatchArgs struct {
 	// allowed by something in the namespace they are referring to. For example,
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable other kinds of cross-namespace reference.
-	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
 	ParentRefs TCPRouteSpecParentRefsPatchArrayInput `pulumi:"parentRefs"`
 	// Rules are a list of TCP matchers and actions.
 	Rules TCPRouteSpecRulesPatchArrayInput `pulumi:"rules"`
-	// UseDefaultGateways indicates the default Gateway scope to use for this
-	// Route. If unset (the default) or set to None, the Route will not be
-	// attached to any default Gateway; if set, it will be attached to any
-	// default Gateway supporting the named scope, subject to the usual rules
-	// about which Routes a Gateway is allowed to claim.
-	//
-	// Think carefully before using this functionality! The set of default
-	// Gateways supporting the requested scope can change over time without
-	// any notice to the Route author, and in many situations it will not be
-	// appropriate to request a default Gateway for a given Route -- for
-	// example, a Route with specific security requirements should almost
-	// certainly not use a default Gateway.
-	UseDefaultGateways pulumi.StringPtrInput `pulumi:"useDefaultGateways"`
 }
 
 func (TCPRouteSpecPatchArgs) ElementType() reflect.Type {
@@ -1934,16 +1701,6 @@ func (o TCPRouteSpecPatchOutput) ToTCPRouteSpecPatchPtrOutputWithContext(ctx con
 // allowed by something in the namespace they are referring to. For example,
 // Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 // generic way to enable other kinds of cross-namespace reference.
-//
-// ParentRefs from a Route to a Service in the same namespace are "producer"
-// routes, which apply default routing rules to inbound connections from
-// any namespace to the Service.
-//
-// ParentRefs from a Route to a Service in a different namespace are
-// "consumer" routes, and these routing rules are only applied to outbound
-// connections originating from the same namespace as the Route, for which
-// the intended destination of the connections are a Service targeted as a
-// ParentRef of the Route.
 func (o TCPRouteSpecPatchOutput) ParentRefs() TCPRouteSpecParentRefsPatchArrayOutput {
 	return o.ApplyT(func(v TCPRouteSpecPatch) []TCPRouteSpecParentRefsPatch { return v.ParentRefs }).(TCPRouteSpecParentRefsPatchArrayOutput)
 }
@@ -1951,22 +1708,6 @@ func (o TCPRouteSpecPatchOutput) ParentRefs() TCPRouteSpecParentRefsPatchArrayOu
 // Rules are a list of TCP matchers and actions.
 func (o TCPRouteSpecPatchOutput) Rules() TCPRouteSpecRulesPatchArrayOutput {
 	return o.ApplyT(func(v TCPRouteSpecPatch) []TCPRouteSpecRulesPatch { return v.Rules }).(TCPRouteSpecRulesPatchArrayOutput)
-}
-
-// UseDefaultGateways indicates the default Gateway scope to use for this
-// Route. If unset (the default) or set to None, the Route will not be
-// attached to any default Gateway; if set, it will be attached to any
-// default Gateway supporting the named scope, subject to the usual rules
-// about which Routes a Gateway is allowed to claim.
-//
-// Think carefully before using this functionality! The set of default
-// Gateways supporting the requested scope can change over time without
-// any notice to the Route author, and in many situations it will not be
-// appropriate to request a default Gateway for a given Route -- for
-// example, a Route with specific security requirements should almost
-// certainly not use a default Gateway.
-func (o TCPRouteSpecPatchOutput) UseDefaultGateways() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v TCPRouteSpecPatch) *string { return v.UseDefaultGateways }).(pulumi.StringPtrOutput)
 }
 
 type TCPRouteSpecPatchPtrOutput struct{ *pulumi.OutputState }
@@ -2043,16 +1784,6 @@ func (o TCPRouteSpecPatchPtrOutput) Elem() TCPRouteSpecPatchOutput {
 // allowed by something in the namespace they are referring to. For example,
 // Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 // generic way to enable other kinds of cross-namespace reference.
-//
-// ParentRefs from a Route to a Service in the same namespace are "producer"
-// routes, which apply default routing rules to inbound connections from
-// any namespace to the Service.
-//
-// ParentRefs from a Route to a Service in a different namespace are
-// "consumer" routes, and these routing rules are only applied to outbound
-// connections originating from the same namespace as the Route, for which
-// the intended destination of the connections are a Service targeted as a
-// ParentRef of the Route.
 func (o TCPRouteSpecPatchPtrOutput) ParentRefs() TCPRouteSpecParentRefsPatchArrayOutput {
 	return o.ApplyT(func(v *TCPRouteSpecPatch) []TCPRouteSpecParentRefsPatch {
 		if v == nil {
@@ -2072,27 +1803,6 @@ func (o TCPRouteSpecPatchPtrOutput) Rules() TCPRouteSpecRulesPatchArrayOutput {
 	}).(TCPRouteSpecRulesPatchArrayOutput)
 }
 
-// UseDefaultGateways indicates the default Gateway scope to use for this
-// Route. If unset (the default) or set to None, the Route will not be
-// attached to any default Gateway; if set, it will be attached to any
-// default Gateway supporting the named scope, subject to the usual rules
-// about which Routes a Gateway is allowed to claim.
-//
-// Think carefully before using this functionality! The set of default
-// Gateways supporting the requested scope can change over time without
-// any notice to the Route author, and in many situations it will not be
-// appropriate to request a default Gateway for a given Route -- for
-// example, a Route with specific security requirements should almost
-// certainly not use a default Gateway.
-func (o TCPRouteSpecPatchPtrOutput) UseDefaultGateways() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *TCPRouteSpecPatch) *string {
-		if v == nil {
-			return nil
-		}
-		return v.UseDefaultGateways
-	}).(pulumi.StringPtrOutput)
-}
-
 // TCPRouteRule is the configuration for a given rule.
 type TCPRouteSpecRules struct {
 	// BackendRefs defines the backend(s) where matching requests should be
@@ -2103,16 +1813,8 @@ type TCPRouteSpecRules struct {
 	// connections, then 80% of connections must be rejected instead.
 	//
 	// Support: Core for Kubernetes Service
-	//
-	// Support: Extended for Kubernetes ServiceImport
-	//
-	// Support: Implementation-specific for any other resource
-	//
-	// Support for weight: Extended
 	BackendRefs []TCPRouteSpecRulesBackendRefs `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
-	//
-	// Support: Extended
 	Name *string `pulumi:"name"`
 }
 
@@ -2137,16 +1839,8 @@ type TCPRouteSpecRulesArgs struct {
 	// connections, then 80% of connections must be rejected instead.
 	//
 	// Support: Core for Kubernetes Service
-	//
-	// Support: Extended for Kubernetes ServiceImport
-	//
-	// Support: Implementation-specific for any other resource
-	//
-	// Support for weight: Extended
 	BackendRefs TCPRouteSpecRulesBackendRefsArrayInput `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
-	//
-	// Support: Extended
 	Name pulumi.StringPtrInput `pulumi:"name"`
 }
 
@@ -2210,19 +1904,11 @@ func (o TCPRouteSpecRulesOutput) ToTCPRouteSpecRulesOutputWithContext(ctx contex
 // connections, then 80% of connections must be rejected instead.
 //
 // Support: Core for Kubernetes Service
-//
-// Support: Extended for Kubernetes ServiceImport
-//
-// Support: Implementation-specific for any other resource
-//
-// Support for weight: Extended
 func (o TCPRouteSpecRulesOutput) BackendRefs() TCPRouteSpecRulesBackendRefsArrayOutput {
 	return o.ApplyT(func(v TCPRouteSpecRules) []TCPRouteSpecRulesBackendRefs { return v.BackendRefs }).(TCPRouteSpecRulesBackendRefsArrayOutput)
 }
 
 // Name is the name of the route rule. This name MUST be unique within a Route if it is set.
-//
-// Support: Extended
 func (o TCPRouteSpecRulesOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v TCPRouteSpecRules) *string { return v.Name }).(pulumi.StringPtrOutput)
 }
@@ -2254,20 +1940,6 @@ func (o TCPRouteSpecRulesArrayOutput) Index(i pulumi.IntInput) TCPRouteSpecRules
 // ReferenceGrant object is required in the referent namespace to allow that
 // namespace's owner to accept the reference. See the ReferenceGrant
 // documentation for details.
-//
-// When the BackendRef points to a Kubernetes Service, implementations SHOULD
-// honor the appProtocol field if it is set for the target Service Port.
-//
-// Implementations supporting appProtocol SHOULD recognize the Kubernetes
-// Standard Application Protocols defined in KEP-3726.
-//
-// If a Service appProtocol isn't specified, an implementation MAY infer the
-// backend protocol through its own means. Implementations MAY infer the
-// protocol from the Route type referring to the backend Service.
-//
-// If a Route is not able to send traffic to the backend using the specified
-// protocol then the backend is considered invalid. Implementations MUST set the
-// "ResolvedRefs" condition to "False" with the "UnsupportedProtocol" reason.
 //
 // Note that when the BackendTLSPolicy object is enabled by the implementation,
 // there are some extra rules about validity to consider here. See the fields
@@ -2343,20 +2015,6 @@ type TCPRouteSpecRulesBackendRefsInput interface {
 // ReferenceGrant object is required in the referent namespace to allow that
 // namespace's owner to accept the reference. See the ReferenceGrant
 // documentation for details.
-//
-// When the BackendRef points to a Kubernetes Service, implementations SHOULD
-// honor the appProtocol field if it is set for the target Service Port.
-//
-// Implementations supporting appProtocol SHOULD recognize the Kubernetes
-// Standard Application Protocols defined in KEP-3726.
-//
-// If a Service appProtocol isn't specified, an implementation MAY infer the
-// backend protocol through its own means. Implementations MAY infer the
-// protocol from the Route type referring to the backend Service.
-//
-// If a Route is not able to send traffic to the backend using the specified
-// protocol then the backend is considered invalid. Implementations MUST set the
-// "ResolvedRefs" condition to "False" with the "UnsupportedProtocol" reason.
 //
 // Note that when the BackendTLSPolicy object is enabled by the implementation,
 // there are some extra rules about validity to consider here. See the fields
@@ -2458,20 +2116,6 @@ func (i TCPRouteSpecRulesBackendRefsArray) ToTCPRouteSpecRulesBackendRefsArrayOu
 // ReferenceGrant object is required in the referent namespace to allow that
 // namespace's owner to accept the reference. See the ReferenceGrant
 // documentation for details.
-//
-// When the BackendRef points to a Kubernetes Service, implementations SHOULD
-// honor the appProtocol field if it is set for the target Service Port.
-//
-// Implementations supporting appProtocol SHOULD recognize the Kubernetes
-// Standard Application Protocols defined in KEP-3726.
-//
-// If a Service appProtocol isn't specified, an implementation MAY infer the
-// backend protocol through its own means. Implementations MAY infer the
-// protocol from the Route type referring to the backend Service.
-//
-// If a Route is not able to send traffic to the backend using the specified
-// protocol then the backend is considered invalid. Implementations MUST set the
-// "ResolvedRefs" condition to "False" with the "UnsupportedProtocol" reason.
 //
 // Note that when the BackendTLSPolicy object is enabled by the implementation,
 // there are some extra rules about validity to consider here. See the fields
@@ -2586,20 +2230,6 @@ func (o TCPRouteSpecRulesBackendRefsArrayOutput) Index(i pulumi.IntInput) TCPRou
 // namespace's owner to accept the reference. See the ReferenceGrant
 // documentation for details.
 //
-// When the BackendRef points to a Kubernetes Service, implementations SHOULD
-// honor the appProtocol field if it is set for the target Service Port.
-//
-// Implementations supporting appProtocol SHOULD recognize the Kubernetes
-// Standard Application Protocols defined in KEP-3726.
-//
-// If a Service appProtocol isn't specified, an implementation MAY infer the
-// backend protocol through its own means. Implementations MAY infer the
-// protocol from the Route type referring to the backend Service.
-//
-// If a Route is not able to send traffic to the backend using the specified
-// protocol then the backend is considered invalid. Implementations MUST set the
-// "ResolvedRefs" condition to "False" with the "UnsupportedProtocol" reason.
-//
 // Note that when the BackendTLSPolicy object is enabled by the implementation,
 // there are some extra rules about validity to consider here. See the fields
 // where this struct is used for more information about the exact behavior.
@@ -2674,20 +2304,6 @@ type TCPRouteSpecRulesBackendRefsPatchInput interface {
 // ReferenceGrant object is required in the referent namespace to allow that
 // namespace's owner to accept the reference. See the ReferenceGrant
 // documentation for details.
-//
-// When the BackendRef points to a Kubernetes Service, implementations SHOULD
-// honor the appProtocol field if it is set for the target Service Port.
-//
-// Implementations supporting appProtocol SHOULD recognize the Kubernetes
-// Standard Application Protocols defined in KEP-3726.
-//
-// If a Service appProtocol isn't specified, an implementation MAY infer the
-// backend protocol through its own means. Implementations MAY infer the
-// protocol from the Route type referring to the backend Service.
-//
-// If a Route is not able to send traffic to the backend using the specified
-// protocol then the backend is considered invalid. Implementations MUST set the
-// "ResolvedRefs" condition to "False" with the "UnsupportedProtocol" reason.
 //
 // Note that when the BackendTLSPolicy object is enabled by the implementation,
 // there are some extra rules about validity to consider here. See the fields
@@ -2789,20 +2405,6 @@ func (i TCPRouteSpecRulesBackendRefsPatchArray) ToTCPRouteSpecRulesBackendRefsPa
 // ReferenceGrant object is required in the referent namespace to allow that
 // namespace's owner to accept the reference. See the ReferenceGrant
 // documentation for details.
-//
-// When the BackendRef points to a Kubernetes Service, implementations SHOULD
-// honor the appProtocol field if it is set for the target Service Port.
-//
-// Implementations supporting appProtocol SHOULD recognize the Kubernetes
-// Standard Application Protocols defined in KEP-3726.
-//
-// If a Service appProtocol isn't specified, an implementation MAY infer the
-// backend protocol through its own means. Implementations MAY infer the
-// protocol from the Route type referring to the backend Service.
-//
-// If a Route is not able to send traffic to the backend using the specified
-// protocol then the backend is considered invalid. Implementations MUST set the
-// "ResolvedRefs" condition to "False" with the "UnsupportedProtocol" reason.
 //
 // Note that when the BackendTLSPolicy object is enabled by the implementation,
 // there are some extra rules about validity to consider here. See the fields
@@ -2919,16 +2521,8 @@ type TCPRouteSpecRulesPatch struct {
 	// connections, then 80% of connections must be rejected instead.
 	//
 	// Support: Core for Kubernetes Service
-	//
-	// Support: Extended for Kubernetes ServiceImport
-	//
-	// Support: Implementation-specific for any other resource
-	//
-	// Support for weight: Extended
 	BackendRefs []TCPRouteSpecRulesBackendRefsPatch `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
-	//
-	// Support: Extended
 	Name *string `pulumi:"name"`
 }
 
@@ -2953,16 +2547,8 @@ type TCPRouteSpecRulesPatchArgs struct {
 	// connections, then 80% of connections must be rejected instead.
 	//
 	// Support: Core for Kubernetes Service
-	//
-	// Support: Extended for Kubernetes ServiceImport
-	//
-	// Support: Implementation-specific for any other resource
-	//
-	// Support for weight: Extended
 	BackendRefs TCPRouteSpecRulesBackendRefsPatchArrayInput `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
-	//
-	// Support: Extended
 	Name pulumi.StringPtrInput `pulumi:"name"`
 }
 
@@ -3026,19 +2612,11 @@ func (o TCPRouteSpecRulesPatchOutput) ToTCPRouteSpecRulesPatchOutputWithContext(
 // connections, then 80% of connections must be rejected instead.
 //
 // Support: Core for Kubernetes Service
-//
-// Support: Extended for Kubernetes ServiceImport
-//
-// Support: Implementation-specific for any other resource
-//
-// Support for weight: Extended
 func (o TCPRouteSpecRulesPatchOutput) BackendRefs() TCPRouteSpecRulesBackendRefsPatchArrayOutput {
 	return o.ApplyT(func(v TCPRouteSpecRulesPatch) []TCPRouteSpecRulesBackendRefsPatch { return v.BackendRefs }).(TCPRouteSpecRulesBackendRefsPatchArrayOutput)
 }
 
 // Name is the name of the route rule. This name MUST be unique within a Route if it is set.
-//
-// Support: Extended
 func (o TCPRouteSpecRulesPatchOutput) Name() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v TCPRouteSpecRulesPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
 }
@@ -3833,16 +3411,6 @@ type TCPRouteStatusParentsParentRef struct {
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable any other kind of cross-namespace reference.
 	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
-	//
 	// Support: Core
 	Namespace *string `pulumi:"namespace"`
 	// Port is the network port this Route targets. It can be interpreted
@@ -3855,10 +3423,6 @@ type TCPRouteStatusParentsParentRef struct {
 	// as opposed to a listener(s) whose port(s) may be changed. When both Port
 	// and SectionName are specified, the name and port of the selected listener
 	// must match both specified values.
-	//
-	// When the parent resource is a Service, this targets a specific port in the
-	// Service spec. When both Port (experimental) and SectionName are specified,
-	// the name and port of the selected port must match both specified values.
 	//
 	// Implementations MAY choose to support other parent resources.
 	// Implementations supporting other types of parent resources MUST clearly
@@ -3944,16 +3508,6 @@ type TCPRouteStatusParentsParentRefArgs struct {
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable any other kind of cross-namespace reference.
 	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
-	//
 	// Support: Core
 	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
 	// Port is the network port this Route targets. It can be interpreted
@@ -3966,10 +3520,6 @@ type TCPRouteStatusParentsParentRefArgs struct {
 	// as opposed to a listener(s) whose port(s) may be changed. When both Port
 	// and SectionName are specified, the name and port of the selected listener
 	// must match both specified values.
-	//
-	// When the parent resource is a Service, this targets a specific port in the
-	// Service spec. When both Port (experimental) and SectionName are specified,
-	// the name and port of the selected port must match both specified values.
 	//
 	// Implementations MAY choose to support other parent resources.
 	// Implementations supporting other types of parent resources MUST clearly
@@ -4129,16 +3679,6 @@ func (o TCPRouteStatusParentsParentRefOutput) Name() pulumi.StringPtrOutput {
 // Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 // generic way to enable any other kind of cross-namespace reference.
 //
-// ParentRefs from a Route to a Service in the same namespace are "producer"
-// routes, which apply default routing rules to inbound connections from
-// any namespace to the Service.
-//
-// ParentRefs from a Route to a Service in a different namespace are
-// "consumer" routes, and these routing rules are only applied to outbound
-// connections originating from the same namespace as the Route, for which
-// the intended destination of the connections are a Service targeted as a
-// ParentRef of the Route.
-//
 // Support: Core
 func (o TCPRouteStatusParentsParentRefOutput) Namespace() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v TCPRouteStatusParentsParentRef) *string { return v.Namespace }).(pulumi.StringPtrOutput)
@@ -4154,10 +3694,6 @@ func (o TCPRouteStatusParentsParentRefOutput) Namespace() pulumi.StringPtrOutput
 // as opposed to a listener(s) whose port(s) may be changed. When both Port
 // and SectionName are specified, the name and port of the selected listener
 // must match both specified values.
-//
-// When the parent resource is a Service, this targets a specific port in the
-// Service spec. When both Port (experimental) and SectionName are specified,
-// the name and port of the selected port must match both specified values.
 //
 // Implementations MAY choose to support other parent resources.
 // Implementations supporting other types of parent resources MUST clearly
@@ -4281,16 +3817,6 @@ func (o TCPRouteStatusParentsParentRefPtrOutput) Name() pulumi.StringPtrOutput {
 // Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 // generic way to enable any other kind of cross-namespace reference.
 //
-// ParentRefs from a Route to a Service in the same namespace are "producer"
-// routes, which apply default routing rules to inbound connections from
-// any namespace to the Service.
-//
-// ParentRefs from a Route to a Service in a different namespace are
-// "consumer" routes, and these routing rules are only applied to outbound
-// connections originating from the same namespace as the Route, for which
-// the intended destination of the connections are a Service targeted as a
-// ParentRef of the Route.
-//
 // Support: Core
 func (o TCPRouteStatusParentsParentRefPtrOutput) Namespace() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *TCPRouteStatusParentsParentRef) *string {
@@ -4311,10 +3837,6 @@ func (o TCPRouteStatusParentsParentRefPtrOutput) Namespace() pulumi.StringPtrOut
 // as opposed to a listener(s) whose port(s) may be changed. When both Port
 // and SectionName are specified, the name and port of the selected listener
 // must match both specified values.
-//
-// When the parent resource is a Service, this targets a specific port in the
-// Service spec. When both Port (experimental) and SectionName are specified,
-// the name and port of the selected port must match both specified values.
 //
 // Implementations MAY choose to support other parent resources.
 // Implementations supporting other types of parent resources MUST clearly
@@ -4403,16 +3925,6 @@ type TCPRouteStatusParentsParentRefPatch struct {
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable any other kind of cross-namespace reference.
 	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
-	//
 	// Support: Core
 	Namespace *string `pulumi:"namespace"`
 	// Port is the network port this Route targets. It can be interpreted
@@ -4425,10 +3937,6 @@ type TCPRouteStatusParentsParentRefPatch struct {
 	// as opposed to a listener(s) whose port(s) may be changed. When both Port
 	// and SectionName are specified, the name and port of the selected listener
 	// must match both specified values.
-	//
-	// When the parent resource is a Service, this targets a specific port in the
-	// Service spec. When both Port (experimental) and SectionName are specified,
-	// the name and port of the selected port must match both specified values.
 	//
 	// Implementations MAY choose to support other parent resources.
 	// Implementations supporting other types of parent resources MUST clearly
@@ -4514,16 +4022,6 @@ type TCPRouteStatusParentsParentRefPatchArgs struct {
 	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 	// generic way to enable any other kind of cross-namespace reference.
 	//
-	// ParentRefs from a Route to a Service in the same namespace are "producer"
-	// routes, which apply default routing rules to inbound connections from
-	// any namespace to the Service.
-	//
-	// ParentRefs from a Route to a Service in a different namespace are
-	// "consumer" routes, and these routing rules are only applied to outbound
-	// connections originating from the same namespace as the Route, for which
-	// the intended destination of the connections are a Service targeted as a
-	// ParentRef of the Route.
-	//
 	// Support: Core
 	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
 	// Port is the network port this Route targets. It can be interpreted
@@ -4536,10 +4034,6 @@ type TCPRouteStatusParentsParentRefPatchArgs struct {
 	// as opposed to a listener(s) whose port(s) may be changed. When both Port
 	// and SectionName are specified, the name and port of the selected listener
 	// must match both specified values.
-	//
-	// When the parent resource is a Service, this targets a specific port in the
-	// Service spec. When both Port (experimental) and SectionName are specified,
-	// the name and port of the selected port must match both specified values.
 	//
 	// Implementations MAY choose to support other parent resources.
 	// Implementations supporting other types of parent resources MUST clearly
@@ -4699,16 +4193,6 @@ func (o TCPRouteStatusParentsParentRefPatchOutput) Name() pulumi.StringPtrOutput
 // Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 // generic way to enable any other kind of cross-namespace reference.
 //
-// ParentRefs from a Route to a Service in the same namespace are "producer"
-// routes, which apply default routing rules to inbound connections from
-// any namespace to the Service.
-//
-// ParentRefs from a Route to a Service in a different namespace are
-// "consumer" routes, and these routing rules are only applied to outbound
-// connections originating from the same namespace as the Route, for which
-// the intended destination of the connections are a Service targeted as a
-// ParentRef of the Route.
-//
 // Support: Core
 func (o TCPRouteStatusParentsParentRefPatchOutput) Namespace() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v TCPRouteStatusParentsParentRefPatch) *string { return v.Namespace }).(pulumi.StringPtrOutput)
@@ -4724,10 +4208,6 @@ func (o TCPRouteStatusParentsParentRefPatchOutput) Namespace() pulumi.StringPtrO
 // as opposed to a listener(s) whose port(s) may be changed. When both Port
 // and SectionName are specified, the name and port of the selected listener
 // must match both specified values.
-//
-// When the parent resource is a Service, this targets a specific port in the
-// Service spec. When both Port (experimental) and SectionName are specified,
-// the name and port of the selected port must match both specified values.
 //
 // Implementations MAY choose to support other parent resources.
 // Implementations supporting other types of parent resources MUST clearly
@@ -4851,16 +4331,6 @@ func (o TCPRouteStatusParentsParentRefPatchPtrOutput) Name() pulumi.StringPtrOut
 // Gateway has the AllowedRoutes field, and ReferenceGrant provides a
 // generic way to enable any other kind of cross-namespace reference.
 //
-// ParentRefs from a Route to a Service in the same namespace are "producer"
-// routes, which apply default routing rules to inbound connections from
-// any namespace to the Service.
-//
-// ParentRefs from a Route to a Service in a different namespace are
-// "consumer" routes, and these routing rules are only applied to outbound
-// connections originating from the same namespace as the Route, for which
-// the intended destination of the connections are a Service targeted as a
-// ParentRef of the Route.
-//
 // Support: Core
 func (o TCPRouteStatusParentsParentRefPatchPtrOutput) Namespace() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *TCPRouteStatusParentsParentRefPatch) *string {
@@ -4881,10 +4351,6 @@ func (o TCPRouteStatusParentsParentRefPatchPtrOutput) Namespace() pulumi.StringP
 // as opposed to a listener(s) whose port(s) may be changed. When both Port
 // and SectionName are specified, the name and port of the selected listener
 // must match both specified values.
-//
-// When the parent resource is a Service, this targets a specific port in the
-// Service spec. When both Port (experimental) and SectionName are specified,
-// the name and port of the selected port must match both specified values.
 //
 // Implementations MAY choose to support other parent resources.
 // Implementations supporting other types of parent resources MUST clearly
@@ -7435,6 +6901,9 @@ type TLSRouteSpecRules struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -7442,6 +6911,8 @@ type TLSRouteSpecRules struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs []TLSRouteSpecRulesBackendRefs `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name *string `pulumi:"name"`
@@ -7469,6 +6940,9 @@ type TLSRouteSpecRulesArgs struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -7476,6 +6950,8 @@ type TLSRouteSpecRulesArgs struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs TLSRouteSpecRulesBackendRefsArrayInput `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name pulumi.StringPtrInput `pulumi:"name"`
@@ -7542,6 +7018,9 @@ func (o TLSRouteSpecRulesOutput) ToTLSRouteSpecRulesOutputWithContext(ctx contex
 // weight; if an invalid backend is requested to have 80% of requests, then
 // 80% of requests must be rejected instead.
 //
+// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+// can be used to enable re-encryption of the traffic to the backends.
+//
 // Support: Core for Kubernetes Service
 //
 // Support: Extended for Kubernetes ServiceImport
@@ -7549,6 +7028,8 @@ func (o TLSRouteSpecRulesOutput) ToTLSRouteSpecRulesOutputWithContext(ctx contex
 // Support: Implementation-specific for any other resource
 //
 // Support for weight: Extended
+//
+// Support for BackendTLSPolicy: Extended
 func (o TLSRouteSpecRulesOutput) BackendRefs() TLSRouteSpecRulesBackendRefsArrayOutput {
 	return o.ApplyT(func(v TLSRouteSpecRules) []TLSRouteSpecRulesBackendRefs { return v.BackendRefs }).(TLSRouteSpecRulesBackendRefsArrayOutput)
 }
@@ -8167,6 +7648,9 @@ type TLSRouteSpecRulesPatch struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -8174,6 +7658,8 @@ type TLSRouteSpecRulesPatch struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs []TLSRouteSpecRulesBackendRefsPatch `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name *string `pulumi:"name"`
@@ -8201,6 +7687,9 @@ type TLSRouteSpecRulesPatchArgs struct {
 	// weight; if an invalid backend is requested to have 80% of requests, then
 	// 80% of requests must be rejected instead.
 	//
+	// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+	// can be used to enable re-encryption of the traffic to the backends.
+	//
 	// Support: Core for Kubernetes Service
 	//
 	// Support: Extended for Kubernetes ServiceImport
@@ -8208,6 +7697,8 @@ type TLSRouteSpecRulesPatchArgs struct {
 	// Support: Implementation-specific for any other resource
 	//
 	// Support for weight: Extended
+	//
+	// Support for BackendTLSPolicy: Extended
 	BackendRefs TLSRouteSpecRulesBackendRefsPatchArrayInput `pulumi:"backendRefs"`
 	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
 	Name pulumi.StringPtrInput `pulumi:"name"`
@@ -8274,6 +7765,9 @@ func (o TLSRouteSpecRulesPatchOutput) ToTLSRouteSpecRulesPatchOutputWithContext(
 // weight; if an invalid backend is requested to have 80% of requests, then
 // 80% of requests must be rejected instead.
 //
+// When a TLSRoute is attached to a listener in Terminate mode, a BackendTLSPolicy
+// can be used to enable re-encryption of the traffic to the backends.
+//
 // Support: Core for Kubernetes Service
 //
 // Support: Extended for Kubernetes ServiceImport
@@ -8281,6 +7775,8 @@ func (o TLSRouteSpecRulesPatchOutput) ToTLSRouteSpecRulesPatchOutputWithContext(
 // Support: Implementation-specific for any other resource
 //
 // Support for weight: Extended
+//
+// Support for BackendTLSPolicy: Extended
 func (o TLSRouteSpecRulesPatchOutput) BackendRefs() TLSRouteSpecRulesBackendRefsPatchArrayOutput {
 	return o.ApplyT(func(v TLSRouteSpecRulesPatch) []TLSRouteSpecRulesBackendRefsPatch { return v.BackendRefs }).(TLSRouteSpecRulesBackendRefsPatchArrayOutput)
 }
@@ -10476,6 +9972,4799 @@ func (o TLSRouteStatusPatchPtrOutput) Parents() TLSRouteStatusParentsPatchArrayO
 	}).(TLSRouteStatusParentsPatchArrayOutput)
 }
 
+// UDPRoute provides a way to route UDP traffic. When combined with a Gateway
+// listener, it can be used to forward traffic on the port specified by the
+// listener to a set of backends specified by the UDPRoute.
+type UDPRouteType struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion *string `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind *string `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata *metav1.ObjectMeta `pulumi:"metadata"`
+	Spec     *UDPRouteSpec      `pulumi:"spec"`
+	Status   *UDPRouteStatus    `pulumi:"status"`
+}
+
+// UDPRouteTypeInput is an input type that accepts UDPRouteTypeArgs and UDPRouteTypeOutput values.
+// You can construct a concrete instance of `UDPRouteTypeInput` via:
+//
+//	UDPRouteTypeArgs{...}
+type UDPRouteTypeInput interface {
+	pulumi.Input
+
+	ToUDPRouteTypeOutput() UDPRouteTypeOutput
+	ToUDPRouteTypeOutputWithContext(context.Context) UDPRouteTypeOutput
+}
+
+// UDPRoute provides a way to route UDP traffic. When combined with a Gateway
+// listener, it can be used to forward traffic on the port specified by the
+// listener to a set of backends specified by the UDPRoute.
+type UDPRouteTypeArgs struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion pulumi.StringPtrInput `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata metav1.ObjectMetaPtrInput `pulumi:"metadata"`
+	Spec     UDPRouteSpecPtrInput      `pulumi:"spec"`
+	Status   UDPRouteStatusPtrInput    `pulumi:"status"`
+}
+
+func (UDPRouteTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteType)(nil)).Elem()
+}
+
+func (i UDPRouteTypeArgs) ToUDPRouteTypeOutput() UDPRouteTypeOutput {
+	return i.ToUDPRouteTypeOutputWithContext(context.Background())
+}
+
+func (i UDPRouteTypeArgs) ToUDPRouteTypeOutputWithContext(ctx context.Context) UDPRouteTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteTypeOutput)
+}
+
+// UDPRouteTypeArrayInput is an input type that accepts UDPRouteTypeArray and UDPRouteTypeArrayOutput values.
+// You can construct a concrete instance of `UDPRouteTypeArrayInput` via:
+//
+//	UDPRouteTypeArray{ UDPRouteTypeArgs{...} }
+type UDPRouteTypeArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteTypeArrayOutput() UDPRouteTypeArrayOutput
+	ToUDPRouteTypeArrayOutputWithContext(context.Context) UDPRouteTypeArrayOutput
+}
+
+type UDPRouteTypeArray []UDPRouteTypeInput
+
+func (UDPRouteTypeArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteType)(nil)).Elem()
+}
+
+func (i UDPRouteTypeArray) ToUDPRouteTypeArrayOutput() UDPRouteTypeArrayOutput {
+	return i.ToUDPRouteTypeArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteTypeArray) ToUDPRouteTypeArrayOutputWithContext(ctx context.Context) UDPRouteTypeArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteTypeArrayOutput)
+}
+
+// UDPRoute provides a way to route UDP traffic. When combined with a Gateway
+// listener, it can be used to forward traffic on the port specified by the
+// listener to a set of backends specified by the UDPRoute.
+type UDPRouteTypeOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteType)(nil)).Elem()
+}
+
+func (o UDPRouteTypeOutput) ToUDPRouteTypeOutput() UDPRouteTypeOutput {
+	return o
+}
+
+func (o UDPRouteTypeOutput) ToUDPRouteTypeOutputWithContext(ctx context.Context) UDPRouteTypeOutput {
+	return o
+}
+
+// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+func (o UDPRouteTypeOutput) ApiVersion() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteType) *string { return v.ApiVersion }).(pulumi.StringPtrOutput)
+}
+
+// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o UDPRouteTypeOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteType) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+func (o UDPRouteTypeOutput) Metadata() metav1.ObjectMetaPtrOutput {
+	return o.ApplyT(func(v UDPRouteType) *metav1.ObjectMeta { return v.Metadata }).(metav1.ObjectMetaPtrOutput)
+}
+
+func (o UDPRouteTypeOutput) Spec() UDPRouteSpecPtrOutput {
+	return o.ApplyT(func(v UDPRouteType) *UDPRouteSpec { return v.Spec }).(UDPRouteSpecPtrOutput)
+}
+
+func (o UDPRouteTypeOutput) Status() UDPRouteStatusPtrOutput {
+	return o.ApplyT(func(v UDPRouteType) *UDPRouteStatus { return v.Status }).(UDPRouteStatusPtrOutput)
+}
+
+type UDPRouteTypeArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteTypeArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteType)(nil)).Elem()
+}
+
+func (o UDPRouteTypeArrayOutput) ToUDPRouteTypeArrayOutput() UDPRouteTypeArrayOutput {
+	return o
+}
+
+func (o UDPRouteTypeArrayOutput) ToUDPRouteTypeArrayOutputWithContext(ctx context.Context) UDPRouteTypeArrayOutput {
+	return o
+}
+
+func (o UDPRouteTypeArrayOutput) Index(i pulumi.IntInput) UDPRouteTypeOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteType {
+		return vs[0].([]UDPRouteType)[vs[1].(int)]
+	}).(UDPRouteTypeOutput)
+}
+
+// UDPRouteList is a list of UDPRoute
+type UDPRouteListType struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion *string `pulumi:"apiVersion"`
+	// List of udproutes. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+	Items []UDPRouteType `pulumi:"items"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind *string `pulumi:"kind"`
+	// Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Metadata *metav1.ListMeta `pulumi:"metadata"`
+}
+
+// UDPRouteListTypeInput is an input type that accepts UDPRouteListTypeArgs and UDPRouteListTypeOutput values.
+// You can construct a concrete instance of `UDPRouteListTypeInput` via:
+//
+//	UDPRouteListTypeArgs{...}
+type UDPRouteListTypeInput interface {
+	pulumi.Input
+
+	ToUDPRouteListTypeOutput() UDPRouteListTypeOutput
+	ToUDPRouteListTypeOutputWithContext(context.Context) UDPRouteListTypeOutput
+}
+
+// UDPRouteList is a list of UDPRoute
+type UDPRouteListTypeArgs struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion pulumi.StringPtrInput `pulumi:"apiVersion"`
+	// List of udproutes. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+	Items UDPRouteTypeArrayInput `pulumi:"items"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Metadata metav1.ListMetaPtrInput `pulumi:"metadata"`
+}
+
+func (UDPRouteListTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteListType)(nil)).Elem()
+}
+
+func (i UDPRouteListTypeArgs) ToUDPRouteListTypeOutput() UDPRouteListTypeOutput {
+	return i.ToUDPRouteListTypeOutputWithContext(context.Background())
+}
+
+func (i UDPRouteListTypeArgs) ToUDPRouteListTypeOutputWithContext(ctx context.Context) UDPRouteListTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteListTypeOutput)
+}
+
+// UDPRouteList is a list of UDPRoute
+type UDPRouteListTypeOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteListTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteListType)(nil)).Elem()
+}
+
+func (o UDPRouteListTypeOutput) ToUDPRouteListTypeOutput() UDPRouteListTypeOutput {
+	return o
+}
+
+func (o UDPRouteListTypeOutput) ToUDPRouteListTypeOutputWithContext(ctx context.Context) UDPRouteListTypeOutput {
+	return o
+}
+
+// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+func (o UDPRouteListTypeOutput) ApiVersion() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteListType) *string { return v.ApiVersion }).(pulumi.StringPtrOutput)
+}
+
+// List of udproutes. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+func (o UDPRouteListTypeOutput) Items() UDPRouteTypeArrayOutput {
+	return o.ApplyT(func(v UDPRouteListType) []UDPRouteType { return v.Items }).(UDPRouteTypeArrayOutput)
+}
+
+// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o UDPRouteListTypeOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteListType) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o UDPRouteListTypeOutput) Metadata() metav1.ListMetaPtrOutput {
+	return o.ApplyT(func(v UDPRouteListType) *metav1.ListMeta { return v.Metadata }).(metav1.ListMetaPtrOutput)
+}
+
+// UDPRoute provides a way to route UDP traffic. When combined with a Gateway
+// listener, it can be used to forward traffic on the port specified by the
+// listener to a set of backends specified by the UDPRoute.
+type UDPRoutePatchType struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion *string `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind *string `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata *metav1.ObjectMetaPatch `pulumi:"metadata"`
+	Spec     *UDPRouteSpecPatch      `pulumi:"spec"`
+	Status   *UDPRouteStatusPatch    `pulumi:"status"`
+}
+
+// UDPRoutePatchTypeInput is an input type that accepts UDPRoutePatchTypeArgs and UDPRoutePatchTypeOutput values.
+// You can construct a concrete instance of `UDPRoutePatchTypeInput` via:
+//
+//	UDPRoutePatchTypeArgs{...}
+type UDPRoutePatchTypeInput interface {
+	pulumi.Input
+
+	ToUDPRoutePatchTypeOutput() UDPRoutePatchTypeOutput
+	ToUDPRoutePatchTypeOutputWithContext(context.Context) UDPRoutePatchTypeOutput
+}
+
+// UDPRoute provides a way to route UDP traffic. When combined with a Gateway
+// listener, it can be used to forward traffic on the port specified by the
+// listener to a set of backends specified by the UDPRoute.
+type UDPRoutePatchTypeArgs struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion pulumi.StringPtrInput `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata metav1.ObjectMetaPatchPtrInput `pulumi:"metadata"`
+	Spec     UDPRouteSpecPatchPtrInput      `pulumi:"spec"`
+	Status   UDPRouteStatusPatchPtrInput    `pulumi:"status"`
+}
+
+func (UDPRoutePatchTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRoutePatchType)(nil)).Elem()
+}
+
+func (i UDPRoutePatchTypeArgs) ToUDPRoutePatchTypeOutput() UDPRoutePatchTypeOutput {
+	return i.ToUDPRoutePatchTypeOutputWithContext(context.Background())
+}
+
+func (i UDPRoutePatchTypeArgs) ToUDPRoutePatchTypeOutputWithContext(ctx context.Context) UDPRoutePatchTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRoutePatchTypeOutput)
+}
+
+// UDPRoute provides a way to route UDP traffic. When combined with a Gateway
+// listener, it can be used to forward traffic on the port specified by the
+// listener to a set of backends specified by the UDPRoute.
+type UDPRoutePatchTypeOutput struct{ *pulumi.OutputState }
+
+func (UDPRoutePatchTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRoutePatchType)(nil)).Elem()
+}
+
+func (o UDPRoutePatchTypeOutput) ToUDPRoutePatchTypeOutput() UDPRoutePatchTypeOutput {
+	return o
+}
+
+func (o UDPRoutePatchTypeOutput) ToUDPRoutePatchTypeOutputWithContext(ctx context.Context) UDPRoutePatchTypeOutput {
+	return o
+}
+
+// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+func (o UDPRoutePatchTypeOutput) ApiVersion() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRoutePatchType) *string { return v.ApiVersion }).(pulumi.StringPtrOutput)
+}
+
+// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o UDPRoutePatchTypeOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRoutePatchType) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+func (o UDPRoutePatchTypeOutput) Metadata() metav1.ObjectMetaPatchPtrOutput {
+	return o.ApplyT(func(v UDPRoutePatchType) *metav1.ObjectMetaPatch { return v.Metadata }).(metav1.ObjectMetaPatchPtrOutput)
+}
+
+func (o UDPRoutePatchTypeOutput) Spec() UDPRouteSpecPatchPtrOutput {
+	return o.ApplyT(func(v UDPRoutePatchType) *UDPRouteSpecPatch { return v.Spec }).(UDPRouteSpecPatchPtrOutput)
+}
+
+func (o UDPRoutePatchTypeOutput) Status() UDPRouteStatusPatchPtrOutput {
+	return o.ApplyT(func(v UDPRoutePatchType) *UDPRouteStatusPatch { return v.Status }).(UDPRouteStatusPatchPtrOutput)
+}
+
+// Spec defines the desired state of UDPRoute.
+type UDPRouteSpec struct {
+	// ParentRefs references the resources (usually Gateways) that a Route wants
+	// to be attached to. Note that the referenced parent resource needs to
+	// allow this for the attachment to be complete. For Gateways, that means
+	// the Gateway needs to allow attachment from Routes of this kind and
+	// namespace. For Services, that means the Service must either be in the same
+	// namespace for a "producer" route, or the mesh implementation must support
+	// and allow "consumer" routes for the referenced Service. ReferenceGrant is
+	// not applicable for governing ParentRefs to Services - it is not possible to
+	// create a "producer" route for a Service in a different namespace from the
+	// Route.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// This API may be extended in the future to support additional kinds of parent
+	// resources.
+	//
+	// ParentRefs must be _distinct_. This means either that:
+	//
+	// * They select different objects.  If this is the case, then parentRef
+	//   entries are distinct. In terms of fields, this means that the
+	//   multi-part key defined by `group`, `kind`, `namespace`, and `name` must
+	//   be unique across all parentRef entries in the Route.
+	// * They do not select different objects, but for each optional field used,
+	//   each ParentRef that selects the same object must set the same set of
+	//   optional fields to different values. If one ParentRef sets a
+	//   combination of optional fields, all must set the same combination.
+	//
+	// Some examples:
+	//
+	// * If one ParentRef sets `sectionName`, all ParentRefs referencing the
+	//   same object must also set `sectionName`.
+	// * If one ParentRef sets `port`, all ParentRefs referencing the same
+	//   object must also set `port`.
+	// * If one ParentRef sets `sectionName` and `port`, all ParentRefs
+	//   referencing the same object must also set `sectionName` and `port`.
+	//
+	// It is possible to separately reference multiple distinct objects that may
+	// be collapsed by an implementation. For example, some implementations may
+	// choose to merge compatible Gateway Listeners together. If that is the
+	// case, the list of routes attached to those resources should also be
+	// merged.
+	//
+	// Note that for ParentRefs that cross namespace boundaries, there are specific
+	// rules. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example,
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable other kinds of cross-namespace reference.
+	ParentRefs []UDPRouteSpecParentRefs `pulumi:"parentRefs"`
+	// Rules are a list of UDP matchers and actions.
+	Rules []UDPRouteSpecRules `pulumi:"rules"`
+}
+
+// UDPRouteSpecInput is an input type that accepts UDPRouteSpecArgs and UDPRouteSpecOutput values.
+// You can construct a concrete instance of `UDPRouteSpecInput` via:
+//
+//	UDPRouteSpecArgs{...}
+type UDPRouteSpecInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecOutput() UDPRouteSpecOutput
+	ToUDPRouteSpecOutputWithContext(context.Context) UDPRouteSpecOutput
+}
+
+// Spec defines the desired state of UDPRoute.
+type UDPRouteSpecArgs struct {
+	// ParentRefs references the resources (usually Gateways) that a Route wants
+	// to be attached to. Note that the referenced parent resource needs to
+	// allow this for the attachment to be complete. For Gateways, that means
+	// the Gateway needs to allow attachment from Routes of this kind and
+	// namespace. For Services, that means the Service must either be in the same
+	// namespace for a "producer" route, or the mesh implementation must support
+	// and allow "consumer" routes for the referenced Service. ReferenceGrant is
+	// not applicable for governing ParentRefs to Services - it is not possible to
+	// create a "producer" route for a Service in a different namespace from the
+	// Route.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// This API may be extended in the future to support additional kinds of parent
+	// resources.
+	//
+	// ParentRefs must be _distinct_. This means either that:
+	//
+	// * They select different objects.  If this is the case, then parentRef
+	//   entries are distinct. In terms of fields, this means that the
+	//   multi-part key defined by `group`, `kind`, `namespace`, and `name` must
+	//   be unique across all parentRef entries in the Route.
+	// * They do not select different objects, but for each optional field used,
+	//   each ParentRef that selects the same object must set the same set of
+	//   optional fields to different values. If one ParentRef sets a
+	//   combination of optional fields, all must set the same combination.
+	//
+	// Some examples:
+	//
+	// * If one ParentRef sets `sectionName`, all ParentRefs referencing the
+	//   same object must also set `sectionName`.
+	// * If one ParentRef sets `port`, all ParentRefs referencing the same
+	//   object must also set `port`.
+	// * If one ParentRef sets `sectionName` and `port`, all ParentRefs
+	//   referencing the same object must also set `sectionName` and `port`.
+	//
+	// It is possible to separately reference multiple distinct objects that may
+	// be collapsed by an implementation. For example, some implementations may
+	// choose to merge compatible Gateway Listeners together. If that is the
+	// case, the list of routes attached to those resources should also be
+	// merged.
+	//
+	// Note that for ParentRefs that cross namespace boundaries, there are specific
+	// rules. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example,
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable other kinds of cross-namespace reference.
+	ParentRefs UDPRouteSpecParentRefsArrayInput `pulumi:"parentRefs"`
+	// Rules are a list of UDP matchers and actions.
+	Rules UDPRouteSpecRulesArrayInput `pulumi:"rules"`
+}
+
+func (UDPRouteSpecArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpec)(nil)).Elem()
+}
+
+func (i UDPRouteSpecArgs) ToUDPRouteSpecOutput() UDPRouteSpecOutput {
+	return i.ToUDPRouteSpecOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecArgs) ToUDPRouteSpecOutputWithContext(ctx context.Context) UDPRouteSpecOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecOutput)
+}
+
+func (i UDPRouteSpecArgs) ToUDPRouteSpecPtrOutput() UDPRouteSpecPtrOutput {
+	return i.ToUDPRouteSpecPtrOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecArgs) ToUDPRouteSpecPtrOutputWithContext(ctx context.Context) UDPRouteSpecPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecOutput).ToUDPRouteSpecPtrOutputWithContext(ctx)
+}
+
+// UDPRouteSpecPtrInput is an input type that accepts UDPRouteSpecArgs, UDPRouteSpecPtr and UDPRouteSpecPtrOutput values.
+// You can construct a concrete instance of `UDPRouteSpecPtrInput` via:
+//
+//	        UDPRouteSpecArgs{...}
+//
+//	or:
+//
+//	        nil
+type UDPRouteSpecPtrInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecPtrOutput() UDPRouteSpecPtrOutput
+	ToUDPRouteSpecPtrOutputWithContext(context.Context) UDPRouteSpecPtrOutput
+}
+
+type udprouteSpecPtrType UDPRouteSpecArgs
+
+func UDPRouteSpecPtr(v *UDPRouteSpecArgs) UDPRouteSpecPtrInput {
+	return (*udprouteSpecPtrType)(v)
+}
+
+func (*udprouteSpecPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteSpec)(nil)).Elem()
+}
+
+func (i *udprouteSpecPtrType) ToUDPRouteSpecPtrOutput() UDPRouteSpecPtrOutput {
+	return i.ToUDPRouteSpecPtrOutputWithContext(context.Background())
+}
+
+func (i *udprouteSpecPtrType) ToUDPRouteSpecPtrOutputWithContext(ctx context.Context) UDPRouteSpecPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecPtrOutput)
+}
+
+// Spec defines the desired state of UDPRoute.
+type UDPRouteSpecOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpec)(nil)).Elem()
+}
+
+func (o UDPRouteSpecOutput) ToUDPRouteSpecOutput() UDPRouteSpecOutput {
+	return o
+}
+
+func (o UDPRouteSpecOutput) ToUDPRouteSpecOutputWithContext(ctx context.Context) UDPRouteSpecOutput {
+	return o
+}
+
+func (o UDPRouteSpecOutput) ToUDPRouteSpecPtrOutput() UDPRouteSpecPtrOutput {
+	return o.ToUDPRouteSpecPtrOutputWithContext(context.Background())
+}
+
+func (o UDPRouteSpecOutput) ToUDPRouteSpecPtrOutputWithContext(ctx context.Context) UDPRouteSpecPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v UDPRouteSpec) *UDPRouteSpec {
+		return &v
+	}).(UDPRouteSpecPtrOutput)
+}
+
+// ParentRefs references the resources (usually Gateways) that a Route wants
+// to be attached to. Note that the referenced parent resource needs to
+// allow this for the attachment to be complete. For Gateways, that means
+// the Gateway needs to allow attachment from Routes of this kind and
+// namespace. For Services, that means the Service must either be in the same
+// namespace for a "producer" route, or the mesh implementation must support
+// and allow "consumer" routes for the referenced Service. ReferenceGrant is
+// not applicable for governing ParentRefs to Services - it is not possible to
+// create a "producer" route for a Service in a different namespace from the
+// Route.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// This API may be extended in the future to support additional kinds of parent
+// resources.
+//
+// ParentRefs must be _distinct_. This means either that:
+//
+//   - They select different objects.  If this is the case, then parentRef
+//     entries are distinct. In terms of fields, this means that the
+//     multi-part key defined by `group`, `kind`, `namespace`, and `name` must
+//     be unique across all parentRef entries in the Route.
+//   - They do not select different objects, but for each optional field used,
+//     each ParentRef that selects the same object must set the same set of
+//     optional fields to different values. If one ParentRef sets a
+//     combination of optional fields, all must set the same combination.
+//
+// Some examples:
+//
+//   - If one ParentRef sets `sectionName`, all ParentRefs referencing the
+//     same object must also set `sectionName`.
+//   - If one ParentRef sets `port`, all ParentRefs referencing the same
+//     object must also set `port`.
+//   - If one ParentRef sets `sectionName` and `port`, all ParentRefs
+//     referencing the same object must also set `sectionName` and `port`.
+//
+// It is possible to separately reference multiple distinct objects that may
+// be collapsed by an implementation. For example, some implementations may
+// choose to merge compatible Gateway Listeners together. If that is the
+// case, the list of routes attached to those resources should also be
+// merged.
+//
+// Note that for ParentRefs that cross namespace boundaries, there are specific
+// rules. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example,
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable other kinds of cross-namespace reference.
+func (o UDPRouteSpecOutput) ParentRefs() UDPRouteSpecParentRefsArrayOutput {
+	return o.ApplyT(func(v UDPRouteSpec) []UDPRouteSpecParentRefs { return v.ParentRefs }).(UDPRouteSpecParentRefsArrayOutput)
+}
+
+// Rules are a list of UDP matchers and actions.
+func (o UDPRouteSpecOutput) Rules() UDPRouteSpecRulesArrayOutput {
+	return o.ApplyT(func(v UDPRouteSpec) []UDPRouteSpecRules { return v.Rules }).(UDPRouteSpecRulesArrayOutput)
+}
+
+type UDPRouteSpecPtrOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteSpec)(nil)).Elem()
+}
+
+func (o UDPRouteSpecPtrOutput) ToUDPRouteSpecPtrOutput() UDPRouteSpecPtrOutput {
+	return o
+}
+
+func (o UDPRouteSpecPtrOutput) ToUDPRouteSpecPtrOutputWithContext(ctx context.Context) UDPRouteSpecPtrOutput {
+	return o
+}
+
+func (o UDPRouteSpecPtrOutput) Elem() UDPRouteSpecOutput {
+	return o.ApplyT(func(v *UDPRouteSpec) UDPRouteSpec {
+		if v != nil {
+			return *v
+		}
+		var ret UDPRouteSpec
+		return ret
+	}).(UDPRouteSpecOutput)
+}
+
+// ParentRefs references the resources (usually Gateways) that a Route wants
+// to be attached to. Note that the referenced parent resource needs to
+// allow this for the attachment to be complete. For Gateways, that means
+// the Gateway needs to allow attachment from Routes of this kind and
+// namespace. For Services, that means the Service must either be in the same
+// namespace for a "producer" route, or the mesh implementation must support
+// and allow "consumer" routes for the referenced Service. ReferenceGrant is
+// not applicable for governing ParentRefs to Services - it is not possible to
+// create a "producer" route for a Service in a different namespace from the
+// Route.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// This API may be extended in the future to support additional kinds of parent
+// resources.
+//
+// ParentRefs must be _distinct_. This means either that:
+//
+//   - They select different objects.  If this is the case, then parentRef
+//     entries are distinct. In terms of fields, this means that the
+//     multi-part key defined by `group`, `kind`, `namespace`, and `name` must
+//     be unique across all parentRef entries in the Route.
+//   - They do not select different objects, but for each optional field used,
+//     each ParentRef that selects the same object must set the same set of
+//     optional fields to different values. If one ParentRef sets a
+//     combination of optional fields, all must set the same combination.
+//
+// Some examples:
+//
+//   - If one ParentRef sets `sectionName`, all ParentRefs referencing the
+//     same object must also set `sectionName`.
+//   - If one ParentRef sets `port`, all ParentRefs referencing the same
+//     object must also set `port`.
+//   - If one ParentRef sets `sectionName` and `port`, all ParentRefs
+//     referencing the same object must also set `sectionName` and `port`.
+//
+// It is possible to separately reference multiple distinct objects that may
+// be collapsed by an implementation. For example, some implementations may
+// choose to merge compatible Gateway Listeners together. If that is the
+// case, the list of routes attached to those resources should also be
+// merged.
+//
+// Note that for ParentRefs that cross namespace boundaries, there are specific
+// rules. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example,
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable other kinds of cross-namespace reference.
+func (o UDPRouteSpecPtrOutput) ParentRefs() UDPRouteSpecParentRefsArrayOutput {
+	return o.ApplyT(func(v *UDPRouteSpec) []UDPRouteSpecParentRefs {
+		if v == nil {
+			return nil
+		}
+		return v.ParentRefs
+	}).(UDPRouteSpecParentRefsArrayOutput)
+}
+
+// Rules are a list of UDP matchers and actions.
+func (o UDPRouteSpecPtrOutput) Rules() UDPRouteSpecRulesArrayOutput {
+	return o.ApplyT(func(v *UDPRouteSpec) []UDPRouteSpecRules {
+		if v == nil {
+			return nil
+		}
+		return v.Rules
+	}).(UDPRouteSpecRulesArrayOutput)
+}
+
+// ParentReference identifies an API object (usually a Gateway) that can be considered
+// a parent of this resource (usually a route). There are two kinds of parent resources
+// with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// This API may be extended in the future to support additional kinds of parent
+// resources.
+//
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+type UDPRouteSpecParentRefs struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group *string `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name *string `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace *string `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port *int `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName *string `pulumi:"sectionName"`
+}
+
+// UDPRouteSpecParentRefsInput is an input type that accepts UDPRouteSpecParentRefsArgs and UDPRouteSpecParentRefsOutput values.
+// You can construct a concrete instance of `UDPRouteSpecParentRefsInput` via:
+//
+//	UDPRouteSpecParentRefsArgs{...}
+type UDPRouteSpecParentRefsInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecParentRefsOutput() UDPRouteSpecParentRefsOutput
+	ToUDPRouteSpecParentRefsOutputWithContext(context.Context) UDPRouteSpecParentRefsOutput
+}
+
+// ParentReference identifies an API object (usually a Gateway) that can be considered
+// a parent of this resource (usually a route). There are two kinds of parent resources
+// with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// This API may be extended in the future to support additional kinds of parent
+// resources.
+//
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+type UDPRouteSpecParentRefsArgs struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port pulumi.IntPtrInput `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName pulumi.StringPtrInput `pulumi:"sectionName"`
+}
+
+func (UDPRouteSpecParentRefsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecParentRefs)(nil)).Elem()
+}
+
+func (i UDPRouteSpecParentRefsArgs) ToUDPRouteSpecParentRefsOutput() UDPRouteSpecParentRefsOutput {
+	return i.ToUDPRouteSpecParentRefsOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecParentRefsArgs) ToUDPRouteSpecParentRefsOutputWithContext(ctx context.Context) UDPRouteSpecParentRefsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecParentRefsOutput)
+}
+
+// UDPRouteSpecParentRefsArrayInput is an input type that accepts UDPRouteSpecParentRefsArray and UDPRouteSpecParentRefsArrayOutput values.
+// You can construct a concrete instance of `UDPRouteSpecParentRefsArrayInput` via:
+//
+//	UDPRouteSpecParentRefsArray{ UDPRouteSpecParentRefsArgs{...} }
+type UDPRouteSpecParentRefsArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecParentRefsArrayOutput() UDPRouteSpecParentRefsArrayOutput
+	ToUDPRouteSpecParentRefsArrayOutputWithContext(context.Context) UDPRouteSpecParentRefsArrayOutput
+}
+
+type UDPRouteSpecParentRefsArray []UDPRouteSpecParentRefsInput
+
+func (UDPRouteSpecParentRefsArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecParentRefs)(nil)).Elem()
+}
+
+func (i UDPRouteSpecParentRefsArray) ToUDPRouteSpecParentRefsArrayOutput() UDPRouteSpecParentRefsArrayOutput {
+	return i.ToUDPRouteSpecParentRefsArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecParentRefsArray) ToUDPRouteSpecParentRefsArrayOutputWithContext(ctx context.Context) UDPRouteSpecParentRefsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecParentRefsArrayOutput)
+}
+
+// ParentReference identifies an API object (usually a Gateway) that can be considered
+// a parent of this resource (usually a route). There are two kinds of parent resources
+// with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// This API may be extended in the future to support additional kinds of parent
+// resources.
+//
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+type UDPRouteSpecParentRefsOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecParentRefsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecParentRefs)(nil)).Elem()
+}
+
+func (o UDPRouteSpecParentRefsOutput) ToUDPRouteSpecParentRefsOutput() UDPRouteSpecParentRefsOutput {
+	return o
+}
+
+func (o UDPRouteSpecParentRefsOutput) ToUDPRouteSpecParentRefsOutputWithContext(ctx context.Context) UDPRouteSpecParentRefsOutput {
+	return o
+}
+
+// Group is the group of the referent.
+// When unspecified, "gateway.networking.k8s.io" is inferred.
+// To set the core API group (such as for a "Service" kind referent),
+// Group must be explicitly set to "" (empty string).
+//
+// Support: Core
+func (o UDPRouteSpecParentRefsOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefs) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// Support for other resources is Implementation-Specific.
+func (o UDPRouteSpecParentRefsOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefs) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+//
+// Support: Core
+func (o UDPRouteSpecParentRefsOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefs) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the referent. When unspecified, this refers
+// to the local namespace of the Route.
+//
+// Note that there are specific rules for ParentRefs which cross namespace
+// boundaries. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example:
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable any other kind of cross-namespace reference.
+//
+// Support: Core
+func (o UDPRouteSpecParentRefsOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefs) *string { return v.Namespace }).(pulumi.StringPtrOutput)
+}
+
+// Port is the network port this Route targets. It can be interpreted
+// differently based on the type of parent resource.
+//
+// When the parent resource is a Gateway, this targets all listeners
+// listening on the specified port that also support this kind of Route(and
+// select this Route). It's not recommended to set `Port` unless the
+// networking behaviors specified in a Route must apply to a specific port
+// as opposed to a listener(s) whose port(s) may be changed. When both Port
+// and SectionName are specified, the name and port of the selected listener
+// must match both specified values.
+//
+// Implementations MAY choose to support other parent resources.
+// Implementations supporting other types of parent resources MUST clearly
+// document how/if Port is interpreted.
+//
+// For the purpose of status, an attachment is considered successful as
+// long as the parent resource accepts it partially. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+// from the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route,
+// the Route MUST be considered detached from the Gateway.
+//
+// Support: Extended
+func (o UDPRouteSpecParentRefsOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefs) *int { return v.Port }).(pulumi.IntPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. In the
+// following resources, SectionName is interpreted as the following:
+//
+//   - Gateway: Listener name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//   - Service: Port name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//
+// Implementations MAY choose to support attaching Routes to other resources.
+// If that is the case, they MUST clearly document how SectionName is
+// interpreted.
+//
+// When unspecified (empty string), this will reference the entire resource.
+// For the purpose of status, an attachment is considered successful if at
+// least one section in the parent resource accepts it. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+// the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route, the
+// Route MUST be considered detached from the Gateway.
+//
+// Support: Core
+func (o UDPRouteSpecParentRefsOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefs) *string { return v.SectionName }).(pulumi.StringPtrOutput)
+}
+
+type UDPRouteSpecParentRefsArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecParentRefsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecParentRefs)(nil)).Elem()
+}
+
+func (o UDPRouteSpecParentRefsArrayOutput) ToUDPRouteSpecParentRefsArrayOutput() UDPRouteSpecParentRefsArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecParentRefsArrayOutput) ToUDPRouteSpecParentRefsArrayOutputWithContext(ctx context.Context) UDPRouteSpecParentRefsArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecParentRefsArrayOutput) Index(i pulumi.IntInput) UDPRouteSpecParentRefsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteSpecParentRefs {
+		return vs[0].([]UDPRouteSpecParentRefs)[vs[1].(int)]
+	}).(UDPRouteSpecParentRefsOutput)
+}
+
+// ParentReference identifies an API object (usually a Gateway) that can be considered
+// a parent of this resource (usually a route). There are two kinds of parent resources
+// with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// This API may be extended in the future to support additional kinds of parent
+// resources.
+//
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+type UDPRouteSpecParentRefsPatch struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group *string `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name *string `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace *string `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port *int `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName *string `pulumi:"sectionName"`
+}
+
+// UDPRouteSpecParentRefsPatchInput is an input type that accepts UDPRouteSpecParentRefsPatchArgs and UDPRouteSpecParentRefsPatchOutput values.
+// You can construct a concrete instance of `UDPRouteSpecParentRefsPatchInput` via:
+//
+//	UDPRouteSpecParentRefsPatchArgs{...}
+type UDPRouteSpecParentRefsPatchInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecParentRefsPatchOutput() UDPRouteSpecParentRefsPatchOutput
+	ToUDPRouteSpecParentRefsPatchOutputWithContext(context.Context) UDPRouteSpecParentRefsPatchOutput
+}
+
+// ParentReference identifies an API object (usually a Gateway) that can be considered
+// a parent of this resource (usually a route). There are two kinds of parent resources
+// with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// This API may be extended in the future to support additional kinds of parent
+// resources.
+//
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+type UDPRouteSpecParentRefsPatchArgs struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port pulumi.IntPtrInput `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName pulumi.StringPtrInput `pulumi:"sectionName"`
+}
+
+func (UDPRouteSpecParentRefsPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecParentRefsPatch)(nil)).Elem()
+}
+
+func (i UDPRouteSpecParentRefsPatchArgs) ToUDPRouteSpecParentRefsPatchOutput() UDPRouteSpecParentRefsPatchOutput {
+	return i.ToUDPRouteSpecParentRefsPatchOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecParentRefsPatchArgs) ToUDPRouteSpecParentRefsPatchOutputWithContext(ctx context.Context) UDPRouteSpecParentRefsPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecParentRefsPatchOutput)
+}
+
+// UDPRouteSpecParentRefsPatchArrayInput is an input type that accepts UDPRouteSpecParentRefsPatchArray and UDPRouteSpecParentRefsPatchArrayOutput values.
+// You can construct a concrete instance of `UDPRouteSpecParentRefsPatchArrayInput` via:
+//
+//	UDPRouteSpecParentRefsPatchArray{ UDPRouteSpecParentRefsPatchArgs{...} }
+type UDPRouteSpecParentRefsPatchArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecParentRefsPatchArrayOutput() UDPRouteSpecParentRefsPatchArrayOutput
+	ToUDPRouteSpecParentRefsPatchArrayOutputWithContext(context.Context) UDPRouteSpecParentRefsPatchArrayOutput
+}
+
+type UDPRouteSpecParentRefsPatchArray []UDPRouteSpecParentRefsPatchInput
+
+func (UDPRouteSpecParentRefsPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecParentRefsPatch)(nil)).Elem()
+}
+
+func (i UDPRouteSpecParentRefsPatchArray) ToUDPRouteSpecParentRefsPatchArrayOutput() UDPRouteSpecParentRefsPatchArrayOutput {
+	return i.ToUDPRouteSpecParentRefsPatchArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecParentRefsPatchArray) ToUDPRouteSpecParentRefsPatchArrayOutputWithContext(ctx context.Context) UDPRouteSpecParentRefsPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecParentRefsPatchArrayOutput)
+}
+
+// ParentReference identifies an API object (usually a Gateway) that can be considered
+// a parent of this resource (usually a route). There are two kinds of parent resources
+// with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// This API may be extended in the future to support additional kinds of parent
+// resources.
+//
+// The API object must be valid in the cluster; the Group and Kind must
+// be registered in the cluster for this reference to be valid.
+type UDPRouteSpecParentRefsPatchOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecParentRefsPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecParentRefsPatch)(nil)).Elem()
+}
+
+func (o UDPRouteSpecParentRefsPatchOutput) ToUDPRouteSpecParentRefsPatchOutput() UDPRouteSpecParentRefsPatchOutput {
+	return o
+}
+
+func (o UDPRouteSpecParentRefsPatchOutput) ToUDPRouteSpecParentRefsPatchOutputWithContext(ctx context.Context) UDPRouteSpecParentRefsPatchOutput {
+	return o
+}
+
+// Group is the group of the referent.
+// When unspecified, "gateway.networking.k8s.io" is inferred.
+// To set the core API group (such as for a "Service" kind referent),
+// Group must be explicitly set to "" (empty string).
+//
+// Support: Core
+func (o UDPRouteSpecParentRefsPatchOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefsPatch) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// Support for other resources is Implementation-Specific.
+func (o UDPRouteSpecParentRefsPatchOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefsPatch) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+//
+// Support: Core
+func (o UDPRouteSpecParentRefsPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefsPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the referent. When unspecified, this refers
+// to the local namespace of the Route.
+//
+// Note that there are specific rules for ParentRefs which cross namespace
+// boundaries. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example:
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable any other kind of cross-namespace reference.
+//
+// Support: Core
+func (o UDPRouteSpecParentRefsPatchOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefsPatch) *string { return v.Namespace }).(pulumi.StringPtrOutput)
+}
+
+// Port is the network port this Route targets. It can be interpreted
+// differently based on the type of parent resource.
+//
+// When the parent resource is a Gateway, this targets all listeners
+// listening on the specified port that also support this kind of Route(and
+// select this Route). It's not recommended to set `Port` unless the
+// networking behaviors specified in a Route must apply to a specific port
+// as opposed to a listener(s) whose port(s) may be changed. When both Port
+// and SectionName are specified, the name and port of the selected listener
+// must match both specified values.
+//
+// Implementations MAY choose to support other parent resources.
+// Implementations supporting other types of parent resources MUST clearly
+// document how/if Port is interpreted.
+//
+// For the purpose of status, an attachment is considered successful as
+// long as the parent resource accepts it partially. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+// from the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route,
+// the Route MUST be considered detached from the Gateway.
+//
+// Support: Extended
+func (o UDPRouteSpecParentRefsPatchOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefsPatch) *int { return v.Port }).(pulumi.IntPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. In the
+// following resources, SectionName is interpreted as the following:
+//
+//   - Gateway: Listener name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//   - Service: Port name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//
+// Implementations MAY choose to support attaching Routes to other resources.
+// If that is the case, they MUST clearly document how SectionName is
+// interpreted.
+//
+// When unspecified (empty string), this will reference the entire resource.
+// For the purpose of status, an attachment is considered successful if at
+// least one section in the parent resource accepts it. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+// the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route, the
+// Route MUST be considered detached from the Gateway.
+//
+// Support: Core
+func (o UDPRouteSpecParentRefsPatchOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecParentRefsPatch) *string { return v.SectionName }).(pulumi.StringPtrOutput)
+}
+
+type UDPRouteSpecParentRefsPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecParentRefsPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecParentRefsPatch)(nil)).Elem()
+}
+
+func (o UDPRouteSpecParentRefsPatchArrayOutput) ToUDPRouteSpecParentRefsPatchArrayOutput() UDPRouteSpecParentRefsPatchArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecParentRefsPatchArrayOutput) ToUDPRouteSpecParentRefsPatchArrayOutputWithContext(ctx context.Context) UDPRouteSpecParentRefsPatchArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecParentRefsPatchArrayOutput) Index(i pulumi.IntInput) UDPRouteSpecParentRefsPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteSpecParentRefsPatch {
+		return vs[0].([]UDPRouteSpecParentRefsPatch)[vs[1].(int)]
+	}).(UDPRouteSpecParentRefsPatchOutput)
+}
+
+// Spec defines the desired state of UDPRoute.
+type UDPRouteSpecPatch struct {
+	// ParentRefs references the resources (usually Gateways) that a Route wants
+	// to be attached to. Note that the referenced parent resource needs to
+	// allow this for the attachment to be complete. For Gateways, that means
+	// the Gateway needs to allow attachment from Routes of this kind and
+	// namespace. For Services, that means the Service must either be in the same
+	// namespace for a "producer" route, or the mesh implementation must support
+	// and allow "consumer" routes for the referenced Service. ReferenceGrant is
+	// not applicable for governing ParentRefs to Services - it is not possible to
+	// create a "producer" route for a Service in a different namespace from the
+	// Route.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// This API may be extended in the future to support additional kinds of parent
+	// resources.
+	//
+	// ParentRefs must be _distinct_. This means either that:
+	//
+	// * They select different objects.  If this is the case, then parentRef
+	//   entries are distinct. In terms of fields, this means that the
+	//   multi-part key defined by `group`, `kind`, `namespace`, and `name` must
+	//   be unique across all parentRef entries in the Route.
+	// * They do not select different objects, but for each optional field used,
+	//   each ParentRef that selects the same object must set the same set of
+	//   optional fields to different values. If one ParentRef sets a
+	//   combination of optional fields, all must set the same combination.
+	//
+	// Some examples:
+	//
+	// * If one ParentRef sets `sectionName`, all ParentRefs referencing the
+	//   same object must also set `sectionName`.
+	// * If one ParentRef sets `port`, all ParentRefs referencing the same
+	//   object must also set `port`.
+	// * If one ParentRef sets `sectionName` and `port`, all ParentRefs
+	//   referencing the same object must also set `sectionName` and `port`.
+	//
+	// It is possible to separately reference multiple distinct objects that may
+	// be collapsed by an implementation. For example, some implementations may
+	// choose to merge compatible Gateway Listeners together. If that is the
+	// case, the list of routes attached to those resources should also be
+	// merged.
+	//
+	// Note that for ParentRefs that cross namespace boundaries, there are specific
+	// rules. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example,
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable other kinds of cross-namespace reference.
+	ParentRefs []UDPRouteSpecParentRefsPatch `pulumi:"parentRefs"`
+	// Rules are a list of UDP matchers and actions.
+	Rules []UDPRouteSpecRulesPatch `pulumi:"rules"`
+}
+
+// UDPRouteSpecPatchInput is an input type that accepts UDPRouteSpecPatchArgs and UDPRouteSpecPatchOutput values.
+// You can construct a concrete instance of `UDPRouteSpecPatchInput` via:
+//
+//	UDPRouteSpecPatchArgs{...}
+type UDPRouteSpecPatchInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecPatchOutput() UDPRouteSpecPatchOutput
+	ToUDPRouteSpecPatchOutputWithContext(context.Context) UDPRouteSpecPatchOutput
+}
+
+// Spec defines the desired state of UDPRoute.
+type UDPRouteSpecPatchArgs struct {
+	// ParentRefs references the resources (usually Gateways) that a Route wants
+	// to be attached to. Note that the referenced parent resource needs to
+	// allow this for the attachment to be complete. For Gateways, that means
+	// the Gateway needs to allow attachment from Routes of this kind and
+	// namespace. For Services, that means the Service must either be in the same
+	// namespace for a "producer" route, or the mesh implementation must support
+	// and allow "consumer" routes for the referenced Service. ReferenceGrant is
+	// not applicable for governing ParentRefs to Services - it is not possible to
+	// create a "producer" route for a Service in a different namespace from the
+	// Route.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// This API may be extended in the future to support additional kinds of parent
+	// resources.
+	//
+	// ParentRefs must be _distinct_. This means either that:
+	//
+	// * They select different objects.  If this is the case, then parentRef
+	//   entries are distinct. In terms of fields, this means that the
+	//   multi-part key defined by `group`, `kind`, `namespace`, and `name` must
+	//   be unique across all parentRef entries in the Route.
+	// * They do not select different objects, but for each optional field used,
+	//   each ParentRef that selects the same object must set the same set of
+	//   optional fields to different values. If one ParentRef sets a
+	//   combination of optional fields, all must set the same combination.
+	//
+	// Some examples:
+	//
+	// * If one ParentRef sets `sectionName`, all ParentRefs referencing the
+	//   same object must also set `sectionName`.
+	// * If one ParentRef sets `port`, all ParentRefs referencing the same
+	//   object must also set `port`.
+	// * If one ParentRef sets `sectionName` and `port`, all ParentRefs
+	//   referencing the same object must also set `sectionName` and `port`.
+	//
+	// It is possible to separately reference multiple distinct objects that may
+	// be collapsed by an implementation. For example, some implementations may
+	// choose to merge compatible Gateway Listeners together. If that is the
+	// case, the list of routes attached to those resources should also be
+	// merged.
+	//
+	// Note that for ParentRefs that cross namespace boundaries, there are specific
+	// rules. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example,
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable other kinds of cross-namespace reference.
+	ParentRefs UDPRouteSpecParentRefsPatchArrayInput `pulumi:"parentRefs"`
+	// Rules are a list of UDP matchers and actions.
+	Rules UDPRouteSpecRulesPatchArrayInput `pulumi:"rules"`
+}
+
+func (UDPRouteSpecPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecPatch)(nil)).Elem()
+}
+
+func (i UDPRouteSpecPatchArgs) ToUDPRouteSpecPatchOutput() UDPRouteSpecPatchOutput {
+	return i.ToUDPRouteSpecPatchOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecPatchArgs) ToUDPRouteSpecPatchOutputWithContext(ctx context.Context) UDPRouteSpecPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecPatchOutput)
+}
+
+func (i UDPRouteSpecPatchArgs) ToUDPRouteSpecPatchPtrOutput() UDPRouteSpecPatchPtrOutput {
+	return i.ToUDPRouteSpecPatchPtrOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecPatchArgs) ToUDPRouteSpecPatchPtrOutputWithContext(ctx context.Context) UDPRouteSpecPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecPatchOutput).ToUDPRouteSpecPatchPtrOutputWithContext(ctx)
+}
+
+// UDPRouteSpecPatchPtrInput is an input type that accepts UDPRouteSpecPatchArgs, UDPRouteSpecPatchPtr and UDPRouteSpecPatchPtrOutput values.
+// You can construct a concrete instance of `UDPRouteSpecPatchPtrInput` via:
+//
+//	        UDPRouteSpecPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type UDPRouteSpecPatchPtrInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecPatchPtrOutput() UDPRouteSpecPatchPtrOutput
+	ToUDPRouteSpecPatchPtrOutputWithContext(context.Context) UDPRouteSpecPatchPtrOutput
+}
+
+type udprouteSpecPatchPtrType UDPRouteSpecPatchArgs
+
+func UDPRouteSpecPatchPtr(v *UDPRouteSpecPatchArgs) UDPRouteSpecPatchPtrInput {
+	return (*udprouteSpecPatchPtrType)(v)
+}
+
+func (*udprouteSpecPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteSpecPatch)(nil)).Elem()
+}
+
+func (i *udprouteSpecPatchPtrType) ToUDPRouteSpecPatchPtrOutput() UDPRouteSpecPatchPtrOutput {
+	return i.ToUDPRouteSpecPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *udprouteSpecPatchPtrType) ToUDPRouteSpecPatchPtrOutputWithContext(ctx context.Context) UDPRouteSpecPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecPatchPtrOutput)
+}
+
+// Spec defines the desired state of UDPRoute.
+type UDPRouteSpecPatchOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecPatch)(nil)).Elem()
+}
+
+func (o UDPRouteSpecPatchOutput) ToUDPRouteSpecPatchOutput() UDPRouteSpecPatchOutput {
+	return o
+}
+
+func (o UDPRouteSpecPatchOutput) ToUDPRouteSpecPatchOutputWithContext(ctx context.Context) UDPRouteSpecPatchOutput {
+	return o
+}
+
+func (o UDPRouteSpecPatchOutput) ToUDPRouteSpecPatchPtrOutput() UDPRouteSpecPatchPtrOutput {
+	return o.ToUDPRouteSpecPatchPtrOutputWithContext(context.Background())
+}
+
+func (o UDPRouteSpecPatchOutput) ToUDPRouteSpecPatchPtrOutputWithContext(ctx context.Context) UDPRouteSpecPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v UDPRouteSpecPatch) *UDPRouteSpecPatch {
+		return &v
+	}).(UDPRouteSpecPatchPtrOutput)
+}
+
+// ParentRefs references the resources (usually Gateways) that a Route wants
+// to be attached to. Note that the referenced parent resource needs to
+// allow this for the attachment to be complete. For Gateways, that means
+// the Gateway needs to allow attachment from Routes of this kind and
+// namespace. For Services, that means the Service must either be in the same
+// namespace for a "producer" route, or the mesh implementation must support
+// and allow "consumer" routes for the referenced Service. ReferenceGrant is
+// not applicable for governing ParentRefs to Services - it is not possible to
+// create a "producer" route for a Service in a different namespace from the
+// Route.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// This API may be extended in the future to support additional kinds of parent
+// resources.
+//
+// ParentRefs must be _distinct_. This means either that:
+//
+//   - They select different objects.  If this is the case, then parentRef
+//     entries are distinct. In terms of fields, this means that the
+//     multi-part key defined by `group`, `kind`, `namespace`, and `name` must
+//     be unique across all parentRef entries in the Route.
+//   - They do not select different objects, but for each optional field used,
+//     each ParentRef that selects the same object must set the same set of
+//     optional fields to different values. If one ParentRef sets a
+//     combination of optional fields, all must set the same combination.
+//
+// Some examples:
+//
+//   - If one ParentRef sets `sectionName`, all ParentRefs referencing the
+//     same object must also set `sectionName`.
+//   - If one ParentRef sets `port`, all ParentRefs referencing the same
+//     object must also set `port`.
+//   - If one ParentRef sets `sectionName` and `port`, all ParentRefs
+//     referencing the same object must also set `sectionName` and `port`.
+//
+// It is possible to separately reference multiple distinct objects that may
+// be collapsed by an implementation. For example, some implementations may
+// choose to merge compatible Gateway Listeners together. If that is the
+// case, the list of routes attached to those resources should also be
+// merged.
+//
+// Note that for ParentRefs that cross namespace boundaries, there are specific
+// rules. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example,
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable other kinds of cross-namespace reference.
+func (o UDPRouteSpecPatchOutput) ParentRefs() UDPRouteSpecParentRefsPatchArrayOutput {
+	return o.ApplyT(func(v UDPRouteSpecPatch) []UDPRouteSpecParentRefsPatch { return v.ParentRefs }).(UDPRouteSpecParentRefsPatchArrayOutput)
+}
+
+// Rules are a list of UDP matchers and actions.
+func (o UDPRouteSpecPatchOutput) Rules() UDPRouteSpecRulesPatchArrayOutput {
+	return o.ApplyT(func(v UDPRouteSpecPatch) []UDPRouteSpecRulesPatch { return v.Rules }).(UDPRouteSpecRulesPatchArrayOutput)
+}
+
+type UDPRouteSpecPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteSpecPatch)(nil)).Elem()
+}
+
+func (o UDPRouteSpecPatchPtrOutput) ToUDPRouteSpecPatchPtrOutput() UDPRouteSpecPatchPtrOutput {
+	return o
+}
+
+func (o UDPRouteSpecPatchPtrOutput) ToUDPRouteSpecPatchPtrOutputWithContext(ctx context.Context) UDPRouteSpecPatchPtrOutput {
+	return o
+}
+
+func (o UDPRouteSpecPatchPtrOutput) Elem() UDPRouteSpecPatchOutput {
+	return o.ApplyT(func(v *UDPRouteSpecPatch) UDPRouteSpecPatch {
+		if v != nil {
+			return *v
+		}
+		var ret UDPRouteSpecPatch
+		return ret
+	}).(UDPRouteSpecPatchOutput)
+}
+
+// ParentRefs references the resources (usually Gateways) that a Route wants
+// to be attached to. Note that the referenced parent resource needs to
+// allow this for the attachment to be complete. For Gateways, that means
+// the Gateway needs to allow attachment from Routes of this kind and
+// namespace. For Services, that means the Service must either be in the same
+// namespace for a "producer" route, or the mesh implementation must support
+// and allow "consumer" routes for the referenced Service. ReferenceGrant is
+// not applicable for governing ParentRefs to Services - it is not possible to
+// create a "producer" route for a Service in a different namespace from the
+// Route.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// This API may be extended in the future to support additional kinds of parent
+// resources.
+//
+// ParentRefs must be _distinct_. This means either that:
+//
+//   - They select different objects.  If this is the case, then parentRef
+//     entries are distinct. In terms of fields, this means that the
+//     multi-part key defined by `group`, `kind`, `namespace`, and `name` must
+//     be unique across all parentRef entries in the Route.
+//   - They do not select different objects, but for each optional field used,
+//     each ParentRef that selects the same object must set the same set of
+//     optional fields to different values. If one ParentRef sets a
+//     combination of optional fields, all must set the same combination.
+//
+// Some examples:
+//
+//   - If one ParentRef sets `sectionName`, all ParentRefs referencing the
+//     same object must also set `sectionName`.
+//   - If one ParentRef sets `port`, all ParentRefs referencing the same
+//     object must also set `port`.
+//   - If one ParentRef sets `sectionName` and `port`, all ParentRefs
+//     referencing the same object must also set `sectionName` and `port`.
+//
+// It is possible to separately reference multiple distinct objects that may
+// be collapsed by an implementation. For example, some implementations may
+// choose to merge compatible Gateway Listeners together. If that is the
+// case, the list of routes attached to those resources should also be
+// merged.
+//
+// Note that for ParentRefs that cross namespace boundaries, there are specific
+// rules. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example,
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable other kinds of cross-namespace reference.
+func (o UDPRouteSpecPatchPtrOutput) ParentRefs() UDPRouteSpecParentRefsPatchArrayOutput {
+	return o.ApplyT(func(v *UDPRouteSpecPatch) []UDPRouteSpecParentRefsPatch {
+		if v == nil {
+			return nil
+		}
+		return v.ParentRefs
+	}).(UDPRouteSpecParentRefsPatchArrayOutput)
+}
+
+// Rules are a list of UDP matchers and actions.
+func (o UDPRouteSpecPatchPtrOutput) Rules() UDPRouteSpecRulesPatchArrayOutput {
+	return o.ApplyT(func(v *UDPRouteSpecPatch) []UDPRouteSpecRulesPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Rules
+	}).(UDPRouteSpecRulesPatchArrayOutput)
+}
+
+// UDPRouteRule is the configuration for a given rule.
+type UDPRouteSpecRules struct {
+	// BackendRefs defines the backend(s) where matching requests should be
+	// sent. If unspecified or invalid (refers to a nonexistent resource or a
+	// Service with no endpoints), the underlying implementation MUST actively
+	// reject connection attempts to this backend. Packet drops must
+	// respect weight; if an invalid backend is requested to have 80% of
+	// the packets, then 80% of packets must be dropped instead.
+	//
+	// Support: Extended for Kubernetes Service
+	BackendRefs []UDPRouteSpecRulesBackendRefs `pulumi:"backendRefs"`
+	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
+	Name *string `pulumi:"name"`
+}
+
+// UDPRouteSpecRulesInput is an input type that accepts UDPRouteSpecRulesArgs and UDPRouteSpecRulesOutput values.
+// You can construct a concrete instance of `UDPRouteSpecRulesInput` via:
+//
+//	UDPRouteSpecRulesArgs{...}
+type UDPRouteSpecRulesInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecRulesOutput() UDPRouteSpecRulesOutput
+	ToUDPRouteSpecRulesOutputWithContext(context.Context) UDPRouteSpecRulesOutput
+}
+
+// UDPRouteRule is the configuration for a given rule.
+type UDPRouteSpecRulesArgs struct {
+	// BackendRefs defines the backend(s) where matching requests should be
+	// sent. If unspecified or invalid (refers to a nonexistent resource or a
+	// Service with no endpoints), the underlying implementation MUST actively
+	// reject connection attempts to this backend. Packet drops must
+	// respect weight; if an invalid backend is requested to have 80% of
+	// the packets, then 80% of packets must be dropped instead.
+	//
+	// Support: Extended for Kubernetes Service
+	BackendRefs UDPRouteSpecRulesBackendRefsArrayInput `pulumi:"backendRefs"`
+	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (UDPRouteSpecRulesArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecRules)(nil)).Elem()
+}
+
+func (i UDPRouteSpecRulesArgs) ToUDPRouteSpecRulesOutput() UDPRouteSpecRulesOutput {
+	return i.ToUDPRouteSpecRulesOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecRulesArgs) ToUDPRouteSpecRulesOutputWithContext(ctx context.Context) UDPRouteSpecRulesOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecRulesOutput)
+}
+
+// UDPRouteSpecRulesArrayInput is an input type that accepts UDPRouteSpecRulesArray and UDPRouteSpecRulesArrayOutput values.
+// You can construct a concrete instance of `UDPRouteSpecRulesArrayInput` via:
+//
+//	UDPRouteSpecRulesArray{ UDPRouteSpecRulesArgs{...} }
+type UDPRouteSpecRulesArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecRulesArrayOutput() UDPRouteSpecRulesArrayOutput
+	ToUDPRouteSpecRulesArrayOutputWithContext(context.Context) UDPRouteSpecRulesArrayOutput
+}
+
+type UDPRouteSpecRulesArray []UDPRouteSpecRulesInput
+
+func (UDPRouteSpecRulesArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecRules)(nil)).Elem()
+}
+
+func (i UDPRouteSpecRulesArray) ToUDPRouteSpecRulesArrayOutput() UDPRouteSpecRulesArrayOutput {
+	return i.ToUDPRouteSpecRulesArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecRulesArray) ToUDPRouteSpecRulesArrayOutputWithContext(ctx context.Context) UDPRouteSpecRulesArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecRulesArrayOutput)
+}
+
+// UDPRouteRule is the configuration for a given rule.
+type UDPRouteSpecRulesOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecRulesOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecRules)(nil)).Elem()
+}
+
+func (o UDPRouteSpecRulesOutput) ToUDPRouteSpecRulesOutput() UDPRouteSpecRulesOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesOutput) ToUDPRouteSpecRulesOutputWithContext(ctx context.Context) UDPRouteSpecRulesOutput {
+	return o
+}
+
+// BackendRefs defines the backend(s) where matching requests should be
+// sent. If unspecified or invalid (refers to a nonexistent resource or a
+// Service with no endpoints), the underlying implementation MUST actively
+// reject connection attempts to this backend. Packet drops must
+// respect weight; if an invalid backend is requested to have 80% of
+// the packets, then 80% of packets must be dropped instead.
+//
+// Support: Extended for Kubernetes Service
+func (o UDPRouteSpecRulesOutput) BackendRefs() UDPRouteSpecRulesBackendRefsArrayOutput {
+	return o.ApplyT(func(v UDPRouteSpecRules) []UDPRouteSpecRulesBackendRefs { return v.BackendRefs }).(UDPRouteSpecRulesBackendRefsArrayOutput)
+}
+
+// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
+func (o UDPRouteSpecRulesOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRules) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+type UDPRouteSpecRulesArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecRulesArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecRules)(nil)).Elem()
+}
+
+func (o UDPRouteSpecRulesArrayOutput) ToUDPRouteSpecRulesArrayOutput() UDPRouteSpecRulesArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesArrayOutput) ToUDPRouteSpecRulesArrayOutputWithContext(ctx context.Context) UDPRouteSpecRulesArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesArrayOutput) Index(i pulumi.IntInput) UDPRouteSpecRulesOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteSpecRules {
+		return vs[0].([]UDPRouteSpecRules)[vs[1].(int)]
+	}).(UDPRouteSpecRulesOutput)
+}
+
+// BackendRef defines how a Route should forward a request to a Kubernetes
+// resource.
+//
+// Note that when a namespace different than the local namespace is specified, a
+// ReferenceGrant object is required in the referent namespace to allow that
+// namespace's owner to accept the reference. See the ReferenceGrant
+// documentation for details.
+//
+// Note that when the BackendTLSPolicy object is enabled by the implementation,
+// there are some extra rules about validity to consider here. See the fields
+// where this struct is used for more information about the exact behavior.
+type UDPRouteSpecRulesBackendRefs struct {
+	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+	// When unspecified or empty string, core API group is inferred.
+	Group *string `pulumi:"group"`
+	// Kind is the Kubernetes resource kind of the referent. For example
+	// "Service".
+	//
+	// Defaults to "Service" when not specified.
+	//
+	// ExternalName services can refer to CNAME DNS records that may live
+	// outside of the cluster and as such are difficult to reason about in
+	// terms of conformance. They also may not be safe to forward to (see
+	// CVE-2021-25740 for more information). Implementations SHOULD NOT
+	// support ExternalName Services.
+	//
+	// Support: Core (Services with a type other than ExternalName)
+	//
+	// Support: Implementation-specific (Services with type ExternalName)
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the referent.
+	Name *string `pulumi:"name"`
+	// Namespace is the namespace of the backend. When unspecified, the local
+	// namespace is inferred.
+	//
+	// Note that when a namespace different than the local namespace is specified,
+	// a ReferenceGrant object is required in the referent namespace to allow that
+	// namespace's owner to accept the reference. See the ReferenceGrant
+	// documentation for details.
+	//
+	// Support: Core
+	Namespace *string `pulumi:"namespace"`
+	// Port specifies the destination port number to use for this resource.
+	// Port is required when the referent is a Kubernetes Service. In this
+	// case, the port number is the service port number, not the target port.
+	// For other resources, destination port might be derived from the referent
+	// resource or this field.
+	Port *int `pulumi:"port"`
+	// Weight specifies the proportion of requests forwarded to the referenced
+	// backend. This is computed as weight/(sum of all weights in this
+	// BackendRefs list). For non-zero values, there may be some epsilon from
+	// the exact proportion defined here depending on the precision an
+	// implementation supports. Weight is not a percentage and the sum of
+	// weights does not need to equal 100.
+	//
+	// If only one backend is specified and it has a weight greater than 0, 100%
+	// of the traffic is forwarded to that backend. If weight is set to 0, no
+	// traffic should be forwarded for this entry. If unspecified, weight
+	// defaults to 1.
+	//
+	// Support for this field varies based on the context where used.
+	Weight *int `pulumi:"weight"`
+}
+
+// UDPRouteSpecRulesBackendRefsInput is an input type that accepts UDPRouteSpecRulesBackendRefsArgs and UDPRouteSpecRulesBackendRefsOutput values.
+// You can construct a concrete instance of `UDPRouteSpecRulesBackendRefsInput` via:
+//
+//	UDPRouteSpecRulesBackendRefsArgs{...}
+type UDPRouteSpecRulesBackendRefsInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecRulesBackendRefsOutput() UDPRouteSpecRulesBackendRefsOutput
+	ToUDPRouteSpecRulesBackendRefsOutputWithContext(context.Context) UDPRouteSpecRulesBackendRefsOutput
+}
+
+// BackendRef defines how a Route should forward a request to a Kubernetes
+// resource.
+//
+// Note that when a namespace different than the local namespace is specified, a
+// ReferenceGrant object is required in the referent namespace to allow that
+// namespace's owner to accept the reference. See the ReferenceGrant
+// documentation for details.
+//
+// Note that when the BackendTLSPolicy object is enabled by the implementation,
+// there are some extra rules about validity to consider here. See the fields
+// where this struct is used for more information about the exact behavior.
+type UDPRouteSpecRulesBackendRefsArgs struct {
+	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+	// When unspecified or empty string, core API group is inferred.
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is the Kubernetes resource kind of the referent. For example
+	// "Service".
+	//
+	// Defaults to "Service" when not specified.
+	//
+	// ExternalName services can refer to CNAME DNS records that may live
+	// outside of the cluster and as such are difficult to reason about in
+	// terms of conformance. They also may not be safe to forward to (see
+	// CVE-2021-25740 for more information). Implementations SHOULD NOT
+	// support ExternalName Services.
+	//
+	// Support: Core (Services with a type other than ExternalName)
+	//
+	// Support: Implementation-specific (Services with type ExternalName)
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the referent.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// Namespace is the namespace of the backend. When unspecified, the local
+	// namespace is inferred.
+	//
+	// Note that when a namespace different than the local namespace is specified,
+	// a ReferenceGrant object is required in the referent namespace to allow that
+	// namespace's owner to accept the reference. See the ReferenceGrant
+	// documentation for details.
+	//
+	// Support: Core
+	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
+	// Port specifies the destination port number to use for this resource.
+	// Port is required when the referent is a Kubernetes Service. In this
+	// case, the port number is the service port number, not the target port.
+	// For other resources, destination port might be derived from the referent
+	// resource or this field.
+	Port pulumi.IntPtrInput `pulumi:"port"`
+	// Weight specifies the proportion of requests forwarded to the referenced
+	// backend. This is computed as weight/(sum of all weights in this
+	// BackendRefs list). For non-zero values, there may be some epsilon from
+	// the exact proportion defined here depending on the precision an
+	// implementation supports. Weight is not a percentage and the sum of
+	// weights does not need to equal 100.
+	//
+	// If only one backend is specified and it has a weight greater than 0, 100%
+	// of the traffic is forwarded to that backend. If weight is set to 0, no
+	// traffic should be forwarded for this entry. If unspecified, weight
+	// defaults to 1.
+	//
+	// Support for this field varies based on the context where used.
+	Weight pulumi.IntPtrInput `pulumi:"weight"`
+}
+
+func (UDPRouteSpecRulesBackendRefsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecRulesBackendRefs)(nil)).Elem()
+}
+
+func (i UDPRouteSpecRulesBackendRefsArgs) ToUDPRouteSpecRulesBackendRefsOutput() UDPRouteSpecRulesBackendRefsOutput {
+	return i.ToUDPRouteSpecRulesBackendRefsOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecRulesBackendRefsArgs) ToUDPRouteSpecRulesBackendRefsOutputWithContext(ctx context.Context) UDPRouteSpecRulesBackendRefsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecRulesBackendRefsOutput)
+}
+
+// UDPRouteSpecRulesBackendRefsArrayInput is an input type that accepts UDPRouteSpecRulesBackendRefsArray and UDPRouteSpecRulesBackendRefsArrayOutput values.
+// You can construct a concrete instance of `UDPRouteSpecRulesBackendRefsArrayInput` via:
+//
+//	UDPRouteSpecRulesBackendRefsArray{ UDPRouteSpecRulesBackendRefsArgs{...} }
+type UDPRouteSpecRulesBackendRefsArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecRulesBackendRefsArrayOutput() UDPRouteSpecRulesBackendRefsArrayOutput
+	ToUDPRouteSpecRulesBackendRefsArrayOutputWithContext(context.Context) UDPRouteSpecRulesBackendRefsArrayOutput
+}
+
+type UDPRouteSpecRulesBackendRefsArray []UDPRouteSpecRulesBackendRefsInput
+
+func (UDPRouteSpecRulesBackendRefsArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecRulesBackendRefs)(nil)).Elem()
+}
+
+func (i UDPRouteSpecRulesBackendRefsArray) ToUDPRouteSpecRulesBackendRefsArrayOutput() UDPRouteSpecRulesBackendRefsArrayOutput {
+	return i.ToUDPRouteSpecRulesBackendRefsArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecRulesBackendRefsArray) ToUDPRouteSpecRulesBackendRefsArrayOutputWithContext(ctx context.Context) UDPRouteSpecRulesBackendRefsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecRulesBackendRefsArrayOutput)
+}
+
+// BackendRef defines how a Route should forward a request to a Kubernetes
+// resource.
+//
+// Note that when a namespace different than the local namespace is specified, a
+// ReferenceGrant object is required in the referent namespace to allow that
+// namespace's owner to accept the reference. See the ReferenceGrant
+// documentation for details.
+//
+// Note that when the BackendTLSPolicy object is enabled by the implementation,
+// there are some extra rules about validity to consider here. See the fields
+// where this struct is used for more information about the exact behavior.
+type UDPRouteSpecRulesBackendRefsOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecRulesBackendRefsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecRulesBackendRefs)(nil)).Elem()
+}
+
+func (o UDPRouteSpecRulesBackendRefsOutput) ToUDPRouteSpecRulesBackendRefsOutput() UDPRouteSpecRulesBackendRefsOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesBackendRefsOutput) ToUDPRouteSpecRulesBackendRefsOutputWithContext(ctx context.Context) UDPRouteSpecRulesBackendRefsOutput {
+	return o
+}
+
+// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+// When unspecified or empty string, core API group is inferred.
+func (o UDPRouteSpecRulesBackendRefsOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefs) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is the Kubernetes resource kind of the referent. For example
+// "Service".
+//
+// Defaults to "Service" when not specified.
+//
+// ExternalName services can refer to CNAME DNS records that may live
+// outside of the cluster and as such are difficult to reason about in
+// terms of conformance. They also may not be safe to forward to (see
+// CVE-2021-25740 for more information). Implementations SHOULD NOT
+// support ExternalName Services.
+//
+// Support: Core (Services with a type other than ExternalName)
+//
+// Support: Implementation-specific (Services with type ExternalName)
+func (o UDPRouteSpecRulesBackendRefsOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefs) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+func (o UDPRouteSpecRulesBackendRefsOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefs) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the backend. When unspecified, the local
+// namespace is inferred.
+//
+// Note that when a namespace different than the local namespace is specified,
+// a ReferenceGrant object is required in the referent namespace to allow that
+// namespace's owner to accept the reference. See the ReferenceGrant
+// documentation for details.
+//
+// Support: Core
+func (o UDPRouteSpecRulesBackendRefsOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefs) *string { return v.Namespace }).(pulumi.StringPtrOutput)
+}
+
+// Port specifies the destination port number to use for this resource.
+// Port is required when the referent is a Kubernetes Service. In this
+// case, the port number is the service port number, not the target port.
+// For other resources, destination port might be derived from the referent
+// resource or this field.
+func (o UDPRouteSpecRulesBackendRefsOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefs) *int { return v.Port }).(pulumi.IntPtrOutput)
+}
+
+// Weight specifies the proportion of requests forwarded to the referenced
+// backend. This is computed as weight/(sum of all weights in this
+// BackendRefs list). For non-zero values, there may be some epsilon from
+// the exact proportion defined here depending on the precision an
+// implementation supports. Weight is not a percentage and the sum of
+// weights does not need to equal 100.
+//
+// If only one backend is specified and it has a weight greater than 0, 100%
+// of the traffic is forwarded to that backend. If weight is set to 0, no
+// traffic should be forwarded for this entry. If unspecified, weight
+// defaults to 1.
+//
+// Support for this field varies based on the context where used.
+func (o UDPRouteSpecRulesBackendRefsOutput) Weight() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefs) *int { return v.Weight }).(pulumi.IntPtrOutput)
+}
+
+type UDPRouteSpecRulesBackendRefsArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecRulesBackendRefsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecRulesBackendRefs)(nil)).Elem()
+}
+
+func (o UDPRouteSpecRulesBackendRefsArrayOutput) ToUDPRouteSpecRulesBackendRefsArrayOutput() UDPRouteSpecRulesBackendRefsArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesBackendRefsArrayOutput) ToUDPRouteSpecRulesBackendRefsArrayOutputWithContext(ctx context.Context) UDPRouteSpecRulesBackendRefsArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesBackendRefsArrayOutput) Index(i pulumi.IntInput) UDPRouteSpecRulesBackendRefsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteSpecRulesBackendRefs {
+		return vs[0].([]UDPRouteSpecRulesBackendRefs)[vs[1].(int)]
+	}).(UDPRouteSpecRulesBackendRefsOutput)
+}
+
+// BackendRef defines how a Route should forward a request to a Kubernetes
+// resource.
+//
+// Note that when a namespace different than the local namespace is specified, a
+// ReferenceGrant object is required in the referent namespace to allow that
+// namespace's owner to accept the reference. See the ReferenceGrant
+// documentation for details.
+//
+// Note that when the BackendTLSPolicy object is enabled by the implementation,
+// there are some extra rules about validity to consider here. See the fields
+// where this struct is used for more information about the exact behavior.
+type UDPRouteSpecRulesBackendRefsPatch struct {
+	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+	// When unspecified or empty string, core API group is inferred.
+	Group *string `pulumi:"group"`
+	// Kind is the Kubernetes resource kind of the referent. For example
+	// "Service".
+	//
+	// Defaults to "Service" when not specified.
+	//
+	// ExternalName services can refer to CNAME DNS records that may live
+	// outside of the cluster and as such are difficult to reason about in
+	// terms of conformance. They also may not be safe to forward to (see
+	// CVE-2021-25740 for more information). Implementations SHOULD NOT
+	// support ExternalName Services.
+	//
+	// Support: Core (Services with a type other than ExternalName)
+	//
+	// Support: Implementation-specific (Services with type ExternalName)
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the referent.
+	Name *string `pulumi:"name"`
+	// Namespace is the namespace of the backend. When unspecified, the local
+	// namespace is inferred.
+	//
+	// Note that when a namespace different than the local namespace is specified,
+	// a ReferenceGrant object is required in the referent namespace to allow that
+	// namespace's owner to accept the reference. See the ReferenceGrant
+	// documentation for details.
+	//
+	// Support: Core
+	Namespace *string `pulumi:"namespace"`
+	// Port specifies the destination port number to use for this resource.
+	// Port is required when the referent is a Kubernetes Service. In this
+	// case, the port number is the service port number, not the target port.
+	// For other resources, destination port might be derived from the referent
+	// resource or this field.
+	Port *int `pulumi:"port"`
+	// Weight specifies the proportion of requests forwarded to the referenced
+	// backend. This is computed as weight/(sum of all weights in this
+	// BackendRefs list). For non-zero values, there may be some epsilon from
+	// the exact proportion defined here depending on the precision an
+	// implementation supports. Weight is not a percentage and the sum of
+	// weights does not need to equal 100.
+	//
+	// If only one backend is specified and it has a weight greater than 0, 100%
+	// of the traffic is forwarded to that backend. If weight is set to 0, no
+	// traffic should be forwarded for this entry. If unspecified, weight
+	// defaults to 1.
+	//
+	// Support for this field varies based on the context where used.
+	Weight *int `pulumi:"weight"`
+}
+
+// UDPRouteSpecRulesBackendRefsPatchInput is an input type that accepts UDPRouteSpecRulesBackendRefsPatchArgs and UDPRouteSpecRulesBackendRefsPatchOutput values.
+// You can construct a concrete instance of `UDPRouteSpecRulesBackendRefsPatchInput` via:
+//
+//	UDPRouteSpecRulesBackendRefsPatchArgs{...}
+type UDPRouteSpecRulesBackendRefsPatchInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecRulesBackendRefsPatchOutput() UDPRouteSpecRulesBackendRefsPatchOutput
+	ToUDPRouteSpecRulesBackendRefsPatchOutputWithContext(context.Context) UDPRouteSpecRulesBackendRefsPatchOutput
+}
+
+// BackendRef defines how a Route should forward a request to a Kubernetes
+// resource.
+//
+// Note that when a namespace different than the local namespace is specified, a
+// ReferenceGrant object is required in the referent namespace to allow that
+// namespace's owner to accept the reference. See the ReferenceGrant
+// documentation for details.
+//
+// Note that when the BackendTLSPolicy object is enabled by the implementation,
+// there are some extra rules about validity to consider here. See the fields
+// where this struct is used for more information about the exact behavior.
+type UDPRouteSpecRulesBackendRefsPatchArgs struct {
+	// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+	// When unspecified or empty string, core API group is inferred.
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is the Kubernetes resource kind of the referent. For example
+	// "Service".
+	//
+	// Defaults to "Service" when not specified.
+	//
+	// ExternalName services can refer to CNAME DNS records that may live
+	// outside of the cluster and as such are difficult to reason about in
+	// terms of conformance. They also may not be safe to forward to (see
+	// CVE-2021-25740 for more information). Implementations SHOULD NOT
+	// support ExternalName Services.
+	//
+	// Support: Core (Services with a type other than ExternalName)
+	//
+	// Support: Implementation-specific (Services with type ExternalName)
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the referent.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// Namespace is the namespace of the backend. When unspecified, the local
+	// namespace is inferred.
+	//
+	// Note that when a namespace different than the local namespace is specified,
+	// a ReferenceGrant object is required in the referent namespace to allow that
+	// namespace's owner to accept the reference. See the ReferenceGrant
+	// documentation for details.
+	//
+	// Support: Core
+	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
+	// Port specifies the destination port number to use for this resource.
+	// Port is required when the referent is a Kubernetes Service. In this
+	// case, the port number is the service port number, not the target port.
+	// For other resources, destination port might be derived from the referent
+	// resource or this field.
+	Port pulumi.IntPtrInput `pulumi:"port"`
+	// Weight specifies the proportion of requests forwarded to the referenced
+	// backend. This is computed as weight/(sum of all weights in this
+	// BackendRefs list). For non-zero values, there may be some epsilon from
+	// the exact proportion defined here depending on the precision an
+	// implementation supports. Weight is not a percentage and the sum of
+	// weights does not need to equal 100.
+	//
+	// If only one backend is specified and it has a weight greater than 0, 100%
+	// of the traffic is forwarded to that backend. If weight is set to 0, no
+	// traffic should be forwarded for this entry. If unspecified, weight
+	// defaults to 1.
+	//
+	// Support for this field varies based on the context where used.
+	Weight pulumi.IntPtrInput `pulumi:"weight"`
+}
+
+func (UDPRouteSpecRulesBackendRefsPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecRulesBackendRefsPatch)(nil)).Elem()
+}
+
+func (i UDPRouteSpecRulesBackendRefsPatchArgs) ToUDPRouteSpecRulesBackendRefsPatchOutput() UDPRouteSpecRulesBackendRefsPatchOutput {
+	return i.ToUDPRouteSpecRulesBackendRefsPatchOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecRulesBackendRefsPatchArgs) ToUDPRouteSpecRulesBackendRefsPatchOutputWithContext(ctx context.Context) UDPRouteSpecRulesBackendRefsPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecRulesBackendRefsPatchOutput)
+}
+
+// UDPRouteSpecRulesBackendRefsPatchArrayInput is an input type that accepts UDPRouteSpecRulesBackendRefsPatchArray and UDPRouteSpecRulesBackendRefsPatchArrayOutput values.
+// You can construct a concrete instance of `UDPRouteSpecRulesBackendRefsPatchArrayInput` via:
+//
+//	UDPRouteSpecRulesBackendRefsPatchArray{ UDPRouteSpecRulesBackendRefsPatchArgs{...} }
+type UDPRouteSpecRulesBackendRefsPatchArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecRulesBackendRefsPatchArrayOutput() UDPRouteSpecRulesBackendRefsPatchArrayOutput
+	ToUDPRouteSpecRulesBackendRefsPatchArrayOutputWithContext(context.Context) UDPRouteSpecRulesBackendRefsPatchArrayOutput
+}
+
+type UDPRouteSpecRulesBackendRefsPatchArray []UDPRouteSpecRulesBackendRefsPatchInput
+
+func (UDPRouteSpecRulesBackendRefsPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecRulesBackendRefsPatch)(nil)).Elem()
+}
+
+func (i UDPRouteSpecRulesBackendRefsPatchArray) ToUDPRouteSpecRulesBackendRefsPatchArrayOutput() UDPRouteSpecRulesBackendRefsPatchArrayOutput {
+	return i.ToUDPRouteSpecRulesBackendRefsPatchArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecRulesBackendRefsPatchArray) ToUDPRouteSpecRulesBackendRefsPatchArrayOutputWithContext(ctx context.Context) UDPRouteSpecRulesBackendRefsPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecRulesBackendRefsPatchArrayOutput)
+}
+
+// BackendRef defines how a Route should forward a request to a Kubernetes
+// resource.
+//
+// Note that when a namespace different than the local namespace is specified, a
+// ReferenceGrant object is required in the referent namespace to allow that
+// namespace's owner to accept the reference. See the ReferenceGrant
+// documentation for details.
+//
+// Note that when the BackendTLSPolicy object is enabled by the implementation,
+// there are some extra rules about validity to consider here. See the fields
+// where this struct is used for more information about the exact behavior.
+type UDPRouteSpecRulesBackendRefsPatchOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecRulesBackendRefsPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecRulesBackendRefsPatch)(nil)).Elem()
+}
+
+func (o UDPRouteSpecRulesBackendRefsPatchOutput) ToUDPRouteSpecRulesBackendRefsPatchOutput() UDPRouteSpecRulesBackendRefsPatchOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesBackendRefsPatchOutput) ToUDPRouteSpecRulesBackendRefsPatchOutputWithContext(ctx context.Context) UDPRouteSpecRulesBackendRefsPatchOutput {
+	return o
+}
+
+// Group is the group of the referent. For example, "gateway.networking.k8s.io".
+// When unspecified or empty string, core API group is inferred.
+func (o UDPRouteSpecRulesBackendRefsPatchOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefsPatch) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is the Kubernetes resource kind of the referent. For example
+// "Service".
+//
+// Defaults to "Service" when not specified.
+//
+// ExternalName services can refer to CNAME DNS records that may live
+// outside of the cluster and as such are difficult to reason about in
+// terms of conformance. They also may not be safe to forward to (see
+// CVE-2021-25740 for more information). Implementations SHOULD NOT
+// support ExternalName Services.
+//
+// Support: Core (Services with a type other than ExternalName)
+//
+// Support: Implementation-specific (Services with type ExternalName)
+func (o UDPRouteSpecRulesBackendRefsPatchOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefsPatch) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+func (o UDPRouteSpecRulesBackendRefsPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefsPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the backend. When unspecified, the local
+// namespace is inferred.
+//
+// Note that when a namespace different than the local namespace is specified,
+// a ReferenceGrant object is required in the referent namespace to allow that
+// namespace's owner to accept the reference. See the ReferenceGrant
+// documentation for details.
+//
+// Support: Core
+func (o UDPRouteSpecRulesBackendRefsPatchOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefsPatch) *string { return v.Namespace }).(pulumi.StringPtrOutput)
+}
+
+// Port specifies the destination port number to use for this resource.
+// Port is required when the referent is a Kubernetes Service. In this
+// case, the port number is the service port number, not the target port.
+// For other resources, destination port might be derived from the referent
+// resource or this field.
+func (o UDPRouteSpecRulesBackendRefsPatchOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefsPatch) *int { return v.Port }).(pulumi.IntPtrOutput)
+}
+
+// Weight specifies the proportion of requests forwarded to the referenced
+// backend. This is computed as weight/(sum of all weights in this
+// BackendRefs list). For non-zero values, there may be some epsilon from
+// the exact proportion defined here depending on the precision an
+// implementation supports. Weight is not a percentage and the sum of
+// weights does not need to equal 100.
+//
+// If only one backend is specified and it has a weight greater than 0, 100%
+// of the traffic is forwarded to that backend. If weight is set to 0, no
+// traffic should be forwarded for this entry. If unspecified, weight
+// defaults to 1.
+//
+// Support for this field varies based on the context where used.
+func (o UDPRouteSpecRulesBackendRefsPatchOutput) Weight() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesBackendRefsPatch) *int { return v.Weight }).(pulumi.IntPtrOutput)
+}
+
+type UDPRouteSpecRulesBackendRefsPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecRulesBackendRefsPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecRulesBackendRefsPatch)(nil)).Elem()
+}
+
+func (o UDPRouteSpecRulesBackendRefsPatchArrayOutput) ToUDPRouteSpecRulesBackendRefsPatchArrayOutput() UDPRouteSpecRulesBackendRefsPatchArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesBackendRefsPatchArrayOutput) ToUDPRouteSpecRulesBackendRefsPatchArrayOutputWithContext(ctx context.Context) UDPRouteSpecRulesBackendRefsPatchArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesBackendRefsPatchArrayOutput) Index(i pulumi.IntInput) UDPRouteSpecRulesBackendRefsPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteSpecRulesBackendRefsPatch {
+		return vs[0].([]UDPRouteSpecRulesBackendRefsPatch)[vs[1].(int)]
+	}).(UDPRouteSpecRulesBackendRefsPatchOutput)
+}
+
+// UDPRouteRule is the configuration for a given rule.
+type UDPRouteSpecRulesPatch struct {
+	// BackendRefs defines the backend(s) where matching requests should be
+	// sent. If unspecified or invalid (refers to a nonexistent resource or a
+	// Service with no endpoints), the underlying implementation MUST actively
+	// reject connection attempts to this backend. Packet drops must
+	// respect weight; if an invalid backend is requested to have 80% of
+	// the packets, then 80% of packets must be dropped instead.
+	//
+	// Support: Extended for Kubernetes Service
+	BackendRefs []UDPRouteSpecRulesBackendRefsPatch `pulumi:"backendRefs"`
+	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
+	Name *string `pulumi:"name"`
+}
+
+// UDPRouteSpecRulesPatchInput is an input type that accepts UDPRouteSpecRulesPatchArgs and UDPRouteSpecRulesPatchOutput values.
+// You can construct a concrete instance of `UDPRouteSpecRulesPatchInput` via:
+//
+//	UDPRouteSpecRulesPatchArgs{...}
+type UDPRouteSpecRulesPatchInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecRulesPatchOutput() UDPRouteSpecRulesPatchOutput
+	ToUDPRouteSpecRulesPatchOutputWithContext(context.Context) UDPRouteSpecRulesPatchOutput
+}
+
+// UDPRouteRule is the configuration for a given rule.
+type UDPRouteSpecRulesPatchArgs struct {
+	// BackendRefs defines the backend(s) where matching requests should be
+	// sent. If unspecified or invalid (refers to a nonexistent resource or a
+	// Service with no endpoints), the underlying implementation MUST actively
+	// reject connection attempts to this backend. Packet drops must
+	// respect weight; if an invalid backend is requested to have 80% of
+	// the packets, then 80% of packets must be dropped instead.
+	//
+	// Support: Extended for Kubernetes Service
+	BackendRefs UDPRouteSpecRulesBackendRefsPatchArrayInput `pulumi:"backendRefs"`
+	// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (UDPRouteSpecRulesPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecRulesPatch)(nil)).Elem()
+}
+
+func (i UDPRouteSpecRulesPatchArgs) ToUDPRouteSpecRulesPatchOutput() UDPRouteSpecRulesPatchOutput {
+	return i.ToUDPRouteSpecRulesPatchOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecRulesPatchArgs) ToUDPRouteSpecRulesPatchOutputWithContext(ctx context.Context) UDPRouteSpecRulesPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecRulesPatchOutput)
+}
+
+// UDPRouteSpecRulesPatchArrayInput is an input type that accepts UDPRouteSpecRulesPatchArray and UDPRouteSpecRulesPatchArrayOutput values.
+// You can construct a concrete instance of `UDPRouteSpecRulesPatchArrayInput` via:
+//
+//	UDPRouteSpecRulesPatchArray{ UDPRouteSpecRulesPatchArgs{...} }
+type UDPRouteSpecRulesPatchArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteSpecRulesPatchArrayOutput() UDPRouteSpecRulesPatchArrayOutput
+	ToUDPRouteSpecRulesPatchArrayOutputWithContext(context.Context) UDPRouteSpecRulesPatchArrayOutput
+}
+
+type UDPRouteSpecRulesPatchArray []UDPRouteSpecRulesPatchInput
+
+func (UDPRouteSpecRulesPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecRulesPatch)(nil)).Elem()
+}
+
+func (i UDPRouteSpecRulesPatchArray) ToUDPRouteSpecRulesPatchArrayOutput() UDPRouteSpecRulesPatchArrayOutput {
+	return i.ToUDPRouteSpecRulesPatchArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteSpecRulesPatchArray) ToUDPRouteSpecRulesPatchArrayOutputWithContext(ctx context.Context) UDPRouteSpecRulesPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteSpecRulesPatchArrayOutput)
+}
+
+// UDPRouteRule is the configuration for a given rule.
+type UDPRouteSpecRulesPatchOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecRulesPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteSpecRulesPatch)(nil)).Elem()
+}
+
+func (o UDPRouteSpecRulesPatchOutput) ToUDPRouteSpecRulesPatchOutput() UDPRouteSpecRulesPatchOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesPatchOutput) ToUDPRouteSpecRulesPatchOutputWithContext(ctx context.Context) UDPRouteSpecRulesPatchOutput {
+	return o
+}
+
+// BackendRefs defines the backend(s) where matching requests should be
+// sent. If unspecified or invalid (refers to a nonexistent resource or a
+// Service with no endpoints), the underlying implementation MUST actively
+// reject connection attempts to this backend. Packet drops must
+// respect weight; if an invalid backend is requested to have 80% of
+// the packets, then 80% of packets must be dropped instead.
+//
+// Support: Extended for Kubernetes Service
+func (o UDPRouteSpecRulesPatchOutput) BackendRefs() UDPRouteSpecRulesBackendRefsPatchArrayOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesPatch) []UDPRouteSpecRulesBackendRefsPatch { return v.BackendRefs }).(UDPRouteSpecRulesBackendRefsPatchArrayOutput)
+}
+
+// Name is the name of the route rule. This name MUST be unique within a Route if it is set.
+func (o UDPRouteSpecRulesPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteSpecRulesPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+type UDPRouteSpecRulesPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteSpecRulesPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteSpecRulesPatch)(nil)).Elem()
+}
+
+func (o UDPRouteSpecRulesPatchArrayOutput) ToUDPRouteSpecRulesPatchArrayOutput() UDPRouteSpecRulesPatchArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesPatchArrayOutput) ToUDPRouteSpecRulesPatchArrayOutputWithContext(ctx context.Context) UDPRouteSpecRulesPatchArrayOutput {
+	return o
+}
+
+func (o UDPRouteSpecRulesPatchArrayOutput) Index(i pulumi.IntInput) UDPRouteSpecRulesPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteSpecRulesPatch {
+		return vs[0].([]UDPRouteSpecRulesPatch)[vs[1].(int)]
+	}).(UDPRouteSpecRulesPatchOutput)
+}
+
+// Status defines the current state of UDPRoute.
+type UDPRouteStatus struct {
+	// Parents is a list of parent resources (usually Gateways) that are
+	// associated with the route, and the status of the route with respect to
+	// each parent. When this route attaches to a parent, the controller that
+	// manages the parent must add an entry to this list when the controller
+	// first sees the route and should update the entry as appropriate when the
+	// route or gateway is modified.
+	//
+	// Note that parent references that cannot be resolved by an implementation
+	// of this API will not be added to this list. Implementations of this API
+	// can only populate Route status for the Gateways/parent resources they are
+	// responsible for.
+	//
+	// A maximum of 32 Gateways will be represented in this list. An empty list
+	// means the route has not been attached to any Gateway.
+	Parents []UDPRouteStatusParents `pulumi:"parents"`
+}
+
+// UDPRouteStatusInput is an input type that accepts UDPRouteStatusArgs and UDPRouteStatusOutput values.
+// You can construct a concrete instance of `UDPRouteStatusInput` via:
+//
+//	UDPRouteStatusArgs{...}
+type UDPRouteStatusInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusOutput() UDPRouteStatusOutput
+	ToUDPRouteStatusOutputWithContext(context.Context) UDPRouteStatusOutput
+}
+
+// Status defines the current state of UDPRoute.
+type UDPRouteStatusArgs struct {
+	// Parents is a list of parent resources (usually Gateways) that are
+	// associated with the route, and the status of the route with respect to
+	// each parent. When this route attaches to a parent, the controller that
+	// manages the parent must add an entry to this list when the controller
+	// first sees the route and should update the entry as appropriate when the
+	// route or gateway is modified.
+	//
+	// Note that parent references that cannot be resolved by an implementation
+	// of this API will not be added to this list. Implementations of this API
+	// can only populate Route status for the Gateways/parent resources they are
+	// responsible for.
+	//
+	// A maximum of 32 Gateways will be represented in this list. An empty list
+	// means the route has not been attached to any Gateway.
+	Parents UDPRouteStatusParentsArrayInput `pulumi:"parents"`
+}
+
+func (UDPRouteStatusArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatus)(nil)).Elem()
+}
+
+func (i UDPRouteStatusArgs) ToUDPRouteStatusOutput() UDPRouteStatusOutput {
+	return i.ToUDPRouteStatusOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusArgs) ToUDPRouteStatusOutputWithContext(ctx context.Context) UDPRouteStatusOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusOutput)
+}
+
+func (i UDPRouteStatusArgs) ToUDPRouteStatusPtrOutput() UDPRouteStatusPtrOutput {
+	return i.ToUDPRouteStatusPtrOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusArgs) ToUDPRouteStatusPtrOutputWithContext(ctx context.Context) UDPRouteStatusPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusOutput).ToUDPRouteStatusPtrOutputWithContext(ctx)
+}
+
+// UDPRouteStatusPtrInput is an input type that accepts UDPRouteStatusArgs, UDPRouteStatusPtr and UDPRouteStatusPtrOutput values.
+// You can construct a concrete instance of `UDPRouteStatusPtrInput` via:
+//
+//	        UDPRouteStatusArgs{...}
+//
+//	or:
+//
+//	        nil
+type UDPRouteStatusPtrInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusPtrOutput() UDPRouteStatusPtrOutput
+	ToUDPRouteStatusPtrOutputWithContext(context.Context) UDPRouteStatusPtrOutput
+}
+
+type udprouteStatusPtrType UDPRouteStatusArgs
+
+func UDPRouteStatusPtr(v *UDPRouteStatusArgs) UDPRouteStatusPtrInput {
+	return (*udprouteStatusPtrType)(v)
+}
+
+func (*udprouteStatusPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteStatus)(nil)).Elem()
+}
+
+func (i *udprouteStatusPtrType) ToUDPRouteStatusPtrOutput() UDPRouteStatusPtrOutput {
+	return i.ToUDPRouteStatusPtrOutputWithContext(context.Background())
+}
+
+func (i *udprouteStatusPtrType) ToUDPRouteStatusPtrOutputWithContext(ctx context.Context) UDPRouteStatusPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusPtrOutput)
+}
+
+// Status defines the current state of UDPRoute.
+type UDPRouteStatusOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatus)(nil)).Elem()
+}
+
+func (o UDPRouteStatusOutput) ToUDPRouteStatusOutput() UDPRouteStatusOutput {
+	return o
+}
+
+func (o UDPRouteStatusOutput) ToUDPRouteStatusOutputWithContext(ctx context.Context) UDPRouteStatusOutput {
+	return o
+}
+
+func (o UDPRouteStatusOutput) ToUDPRouteStatusPtrOutput() UDPRouteStatusPtrOutput {
+	return o.ToUDPRouteStatusPtrOutputWithContext(context.Background())
+}
+
+func (o UDPRouteStatusOutput) ToUDPRouteStatusPtrOutputWithContext(ctx context.Context) UDPRouteStatusPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v UDPRouteStatus) *UDPRouteStatus {
+		return &v
+	}).(UDPRouteStatusPtrOutput)
+}
+
+// Parents is a list of parent resources (usually Gateways) that are
+// associated with the route, and the status of the route with respect to
+// each parent. When this route attaches to a parent, the controller that
+// manages the parent must add an entry to this list when the controller
+// first sees the route and should update the entry as appropriate when the
+// route or gateway is modified.
+//
+// Note that parent references that cannot be resolved by an implementation
+// of this API will not be added to this list. Implementations of this API
+// can only populate Route status for the Gateways/parent resources they are
+// responsible for.
+//
+// A maximum of 32 Gateways will be represented in this list. An empty list
+// means the route has not been attached to any Gateway.
+func (o UDPRouteStatusOutput) Parents() UDPRouteStatusParentsArrayOutput {
+	return o.ApplyT(func(v UDPRouteStatus) []UDPRouteStatusParents { return v.Parents }).(UDPRouteStatusParentsArrayOutput)
+}
+
+type UDPRouteStatusPtrOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteStatus)(nil)).Elem()
+}
+
+func (o UDPRouteStatusPtrOutput) ToUDPRouteStatusPtrOutput() UDPRouteStatusPtrOutput {
+	return o
+}
+
+func (o UDPRouteStatusPtrOutput) ToUDPRouteStatusPtrOutputWithContext(ctx context.Context) UDPRouteStatusPtrOutput {
+	return o
+}
+
+func (o UDPRouteStatusPtrOutput) Elem() UDPRouteStatusOutput {
+	return o.ApplyT(func(v *UDPRouteStatus) UDPRouteStatus {
+		if v != nil {
+			return *v
+		}
+		var ret UDPRouteStatus
+		return ret
+	}).(UDPRouteStatusOutput)
+}
+
+// Parents is a list of parent resources (usually Gateways) that are
+// associated with the route, and the status of the route with respect to
+// each parent. When this route attaches to a parent, the controller that
+// manages the parent must add an entry to this list when the controller
+// first sees the route and should update the entry as appropriate when the
+// route or gateway is modified.
+//
+// Note that parent references that cannot be resolved by an implementation
+// of this API will not be added to this list. Implementations of this API
+// can only populate Route status for the Gateways/parent resources they are
+// responsible for.
+//
+// A maximum of 32 Gateways will be represented in this list. An empty list
+// means the route has not been attached to any Gateway.
+func (o UDPRouteStatusPtrOutput) Parents() UDPRouteStatusParentsArrayOutput {
+	return o.ApplyT(func(v *UDPRouteStatus) []UDPRouteStatusParents {
+		if v == nil {
+			return nil
+		}
+		return v.Parents
+	}).(UDPRouteStatusParentsArrayOutput)
+}
+
+// RouteParentStatus describes the status of a route with respect to an
+// associated Parent.
+type UDPRouteStatusParents struct {
+	// Conditions describes the status of the route with respect to the Gateway.
+	// Note that the route's availability is also subject to the Gateway's own
+	// status conditions and listener status.
+	//
+	// If the Route's ParentRef specifies an existing Gateway that supports
+	// Routes of this kind AND that Gateway's controller has sufficient access,
+	// then that Gateway's controller MUST set the "Accepted" condition on the
+	// Route, to indicate whether the route has been accepted or rejected by the
+	// Gateway, and why.
+	//
+	// A Route MUST be considered "Accepted" if at least one of the Route's
+	// rules is implemented by the Gateway.
+	//
+	// There are a number of cases where the "Accepted" condition may not be set
+	// due to lack of controller visibility, that includes when:
+	//
+	// * The Route refers to a nonexistent parent.
+	// * The Route is of a type that the controller does not support.
+	// * The Route is in a namespace to which the controller does not have access.
+	Conditions []UDPRouteStatusParentsConditions `pulumi:"conditions"`
+	// ControllerName is a domain/path string that indicates the name of the
+	// controller that wrote this status. This corresponds with the
+	// controllerName field on GatewayClass.
+	//
+	// Example: "example.net/gateway-controller".
+	//
+	// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+	// valid Kubernetes names
+	// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	//
+	// Controllers MUST populate this field when writing status. Controllers should ensure that
+	// entries to status populated with their ControllerName are cleaned up when they are no
+	// longer necessary.
+	ControllerName *string                         `pulumi:"controllerName"`
+	ParentRef      *UDPRouteStatusParentsParentRef `pulumi:"parentRef"`
+}
+
+// UDPRouteStatusParentsInput is an input type that accepts UDPRouteStatusParentsArgs and UDPRouteStatusParentsOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsInput` via:
+//
+//	UDPRouteStatusParentsArgs{...}
+type UDPRouteStatusParentsInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsOutput() UDPRouteStatusParentsOutput
+	ToUDPRouteStatusParentsOutputWithContext(context.Context) UDPRouteStatusParentsOutput
+}
+
+// RouteParentStatus describes the status of a route with respect to an
+// associated Parent.
+type UDPRouteStatusParentsArgs struct {
+	// Conditions describes the status of the route with respect to the Gateway.
+	// Note that the route's availability is also subject to the Gateway's own
+	// status conditions and listener status.
+	//
+	// If the Route's ParentRef specifies an existing Gateway that supports
+	// Routes of this kind AND that Gateway's controller has sufficient access,
+	// then that Gateway's controller MUST set the "Accepted" condition on the
+	// Route, to indicate whether the route has been accepted or rejected by the
+	// Gateway, and why.
+	//
+	// A Route MUST be considered "Accepted" if at least one of the Route's
+	// rules is implemented by the Gateway.
+	//
+	// There are a number of cases where the "Accepted" condition may not be set
+	// due to lack of controller visibility, that includes when:
+	//
+	// * The Route refers to a nonexistent parent.
+	// * The Route is of a type that the controller does not support.
+	// * The Route is in a namespace to which the controller does not have access.
+	Conditions UDPRouteStatusParentsConditionsArrayInput `pulumi:"conditions"`
+	// ControllerName is a domain/path string that indicates the name of the
+	// controller that wrote this status. This corresponds with the
+	// controllerName field on GatewayClass.
+	//
+	// Example: "example.net/gateway-controller".
+	//
+	// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+	// valid Kubernetes names
+	// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	//
+	// Controllers MUST populate this field when writing status. Controllers should ensure that
+	// entries to status populated with their ControllerName are cleaned up when they are no
+	// longer necessary.
+	ControllerName pulumi.StringPtrInput                  `pulumi:"controllerName"`
+	ParentRef      UDPRouteStatusParentsParentRefPtrInput `pulumi:"parentRef"`
+}
+
+func (UDPRouteStatusParentsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParents)(nil)).Elem()
+}
+
+func (i UDPRouteStatusParentsArgs) ToUDPRouteStatusParentsOutput() UDPRouteStatusParentsOutput {
+	return i.ToUDPRouteStatusParentsOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsArgs) ToUDPRouteStatusParentsOutputWithContext(ctx context.Context) UDPRouteStatusParentsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsOutput)
+}
+
+// UDPRouteStatusParentsArrayInput is an input type that accepts UDPRouteStatusParentsArray and UDPRouteStatusParentsArrayOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsArrayInput` via:
+//
+//	UDPRouteStatusParentsArray{ UDPRouteStatusParentsArgs{...} }
+type UDPRouteStatusParentsArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsArrayOutput() UDPRouteStatusParentsArrayOutput
+	ToUDPRouteStatusParentsArrayOutputWithContext(context.Context) UDPRouteStatusParentsArrayOutput
+}
+
+type UDPRouteStatusParentsArray []UDPRouteStatusParentsInput
+
+func (UDPRouteStatusParentsArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteStatusParents)(nil)).Elem()
+}
+
+func (i UDPRouteStatusParentsArray) ToUDPRouteStatusParentsArrayOutput() UDPRouteStatusParentsArrayOutput {
+	return i.ToUDPRouteStatusParentsArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsArray) ToUDPRouteStatusParentsArrayOutputWithContext(ctx context.Context) UDPRouteStatusParentsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsArrayOutput)
+}
+
+// RouteParentStatus describes the status of a route with respect to an
+// associated Parent.
+type UDPRouteStatusParentsOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParents)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsOutput) ToUDPRouteStatusParentsOutput() UDPRouteStatusParentsOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsOutput) ToUDPRouteStatusParentsOutputWithContext(ctx context.Context) UDPRouteStatusParentsOutput {
+	return o
+}
+
+// Conditions describes the status of the route with respect to the Gateway.
+// Note that the route's availability is also subject to the Gateway's own
+// status conditions and listener status.
+//
+// If the Route's ParentRef specifies an existing Gateway that supports
+// Routes of this kind AND that Gateway's controller has sufficient access,
+// then that Gateway's controller MUST set the "Accepted" condition on the
+// Route, to indicate whether the route has been accepted or rejected by the
+// Gateway, and why.
+//
+// A Route MUST be considered "Accepted" if at least one of the Route's
+// rules is implemented by the Gateway.
+//
+// There are a number of cases where the "Accepted" condition may not be set
+// due to lack of controller visibility, that includes when:
+//
+// * The Route refers to a nonexistent parent.
+// * The Route is of a type that the controller does not support.
+// * The Route is in a namespace to which the controller does not have access.
+func (o UDPRouteStatusParentsOutput) Conditions() UDPRouteStatusParentsConditionsArrayOutput {
+	return o.ApplyT(func(v UDPRouteStatusParents) []UDPRouteStatusParentsConditions { return v.Conditions }).(UDPRouteStatusParentsConditionsArrayOutput)
+}
+
+// ControllerName is a domain/path string that indicates the name of the
+// controller that wrote this status. This corresponds with the
+// controllerName field on GatewayClass.
+//
+// Example: "example.net/gateway-controller".
+//
+// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+// valid Kubernetes names
+// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+//
+// Controllers MUST populate this field when writing status. Controllers should ensure that
+// entries to status populated with their ControllerName are cleaned up when they are no
+// longer necessary.
+func (o UDPRouteStatusParentsOutput) ControllerName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParents) *string { return v.ControllerName }).(pulumi.StringPtrOutput)
+}
+
+func (o UDPRouteStatusParentsOutput) ParentRef() UDPRouteStatusParentsParentRefPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParents) *UDPRouteStatusParentsParentRef { return v.ParentRef }).(UDPRouteStatusParentsParentRefPtrOutput)
+}
+
+type UDPRouteStatusParentsArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteStatusParents)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsArrayOutput) ToUDPRouteStatusParentsArrayOutput() UDPRouteStatusParentsArrayOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsArrayOutput) ToUDPRouteStatusParentsArrayOutputWithContext(ctx context.Context) UDPRouteStatusParentsArrayOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsArrayOutput) Index(i pulumi.IntInput) UDPRouteStatusParentsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteStatusParents {
+		return vs[0].([]UDPRouteStatusParents)[vs[1].(int)]
+	}).(UDPRouteStatusParentsOutput)
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type UDPRouteStatusParentsConditions struct {
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	LastTransitionTime *string `pulumi:"lastTransitionTime"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	Message *string `pulumi:"message"`
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	ObservedGeneration *int `pulumi:"observedGeneration"`
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// Producers of specific condition types may define expected values and meanings for this field,
+	// and whether the values are considered a guaranteed API.
+	// The value should be a CamelCase string.
+	// This field may not be empty.
+	Reason *string `pulumi:"reason"`
+	// status of the condition, one of True, False, Unknown.
+	Status *string `pulumi:"status"`
+	// type of condition in CamelCase or in foo.example.com/CamelCase.
+	Type *string `pulumi:"type"`
+}
+
+// UDPRouteStatusParentsConditionsInput is an input type that accepts UDPRouteStatusParentsConditionsArgs and UDPRouteStatusParentsConditionsOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsConditionsInput` via:
+//
+//	UDPRouteStatusParentsConditionsArgs{...}
+type UDPRouteStatusParentsConditionsInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsConditionsOutput() UDPRouteStatusParentsConditionsOutput
+	ToUDPRouteStatusParentsConditionsOutputWithContext(context.Context) UDPRouteStatusParentsConditionsOutput
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type UDPRouteStatusParentsConditionsArgs struct {
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	LastTransitionTime pulumi.StringPtrInput `pulumi:"lastTransitionTime"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	Message pulumi.StringPtrInput `pulumi:"message"`
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	ObservedGeneration pulumi.IntPtrInput `pulumi:"observedGeneration"`
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// Producers of specific condition types may define expected values and meanings for this field,
+	// and whether the values are considered a guaranteed API.
+	// The value should be a CamelCase string.
+	// This field may not be empty.
+	Reason pulumi.StringPtrInput `pulumi:"reason"`
+	// status of the condition, one of True, False, Unknown.
+	Status pulumi.StringPtrInput `pulumi:"status"`
+	// type of condition in CamelCase or in foo.example.com/CamelCase.
+	Type pulumi.StringPtrInput `pulumi:"type"`
+}
+
+func (UDPRouteStatusParentsConditionsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParentsConditions)(nil)).Elem()
+}
+
+func (i UDPRouteStatusParentsConditionsArgs) ToUDPRouteStatusParentsConditionsOutput() UDPRouteStatusParentsConditionsOutput {
+	return i.ToUDPRouteStatusParentsConditionsOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsConditionsArgs) ToUDPRouteStatusParentsConditionsOutputWithContext(ctx context.Context) UDPRouteStatusParentsConditionsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsConditionsOutput)
+}
+
+// UDPRouteStatusParentsConditionsArrayInput is an input type that accepts UDPRouteStatusParentsConditionsArray and UDPRouteStatusParentsConditionsArrayOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsConditionsArrayInput` via:
+//
+//	UDPRouteStatusParentsConditionsArray{ UDPRouteStatusParentsConditionsArgs{...} }
+type UDPRouteStatusParentsConditionsArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsConditionsArrayOutput() UDPRouteStatusParentsConditionsArrayOutput
+	ToUDPRouteStatusParentsConditionsArrayOutputWithContext(context.Context) UDPRouteStatusParentsConditionsArrayOutput
+}
+
+type UDPRouteStatusParentsConditionsArray []UDPRouteStatusParentsConditionsInput
+
+func (UDPRouteStatusParentsConditionsArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteStatusParentsConditions)(nil)).Elem()
+}
+
+func (i UDPRouteStatusParentsConditionsArray) ToUDPRouteStatusParentsConditionsArrayOutput() UDPRouteStatusParentsConditionsArrayOutput {
+	return i.ToUDPRouteStatusParentsConditionsArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsConditionsArray) ToUDPRouteStatusParentsConditionsArrayOutputWithContext(ctx context.Context) UDPRouteStatusParentsConditionsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsConditionsArrayOutput)
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type UDPRouteStatusParentsConditionsOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsConditionsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParentsConditions)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsConditionsOutput) ToUDPRouteStatusParentsConditionsOutput() UDPRouteStatusParentsConditionsOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsConditionsOutput) ToUDPRouteStatusParentsConditionsOutputWithContext(ctx context.Context) UDPRouteStatusParentsConditionsOutput {
+	return o
+}
+
+// lastTransitionTime is the last time the condition transitioned from one status to another.
+// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+func (o UDPRouteStatusParentsConditionsOutput) LastTransitionTime() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditions) *string { return v.LastTransitionTime }).(pulumi.StringPtrOutput)
+}
+
+// message is a human readable message indicating details about the transition.
+// This may be an empty string.
+func (o UDPRouteStatusParentsConditionsOutput) Message() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditions) *string { return v.Message }).(pulumi.StringPtrOutput)
+}
+
+// observedGeneration represents the .metadata.generation that the condition was set based upon.
+// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+// with respect to the current state of the instance.
+func (o UDPRouteStatusParentsConditionsOutput) ObservedGeneration() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditions) *int { return v.ObservedGeneration }).(pulumi.IntPtrOutput)
+}
+
+// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+// Producers of specific condition types may define expected values and meanings for this field,
+// and whether the values are considered a guaranteed API.
+// The value should be a CamelCase string.
+// This field may not be empty.
+func (o UDPRouteStatusParentsConditionsOutput) Reason() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditions) *string { return v.Reason }).(pulumi.StringPtrOutput)
+}
+
+// status of the condition, one of True, False, Unknown.
+func (o UDPRouteStatusParentsConditionsOutput) Status() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditions) *string { return v.Status }).(pulumi.StringPtrOutput)
+}
+
+// type of condition in CamelCase or in foo.example.com/CamelCase.
+func (o UDPRouteStatusParentsConditionsOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditions) *string { return v.Type }).(pulumi.StringPtrOutput)
+}
+
+type UDPRouteStatusParentsConditionsArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsConditionsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteStatusParentsConditions)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsConditionsArrayOutput) ToUDPRouteStatusParentsConditionsArrayOutput() UDPRouteStatusParentsConditionsArrayOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsConditionsArrayOutput) ToUDPRouteStatusParentsConditionsArrayOutputWithContext(ctx context.Context) UDPRouteStatusParentsConditionsArrayOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsConditionsArrayOutput) Index(i pulumi.IntInput) UDPRouteStatusParentsConditionsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteStatusParentsConditions {
+		return vs[0].([]UDPRouteStatusParentsConditions)[vs[1].(int)]
+	}).(UDPRouteStatusParentsConditionsOutput)
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type UDPRouteStatusParentsConditionsPatch struct {
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	LastTransitionTime *string `pulumi:"lastTransitionTime"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	Message *string `pulumi:"message"`
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	ObservedGeneration *int `pulumi:"observedGeneration"`
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// Producers of specific condition types may define expected values and meanings for this field,
+	// and whether the values are considered a guaranteed API.
+	// The value should be a CamelCase string.
+	// This field may not be empty.
+	Reason *string `pulumi:"reason"`
+	// status of the condition, one of True, False, Unknown.
+	Status *string `pulumi:"status"`
+	// type of condition in CamelCase or in foo.example.com/CamelCase.
+	Type *string `pulumi:"type"`
+}
+
+// UDPRouteStatusParentsConditionsPatchInput is an input type that accepts UDPRouteStatusParentsConditionsPatchArgs and UDPRouteStatusParentsConditionsPatchOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsConditionsPatchInput` via:
+//
+//	UDPRouteStatusParentsConditionsPatchArgs{...}
+type UDPRouteStatusParentsConditionsPatchInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsConditionsPatchOutput() UDPRouteStatusParentsConditionsPatchOutput
+	ToUDPRouteStatusParentsConditionsPatchOutputWithContext(context.Context) UDPRouteStatusParentsConditionsPatchOutput
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type UDPRouteStatusParentsConditionsPatchArgs struct {
+	// lastTransitionTime is the last time the condition transitioned from one status to another.
+	// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+	LastTransitionTime pulumi.StringPtrInput `pulumi:"lastTransitionTime"`
+	// message is a human readable message indicating details about the transition.
+	// This may be an empty string.
+	Message pulumi.StringPtrInput `pulumi:"message"`
+	// observedGeneration represents the .metadata.generation that the condition was set based upon.
+	// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+	// with respect to the current state of the instance.
+	ObservedGeneration pulumi.IntPtrInput `pulumi:"observedGeneration"`
+	// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+	// Producers of specific condition types may define expected values and meanings for this field,
+	// and whether the values are considered a guaranteed API.
+	// The value should be a CamelCase string.
+	// This field may not be empty.
+	Reason pulumi.StringPtrInput `pulumi:"reason"`
+	// status of the condition, one of True, False, Unknown.
+	Status pulumi.StringPtrInput `pulumi:"status"`
+	// type of condition in CamelCase or in foo.example.com/CamelCase.
+	Type pulumi.StringPtrInput `pulumi:"type"`
+}
+
+func (UDPRouteStatusParentsConditionsPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParentsConditionsPatch)(nil)).Elem()
+}
+
+func (i UDPRouteStatusParentsConditionsPatchArgs) ToUDPRouteStatusParentsConditionsPatchOutput() UDPRouteStatusParentsConditionsPatchOutput {
+	return i.ToUDPRouteStatusParentsConditionsPatchOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsConditionsPatchArgs) ToUDPRouteStatusParentsConditionsPatchOutputWithContext(ctx context.Context) UDPRouteStatusParentsConditionsPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsConditionsPatchOutput)
+}
+
+// UDPRouteStatusParentsConditionsPatchArrayInput is an input type that accepts UDPRouteStatusParentsConditionsPatchArray and UDPRouteStatusParentsConditionsPatchArrayOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsConditionsPatchArrayInput` via:
+//
+//	UDPRouteStatusParentsConditionsPatchArray{ UDPRouteStatusParentsConditionsPatchArgs{...} }
+type UDPRouteStatusParentsConditionsPatchArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsConditionsPatchArrayOutput() UDPRouteStatusParentsConditionsPatchArrayOutput
+	ToUDPRouteStatusParentsConditionsPatchArrayOutputWithContext(context.Context) UDPRouteStatusParentsConditionsPatchArrayOutput
+}
+
+type UDPRouteStatusParentsConditionsPatchArray []UDPRouteStatusParentsConditionsPatchInput
+
+func (UDPRouteStatusParentsConditionsPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteStatusParentsConditionsPatch)(nil)).Elem()
+}
+
+func (i UDPRouteStatusParentsConditionsPatchArray) ToUDPRouteStatusParentsConditionsPatchArrayOutput() UDPRouteStatusParentsConditionsPatchArrayOutput {
+	return i.ToUDPRouteStatusParentsConditionsPatchArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsConditionsPatchArray) ToUDPRouteStatusParentsConditionsPatchArrayOutputWithContext(ctx context.Context) UDPRouteStatusParentsConditionsPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsConditionsPatchArrayOutput)
+}
+
+// Condition contains details for one aspect of the current state of this API Resource.
+type UDPRouteStatusParentsConditionsPatchOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsConditionsPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParentsConditionsPatch)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsConditionsPatchOutput) ToUDPRouteStatusParentsConditionsPatchOutput() UDPRouteStatusParentsConditionsPatchOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsConditionsPatchOutput) ToUDPRouteStatusParentsConditionsPatchOutputWithContext(ctx context.Context) UDPRouteStatusParentsConditionsPatchOutput {
+	return o
+}
+
+// lastTransitionTime is the last time the condition transitioned from one status to another.
+// This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+func (o UDPRouteStatusParentsConditionsPatchOutput) LastTransitionTime() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditionsPatch) *string { return v.LastTransitionTime }).(pulumi.StringPtrOutput)
+}
+
+// message is a human readable message indicating details about the transition.
+// This may be an empty string.
+func (o UDPRouteStatusParentsConditionsPatchOutput) Message() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditionsPatch) *string { return v.Message }).(pulumi.StringPtrOutput)
+}
+
+// observedGeneration represents the .metadata.generation that the condition was set based upon.
+// For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+// with respect to the current state of the instance.
+func (o UDPRouteStatusParentsConditionsPatchOutput) ObservedGeneration() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditionsPatch) *int { return v.ObservedGeneration }).(pulumi.IntPtrOutput)
+}
+
+// reason contains a programmatic identifier indicating the reason for the condition's last transition.
+// Producers of specific condition types may define expected values and meanings for this field,
+// and whether the values are considered a guaranteed API.
+// The value should be a CamelCase string.
+// This field may not be empty.
+func (o UDPRouteStatusParentsConditionsPatchOutput) Reason() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditionsPatch) *string { return v.Reason }).(pulumi.StringPtrOutput)
+}
+
+// status of the condition, one of True, False, Unknown.
+func (o UDPRouteStatusParentsConditionsPatchOutput) Status() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditionsPatch) *string { return v.Status }).(pulumi.StringPtrOutput)
+}
+
+// type of condition in CamelCase or in foo.example.com/CamelCase.
+func (o UDPRouteStatusParentsConditionsPatchOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsConditionsPatch) *string { return v.Type }).(pulumi.StringPtrOutput)
+}
+
+type UDPRouteStatusParentsConditionsPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsConditionsPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteStatusParentsConditionsPatch)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsConditionsPatchArrayOutput) ToUDPRouteStatusParentsConditionsPatchArrayOutput() UDPRouteStatusParentsConditionsPatchArrayOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsConditionsPatchArrayOutput) ToUDPRouteStatusParentsConditionsPatchArrayOutputWithContext(ctx context.Context) UDPRouteStatusParentsConditionsPatchArrayOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsConditionsPatchArrayOutput) Index(i pulumi.IntInput) UDPRouteStatusParentsConditionsPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteStatusParentsConditionsPatch {
+		return vs[0].([]UDPRouteStatusParentsConditionsPatch)[vs[1].(int)]
+	}).(UDPRouteStatusParentsConditionsPatchOutput)
+}
+
+// ParentRef corresponds with a ParentRef in the spec that this
+// RouteParentStatus struct describes the status of.
+type UDPRouteStatusParentsParentRef struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group *string `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name *string `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace *string `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port *int `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName *string `pulumi:"sectionName"`
+}
+
+// UDPRouteStatusParentsParentRefInput is an input type that accepts UDPRouteStatusParentsParentRefArgs and UDPRouteStatusParentsParentRefOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsParentRefInput` via:
+//
+//	UDPRouteStatusParentsParentRefArgs{...}
+type UDPRouteStatusParentsParentRefInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsParentRefOutput() UDPRouteStatusParentsParentRefOutput
+	ToUDPRouteStatusParentsParentRefOutputWithContext(context.Context) UDPRouteStatusParentsParentRefOutput
+}
+
+// ParentRef corresponds with a ParentRef in the spec that this
+// RouteParentStatus struct describes the status of.
+type UDPRouteStatusParentsParentRefArgs struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port pulumi.IntPtrInput `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName pulumi.StringPtrInput `pulumi:"sectionName"`
+}
+
+func (UDPRouteStatusParentsParentRefArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParentsParentRef)(nil)).Elem()
+}
+
+func (i UDPRouteStatusParentsParentRefArgs) ToUDPRouteStatusParentsParentRefOutput() UDPRouteStatusParentsParentRefOutput {
+	return i.ToUDPRouteStatusParentsParentRefOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsParentRefArgs) ToUDPRouteStatusParentsParentRefOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsParentRefOutput)
+}
+
+func (i UDPRouteStatusParentsParentRefArgs) ToUDPRouteStatusParentsParentRefPtrOutput() UDPRouteStatusParentsParentRefPtrOutput {
+	return i.ToUDPRouteStatusParentsParentRefPtrOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsParentRefArgs) ToUDPRouteStatusParentsParentRefPtrOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsParentRefOutput).ToUDPRouteStatusParentsParentRefPtrOutputWithContext(ctx)
+}
+
+// UDPRouteStatusParentsParentRefPtrInput is an input type that accepts UDPRouteStatusParentsParentRefArgs, UDPRouteStatusParentsParentRefPtr and UDPRouteStatusParentsParentRefPtrOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsParentRefPtrInput` via:
+//
+//	        UDPRouteStatusParentsParentRefArgs{...}
+//
+//	or:
+//
+//	        nil
+type UDPRouteStatusParentsParentRefPtrInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsParentRefPtrOutput() UDPRouteStatusParentsParentRefPtrOutput
+	ToUDPRouteStatusParentsParentRefPtrOutputWithContext(context.Context) UDPRouteStatusParentsParentRefPtrOutput
+}
+
+type udprouteStatusParentsParentRefPtrType UDPRouteStatusParentsParentRefArgs
+
+func UDPRouteStatusParentsParentRefPtr(v *UDPRouteStatusParentsParentRefArgs) UDPRouteStatusParentsParentRefPtrInput {
+	return (*udprouteStatusParentsParentRefPtrType)(v)
+}
+
+func (*udprouteStatusParentsParentRefPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteStatusParentsParentRef)(nil)).Elem()
+}
+
+func (i *udprouteStatusParentsParentRefPtrType) ToUDPRouteStatusParentsParentRefPtrOutput() UDPRouteStatusParentsParentRefPtrOutput {
+	return i.ToUDPRouteStatusParentsParentRefPtrOutputWithContext(context.Background())
+}
+
+func (i *udprouteStatusParentsParentRefPtrType) ToUDPRouteStatusParentsParentRefPtrOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsParentRefPtrOutput)
+}
+
+// ParentRef corresponds with a ParentRef in the spec that this
+// RouteParentStatus struct describes the status of.
+type UDPRouteStatusParentsParentRefOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsParentRefOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParentsParentRef)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsParentRefOutput) ToUDPRouteStatusParentsParentRefOutput() UDPRouteStatusParentsParentRefOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsParentRefOutput) ToUDPRouteStatusParentsParentRefOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsParentRefOutput) ToUDPRouteStatusParentsParentRefPtrOutput() UDPRouteStatusParentsParentRefPtrOutput {
+	return o.ToUDPRouteStatusParentsParentRefPtrOutputWithContext(context.Background())
+}
+
+func (o UDPRouteStatusParentsParentRefOutput) ToUDPRouteStatusParentsParentRefPtrOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v UDPRouteStatusParentsParentRef) *UDPRouteStatusParentsParentRef {
+		return &v
+	}).(UDPRouteStatusParentsParentRefPtrOutput)
+}
+
+// Group is the group of the referent.
+// When unspecified, "gateway.networking.k8s.io" is inferred.
+// To set the core API group (such as for a "Service" kind referent),
+// Group must be explicitly set to "" (empty string).
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRef) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// Support for other resources is Implementation-Specific.
+func (o UDPRouteStatusParentsParentRefOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRef) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRef) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the referent. When unspecified, this refers
+// to the local namespace of the Route.
+//
+// Note that there are specific rules for ParentRefs which cross namespace
+// boundaries. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example:
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable any other kind of cross-namespace reference.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRef) *string { return v.Namespace }).(pulumi.StringPtrOutput)
+}
+
+// Port is the network port this Route targets. It can be interpreted
+// differently based on the type of parent resource.
+//
+// When the parent resource is a Gateway, this targets all listeners
+// listening on the specified port that also support this kind of Route(and
+// select this Route). It's not recommended to set `Port` unless the
+// networking behaviors specified in a Route must apply to a specific port
+// as opposed to a listener(s) whose port(s) may be changed. When both Port
+// and SectionName are specified, the name and port of the selected listener
+// must match both specified values.
+//
+// Implementations MAY choose to support other parent resources.
+// Implementations supporting other types of parent resources MUST clearly
+// document how/if Port is interpreted.
+//
+// For the purpose of status, an attachment is considered successful as
+// long as the parent resource accepts it partially. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+// from the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route,
+// the Route MUST be considered detached from the Gateway.
+//
+// Support: Extended
+func (o UDPRouteStatusParentsParentRefOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRef) *int { return v.Port }).(pulumi.IntPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. In the
+// following resources, SectionName is interpreted as the following:
+//
+//   - Gateway: Listener name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//   - Service: Port name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//
+// Implementations MAY choose to support attaching Routes to other resources.
+// If that is the case, they MUST clearly document how SectionName is
+// interpreted.
+//
+// When unspecified (empty string), this will reference the entire resource.
+// For the purpose of status, an attachment is considered successful if at
+// least one section in the parent resource accepts it. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+// the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route, the
+// Route MUST be considered detached from the Gateway.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRef) *string { return v.SectionName }).(pulumi.StringPtrOutput)
+}
+
+type UDPRouteStatusParentsParentRefPtrOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsParentRefPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteStatusParentsParentRef)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsParentRefPtrOutput) ToUDPRouteStatusParentsParentRefPtrOutput() UDPRouteStatusParentsParentRefPtrOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsParentRefPtrOutput) ToUDPRouteStatusParentsParentRefPtrOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefPtrOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsParentRefPtrOutput) Elem() UDPRouteStatusParentsParentRefOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRef) UDPRouteStatusParentsParentRef {
+		if v != nil {
+			return *v
+		}
+		var ret UDPRouteStatusParentsParentRef
+		return ret
+	}).(UDPRouteStatusParentsParentRefOutput)
+}
+
+// Group is the group of the referent.
+// When unspecified, "gateway.networking.k8s.io" is inferred.
+// To set the core API group (such as for a "Service" kind referent),
+// Group must be explicitly set to "" (empty string).
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPtrOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRef) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Group
+	}).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// Support for other resources is Implementation-Specific.
+func (o UDPRouteStatusParentsParentRefPtrOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRef) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Kind
+	}).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPtrOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRef) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the referent. When unspecified, this refers
+// to the local namespace of the Route.
+//
+// Note that there are specific rules for ParentRefs which cross namespace
+// boundaries. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example:
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable any other kind of cross-namespace reference.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPtrOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRef) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Namespace
+	}).(pulumi.StringPtrOutput)
+}
+
+// Port is the network port this Route targets. It can be interpreted
+// differently based on the type of parent resource.
+//
+// When the parent resource is a Gateway, this targets all listeners
+// listening on the specified port that also support this kind of Route(and
+// select this Route). It's not recommended to set `Port` unless the
+// networking behaviors specified in a Route must apply to a specific port
+// as opposed to a listener(s) whose port(s) may be changed. When both Port
+// and SectionName are specified, the name and port of the selected listener
+// must match both specified values.
+//
+// Implementations MAY choose to support other parent resources.
+// Implementations supporting other types of parent resources MUST clearly
+// document how/if Port is interpreted.
+//
+// For the purpose of status, an attachment is considered successful as
+// long as the parent resource accepts it partially. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+// from the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route,
+// the Route MUST be considered detached from the Gateway.
+//
+// Support: Extended
+func (o UDPRouteStatusParentsParentRefPtrOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRef) *int {
+		if v == nil {
+			return nil
+		}
+		return v.Port
+	}).(pulumi.IntPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. In the
+// following resources, SectionName is interpreted as the following:
+//
+//   - Gateway: Listener name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//   - Service: Port name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//
+// Implementations MAY choose to support attaching Routes to other resources.
+// If that is the case, they MUST clearly document how SectionName is
+// interpreted.
+//
+// When unspecified (empty string), this will reference the entire resource.
+// For the purpose of status, an attachment is considered successful if at
+// least one section in the parent resource accepts it. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+// the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route, the
+// Route MUST be considered detached from the Gateway.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPtrOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRef) *string {
+		if v == nil {
+			return nil
+		}
+		return v.SectionName
+	}).(pulumi.StringPtrOutput)
+}
+
+// ParentRef corresponds with a ParentRef in the spec that this
+// RouteParentStatus struct describes the status of.
+type UDPRouteStatusParentsParentRefPatch struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group *string `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind *string `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name *string `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace *string `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port *int `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName *string `pulumi:"sectionName"`
+}
+
+// UDPRouteStatusParentsParentRefPatchInput is an input type that accepts UDPRouteStatusParentsParentRefPatchArgs and UDPRouteStatusParentsParentRefPatchOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsParentRefPatchInput` via:
+//
+//	UDPRouteStatusParentsParentRefPatchArgs{...}
+type UDPRouteStatusParentsParentRefPatchInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsParentRefPatchOutput() UDPRouteStatusParentsParentRefPatchOutput
+	ToUDPRouteStatusParentsParentRefPatchOutputWithContext(context.Context) UDPRouteStatusParentsParentRefPatchOutput
+}
+
+// ParentRef corresponds with a ParentRef in the spec that this
+// RouteParentStatus struct describes the status of.
+type UDPRouteStatusParentsParentRefPatchArgs struct {
+	// Group is the group of the referent.
+	// When unspecified, "gateway.networking.k8s.io" is inferred.
+	// To set the core API group (such as for a "Service" kind referent),
+	// Group must be explicitly set to "" (empty string).
+	//
+	// Support: Core
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// Kind is kind of the referent.
+	//
+	// There are two kinds of parent resources with "Core" support:
+	//
+	// * Gateway (Gateway conformance profile)
+	// * Service (Mesh conformance profile, ClusterIP Services only)
+	//
+	// Support for other resources is Implementation-Specific.
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Name is the name of the referent.
+	//
+	// Support: Core
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// Namespace is the namespace of the referent. When unspecified, this refers
+	// to the local namespace of the Route.
+	//
+	// Note that there are specific rules for ParentRefs which cross namespace
+	// boundaries. Cross-namespace references are only valid if they are explicitly
+	// allowed by something in the namespace they are referring to. For example:
+	// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+	// generic way to enable any other kind of cross-namespace reference.
+	//
+	// Support: Core
+	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
+	// Port is the network port this Route targets. It can be interpreted
+	// differently based on the type of parent resource.
+	//
+	// When the parent resource is a Gateway, this targets all listeners
+	// listening on the specified port that also support this kind of Route(and
+	// select this Route). It's not recommended to set `Port` unless the
+	// networking behaviors specified in a Route must apply to a specific port
+	// as opposed to a listener(s) whose port(s) may be changed. When both Port
+	// and SectionName are specified, the name and port of the selected listener
+	// must match both specified values.
+	//
+	// Implementations MAY choose to support other parent resources.
+	// Implementations supporting other types of parent resources MUST clearly
+	// document how/if Port is interpreted.
+	//
+	// For the purpose of status, an attachment is considered successful as
+	// long as the parent resource accepts it partially. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+	// from the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route,
+	// the Route MUST be considered detached from the Gateway.
+	//
+	// Support: Extended
+	Port pulumi.IntPtrInput `pulumi:"port"`
+	// SectionName is the name of a section within the target resource. In the
+	// following resources, SectionName is interpreted as the following:
+	//
+	// * Gateway: Listener name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	// * Service: Port name. When both Port (experimental) and SectionName
+	//   are specified, the name and port of the selected listener must match
+	//   both specified values.
+	//
+	// Implementations MAY choose to support attaching Routes to other resources.
+	// If that is the case, they MUST clearly document how SectionName is
+	// interpreted.
+	//
+	// When unspecified (empty string), this will reference the entire resource.
+	// For the purpose of status, an attachment is considered successful if at
+	// least one section in the parent resource accepts it. For example, Gateway
+	// listeners can restrict which Routes can attach to them by Route kind,
+	// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+	// the referencing Route, the Route MUST be considered successfully
+	// attached. If no Gateway listeners accept attachment from this Route, the
+	// Route MUST be considered detached from the Gateway.
+	//
+	// Support: Core
+	SectionName pulumi.StringPtrInput `pulumi:"sectionName"`
+}
+
+func (UDPRouteStatusParentsParentRefPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParentsParentRefPatch)(nil)).Elem()
+}
+
+func (i UDPRouteStatusParentsParentRefPatchArgs) ToUDPRouteStatusParentsParentRefPatchOutput() UDPRouteStatusParentsParentRefPatchOutput {
+	return i.ToUDPRouteStatusParentsParentRefPatchOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsParentRefPatchArgs) ToUDPRouteStatusParentsParentRefPatchOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsParentRefPatchOutput)
+}
+
+func (i UDPRouteStatusParentsParentRefPatchArgs) ToUDPRouteStatusParentsParentRefPatchPtrOutput() UDPRouteStatusParentsParentRefPatchPtrOutput {
+	return i.ToUDPRouteStatusParentsParentRefPatchPtrOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsParentRefPatchArgs) ToUDPRouteStatusParentsParentRefPatchPtrOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsParentRefPatchOutput).ToUDPRouteStatusParentsParentRefPatchPtrOutputWithContext(ctx)
+}
+
+// UDPRouteStatusParentsParentRefPatchPtrInput is an input type that accepts UDPRouteStatusParentsParentRefPatchArgs, UDPRouteStatusParentsParentRefPatchPtr and UDPRouteStatusParentsParentRefPatchPtrOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsParentRefPatchPtrInput` via:
+//
+//	        UDPRouteStatusParentsParentRefPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type UDPRouteStatusParentsParentRefPatchPtrInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsParentRefPatchPtrOutput() UDPRouteStatusParentsParentRefPatchPtrOutput
+	ToUDPRouteStatusParentsParentRefPatchPtrOutputWithContext(context.Context) UDPRouteStatusParentsParentRefPatchPtrOutput
+}
+
+type udprouteStatusParentsParentRefPatchPtrType UDPRouteStatusParentsParentRefPatchArgs
+
+func UDPRouteStatusParentsParentRefPatchPtr(v *UDPRouteStatusParentsParentRefPatchArgs) UDPRouteStatusParentsParentRefPatchPtrInput {
+	return (*udprouteStatusParentsParentRefPatchPtrType)(v)
+}
+
+func (*udprouteStatusParentsParentRefPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteStatusParentsParentRefPatch)(nil)).Elem()
+}
+
+func (i *udprouteStatusParentsParentRefPatchPtrType) ToUDPRouteStatusParentsParentRefPatchPtrOutput() UDPRouteStatusParentsParentRefPatchPtrOutput {
+	return i.ToUDPRouteStatusParentsParentRefPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *udprouteStatusParentsParentRefPatchPtrType) ToUDPRouteStatusParentsParentRefPatchPtrOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsParentRefPatchPtrOutput)
+}
+
+// ParentRef corresponds with a ParentRef in the spec that this
+// RouteParentStatus struct describes the status of.
+type UDPRouteStatusParentsParentRefPatchOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsParentRefPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParentsParentRefPatch)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsParentRefPatchOutput) ToUDPRouteStatusParentsParentRefPatchOutput() UDPRouteStatusParentsParentRefPatchOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsParentRefPatchOutput) ToUDPRouteStatusParentsParentRefPatchOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefPatchOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsParentRefPatchOutput) ToUDPRouteStatusParentsParentRefPatchPtrOutput() UDPRouteStatusParentsParentRefPatchPtrOutput {
+	return o.ToUDPRouteStatusParentsParentRefPatchPtrOutputWithContext(context.Background())
+}
+
+func (o UDPRouteStatusParentsParentRefPatchOutput) ToUDPRouteStatusParentsParentRefPatchPtrOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v UDPRouteStatusParentsParentRefPatch) *UDPRouteStatusParentsParentRefPatch {
+		return &v
+	}).(UDPRouteStatusParentsParentRefPatchPtrOutput)
+}
+
+// Group is the group of the referent.
+// When unspecified, "gateway.networking.k8s.io" is inferred.
+// To set the core API group (such as for a "Service" kind referent),
+// Group must be explicitly set to "" (empty string).
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPatchOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRefPatch) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// Support for other resources is Implementation-Specific.
+func (o UDPRouteStatusParentsParentRefPatchOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRefPatch) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRefPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the referent. When unspecified, this refers
+// to the local namespace of the Route.
+//
+// Note that there are specific rules for ParentRefs which cross namespace
+// boundaries. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example:
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable any other kind of cross-namespace reference.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPatchOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRefPatch) *string { return v.Namespace }).(pulumi.StringPtrOutput)
+}
+
+// Port is the network port this Route targets. It can be interpreted
+// differently based on the type of parent resource.
+//
+// When the parent resource is a Gateway, this targets all listeners
+// listening on the specified port that also support this kind of Route(and
+// select this Route). It's not recommended to set `Port` unless the
+// networking behaviors specified in a Route must apply to a specific port
+// as opposed to a listener(s) whose port(s) may be changed. When both Port
+// and SectionName are specified, the name and port of the selected listener
+// must match both specified values.
+//
+// Implementations MAY choose to support other parent resources.
+// Implementations supporting other types of parent resources MUST clearly
+// document how/if Port is interpreted.
+//
+// For the purpose of status, an attachment is considered successful as
+// long as the parent resource accepts it partially. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+// from the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route,
+// the Route MUST be considered detached from the Gateway.
+//
+// Support: Extended
+func (o UDPRouteStatusParentsParentRefPatchOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRefPatch) *int { return v.Port }).(pulumi.IntPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. In the
+// following resources, SectionName is interpreted as the following:
+//
+//   - Gateway: Listener name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//   - Service: Port name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//
+// Implementations MAY choose to support attaching Routes to other resources.
+// If that is the case, they MUST clearly document how SectionName is
+// interpreted.
+//
+// When unspecified (empty string), this will reference the entire resource.
+// For the purpose of status, an attachment is considered successful if at
+// least one section in the parent resource accepts it. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+// the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route, the
+// Route MUST be considered detached from the Gateway.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPatchOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsParentRefPatch) *string { return v.SectionName }).(pulumi.StringPtrOutput)
+}
+
+type UDPRouteStatusParentsParentRefPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsParentRefPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteStatusParentsParentRefPatch)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsParentRefPatchPtrOutput) ToUDPRouteStatusParentsParentRefPatchPtrOutput() UDPRouteStatusParentsParentRefPatchPtrOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsParentRefPatchPtrOutput) ToUDPRouteStatusParentsParentRefPatchPtrOutputWithContext(ctx context.Context) UDPRouteStatusParentsParentRefPatchPtrOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsParentRefPatchPtrOutput) Elem() UDPRouteStatusParentsParentRefPatchOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRefPatch) UDPRouteStatusParentsParentRefPatch {
+		if v != nil {
+			return *v
+		}
+		var ret UDPRouteStatusParentsParentRefPatch
+		return ret
+	}).(UDPRouteStatusParentsParentRefPatchOutput)
+}
+
+// Group is the group of the referent.
+// When unspecified, "gateway.networking.k8s.io" is inferred.
+// To set the core API group (such as for a "Service" kind referent),
+// Group must be explicitly set to "" (empty string).
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPatchPtrOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRefPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Group
+	}).(pulumi.StringPtrOutput)
+}
+
+// Kind is kind of the referent.
+//
+// There are two kinds of parent resources with "Core" support:
+//
+// * Gateway (Gateway conformance profile)
+// * Service (Mesh conformance profile, ClusterIP Services only)
+//
+// Support for other resources is Implementation-Specific.
+func (o UDPRouteStatusParentsParentRefPatchPtrOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRefPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Kind
+	}).(pulumi.StringPtrOutput)
+}
+
+// Name is the name of the referent.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPatchPtrOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRefPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Name
+	}).(pulumi.StringPtrOutput)
+}
+
+// Namespace is the namespace of the referent. When unspecified, this refers
+// to the local namespace of the Route.
+//
+// Note that there are specific rules for ParentRefs which cross namespace
+// boundaries. Cross-namespace references are only valid if they are explicitly
+// allowed by something in the namespace they are referring to. For example:
+// Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+// generic way to enable any other kind of cross-namespace reference.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPatchPtrOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRefPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Namespace
+	}).(pulumi.StringPtrOutput)
+}
+
+// Port is the network port this Route targets. It can be interpreted
+// differently based on the type of parent resource.
+//
+// When the parent resource is a Gateway, this targets all listeners
+// listening on the specified port that also support this kind of Route(and
+// select this Route). It's not recommended to set `Port` unless the
+// networking behaviors specified in a Route must apply to a specific port
+// as opposed to a listener(s) whose port(s) may be changed. When both Port
+// and SectionName are specified, the name and port of the selected listener
+// must match both specified values.
+//
+// Implementations MAY choose to support other parent resources.
+// Implementations supporting other types of parent resources MUST clearly
+// document how/if Port is interpreted.
+//
+// For the purpose of status, an attachment is considered successful as
+// long as the parent resource accepts it partially. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+// from the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route,
+// the Route MUST be considered detached from the Gateway.
+//
+// Support: Extended
+func (o UDPRouteStatusParentsParentRefPatchPtrOutput) Port() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRefPatch) *int {
+		if v == nil {
+			return nil
+		}
+		return v.Port
+	}).(pulumi.IntPtrOutput)
+}
+
+// SectionName is the name of a section within the target resource. In the
+// following resources, SectionName is interpreted as the following:
+//
+//   - Gateway: Listener name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//   - Service: Port name. When both Port (experimental) and SectionName
+//     are specified, the name and port of the selected listener must match
+//     both specified values.
+//
+// Implementations MAY choose to support attaching Routes to other resources.
+// If that is the case, they MUST clearly document how SectionName is
+// interpreted.
+//
+// When unspecified (empty string), this will reference the entire resource.
+// For the purpose of status, an attachment is considered successful if at
+// least one section in the parent resource accepts it. For example, Gateway
+// listeners can restrict which Routes can attach to them by Route kind,
+// namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+// the referencing Route, the Route MUST be considered successfully
+// attached. If no Gateway listeners accept attachment from this Route, the
+// Route MUST be considered detached from the Gateway.
+//
+// Support: Core
+func (o UDPRouteStatusParentsParentRefPatchPtrOutput) SectionName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *UDPRouteStatusParentsParentRefPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.SectionName
+	}).(pulumi.StringPtrOutput)
+}
+
+// RouteParentStatus describes the status of a route with respect to an
+// associated Parent.
+type UDPRouteStatusParentsPatch struct {
+	// Conditions describes the status of the route with respect to the Gateway.
+	// Note that the route's availability is also subject to the Gateway's own
+	// status conditions and listener status.
+	//
+	// If the Route's ParentRef specifies an existing Gateway that supports
+	// Routes of this kind AND that Gateway's controller has sufficient access,
+	// then that Gateway's controller MUST set the "Accepted" condition on the
+	// Route, to indicate whether the route has been accepted or rejected by the
+	// Gateway, and why.
+	//
+	// A Route MUST be considered "Accepted" if at least one of the Route's
+	// rules is implemented by the Gateway.
+	//
+	// There are a number of cases where the "Accepted" condition may not be set
+	// due to lack of controller visibility, that includes when:
+	//
+	// * The Route refers to a nonexistent parent.
+	// * The Route is of a type that the controller does not support.
+	// * The Route is in a namespace to which the controller does not have access.
+	Conditions []UDPRouteStatusParentsConditionsPatch `pulumi:"conditions"`
+	// ControllerName is a domain/path string that indicates the name of the
+	// controller that wrote this status. This corresponds with the
+	// controllerName field on GatewayClass.
+	//
+	// Example: "example.net/gateway-controller".
+	//
+	// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+	// valid Kubernetes names
+	// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	//
+	// Controllers MUST populate this field when writing status. Controllers should ensure that
+	// entries to status populated with their ControllerName are cleaned up when they are no
+	// longer necessary.
+	ControllerName *string                              `pulumi:"controllerName"`
+	ParentRef      *UDPRouteStatusParentsParentRefPatch `pulumi:"parentRef"`
+}
+
+// UDPRouteStatusParentsPatchInput is an input type that accepts UDPRouteStatusParentsPatchArgs and UDPRouteStatusParentsPatchOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsPatchInput` via:
+//
+//	UDPRouteStatusParentsPatchArgs{...}
+type UDPRouteStatusParentsPatchInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsPatchOutput() UDPRouteStatusParentsPatchOutput
+	ToUDPRouteStatusParentsPatchOutputWithContext(context.Context) UDPRouteStatusParentsPatchOutput
+}
+
+// RouteParentStatus describes the status of a route with respect to an
+// associated Parent.
+type UDPRouteStatusParentsPatchArgs struct {
+	// Conditions describes the status of the route with respect to the Gateway.
+	// Note that the route's availability is also subject to the Gateway's own
+	// status conditions and listener status.
+	//
+	// If the Route's ParentRef specifies an existing Gateway that supports
+	// Routes of this kind AND that Gateway's controller has sufficient access,
+	// then that Gateway's controller MUST set the "Accepted" condition on the
+	// Route, to indicate whether the route has been accepted or rejected by the
+	// Gateway, and why.
+	//
+	// A Route MUST be considered "Accepted" if at least one of the Route's
+	// rules is implemented by the Gateway.
+	//
+	// There are a number of cases where the "Accepted" condition may not be set
+	// due to lack of controller visibility, that includes when:
+	//
+	// * The Route refers to a nonexistent parent.
+	// * The Route is of a type that the controller does not support.
+	// * The Route is in a namespace to which the controller does not have access.
+	Conditions UDPRouteStatusParentsConditionsPatchArrayInput `pulumi:"conditions"`
+	// ControllerName is a domain/path string that indicates the name of the
+	// controller that wrote this status. This corresponds with the
+	// controllerName field on GatewayClass.
+	//
+	// Example: "example.net/gateway-controller".
+	//
+	// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+	// valid Kubernetes names
+	// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+	//
+	// Controllers MUST populate this field when writing status. Controllers should ensure that
+	// entries to status populated with their ControllerName are cleaned up when they are no
+	// longer necessary.
+	ControllerName pulumi.StringPtrInput                       `pulumi:"controllerName"`
+	ParentRef      UDPRouteStatusParentsParentRefPatchPtrInput `pulumi:"parentRef"`
+}
+
+func (UDPRouteStatusParentsPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParentsPatch)(nil)).Elem()
+}
+
+func (i UDPRouteStatusParentsPatchArgs) ToUDPRouteStatusParentsPatchOutput() UDPRouteStatusParentsPatchOutput {
+	return i.ToUDPRouteStatusParentsPatchOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsPatchArgs) ToUDPRouteStatusParentsPatchOutputWithContext(ctx context.Context) UDPRouteStatusParentsPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsPatchOutput)
+}
+
+// UDPRouteStatusParentsPatchArrayInput is an input type that accepts UDPRouteStatusParentsPatchArray and UDPRouteStatusParentsPatchArrayOutput values.
+// You can construct a concrete instance of `UDPRouteStatusParentsPatchArrayInput` via:
+//
+//	UDPRouteStatusParentsPatchArray{ UDPRouteStatusParentsPatchArgs{...} }
+type UDPRouteStatusParentsPatchArrayInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusParentsPatchArrayOutput() UDPRouteStatusParentsPatchArrayOutput
+	ToUDPRouteStatusParentsPatchArrayOutputWithContext(context.Context) UDPRouteStatusParentsPatchArrayOutput
+}
+
+type UDPRouteStatusParentsPatchArray []UDPRouteStatusParentsPatchInput
+
+func (UDPRouteStatusParentsPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteStatusParentsPatch)(nil)).Elem()
+}
+
+func (i UDPRouteStatusParentsPatchArray) ToUDPRouteStatusParentsPatchArrayOutput() UDPRouteStatusParentsPatchArrayOutput {
+	return i.ToUDPRouteStatusParentsPatchArrayOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusParentsPatchArray) ToUDPRouteStatusParentsPatchArrayOutputWithContext(ctx context.Context) UDPRouteStatusParentsPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusParentsPatchArrayOutput)
+}
+
+// RouteParentStatus describes the status of a route with respect to an
+// associated Parent.
+type UDPRouteStatusParentsPatchOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusParentsPatch)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsPatchOutput) ToUDPRouteStatusParentsPatchOutput() UDPRouteStatusParentsPatchOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsPatchOutput) ToUDPRouteStatusParentsPatchOutputWithContext(ctx context.Context) UDPRouteStatusParentsPatchOutput {
+	return o
+}
+
+// Conditions describes the status of the route with respect to the Gateway.
+// Note that the route's availability is also subject to the Gateway's own
+// status conditions and listener status.
+//
+// If the Route's ParentRef specifies an existing Gateway that supports
+// Routes of this kind AND that Gateway's controller has sufficient access,
+// then that Gateway's controller MUST set the "Accepted" condition on the
+// Route, to indicate whether the route has been accepted or rejected by the
+// Gateway, and why.
+//
+// A Route MUST be considered "Accepted" if at least one of the Route's
+// rules is implemented by the Gateway.
+//
+// There are a number of cases where the "Accepted" condition may not be set
+// due to lack of controller visibility, that includes when:
+//
+// * The Route refers to a nonexistent parent.
+// * The Route is of a type that the controller does not support.
+// * The Route is in a namespace to which the controller does not have access.
+func (o UDPRouteStatusParentsPatchOutput) Conditions() UDPRouteStatusParentsConditionsPatchArrayOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsPatch) []UDPRouteStatusParentsConditionsPatch { return v.Conditions }).(UDPRouteStatusParentsConditionsPatchArrayOutput)
+}
+
+// ControllerName is a domain/path string that indicates the name of the
+// controller that wrote this status. This corresponds with the
+// controllerName field on GatewayClass.
+//
+// Example: "example.net/gateway-controller".
+//
+// The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+// valid Kubernetes names
+// (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+//
+// Controllers MUST populate this field when writing status. Controllers should ensure that
+// entries to status populated with their ControllerName are cleaned up when they are no
+// longer necessary.
+func (o UDPRouteStatusParentsPatchOutput) ControllerName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsPatch) *string { return v.ControllerName }).(pulumi.StringPtrOutput)
+}
+
+func (o UDPRouteStatusParentsPatchOutput) ParentRef() UDPRouteStatusParentsParentRefPatchPtrOutput {
+	return o.ApplyT(func(v UDPRouteStatusParentsPatch) *UDPRouteStatusParentsParentRefPatch { return v.ParentRef }).(UDPRouteStatusParentsParentRefPatchPtrOutput)
+}
+
+type UDPRouteStatusParentsPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusParentsPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]UDPRouteStatusParentsPatch)(nil)).Elem()
+}
+
+func (o UDPRouteStatusParentsPatchArrayOutput) ToUDPRouteStatusParentsPatchArrayOutput() UDPRouteStatusParentsPatchArrayOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsPatchArrayOutput) ToUDPRouteStatusParentsPatchArrayOutputWithContext(ctx context.Context) UDPRouteStatusParentsPatchArrayOutput {
+	return o
+}
+
+func (o UDPRouteStatusParentsPatchArrayOutput) Index(i pulumi.IntInput) UDPRouteStatusParentsPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) UDPRouteStatusParentsPatch {
+		return vs[0].([]UDPRouteStatusParentsPatch)[vs[1].(int)]
+	}).(UDPRouteStatusParentsPatchOutput)
+}
+
+// Status defines the current state of UDPRoute.
+type UDPRouteStatusPatch struct {
+	// Parents is a list of parent resources (usually Gateways) that are
+	// associated with the route, and the status of the route with respect to
+	// each parent. When this route attaches to a parent, the controller that
+	// manages the parent must add an entry to this list when the controller
+	// first sees the route and should update the entry as appropriate when the
+	// route or gateway is modified.
+	//
+	// Note that parent references that cannot be resolved by an implementation
+	// of this API will not be added to this list. Implementations of this API
+	// can only populate Route status for the Gateways/parent resources they are
+	// responsible for.
+	//
+	// A maximum of 32 Gateways will be represented in this list. An empty list
+	// means the route has not been attached to any Gateway.
+	Parents []UDPRouteStatusParentsPatch `pulumi:"parents"`
+}
+
+// UDPRouteStatusPatchInput is an input type that accepts UDPRouteStatusPatchArgs and UDPRouteStatusPatchOutput values.
+// You can construct a concrete instance of `UDPRouteStatusPatchInput` via:
+//
+//	UDPRouteStatusPatchArgs{...}
+type UDPRouteStatusPatchInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusPatchOutput() UDPRouteStatusPatchOutput
+	ToUDPRouteStatusPatchOutputWithContext(context.Context) UDPRouteStatusPatchOutput
+}
+
+// Status defines the current state of UDPRoute.
+type UDPRouteStatusPatchArgs struct {
+	// Parents is a list of parent resources (usually Gateways) that are
+	// associated with the route, and the status of the route with respect to
+	// each parent. When this route attaches to a parent, the controller that
+	// manages the parent must add an entry to this list when the controller
+	// first sees the route and should update the entry as appropriate when the
+	// route or gateway is modified.
+	//
+	// Note that parent references that cannot be resolved by an implementation
+	// of this API will not be added to this list. Implementations of this API
+	// can only populate Route status for the Gateways/parent resources they are
+	// responsible for.
+	//
+	// A maximum of 32 Gateways will be represented in this list. An empty list
+	// means the route has not been attached to any Gateway.
+	Parents UDPRouteStatusParentsPatchArrayInput `pulumi:"parents"`
+}
+
+func (UDPRouteStatusPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusPatch)(nil)).Elem()
+}
+
+func (i UDPRouteStatusPatchArgs) ToUDPRouteStatusPatchOutput() UDPRouteStatusPatchOutput {
+	return i.ToUDPRouteStatusPatchOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusPatchArgs) ToUDPRouteStatusPatchOutputWithContext(ctx context.Context) UDPRouteStatusPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusPatchOutput)
+}
+
+func (i UDPRouteStatusPatchArgs) ToUDPRouteStatusPatchPtrOutput() UDPRouteStatusPatchPtrOutput {
+	return i.ToUDPRouteStatusPatchPtrOutputWithContext(context.Background())
+}
+
+func (i UDPRouteStatusPatchArgs) ToUDPRouteStatusPatchPtrOutputWithContext(ctx context.Context) UDPRouteStatusPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusPatchOutput).ToUDPRouteStatusPatchPtrOutputWithContext(ctx)
+}
+
+// UDPRouteStatusPatchPtrInput is an input type that accepts UDPRouteStatusPatchArgs, UDPRouteStatusPatchPtr and UDPRouteStatusPatchPtrOutput values.
+// You can construct a concrete instance of `UDPRouteStatusPatchPtrInput` via:
+//
+//	        UDPRouteStatusPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type UDPRouteStatusPatchPtrInput interface {
+	pulumi.Input
+
+	ToUDPRouteStatusPatchPtrOutput() UDPRouteStatusPatchPtrOutput
+	ToUDPRouteStatusPatchPtrOutputWithContext(context.Context) UDPRouteStatusPatchPtrOutput
+}
+
+type udprouteStatusPatchPtrType UDPRouteStatusPatchArgs
+
+func UDPRouteStatusPatchPtr(v *UDPRouteStatusPatchArgs) UDPRouteStatusPatchPtrInput {
+	return (*udprouteStatusPatchPtrType)(v)
+}
+
+func (*udprouteStatusPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteStatusPatch)(nil)).Elem()
+}
+
+func (i *udprouteStatusPatchPtrType) ToUDPRouteStatusPatchPtrOutput() UDPRouteStatusPatchPtrOutput {
+	return i.ToUDPRouteStatusPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *udprouteStatusPatchPtrType) ToUDPRouteStatusPatchPtrOutputWithContext(ctx context.Context) UDPRouteStatusPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(UDPRouteStatusPatchPtrOutput)
+}
+
+// Status defines the current state of UDPRoute.
+type UDPRouteStatusPatchOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*UDPRouteStatusPatch)(nil)).Elem()
+}
+
+func (o UDPRouteStatusPatchOutput) ToUDPRouteStatusPatchOutput() UDPRouteStatusPatchOutput {
+	return o
+}
+
+func (o UDPRouteStatusPatchOutput) ToUDPRouteStatusPatchOutputWithContext(ctx context.Context) UDPRouteStatusPatchOutput {
+	return o
+}
+
+func (o UDPRouteStatusPatchOutput) ToUDPRouteStatusPatchPtrOutput() UDPRouteStatusPatchPtrOutput {
+	return o.ToUDPRouteStatusPatchPtrOutputWithContext(context.Background())
+}
+
+func (o UDPRouteStatusPatchOutput) ToUDPRouteStatusPatchPtrOutputWithContext(ctx context.Context) UDPRouteStatusPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v UDPRouteStatusPatch) *UDPRouteStatusPatch {
+		return &v
+	}).(UDPRouteStatusPatchPtrOutput)
+}
+
+// Parents is a list of parent resources (usually Gateways) that are
+// associated with the route, and the status of the route with respect to
+// each parent. When this route attaches to a parent, the controller that
+// manages the parent must add an entry to this list when the controller
+// first sees the route and should update the entry as appropriate when the
+// route or gateway is modified.
+//
+// Note that parent references that cannot be resolved by an implementation
+// of this API will not be added to this list. Implementations of this API
+// can only populate Route status for the Gateways/parent resources they are
+// responsible for.
+//
+// A maximum of 32 Gateways will be represented in this list. An empty list
+// means the route has not been attached to any Gateway.
+func (o UDPRouteStatusPatchOutput) Parents() UDPRouteStatusParentsPatchArrayOutput {
+	return o.ApplyT(func(v UDPRouteStatusPatch) []UDPRouteStatusParentsPatch { return v.Parents }).(UDPRouteStatusParentsPatchArrayOutput)
+}
+
+type UDPRouteStatusPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (UDPRouteStatusPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**UDPRouteStatusPatch)(nil)).Elem()
+}
+
+func (o UDPRouteStatusPatchPtrOutput) ToUDPRouteStatusPatchPtrOutput() UDPRouteStatusPatchPtrOutput {
+	return o
+}
+
+func (o UDPRouteStatusPatchPtrOutput) ToUDPRouteStatusPatchPtrOutputWithContext(ctx context.Context) UDPRouteStatusPatchPtrOutput {
+	return o
+}
+
+func (o UDPRouteStatusPatchPtrOutput) Elem() UDPRouteStatusPatchOutput {
+	return o.ApplyT(func(v *UDPRouteStatusPatch) UDPRouteStatusPatch {
+		if v != nil {
+			return *v
+		}
+		var ret UDPRouteStatusPatch
+		return ret
+	}).(UDPRouteStatusPatchOutput)
+}
+
+// Parents is a list of parent resources (usually Gateways) that are
+// associated with the route, and the status of the route with respect to
+// each parent. When this route attaches to a parent, the controller that
+// manages the parent must add an entry to this list when the controller
+// first sees the route and should update the entry as appropriate when the
+// route or gateway is modified.
+//
+// Note that parent references that cannot be resolved by an implementation
+// of this API will not be added to this list. Implementations of this API
+// can only populate Route status for the Gateways/parent resources they are
+// responsible for.
+//
+// A maximum of 32 Gateways will be represented in this list. An empty list
+// means the route has not been attached to any Gateway.
+func (o UDPRouteStatusPatchPtrOutput) Parents() UDPRouteStatusParentsPatchArrayOutput {
+	return o.ApplyT(func(v *UDPRouteStatusPatch) []UDPRouteStatusParentsPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Parents
+	}).(UDPRouteStatusParentsPatchArrayOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*TCPRouteTypeInput)(nil)).Elem(), TCPRouteTypeArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*TCPRouteTypeArrayInput)(nil)).Elem(), TCPRouteTypeArray{})
@@ -10549,6 +14838,42 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*TLSRouteStatusParentsPatchArrayInput)(nil)).Elem(), TLSRouteStatusParentsPatchArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*TLSRouteStatusPatchInput)(nil)).Elem(), TLSRouteStatusPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*TLSRouteStatusPatchPtrInput)(nil)).Elem(), TLSRouteStatusPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteTypeInput)(nil)).Elem(), UDPRouteTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteTypeArrayInput)(nil)).Elem(), UDPRouteTypeArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteListTypeInput)(nil)).Elem(), UDPRouteListTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRoutePatchTypeInput)(nil)).Elem(), UDPRoutePatchTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecInput)(nil)).Elem(), UDPRouteSpecArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecPtrInput)(nil)).Elem(), UDPRouteSpecArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecParentRefsInput)(nil)).Elem(), UDPRouteSpecParentRefsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecParentRefsArrayInput)(nil)).Elem(), UDPRouteSpecParentRefsArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecParentRefsPatchInput)(nil)).Elem(), UDPRouteSpecParentRefsPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecParentRefsPatchArrayInput)(nil)).Elem(), UDPRouteSpecParentRefsPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecPatchInput)(nil)).Elem(), UDPRouteSpecPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecPatchPtrInput)(nil)).Elem(), UDPRouteSpecPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecRulesInput)(nil)).Elem(), UDPRouteSpecRulesArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecRulesArrayInput)(nil)).Elem(), UDPRouteSpecRulesArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecRulesBackendRefsInput)(nil)).Elem(), UDPRouteSpecRulesBackendRefsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecRulesBackendRefsArrayInput)(nil)).Elem(), UDPRouteSpecRulesBackendRefsArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecRulesBackendRefsPatchInput)(nil)).Elem(), UDPRouteSpecRulesBackendRefsPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecRulesBackendRefsPatchArrayInput)(nil)).Elem(), UDPRouteSpecRulesBackendRefsPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecRulesPatchInput)(nil)).Elem(), UDPRouteSpecRulesPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteSpecRulesPatchArrayInput)(nil)).Elem(), UDPRouteSpecRulesPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusInput)(nil)).Elem(), UDPRouteStatusArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusPtrInput)(nil)).Elem(), UDPRouteStatusArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsInput)(nil)).Elem(), UDPRouteStatusParentsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsArrayInput)(nil)).Elem(), UDPRouteStatusParentsArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsConditionsInput)(nil)).Elem(), UDPRouteStatusParentsConditionsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsConditionsArrayInput)(nil)).Elem(), UDPRouteStatusParentsConditionsArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsConditionsPatchInput)(nil)).Elem(), UDPRouteStatusParentsConditionsPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsConditionsPatchArrayInput)(nil)).Elem(), UDPRouteStatusParentsConditionsPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsParentRefInput)(nil)).Elem(), UDPRouteStatusParentsParentRefArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsParentRefPtrInput)(nil)).Elem(), UDPRouteStatusParentsParentRefArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsParentRefPatchInput)(nil)).Elem(), UDPRouteStatusParentsParentRefPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsParentRefPatchPtrInput)(nil)).Elem(), UDPRouteStatusParentsParentRefPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsPatchInput)(nil)).Elem(), UDPRouteStatusParentsPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusParentsPatchArrayInput)(nil)).Elem(), UDPRouteStatusParentsPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusPatchInput)(nil)).Elem(), UDPRouteStatusPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*UDPRouteStatusPatchPtrInput)(nil)).Elem(), UDPRouteStatusPatchArgs{})
 	pulumi.RegisterOutputType(TCPRouteTypeOutput{})
 	pulumi.RegisterOutputType(TCPRouteTypeArrayOutput{})
 	pulumi.RegisterOutputType(TCPRouteListTypeOutput{})
@@ -10621,4 +14946,40 @@ func init() {
 	pulumi.RegisterOutputType(TLSRouteStatusParentsPatchArrayOutput{})
 	pulumi.RegisterOutputType(TLSRouteStatusPatchOutput{})
 	pulumi.RegisterOutputType(TLSRouteStatusPatchPtrOutput{})
+	pulumi.RegisterOutputType(UDPRouteTypeOutput{})
+	pulumi.RegisterOutputType(UDPRouteTypeArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteListTypeOutput{})
+	pulumi.RegisterOutputType(UDPRoutePatchTypeOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecPtrOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecParentRefsOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecParentRefsArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecParentRefsPatchOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecParentRefsPatchArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecPatchOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecPatchPtrOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecRulesOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecRulesArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecRulesBackendRefsOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecRulesBackendRefsArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecRulesBackendRefsPatchOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecRulesBackendRefsPatchArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecRulesPatchOutput{})
+	pulumi.RegisterOutputType(UDPRouteSpecRulesPatchArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusPtrOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsConditionsOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsConditionsArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsConditionsPatchOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsConditionsPatchArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsParentRefOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsParentRefPtrOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsParentRefPatchOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsParentRefPatchPtrOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsPatchOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusParentsPatchArrayOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusPatchOutput{})
+	pulumi.RegisterOutputType(UDPRouteStatusPatchPtrOutput{})
 }

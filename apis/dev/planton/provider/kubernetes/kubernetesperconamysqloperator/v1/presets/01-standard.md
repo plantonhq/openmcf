@@ -1,20 +1,51 @@
-# Standard Percona Operator for MySQL
+# Standard
 
-This preset deploys the Percona Operator for MySQL with recommended default resources. The operator automates the creation, scaling, and management of Percona XtraDB Cluster and Percona Server for MySQL on Kubernetes, including automated backups and self-healing.
+This preset installs the Percona Operator for MySQL (XtraDB Cluster)
+in its standard posture: the pinned `pxc-operator` chart, own-namespace
+watch scope, telemetry off, structured logs, and explicit control-plane
+resources. Databases are declared afterwards as KubernetesMysql
+resources in the SAME namespace — the operator watches its own
+namespace by default, and that is a deliberate posture (databases live
+beside their operator), not a limitation to work around.
 
 ## When to Use
 
-- You need to run MySQL on Kubernetes with operator-managed lifecycle
-- You want automated provisioning of Percona XtraDB Cluster or Percona Server for MySQL
-- Standard resource allocation is sufficient for the operator control plane
+- Any cluster that will run KubernetesMysql databases
+- The 30-second choice: this is the standard first installation; widen
+  the watch only when one operator must manage databases across
+  namespaces
 
 ## Key Configuration Choices
 
-- **Namespace** (`percona-system`) -- shared namespace for Percona operators; isolates operators from managed database clusters
-- **Create namespace** (`true`) -- namespace is created automatically if it does not exist
-- **Resource requests** (`100m` CPU, `256Mi` memory) -- conservative baseline for the operator pod
-- **Resource limits** (`1000m` CPU, `1Gi` memory) -- headroom for reconciliation of multiple MySQL clusters
+- **`namespace: percona-mysql` + `create_namespace: true`** — the
+  operator's namespace is where the databases it reconciles live (the
+  default watch scope); this resource creates and owns it
+- **Own-namespace watch (no `watch` block)** — the upstream default.
+  `watch.cluster_wide: true` makes one operator manage every
+  namespace; `watch.namespaces` fences an explicit set. The two are
+  mutually exclusive
+- **`chart_version: "1.20.0"`** (the spec default, stated explicitly)
+  — chart and operator versions move together for this chart; upgrades
+  re-run the release with the new chart, deliberately
+- **`disable_telemetry: true`** — no anonymous version/feature pings
+  to check.percona.com
+- **`log.structured: true`** — JSON logs instead of the console
+  encoder, for whatever pipeline collects control-plane logs
+- **Explicit resources** — the chart's defaults (requests 100m/20Mi,
+  limits 200m/500Mi) are tight for a control plane reconciling real
+  databases; a modest bump costs nothing and removes a failure mode
+- **CRDs outlive the release** — the chart ships the
+  PerconaXtraDBCluster CRDs in its Helm-native `crds/` directory:
+  installed on first install, never upgraded or deleted by Helm.
+  Uninstalling the operator therefore never cascade-deletes the
+  database clusters; CRD upgrades ride chart upgrades through the
+  module's server-side apply
 
 ## Placeholders to Replace
 
-No placeholders -- this preset is directly deployable with sensible defaults.
+None — this preset deploys as-is.
+
+## Related Components
+
+- **KubernetesMysql** — the databases this operator reconciles, one
+  resource per XtraDB Cluster, declared in the watched namespace

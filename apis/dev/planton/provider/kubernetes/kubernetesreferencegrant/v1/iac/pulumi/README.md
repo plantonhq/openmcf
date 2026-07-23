@@ -40,12 +40,6 @@ export STACK_INPUT_YAML_FILE=../hack/manifest.yaml
 pulumi up
 ```
 
-## Debug
-
-```bash
-bash debug.sh ../hack/manifest.yaml
-```
-
 ## Outputs
 
 | Output | Description |
@@ -61,8 +55,6 @@ pulumi/
 ├── Pulumi.yaml          # Pulumi project configuration
 ├── Makefile             # Build automation
 ├── README.md            # This file
-├── overview.md          # Architecture overview
-├── debug.sh             # Local preview helper
 └── module/
     ├── main.go          # Resource creation (typed NewReferenceGrant)
     ├── locals.go        # Computed values + resolved foreign keys

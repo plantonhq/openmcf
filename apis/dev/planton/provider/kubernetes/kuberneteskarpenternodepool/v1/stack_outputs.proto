@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskarpenternodepool.v1;
+
+// KubernetesKarpenterNodePoolStackOutputs captures observable outputs after
+// the NodePool is applied to the target cluster.
+message KubernetesKarpenterNodePoolStackOutputs {
+  // Name of the NodePool object (cluster-scoped; equals metadata.name).
+  // The value of the karpenter.sh/nodepool label on every node the pool
+  // launches — the join key for pool-scoped scheduling and monitoring.
+  string node_pool_name = 1;
+}

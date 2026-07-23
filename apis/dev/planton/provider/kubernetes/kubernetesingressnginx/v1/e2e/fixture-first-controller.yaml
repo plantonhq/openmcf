@@ -1,0 +1,16 @@
+# Extra-instance fixture for the multi-instance scenario: the FIRST
+# controller, owning class "e2e-nginx-a" in its own namespace. Deployed via
+# the scenario's manifest-path prerequisite so the scenario's own instance
+# proves coexistence against a live sibling.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesIngressNginx
+metadata:
+  name: e2e-ingx-first
+spec:
+  namespace:
+    value: e2e-ingx-first-ns
+  createNamespace: true
+  ingressClass:
+    name: e2e-nginx-a
+  service:
+    type: node_port

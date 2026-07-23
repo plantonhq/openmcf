@@ -118,7 +118,7 @@ func TestPopulate_NestedMessageDotPath(t *testing.T) {
 	msg := &k8spgv1.KubernetesPostgresStackOutputs{}
 	outputs := map[string]string{
 		"namespace":            "db-namespace",
-		"service":              "postgres-svc",
+		"rw_service":           "postgres-svc-rw",
 		"username_secret.name": "postgres.db-xyz.credentials",
 		"username_secret.key":  "username",
 		"password_secret.name": "postgres.db-xyz.credentials",

@@ -14,6 +14,3193 @@ import (
 
 var _ = utilities.GetEnvOrDefault
 
+type TrafficExtensionType struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion *string `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind *string `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata *metav1.ObjectMeta     `pulumi:"metadata"`
+	Spec     *TrafficExtensionSpec  `pulumi:"spec"`
+	Status   map[string]interface{} `pulumi:"status"`
+}
+
+// TrafficExtensionTypeInput is an input type that accepts TrafficExtensionTypeArgs and TrafficExtensionTypeOutput values.
+// You can construct a concrete instance of `TrafficExtensionTypeInput` via:
+//
+//	TrafficExtensionTypeArgs{...}
+type TrafficExtensionTypeInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionTypeOutput() TrafficExtensionTypeOutput
+	ToTrafficExtensionTypeOutputWithContext(context.Context) TrafficExtensionTypeOutput
+}
+
+type TrafficExtensionTypeArgs struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion pulumi.StringPtrInput `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata metav1.ObjectMetaPtrInput    `pulumi:"metadata"`
+	Spec     TrafficExtensionSpecPtrInput `pulumi:"spec"`
+	Status   pulumi.MapInput              `pulumi:"status"`
+}
+
+func (TrafficExtensionTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionType)(nil)).Elem()
+}
+
+func (i TrafficExtensionTypeArgs) ToTrafficExtensionTypeOutput() TrafficExtensionTypeOutput {
+	return i.ToTrafficExtensionTypeOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionTypeArgs) ToTrafficExtensionTypeOutputWithContext(ctx context.Context) TrafficExtensionTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionTypeOutput)
+}
+
+// TrafficExtensionTypeArrayInput is an input type that accepts TrafficExtensionTypeArray and TrafficExtensionTypeArrayOutput values.
+// You can construct a concrete instance of `TrafficExtensionTypeArrayInput` via:
+//
+//	TrafficExtensionTypeArray{ TrafficExtensionTypeArgs{...} }
+type TrafficExtensionTypeArrayInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionTypeArrayOutput() TrafficExtensionTypeArrayOutput
+	ToTrafficExtensionTypeArrayOutputWithContext(context.Context) TrafficExtensionTypeArrayOutput
+}
+
+type TrafficExtensionTypeArray []TrafficExtensionTypeInput
+
+func (TrafficExtensionTypeArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionType)(nil)).Elem()
+}
+
+func (i TrafficExtensionTypeArray) ToTrafficExtensionTypeArrayOutput() TrafficExtensionTypeArrayOutput {
+	return i.ToTrafficExtensionTypeArrayOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionTypeArray) ToTrafficExtensionTypeArrayOutputWithContext(ctx context.Context) TrafficExtensionTypeArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionTypeArrayOutput)
+}
+
+type TrafficExtensionTypeOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionType)(nil)).Elem()
+}
+
+func (o TrafficExtensionTypeOutput) ToTrafficExtensionTypeOutput() TrafficExtensionTypeOutput {
+	return o
+}
+
+func (o TrafficExtensionTypeOutput) ToTrafficExtensionTypeOutputWithContext(ctx context.Context) TrafficExtensionTypeOutput {
+	return o
+}
+
+// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+func (o TrafficExtensionTypeOutput) ApiVersion() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionType) *string { return v.ApiVersion }).(pulumi.StringPtrOutput)
+}
+
+// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o TrafficExtensionTypeOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionType) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+func (o TrafficExtensionTypeOutput) Metadata() metav1.ObjectMetaPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionType) *metav1.ObjectMeta { return v.Metadata }).(metav1.ObjectMetaPtrOutput)
+}
+
+func (o TrafficExtensionTypeOutput) Spec() TrafficExtensionSpecPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionType) *TrafficExtensionSpec { return v.Spec }).(TrafficExtensionSpecPtrOutput)
+}
+
+func (o TrafficExtensionTypeOutput) Status() pulumi.MapOutput {
+	return o.ApplyT(func(v TrafficExtensionType) map[string]interface{} { return v.Status }).(pulumi.MapOutput)
+}
+
+type TrafficExtensionTypeArrayOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionTypeArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionType)(nil)).Elem()
+}
+
+func (o TrafficExtensionTypeArrayOutput) ToTrafficExtensionTypeArrayOutput() TrafficExtensionTypeArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionTypeArrayOutput) ToTrafficExtensionTypeArrayOutputWithContext(ctx context.Context) TrafficExtensionTypeArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionTypeArrayOutput) Index(i pulumi.IntInput) TrafficExtensionTypeOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficExtensionType {
+		return vs[0].([]TrafficExtensionType)[vs[1].(int)]
+	}).(TrafficExtensionTypeOutput)
+}
+
+// TrafficExtensionList is a list of TrafficExtension
+type TrafficExtensionListType struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion *string `pulumi:"apiVersion"`
+	// List of trafficextensions. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+	Items []TrafficExtensionType `pulumi:"items"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind *string `pulumi:"kind"`
+	// Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Metadata *metav1.ListMeta `pulumi:"metadata"`
+}
+
+// TrafficExtensionListTypeInput is an input type that accepts TrafficExtensionListTypeArgs and TrafficExtensionListTypeOutput values.
+// You can construct a concrete instance of `TrafficExtensionListTypeInput` via:
+//
+//	TrafficExtensionListTypeArgs{...}
+type TrafficExtensionListTypeInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionListTypeOutput() TrafficExtensionListTypeOutput
+	ToTrafficExtensionListTypeOutputWithContext(context.Context) TrafficExtensionListTypeOutput
+}
+
+// TrafficExtensionList is a list of TrafficExtension
+type TrafficExtensionListTypeArgs struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion pulumi.StringPtrInput `pulumi:"apiVersion"`
+	// List of trafficextensions. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+	Items TrafficExtensionTypeArrayInput `pulumi:"items"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Metadata metav1.ListMetaPtrInput `pulumi:"metadata"`
+}
+
+func (TrafficExtensionListTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionListType)(nil)).Elem()
+}
+
+func (i TrafficExtensionListTypeArgs) ToTrafficExtensionListTypeOutput() TrafficExtensionListTypeOutput {
+	return i.ToTrafficExtensionListTypeOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionListTypeArgs) ToTrafficExtensionListTypeOutputWithContext(ctx context.Context) TrafficExtensionListTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionListTypeOutput)
+}
+
+// TrafficExtensionList is a list of TrafficExtension
+type TrafficExtensionListTypeOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionListTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionListType)(nil)).Elem()
+}
+
+func (o TrafficExtensionListTypeOutput) ToTrafficExtensionListTypeOutput() TrafficExtensionListTypeOutput {
+	return o
+}
+
+func (o TrafficExtensionListTypeOutput) ToTrafficExtensionListTypeOutputWithContext(ctx context.Context) TrafficExtensionListTypeOutput {
+	return o
+}
+
+// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+func (o TrafficExtensionListTypeOutput) ApiVersion() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionListType) *string { return v.ApiVersion }).(pulumi.StringPtrOutput)
+}
+
+// List of trafficextensions. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md
+func (o TrafficExtensionListTypeOutput) Items() TrafficExtensionTypeArrayOutput {
+	return o.ApplyT(func(v TrafficExtensionListType) []TrafficExtensionType { return v.Items }).(TrafficExtensionTypeArrayOutput)
+}
+
+// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o TrafficExtensionListTypeOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionListType) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o TrafficExtensionListTypeOutput) Metadata() metav1.ListMetaPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionListType) *metav1.ListMeta { return v.Metadata }).(metav1.ListMetaPtrOutput)
+}
+
+type TrafficExtensionPatchType struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion *string `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind *string `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata *metav1.ObjectMetaPatch    `pulumi:"metadata"`
+	Spec     *TrafficExtensionSpecPatch `pulumi:"spec"`
+	Status   map[string]interface{}     `pulumi:"status"`
+}
+
+// TrafficExtensionPatchTypeInput is an input type that accepts TrafficExtensionPatchTypeArgs and TrafficExtensionPatchTypeOutput values.
+// You can construct a concrete instance of `TrafficExtensionPatchTypeInput` via:
+//
+//	TrafficExtensionPatchTypeArgs{...}
+type TrafficExtensionPatchTypeInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionPatchTypeOutput() TrafficExtensionPatchTypeOutput
+	ToTrafficExtensionPatchTypeOutputWithContext(context.Context) TrafficExtensionPatchTypeOutput
+}
+
+type TrafficExtensionPatchTypeArgs struct {
+	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+	ApiVersion pulumi.StringPtrInput `pulumi:"apiVersion"`
+	// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	Metadata metav1.ObjectMetaPatchPtrInput    `pulumi:"metadata"`
+	Spec     TrafficExtensionSpecPatchPtrInput `pulumi:"spec"`
+	Status   pulumi.MapInput                   `pulumi:"status"`
+}
+
+func (TrafficExtensionPatchTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionPatchType)(nil)).Elem()
+}
+
+func (i TrafficExtensionPatchTypeArgs) ToTrafficExtensionPatchTypeOutput() TrafficExtensionPatchTypeOutput {
+	return i.ToTrafficExtensionPatchTypeOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionPatchTypeArgs) ToTrafficExtensionPatchTypeOutputWithContext(ctx context.Context) TrafficExtensionPatchTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionPatchTypeOutput)
+}
+
+type TrafficExtensionPatchTypeOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionPatchTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionPatchType)(nil)).Elem()
+}
+
+func (o TrafficExtensionPatchTypeOutput) ToTrafficExtensionPatchTypeOutput() TrafficExtensionPatchTypeOutput {
+	return o
+}
+
+func (o TrafficExtensionPatchTypeOutput) ToTrafficExtensionPatchTypeOutputWithContext(ctx context.Context) TrafficExtensionPatchTypeOutput {
+	return o
+}
+
+// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+func (o TrafficExtensionPatchTypeOutput) ApiVersion() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionPatchType) *string { return v.ApiVersion }).(pulumi.StringPtrOutput)
+}
+
+// Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+func (o TrafficExtensionPatchTypeOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionPatchType) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+func (o TrafficExtensionPatchTypeOutput) Metadata() metav1.ObjectMetaPatchPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionPatchType) *metav1.ObjectMetaPatch { return v.Metadata }).(metav1.ObjectMetaPatchPtrOutput)
+}
+
+func (o TrafficExtensionPatchTypeOutput) Spec() TrafficExtensionSpecPatchPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionPatchType) *TrafficExtensionSpecPatch { return v.Spec }).(TrafficExtensionSpecPatchPtrOutput)
+}
+
+func (o TrafficExtensionPatchTypeOutput) Status() pulumi.MapOutput {
+	return o.ApplyT(func(v TrafficExtensionPatchType) map[string]interface{} { return v.Status }).(pulumi.MapOutput)
+}
+
+// Extend the functionality provided by the Istio proxy through WebAssembly or Lua filters. See more details at: https://istio.io/docs/reference/config/proxy_extensions/traffic_extension.html
+type TrafficExtensionSpec struct {
+	Lua *TrafficExtensionSpecLua `pulumi:"lua"`
+	// Specifies the criteria to determine which traffic is passed to TrafficExtension.
+	Match []TrafficExtensionSpecMatch `pulumi:"match"`
+	// Determines where in the filter chain this `TrafficExtension` is to be injected.
+	//
+	// Valid Options: AUTHN, AUTHZ, STATS
+	Phase *string `pulumi:"phase"`
+	// Determines ordering of `TrafficExtensions` in the same `phase`.
+	Priority *int                          `pulumi:"priority"`
+	Selector *TrafficExtensionSpecSelector `pulumi:"selector"`
+	// Optional.
+	TargetRefs []TrafficExtensionSpecTargetRefs `pulumi:"targetRefs"`
+	Wasm       *TrafficExtensionSpecWasm        `pulumi:"wasm"`
+}
+
+// TrafficExtensionSpecInput is an input type that accepts TrafficExtensionSpecArgs and TrafficExtensionSpecOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecInput` via:
+//
+//	TrafficExtensionSpecArgs{...}
+type TrafficExtensionSpecInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecOutput() TrafficExtensionSpecOutput
+	ToTrafficExtensionSpecOutputWithContext(context.Context) TrafficExtensionSpecOutput
+}
+
+// Extend the functionality provided by the Istio proxy through WebAssembly or Lua filters. See more details at: https://istio.io/docs/reference/config/proxy_extensions/traffic_extension.html
+type TrafficExtensionSpecArgs struct {
+	Lua TrafficExtensionSpecLuaPtrInput `pulumi:"lua"`
+	// Specifies the criteria to determine which traffic is passed to TrafficExtension.
+	Match TrafficExtensionSpecMatchArrayInput `pulumi:"match"`
+	// Determines where in the filter chain this `TrafficExtension` is to be injected.
+	//
+	// Valid Options: AUTHN, AUTHZ, STATS
+	Phase pulumi.StringPtrInput `pulumi:"phase"`
+	// Determines ordering of `TrafficExtensions` in the same `phase`.
+	Priority pulumi.IntPtrInput                   `pulumi:"priority"`
+	Selector TrafficExtensionSpecSelectorPtrInput `pulumi:"selector"`
+	// Optional.
+	TargetRefs TrafficExtensionSpecTargetRefsArrayInput `pulumi:"targetRefs"`
+	Wasm       TrafficExtensionSpecWasmPtrInput         `pulumi:"wasm"`
+}
+
+func (TrafficExtensionSpecArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpec)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecArgs) ToTrafficExtensionSpecOutput() TrafficExtensionSpecOutput {
+	return i.ToTrafficExtensionSpecOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecArgs) ToTrafficExtensionSpecOutputWithContext(ctx context.Context) TrafficExtensionSpecOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecOutput)
+}
+
+func (i TrafficExtensionSpecArgs) ToTrafficExtensionSpecPtrOutput() TrafficExtensionSpecPtrOutput {
+	return i.ToTrafficExtensionSpecPtrOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecArgs) ToTrafficExtensionSpecPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecOutput).ToTrafficExtensionSpecPtrOutputWithContext(ctx)
+}
+
+// TrafficExtensionSpecPtrInput is an input type that accepts TrafficExtensionSpecArgs, TrafficExtensionSpecPtr and TrafficExtensionSpecPtrOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecPtrInput` via:
+//
+//	        TrafficExtensionSpecArgs{...}
+//
+//	or:
+//
+//	        nil
+type TrafficExtensionSpecPtrInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecPtrOutput() TrafficExtensionSpecPtrOutput
+	ToTrafficExtensionSpecPtrOutputWithContext(context.Context) TrafficExtensionSpecPtrOutput
+}
+
+type trafficExtensionSpecPtrType TrafficExtensionSpecArgs
+
+func TrafficExtensionSpecPtr(v *TrafficExtensionSpecArgs) TrafficExtensionSpecPtrInput {
+	return (*trafficExtensionSpecPtrType)(v)
+}
+
+func (*trafficExtensionSpecPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpec)(nil)).Elem()
+}
+
+func (i *trafficExtensionSpecPtrType) ToTrafficExtensionSpecPtrOutput() TrafficExtensionSpecPtrOutput {
+	return i.ToTrafficExtensionSpecPtrOutputWithContext(context.Background())
+}
+
+func (i *trafficExtensionSpecPtrType) ToTrafficExtensionSpecPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecPtrOutput)
+}
+
+// Extend the functionality provided by the Istio proxy through WebAssembly or Lua filters. See more details at: https://istio.io/docs/reference/config/proxy_extensions/traffic_extension.html
+type TrafficExtensionSpecOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpec)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecOutput) ToTrafficExtensionSpecOutput() TrafficExtensionSpecOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecOutput) ToTrafficExtensionSpecOutputWithContext(ctx context.Context) TrafficExtensionSpecOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecOutput) ToTrafficExtensionSpecPtrOutput() TrafficExtensionSpecPtrOutput {
+	return o.ToTrafficExtensionSpecPtrOutputWithContext(context.Background())
+}
+
+func (o TrafficExtensionSpecOutput) ToTrafficExtensionSpecPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficExtensionSpec) *TrafficExtensionSpec {
+		return &v
+	}).(TrafficExtensionSpecPtrOutput)
+}
+
+func (o TrafficExtensionSpecOutput) Lua() TrafficExtensionSpecLuaPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpec) *TrafficExtensionSpecLua { return v.Lua }).(TrafficExtensionSpecLuaPtrOutput)
+}
+
+// Specifies the criteria to determine which traffic is passed to TrafficExtension.
+func (o TrafficExtensionSpecOutput) Match() TrafficExtensionSpecMatchArrayOutput {
+	return o.ApplyT(func(v TrafficExtensionSpec) []TrafficExtensionSpecMatch { return v.Match }).(TrafficExtensionSpecMatchArrayOutput)
+}
+
+// Determines where in the filter chain this `TrafficExtension` is to be injected.
+//
+// Valid Options: AUTHN, AUTHZ, STATS
+func (o TrafficExtensionSpecOutput) Phase() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpec) *string { return v.Phase }).(pulumi.StringPtrOutput)
+}
+
+// Determines ordering of `TrafficExtensions` in the same `phase`.
+func (o TrafficExtensionSpecOutput) Priority() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpec) *int { return v.Priority }).(pulumi.IntPtrOutput)
+}
+
+func (o TrafficExtensionSpecOutput) Selector() TrafficExtensionSpecSelectorPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpec) *TrafficExtensionSpecSelector { return v.Selector }).(TrafficExtensionSpecSelectorPtrOutput)
+}
+
+// Optional.
+func (o TrafficExtensionSpecOutput) TargetRefs() TrafficExtensionSpecTargetRefsArrayOutput {
+	return o.ApplyT(func(v TrafficExtensionSpec) []TrafficExtensionSpecTargetRefs { return v.TargetRefs }).(TrafficExtensionSpecTargetRefsArrayOutput)
+}
+
+func (o TrafficExtensionSpecOutput) Wasm() TrafficExtensionSpecWasmPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpec) *TrafficExtensionSpecWasm { return v.Wasm }).(TrafficExtensionSpecWasmPtrOutput)
+}
+
+type TrafficExtensionSpecPtrOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpec)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecPtrOutput) ToTrafficExtensionSpecPtrOutput() TrafficExtensionSpecPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecPtrOutput) ToTrafficExtensionSpecPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecPtrOutput) Elem() TrafficExtensionSpecOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpec) TrafficExtensionSpec {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficExtensionSpec
+		return ret
+	}).(TrafficExtensionSpecOutput)
+}
+
+func (o TrafficExtensionSpecPtrOutput) Lua() TrafficExtensionSpecLuaPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpec) *TrafficExtensionSpecLua {
+		if v == nil {
+			return nil
+		}
+		return v.Lua
+	}).(TrafficExtensionSpecLuaPtrOutput)
+}
+
+// Specifies the criteria to determine which traffic is passed to TrafficExtension.
+func (o TrafficExtensionSpecPtrOutput) Match() TrafficExtensionSpecMatchArrayOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpec) []TrafficExtensionSpecMatch {
+		if v == nil {
+			return nil
+		}
+		return v.Match
+	}).(TrafficExtensionSpecMatchArrayOutput)
+}
+
+// Determines where in the filter chain this `TrafficExtension` is to be injected.
+//
+// Valid Options: AUTHN, AUTHZ, STATS
+func (o TrafficExtensionSpecPtrOutput) Phase() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpec) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Phase
+	}).(pulumi.StringPtrOutput)
+}
+
+// Determines ordering of `TrafficExtensions` in the same `phase`.
+func (o TrafficExtensionSpecPtrOutput) Priority() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpec) *int {
+		if v == nil {
+			return nil
+		}
+		return v.Priority
+	}).(pulumi.IntPtrOutput)
+}
+
+func (o TrafficExtensionSpecPtrOutput) Selector() TrafficExtensionSpecSelectorPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpec) *TrafficExtensionSpecSelector {
+		if v == nil {
+			return nil
+		}
+		return v.Selector
+	}).(TrafficExtensionSpecSelectorPtrOutput)
+}
+
+// Optional.
+func (o TrafficExtensionSpecPtrOutput) TargetRefs() TrafficExtensionSpecTargetRefsArrayOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpec) []TrafficExtensionSpecTargetRefs {
+		if v == nil {
+			return nil
+		}
+		return v.TargetRefs
+	}).(TrafficExtensionSpecTargetRefsArrayOutput)
+}
+
+func (o TrafficExtensionSpecPtrOutput) Wasm() TrafficExtensionSpecWasmPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpec) *TrafficExtensionSpecWasm {
+		if v == nil {
+			return nil
+		}
+		return v.Wasm
+	}).(TrafficExtensionSpecWasmPtrOutput)
+}
+
+// Lua filter configuration.
+type TrafficExtensionSpecLua struct {
+	// The inline Lua code to be executed.
+	InlineCode *string `pulumi:"inlineCode"`
+}
+
+// TrafficExtensionSpecLuaInput is an input type that accepts TrafficExtensionSpecLuaArgs and TrafficExtensionSpecLuaOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecLuaInput` via:
+//
+//	TrafficExtensionSpecLuaArgs{...}
+type TrafficExtensionSpecLuaInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecLuaOutput() TrafficExtensionSpecLuaOutput
+	ToTrafficExtensionSpecLuaOutputWithContext(context.Context) TrafficExtensionSpecLuaOutput
+}
+
+// Lua filter configuration.
+type TrafficExtensionSpecLuaArgs struct {
+	// The inline Lua code to be executed.
+	InlineCode pulumi.StringPtrInput `pulumi:"inlineCode"`
+}
+
+func (TrafficExtensionSpecLuaArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecLua)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecLuaArgs) ToTrafficExtensionSpecLuaOutput() TrafficExtensionSpecLuaOutput {
+	return i.ToTrafficExtensionSpecLuaOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecLuaArgs) ToTrafficExtensionSpecLuaOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecLuaOutput)
+}
+
+func (i TrafficExtensionSpecLuaArgs) ToTrafficExtensionSpecLuaPtrOutput() TrafficExtensionSpecLuaPtrOutput {
+	return i.ToTrafficExtensionSpecLuaPtrOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecLuaArgs) ToTrafficExtensionSpecLuaPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecLuaOutput).ToTrafficExtensionSpecLuaPtrOutputWithContext(ctx)
+}
+
+// TrafficExtensionSpecLuaPtrInput is an input type that accepts TrafficExtensionSpecLuaArgs, TrafficExtensionSpecLuaPtr and TrafficExtensionSpecLuaPtrOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecLuaPtrInput` via:
+//
+//	        TrafficExtensionSpecLuaArgs{...}
+//
+//	or:
+//
+//	        nil
+type TrafficExtensionSpecLuaPtrInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecLuaPtrOutput() TrafficExtensionSpecLuaPtrOutput
+	ToTrafficExtensionSpecLuaPtrOutputWithContext(context.Context) TrafficExtensionSpecLuaPtrOutput
+}
+
+type trafficExtensionSpecLuaPtrType TrafficExtensionSpecLuaArgs
+
+func TrafficExtensionSpecLuaPtr(v *TrafficExtensionSpecLuaArgs) TrafficExtensionSpecLuaPtrInput {
+	return (*trafficExtensionSpecLuaPtrType)(v)
+}
+
+func (*trafficExtensionSpecLuaPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecLua)(nil)).Elem()
+}
+
+func (i *trafficExtensionSpecLuaPtrType) ToTrafficExtensionSpecLuaPtrOutput() TrafficExtensionSpecLuaPtrOutput {
+	return i.ToTrafficExtensionSpecLuaPtrOutputWithContext(context.Background())
+}
+
+func (i *trafficExtensionSpecLuaPtrType) ToTrafficExtensionSpecLuaPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecLuaPtrOutput)
+}
+
+// Lua filter configuration.
+type TrafficExtensionSpecLuaOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecLuaOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecLua)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecLuaOutput) ToTrafficExtensionSpecLuaOutput() TrafficExtensionSpecLuaOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecLuaOutput) ToTrafficExtensionSpecLuaOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecLuaOutput) ToTrafficExtensionSpecLuaPtrOutput() TrafficExtensionSpecLuaPtrOutput {
+	return o.ToTrafficExtensionSpecLuaPtrOutputWithContext(context.Background())
+}
+
+func (o TrafficExtensionSpecLuaOutput) ToTrafficExtensionSpecLuaPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficExtensionSpecLua) *TrafficExtensionSpecLua {
+		return &v
+	}).(TrafficExtensionSpecLuaPtrOutput)
+}
+
+// The inline Lua code to be executed.
+func (o TrafficExtensionSpecLuaOutput) InlineCode() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecLua) *string { return v.InlineCode }).(pulumi.StringPtrOutput)
+}
+
+type TrafficExtensionSpecLuaPtrOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecLuaPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecLua)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecLuaPtrOutput) ToTrafficExtensionSpecLuaPtrOutput() TrafficExtensionSpecLuaPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecLuaPtrOutput) ToTrafficExtensionSpecLuaPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecLuaPtrOutput) Elem() TrafficExtensionSpecLuaOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecLua) TrafficExtensionSpecLua {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficExtensionSpecLua
+		return ret
+	}).(TrafficExtensionSpecLuaOutput)
+}
+
+// The inline Lua code to be executed.
+func (o TrafficExtensionSpecLuaPtrOutput) InlineCode() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecLua) *string {
+		if v == nil {
+			return nil
+		}
+		return v.InlineCode
+	}).(pulumi.StringPtrOutput)
+}
+
+// Lua filter configuration.
+type TrafficExtensionSpecLuaPatch struct {
+	// The inline Lua code to be executed.
+	InlineCode *string `pulumi:"inlineCode"`
+}
+
+// TrafficExtensionSpecLuaPatchInput is an input type that accepts TrafficExtensionSpecLuaPatchArgs and TrafficExtensionSpecLuaPatchOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecLuaPatchInput` via:
+//
+//	TrafficExtensionSpecLuaPatchArgs{...}
+type TrafficExtensionSpecLuaPatchInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecLuaPatchOutput() TrafficExtensionSpecLuaPatchOutput
+	ToTrafficExtensionSpecLuaPatchOutputWithContext(context.Context) TrafficExtensionSpecLuaPatchOutput
+}
+
+// Lua filter configuration.
+type TrafficExtensionSpecLuaPatchArgs struct {
+	// The inline Lua code to be executed.
+	InlineCode pulumi.StringPtrInput `pulumi:"inlineCode"`
+}
+
+func (TrafficExtensionSpecLuaPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecLuaPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecLuaPatchArgs) ToTrafficExtensionSpecLuaPatchOutput() TrafficExtensionSpecLuaPatchOutput {
+	return i.ToTrafficExtensionSpecLuaPatchOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecLuaPatchArgs) ToTrafficExtensionSpecLuaPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecLuaPatchOutput)
+}
+
+func (i TrafficExtensionSpecLuaPatchArgs) ToTrafficExtensionSpecLuaPatchPtrOutput() TrafficExtensionSpecLuaPatchPtrOutput {
+	return i.ToTrafficExtensionSpecLuaPatchPtrOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecLuaPatchArgs) ToTrafficExtensionSpecLuaPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecLuaPatchOutput).ToTrafficExtensionSpecLuaPatchPtrOutputWithContext(ctx)
+}
+
+// TrafficExtensionSpecLuaPatchPtrInput is an input type that accepts TrafficExtensionSpecLuaPatchArgs, TrafficExtensionSpecLuaPatchPtr and TrafficExtensionSpecLuaPatchPtrOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecLuaPatchPtrInput` via:
+//
+//	        TrafficExtensionSpecLuaPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type TrafficExtensionSpecLuaPatchPtrInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecLuaPatchPtrOutput() TrafficExtensionSpecLuaPatchPtrOutput
+	ToTrafficExtensionSpecLuaPatchPtrOutputWithContext(context.Context) TrafficExtensionSpecLuaPatchPtrOutput
+}
+
+type trafficExtensionSpecLuaPatchPtrType TrafficExtensionSpecLuaPatchArgs
+
+func TrafficExtensionSpecLuaPatchPtr(v *TrafficExtensionSpecLuaPatchArgs) TrafficExtensionSpecLuaPatchPtrInput {
+	return (*trafficExtensionSpecLuaPatchPtrType)(v)
+}
+
+func (*trafficExtensionSpecLuaPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecLuaPatch)(nil)).Elem()
+}
+
+func (i *trafficExtensionSpecLuaPatchPtrType) ToTrafficExtensionSpecLuaPatchPtrOutput() TrafficExtensionSpecLuaPatchPtrOutput {
+	return i.ToTrafficExtensionSpecLuaPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *trafficExtensionSpecLuaPatchPtrType) ToTrafficExtensionSpecLuaPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecLuaPatchPtrOutput)
+}
+
+// Lua filter configuration.
+type TrafficExtensionSpecLuaPatchOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecLuaPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecLuaPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecLuaPatchOutput) ToTrafficExtensionSpecLuaPatchOutput() TrafficExtensionSpecLuaPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecLuaPatchOutput) ToTrafficExtensionSpecLuaPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecLuaPatchOutput) ToTrafficExtensionSpecLuaPatchPtrOutput() TrafficExtensionSpecLuaPatchPtrOutput {
+	return o.ToTrafficExtensionSpecLuaPatchPtrOutputWithContext(context.Background())
+}
+
+func (o TrafficExtensionSpecLuaPatchOutput) ToTrafficExtensionSpecLuaPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficExtensionSpecLuaPatch) *TrafficExtensionSpecLuaPatch {
+		return &v
+	}).(TrafficExtensionSpecLuaPatchPtrOutput)
+}
+
+// The inline Lua code to be executed.
+func (o TrafficExtensionSpecLuaPatchOutput) InlineCode() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecLuaPatch) *string { return v.InlineCode }).(pulumi.StringPtrOutput)
+}
+
+type TrafficExtensionSpecLuaPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecLuaPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecLuaPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecLuaPatchPtrOutput) ToTrafficExtensionSpecLuaPatchPtrOutput() TrafficExtensionSpecLuaPatchPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecLuaPatchPtrOutput) ToTrafficExtensionSpecLuaPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecLuaPatchPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecLuaPatchPtrOutput) Elem() TrafficExtensionSpecLuaPatchOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecLuaPatch) TrafficExtensionSpecLuaPatch {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficExtensionSpecLuaPatch
+		return ret
+	}).(TrafficExtensionSpecLuaPatchOutput)
+}
+
+// The inline Lua code to be executed.
+func (o TrafficExtensionSpecLuaPatchPtrOutput) InlineCode() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecLuaPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.InlineCode
+	}).(pulumi.StringPtrOutput)
+}
+
+type TrafficExtensionSpecMatch struct {
+	// Criteria for selecting traffic by their direction.
+	//
+	// Valid Options: CLIENT, SERVER, CLIENT_AND_SERVER
+	Mode *string `pulumi:"mode"`
+	// Criteria for selecting traffic by their destination port.
+	Ports []TrafficExtensionSpecMatchPorts `pulumi:"ports"`
+}
+
+// TrafficExtensionSpecMatchInput is an input type that accepts TrafficExtensionSpecMatchArgs and TrafficExtensionSpecMatchOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecMatchInput` via:
+//
+//	TrafficExtensionSpecMatchArgs{...}
+type TrafficExtensionSpecMatchInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecMatchOutput() TrafficExtensionSpecMatchOutput
+	ToTrafficExtensionSpecMatchOutputWithContext(context.Context) TrafficExtensionSpecMatchOutput
+}
+
+type TrafficExtensionSpecMatchArgs struct {
+	// Criteria for selecting traffic by their direction.
+	//
+	// Valid Options: CLIENT, SERVER, CLIENT_AND_SERVER
+	Mode pulumi.StringPtrInput `pulumi:"mode"`
+	// Criteria for selecting traffic by their destination port.
+	Ports TrafficExtensionSpecMatchPortsArrayInput `pulumi:"ports"`
+}
+
+func (TrafficExtensionSpecMatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecMatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecMatchArgs) ToTrafficExtensionSpecMatchOutput() TrafficExtensionSpecMatchOutput {
+	return i.ToTrafficExtensionSpecMatchOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecMatchArgs) ToTrafficExtensionSpecMatchOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecMatchOutput)
+}
+
+// TrafficExtensionSpecMatchArrayInput is an input type that accepts TrafficExtensionSpecMatchArray and TrafficExtensionSpecMatchArrayOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecMatchArrayInput` via:
+//
+//	TrafficExtensionSpecMatchArray{ TrafficExtensionSpecMatchArgs{...} }
+type TrafficExtensionSpecMatchArrayInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecMatchArrayOutput() TrafficExtensionSpecMatchArrayOutput
+	ToTrafficExtensionSpecMatchArrayOutputWithContext(context.Context) TrafficExtensionSpecMatchArrayOutput
+}
+
+type TrafficExtensionSpecMatchArray []TrafficExtensionSpecMatchInput
+
+func (TrafficExtensionSpecMatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecMatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecMatchArray) ToTrafficExtensionSpecMatchArrayOutput() TrafficExtensionSpecMatchArrayOutput {
+	return i.ToTrafficExtensionSpecMatchArrayOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecMatchArray) ToTrafficExtensionSpecMatchArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecMatchArrayOutput)
+}
+
+type TrafficExtensionSpecMatchOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecMatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecMatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecMatchOutput) ToTrafficExtensionSpecMatchOutput() TrafficExtensionSpecMatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchOutput) ToTrafficExtensionSpecMatchOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchOutput {
+	return o
+}
+
+// Criteria for selecting traffic by their direction.
+//
+// Valid Options: CLIENT, SERVER, CLIENT_AND_SERVER
+func (o TrafficExtensionSpecMatchOutput) Mode() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecMatch) *string { return v.Mode }).(pulumi.StringPtrOutput)
+}
+
+// Criteria for selecting traffic by their destination port.
+func (o TrafficExtensionSpecMatchOutput) Ports() TrafficExtensionSpecMatchPortsArrayOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecMatch) []TrafficExtensionSpecMatchPorts { return v.Ports }).(TrafficExtensionSpecMatchPortsArrayOutput)
+}
+
+type TrafficExtensionSpecMatchArrayOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecMatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecMatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecMatchArrayOutput) ToTrafficExtensionSpecMatchArrayOutput() TrafficExtensionSpecMatchArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchArrayOutput) ToTrafficExtensionSpecMatchArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchArrayOutput) Index(i pulumi.IntInput) TrafficExtensionSpecMatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficExtensionSpecMatch {
+		return vs[0].([]TrafficExtensionSpecMatch)[vs[1].(int)]
+	}).(TrafficExtensionSpecMatchOutput)
+}
+
+type TrafficExtensionSpecMatchPatch struct {
+	// Criteria for selecting traffic by their direction.
+	//
+	// Valid Options: CLIENT, SERVER, CLIENT_AND_SERVER
+	Mode *string `pulumi:"mode"`
+	// Criteria for selecting traffic by their destination port.
+	Ports []TrafficExtensionSpecMatchPortsPatch `pulumi:"ports"`
+}
+
+// TrafficExtensionSpecMatchPatchInput is an input type that accepts TrafficExtensionSpecMatchPatchArgs and TrafficExtensionSpecMatchPatchOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecMatchPatchInput` via:
+//
+//	TrafficExtensionSpecMatchPatchArgs{...}
+type TrafficExtensionSpecMatchPatchInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecMatchPatchOutput() TrafficExtensionSpecMatchPatchOutput
+	ToTrafficExtensionSpecMatchPatchOutputWithContext(context.Context) TrafficExtensionSpecMatchPatchOutput
+}
+
+type TrafficExtensionSpecMatchPatchArgs struct {
+	// Criteria for selecting traffic by their direction.
+	//
+	// Valid Options: CLIENT, SERVER, CLIENT_AND_SERVER
+	Mode pulumi.StringPtrInput `pulumi:"mode"`
+	// Criteria for selecting traffic by their destination port.
+	Ports TrafficExtensionSpecMatchPortsPatchArrayInput `pulumi:"ports"`
+}
+
+func (TrafficExtensionSpecMatchPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecMatchPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecMatchPatchArgs) ToTrafficExtensionSpecMatchPatchOutput() TrafficExtensionSpecMatchPatchOutput {
+	return i.ToTrafficExtensionSpecMatchPatchOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecMatchPatchArgs) ToTrafficExtensionSpecMatchPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecMatchPatchOutput)
+}
+
+// TrafficExtensionSpecMatchPatchArrayInput is an input type that accepts TrafficExtensionSpecMatchPatchArray and TrafficExtensionSpecMatchPatchArrayOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecMatchPatchArrayInput` via:
+//
+//	TrafficExtensionSpecMatchPatchArray{ TrafficExtensionSpecMatchPatchArgs{...} }
+type TrafficExtensionSpecMatchPatchArrayInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecMatchPatchArrayOutput() TrafficExtensionSpecMatchPatchArrayOutput
+	ToTrafficExtensionSpecMatchPatchArrayOutputWithContext(context.Context) TrafficExtensionSpecMatchPatchArrayOutput
+}
+
+type TrafficExtensionSpecMatchPatchArray []TrafficExtensionSpecMatchPatchInput
+
+func (TrafficExtensionSpecMatchPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecMatchPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecMatchPatchArray) ToTrafficExtensionSpecMatchPatchArrayOutput() TrafficExtensionSpecMatchPatchArrayOutput {
+	return i.ToTrafficExtensionSpecMatchPatchArrayOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecMatchPatchArray) ToTrafficExtensionSpecMatchPatchArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecMatchPatchArrayOutput)
+}
+
+type TrafficExtensionSpecMatchPatchOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecMatchPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecMatchPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecMatchPatchOutput) ToTrafficExtensionSpecMatchPatchOutput() TrafficExtensionSpecMatchPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPatchOutput) ToTrafficExtensionSpecMatchPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPatchOutput {
+	return o
+}
+
+// Criteria for selecting traffic by their direction.
+//
+// Valid Options: CLIENT, SERVER, CLIENT_AND_SERVER
+func (o TrafficExtensionSpecMatchPatchOutput) Mode() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecMatchPatch) *string { return v.Mode }).(pulumi.StringPtrOutput)
+}
+
+// Criteria for selecting traffic by their destination port.
+func (o TrafficExtensionSpecMatchPatchOutput) Ports() TrafficExtensionSpecMatchPortsPatchArrayOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecMatchPatch) []TrafficExtensionSpecMatchPortsPatch { return v.Ports }).(TrafficExtensionSpecMatchPortsPatchArrayOutput)
+}
+
+type TrafficExtensionSpecMatchPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecMatchPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecMatchPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecMatchPatchArrayOutput) ToTrafficExtensionSpecMatchPatchArrayOutput() TrafficExtensionSpecMatchPatchArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPatchArrayOutput) ToTrafficExtensionSpecMatchPatchArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPatchArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPatchArrayOutput) Index(i pulumi.IntInput) TrafficExtensionSpecMatchPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficExtensionSpecMatchPatch {
+		return vs[0].([]TrafficExtensionSpecMatchPatch)[vs[1].(int)]
+	}).(TrafficExtensionSpecMatchPatchOutput)
+}
+
+type TrafficExtensionSpecMatchPorts struct {
+	Number *int `pulumi:"number"`
+}
+
+// TrafficExtensionSpecMatchPortsInput is an input type that accepts TrafficExtensionSpecMatchPortsArgs and TrafficExtensionSpecMatchPortsOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecMatchPortsInput` via:
+//
+//	TrafficExtensionSpecMatchPortsArgs{...}
+type TrafficExtensionSpecMatchPortsInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecMatchPortsOutput() TrafficExtensionSpecMatchPortsOutput
+	ToTrafficExtensionSpecMatchPortsOutputWithContext(context.Context) TrafficExtensionSpecMatchPortsOutput
+}
+
+type TrafficExtensionSpecMatchPortsArgs struct {
+	Number pulumi.IntPtrInput `pulumi:"number"`
+}
+
+func (TrafficExtensionSpecMatchPortsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecMatchPorts)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecMatchPortsArgs) ToTrafficExtensionSpecMatchPortsOutput() TrafficExtensionSpecMatchPortsOutput {
+	return i.ToTrafficExtensionSpecMatchPortsOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecMatchPortsArgs) ToTrafficExtensionSpecMatchPortsOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPortsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecMatchPortsOutput)
+}
+
+// TrafficExtensionSpecMatchPortsArrayInput is an input type that accepts TrafficExtensionSpecMatchPortsArray and TrafficExtensionSpecMatchPortsArrayOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecMatchPortsArrayInput` via:
+//
+//	TrafficExtensionSpecMatchPortsArray{ TrafficExtensionSpecMatchPortsArgs{...} }
+type TrafficExtensionSpecMatchPortsArrayInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecMatchPortsArrayOutput() TrafficExtensionSpecMatchPortsArrayOutput
+	ToTrafficExtensionSpecMatchPortsArrayOutputWithContext(context.Context) TrafficExtensionSpecMatchPortsArrayOutput
+}
+
+type TrafficExtensionSpecMatchPortsArray []TrafficExtensionSpecMatchPortsInput
+
+func (TrafficExtensionSpecMatchPortsArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecMatchPorts)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecMatchPortsArray) ToTrafficExtensionSpecMatchPortsArrayOutput() TrafficExtensionSpecMatchPortsArrayOutput {
+	return i.ToTrafficExtensionSpecMatchPortsArrayOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecMatchPortsArray) ToTrafficExtensionSpecMatchPortsArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPortsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecMatchPortsArrayOutput)
+}
+
+type TrafficExtensionSpecMatchPortsOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecMatchPortsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecMatchPorts)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecMatchPortsOutput) ToTrafficExtensionSpecMatchPortsOutput() TrafficExtensionSpecMatchPortsOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPortsOutput) ToTrafficExtensionSpecMatchPortsOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPortsOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPortsOutput) Number() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecMatchPorts) *int { return v.Number }).(pulumi.IntPtrOutput)
+}
+
+type TrafficExtensionSpecMatchPortsArrayOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecMatchPortsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecMatchPorts)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecMatchPortsArrayOutput) ToTrafficExtensionSpecMatchPortsArrayOutput() TrafficExtensionSpecMatchPortsArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPortsArrayOutput) ToTrafficExtensionSpecMatchPortsArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPortsArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPortsArrayOutput) Index(i pulumi.IntInput) TrafficExtensionSpecMatchPortsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficExtensionSpecMatchPorts {
+		return vs[0].([]TrafficExtensionSpecMatchPorts)[vs[1].(int)]
+	}).(TrafficExtensionSpecMatchPortsOutput)
+}
+
+type TrafficExtensionSpecMatchPortsPatch struct {
+	Number *int `pulumi:"number"`
+}
+
+// TrafficExtensionSpecMatchPortsPatchInput is an input type that accepts TrafficExtensionSpecMatchPortsPatchArgs and TrafficExtensionSpecMatchPortsPatchOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecMatchPortsPatchInput` via:
+//
+//	TrafficExtensionSpecMatchPortsPatchArgs{...}
+type TrafficExtensionSpecMatchPortsPatchInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecMatchPortsPatchOutput() TrafficExtensionSpecMatchPortsPatchOutput
+	ToTrafficExtensionSpecMatchPortsPatchOutputWithContext(context.Context) TrafficExtensionSpecMatchPortsPatchOutput
+}
+
+type TrafficExtensionSpecMatchPortsPatchArgs struct {
+	Number pulumi.IntPtrInput `pulumi:"number"`
+}
+
+func (TrafficExtensionSpecMatchPortsPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecMatchPortsPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecMatchPortsPatchArgs) ToTrafficExtensionSpecMatchPortsPatchOutput() TrafficExtensionSpecMatchPortsPatchOutput {
+	return i.ToTrafficExtensionSpecMatchPortsPatchOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecMatchPortsPatchArgs) ToTrafficExtensionSpecMatchPortsPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPortsPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecMatchPortsPatchOutput)
+}
+
+// TrafficExtensionSpecMatchPortsPatchArrayInput is an input type that accepts TrafficExtensionSpecMatchPortsPatchArray and TrafficExtensionSpecMatchPortsPatchArrayOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecMatchPortsPatchArrayInput` via:
+//
+//	TrafficExtensionSpecMatchPortsPatchArray{ TrafficExtensionSpecMatchPortsPatchArgs{...} }
+type TrafficExtensionSpecMatchPortsPatchArrayInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecMatchPortsPatchArrayOutput() TrafficExtensionSpecMatchPortsPatchArrayOutput
+	ToTrafficExtensionSpecMatchPortsPatchArrayOutputWithContext(context.Context) TrafficExtensionSpecMatchPortsPatchArrayOutput
+}
+
+type TrafficExtensionSpecMatchPortsPatchArray []TrafficExtensionSpecMatchPortsPatchInput
+
+func (TrafficExtensionSpecMatchPortsPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecMatchPortsPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecMatchPortsPatchArray) ToTrafficExtensionSpecMatchPortsPatchArrayOutput() TrafficExtensionSpecMatchPortsPatchArrayOutput {
+	return i.ToTrafficExtensionSpecMatchPortsPatchArrayOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecMatchPortsPatchArray) ToTrafficExtensionSpecMatchPortsPatchArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPortsPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecMatchPortsPatchArrayOutput)
+}
+
+type TrafficExtensionSpecMatchPortsPatchOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecMatchPortsPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecMatchPortsPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecMatchPortsPatchOutput) ToTrafficExtensionSpecMatchPortsPatchOutput() TrafficExtensionSpecMatchPortsPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPortsPatchOutput) ToTrafficExtensionSpecMatchPortsPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPortsPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPortsPatchOutput) Number() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecMatchPortsPatch) *int { return v.Number }).(pulumi.IntPtrOutput)
+}
+
+type TrafficExtensionSpecMatchPortsPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecMatchPortsPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecMatchPortsPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecMatchPortsPatchArrayOutput) ToTrafficExtensionSpecMatchPortsPatchArrayOutput() TrafficExtensionSpecMatchPortsPatchArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPortsPatchArrayOutput) ToTrafficExtensionSpecMatchPortsPatchArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecMatchPortsPatchArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecMatchPortsPatchArrayOutput) Index(i pulumi.IntInput) TrafficExtensionSpecMatchPortsPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficExtensionSpecMatchPortsPatch {
+		return vs[0].([]TrafficExtensionSpecMatchPortsPatch)[vs[1].(int)]
+	}).(TrafficExtensionSpecMatchPortsPatchOutput)
+}
+
+// Extend the functionality provided by the Istio proxy through WebAssembly or Lua filters. See more details at: https://istio.io/docs/reference/config/proxy_extensions/traffic_extension.html
+type TrafficExtensionSpecPatch struct {
+	Lua *TrafficExtensionSpecLuaPatch `pulumi:"lua"`
+	// Specifies the criteria to determine which traffic is passed to TrafficExtension.
+	Match []TrafficExtensionSpecMatchPatch `pulumi:"match"`
+	// Determines where in the filter chain this `TrafficExtension` is to be injected.
+	//
+	// Valid Options: AUTHN, AUTHZ, STATS
+	Phase *string `pulumi:"phase"`
+	// Determines ordering of `TrafficExtensions` in the same `phase`.
+	Priority *int                               `pulumi:"priority"`
+	Selector *TrafficExtensionSpecSelectorPatch `pulumi:"selector"`
+	// Optional.
+	TargetRefs []TrafficExtensionSpecTargetRefsPatch `pulumi:"targetRefs"`
+	Wasm       *TrafficExtensionSpecWasmPatch        `pulumi:"wasm"`
+}
+
+// TrafficExtensionSpecPatchInput is an input type that accepts TrafficExtensionSpecPatchArgs and TrafficExtensionSpecPatchOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecPatchInput` via:
+//
+//	TrafficExtensionSpecPatchArgs{...}
+type TrafficExtensionSpecPatchInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecPatchOutput() TrafficExtensionSpecPatchOutput
+	ToTrafficExtensionSpecPatchOutputWithContext(context.Context) TrafficExtensionSpecPatchOutput
+}
+
+// Extend the functionality provided by the Istio proxy through WebAssembly or Lua filters. See more details at: https://istio.io/docs/reference/config/proxy_extensions/traffic_extension.html
+type TrafficExtensionSpecPatchArgs struct {
+	Lua TrafficExtensionSpecLuaPatchPtrInput `pulumi:"lua"`
+	// Specifies the criteria to determine which traffic is passed to TrafficExtension.
+	Match TrafficExtensionSpecMatchPatchArrayInput `pulumi:"match"`
+	// Determines where in the filter chain this `TrafficExtension` is to be injected.
+	//
+	// Valid Options: AUTHN, AUTHZ, STATS
+	Phase pulumi.StringPtrInput `pulumi:"phase"`
+	// Determines ordering of `TrafficExtensions` in the same `phase`.
+	Priority pulumi.IntPtrInput                        `pulumi:"priority"`
+	Selector TrafficExtensionSpecSelectorPatchPtrInput `pulumi:"selector"`
+	// Optional.
+	TargetRefs TrafficExtensionSpecTargetRefsPatchArrayInput `pulumi:"targetRefs"`
+	Wasm       TrafficExtensionSpecWasmPatchPtrInput         `pulumi:"wasm"`
+}
+
+func (TrafficExtensionSpecPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecPatchArgs) ToTrafficExtensionSpecPatchOutput() TrafficExtensionSpecPatchOutput {
+	return i.ToTrafficExtensionSpecPatchOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecPatchArgs) ToTrafficExtensionSpecPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecPatchOutput)
+}
+
+func (i TrafficExtensionSpecPatchArgs) ToTrafficExtensionSpecPatchPtrOutput() TrafficExtensionSpecPatchPtrOutput {
+	return i.ToTrafficExtensionSpecPatchPtrOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecPatchArgs) ToTrafficExtensionSpecPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecPatchOutput).ToTrafficExtensionSpecPatchPtrOutputWithContext(ctx)
+}
+
+// TrafficExtensionSpecPatchPtrInput is an input type that accepts TrafficExtensionSpecPatchArgs, TrafficExtensionSpecPatchPtr and TrafficExtensionSpecPatchPtrOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecPatchPtrInput` via:
+//
+//	        TrafficExtensionSpecPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type TrafficExtensionSpecPatchPtrInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecPatchPtrOutput() TrafficExtensionSpecPatchPtrOutput
+	ToTrafficExtensionSpecPatchPtrOutputWithContext(context.Context) TrafficExtensionSpecPatchPtrOutput
+}
+
+type trafficExtensionSpecPatchPtrType TrafficExtensionSpecPatchArgs
+
+func TrafficExtensionSpecPatchPtr(v *TrafficExtensionSpecPatchArgs) TrafficExtensionSpecPatchPtrInput {
+	return (*trafficExtensionSpecPatchPtrType)(v)
+}
+
+func (*trafficExtensionSpecPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecPatch)(nil)).Elem()
+}
+
+func (i *trafficExtensionSpecPatchPtrType) ToTrafficExtensionSpecPatchPtrOutput() TrafficExtensionSpecPatchPtrOutput {
+	return i.ToTrafficExtensionSpecPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *trafficExtensionSpecPatchPtrType) ToTrafficExtensionSpecPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecPatchPtrOutput)
+}
+
+// Extend the functionality provided by the Istio proxy through WebAssembly or Lua filters. See more details at: https://istio.io/docs/reference/config/proxy_extensions/traffic_extension.html
+type TrafficExtensionSpecPatchOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecPatchOutput) ToTrafficExtensionSpecPatchOutput() TrafficExtensionSpecPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecPatchOutput) ToTrafficExtensionSpecPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecPatchOutput) ToTrafficExtensionSpecPatchPtrOutput() TrafficExtensionSpecPatchPtrOutput {
+	return o.ToTrafficExtensionSpecPatchPtrOutputWithContext(context.Background())
+}
+
+func (o TrafficExtensionSpecPatchOutput) ToTrafficExtensionSpecPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficExtensionSpecPatch) *TrafficExtensionSpecPatch {
+		return &v
+	}).(TrafficExtensionSpecPatchPtrOutput)
+}
+
+func (o TrafficExtensionSpecPatchOutput) Lua() TrafficExtensionSpecLuaPatchPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecPatch) *TrafficExtensionSpecLuaPatch { return v.Lua }).(TrafficExtensionSpecLuaPatchPtrOutput)
+}
+
+// Specifies the criteria to determine which traffic is passed to TrafficExtension.
+func (o TrafficExtensionSpecPatchOutput) Match() TrafficExtensionSpecMatchPatchArrayOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecPatch) []TrafficExtensionSpecMatchPatch { return v.Match }).(TrafficExtensionSpecMatchPatchArrayOutput)
+}
+
+// Determines where in the filter chain this `TrafficExtension` is to be injected.
+//
+// Valid Options: AUTHN, AUTHZ, STATS
+func (o TrafficExtensionSpecPatchOutput) Phase() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecPatch) *string { return v.Phase }).(pulumi.StringPtrOutput)
+}
+
+// Determines ordering of `TrafficExtensions` in the same `phase`.
+func (o TrafficExtensionSpecPatchOutput) Priority() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecPatch) *int { return v.Priority }).(pulumi.IntPtrOutput)
+}
+
+func (o TrafficExtensionSpecPatchOutput) Selector() TrafficExtensionSpecSelectorPatchPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecPatch) *TrafficExtensionSpecSelectorPatch { return v.Selector }).(TrafficExtensionSpecSelectorPatchPtrOutput)
+}
+
+// Optional.
+func (o TrafficExtensionSpecPatchOutput) TargetRefs() TrafficExtensionSpecTargetRefsPatchArrayOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecPatch) []TrafficExtensionSpecTargetRefsPatch { return v.TargetRefs }).(TrafficExtensionSpecTargetRefsPatchArrayOutput)
+}
+
+func (o TrafficExtensionSpecPatchOutput) Wasm() TrafficExtensionSpecWasmPatchPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecPatch) *TrafficExtensionSpecWasmPatch { return v.Wasm }).(TrafficExtensionSpecWasmPatchPtrOutput)
+}
+
+type TrafficExtensionSpecPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecPatchPtrOutput) ToTrafficExtensionSpecPatchPtrOutput() TrafficExtensionSpecPatchPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecPatchPtrOutput) ToTrafficExtensionSpecPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecPatchPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecPatchPtrOutput) Elem() TrafficExtensionSpecPatchOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecPatch) TrafficExtensionSpecPatch {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficExtensionSpecPatch
+		return ret
+	}).(TrafficExtensionSpecPatchOutput)
+}
+
+func (o TrafficExtensionSpecPatchPtrOutput) Lua() TrafficExtensionSpecLuaPatchPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecPatch) *TrafficExtensionSpecLuaPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Lua
+	}).(TrafficExtensionSpecLuaPatchPtrOutput)
+}
+
+// Specifies the criteria to determine which traffic is passed to TrafficExtension.
+func (o TrafficExtensionSpecPatchPtrOutput) Match() TrafficExtensionSpecMatchPatchArrayOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecPatch) []TrafficExtensionSpecMatchPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Match
+	}).(TrafficExtensionSpecMatchPatchArrayOutput)
+}
+
+// Determines where in the filter chain this `TrafficExtension` is to be injected.
+//
+// Valid Options: AUTHN, AUTHZ, STATS
+func (o TrafficExtensionSpecPatchPtrOutput) Phase() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Phase
+	}).(pulumi.StringPtrOutput)
+}
+
+// Determines ordering of `TrafficExtensions` in the same `phase`.
+func (o TrafficExtensionSpecPatchPtrOutput) Priority() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecPatch) *int {
+		if v == nil {
+			return nil
+		}
+		return v.Priority
+	}).(pulumi.IntPtrOutput)
+}
+
+func (o TrafficExtensionSpecPatchPtrOutput) Selector() TrafficExtensionSpecSelectorPatchPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecPatch) *TrafficExtensionSpecSelectorPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Selector
+	}).(TrafficExtensionSpecSelectorPatchPtrOutput)
+}
+
+// Optional.
+func (o TrafficExtensionSpecPatchPtrOutput) TargetRefs() TrafficExtensionSpecTargetRefsPatchArrayOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecPatch) []TrafficExtensionSpecTargetRefsPatch {
+		if v == nil {
+			return nil
+		}
+		return v.TargetRefs
+	}).(TrafficExtensionSpecTargetRefsPatchArrayOutput)
+}
+
+func (o TrafficExtensionSpecPatchPtrOutput) Wasm() TrafficExtensionSpecWasmPatchPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecPatch) *TrafficExtensionSpecWasmPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Wasm
+	}).(TrafficExtensionSpecWasmPatchPtrOutput)
+}
+
+// Optional.
+type TrafficExtensionSpecSelector struct {
+	// One or more labels that indicate a specific set of pods/VMs on which a policy should be applied.
+	MatchLabels map[string]string `pulumi:"matchLabels"`
+}
+
+// TrafficExtensionSpecSelectorInput is an input type that accepts TrafficExtensionSpecSelectorArgs and TrafficExtensionSpecSelectorOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecSelectorInput` via:
+//
+//	TrafficExtensionSpecSelectorArgs{...}
+type TrafficExtensionSpecSelectorInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecSelectorOutput() TrafficExtensionSpecSelectorOutput
+	ToTrafficExtensionSpecSelectorOutputWithContext(context.Context) TrafficExtensionSpecSelectorOutput
+}
+
+// Optional.
+type TrafficExtensionSpecSelectorArgs struct {
+	// One or more labels that indicate a specific set of pods/VMs on which a policy should be applied.
+	MatchLabels pulumi.StringMapInput `pulumi:"matchLabels"`
+}
+
+func (TrafficExtensionSpecSelectorArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecSelector)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecSelectorArgs) ToTrafficExtensionSpecSelectorOutput() TrafficExtensionSpecSelectorOutput {
+	return i.ToTrafficExtensionSpecSelectorOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecSelectorArgs) ToTrafficExtensionSpecSelectorOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecSelectorOutput)
+}
+
+func (i TrafficExtensionSpecSelectorArgs) ToTrafficExtensionSpecSelectorPtrOutput() TrafficExtensionSpecSelectorPtrOutput {
+	return i.ToTrafficExtensionSpecSelectorPtrOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecSelectorArgs) ToTrafficExtensionSpecSelectorPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecSelectorOutput).ToTrafficExtensionSpecSelectorPtrOutputWithContext(ctx)
+}
+
+// TrafficExtensionSpecSelectorPtrInput is an input type that accepts TrafficExtensionSpecSelectorArgs, TrafficExtensionSpecSelectorPtr and TrafficExtensionSpecSelectorPtrOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecSelectorPtrInput` via:
+//
+//	        TrafficExtensionSpecSelectorArgs{...}
+//
+//	or:
+//
+//	        nil
+type TrafficExtensionSpecSelectorPtrInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecSelectorPtrOutput() TrafficExtensionSpecSelectorPtrOutput
+	ToTrafficExtensionSpecSelectorPtrOutputWithContext(context.Context) TrafficExtensionSpecSelectorPtrOutput
+}
+
+type trafficExtensionSpecSelectorPtrType TrafficExtensionSpecSelectorArgs
+
+func TrafficExtensionSpecSelectorPtr(v *TrafficExtensionSpecSelectorArgs) TrafficExtensionSpecSelectorPtrInput {
+	return (*trafficExtensionSpecSelectorPtrType)(v)
+}
+
+func (*trafficExtensionSpecSelectorPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecSelector)(nil)).Elem()
+}
+
+func (i *trafficExtensionSpecSelectorPtrType) ToTrafficExtensionSpecSelectorPtrOutput() TrafficExtensionSpecSelectorPtrOutput {
+	return i.ToTrafficExtensionSpecSelectorPtrOutputWithContext(context.Background())
+}
+
+func (i *trafficExtensionSpecSelectorPtrType) ToTrafficExtensionSpecSelectorPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecSelectorPtrOutput)
+}
+
+// Optional.
+type TrafficExtensionSpecSelectorOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecSelectorOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecSelector)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecSelectorOutput) ToTrafficExtensionSpecSelectorOutput() TrafficExtensionSpecSelectorOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecSelectorOutput) ToTrafficExtensionSpecSelectorOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecSelectorOutput) ToTrafficExtensionSpecSelectorPtrOutput() TrafficExtensionSpecSelectorPtrOutput {
+	return o.ToTrafficExtensionSpecSelectorPtrOutputWithContext(context.Background())
+}
+
+func (o TrafficExtensionSpecSelectorOutput) ToTrafficExtensionSpecSelectorPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficExtensionSpecSelector) *TrafficExtensionSpecSelector {
+		return &v
+	}).(TrafficExtensionSpecSelectorPtrOutput)
+}
+
+// One or more labels that indicate a specific set of pods/VMs on which a policy should be applied.
+func (o TrafficExtensionSpecSelectorOutput) MatchLabels() pulumi.StringMapOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecSelector) map[string]string { return v.MatchLabels }).(pulumi.StringMapOutput)
+}
+
+type TrafficExtensionSpecSelectorPtrOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecSelectorPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecSelector)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecSelectorPtrOutput) ToTrafficExtensionSpecSelectorPtrOutput() TrafficExtensionSpecSelectorPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecSelectorPtrOutput) ToTrafficExtensionSpecSelectorPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecSelectorPtrOutput) Elem() TrafficExtensionSpecSelectorOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecSelector) TrafficExtensionSpecSelector {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficExtensionSpecSelector
+		return ret
+	}).(TrafficExtensionSpecSelectorOutput)
+}
+
+// One or more labels that indicate a specific set of pods/VMs on which a policy should be applied.
+func (o TrafficExtensionSpecSelectorPtrOutput) MatchLabels() pulumi.StringMapOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecSelector) map[string]string {
+		if v == nil {
+			return nil
+		}
+		return v.MatchLabels
+	}).(pulumi.StringMapOutput)
+}
+
+// Optional.
+type TrafficExtensionSpecSelectorPatch struct {
+	// One or more labels that indicate a specific set of pods/VMs on which a policy should be applied.
+	MatchLabels map[string]string `pulumi:"matchLabels"`
+}
+
+// TrafficExtensionSpecSelectorPatchInput is an input type that accepts TrafficExtensionSpecSelectorPatchArgs and TrafficExtensionSpecSelectorPatchOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecSelectorPatchInput` via:
+//
+//	TrafficExtensionSpecSelectorPatchArgs{...}
+type TrafficExtensionSpecSelectorPatchInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecSelectorPatchOutput() TrafficExtensionSpecSelectorPatchOutput
+	ToTrafficExtensionSpecSelectorPatchOutputWithContext(context.Context) TrafficExtensionSpecSelectorPatchOutput
+}
+
+// Optional.
+type TrafficExtensionSpecSelectorPatchArgs struct {
+	// One or more labels that indicate a specific set of pods/VMs on which a policy should be applied.
+	MatchLabels pulumi.StringMapInput `pulumi:"matchLabels"`
+}
+
+func (TrafficExtensionSpecSelectorPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecSelectorPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecSelectorPatchArgs) ToTrafficExtensionSpecSelectorPatchOutput() TrafficExtensionSpecSelectorPatchOutput {
+	return i.ToTrafficExtensionSpecSelectorPatchOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecSelectorPatchArgs) ToTrafficExtensionSpecSelectorPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecSelectorPatchOutput)
+}
+
+func (i TrafficExtensionSpecSelectorPatchArgs) ToTrafficExtensionSpecSelectorPatchPtrOutput() TrafficExtensionSpecSelectorPatchPtrOutput {
+	return i.ToTrafficExtensionSpecSelectorPatchPtrOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecSelectorPatchArgs) ToTrafficExtensionSpecSelectorPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecSelectorPatchOutput).ToTrafficExtensionSpecSelectorPatchPtrOutputWithContext(ctx)
+}
+
+// TrafficExtensionSpecSelectorPatchPtrInput is an input type that accepts TrafficExtensionSpecSelectorPatchArgs, TrafficExtensionSpecSelectorPatchPtr and TrafficExtensionSpecSelectorPatchPtrOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecSelectorPatchPtrInput` via:
+//
+//	        TrafficExtensionSpecSelectorPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type TrafficExtensionSpecSelectorPatchPtrInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecSelectorPatchPtrOutput() TrafficExtensionSpecSelectorPatchPtrOutput
+	ToTrafficExtensionSpecSelectorPatchPtrOutputWithContext(context.Context) TrafficExtensionSpecSelectorPatchPtrOutput
+}
+
+type trafficExtensionSpecSelectorPatchPtrType TrafficExtensionSpecSelectorPatchArgs
+
+func TrafficExtensionSpecSelectorPatchPtr(v *TrafficExtensionSpecSelectorPatchArgs) TrafficExtensionSpecSelectorPatchPtrInput {
+	return (*trafficExtensionSpecSelectorPatchPtrType)(v)
+}
+
+func (*trafficExtensionSpecSelectorPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecSelectorPatch)(nil)).Elem()
+}
+
+func (i *trafficExtensionSpecSelectorPatchPtrType) ToTrafficExtensionSpecSelectorPatchPtrOutput() TrafficExtensionSpecSelectorPatchPtrOutput {
+	return i.ToTrafficExtensionSpecSelectorPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *trafficExtensionSpecSelectorPatchPtrType) ToTrafficExtensionSpecSelectorPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecSelectorPatchPtrOutput)
+}
+
+// Optional.
+type TrafficExtensionSpecSelectorPatchOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecSelectorPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecSelectorPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecSelectorPatchOutput) ToTrafficExtensionSpecSelectorPatchOutput() TrafficExtensionSpecSelectorPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecSelectorPatchOutput) ToTrafficExtensionSpecSelectorPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecSelectorPatchOutput) ToTrafficExtensionSpecSelectorPatchPtrOutput() TrafficExtensionSpecSelectorPatchPtrOutput {
+	return o.ToTrafficExtensionSpecSelectorPatchPtrOutputWithContext(context.Background())
+}
+
+func (o TrafficExtensionSpecSelectorPatchOutput) ToTrafficExtensionSpecSelectorPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficExtensionSpecSelectorPatch) *TrafficExtensionSpecSelectorPatch {
+		return &v
+	}).(TrafficExtensionSpecSelectorPatchPtrOutput)
+}
+
+// One or more labels that indicate a specific set of pods/VMs on which a policy should be applied.
+func (o TrafficExtensionSpecSelectorPatchOutput) MatchLabels() pulumi.StringMapOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecSelectorPatch) map[string]string { return v.MatchLabels }).(pulumi.StringMapOutput)
+}
+
+type TrafficExtensionSpecSelectorPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecSelectorPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecSelectorPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecSelectorPatchPtrOutput) ToTrafficExtensionSpecSelectorPatchPtrOutput() TrafficExtensionSpecSelectorPatchPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecSelectorPatchPtrOutput) ToTrafficExtensionSpecSelectorPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecSelectorPatchPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecSelectorPatchPtrOutput) Elem() TrafficExtensionSpecSelectorPatchOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecSelectorPatch) TrafficExtensionSpecSelectorPatch {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficExtensionSpecSelectorPatch
+		return ret
+	}).(TrafficExtensionSpecSelectorPatchOutput)
+}
+
+// One or more labels that indicate a specific set of pods/VMs on which a policy should be applied.
+func (o TrafficExtensionSpecSelectorPatchPtrOutput) MatchLabels() pulumi.StringMapOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecSelectorPatch) map[string]string {
+		if v == nil {
+			return nil
+		}
+		return v.MatchLabels
+	}).(pulumi.StringMapOutput)
+}
+
+type TrafficExtensionSpecTargetRefs struct {
+	// group is the group of the target resource.
+	Group *string `pulumi:"group"`
+	// kind is kind of the target resource.
+	Kind *string `pulumi:"kind"`
+	// name is the name of the target resource.
+	Name *string `pulumi:"name"`
+	// namespace is the namespace of the referent.
+	Namespace *string `pulumi:"namespace"`
+}
+
+// TrafficExtensionSpecTargetRefsInput is an input type that accepts TrafficExtensionSpecTargetRefsArgs and TrafficExtensionSpecTargetRefsOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecTargetRefsInput` via:
+//
+//	TrafficExtensionSpecTargetRefsArgs{...}
+type TrafficExtensionSpecTargetRefsInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecTargetRefsOutput() TrafficExtensionSpecTargetRefsOutput
+	ToTrafficExtensionSpecTargetRefsOutputWithContext(context.Context) TrafficExtensionSpecTargetRefsOutput
+}
+
+type TrafficExtensionSpecTargetRefsArgs struct {
+	// group is the group of the target resource.
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// kind is kind of the target resource.
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// name is the name of the target resource.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// namespace is the namespace of the referent.
+	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
+}
+
+func (TrafficExtensionSpecTargetRefsArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecTargetRefs)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecTargetRefsArgs) ToTrafficExtensionSpecTargetRefsOutput() TrafficExtensionSpecTargetRefsOutput {
+	return i.ToTrafficExtensionSpecTargetRefsOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecTargetRefsArgs) ToTrafficExtensionSpecTargetRefsOutputWithContext(ctx context.Context) TrafficExtensionSpecTargetRefsOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecTargetRefsOutput)
+}
+
+// TrafficExtensionSpecTargetRefsArrayInput is an input type that accepts TrafficExtensionSpecTargetRefsArray and TrafficExtensionSpecTargetRefsArrayOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecTargetRefsArrayInput` via:
+//
+//	TrafficExtensionSpecTargetRefsArray{ TrafficExtensionSpecTargetRefsArgs{...} }
+type TrafficExtensionSpecTargetRefsArrayInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecTargetRefsArrayOutput() TrafficExtensionSpecTargetRefsArrayOutput
+	ToTrafficExtensionSpecTargetRefsArrayOutputWithContext(context.Context) TrafficExtensionSpecTargetRefsArrayOutput
+}
+
+type TrafficExtensionSpecTargetRefsArray []TrafficExtensionSpecTargetRefsInput
+
+func (TrafficExtensionSpecTargetRefsArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecTargetRefs)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecTargetRefsArray) ToTrafficExtensionSpecTargetRefsArrayOutput() TrafficExtensionSpecTargetRefsArrayOutput {
+	return i.ToTrafficExtensionSpecTargetRefsArrayOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecTargetRefsArray) ToTrafficExtensionSpecTargetRefsArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecTargetRefsArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecTargetRefsArrayOutput)
+}
+
+type TrafficExtensionSpecTargetRefsOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecTargetRefsOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecTargetRefs)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecTargetRefsOutput) ToTrafficExtensionSpecTargetRefsOutput() TrafficExtensionSpecTargetRefsOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecTargetRefsOutput) ToTrafficExtensionSpecTargetRefsOutputWithContext(ctx context.Context) TrafficExtensionSpecTargetRefsOutput {
+	return o
+}
+
+// group is the group of the target resource.
+func (o TrafficExtensionSpecTargetRefsOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecTargetRefs) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// kind is kind of the target resource.
+func (o TrafficExtensionSpecTargetRefsOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecTargetRefs) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// name is the name of the target resource.
+func (o TrafficExtensionSpecTargetRefsOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecTargetRefs) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// namespace is the namespace of the referent.
+func (o TrafficExtensionSpecTargetRefsOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecTargetRefs) *string { return v.Namespace }).(pulumi.StringPtrOutput)
+}
+
+type TrafficExtensionSpecTargetRefsArrayOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecTargetRefsArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecTargetRefs)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecTargetRefsArrayOutput) ToTrafficExtensionSpecTargetRefsArrayOutput() TrafficExtensionSpecTargetRefsArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecTargetRefsArrayOutput) ToTrafficExtensionSpecTargetRefsArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecTargetRefsArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecTargetRefsArrayOutput) Index(i pulumi.IntInput) TrafficExtensionSpecTargetRefsOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficExtensionSpecTargetRefs {
+		return vs[0].([]TrafficExtensionSpecTargetRefs)[vs[1].(int)]
+	}).(TrafficExtensionSpecTargetRefsOutput)
+}
+
+type TrafficExtensionSpecTargetRefsPatch struct {
+	// group is the group of the target resource.
+	Group *string `pulumi:"group"`
+	// kind is kind of the target resource.
+	Kind *string `pulumi:"kind"`
+	// name is the name of the target resource.
+	Name *string `pulumi:"name"`
+	// namespace is the namespace of the referent.
+	Namespace *string `pulumi:"namespace"`
+}
+
+// TrafficExtensionSpecTargetRefsPatchInput is an input type that accepts TrafficExtensionSpecTargetRefsPatchArgs and TrafficExtensionSpecTargetRefsPatchOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecTargetRefsPatchInput` via:
+//
+//	TrafficExtensionSpecTargetRefsPatchArgs{...}
+type TrafficExtensionSpecTargetRefsPatchInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecTargetRefsPatchOutput() TrafficExtensionSpecTargetRefsPatchOutput
+	ToTrafficExtensionSpecTargetRefsPatchOutputWithContext(context.Context) TrafficExtensionSpecTargetRefsPatchOutput
+}
+
+type TrafficExtensionSpecTargetRefsPatchArgs struct {
+	// group is the group of the target resource.
+	Group pulumi.StringPtrInput `pulumi:"group"`
+	// kind is kind of the target resource.
+	Kind pulumi.StringPtrInput `pulumi:"kind"`
+	// name is the name of the target resource.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// namespace is the namespace of the referent.
+	Namespace pulumi.StringPtrInput `pulumi:"namespace"`
+}
+
+func (TrafficExtensionSpecTargetRefsPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecTargetRefsPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecTargetRefsPatchArgs) ToTrafficExtensionSpecTargetRefsPatchOutput() TrafficExtensionSpecTargetRefsPatchOutput {
+	return i.ToTrafficExtensionSpecTargetRefsPatchOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecTargetRefsPatchArgs) ToTrafficExtensionSpecTargetRefsPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecTargetRefsPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecTargetRefsPatchOutput)
+}
+
+// TrafficExtensionSpecTargetRefsPatchArrayInput is an input type that accepts TrafficExtensionSpecTargetRefsPatchArray and TrafficExtensionSpecTargetRefsPatchArrayOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecTargetRefsPatchArrayInput` via:
+//
+//	TrafficExtensionSpecTargetRefsPatchArray{ TrafficExtensionSpecTargetRefsPatchArgs{...} }
+type TrafficExtensionSpecTargetRefsPatchArrayInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecTargetRefsPatchArrayOutput() TrafficExtensionSpecTargetRefsPatchArrayOutput
+	ToTrafficExtensionSpecTargetRefsPatchArrayOutputWithContext(context.Context) TrafficExtensionSpecTargetRefsPatchArrayOutput
+}
+
+type TrafficExtensionSpecTargetRefsPatchArray []TrafficExtensionSpecTargetRefsPatchInput
+
+func (TrafficExtensionSpecTargetRefsPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecTargetRefsPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecTargetRefsPatchArray) ToTrafficExtensionSpecTargetRefsPatchArrayOutput() TrafficExtensionSpecTargetRefsPatchArrayOutput {
+	return i.ToTrafficExtensionSpecTargetRefsPatchArrayOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecTargetRefsPatchArray) ToTrafficExtensionSpecTargetRefsPatchArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecTargetRefsPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecTargetRefsPatchArrayOutput)
+}
+
+type TrafficExtensionSpecTargetRefsPatchOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecTargetRefsPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecTargetRefsPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecTargetRefsPatchOutput) ToTrafficExtensionSpecTargetRefsPatchOutput() TrafficExtensionSpecTargetRefsPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecTargetRefsPatchOutput) ToTrafficExtensionSpecTargetRefsPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecTargetRefsPatchOutput {
+	return o
+}
+
+// group is the group of the target resource.
+func (o TrafficExtensionSpecTargetRefsPatchOutput) Group() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecTargetRefsPatch) *string { return v.Group }).(pulumi.StringPtrOutput)
+}
+
+// kind is kind of the target resource.
+func (o TrafficExtensionSpecTargetRefsPatchOutput) Kind() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecTargetRefsPatch) *string { return v.Kind }).(pulumi.StringPtrOutput)
+}
+
+// name is the name of the target resource.
+func (o TrafficExtensionSpecTargetRefsPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecTargetRefsPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// namespace is the namespace of the referent.
+func (o TrafficExtensionSpecTargetRefsPatchOutput) Namespace() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecTargetRefsPatch) *string { return v.Namespace }).(pulumi.StringPtrOutput)
+}
+
+type TrafficExtensionSpecTargetRefsPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecTargetRefsPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecTargetRefsPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecTargetRefsPatchArrayOutput) ToTrafficExtensionSpecTargetRefsPatchArrayOutput() TrafficExtensionSpecTargetRefsPatchArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecTargetRefsPatchArrayOutput) ToTrafficExtensionSpecTargetRefsPatchArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecTargetRefsPatchArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecTargetRefsPatchArrayOutput) Index(i pulumi.IntInput) TrafficExtensionSpecTargetRefsPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficExtensionSpecTargetRefsPatch {
+		return vs[0].([]TrafficExtensionSpecTargetRefsPatch)[vs[1].(int)]
+	}).(TrafficExtensionSpecTargetRefsPatchOutput)
+}
+
+// WebAssembly filter configuration.
+type TrafficExtensionSpecWasm struct {
+	// Specifies the failure behavior for the plugin due to fatal errors.
+	//
+	// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
+	FailStrategy *string `pulumi:"failStrategy"`
+	// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
+	//
+	// Valid Options: IfNotPresent, Always
+	ImagePullPolicy *string `pulumi:"imagePullPolicy"`
+	// Credentials to use for OCI image pulling.
+	ImagePullSecret *string `pulumi:"imagePullSecret"`
+	// The configuration that will be passed on to the plugin.
+	PluginConfig map[string]interface{} `pulumi:"pluginConfig"`
+	// The plugin name to be used in the Envoy configuration (used to be called `rootID`).
+	PluginName *string `pulumi:"pluginName"`
+	// SHA256 checksum that will be used to verify Wasm module or OCI container.
+	Sha256 *string `pulumi:"sha256"`
+	// Specifies the type of Wasm Extension to be used.
+	//
+	// Valid Options: HTTP, NETWORK
+	Type *string `pulumi:"type"`
+	// URL of a Wasm module or OCI container.
+	Url             *string                           `pulumi:"url"`
+	VerificationKey *string                           `pulumi:"verificationKey"`
+	VmConfig        *TrafficExtensionSpecWasmVmConfig `pulumi:"vmConfig"`
+}
+
+// TrafficExtensionSpecWasmInput is an input type that accepts TrafficExtensionSpecWasmArgs and TrafficExtensionSpecWasmOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmInput` via:
+//
+//	TrafficExtensionSpecWasmArgs{...}
+type TrafficExtensionSpecWasmInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmOutput() TrafficExtensionSpecWasmOutput
+	ToTrafficExtensionSpecWasmOutputWithContext(context.Context) TrafficExtensionSpecWasmOutput
+}
+
+// WebAssembly filter configuration.
+type TrafficExtensionSpecWasmArgs struct {
+	// Specifies the failure behavior for the plugin due to fatal errors.
+	//
+	// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
+	FailStrategy pulumi.StringPtrInput `pulumi:"failStrategy"`
+	// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
+	//
+	// Valid Options: IfNotPresent, Always
+	ImagePullPolicy pulumi.StringPtrInput `pulumi:"imagePullPolicy"`
+	// Credentials to use for OCI image pulling.
+	ImagePullSecret pulumi.StringPtrInput `pulumi:"imagePullSecret"`
+	// The configuration that will be passed on to the plugin.
+	PluginConfig pulumi.MapInput `pulumi:"pluginConfig"`
+	// The plugin name to be used in the Envoy configuration (used to be called `rootID`).
+	PluginName pulumi.StringPtrInput `pulumi:"pluginName"`
+	// SHA256 checksum that will be used to verify Wasm module or OCI container.
+	Sha256 pulumi.StringPtrInput `pulumi:"sha256"`
+	// Specifies the type of Wasm Extension to be used.
+	//
+	// Valid Options: HTTP, NETWORK
+	Type pulumi.StringPtrInput `pulumi:"type"`
+	// URL of a Wasm module or OCI container.
+	Url             pulumi.StringPtrInput                    `pulumi:"url"`
+	VerificationKey pulumi.StringPtrInput                    `pulumi:"verificationKey"`
+	VmConfig        TrafficExtensionSpecWasmVmConfigPtrInput `pulumi:"vmConfig"`
+}
+
+func (TrafficExtensionSpecWasmArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasm)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecWasmArgs) ToTrafficExtensionSpecWasmOutput() TrafficExtensionSpecWasmOutput {
+	return i.ToTrafficExtensionSpecWasmOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmArgs) ToTrafficExtensionSpecWasmOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmOutput)
+}
+
+func (i TrafficExtensionSpecWasmArgs) ToTrafficExtensionSpecWasmPtrOutput() TrafficExtensionSpecWasmPtrOutput {
+	return i.ToTrafficExtensionSpecWasmPtrOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmArgs) ToTrafficExtensionSpecWasmPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmOutput).ToTrafficExtensionSpecWasmPtrOutputWithContext(ctx)
+}
+
+// TrafficExtensionSpecWasmPtrInput is an input type that accepts TrafficExtensionSpecWasmArgs, TrafficExtensionSpecWasmPtr and TrafficExtensionSpecWasmPtrOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmPtrInput` via:
+//
+//	        TrafficExtensionSpecWasmArgs{...}
+//
+//	or:
+//
+//	        nil
+type TrafficExtensionSpecWasmPtrInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmPtrOutput() TrafficExtensionSpecWasmPtrOutput
+	ToTrafficExtensionSpecWasmPtrOutputWithContext(context.Context) TrafficExtensionSpecWasmPtrOutput
+}
+
+type trafficExtensionSpecWasmPtrType TrafficExtensionSpecWasmArgs
+
+func TrafficExtensionSpecWasmPtr(v *TrafficExtensionSpecWasmArgs) TrafficExtensionSpecWasmPtrInput {
+	return (*trafficExtensionSpecWasmPtrType)(v)
+}
+
+func (*trafficExtensionSpecWasmPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecWasm)(nil)).Elem()
+}
+
+func (i *trafficExtensionSpecWasmPtrType) ToTrafficExtensionSpecWasmPtrOutput() TrafficExtensionSpecWasmPtrOutput {
+	return i.ToTrafficExtensionSpecWasmPtrOutputWithContext(context.Background())
+}
+
+func (i *trafficExtensionSpecWasmPtrType) ToTrafficExtensionSpecWasmPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmPtrOutput)
+}
+
+// WebAssembly filter configuration.
+type TrafficExtensionSpecWasmOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasm)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmOutput) ToTrafficExtensionSpecWasmOutput() TrafficExtensionSpecWasmOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmOutput) ToTrafficExtensionSpecWasmOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmOutput) ToTrafficExtensionSpecWasmPtrOutput() TrafficExtensionSpecWasmPtrOutput {
+	return o.ToTrafficExtensionSpecWasmPtrOutputWithContext(context.Background())
+}
+
+func (o TrafficExtensionSpecWasmOutput) ToTrafficExtensionSpecWasmPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficExtensionSpecWasm) *TrafficExtensionSpecWasm {
+		return &v
+	}).(TrafficExtensionSpecWasmPtrOutput)
+}
+
+// Specifies the failure behavior for the plugin due to fatal errors.
+//
+// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
+func (o TrafficExtensionSpecWasmOutput) FailStrategy() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasm) *string { return v.FailStrategy }).(pulumi.StringPtrOutput)
+}
+
+// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
+//
+// Valid Options: IfNotPresent, Always
+func (o TrafficExtensionSpecWasmOutput) ImagePullPolicy() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasm) *string { return v.ImagePullPolicy }).(pulumi.StringPtrOutput)
+}
+
+// Credentials to use for OCI image pulling.
+func (o TrafficExtensionSpecWasmOutput) ImagePullSecret() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasm) *string { return v.ImagePullSecret }).(pulumi.StringPtrOutput)
+}
+
+// The configuration that will be passed on to the plugin.
+func (o TrafficExtensionSpecWasmOutput) PluginConfig() pulumi.MapOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasm) map[string]interface{} { return v.PluginConfig }).(pulumi.MapOutput)
+}
+
+// The plugin name to be used in the Envoy configuration (used to be called `rootID`).
+func (o TrafficExtensionSpecWasmOutput) PluginName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasm) *string { return v.PluginName }).(pulumi.StringPtrOutput)
+}
+
+// SHA256 checksum that will be used to verify Wasm module or OCI container.
+func (o TrafficExtensionSpecWasmOutput) Sha256() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasm) *string { return v.Sha256 }).(pulumi.StringPtrOutput)
+}
+
+// Specifies the type of Wasm Extension to be used.
+//
+// Valid Options: HTTP, NETWORK
+func (o TrafficExtensionSpecWasmOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasm) *string { return v.Type }).(pulumi.StringPtrOutput)
+}
+
+// URL of a Wasm module or OCI container.
+func (o TrafficExtensionSpecWasmOutput) Url() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasm) *string { return v.Url }).(pulumi.StringPtrOutput)
+}
+
+func (o TrafficExtensionSpecWasmOutput) VerificationKey() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasm) *string { return v.VerificationKey }).(pulumi.StringPtrOutput)
+}
+
+func (o TrafficExtensionSpecWasmOutput) VmConfig() TrafficExtensionSpecWasmVmConfigPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasm) *TrafficExtensionSpecWasmVmConfig { return v.VmConfig }).(TrafficExtensionSpecWasmVmConfigPtrOutput)
+}
+
+type TrafficExtensionSpecWasmPtrOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecWasm)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmPtrOutput) ToTrafficExtensionSpecWasmPtrOutput() TrafficExtensionSpecWasmPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmPtrOutput) ToTrafficExtensionSpecWasmPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmPtrOutput) Elem() TrafficExtensionSpecWasmOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) TrafficExtensionSpecWasm {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficExtensionSpecWasm
+		return ret
+	}).(TrafficExtensionSpecWasmOutput)
+}
+
+// Specifies the failure behavior for the plugin due to fatal errors.
+//
+// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
+func (o TrafficExtensionSpecWasmPtrOutput) FailStrategy() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) *string {
+		if v == nil {
+			return nil
+		}
+		return v.FailStrategy
+	}).(pulumi.StringPtrOutput)
+}
+
+// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
+//
+// Valid Options: IfNotPresent, Always
+func (o TrafficExtensionSpecWasmPtrOutput) ImagePullPolicy() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) *string {
+		if v == nil {
+			return nil
+		}
+		return v.ImagePullPolicy
+	}).(pulumi.StringPtrOutput)
+}
+
+// Credentials to use for OCI image pulling.
+func (o TrafficExtensionSpecWasmPtrOutput) ImagePullSecret() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) *string {
+		if v == nil {
+			return nil
+		}
+		return v.ImagePullSecret
+	}).(pulumi.StringPtrOutput)
+}
+
+// The configuration that will be passed on to the plugin.
+func (o TrafficExtensionSpecWasmPtrOutput) PluginConfig() pulumi.MapOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) map[string]interface{} {
+		if v == nil {
+			return nil
+		}
+		return v.PluginConfig
+	}).(pulumi.MapOutput)
+}
+
+// The plugin name to be used in the Envoy configuration (used to be called `rootID`).
+func (o TrafficExtensionSpecWasmPtrOutput) PluginName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) *string {
+		if v == nil {
+			return nil
+		}
+		return v.PluginName
+	}).(pulumi.StringPtrOutput)
+}
+
+// SHA256 checksum that will be used to verify Wasm module or OCI container.
+func (o TrafficExtensionSpecWasmPtrOutput) Sha256() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Sha256
+	}).(pulumi.StringPtrOutput)
+}
+
+// Specifies the type of Wasm Extension to be used.
+//
+// Valid Options: HTTP, NETWORK
+func (o TrafficExtensionSpecWasmPtrOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Type
+	}).(pulumi.StringPtrOutput)
+}
+
+// URL of a Wasm module or OCI container.
+func (o TrafficExtensionSpecWasmPtrOutput) Url() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Url
+	}).(pulumi.StringPtrOutput)
+}
+
+func (o TrafficExtensionSpecWasmPtrOutput) VerificationKey() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) *string {
+		if v == nil {
+			return nil
+		}
+		return v.VerificationKey
+	}).(pulumi.StringPtrOutput)
+}
+
+func (o TrafficExtensionSpecWasmPtrOutput) VmConfig() TrafficExtensionSpecWasmVmConfigPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasm) *TrafficExtensionSpecWasmVmConfig {
+		if v == nil {
+			return nil
+		}
+		return v.VmConfig
+	}).(TrafficExtensionSpecWasmVmConfigPtrOutput)
+}
+
+// WebAssembly filter configuration.
+type TrafficExtensionSpecWasmPatch struct {
+	// Specifies the failure behavior for the plugin due to fatal errors.
+	//
+	// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
+	FailStrategy *string `pulumi:"failStrategy"`
+	// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
+	//
+	// Valid Options: IfNotPresent, Always
+	ImagePullPolicy *string `pulumi:"imagePullPolicy"`
+	// Credentials to use for OCI image pulling.
+	ImagePullSecret *string `pulumi:"imagePullSecret"`
+	// The configuration that will be passed on to the plugin.
+	PluginConfig map[string]interface{} `pulumi:"pluginConfig"`
+	// The plugin name to be used in the Envoy configuration (used to be called `rootID`).
+	PluginName *string `pulumi:"pluginName"`
+	// SHA256 checksum that will be used to verify Wasm module or OCI container.
+	Sha256 *string `pulumi:"sha256"`
+	// Specifies the type of Wasm Extension to be used.
+	//
+	// Valid Options: HTTP, NETWORK
+	Type *string `pulumi:"type"`
+	// URL of a Wasm module or OCI container.
+	Url             *string                                `pulumi:"url"`
+	VerificationKey *string                                `pulumi:"verificationKey"`
+	VmConfig        *TrafficExtensionSpecWasmVmConfigPatch `pulumi:"vmConfig"`
+}
+
+// TrafficExtensionSpecWasmPatchInput is an input type that accepts TrafficExtensionSpecWasmPatchArgs and TrafficExtensionSpecWasmPatchOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmPatchInput` via:
+//
+//	TrafficExtensionSpecWasmPatchArgs{...}
+type TrafficExtensionSpecWasmPatchInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmPatchOutput() TrafficExtensionSpecWasmPatchOutput
+	ToTrafficExtensionSpecWasmPatchOutputWithContext(context.Context) TrafficExtensionSpecWasmPatchOutput
+}
+
+// WebAssembly filter configuration.
+type TrafficExtensionSpecWasmPatchArgs struct {
+	// Specifies the failure behavior for the plugin due to fatal errors.
+	//
+	// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
+	FailStrategy pulumi.StringPtrInput `pulumi:"failStrategy"`
+	// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
+	//
+	// Valid Options: IfNotPresent, Always
+	ImagePullPolicy pulumi.StringPtrInput `pulumi:"imagePullPolicy"`
+	// Credentials to use for OCI image pulling.
+	ImagePullSecret pulumi.StringPtrInput `pulumi:"imagePullSecret"`
+	// The configuration that will be passed on to the plugin.
+	PluginConfig pulumi.MapInput `pulumi:"pluginConfig"`
+	// The plugin name to be used in the Envoy configuration (used to be called `rootID`).
+	PluginName pulumi.StringPtrInput `pulumi:"pluginName"`
+	// SHA256 checksum that will be used to verify Wasm module or OCI container.
+	Sha256 pulumi.StringPtrInput `pulumi:"sha256"`
+	// Specifies the type of Wasm Extension to be used.
+	//
+	// Valid Options: HTTP, NETWORK
+	Type pulumi.StringPtrInput `pulumi:"type"`
+	// URL of a Wasm module or OCI container.
+	Url             pulumi.StringPtrInput                         `pulumi:"url"`
+	VerificationKey pulumi.StringPtrInput                         `pulumi:"verificationKey"`
+	VmConfig        TrafficExtensionSpecWasmVmConfigPatchPtrInput `pulumi:"vmConfig"`
+}
+
+func (TrafficExtensionSpecWasmPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasmPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecWasmPatchArgs) ToTrafficExtensionSpecWasmPatchOutput() TrafficExtensionSpecWasmPatchOutput {
+	return i.ToTrafficExtensionSpecWasmPatchOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmPatchArgs) ToTrafficExtensionSpecWasmPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmPatchOutput)
+}
+
+func (i TrafficExtensionSpecWasmPatchArgs) ToTrafficExtensionSpecWasmPatchPtrOutput() TrafficExtensionSpecWasmPatchPtrOutput {
+	return i.ToTrafficExtensionSpecWasmPatchPtrOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmPatchArgs) ToTrafficExtensionSpecWasmPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmPatchOutput).ToTrafficExtensionSpecWasmPatchPtrOutputWithContext(ctx)
+}
+
+// TrafficExtensionSpecWasmPatchPtrInput is an input type that accepts TrafficExtensionSpecWasmPatchArgs, TrafficExtensionSpecWasmPatchPtr and TrafficExtensionSpecWasmPatchPtrOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmPatchPtrInput` via:
+//
+//	        TrafficExtensionSpecWasmPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type TrafficExtensionSpecWasmPatchPtrInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmPatchPtrOutput() TrafficExtensionSpecWasmPatchPtrOutput
+	ToTrafficExtensionSpecWasmPatchPtrOutputWithContext(context.Context) TrafficExtensionSpecWasmPatchPtrOutput
+}
+
+type trafficExtensionSpecWasmPatchPtrType TrafficExtensionSpecWasmPatchArgs
+
+func TrafficExtensionSpecWasmPatchPtr(v *TrafficExtensionSpecWasmPatchArgs) TrafficExtensionSpecWasmPatchPtrInput {
+	return (*trafficExtensionSpecWasmPatchPtrType)(v)
+}
+
+func (*trafficExtensionSpecWasmPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecWasmPatch)(nil)).Elem()
+}
+
+func (i *trafficExtensionSpecWasmPatchPtrType) ToTrafficExtensionSpecWasmPatchPtrOutput() TrafficExtensionSpecWasmPatchPtrOutput {
+	return i.ToTrafficExtensionSpecWasmPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *trafficExtensionSpecWasmPatchPtrType) ToTrafficExtensionSpecWasmPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmPatchPtrOutput)
+}
+
+// WebAssembly filter configuration.
+type TrafficExtensionSpecWasmPatchOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasmPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmPatchOutput) ToTrafficExtensionSpecWasmPatchOutput() TrafficExtensionSpecWasmPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmPatchOutput) ToTrafficExtensionSpecWasmPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmPatchOutput) ToTrafficExtensionSpecWasmPatchPtrOutput() TrafficExtensionSpecWasmPatchPtrOutput {
+	return o.ToTrafficExtensionSpecWasmPatchPtrOutputWithContext(context.Background())
+}
+
+func (o TrafficExtensionSpecWasmPatchOutput) ToTrafficExtensionSpecWasmPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficExtensionSpecWasmPatch) *TrafficExtensionSpecWasmPatch {
+		return &v
+	}).(TrafficExtensionSpecWasmPatchPtrOutput)
+}
+
+// Specifies the failure behavior for the plugin due to fatal errors.
+//
+// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
+func (o TrafficExtensionSpecWasmPatchOutput) FailStrategy() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmPatch) *string { return v.FailStrategy }).(pulumi.StringPtrOutput)
+}
+
+// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
+//
+// Valid Options: IfNotPresent, Always
+func (o TrafficExtensionSpecWasmPatchOutput) ImagePullPolicy() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmPatch) *string { return v.ImagePullPolicy }).(pulumi.StringPtrOutput)
+}
+
+// Credentials to use for OCI image pulling.
+func (o TrafficExtensionSpecWasmPatchOutput) ImagePullSecret() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmPatch) *string { return v.ImagePullSecret }).(pulumi.StringPtrOutput)
+}
+
+// The configuration that will be passed on to the plugin.
+func (o TrafficExtensionSpecWasmPatchOutput) PluginConfig() pulumi.MapOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmPatch) map[string]interface{} { return v.PluginConfig }).(pulumi.MapOutput)
+}
+
+// The plugin name to be used in the Envoy configuration (used to be called `rootID`).
+func (o TrafficExtensionSpecWasmPatchOutput) PluginName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmPatch) *string { return v.PluginName }).(pulumi.StringPtrOutput)
+}
+
+// SHA256 checksum that will be used to verify Wasm module or OCI container.
+func (o TrafficExtensionSpecWasmPatchOutput) Sha256() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmPatch) *string { return v.Sha256 }).(pulumi.StringPtrOutput)
+}
+
+// Specifies the type of Wasm Extension to be used.
+//
+// Valid Options: HTTP, NETWORK
+func (o TrafficExtensionSpecWasmPatchOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmPatch) *string { return v.Type }).(pulumi.StringPtrOutput)
+}
+
+// URL of a Wasm module or OCI container.
+func (o TrafficExtensionSpecWasmPatchOutput) Url() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmPatch) *string { return v.Url }).(pulumi.StringPtrOutput)
+}
+
+func (o TrafficExtensionSpecWasmPatchOutput) VerificationKey() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmPatch) *string { return v.VerificationKey }).(pulumi.StringPtrOutput)
+}
+
+func (o TrafficExtensionSpecWasmPatchOutput) VmConfig() TrafficExtensionSpecWasmVmConfigPatchPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmPatch) *TrafficExtensionSpecWasmVmConfigPatch { return v.VmConfig }).(TrafficExtensionSpecWasmVmConfigPatchPtrOutput)
+}
+
+type TrafficExtensionSpecWasmPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecWasmPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmPatchPtrOutput) ToTrafficExtensionSpecWasmPatchPtrOutput() TrafficExtensionSpecWasmPatchPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmPatchPtrOutput) ToTrafficExtensionSpecWasmPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmPatchPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmPatchPtrOutput) Elem() TrafficExtensionSpecWasmPatchOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) TrafficExtensionSpecWasmPatch {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficExtensionSpecWasmPatch
+		return ret
+	}).(TrafficExtensionSpecWasmPatchOutput)
+}
+
+// Specifies the failure behavior for the plugin due to fatal errors.
+//
+// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
+func (o TrafficExtensionSpecWasmPatchPtrOutput) FailStrategy() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.FailStrategy
+	}).(pulumi.StringPtrOutput)
+}
+
+// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
+//
+// Valid Options: IfNotPresent, Always
+func (o TrafficExtensionSpecWasmPatchPtrOutput) ImagePullPolicy() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.ImagePullPolicy
+	}).(pulumi.StringPtrOutput)
+}
+
+// Credentials to use for OCI image pulling.
+func (o TrafficExtensionSpecWasmPatchPtrOutput) ImagePullSecret() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.ImagePullSecret
+	}).(pulumi.StringPtrOutput)
+}
+
+// The configuration that will be passed on to the plugin.
+func (o TrafficExtensionSpecWasmPatchPtrOutput) PluginConfig() pulumi.MapOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) map[string]interface{} {
+		if v == nil {
+			return nil
+		}
+		return v.PluginConfig
+	}).(pulumi.MapOutput)
+}
+
+// The plugin name to be used in the Envoy configuration (used to be called `rootID`).
+func (o TrafficExtensionSpecWasmPatchPtrOutput) PluginName() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.PluginName
+	}).(pulumi.StringPtrOutput)
+}
+
+// SHA256 checksum that will be used to verify Wasm module or OCI container.
+func (o TrafficExtensionSpecWasmPatchPtrOutput) Sha256() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Sha256
+	}).(pulumi.StringPtrOutput)
+}
+
+// Specifies the type of Wasm Extension to be used.
+//
+// Valid Options: HTTP, NETWORK
+func (o TrafficExtensionSpecWasmPatchPtrOutput) Type() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Type
+	}).(pulumi.StringPtrOutput)
+}
+
+// URL of a Wasm module or OCI container.
+func (o TrafficExtensionSpecWasmPatchPtrOutput) Url() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.Url
+	}).(pulumi.StringPtrOutput)
+}
+
+func (o TrafficExtensionSpecWasmPatchPtrOutput) VerificationKey() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) *string {
+		if v == nil {
+			return nil
+		}
+		return v.VerificationKey
+	}).(pulumi.StringPtrOutput)
+}
+
+func (o TrafficExtensionSpecWasmPatchPtrOutput) VmConfig() TrafficExtensionSpecWasmVmConfigPatchPtrOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmPatch) *TrafficExtensionSpecWasmVmConfigPatch {
+		if v == nil {
+			return nil
+		}
+		return v.VmConfig
+	}).(TrafficExtensionSpecWasmVmConfigPatchPtrOutput)
+}
+
+// Configuration for a Wasm VM.
+type TrafficExtensionSpecWasmVmConfig struct {
+	// Specifies environment variables to be injected to this VM.
+	Env []TrafficExtensionSpecWasmVmConfigEnv `pulumi:"env"`
+}
+
+// TrafficExtensionSpecWasmVmConfigInput is an input type that accepts TrafficExtensionSpecWasmVmConfigArgs and TrafficExtensionSpecWasmVmConfigOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmVmConfigInput` via:
+//
+//	TrafficExtensionSpecWasmVmConfigArgs{...}
+type TrafficExtensionSpecWasmVmConfigInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmVmConfigOutput() TrafficExtensionSpecWasmVmConfigOutput
+	ToTrafficExtensionSpecWasmVmConfigOutputWithContext(context.Context) TrafficExtensionSpecWasmVmConfigOutput
+}
+
+// Configuration for a Wasm VM.
+type TrafficExtensionSpecWasmVmConfigArgs struct {
+	// Specifies environment variables to be injected to this VM.
+	Env TrafficExtensionSpecWasmVmConfigEnvArrayInput `pulumi:"env"`
+}
+
+func (TrafficExtensionSpecWasmVmConfigArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasmVmConfig)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecWasmVmConfigArgs) ToTrafficExtensionSpecWasmVmConfigOutput() TrafficExtensionSpecWasmVmConfigOutput {
+	return i.ToTrafficExtensionSpecWasmVmConfigOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmVmConfigArgs) ToTrafficExtensionSpecWasmVmConfigOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmVmConfigOutput)
+}
+
+func (i TrafficExtensionSpecWasmVmConfigArgs) ToTrafficExtensionSpecWasmVmConfigPtrOutput() TrafficExtensionSpecWasmVmConfigPtrOutput {
+	return i.ToTrafficExtensionSpecWasmVmConfigPtrOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmVmConfigArgs) ToTrafficExtensionSpecWasmVmConfigPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmVmConfigOutput).ToTrafficExtensionSpecWasmVmConfigPtrOutputWithContext(ctx)
+}
+
+// TrafficExtensionSpecWasmVmConfigPtrInput is an input type that accepts TrafficExtensionSpecWasmVmConfigArgs, TrafficExtensionSpecWasmVmConfigPtr and TrafficExtensionSpecWasmVmConfigPtrOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmVmConfigPtrInput` via:
+//
+//	        TrafficExtensionSpecWasmVmConfigArgs{...}
+//
+//	or:
+//
+//	        nil
+type TrafficExtensionSpecWasmVmConfigPtrInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmVmConfigPtrOutput() TrafficExtensionSpecWasmVmConfigPtrOutput
+	ToTrafficExtensionSpecWasmVmConfigPtrOutputWithContext(context.Context) TrafficExtensionSpecWasmVmConfigPtrOutput
+}
+
+type trafficExtensionSpecWasmVmConfigPtrType TrafficExtensionSpecWasmVmConfigArgs
+
+func TrafficExtensionSpecWasmVmConfigPtr(v *TrafficExtensionSpecWasmVmConfigArgs) TrafficExtensionSpecWasmVmConfigPtrInput {
+	return (*trafficExtensionSpecWasmVmConfigPtrType)(v)
+}
+
+func (*trafficExtensionSpecWasmVmConfigPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecWasmVmConfig)(nil)).Elem()
+}
+
+func (i *trafficExtensionSpecWasmVmConfigPtrType) ToTrafficExtensionSpecWasmVmConfigPtrOutput() TrafficExtensionSpecWasmVmConfigPtrOutput {
+	return i.ToTrafficExtensionSpecWasmVmConfigPtrOutputWithContext(context.Background())
+}
+
+func (i *trafficExtensionSpecWasmVmConfigPtrType) ToTrafficExtensionSpecWasmVmConfigPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmVmConfigPtrOutput)
+}
+
+// Configuration for a Wasm VM.
+type TrafficExtensionSpecWasmVmConfigOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmVmConfigOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasmVmConfig)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmVmConfigOutput) ToTrafficExtensionSpecWasmVmConfigOutput() TrafficExtensionSpecWasmVmConfigOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigOutput) ToTrafficExtensionSpecWasmVmConfigOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigOutput) ToTrafficExtensionSpecWasmVmConfigPtrOutput() TrafficExtensionSpecWasmVmConfigPtrOutput {
+	return o.ToTrafficExtensionSpecWasmVmConfigPtrOutputWithContext(context.Background())
+}
+
+func (o TrafficExtensionSpecWasmVmConfigOutput) ToTrafficExtensionSpecWasmVmConfigPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficExtensionSpecWasmVmConfig) *TrafficExtensionSpecWasmVmConfig {
+		return &v
+	}).(TrafficExtensionSpecWasmVmConfigPtrOutput)
+}
+
+// Specifies environment variables to be injected to this VM.
+func (o TrafficExtensionSpecWasmVmConfigOutput) Env() TrafficExtensionSpecWasmVmConfigEnvArrayOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmVmConfig) []TrafficExtensionSpecWasmVmConfigEnv { return v.Env }).(TrafficExtensionSpecWasmVmConfigEnvArrayOutput)
+}
+
+type TrafficExtensionSpecWasmVmConfigPtrOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmVmConfigPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecWasmVmConfig)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmVmConfigPtrOutput) ToTrafficExtensionSpecWasmVmConfigPtrOutput() TrafficExtensionSpecWasmVmConfigPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigPtrOutput) ToTrafficExtensionSpecWasmVmConfigPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigPtrOutput) Elem() TrafficExtensionSpecWasmVmConfigOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmVmConfig) TrafficExtensionSpecWasmVmConfig {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficExtensionSpecWasmVmConfig
+		return ret
+	}).(TrafficExtensionSpecWasmVmConfigOutput)
+}
+
+// Specifies environment variables to be injected to this VM.
+func (o TrafficExtensionSpecWasmVmConfigPtrOutput) Env() TrafficExtensionSpecWasmVmConfigEnvArrayOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmVmConfig) []TrafficExtensionSpecWasmVmConfigEnv {
+		if v == nil {
+			return nil
+		}
+		return v.Env
+	}).(TrafficExtensionSpecWasmVmConfigEnvArrayOutput)
+}
+
+type TrafficExtensionSpecWasmVmConfigEnv struct {
+	// Name of the environment variable.
+	Name *string `pulumi:"name"`
+	// Value for the environment variable.
+	Value *string `pulumi:"value"`
+	// Source for the environment variable's value.
+	//
+	// Valid Options: INLINE, HOST
+	ValueFrom *string `pulumi:"valueFrom"`
+}
+
+// TrafficExtensionSpecWasmVmConfigEnvInput is an input type that accepts TrafficExtensionSpecWasmVmConfigEnvArgs and TrafficExtensionSpecWasmVmConfigEnvOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmVmConfigEnvInput` via:
+//
+//	TrafficExtensionSpecWasmVmConfigEnvArgs{...}
+type TrafficExtensionSpecWasmVmConfigEnvInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmVmConfigEnvOutput() TrafficExtensionSpecWasmVmConfigEnvOutput
+	ToTrafficExtensionSpecWasmVmConfigEnvOutputWithContext(context.Context) TrafficExtensionSpecWasmVmConfigEnvOutput
+}
+
+type TrafficExtensionSpecWasmVmConfigEnvArgs struct {
+	// Name of the environment variable.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// Value for the environment variable.
+	Value pulumi.StringPtrInput `pulumi:"value"`
+	// Source for the environment variable's value.
+	//
+	// Valid Options: INLINE, HOST
+	ValueFrom pulumi.StringPtrInput `pulumi:"valueFrom"`
+}
+
+func (TrafficExtensionSpecWasmVmConfigEnvArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigEnv)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecWasmVmConfigEnvArgs) ToTrafficExtensionSpecWasmVmConfigEnvOutput() TrafficExtensionSpecWasmVmConfigEnvOutput {
+	return i.ToTrafficExtensionSpecWasmVmConfigEnvOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmVmConfigEnvArgs) ToTrafficExtensionSpecWasmVmConfigEnvOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigEnvOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmVmConfigEnvOutput)
+}
+
+// TrafficExtensionSpecWasmVmConfigEnvArrayInput is an input type that accepts TrafficExtensionSpecWasmVmConfigEnvArray and TrafficExtensionSpecWasmVmConfigEnvArrayOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmVmConfigEnvArrayInput` via:
+//
+//	TrafficExtensionSpecWasmVmConfigEnvArray{ TrafficExtensionSpecWasmVmConfigEnvArgs{...} }
+type TrafficExtensionSpecWasmVmConfigEnvArrayInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmVmConfigEnvArrayOutput() TrafficExtensionSpecWasmVmConfigEnvArrayOutput
+	ToTrafficExtensionSpecWasmVmConfigEnvArrayOutputWithContext(context.Context) TrafficExtensionSpecWasmVmConfigEnvArrayOutput
+}
+
+type TrafficExtensionSpecWasmVmConfigEnvArray []TrafficExtensionSpecWasmVmConfigEnvInput
+
+func (TrafficExtensionSpecWasmVmConfigEnvArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecWasmVmConfigEnv)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecWasmVmConfigEnvArray) ToTrafficExtensionSpecWasmVmConfigEnvArrayOutput() TrafficExtensionSpecWasmVmConfigEnvArrayOutput {
+	return i.ToTrafficExtensionSpecWasmVmConfigEnvArrayOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmVmConfigEnvArray) ToTrafficExtensionSpecWasmVmConfigEnvArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigEnvArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmVmConfigEnvArrayOutput)
+}
+
+type TrafficExtensionSpecWasmVmConfigEnvOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmVmConfigEnvOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigEnv)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmVmConfigEnvOutput) ToTrafficExtensionSpecWasmVmConfigEnvOutput() TrafficExtensionSpecWasmVmConfigEnvOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigEnvOutput) ToTrafficExtensionSpecWasmVmConfigEnvOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigEnvOutput {
+	return o
+}
+
+// Name of the environment variable.
+func (o TrafficExtensionSpecWasmVmConfigEnvOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmVmConfigEnv) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// Value for the environment variable.
+func (o TrafficExtensionSpecWasmVmConfigEnvOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmVmConfigEnv) *string { return v.Value }).(pulumi.StringPtrOutput)
+}
+
+// Source for the environment variable's value.
+//
+// Valid Options: INLINE, HOST
+func (o TrafficExtensionSpecWasmVmConfigEnvOutput) ValueFrom() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmVmConfigEnv) *string { return v.ValueFrom }).(pulumi.StringPtrOutput)
+}
+
+type TrafficExtensionSpecWasmVmConfigEnvArrayOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmVmConfigEnvArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecWasmVmConfigEnv)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmVmConfigEnvArrayOutput) ToTrafficExtensionSpecWasmVmConfigEnvArrayOutput() TrafficExtensionSpecWasmVmConfigEnvArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigEnvArrayOutput) ToTrafficExtensionSpecWasmVmConfigEnvArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigEnvArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigEnvArrayOutput) Index(i pulumi.IntInput) TrafficExtensionSpecWasmVmConfigEnvOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficExtensionSpecWasmVmConfigEnv {
+		return vs[0].([]TrafficExtensionSpecWasmVmConfigEnv)[vs[1].(int)]
+	}).(TrafficExtensionSpecWasmVmConfigEnvOutput)
+}
+
+type TrafficExtensionSpecWasmVmConfigEnvPatch struct {
+	// Name of the environment variable.
+	Name *string `pulumi:"name"`
+	// Value for the environment variable.
+	Value *string `pulumi:"value"`
+	// Source for the environment variable's value.
+	//
+	// Valid Options: INLINE, HOST
+	ValueFrom *string `pulumi:"valueFrom"`
+}
+
+// TrafficExtensionSpecWasmVmConfigEnvPatchInput is an input type that accepts TrafficExtensionSpecWasmVmConfigEnvPatchArgs and TrafficExtensionSpecWasmVmConfigEnvPatchOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmVmConfigEnvPatchInput` via:
+//
+//	TrafficExtensionSpecWasmVmConfigEnvPatchArgs{...}
+type TrafficExtensionSpecWasmVmConfigEnvPatchInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmVmConfigEnvPatchOutput() TrafficExtensionSpecWasmVmConfigEnvPatchOutput
+	ToTrafficExtensionSpecWasmVmConfigEnvPatchOutputWithContext(context.Context) TrafficExtensionSpecWasmVmConfigEnvPatchOutput
+}
+
+type TrafficExtensionSpecWasmVmConfigEnvPatchArgs struct {
+	// Name of the environment variable.
+	Name pulumi.StringPtrInput `pulumi:"name"`
+	// Value for the environment variable.
+	Value pulumi.StringPtrInput `pulumi:"value"`
+	// Source for the environment variable's value.
+	//
+	// Valid Options: INLINE, HOST
+	ValueFrom pulumi.StringPtrInput `pulumi:"valueFrom"`
+}
+
+func (TrafficExtensionSpecWasmVmConfigEnvPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigEnvPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecWasmVmConfigEnvPatchArgs) ToTrafficExtensionSpecWasmVmConfigEnvPatchOutput() TrafficExtensionSpecWasmVmConfigEnvPatchOutput {
+	return i.ToTrafficExtensionSpecWasmVmConfigEnvPatchOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmVmConfigEnvPatchArgs) ToTrafficExtensionSpecWasmVmConfigEnvPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigEnvPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmVmConfigEnvPatchOutput)
+}
+
+// TrafficExtensionSpecWasmVmConfigEnvPatchArrayInput is an input type that accepts TrafficExtensionSpecWasmVmConfigEnvPatchArray and TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmVmConfigEnvPatchArrayInput` via:
+//
+//	TrafficExtensionSpecWasmVmConfigEnvPatchArray{ TrafficExtensionSpecWasmVmConfigEnvPatchArgs{...} }
+type TrafficExtensionSpecWasmVmConfigEnvPatchArrayInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput() TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput
+	ToTrafficExtensionSpecWasmVmConfigEnvPatchArrayOutputWithContext(context.Context) TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput
+}
+
+type TrafficExtensionSpecWasmVmConfigEnvPatchArray []TrafficExtensionSpecWasmVmConfigEnvPatchInput
+
+func (TrafficExtensionSpecWasmVmConfigEnvPatchArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecWasmVmConfigEnvPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecWasmVmConfigEnvPatchArray) ToTrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput() TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput {
+	return i.ToTrafficExtensionSpecWasmVmConfigEnvPatchArrayOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmVmConfigEnvPatchArray) ToTrafficExtensionSpecWasmVmConfigEnvPatchArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput)
+}
+
+type TrafficExtensionSpecWasmVmConfigEnvPatchOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmVmConfigEnvPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigEnvPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmVmConfigEnvPatchOutput) ToTrafficExtensionSpecWasmVmConfigEnvPatchOutput() TrafficExtensionSpecWasmVmConfigEnvPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigEnvPatchOutput) ToTrafficExtensionSpecWasmVmConfigEnvPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigEnvPatchOutput {
+	return o
+}
+
+// Name of the environment variable.
+func (o TrafficExtensionSpecWasmVmConfigEnvPatchOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmVmConfigEnvPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
+// Value for the environment variable.
+func (o TrafficExtensionSpecWasmVmConfigEnvPatchOutput) Value() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmVmConfigEnvPatch) *string { return v.Value }).(pulumi.StringPtrOutput)
+}
+
+// Source for the environment variable's value.
+//
+// Valid Options: INLINE, HOST
+func (o TrafficExtensionSpecWasmVmConfigEnvPatchOutput) ValueFrom() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmVmConfigEnvPatch) *string { return v.ValueFrom }).(pulumi.StringPtrOutput)
+}
+
+type TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]TrafficExtensionSpecWasmVmConfigEnvPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput) ToTrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput() TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput) ToTrafficExtensionSpecWasmVmConfigEnvPatchArrayOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput) Index(i pulumi.IntInput) TrafficExtensionSpecWasmVmConfigEnvPatchOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) TrafficExtensionSpecWasmVmConfigEnvPatch {
+		return vs[0].([]TrafficExtensionSpecWasmVmConfigEnvPatch)[vs[1].(int)]
+	}).(TrafficExtensionSpecWasmVmConfigEnvPatchOutput)
+}
+
+// Configuration for a Wasm VM.
+type TrafficExtensionSpecWasmVmConfigPatch struct {
+	// Specifies environment variables to be injected to this VM.
+	Env []TrafficExtensionSpecWasmVmConfigEnvPatch `pulumi:"env"`
+}
+
+// TrafficExtensionSpecWasmVmConfigPatchInput is an input type that accepts TrafficExtensionSpecWasmVmConfigPatchArgs and TrafficExtensionSpecWasmVmConfigPatchOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmVmConfigPatchInput` via:
+//
+//	TrafficExtensionSpecWasmVmConfigPatchArgs{...}
+type TrafficExtensionSpecWasmVmConfigPatchInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmVmConfigPatchOutput() TrafficExtensionSpecWasmVmConfigPatchOutput
+	ToTrafficExtensionSpecWasmVmConfigPatchOutputWithContext(context.Context) TrafficExtensionSpecWasmVmConfigPatchOutput
+}
+
+// Configuration for a Wasm VM.
+type TrafficExtensionSpecWasmVmConfigPatchArgs struct {
+	// Specifies environment variables to be injected to this VM.
+	Env TrafficExtensionSpecWasmVmConfigEnvPatchArrayInput `pulumi:"env"`
+}
+
+func (TrafficExtensionSpecWasmVmConfigPatchArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigPatch)(nil)).Elem()
+}
+
+func (i TrafficExtensionSpecWasmVmConfigPatchArgs) ToTrafficExtensionSpecWasmVmConfigPatchOutput() TrafficExtensionSpecWasmVmConfigPatchOutput {
+	return i.ToTrafficExtensionSpecWasmVmConfigPatchOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmVmConfigPatchArgs) ToTrafficExtensionSpecWasmVmConfigPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigPatchOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmVmConfigPatchOutput)
+}
+
+func (i TrafficExtensionSpecWasmVmConfigPatchArgs) ToTrafficExtensionSpecWasmVmConfigPatchPtrOutput() TrafficExtensionSpecWasmVmConfigPatchPtrOutput {
+	return i.ToTrafficExtensionSpecWasmVmConfigPatchPtrOutputWithContext(context.Background())
+}
+
+func (i TrafficExtensionSpecWasmVmConfigPatchArgs) ToTrafficExtensionSpecWasmVmConfigPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmVmConfigPatchOutput).ToTrafficExtensionSpecWasmVmConfigPatchPtrOutputWithContext(ctx)
+}
+
+// TrafficExtensionSpecWasmVmConfigPatchPtrInput is an input type that accepts TrafficExtensionSpecWasmVmConfigPatchArgs, TrafficExtensionSpecWasmVmConfigPatchPtr and TrafficExtensionSpecWasmVmConfigPatchPtrOutput values.
+// You can construct a concrete instance of `TrafficExtensionSpecWasmVmConfigPatchPtrInput` via:
+//
+//	        TrafficExtensionSpecWasmVmConfigPatchArgs{...}
+//
+//	or:
+//
+//	        nil
+type TrafficExtensionSpecWasmVmConfigPatchPtrInput interface {
+	pulumi.Input
+
+	ToTrafficExtensionSpecWasmVmConfigPatchPtrOutput() TrafficExtensionSpecWasmVmConfigPatchPtrOutput
+	ToTrafficExtensionSpecWasmVmConfigPatchPtrOutputWithContext(context.Context) TrafficExtensionSpecWasmVmConfigPatchPtrOutput
+}
+
+type trafficExtensionSpecWasmVmConfigPatchPtrType TrafficExtensionSpecWasmVmConfigPatchArgs
+
+func TrafficExtensionSpecWasmVmConfigPatchPtr(v *TrafficExtensionSpecWasmVmConfigPatchArgs) TrafficExtensionSpecWasmVmConfigPatchPtrInput {
+	return (*trafficExtensionSpecWasmVmConfigPatchPtrType)(v)
+}
+
+func (*trafficExtensionSpecWasmVmConfigPatchPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecWasmVmConfigPatch)(nil)).Elem()
+}
+
+func (i *trafficExtensionSpecWasmVmConfigPatchPtrType) ToTrafficExtensionSpecWasmVmConfigPatchPtrOutput() TrafficExtensionSpecWasmVmConfigPatchPtrOutput {
+	return i.ToTrafficExtensionSpecWasmVmConfigPatchPtrOutputWithContext(context.Background())
+}
+
+func (i *trafficExtensionSpecWasmVmConfigPatchPtrType) ToTrafficExtensionSpecWasmVmConfigPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigPatchPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TrafficExtensionSpecWasmVmConfigPatchPtrOutput)
+}
+
+// Configuration for a Wasm VM.
+type TrafficExtensionSpecWasmVmConfigPatchOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmVmConfigPatchOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmVmConfigPatchOutput) ToTrafficExtensionSpecWasmVmConfigPatchOutput() TrafficExtensionSpecWasmVmConfigPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigPatchOutput) ToTrafficExtensionSpecWasmVmConfigPatchOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigPatchOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigPatchOutput) ToTrafficExtensionSpecWasmVmConfigPatchPtrOutput() TrafficExtensionSpecWasmVmConfigPatchPtrOutput {
+	return o.ToTrafficExtensionSpecWasmVmConfigPatchPtrOutputWithContext(context.Background())
+}
+
+func (o TrafficExtensionSpecWasmVmConfigPatchOutput) ToTrafficExtensionSpecWasmVmConfigPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigPatchPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v TrafficExtensionSpecWasmVmConfigPatch) *TrafficExtensionSpecWasmVmConfigPatch {
+		return &v
+	}).(TrafficExtensionSpecWasmVmConfigPatchPtrOutput)
+}
+
+// Specifies environment variables to be injected to this VM.
+func (o TrafficExtensionSpecWasmVmConfigPatchOutput) Env() TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput {
+	return o.ApplyT(func(v TrafficExtensionSpecWasmVmConfigPatch) []TrafficExtensionSpecWasmVmConfigEnvPatch { return v.Env }).(TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput)
+}
+
+type TrafficExtensionSpecWasmVmConfigPatchPtrOutput struct{ *pulumi.OutputState }
+
+func (TrafficExtensionSpecWasmVmConfigPatchPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**TrafficExtensionSpecWasmVmConfigPatch)(nil)).Elem()
+}
+
+func (o TrafficExtensionSpecWasmVmConfigPatchPtrOutput) ToTrafficExtensionSpecWasmVmConfigPatchPtrOutput() TrafficExtensionSpecWasmVmConfigPatchPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigPatchPtrOutput) ToTrafficExtensionSpecWasmVmConfigPatchPtrOutputWithContext(ctx context.Context) TrafficExtensionSpecWasmVmConfigPatchPtrOutput {
+	return o
+}
+
+func (o TrafficExtensionSpecWasmVmConfigPatchPtrOutput) Elem() TrafficExtensionSpecWasmVmConfigPatchOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmVmConfigPatch) TrafficExtensionSpecWasmVmConfigPatch {
+		if v != nil {
+			return *v
+		}
+		var ret TrafficExtensionSpecWasmVmConfigPatch
+		return ret
+	}).(TrafficExtensionSpecWasmVmConfigPatchOutput)
+}
+
+// Specifies environment variables to be injected to this VM.
+func (o TrafficExtensionSpecWasmVmConfigPatchPtrOutput) Env() TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput {
+	return o.ApplyT(func(v *TrafficExtensionSpecWasmVmConfigPatch) []TrafficExtensionSpecWasmVmConfigEnvPatch {
+		if v == nil {
+			return nil
+		}
+		return v.Env
+	}).(TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput)
+}
+
 type WasmPluginType struct {
 	// APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
 	ApiVersion *string `pulumi:"apiVersion"`
@@ -309,7 +3496,7 @@ func (o WasmPluginPatchTypeOutput) Status() pulumi.MapOutput {
 type WasmPluginSpec struct {
 	// Specifies the failure behavior for the plugin due to fatal errors.
 	//
-	// Valid Options: FAIL_CLOSE, FAIL_OPEN
+	// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
 	FailStrategy *string `pulumi:"failStrategy"`
 	// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
 	//
@@ -360,7 +3547,7 @@ type WasmPluginSpecInput interface {
 type WasmPluginSpecArgs struct {
 	// Specifies the failure behavior for the plugin due to fatal errors.
 	//
-	// Valid Options: FAIL_CLOSE, FAIL_OPEN
+	// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
 	FailStrategy pulumi.StringPtrInput `pulumi:"failStrategy"`
 	// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
 	//
@@ -476,7 +3663,7 @@ func (o WasmPluginSpecOutput) ToWasmPluginSpecPtrOutputWithContext(ctx context.C
 
 // Specifies the failure behavior for the plugin due to fatal errors.
 //
-// Valid Options: FAIL_CLOSE, FAIL_OPEN
+// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
 func (o WasmPluginSpecOutput) FailStrategy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v WasmPluginSpec) *string { return v.FailStrategy }).(pulumi.StringPtrOutput)
 }
@@ -584,7 +3771,7 @@ func (o WasmPluginSpecPtrOutput) Elem() WasmPluginSpecOutput {
 
 // Specifies the failure behavior for the plugin due to fatal errors.
 //
-// Valid Options: FAIL_CLOSE, FAIL_OPEN
+// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
 func (o WasmPluginSpecPtrOutput) FailStrategy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *WasmPluginSpec) *string {
 		if v == nil {
@@ -1162,7 +4349,7 @@ func (o WasmPluginSpecMatchPortsPatchArrayOutput) Index(i pulumi.IntInput) WasmP
 type WasmPluginSpecPatch struct {
 	// Specifies the failure behavior for the plugin due to fatal errors.
 	//
-	// Valid Options: FAIL_CLOSE, FAIL_OPEN
+	// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
 	FailStrategy *string `pulumi:"failStrategy"`
 	// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
 	//
@@ -1213,7 +4400,7 @@ type WasmPluginSpecPatchInput interface {
 type WasmPluginSpecPatchArgs struct {
 	// Specifies the failure behavior for the plugin due to fatal errors.
 	//
-	// Valid Options: FAIL_CLOSE, FAIL_OPEN
+	// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
 	FailStrategy pulumi.StringPtrInput `pulumi:"failStrategy"`
 	// The pull behaviour to be applied when fetching Wasm module by either OCI image or `http/https`.
 	//
@@ -1329,7 +4516,7 @@ func (o WasmPluginSpecPatchOutput) ToWasmPluginSpecPatchPtrOutputWithContext(ctx
 
 // Specifies the failure behavior for the plugin due to fatal errors.
 //
-// Valid Options: FAIL_CLOSE, FAIL_OPEN
+// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
 func (o WasmPluginSpecPatchOutput) FailStrategy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v WasmPluginSpecPatch) *string { return v.FailStrategy }).(pulumi.StringPtrOutput)
 }
@@ -1437,7 +4624,7 @@ func (o WasmPluginSpecPatchPtrOutput) Elem() WasmPluginSpecPatchOutput {
 
 // Specifies the failure behavior for the plugin due to fatal errors.
 //
-// Valid Options: FAIL_CLOSE, FAIL_OPEN
+// Valid Options: FAIL_CLOSE, FAIL_OPEN, FAIL_RELOAD
 func (o WasmPluginSpecPatchPtrOutput) FailStrategy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *WasmPluginSpecPatch) *string {
 		if v == nil {
@@ -3038,6 +6225,46 @@ func (o WasmPluginSpecVmConfigPatchPtrOutput) Env() WasmPluginSpecVmConfigEnvPat
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionTypeInput)(nil)).Elem(), TrafficExtensionTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionTypeArrayInput)(nil)).Elem(), TrafficExtensionTypeArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionListTypeInput)(nil)).Elem(), TrafficExtensionListTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionPatchTypeInput)(nil)).Elem(), TrafficExtensionPatchTypeArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecInput)(nil)).Elem(), TrafficExtensionSpecArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecPtrInput)(nil)).Elem(), TrafficExtensionSpecArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecLuaInput)(nil)).Elem(), TrafficExtensionSpecLuaArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecLuaPtrInput)(nil)).Elem(), TrafficExtensionSpecLuaArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecLuaPatchInput)(nil)).Elem(), TrafficExtensionSpecLuaPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecLuaPatchPtrInput)(nil)).Elem(), TrafficExtensionSpecLuaPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecMatchInput)(nil)).Elem(), TrafficExtensionSpecMatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecMatchArrayInput)(nil)).Elem(), TrafficExtensionSpecMatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecMatchPatchInput)(nil)).Elem(), TrafficExtensionSpecMatchPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecMatchPatchArrayInput)(nil)).Elem(), TrafficExtensionSpecMatchPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecMatchPortsInput)(nil)).Elem(), TrafficExtensionSpecMatchPortsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecMatchPortsArrayInput)(nil)).Elem(), TrafficExtensionSpecMatchPortsArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecMatchPortsPatchInput)(nil)).Elem(), TrafficExtensionSpecMatchPortsPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecMatchPortsPatchArrayInput)(nil)).Elem(), TrafficExtensionSpecMatchPortsPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecPatchInput)(nil)).Elem(), TrafficExtensionSpecPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecPatchPtrInput)(nil)).Elem(), TrafficExtensionSpecPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecSelectorInput)(nil)).Elem(), TrafficExtensionSpecSelectorArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecSelectorPtrInput)(nil)).Elem(), TrafficExtensionSpecSelectorArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecSelectorPatchInput)(nil)).Elem(), TrafficExtensionSpecSelectorPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecSelectorPatchPtrInput)(nil)).Elem(), TrafficExtensionSpecSelectorPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecTargetRefsInput)(nil)).Elem(), TrafficExtensionSpecTargetRefsArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecTargetRefsArrayInput)(nil)).Elem(), TrafficExtensionSpecTargetRefsArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecTargetRefsPatchInput)(nil)).Elem(), TrafficExtensionSpecTargetRefsPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecTargetRefsPatchArrayInput)(nil)).Elem(), TrafficExtensionSpecTargetRefsPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmInput)(nil)).Elem(), TrafficExtensionSpecWasmArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmPtrInput)(nil)).Elem(), TrafficExtensionSpecWasmArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmPatchInput)(nil)).Elem(), TrafficExtensionSpecWasmPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmPatchPtrInput)(nil)).Elem(), TrafficExtensionSpecWasmPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigInput)(nil)).Elem(), TrafficExtensionSpecWasmVmConfigArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigPtrInput)(nil)).Elem(), TrafficExtensionSpecWasmVmConfigArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigEnvInput)(nil)).Elem(), TrafficExtensionSpecWasmVmConfigEnvArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigEnvArrayInput)(nil)).Elem(), TrafficExtensionSpecWasmVmConfigEnvArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigEnvPatchInput)(nil)).Elem(), TrafficExtensionSpecWasmVmConfigEnvPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigEnvPatchArrayInput)(nil)).Elem(), TrafficExtensionSpecWasmVmConfigEnvPatchArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigPatchInput)(nil)).Elem(), TrafficExtensionSpecWasmVmConfigPatchArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*TrafficExtensionSpecWasmVmConfigPatchPtrInput)(nil)).Elem(), TrafficExtensionSpecWasmVmConfigPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*WasmPluginTypeInput)(nil)).Elem(), WasmPluginTypeArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*WasmPluginTypeArrayInput)(nil)).Elem(), WasmPluginTypeArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*WasmPluginListTypeInput)(nil)).Elem(), WasmPluginListTypeArgs{})
@@ -3074,6 +6301,46 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*WasmPluginSpecVmConfigEnvPatchArrayInput)(nil)).Elem(), WasmPluginSpecVmConfigEnvPatchArray{})
 	pulumi.RegisterInputType(reflect.TypeOf((*WasmPluginSpecVmConfigPatchInput)(nil)).Elem(), WasmPluginSpecVmConfigPatchArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*WasmPluginSpecVmConfigPatchPtrInput)(nil)).Elem(), WasmPluginSpecVmConfigPatchArgs{})
+	pulumi.RegisterOutputType(TrafficExtensionTypeOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionTypeArrayOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionListTypeOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionPatchTypeOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecPtrOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecLuaOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecLuaPtrOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecLuaPatchOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecLuaPatchPtrOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecMatchOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecMatchArrayOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecMatchPatchOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecMatchPatchArrayOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecMatchPortsOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecMatchPortsArrayOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecMatchPortsPatchOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecMatchPortsPatchArrayOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecPatchOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecPatchPtrOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecSelectorOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecSelectorPtrOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecSelectorPatchOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecSelectorPatchPtrOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecTargetRefsOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecTargetRefsArrayOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecTargetRefsPatchOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecTargetRefsPatchArrayOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmPtrOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmPatchOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmPatchPtrOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmVmConfigOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmVmConfigPtrOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmVmConfigEnvOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmVmConfigEnvArrayOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmVmConfigEnvPatchOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmVmConfigEnvPatchArrayOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmVmConfigPatchOutput{})
+	pulumi.RegisterOutputType(TrafficExtensionSpecWasmVmConfigPatchPtrOutput{})
 	pulumi.RegisterOutputType(WasmPluginTypeOutput{})
 	pulumi.RegisterOutputType(WasmPluginTypeArrayOutput{})
 	pulumi.RegisterOutputType(WasmPluginListTypeOutput{})

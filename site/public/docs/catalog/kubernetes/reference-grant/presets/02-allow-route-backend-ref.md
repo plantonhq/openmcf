@@ -30,8 +30,8 @@ the backend's namespace, authorizes it.
 - **`spec.namespace`** -- the namespace the backend Services live in (the "to"
   side). The grant must be created here.
 - **`from`** -- one entry per trusted route kind (`HTTPRoute`, `GRPCRoute`) in the
-  route namespace. Entries combine with OR. Add `TLSRoute`/`TCPRoute` if those
-  route kinds also target this namespace.
+  route   namespace. Entries combine with OR. Add `TLSRoute`/`TCPRoute`/`UDPRoute` if
+  those route kinds also target this namespace.
 - **`to`** -- `kind: Service` with `group: ""` (Service is a core kind). Omit
   `name` to allow all Services, or set it to restrict the grant.
 
@@ -40,12 +40,13 @@ the backend's namespace, authorizes it.
 - The Gateway API CRDs are installed (`KubernetesGatewayApiCrds`).
 - The target (backend) namespace exists (`KubernetesNamespace`).
 
-## Placeholders to Replace
+## Values to Replace
 
-| Placeholder | Description |
-|-------------|-------------|
-| `<backend-namespace>` | Namespace where the backend Services live. |
-| `<route-namespace>` | Namespace where the routes live. |
+| Value | Description |
+|-------|-------------|
+| `backend-ns` | Namespace where the backend Services live (`spec.namespace.value`). |
+| `app-ns` | Namespace where the routes live (`from[].namespace`). |
 
 Set `spec.namespace.value` to your backend namespace, or replace it with a
-`valueFrom` reference to a `KubernetesNamespace`.
+`valueFrom` reference to a `KubernetesNamespace`. `from[].namespace` must be a
+literal namespace name (it is a trust boundary, not a resource reference).

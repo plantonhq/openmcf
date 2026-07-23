@@ -1,0 +1,22 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesExternalDns
+metadata:
+  name: my-external-dns-webhook
+spec:
+  namespace:
+    value: external-dns
+  createNamespace: true
+  webhook:
+    imageRepository: '<webhook-provider-image>' # e.g. ghcr.io/<vendor>/external-dns-<provider>-webhook
+    imageTag: '<webhook-provider-image-tag>'
+    env:
+      # Provider-specific, non-secret settings; put secrets in Kubernetes
+      # Secrets and reference them via helmValues env entries with valueFrom.
+      '<PROVIDER_SETTING>': '<value>'
+  sources:
+    - service
+    - ingress
+  policy: upsert-only # safe default; switch to sync for a dedicated zone
+  txtOwnerId: '<cluster-name>' # must be distinct per instance sharing a zone
+  domainFilters:
+    - '<example.com>'

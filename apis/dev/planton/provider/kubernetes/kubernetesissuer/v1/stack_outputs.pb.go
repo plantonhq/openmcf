@@ -29,9 +29,12 @@ type KubernetesIssuerStackOutputs struct {
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Issuer resource name (equals metadata.name).
 	// Use in Certificate issuerRef.name when issuerRef.kind=Issuer.
-	IssuerName    string `protobuf:"bytes,2,opt,name=issuer_name,json=issuerName,proto3" json:"issuer_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	IssuerName string `protobuf:"bytes,2,opt,name=issuer_name,json=issuerName,proto3" json:"issuer_name,omitempty"`
+	// Name of the ACME account private key Secret cert-manager creates in the
+	// Issuer's namespace. Empty for non-ACME backends.
+	AcmeAccountKeySecretName string `protobuf:"bytes,3,opt,name=acme_account_key_secret_name,json=acmeAccountKeySecretName,proto3" json:"acme_account_key_secret_name,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *KubernetesIssuerStackOutputs) Reset() {
@@ -78,15 +81,23 @@ func (x *KubernetesIssuerStackOutputs) GetIssuerName() string {
 	return ""
 }
 
+func (x *KubernetesIssuerStackOutputs) GetAcmeAccountKeySecretName() string {
+	if x != nil {
+		return x.AcmeAccountKeySecretName
+	}
+	return ""
+}
+
 var File_dev_planton_provider_kubernetes_kubernetesissuer_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesissuer_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kubernetesissuer/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kubernetesissuer.v1\"]\n" +
+	"Gdev/planton/provider/kubernetes/kubernetesissuer/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kubernetesissuer.v1\"\x9d\x01\n" +
 	"\x1cKubernetesIssuerStackOutputs\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1f\n" +
 	"\vissuer_name\x18\x02 \x01(\tR\n" +
-	"issuerNameB\xa9\x03\n" +
+	"issuerName\x12>\n" +
+	"\x1cacme_account_key_secret_name\x18\x03 \x01(\tR\x18acmeAccountKeySecretNameB\xa9\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetesissuer.v1B\x11StackOutputsProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesissuer/v1;kubernetesissuerv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetesissuer.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetesissuer\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetesissuer\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetesissuer::V1b\x06proto3"
 
 var (

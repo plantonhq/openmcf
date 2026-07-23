@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetessecretstore.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/external_secrets_store.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+
+/**
+ * **KubernetesSecretStoreSpec** creates a NAMESPACED External Secrets
+ * Operator store — one backend connection (AWS Secrets Manager, GCP Secret
+ * Manager, Azure Key Vault, Vault/OpenBao, ...) that only ExternalSecret
+ * resources in the SAME namespace may sync from. The SecretStore is named
+ * after `metadata.name`; ExternalSecrets in the namespace reference it by
+ * that name (kind SecretStore, the upstream default).
+ *
+ * Use the namespaced grain for a connection that belongs to ONE
+ * namespace/team — its credential Secrets live in that namespace and its
+ * blast radius ends at the namespace boundary. Use
+ * KubernetesClusterSecretStore for platform-wide backends every team
+ * shares. Requires the External Secrets Operator on the cluster
+ * (KubernetesExternalSecretsOperator).
+ */
+message KubernetesSecretStoreSpec {
+  /**
+   * Namespace the SecretStore lives in — also where credential Secrets this
+   * store declares (static keys, tokens) are materialized, and the only
+   * namespace whose ExternalSecrets can use it. Accepts a literal namespace
+   * name or a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * The backend connection and its configuration — which external system
+   * holds the secrets and how ESO authenticates to it. Identical surface to
+   * KubernetesClusterSecretStore: the grain (who may sync from it) is the
+   * only difference between the two kinds.
+   */
+  dev.planton.provider.kubernetes.ExternalSecretsStoreConfig config = 2 [(buf.validate.field).required = true];
+}

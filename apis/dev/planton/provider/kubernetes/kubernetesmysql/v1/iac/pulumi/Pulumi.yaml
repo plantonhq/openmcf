@@ -1,0 +1,3 @@
+name: kubernetes-mysql
+runtime: go
+description: MySQL cluster reconciled by the Percona Operator for MySQL (PXC) — Galera synchronous multi-primary replication, HAProxy/ProxySQL routing, scheduled XtraBackup backups with PITR, TLS, and declarative users

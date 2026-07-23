@@ -1,153 +1,87 @@
-# Deploying cert-manager on Kubernetes: From Manual Manifests to Production Automation
+# KubernetesCertManager: Research and Design
 
-## The TLS Certificate Challenge
+## Introduction
 
-Every production Kubernetes cluster needs TLS certificates. Without automation, certificate management becomes a manual, error-prone process that leads to expired certificates, outages, and security vulnerabilities. cert-manager solves this by automating the entire certificate lifecycle -- request, validation, issuance, and renewal.
+cert-manager is the de-facto certificate machinery for Kubernetes: a
+controller that watches Certificate resources and drives issuance, a
+validating webhook, and a cainjector that maintains CA bundles in webhook
+configurations. This component installs that machinery from the official
+Helm chart. Signing authorities (issuers) and certificates are separate
+first-class kinds — this component deliberately manages ONLY the controller
+machinery.
 
-## What This Component Does
+## Design Authority
 
-KubernetesCertManager installs the cert-manager controller on a Kubernetes cluster. It handles:
+Designed from the pinned upstream chart's `values.yaml` (deploy/charts/
+cert-manager) and validated against the chart's own defaults. Chart identity
+(`cert-manager` at `https://charts.jetstack.io`) is fixed in both engines'
+modules — cross-engine chart drift deploys two different products.
 
-1. **Helm chart deployment** -- installs cert-manager with CRDs, controller, and webhook
-2. **ServiceAccount configuration** -- creates a dedicated SA with optional workload identity annotations for cloud DNS authentication
-3. **DNS resolver configuration** -- configures recursive nameservers for reliable DNS-01 challenge propagation
+## Typed Surface vs Escape Hatch
 
-**What this component does NOT do:** It does not create ClusterIssuers. ClusterIssuer management is handled by the separate **KubernetesClusterIssuer** component. This decoupling allows independent lifecycle management of the controller and the issuers.
+The typed spec covers the chart's meaningful configuration surface:
 
-## Deployment Maturity Spectrum
+- **CRD lifecycle** (`crds`): install with the release (Planton default TRUE
+  — the upstream chart defaults false and expects a separate kubectl apply;
+  one component owning both halves is strictly simpler), keep on uninstall
+  (TRUE, upstream-aligned: deleting the CRDs cascades to every certificate
+  object cluster-wide). Kept CRDs pin the install namespace — they retain
+  the Helm release's namespace in their ownership metadata, so
+  re-installing into a different namespace fails with Helm's
+  release-ownership error on the surviving CRDs; treat the namespace as
+  permanent
+- **Controller**: replicas, resources, log level, leader-election namespace,
+  cluster-resource namespace, certificate owner refs, feature gates (typed
+  map rendered to the chart's comma-string), max concurrent challenges
+- **DNS-01 self-check** (`dns01_self_check`): recursive resolvers + only-flag
+  — the split-horizon fix (in-cluster DNS serving a private view makes
+  cert-manager's pre-flight TXT check hang issuance forever)
+- **Workload identity**: the shared per-cloud oneof, rendered to the
+  ServiceAccount annotation each cloud's webhook expects (plus the AKS pod
+  label). The chart owns the ServiceAccount; the identity rides
+  `serviceAccount.annotations`
+- **Sub-components**: webhook (replicas, timeout, host-network + secure-port
+  — the EKS-custom-CNI fix), cainjector (enabled/replicas/resources),
+  startupapicheck (enabled/timeout), prometheus (metrics + opt-in
+  ServiceMonitor), scheduling (node selector, tolerations), image registry
+  (air-gapped mirror), pod disruption budget
 
-### Level 0: Manual kubectl
+`helm_values` merges LAST with Helm `-f` semantics on both engines (Terraform
+natively via the two-document values list; Pulumi module-side with the same
+deep-merge). Deliberately unmodeled as typed fields: per-sub-component
+scheduling overrides, extraArgs/extraEnv/volumes (the config-file and
+values escape hatches cover them), and the chart's securityContext blocks
+(upstream defaults are correct; overriding them is an expert move that
+belongs in helm_values).
 
-Install cert-manager CRDs and controller via `kubectl apply`:
+## Install Semantics
 
-```bash
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.1/cert-manager.yaml
-```
+Both engines install a REAL Helm release and wait for full readiness
+including the startupapicheck hook Job — the post-install probe that proves
+the webhook actually serves. A cert-manager whose webhook is down rejects
+every Issuer/Certificate apply, so returning success early would only move
+the failure into the next resource. Atomic + cleanup-on-fail: a failed
+install never leaves a half-deployed cert-manager.
 
-**Pros:** Simple, quick start.
-**Cons:** No version tracking, no declarative management, manual upgrades, no workload identity integration.
-**Verdict:** Fine for learning, not for production.
+## The Release Name Is Fixed
 
-### Level 1: Helm CLI
+The Helm release is always named `cert-manager` (so the chart-derived
+ServiceAccount name is stable for cloud-side identity bindings, and because
+one installation per cluster is an upstream architectural constraint —
+cluster-scoped CRDs and webhook configurations). A manifest-derived release
+name would only enable a second, broken install.
 
-```bash
-helm repo add jetstack https://charts.jetstack.io
-helm install cert-manager jetstack/cert-manager \
-  --namespace cert-manager --create-namespace \
-  --set installCRDs=true
-```
+## Outputs as Composition Seams
 
-**Pros:** Version pinning, upgrade path, Helm values for customization.
-**Cons:** Imperative, state lives in the cluster, no GitOps, manual SA annotation.
-**Verdict:** Good for development clusters.
+`service_account_name` — what the cloud side must trust for keyless DNS-01
+(IRSA trust policy, GKE WI binding, Azure federated credential).
+`cluster_resource_namespace` — where cert-manager reads Secrets for
+cluster-scoped resources; KubernetesClusterIssuer's namespace FK defaults to
+this output, so issuer credentials always land where the controller looks.
 
-### Level 2: Terraform
+## E2E
 
-```hcl
-resource "helm_release" "cert_manager" {
-  name       = "cert-manager"
-  repository = "https://charts.jetstack.io"
-  chart      = "cert-manager"
-  namespace  = "cert-manager"
-  values     = [yamlencode({ installCRDs = true })]
-}
-```
-
-**Pros:** Declarative, state tracked, reproducible.
-**Cons:** Must manage provider configuration, SA annotations, and workload identity manually.
-**Verdict:** Production-ready for Terraform shops.
-
-### Level 3: Planton (This Component)
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesCertManager
-metadata:
-  name: cert-manager
-spec:
-  namespace:
-    value: cert-manager
-  createNamespace: true
-  workloadIdentity:
-    gke:
-      serviceAccountEmail: "cert-manager@my-project.iam.gserviceaccount.com"
-```
-
-**Pros:** Consistent KRM structure, workload identity as a first-class config, dual IaC (Pulumi + Terraform), validation before deployment, presets for common patterns.
-**Cons:** Requires Planton CLI or Planton platform.
-**Verdict:** Production-ready with the best developer experience.
-
-## Architectural Decision: Decoupled ClusterIssuers
-
-Previously, this component created ClusterIssuers as part of the cert-manager installation. This was changed to a decoupled model:
-
-- **KubernetesCertManager** -- installs the controller, configures workload identity
-- **KubernetesClusterIssuer** -- creates one ClusterIssuer per DNS domain
-
-**Rationale:**
-1. Adding/removing DNS domains shouldn't require redeploying the controller
-2. Different teams can manage their own ClusterIssuers independently
-3. ClusterIssuer misconfiguration shouldn't affect the controller lifecycle
-4. Single Responsibility Principle -- installation and issuer configuration are different concerns
-
-## Workload Identity Architecture
-
-For cloud DNS providers (GCP Cloud DNS, AWS Route53, Azure DNS), cert-manager needs cloud API credentials. The modern approach uses workload identity -- binding the Kubernetes ServiceAccount to a cloud identity:
-
-| Cloud | Mechanism | SA Annotation |
-|-------|-----------|---------------|
-| GKE | Workload Identity | `iam.gke.io/gcp-service-account` |
-| EKS | IRSA | `eks.amazonaws.com/role-arn` |
-| AKS | Managed Identity | `azure.workload.identity/client-id` |
-
-This component configures the annotation on the cert-manager controller SA. The KubernetesClusterIssuer component then creates ClusterIssuers that leverage this identity for DNS-01 challenges.
-
-For Cloudflare, no workload identity is needed -- the KubernetesClusterIssuer creates a Kubernetes Secret with the API token directly.
-
-## Production Best Practices
-
-### Version Pinning
-
-Always pin both `kubernetesCertManagerVersion` (image tag) and `helmChartVersion`. Mismatched versions between the image and chart can cause CRD incompatibilities.
-
-### DNS Resolver Configuration
-
-This component configures `--dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53` and `--dns01-recursive-nameservers-only` by default. This ensures DNS-01 challenge verification uses public DNS resolvers rather than the cluster's internal DNS, which prevents false negatives from DNS caching.
-
-### Monitoring
-
-Monitor cert-manager health via:
-- `cert-manager_controller_sync_call_count` -- certificate sync operations
-- `cert-manager_certificate_expiration_timestamp_seconds` -- certificate expiry times
-- `cert-manager_http_acme_client_request_count` -- ACME server interactions
-
-## Conclusion
-
-KubernetesCertManager provides a clean, single-responsibility abstraction for installing cert-manager. By delegating ClusterIssuer management to the KubernetesClusterIssuer component, it enables independent lifecycle management and cleaner multi-team workflows.
-
-## Composing in Infra Charts
-
-`KubernetesCertManager` is a Layer-0 foundation in the certificate DAG: it installs
-the cert-manager controller on the cluster, and the issuer/certificate resources
-depend on it. Two mechanisms wire the family together (see the Gateway-API project
-decision DD-009, which the cert-manager family also follows):
-
-1. **Data dependencies use `valueFrom`.** Downstream `KubernetesClusterIssuer`
-   references this installation through its `cert_manager_namespace`
-   `StringValueOrRef`, pointing at `status.outputs.namespace`. The platform builds
-   that DAG edge automatically, deploying cert-manager before any issuer.
-2. **Topology dependencies use `metadata.relationships`.** cert-manager runs on the
-   cluster; record that with a `runs_on` relationship when your chart models the
-   cluster as a resource.
-
-```yaml
-metadata:
-  name: "{{ values.env }}-cert-manager"
-  relationships:
-    - kind: KubernetesGatewayApiCrds   # or the cluster kind your chart uses
-      name: "{{ values.env }}-cluster-addons"
-      type: runs_on
-```
-
-Full ingress stack:
-`CertManager -> ClusterIssuer -> Certificate -> (Secret) -> Gateway -> HTTPRoute / GRPCRoute`.
+Chart-default and tuned installs run on the kind cluster, both engines, with
+the install verifier requiring the three Deployments Available and the core
+CRDs Established. This component is also the registry prerequisite fixture
+for every issuer/certificate scenario.

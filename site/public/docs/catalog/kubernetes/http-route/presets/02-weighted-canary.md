@@ -27,6 +27,7 @@ delivery.
 ## Key Configuration Choices
 
 - **Two `backendRefs` with weights** -- traffic is split as `weight / sum(weights)`, so 90 and 10 yield a 90%/10% split.
+- **`parentRefs[].name` / `backendRefs[].name` are foreign keys** -- write `value: <literal>` for existing resources, or `valueFrom:` to reference a Planton-managed `KubernetesGateway` / `KubernetesService` and deploy in dependency order.
 - **Same hostname and path** -- both backends serve identical match conditions; only the weight differs.
 - **Adjusting weights** -- promote the canary by raising its weight and lowering the stable weight; weights need not sum to 100.
 
@@ -41,8 +42,8 @@ delivery.
 
 | Placeholder | Description |
 |-------------|-------------|
-| `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to. |
-| `<app-hostname>` | Public hostname this route serves, e.g. `app.example.com`. |
+| `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to (inside `name.value`, or switch to `valueFrom`). |
+| `app.example.com` | Public hostname this route serves (a literal example value -- replace with your real host). |
 | `<stable-service-name>` | Service receiving the majority of traffic. |
 | `<canary-service-name>` | Service receiving the canary slice of traffic. |
 

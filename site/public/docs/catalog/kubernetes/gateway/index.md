@@ -48,7 +48,8 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: app-tls
+          - name:
+              value: app-tls
 ```
 
 ```bash
@@ -70,9 +71,10 @@ planton apply -f gateway.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `addresses` | list | Requested IP/hostname addresses. |
-| `infrastructure` | object | Labels, annotations, and a per-Gateway parametersRef. |
-| `allowedListeners` | object | Which ListenerSets may attach. |
+| `infrastructure` | object | Labels (max 8), annotations (max 16), and a per-Gateway parametersRef. |
+| `allowedListeners` | object | Which ListenerSets may attach (defaults to none). |
 | `tls` | object | Gateway-wide frontend (mutual TLS) and backend client-cert config. |
+| `listeners[].tls.certificateRefs` | list | TLS Secrets for termination; each `name` is a reference (defaults to `KubernetesSecret`, typically issued via `KubernetesCertificate`). |
 
 ## Examples
 
@@ -92,7 +94,8 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: app-tls
+          - name:
+              value: app-tls
 ```
 
 ### Multi-protocol (HTTP + HTTPS + TCP)
@@ -114,7 +117,8 @@ spec:
       tls:
         mode: Terminate
         certificateRefs:
-          - name: app-tls
+          - name:
+              value: app-tls
     - name: postgres
       port: 5432
       protocol: TCP
@@ -133,4 +137,5 @@ spec:
 - [Kubernetes Gateway API CRDs](kubernetesgatewayapicrds)
 - [Kubernetes Gateway Class](kubernetesgatewayclass)
 - [Kubernetes Certificate](kubernetescertificate)
+- [Kubernetes Listener Set](kuberneteslistenerset)
 - [Kubernetes Namespace](kubernetesnamespace)

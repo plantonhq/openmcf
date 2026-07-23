@@ -39,10 +39,10 @@ it because there is no single workload whose ports to address).
 ## 2. Source of truth and version
 
 Translated proto-to-proto from the upstream `istio.io/api` clone pinned to tag
-**1.26.8** (`security/v1beta1/peer_authentication.proto`). The local clone is
+**1.30.3** (`security/v1beta1/peer_authentication.proto`). The local clone is
 authoritative; no specs are pulled from the internet. The crd2pulumi
 typed SDK and the CRDs installed by `KubernetesIstioBaseCrds` are likewise
-generated from Istio `release-1.26`, so the proto, the typed Pulumi resource, and
+generated from Istio tag `1.30.3`, so the proto, the typed Pulumi resource, and
 the cluster CRD all agree on the schema.
 
 The schema is small and stable: `selector`, `mtls.mode`, `port_level_mtls`. It has
@@ -120,11 +120,13 @@ Both engines are feature-equal and emit the same `security.istio.io/v1`
   attached when present. The proto's `uint32` `port_level_mtls` keys are converted
   to decimal strings because the SDK models the field as `pulumi.StringMapMap`
   (`{"8080": {"mode": "STRICT"}}`).
-- **Terraform** uses `kubernetes_manifest` with a fully-typed `variable "spec"` and
-  a null-pruned `locals.tf` (conditional `merge`), so unset optional blocks are
-  omitted from the manifest and upstream inheritance flows through. `port_level_mtls`
-  is typed as a string-keyed `map(object({ mode = string }))`, matching the CRD's
-  string-keyed JSON form.
+- **Terraform** uses `kubectl_manifest` (alekc/kubectl) applied server-side, with a
+  pass-through `variable "spec"` typed `any`: the platform's proto-to-tfvars
+  converter emits the manifest-shaped (camelCase, null-pruned) spec with the
+  `namespace` foreign key resolved to a literal, so unset optional blocks are
+  omitted from the manifest and upstream inheritance flows through. `locals.tf` only
+  strips the Planton `namespace` key (which maps to `metadata.namespace`) and
+  renders the identity labels.
 
 ## 6. E2E
 
@@ -149,4 +151,4 @@ console integration itself is a separate follow-up project.
 
 - [Istio PeerAuthentication reference](https://istio.io/latest/docs/reference/config/security/peer_authentication/)
 - [Istio mutual TLS migration](https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/)
-- Upstream proto: `istio.io/api` `security/v1beta1/peer_authentication.proto` @ `1.26.8`
+- Upstream proto: `istio.io/api` `security/v1beta1/peer_authentication.proto` @ `1.30.3`

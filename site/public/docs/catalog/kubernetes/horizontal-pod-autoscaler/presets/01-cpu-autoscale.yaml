@@ -1,0 +1,20 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesHorizontalPodAutoscaler
+metadata:
+  name: cpu-autoscale
+spec:
+  name: cpu-autoscale
+  namespace:
+    value: "<your-namespace>"
+  scale_target:
+    name:
+      value: "<your-workload-name>"
+  min_replicas: 2
+  max_replicas: 10
+  metrics:
+    - type: resource
+      resource:
+        name: cpu
+        target:
+          type: utilization
+          average_utilization: 60

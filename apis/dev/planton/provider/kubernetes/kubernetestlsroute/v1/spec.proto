@@ -11,7 +11,7 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // unmodified, to backend Services (TLS passthrough). The route attaches to a
 // Gateway listener of protocol TLS through parent_refs.
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 TLSRouteSpec
+// 100% fidelity with the upstream Gateway API v1.6.1 TLSRouteSpec
 // (kubernetes-sigs/gateway-api apis/v1/tlsroute_types.go), standard channel.
 // TLSRoute graduated to the standard channel and is served as
 // gateway.networking.k8s.io/v1 (it was experimental v1alpha2/v1alpha3 in earlier
@@ -34,21 +34,9 @@ message KubernetesTlsRouteSpec {
 
   // References to the parent resources (usually Gateways) this route attaches
   // to. Each parent must have a TLS listener that allows attachment from
-  // TLSRoutes of this namespace.
-  //
-  // INFRA-CHART COMPOSABILITY (DD-009): parent_refs is a PLAIN reference, not an
-  // Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-  // objects, so wrapping its scalars in StringValueOrRef would break 100% upstream
-  // fidelity (DD-001) and distort the typed CRD shape (dont-do #6). Because a plain
-  // string creates NO automatic DAG edge, an infra-chart author MUST express the
-  // route -> Gateway dependency via metadata.relationships, e.g.:
-  //   metadata:
-  //     relationships:
-  //       - kind: KubernetesGateway
-  //         name: "{{ values.env }}-gateway"
-  //         type: depends_on
-  // The plain `name` here is then the literal Gateway name. See the component's
-  // "Composing in Infra Charts" docs for the full pattern.
+  // TLSRoutes of this namespace. Each reference's name defaults to a
+  // KubernetesGateway foreign key — wire it with valueFrom in an infra chart
+  // and the route deploys after its Gateway.
   //
   // Flattened from the upstream CommonRouteSpec.
   repeated dev.planton.provider.kubernetes.KubernetesGatewayApiParentReference parent_refs = 3 [(buf.validate.field).repeated.max_items = 32];
@@ -74,7 +62,10 @@ message KubernetesTlsRouteSpec {
   repeated string hostnames = 4 [
     (buf.validate.field).repeated = {
       min_items: 1
-      max_items: 16
+      // Upstream raised this bound from 16 to 1024 in the v1.6 release —
+      // validate apiserver/etcd/controller behavior with representative
+      // manifests before relying on very large hostname sets in production.
+      max_items: 1024
       items: {
         string: {
           min_len: 1
@@ -118,21 +109,9 @@ message KubernetesTlsRouteRule {
 
   // Backends matching connections are forwarded to. When multiple backends are
   // given, traffic is split by weight. At least one backend is required.
-  // Upstream support level: Core for Kubernetes Service.
-  //
-  // INFRA-CHART COMPOSABILITY (DD-009): backend_refs is a PLAIN reference, not an
-  // Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-  // objects, so wrapping its scalars would break 100% fidelity (DD-001) and distort
-  // the typed CRD shape (dont-do #6). Because a plain string creates NO automatic
-  // DAG edge, an infra-chart author MUST express the route -> backend dependency via
-  // metadata.relationships when the backend is an Planton-managed resource, e.g.:
-  //   metadata:
-  //     relationships:
-  //       - kind: KubernetesService   # or the backend's actual kind
-  //         name: "{{ values.service_name }}"
-  //         type: uses
-  // The plain `name` here is then the literal Kubernetes Service name. See the
-  // component's "Composing in Infra Charts" docs for the full pattern.
+  // Upstream support level: Core for Kubernetes Service. Each backend's name
+  // defaults to a KubernetesService foreign key — wire it with valueFrom in an
+  // infra chart and the route deploys after its backend.
   repeated dev.planton.provider.kubernetes.KubernetesGatewayApiBackendRef backend_refs = 2 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 16

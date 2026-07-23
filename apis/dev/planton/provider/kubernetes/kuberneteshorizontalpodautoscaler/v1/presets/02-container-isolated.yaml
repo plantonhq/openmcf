@@ -1,0 +1,21 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesHorizontalPodAutoscaler
+metadata:
+  name: container-isolated
+spec:
+  name: container-isolated
+  namespace:
+    value: "<your-namespace>"
+  scale_target:
+    name:
+      value: "<your-workload-name>"
+  min_replicas: 2
+  max_replicas: 10
+  metrics:
+    - type: container_resource
+      container_resource:
+        name: cpu
+        container: "<your-app-container-name>"
+        target:
+          type: utilization
+          average_utilization: 60

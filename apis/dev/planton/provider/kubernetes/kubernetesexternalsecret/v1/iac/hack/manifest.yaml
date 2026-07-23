@@ -1,0 +1,55 @@
+# Full-surface offline-proof manifest: exercises the cluster-store
+# reference, both sync forms (explicit data with property/version/decoding
+# and dataFrom with find + rewrite), the templated target with lifecycle
+# policies, and refresh tuning — so the offline tofu plan and pulumi
+# preview proofs cover every rendering arm. Placeholder values; never
+# applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesExternalSecret
+metadata:
+  name: hack-external-secret
+spec:
+  namespace:
+    value: team-a
+  storeRef:
+    name:
+      value: platform-aws
+    kind: ClusterSecretStore
+  refreshInterval: 15m
+  refreshPolicy: Periodic
+  target:
+    name: app-credentials
+    creationPolicy: Owner
+    deletionPolicy: Delete
+    immutable: false
+    template:
+      type: Opaque
+      mergePolicy: Merge
+      labels:
+        app: payments
+      annotations:
+        example.org/rendered-by: external-secrets
+      data:
+        connection-string: "postgres://{{ .username }}:{{ .password }}@db:5432/app"
+  data:
+    - secretKey: password
+      remoteRef:
+        key: prod/app/database
+        property: password
+        version: "2"
+        decodingStrategy: Auto
+    - secretKey: username
+      remoteRef:
+        key: prod/app/database
+        property: username
+  dataFrom:
+    - extract:
+        key: prod/app/all
+      rewrite:
+        - source: "^prod/app/(.*)$"
+          target: "$1"
+    - find:
+        path: prod/
+        nameRegexp: "^app-.*"
+        tags:
+          env: prod

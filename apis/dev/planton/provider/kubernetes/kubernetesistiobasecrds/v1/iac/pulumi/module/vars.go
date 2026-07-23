@@ -10,7 +10,11 @@ package module
 // installed CRD schema matches the typed custom resources (no silent field pruning).
 const (
 	// IstioRelease is the istio/istio git ref the base CRDs are fetched from.
-	IstioRelease = "release-1.26"
+	// Always an exact release TAG (e.g. "1.30.3"), never a release BRANCH: a
+	// branch ref moves as patches land, so the same deployed resource would
+	// install different CRD schemas at different times — tag pinning keeps
+	// installs reproducible and exactly matched to the generated SDK.
+	IstioRelease = "1.30.3"
 )
 
 // GetCrdManifestURL returns the upstream istio/base CRDs-only bundle URL.

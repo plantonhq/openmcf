@@ -24,4 +24,5 @@ See `variables.tf` for the full variable specification.
 | Output | Description |
 |--------|-------------|
 | `cluster_issuer_name` | Name of the created ClusterIssuer |
+| `secrets_namespace` | Namespace credential Secrets were materialized in |
 | `acme_account_key_secret_name` | ACME account key Secret name |

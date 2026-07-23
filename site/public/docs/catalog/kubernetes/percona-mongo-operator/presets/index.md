@@ -10,8 +10,8 @@ order: 200
 presets:
   - slug: "01-standard"
     rank: "01"
-    title: "Standard Percona Operator for MongoDB"
-    excerpt: "This preset deploys the Percona Operator for MongoDB with recommended default resources. The operator automates the creation, scaling, and management of Percona Server for MongoDB clusters on..."
+    title: "Standard"
+    excerpt: "This preset installs the Percona Operator for MongoDB in its standard posture: the pinned `psmdb-operator` chart, own-namespace watch scope, telemetry off, structured logs, and explicit control-plane..."
 ---
 
 # Percona Mongo Operator Presets

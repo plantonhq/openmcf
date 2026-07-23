@@ -8,7 +8,7 @@ package kubernetessecretv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
-	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
+	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -26,10 +26,13 @@ const (
 // *
 // **KubernetesSecretSpec** defines the configuration for creating and managing a Kubernetes Secret.
 // This spec implements a "Secret-as-a-Service" pattern, providing type-safe configuration for all
-// common Kubernetes secret types while keeping values as plain strings matching the Kubernetes API.
+// standard Kubernetes secret types while keeping values as plain strings matching the Kubernetes API.
+// It is the confidential mirror of KubernetesConfigMap.
 //
 // The type-safe oneof design ensures that exactly one secret type is configured per resource,
-// with type-specific fields and validations for each variant.
+// with type-specific fields and validations for each variant. Every standard secret type is
+// expressible: Opaque (with UTF-8 and binary entries), TLS, docker-registry, basic-auth,
+// ssh-auth, and service-account-token.
 type KubernetesSecretSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
@@ -37,9 +40,11 @@ type KubernetesSecretSpec struct {
 	// Must be a valid DNS subdomain name (lowercase alphanumeric, hyphens, and dots).
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// *
-	// The namespace where the secret will be created.
-	// Default: default
-	Namespace *string `protobuf:"bytes,3,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
+	// The namespace in which the Secret is created. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource, so an infra chart can create the namespace
+	// and the Secret in one run. When omitted, the Secret lands in the cluster's `default`
+	// namespace — the same behavior as kubectl without a namespace flag.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// *
 	// Additional labels to apply to the secret.
 	// These are merged with standard Planton labels for resource tracking and governance.
@@ -63,6 +68,7 @@ type KubernetesSecretSpec struct {
 	//	*KubernetesSecretSpec_DockerConfigJson
 	//	*KubernetesSecretSpec_BasicAuth
 	//	*KubernetesSecretSpec_SshAuth
+	//	*KubernetesSecretSpec_ServiceAccountToken
 	SecretData    isKubernetesSecretSpec_SecretData `protobuf_oneof:"secret_data"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -105,11 +111,11 @@ func (x *KubernetesSecretSpec) GetName() string {
 	return ""
 }
 
-func (x *KubernetesSecretSpec) GetNamespace() string {
-	if x != nil && x.Namespace != nil {
-		return *x.Namespace
+func (x *KubernetesSecretSpec) GetNamespace() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Namespace
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesSecretSpec) GetLabels() map[string]string {
@@ -185,6 +191,15 @@ func (x *KubernetesSecretSpec) GetSshAuth() *KubernetesSecretSshAuthData {
 	return nil
 }
 
+func (x *KubernetesSecretSpec) GetServiceAccountToken() *KubernetesSecretServiceAccountTokenData {
+	if x != nil {
+		if x, ok := x.SecretData.(*KubernetesSecretSpec_ServiceAccountToken); ok {
+			return x.ServiceAccountToken
+		}
+	}
+	return nil
+}
+
 type isKubernetesSecretSpec_SecretData interface {
 	isKubernetesSecretSpec_SecretData()
 }
@@ -219,6 +234,12 @@ type KubernetesSecretSpec_SshAuth struct {
 	SshAuth *KubernetesSecretSshAuthData `protobuf:"bytes,11,opt,name=ssh_auth,json=sshAuth,proto3,oneof"`
 }
 
+type KubernetesSecretSpec_ServiceAccountToken struct {
+	// Long-lived API token bound to a ServiceAccount, populated by the cluster's
+	// token controller. Maps to Kubernetes secret type "kubernetes.io/service-account-token".
+	ServiceAccountToken *KubernetesSecretServiceAccountTokenData `protobuf:"bytes,12,opt,name=service_account_token,json=serviceAccountToken,proto3,oneof"`
+}
+
 func (*KubernetesSecretSpec_Opaque) isKubernetesSecretSpec_SecretData() {}
 
 func (*KubernetesSecretSpec_Tls) isKubernetesSecretSpec_SecretData() {}
@@ -229,6 +250,8 @@ func (*KubernetesSecretSpec_BasicAuth) isKubernetesSecretSpec_SecretData() {}
 
 func (*KubernetesSecretSpec_SshAuth) isKubernetesSecretSpec_SecretData() {}
 
+func (*KubernetesSecretSpec_ServiceAccountToken) isKubernetesSecretSpec_SecretData() {}
+
 // *
 // **KubernetesSecretOpaqueData** defines data for an Opaque secret.
 // This is the most common secret type, used for arbitrary key-value pairs.
@@ -236,9 +259,15 @@ type KubernetesSecretOpaqueData struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
 	// Key-value pairs of secret data.
-	// Values are plain strings (Kubernetes stringData semantics).
-	// At least one entry is required.
-	Data          map[string]string `protobuf:"bytes,1,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Values are plain strings (Kubernetes stringData semantics); Kubernetes stores them
+	// base64-encoded at rest. Use `binary_data` for values that are not valid UTF-8.
+	Data map[string]string `protobuf:"bytes,1,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Binary secret entries with base64-encoded values — the exact wire form the Kubernetes
+	// API uses for `data` in YAML manifests. Use this for payloads that are not valid UTF-8
+	// (keystores, certificates in binary form, serialized blobs). Keys must not overlap with
+	// `data` keys: both maps merge into the same underlying Secret data.
+	BinaryData    map[string]string `protobuf:"bytes,2,rep,name=binary_data,json=binaryData,proto3" json:"binary_data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -276,6 +305,13 @@ func (*KubernetesSecretOpaqueData) Descriptor() ([]byte, []int) {
 func (x *KubernetesSecretOpaqueData) GetData() map[string]string {
 	if x != nil {
 		return x.Data
+	}
+	return nil
+}
+
+func (x *KubernetesSecretOpaqueData) GetBinaryData() map[string]string {
+	if x != nil {
+		return x.BinaryData
 	}
 	return nil
 }
@@ -533,16 +569,72 @@ func (x *KubernetesSecretSshAuthData) GetSshPrivateKey() string {
 	return ""
 }
 
+// *
+// **KubernetesSecretServiceAccountTokenData** requests a long-lived API token for a
+// ServiceAccount. The secret carries no data of its own: the cluster's token controller
+// populates the "token", "ca.crt", and "namespace" keys after creation. Kubernetes has
+// favored short-lived projected tokens since v1.24, so reserve this type for integrations
+// that genuinely need a non-expiring token (external systems polling the API, legacy
+// clients that cannot refresh).
+type KubernetesSecretServiceAccountTokenData struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// The name of the ServiceAccount the token authenticates as. Applied as the
+	// "kubernetes.io/service-account.name" annotation; the ServiceAccount must exist in the
+	// same namespace as the Secret. Accepts a literal name or a reference to a
+	// KubernetesServiceAccount resource, so a chart can create the identity and its
+	// long-lived token in one run.
+	ServiceAccountName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *KubernetesSecretServiceAccountTokenData) Reset() {
+	*x = KubernetesSecretServiceAccountTokenData{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSecretServiceAccountTokenData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSecretServiceAccountTokenData) ProtoMessage() {}
+
+func (x *KubernetesSecretServiceAccountTokenData) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSecretServiceAccountTokenData.ProtoReflect.Descriptor instead.
+func (*KubernetesSecretServiceAccountTokenData) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesSecretServiceAccountTokenData) GetServiceAccountName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ServiceAccountName
+	}
+	return nil
+}
+
 var File_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetessecret/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessecret.v1\x1a\x1bbuf/validate/validate.proto\x1a(dev/planton/shared/options/options.proto\"\xd7\r\n" +
+	">dev/planton/provider/kubernetes/kubernetessecret/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessecret.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x81\x0e\n" +
 	"\x14KubernetesSecretSpec\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
-	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12\xfb\x01\n" +
-	"\tnamespace\x18\x03 \x01(\tB\xd7\x01\xbaH\xc8\x01\xba\x01\xc0\x01\n" +
-	"\x13namespace.dns_label\x12eNamespace must be a valid DNS label (lowercase alphanumeric and hyphens, no leading/trailing hyphens)\x1aBthis == '' || this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')r\x02\x18?\x8a\xa6\x1d\adefaultH\x01R\tnamespace\x88\x01\x01\x12m\n" +
+	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12d\n" +
+	"\tnamespace\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12m\n" +
 	"\x06labels\x18\x04 \x03(\v2U.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.LabelsEntryR\x06labels\x12|\n" +
 	"\vannotations\x18\x05 \x03(\v2Z.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.AnnotationsEntryR\vannotations\x12\x1c\n" +
 	"\timmutable\x18\x06 \x01(\bR\timmutable\x12i\n" +
@@ -552,22 +644,28 @@ const file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDes
 	"\n" +
 	"basic_auth\x18\n" +
 	" \x01(\v2R.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretBasicAuthDataH\x00R\tbasicAuth\x12m\n" +
-	"\bssh_auth\x18\v \x01(\v2P.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSshAuthDataH\x00R\asshAuth\x1a9\n" +
+	"\bssh_auth\x18\v \x01(\v2P.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSshAuthDataH\x00R\asshAuth\x12\x92\x01\n" +
+	"\x15service_account_token\x18\f \x01(\v2\\.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretServiceAccountTokenDataH\x00R\x13serviceAccountToken\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
 	"\x10AnnotationsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf8\x01\xbaH\xf4\x01\x1a\xf1\x01\n" +
-	"\x14secret_data_required\x12hExactly one secret data type must be provided (opaque, tls, docker_config_json, basic_auth, or ssh_auth)\x1aohas(this.opaque) || has(this.tls) || has(this.docker_config_json) || has(this.basic_auth) || has(this.ssh_auth)B\r\n" +
-	"\vsecret_dataB\f\n" +
-	"\n" +
-	"_namespace\"\xce\x01\n" +
-	"\x1aKubernetesSecretOpaqueData\x12w\n" +
-	"\x04data\x18\x01 \x03(\v2Y.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\x04data\x1a7\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb3\x02\xbaH\xaf\x02\x1a\xac\x02\n" +
+	"\x14secret_data_required\x12\x7fExactly one secret data type must be provided (opaque, tls, docker_config_json, basic_auth, ssh_auth, or service_account_token)\x1a\x92\x01has(this.opaque) || has(this.tls) || has(this.docker_config_json) || has(this.basic_auth) || has(this.ssh_auth) || has(this.service_account_token)B\r\n" +
+	"\vsecret_data\"\xf2\x05\n" +
+	"\x1aKubernetesSecretOpaqueData\x12m\n" +
+	"\x04data\x18\x01 \x03(\v2Y.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntryR\x04data\x12\xe8\x01\n" +
+	"\vbinary_data\x18\x02 \x03(\v2_.dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.BinaryDataEntryBf\xbaHc\x9a\x01`\"\x18r\x16\x18\xfd\x012\x11^[-._a-zA-Z0-9]+$*DrB2@^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$R\n" +
+	"binaryData\x1a7\n" +
 	"\tDataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"]\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a=\n" +
+	"\x0fBinaryDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x81\x02\xbaH\xfd\x01\x1a\x82\x01\n" +
+	"\x14opaque_data_required\x125at least one entry is required in data or binary_data\x1a3this.data.size() > 0 || this.binary_data.size() > 0\x1av\n" +
+	"\x14data_keys_no_overlap\x122data and binary_data must not contain the same key\x1a*this.data.all(k, !(k in this.binary_data))\"]\n" +
 	"\x17KubernetesSecretTlsData\x12 \n" +
 	"\atls_crt\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06tlsCrt\x12 \n" +
 	"\atls_key\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06tlsKey\"\xb8\x01\n" +
@@ -580,7 +678,9 @@ const file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDes
 	"\busername\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\busername\x12#\n" +
 	"\bpassword\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bpassword\"N\n" +
 	"\x1bKubernetesSecretSshAuthData\x12/\n" +
-	"\x0fssh_private_key\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\rsshPrivateKeyB\xa1\x03\n" +
+	"\x0fssh_private_key\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\rsshPrivateKey\"\xa9\x01\n" +
+	"'KubernetesSecretServiceAccountTokenData\x12~\n" +
+	"\x14service_account_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xab\x06\x92\xd4a\tspec.nameR\x12serviceAccountNameB\xa1\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetessecret.v1B\tSpecProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessecret/v1;kubernetessecretv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetessecret.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetessecret\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetessecret\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetessecret::V1b\x06proto3"
 
 var (
@@ -595,32 +695,39 @@ func file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDesc
 	return file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_goTypes = []any{
-	(*KubernetesSecretSpec)(nil),                 // 0: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec
-	(*KubernetesSecretOpaqueData)(nil),           // 1: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData
-	(*KubernetesSecretTlsData)(nil),              // 2: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretTlsData
-	(*KubernetesSecretDockerConfigJsonData)(nil), // 3: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretDockerConfigJsonData
-	(*KubernetesSecretBasicAuthData)(nil),        // 4: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretBasicAuthData
-	(*KubernetesSecretSshAuthData)(nil),          // 5: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSshAuthData
-	nil,                                          // 6: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.LabelsEntry
-	nil,                                          // 7: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.AnnotationsEntry
-	nil,                                          // 8: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntry
+	(*KubernetesSecretSpec)(nil),                    // 0: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec
+	(*KubernetesSecretOpaqueData)(nil),              // 1: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData
+	(*KubernetesSecretTlsData)(nil),                 // 2: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretTlsData
+	(*KubernetesSecretDockerConfigJsonData)(nil),    // 3: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretDockerConfigJsonData
+	(*KubernetesSecretBasicAuthData)(nil),           // 4: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretBasicAuthData
+	(*KubernetesSecretSshAuthData)(nil),             // 5: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSshAuthData
+	(*KubernetesSecretServiceAccountTokenData)(nil), // 6: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretServiceAccountTokenData
+	nil,                         // 7: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.LabelsEntry
+	nil,                         // 8: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.AnnotationsEntry
+	nil,                         // 9: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntry
+	nil,                         // 10: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.BinaryDataEntry
+	(*v1.StringValueOrRef)(nil), // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_depIdxs = []int32{
-	6, // 0: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.labels:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.LabelsEntry
-	7, // 1: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.annotations:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.AnnotationsEntry
-	1, // 2: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.opaque:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData
-	2, // 3: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.tls:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretTlsData
-	3, // 4: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.docker_config_json:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretDockerConfigJsonData
-	4, // 5: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.basic_auth:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretBasicAuthData
-	5, // 6: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.ssh_auth:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSshAuthData
-	8, // 7: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.data:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntry
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	11, // 0: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 1: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.labels:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.LabelsEntry
+	8,  // 2: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.annotations:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.AnnotationsEntry
+	1,  // 3: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.opaque:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData
+	2,  // 4: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.tls:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretTlsData
+	3,  // 5: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.docker_config_json:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretDockerConfigJsonData
+	4,  // 6: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.basic_auth:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretBasicAuthData
+	5,  // 7: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.ssh_auth:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSshAuthData
+	6,  // 8: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretSpec.service_account_token:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretServiceAccountTokenData
+	9,  // 9: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.data:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.DataEntry
+	10, // 10: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.binary_data:type_name -> dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretOpaqueData.BinaryDataEntry
+	11, // 11: dev.planton.provider.kubernetes.kubernetessecret.v1.KubernetesSecretServiceAccountTokenData.service_account_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_init() }
@@ -634,6 +741,7 @@ func file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_init() 
 		(*KubernetesSecretSpec_DockerConfigJson)(nil),
 		(*KubernetesSecretSpec_BasicAuth)(nil),
 		(*KubernetesSecretSpec_SshAuth)(nil),
+		(*KubernetesSecretSpec_ServiceAccountToken)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -641,7 +749,7 @@ func file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_init() 
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetessecret_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

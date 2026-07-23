@@ -1,0 +1,15 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesServiceAccount
+metadata:
+  name: e2e-sa-irsa
+spec:
+  name: e2e-sa-irsa
+  namespace:
+    value: default
+  # The annotation lands regardless of the cluster host — a kind cluster
+  # verifies the module wiring; the actual credential exchange is exercised
+  # on the real-cluster lanes.
+  workloadIdentity:
+    eks:
+      roleArn:
+        value: arn:aws:iam::123456789012:role/e2e-sa-irsa-test

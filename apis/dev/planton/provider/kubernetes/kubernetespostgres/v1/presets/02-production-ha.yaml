@@ -1,0 +1,75 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPostgres
+metadata:
+  name: prod-db
+spec:
+  namespace:
+    value: prod-db
+  create_namespace: true
+  # The production convention: one primary + two replicas — failover
+  # capacity even during maintenance.
+  instances: 3
+  storage:
+    size: 100Gi
+  # Dedicated WAL volume: sequential WAL writes on their own disk — the
+  # standard I/O-isolation move for write-heavy workloads. Set at
+  # creation; adding it later requires re-creating the instances.
+  wal_storage:
+    size: 20Gi
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi # the operator derives PostgreSQL memory tuning from the limits
+  postgresql:
+    parameters:
+      max_connections: "200"
+    # Synchronous replication: transactions wait for one replica before
+    # committing — the zero-data-loss posture. "any" = quorum (recommended);
+    # "required" = writes BLOCK when no replica is available (durability
+    # over availability).
+    synchronous:
+      method: any
+      number: 1
+      data_durability: required
+  bootstrap:
+    initdb:
+      database: app
+      # Data-page checksums detect silent storage corruption; cannot be
+      # turned on later — always set for new production clusters.
+      data_checksums: true
+  backup:
+    object_store:
+      # One destination path per cluster — two clusters writing the same
+      # path corrupt each other's archives.
+      destination_path: s3://<pg-backups-bucket>/prod-db
+      s3:
+        region: <aws-region>
+        # Keyless: the instance pods' IRSA identity (workload_identity
+        # below) authenticates to S3 — no stored keys.
+        keyless: true
+      wal:
+        compression: zstd # the modern speed/ratio sweet spot
+      data:
+        compression: gzip
+    retention_policy: 30d # backups and WAL pruned after 30 days
+    schedules:
+      - name: daily
+        schedule: "0 0 2 * * *" # SIX-field cron, seconds first — 02:00 nightly
+        # First base backup immediately on creation — the cluster is
+        # unprotected until one exists.
+        immediate: true
+  # IRSA: the role's trust policy must allow the cluster's OIDC provider
+  # and the cluster's own ServiceAccount (named prod-db, in prod-db).
+  workload_identity:
+    eks:
+      role_arn:
+        value: arn:aws:iam::123456789012:role/prod-db-backups
+  scheduling:
+    # Hard rule: instances stay Pending unless separate nodes exist — the
+    # production posture (the default "preferred" is best-effort).
+    anti_affinity_type: required
+  update_strategy:
+    primary_update_method: switchover # promote a replica first — shorter write outage

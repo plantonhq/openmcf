@@ -1,0 +1,13 @@
+# Fixture manifest used when another kind's scenario declares
+# KubernetesMetricsServer in its e2e-prerequisites annotation (e.g. the
+# HorizontalPodAutoscaler behavioral-scaling scenario). One installation per
+# cluster — the fixture name is stable so orphan sweeps can find it.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMetricsServer
+metadata:
+  name: e2e-metrics-server-prereq
+spec:
+  namespace:
+    value: metrics-server
+  createNamespace: true
+  kubeletInsecureTls: true

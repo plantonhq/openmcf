@@ -1,0 +1,15 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesRbac
+metadata:
+  name: e2e-rbac-aggregated
+spec:
+  clusterScope: {}
+  # Role-only grant: publishes an aggregated ClusterRole with no binding.
+  # The aggregation controller composes its rules from ClusterRoles carrying
+  # the matching label.
+  createRole:
+    name: e2e-monitoring-aggregate
+    aggregationRule:
+      clusterRoleSelectors:
+        - matchLabels:
+            rbac.e2e.planton.dev/aggregate-to-monitoring: "true"

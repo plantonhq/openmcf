@@ -17,10 +17,10 @@ declared in the mesh's `MeshConfig`; Telemetry only selects and tailors them.
 
 ## 2. Source of truth and version
 
-Translated proto-to-proto from the upstream `istio.io/api` clone pinned to tag **1.26.8**
+Translated proto-to-proto from the upstream `istio.io/api` clone pinned to tag **1.30.3**
 (`telemetry/v1alpha1/telemetry.proto`; the `v1` CRD is a type alias). The local clone is
 authoritative. The CRDs installed by `KubernetesIstioBaseCrds` are generated from Istio
-`release-1.26`, so the proto and the cluster CRD agree on the schema.
+`tag `1.30.3``, so the proto and the cluster CRD agree on the schema.
 
 ## 3. Modeling decisions
 
@@ -48,8 +48,12 @@ message-level "at most one" CEL (1:1 with the CRD JSON `oneOf`; no invented disc
 
 | Union | Planton CEL (id) |
 |-------|------------------|
-| `CustomTag {literal, environment, header}` | `telemetry_custom_tag.at_most_one_source` |
+| `CustomTag {literal, environment, header, formatter}` | `telemetry_custom_tag.at_most_one_source` |
 | `MetricSelector {metric, custom_metric}` | `telemetry_metric_selector.at_most_one_metric` |
+
+The `formatter` custom-tag source supplies the tag value from an access-log
+substitution formatter expression (the same command operators HTTP access logging
+uses, e.g. `%PROTOCOL%`, `%REQ(:authority)%`), evaluated per request.
 
 ### `TagOverride` operation/value coupling -- faithful `has()`-guarded CEL
 
@@ -68,6 +72,8 @@ re-expressed with `has()` guards:
 duration('1ms')`, mirroring the upstream CRD XValidation. All `google.protobuf.DoubleValue`
 / `BoolValue` wrappers become the matching `optional` scalar (`random_sampling_percentage`
 -> `optional double` with the upstream 0-100 bounds; `disable_span_reporting`,
+`disable_context_propagation` (suppresses trace-context header propagation --
+`traceparent`/`tracestate`, `X-B3-*` -- while spans still report locally),
 `enable_istio_tags`, metrics/access-logging `disabled` -> `optional bool`). `WorkloadMode`,
 `IstioMetric`, and `Operation` are `optional string` validated by `string.in [...]` against
 the UPPERCASE upstream constants (not proto enums).
@@ -94,7 +100,7 @@ Both engines emit the same `telemetry.istio.io/v1` `Telemetry`.
 Every other typed Istio component uses its crd2pulumi-generated `New<Kind>` resource.
 Telemetry **cannot**, because of a concrete crd2pulumi limitation: the CRD's
 `spec.tracing[].customTags` is a map whose values are nested objects with a `oneOf` over
-`{literal, environment, header}`. crd2pulumi (confirmed through v1.6.0 by regenerating the
+`{literal, environment, header, formatter}`. crd2pulumi (confirmed through v1.6.0 by regenerating the
 SDK) degrades that map to `map[string]map[string]string`, which **structurally cannot
 carry** the nested `{literal: {value: "..."}}` object -- and it generates no `CustomTag`
 struct at all. Using the typed `NewTelemetry` would make a valid, upstream-supported custom
@@ -110,32 +116,30 @@ the reason for the untyped resource.) If a future crd2pulumi types object-valued
 
 ### Terraform
 
-`kubernetes_manifest` with a fully-typed `variable "spec"` and a `locals.tf` that prunes
-unset fields. Two shapes are handled differently:
-
-- **Object-typed `oneOf` members -> `merge()`-prune** (omit the non-chosen member entirely).
-  `custom_tags`' `{literal|environment|header}` are objects with required subfields; emitting
-  a non-chosen member as null would be sent as an empty `{}`, which both violates its required
-  subfields and matches a second `oneOf` arm. Only the chosen member is emitted (its required
-  subfields seeded as the merge base).
-- **Scalar `oneOf` members and uniform-type leaves -> object constructor (value-or-null).**
-  The metrics override `match` (`metric`/`custom_metric`/`mode` -- all strings, with a
-  metric-vs-custom_metric `oneOf`) and `tag_overrides` values (`{operation, value}` -- both
-  strings) are built this way. `kubernetes_manifest` prunes scalar nulls before the API
-  server evaluates the `oneOf`, so only the field that was set is sent; an all-conditional
-  `merge()` of these uniform-string fields would instead collapse to a `map(string)` the
-  provider cannot morph into an object.
+`kubectl_manifest` (alekc/kubectl) applied server-side, with a pass-through
+`variable "spec"` typed `any`: the platform's proto-to-tfvars converter emits the
+manifest-shaped (camelCase, null-pruned) spec with `StringValueOrRef` foreign keys
+(`namespace`, `target_refs[].name`) resolved to literal strings, so the module hands it
+to the cluster verbatim -- no snake-to-camel mapping, null-pruning, or `oneOf` logic in
+HCL. `locals.tf` only strips the Planton `namespace` key (which maps to
+`metadata.namespace`) and renders the identity labels.
 
 ## 6. Composability
 
 - **`namespace`** is the one true foreign key: `StringValueOrRef` -> `KubernetesNamespace`
   (`spec.name`); creates a real DAG edge.
-- **`selector.match_labels`** and **`target_refs`** are plain runtime references, NOT foreign
-  keys -- istiod resolves them at runtime, so they create no automatic DAG edge. An
-  infra-chart author who needs ordering declares it on `metadata.relationships`
-  (`depends_on` -> the observed workload/gateway). Provider names refer to MeshConfig
-  extension providers, not Planton resources. See the README's "Composing in Infra
-  Charts" section for a worked example.
+- **`target_refs[].name`** is also a foreign key: `StringValueOrRef` defaulting to a
+  `KubernetesGateway` reference (`status.outputs.gateway_name`), since the dominant target
+  for these configurations is a Gateway (ingress telemetry). Wiring it with `valueFrom`
+  gives the chart a real dependency edge from the Telemetry to the gateway it observes.
+  When the target is a Service, a ServiceEntry, or any resource not managed as a Planton
+  kind, the literal name is passed with `value:` -- istiod resolves group/kind/name against
+  the cluster at runtime either way.
+- **`selector.match_labels`** is a plain label match, NOT a foreign key -- istiod matches
+  it against pod labels at runtime, so it creates no automatic DAG edge. An infra-chart
+  author who needs ordering declares it on `metadata.relationships` (`depends_on` -> the
+  observed workload). Provider names refer to MeshConfig extension providers, not Planton
+  resources. See the README's "Composing in Infra Charts" section for a worked example.
 - **Outputs** export the honest `telemetry_name` + `namespace`; Telemetry is a config
   resource with no controller-reconciled status worth surfacing.
 
@@ -174,4 +178,4 @@ exact fields. The console integration is a separate follow-up project.
 ## References
 
 - [Istio Telemetry reference](https://istio.io/latest/docs/reference/config/telemetry/)
-- Upstream proto: `istio.io/api` `telemetry/v1alpha1/telemetry.proto` @ `1.26.8`
+- Upstream proto: `istio.io/api` `telemetry/v1alpha1/telemetry.proto` @ `1.30.3`

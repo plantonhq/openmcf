@@ -1,149 +1,185 @@
 package module
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 	kubernetesistiov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesistio/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
-	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
+	pulumiyaml "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources wires up Istio (base, control‑plane & ingress gateway) on the target
-// Kubernetes cluster.  It honours spec.container.resources for the Istiod
-// deployment, allowing callers to tune CPU / memory without touching Helm YAML.
-func Resources(ctx *pulumi.Context, in *kubernetesistiov1.KubernetesIstioStackInput) error {
-	// Initialize locals with computed values
-	locals := initializeLocals(ctx, in)
+// Resources installs the Istio control plane from the official Helm charts as
+// real Helm releases, in upstream's own order:
+//
+//	CRDs (module-owned, server-side apply)
+//	-> base (validation plumbing) -> istiod (the control plane)
+//	-> [ambient or cni.enabled] istio-cni (node agent)
+//	-> [ambient] ztunnel (per-node L4 proxy)
+//
+// The CRDs deliberately apply OUTSIDE the base release (the chart installs
+// them with base.excludedCRDs covering the whole bundle): Helm refuses to
+// adopt CRDs that already exist without ITS ownership metadata, so a cluster
+// running the CRDs-only KubernetesIstioBaseCrds kind could never upgrade to
+// the full mesh if the chart owned them — server-side-applied CRDs are
+// co-ownable by both kinds, making that migration a plain redeploy.
+//
+// The typed spec renders into per-chart values (values.go); each release's
+// helm_values escape hatch merges last with Helm -f semantics — the exact
+// semantic twin of the Terraform module's helm_release resources.
+//
+// Deliberately NO gateway release: istiod implements the Kubernetes Gateway
+// API, so north-south gateways are composed from KubernetesGateway resources
+// (gateway_class_name: istio) and istiod provisions their deployments itself.
+func Resources(ctx *pulumi.Context, stackInput *kubernetesistiov1.KubernetesIstioStackInput) error {
+	locals := initializeLocals(ctx, stackInput)
 
-	// Kubernetes provider from cluster‑credential
-	kubernetesProviderConfig, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
-		ctx, in.ProviderConfig, "kubernetes")
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
+		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to set up kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
-	spec := in.Target.Spec
-
-	// ---- pick chart version ----
-	// Driven by spec.version (defaulted to vars.DefaultStableVersion at manifest-load
-	// time via protodefaults); fall back to the module default if somehow unset.
-	chartVersion := spec.GetVersion()
-	if chartVersion == "" {
-		chartVersion = vars.DefaultStableVersion
-	}
-
-	// ---- conditionally create namespaces ----
-	sysNSName, gwNSName, namespaceDeps, err := namespaces(ctx, in, locals, kubernetesProviderConfig)
+	// ------------------------------ namespace ----------------------------
+	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
-		return errors.Wrap(err, "failed to create namespaces")
+		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	// convenience for repeated repo opts
-	repo := helm.RepositoryOptsArgs{Repo: pulumi.String(vars.HelmRepo)}
+	// ------------------------------ CRDs ----------------------------------
+	// Module-owned (never Helm-owned — see the function comment). The bundle
+	// version is pinned to spec.version so the installed CRD schema matches
+	// the control plane and the typed Istio kinds' generated SDK.
+	crds, err := pulumiyaml.NewConfigFile(ctx, "istio-crds",
+		&pulumiyaml.ConfigFileArgs{
+			File: fmt.Sprintf(vars.CrdBundleURLTemplate, locals.Version),
+		},
+		pulumi.Provider(kubernetesProvider))
+	if err != nil {
+		return errors.Wrap(err, "failed to apply istio CRDs")
+	}
 
-	// ---- istio/base ----
-	// Helm release name uses {metadata.name}-base to avoid conflicts when multiple instances share a namespace
-	baseOpts := append([]pulumi.ResourceOption{
-		pulumi.Provider(kubernetesProviderConfig),
-	}, namespaceDeps...)
+	baseOpts := []pulumi.ResourceOption{
+		pulumi.Provider(kubernetesProvider),
+		pulumi.DependsOn([]pulumi.Resource{crds}),
+	}
+	if createdNamespace != nil {
+		baseOpts = append(baseOpts, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+	}
 
-	_, err = helm.NewRelease(ctx, locals.BaseReleaseName,
-		&helm.ReleaseArgs{
-			Name:            pulumi.String(locals.BaseReleaseName),
-			Namespace:       sysNSName,
-			Chart:           pulumi.String(vars.BaseChart),
-			Version:         pulumi.String(chartVersion),
+	// ------------------------------ base ---------------------------------
+	baseValues, err := buildBaseValues(locals)
+	if err != nil {
+		return errors.Wrap(err, "failed to build base chart values")
+	}
+
+	baseRelease, err := helmv3.NewRelease(ctx, vars.BaseReleaseName, &helmv3.ReleaseArgs{
+		Name:      pulumi.String(vars.BaseReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		Chart:     pulumi.String(vars.BaseChart),
+		Version:   pulumi.String(locals.Version),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(vars.HelmRepo),
+		},
+		Values: pulumi.ToMap(baseValues),
+		// The module owns namespace creation (create_namespace flag).
+		CreateNamespace: pulumi.Bool(false),
+		Atomic:          pulumi.Bool(true),
+		CleanupOnFail:   pulumi.Bool(true),
+		Timeout:         pulumi.Int(300),
+	}, baseOpts...)
+	if err != nil {
+		return errors.Wrap(err, "failed to install istio base helm release")
+	}
+
+	// ------------------------------ istiod --------------------------------
+	istiodValues, err := buildIstiodValues(locals)
+	if err != nil {
+		return errors.Wrap(err, "failed to build istiod chart values")
+	}
+
+	istiodRelease, err := helmv3.NewRelease(ctx, locals.IstiodReleaseName, &helmv3.ReleaseArgs{
+		Name:      pulumi.String(locals.IstiodReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		Chart:     pulumi.String(vars.IstiodChart),
+		Version:   pulumi.String(locals.Version),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(vars.HelmRepo),
+		},
+		Values:          pulumi.ToMap(istiodValues),
+		CreateNamespace: pulumi.Bool(false),
+		// Wait for istiod to be Ready: a control plane whose webhooks and
+		// discovery service are not serving rejects every mesh-config apply
+		// and every injection, so a premature "success" would just move the
+		// failure downstream.
+		Atomic:        pulumi.Bool(true),
+		CleanupOnFail: pulumi.Bool(true),
+		Timeout:       pulumi.Int(600),
+	}, pulumi.Provider(kubernetesProvider), pulumi.DependsOn([]pulumi.Resource{baseRelease}))
+	if err != nil {
+		return errors.Wrap(err, "failed to install istiod helm release")
+	}
+
+	// ------------------------------ cni (ambient or opt-in) ----------------
+	if locals.InstallCni {
+		cniValues, err := buildCniValues(locals)
+		if err != nil {
+			return errors.Wrap(err, "failed to build cni chart values")
+		}
+
+		_, err = helmv3.NewRelease(ctx, vars.CniReleaseName, &helmv3.ReleaseArgs{
+			Name:      pulumi.String(vars.CniReleaseName),
+			Namespace: pulumi.String(locals.Namespace),
+			Chart:     pulumi.String(vars.CniChart),
+			Version:   pulumi.String(locals.Version),
+			RepositoryOpts: &helmv3.RepositoryOptsArgs{
+				Repo: pulumi.String(vars.HelmRepo),
+			},
+			Values:          pulumi.ToMap(cniValues),
 			CreateNamespace: pulumi.Bool(false),
 			Atomic:          pulumi.Bool(true),
 			CleanupOnFail:   pulumi.Bool(true),
-			WaitForJobs:     pulumi.Bool(true),
-			Timeout:         pulumi.Int(180),
-			RepositoryOpts:  repo,
-		},
-		baseOpts...)
-	if err != nil {
-		return errors.Wrap(err, "installing istio/base")
-	}
-
-	// ---- istiod (control‑plane) ----
-	istiodValues := pulumi.Map{}
-	if res := spec.GetContainer(); res != nil && res.Resources != nil {
-		// map protobuf fields -> Helm values: pilot.resources
-		limits := res.Resources.GetLimits()
-		requests := res.Resources.GetRequests()
-		istiodValues["pilot"] = pulumi.Map{
-			"resources": pulumi.Map{
-				"limits": pulumi.Map{
-					"cpu":    pulumi.String(limits.GetCpu()),
-					"memory": pulumi.String(limits.GetMemory()),
-				},
-				"requests": pulumi.Map{
-					"cpu":    pulumi.String(requests.GetCpu()),
-					"memory": pulumi.String(requests.GetMemory()),
-				},
-			},
+			Timeout:         pulumi.Int(600),
+		}, pulumi.Provider(kubernetesProvider), pulumi.DependsOn([]pulumi.Resource{istiodRelease}))
+		if err != nil {
+			return errors.Wrap(err, "failed to install istio-cni helm release")
 		}
 	}
 
-	// Helm release name uses {metadata.name}-istiod to avoid conflicts when multiple instances share a namespace
-	istiodOpts := append([]pulumi.ResourceOption{
-		pulumi.Provider(kubernetesProviderConfig),
-	}, namespaceDeps...)
+	// ------------------------------ ztunnel (ambient only) -----------------
+	if locals.Ambient {
+		ztunnelValues, err := buildZtunnelValues(locals)
+		if err != nil {
+			return errors.Wrap(err, "failed to build ztunnel chart values")
+		}
 
-	_, err = helm.NewRelease(ctx, locals.IstiodReleaseName,
-		&helm.ReleaseArgs{
-			Name:            pulumi.String(locals.IstiodReleaseName),
-			Namespace:       sysNSName,
-			Chart:           pulumi.String(vars.IstiodChart),
-			Version:         pulumi.String(chartVersion),
-			CreateNamespace: pulumi.Bool(false),
-			Atomic:          pulumi.Bool(true),
-			CleanupOnFail:   pulumi.Bool(true),
-			WaitForJobs:     pulumi.Bool(true),
-			Timeout:         pulumi.Int(180),
-			Values:          istiodValues,
-			RepositoryOpts:  repo,
-		},
-		istiodOpts...)
-	if err != nil {
-		return errors.Wrap(err, "installing istiod control‑plane")
-	}
-
-	// ---- ingress‑gateway ----
-	// Helm release name uses {metadata.name}-gateway to avoid conflicts when multiple instances share a namespace
-	gwOpts := append([]pulumi.ResourceOption{
-		pulumi.Provider(kubernetesProviderConfig),
-	}, namespaceDeps...)
-
-	_, err = helm.NewRelease(ctx, locals.GatewayReleaseName,
-		&helm.ReleaseArgs{
-			Name:            pulumi.String(locals.GatewayReleaseName),
-			Namespace:       gwNSName,
-			Chart:           pulumi.String(vars.GatewayChart),
-			Version:         pulumi.String(chartVersion),
-			CreateNamespace: pulumi.Bool(false),
-			Atomic:          pulumi.Bool(true),
-			CleanupOnFail:   pulumi.Bool(true),
-			WaitForJobs:     pulumi.Bool(true),
-			Timeout:         pulumi.Int(180),
-			RepositoryOpts:  repo,
-			Values: pulumi.Map{
-				"service": pulumi.Map{
-					"type": pulumi.String("LoadBalancer"),
-				},
+		_, err = helmv3.NewRelease(ctx, vars.ZtunnelReleaseName, &helmv3.ReleaseArgs{
+			Name:      pulumi.String(vars.ZtunnelReleaseName),
+			Namespace: pulumi.String(locals.Namespace),
+			Chart:     pulumi.String(vars.ZtunnelChart),
+			Version:   pulumi.String(locals.Version),
+			RepositoryOpts: &helmv3.RepositoryOptsArgs{
+				Repo: pulumi.String(vars.HelmRepo),
 			},
-		},
-		gwOpts...)
-	if err != nil {
-		return errors.Wrap(err, "installing istio ingress‑gateway")
+			Values:          pulumi.ToMap(ztunnelValues),
+			CreateNamespace: pulumi.Bool(false),
+			Atomic:          pulumi.Bool(true),
+			CleanupOnFail:   pulumi.Bool(true),
+			Timeout:         pulumi.Int(600),
+		}, pulumi.Provider(kubernetesProvider), pulumi.DependsOn([]pulumi.Resource{istiodRelease}))
+		if err != nil {
+			return errors.Wrap(err, "failed to install ztunnel helm release")
+		}
 	}
 
-	// ---- stack outputs ----
-	ctx.Export(OpNamespace, sysNSName)
-	ctx.Export(OpService, pulumi.String(locals.IstiodReleaseName))
-	ctx.Export(OpPortForwardCommand, pulumi.Sprintf("kubectl port-forward -n %s svc/%s 15014:15014", sysNSName, locals.IstiodReleaseName))
-	ctx.Export(OpKubeEndpoint, pulumi.Sprintf("%s.%s.svc.cluster.local:15012", locals.IstiodReleaseName, sysNSName))
-	ctx.Export(OpIngressEndpoint, pulumi.Sprintf("%s.%s.svc.cluster.local:80", locals.GatewayReleaseName, gwNSName))
+	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	ctx.Export(OpIstiodServiceName, pulumi.String(locals.IstiodServiceName))
+	ctx.Export(OpRevision, pulumi.String(locals.Revision))
+	ctx.Export(OpGatewayClassName, pulumi.String(vars.GatewayClassName))
+	ctx.Export(OpTrustDomain, pulumi.String(locals.TrustDomain))
+	ctx.Export(OpDataplaneMode, pulumi.String(locals.DataplaneMode))
 
 	return nil
 }

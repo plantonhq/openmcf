@@ -3,63 +3,45 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes.kubernetesissuer.v1;
 
 import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/cert_manager_issuer.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
-// KubernetesIssuerSpec defines configuration for a namespace-scoped cert-manager
-// Issuer. Unlike ClusterIssuer (which operates cluster-wide with DNS-01/ACME),
-// an Issuer is scoped to a single namespace and supports simpler signing modes:
-//
-//   - **CA**: signs certificates using a CA keypair stored in a Kubernetes Secret
-//     (typically created by a KubernetesCertificate with is_ca=true).
-//   - **SelfSigned**: issues self-signed certificates, commonly used to bootstrap
-//     a CA chain or for development/testing.
-//
-// Only CA and SelfSigned are included (80/20 rule). ACME issuance is handled by
-// KubernetesClusterIssuer; Vault or other backends can be added later.
+/**
+ * **KubernetesIssuerSpec** creates one cert-manager Issuer — a
+ * NAMESPACE-SCOPED certificate authority front-end. Only Certificate
+ * resources in the same namespace can request certificates from it, and every
+ * Secret it needs (credentials, CA keypairs) must live in that same
+ * namespace. The Issuer is named after this resource (`metadata.name`).
+ *
+ * Issuer vs ClusterIssuer: identical signing capabilities (the config message
+ * is shared), different scope. The namespace scope is the point: a team's CA
+ * keypair and DNS credentials stay readable only inside the team's namespace,
+ * instead of being trusted cluster-wide. Common namespace-scoped patterns:
+ *
+ *   - Internal PKI per namespace: a self_signed root + a ca issuer signing
+ *     service certificates (the standard mTLS bootstrap).
+ *   - A team-owned ACME issuer whose DNS credentials must not be shared
+ *     cluster-wide.
+ *
+ * Requires cert-manager (KubernetesCertManager) on the cluster.
+ */
 message KubernetesIssuerSpec {
-  option (buf.validate.message).cel = {
-    id: "issuer_type.required"
-    message: "An issuer type must be selected -- choose 'ca' to sign certificates using a CA keypair from a Kubernetes Secret, or 'self_signed' for self-signed certificates used to bootstrap CA chains or for development"
-    expression: "has(this.ca) || has(this.self_signed)"
-  };
-
-  // Namespace where the Issuer will be created.
-  // The Issuer is namespace-scoped, so all Certificate resources that reference
-  // it must reside in this same namespace.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+  /**
+   * Namespace the Issuer is created in — the same namespace its Certificates
+   * and credential Secrets must live in. Accepts a literal namespace name or
+   * a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
   ];
 
-  // Exactly one issuer type must be selected.
-  oneof issuer_type {
-    // CA issuer -- signs certificates using a CA keypair from a Kubernetes Secret.
-    CaIssuerConfig ca = 100;
-    // Self-signed issuer -- issues self-signed certificates (no external CA needed).
-    SelfSignedIssuerConfig self_signed = 101;
-  }
+  /**
+   * The signing backend and its configuration — ACME (public CAs like
+   * Let's Encrypt), CA (sign with a Secret-held keypair), SelfSigned
+   * (bootstrap/dev), or Vault (Vault/OpenBao PKI). Credential Secrets are
+   * materialized in the Issuer's own namespace.
+   */
+  dev.planton.provider.kubernetes.CertManagerIssuerConfig config = 2 [(buf.validate.field).required = true];
 }
-
-// CaIssuerConfig configures the Issuer to sign certificates using a CA keypair
-// stored in a Kubernetes Secret. The Secret must contain tls.crt (CA certificate)
-// and tls.key (CA private key), and must reside in the same namespace as the Issuer.
-//
-// Typically, the CA Secret is created by a KubernetesCertificate with is_ca=true.
-// The foreign-key annotation on ca_secret_name points to
-// KubernetesCertificate.status.outputs.secret_name so that the Issuer
-// automatically picks up the correct Secret when wired via a resource reference.
-message CaIssuerConfig {
-  // Kubernetes Secret containing the CA certificate (tls.crt) and private key (tls.key).
-  // Must be in the same namespace as the Issuer.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef ca_secret_name = 1 [
-    (buf.validate.field).required = true,
-    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesCertificate,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name"
-  ];
-}
-
-// SelfSignedIssuerConfig selects self-signed mode for the Issuer.
-// No configuration required. Selecting this issuer type creates a self-signed
-// Issuer, commonly used to bootstrap a root CA or for development environments.
-message SelfSignedIssuerConfig {}

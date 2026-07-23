@@ -1,0 +1,18 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesServiceEntry
+metadata:
+  name: wildcard-saas-egress
+spec:
+  namespace:
+    value: <namespace>
+  # DYNAMIC_DNS resolves the ACTUAL requested hostname at request time — a
+  # dynamic forward proxy for wildcard domains (every host must be
+  # wildcarded; no addresses or endpoints; HTTP-family and TLS ports only).
+  hosts:
+    - "*.example-saas.com"
+  location: MESH_EXTERNAL
+  resolution: DYNAMIC_DNS
+  ports:
+    - number: 443
+      name: https
+      protocol: TLS

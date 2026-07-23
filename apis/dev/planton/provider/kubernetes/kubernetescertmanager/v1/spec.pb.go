@@ -8,6 +8,7 @@ package kubernetescertmanagerv1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -24,30 +25,151 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesCertManagerSpec defines configuration for installing cert-manager
-// on any Kubernetes cluster. This component handles the controller lifecycle
-// (Helm chart, CRDs, ServiceAccount with optional workload identity).
+// *
+// **KubernetesCertManagerSpec** installs cert-manager — the cluster's
+// certificate machinery — from the official Helm chart (`cert-manager` at
+// https://charts.jetstack.io). cert-manager runs three components: the
+// controller (watches Certificates and drives issuance), the webhook
+// (validates cert-manager resources at admission), and the cainjector
+// (injects CA bundles into webhook/CRD configurations).
 //
-// ClusterIssuer management is handled separately by the KubernetesClusterIssuer
-// component, which creates individual ClusterIssuers per DNS domain.
+// This component installs and configures the CONTROLLER MACHINERY only. Who
+// signs certificates and what certificates exist are separate first-class
+// resources: create KubernetesClusterIssuer / KubernetesIssuer for the
+// signing authorities and KubernetesCertificate for the certificates. One
+// cert-manager installation per cluster serves all of them.
+//
+// The typed fields below cover the chart's meaningful configuration surface;
+// `helm_values` remains as the escape hatch for chart values beyond them
+// (merged last, Helm `-f` semantics, identical on both engines) — a safety
+// valve, never the primary interface.
 type KubernetesCertManagerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// cert-manager version such as "v1.19.1". Used to set the controller image tag.
-	KubernetesCertManagerVersion *string `protobuf:"bytes,4,opt,name=kubernetes_cert_manager_version,json=kubernetesCertManagerVersion,proto3,oneof" json:"kubernetes_cert_manager_version,omitempty"`
-	// Helm chart version to deploy. If not specified, uses the default version.
-	HelmChartVersion *string `protobuf:"bytes,5,opt,name=helm_chart_version,json=helmChartVersion,proto3,oneof" json:"helm_chart_version,omitempty"`
-	// Skip installation of the self-signed issuer that cert-manager creates by default.
-	SkipInstallSelfSignedIssuer bool `protobuf:"varint,6,opt,name=skip_install_self_signed_issuer,json=skipInstallSelfSignedIssuer,proto3" json:"skip_install_self_signed_issuer,omitempty"`
-	// Workload identity configuration for the cert-manager controller ServiceAccount.
-	// Required when using GCP Cloud DNS, AWS Route53, or Azure DNS solvers in
-	// KubernetesClusterIssuer resources. Not needed for Cloudflare (uses API token secrets).
-	WorkloadIdentity *WorkloadIdentityConfig `protobuf:"bytes,7,opt,name=workload_identity,json=workloadIdentity,proto3" json:"workload_identity,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// *
+	// Namespace to install cert-manager into ("cert-manager" by convention).
+	// Accepts a literal namespace name or a reference to a KubernetesNamespace
+	// resource.
+	//
+	// Treat the namespace as PERMANENT while CRDs are kept (the
+	// `crds.keep_on_uninstall` default): kept CRDs retain the Helm release's
+	// namespace in their ownership metadata, so re-installing into a
+	// DIFFERENT namespace fails with Helm's release-ownership error on the
+	// surviving CRDs. Moving an install requires first deleting the kept
+	// CRDs — which cascades to ALL certificate data cluster-wide.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the resource.
+	// When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (also the cert-manager version — chart and
+	// app versions are aligned upstream, e.g. "v1.20.3"). Pin deliberately;
+	// upgrades re-run the release with the new chart. Pick versions from the
+	// chart repository's index (`helm search repo`): the served chart is the
+	// contract — the upstream source tree's Chart.yaml can claim a version at
+	// a tag that was never served.
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// CRD lifecycle. cert-manager's CRDs (Certificate, Issuer, ClusterIssuer,
+	// ...) are cluster-scoped and shared: installing them with the release is
+	// the standard single-installation path.
+	Crds *KubernetesCertManagerCrds `protobuf:"bytes,4,opt,name=crds,proto3" json:"crds,omitempty"`
+	// *
+	// Controller replica count. One replica is standard (leader election makes
+	// extras hot standbys, not throughput).
+	Replicas *int32 `protobuf:"varint,5,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// Controller container CPU/memory requests and limits. Empty = chart
+	// defaults (no explicit resources).
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,6,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Log verbosity, 0 (errors only) to 6 (trace). Chart default: 2.
+	LogLevel *int32 `protobuf:"varint,7,opt,name=log_level,json=logLevel,proto3,oneof" json:"log_level,omitempty"`
+	// *
+	// Namespace cert-manager reads Secrets from for CLUSTER-scoped resources
+	// (ClusterIssuer credentials, ACME account keys) — the "cluster resource
+	// namespace". Empty = the installation namespace. KubernetesClusterIssuer
+	// resources materialize their credential Secrets here.
+	ClusterResourceNamespace string `protobuf:"bytes,8,opt,name=cluster_resource_namespace,json=clusterResourceNamespace,proto3" json:"cluster_resource_namespace,omitempty"`
+	// *
+	// Namespace used for leader election leases. Chart default: "kube-system"
+	// — on clusters where kube-system is locked down (some managed platforms),
+	// set the installation namespace instead.
+	LeaderElectionNamespace *string `protobuf:"bytes,9,opt,name=leader_election_namespace,json=leaderElectionNamespace,proto3,oneof" json:"leader_election_namespace,omitempty"`
+	// *
+	// When true, issued-certificate Secrets carry an ownerReference to their
+	// Certificate, so deleting the Certificate garbage-collects the Secret.
+	// Off upstream by default (deleting a Certificate keeps its Secret —
+	// safer for accidental deletes).
+	EnableCertificateOwnerRef bool `protobuf:"varint,10,opt,name=enable_certificate_owner_ref,json=enableCertificateOwnerRef,proto3" json:"enable_certificate_owner_ref,omitempty"`
+	// *
+	// Feature gates for the controller (e.g. {"ServerSideApply": true}).
+	// Rendered as the chart's comma-separated featureGates string.
+	FeatureGates map[string]bool `protobuf:"bytes,11,rep,name=feature_gates,json=featureGates,proto3" json:"feature_gates,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	// *
+	// DNS-01 self-check resolution. Before asking the CA to verify a DNS-01
+	// challenge, cert-manager checks the TXT record itself — on clusters whose
+	// in-cluster DNS serves a private view (split-horizon), that self-check
+	// sees stale/private answers and issuance hangs. Point it at recursive
+	// resolvers that see the PUBLIC view.
+	Dns01SelfCheck *KubernetesCertManagerDns01SelfCheck `protobuf:"bytes,12,opt,name=dns01_self_check,json=dns01SelfCheck,proto3" json:"dns01_self_check,omitempty"`
+	// *
+	// Maximum ACME challenges processed concurrently. Chart default: 60.
+	MaxConcurrentChallenges *int32 `protobuf:"varint,13,opt,name=max_concurrent_challenges,json=maxConcurrentChallenges,proto3,oneof" json:"max_concurrent_challenges,omitempty"`
+	// *
+	// Binds the controller ServiceAccount to a cloud identity for KEYLESS
+	// DNS-01 (Route53 via EKS IRSA, Cloud DNS via GKE Workload Identity,
+	// Azure DNS via AKS Workload Identity). Issuers whose DNS-01 providers
+	// leave static credentials empty authenticate through this identity.
+	// Not needed for token-based providers (Cloudflare, DigitalOcean, ...).
+	WorkloadIdentity *kubernetes.KubernetesWorkloadIdentity `protobuf:"bytes,14,opt,name=workload_identity,json=workloadIdentity,proto3" json:"workload_identity,omitempty"`
+	// *
+	// Registry serving all cert-manager images (controller, webhook,
+	// cainjector, acmesolver, startupapicheck) — the air-gapped/mirror knob.
+	// Empty = quay.io.
+	ImageRegistry string `protobuf:"bytes,15,opt,name=image_registry,json=imageRegistry,proto3" json:"image_registry,omitempty"`
+	// *
+	// Prometheus metrics exposure. Enabled by default upstream (metrics port
+	// open); the ServiceMonitor is opt-in and requires the Prometheus operator
+	// CRDs on the cluster.
+	Prometheus *KubernetesCertManagerPrometheus `protobuf:"bytes,16,opt,name=prometheus,proto3" json:"prometheus,omitempty"`
+	// *
+	// Node selector for all cert-manager pods. Chart default:
+	// {"kubernetes.io/os": "linux"}.
+	NodeSelector map[string]string `protobuf:"bytes,17,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for the controller pods (webhook/cainjector inherit their
+	// own chart defaults; set component-level tolerations via helm_values when
+	// they must differ).
+	Tolerations []*kubernetes.WorkloadToleration `protobuf:"bytes,18,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	// *
+	// When true, a PodDisruptionBudget guards each cert-manager component
+	// (minAvailable 1) — meaningful only with replicas > 1.
+	PodDisruptionBudget bool `protobuf:"varint,19,opt,name=pod_disruption_budget,json=podDisruptionBudget,proto3" json:"pod_disruption_budget,omitempty"`
+	// *
+	// Webhook component tuning. The webhook must be reachable by the
+	// API server — host_network is the standard fix on clusters whose control
+	// plane cannot reach pod IPs (e.g. EKS with custom CNI).
+	Webhook *KubernetesCertManagerWebhook `protobuf:"bytes,20,opt,name=webhook,proto3" json:"webhook,omitempty"`
+	// *
+	// cainjector component tuning. Required by the webhook's own certificate
+	// bootstrap — disable only when another mechanism manages webhook CA
+	// bundles.
+	Cainjector *KubernetesCertManagerCainjector `protobuf:"bytes,21,opt,name=cainjector,proto3" json:"cainjector,omitempty"`
+	// *
+	// startupapicheck: a post-install hook Job that verifies the webhook is
+	// actually serving before the release reports success. Costs ~seconds;
+	// disable on clusters that forbid hook Jobs.
+	Startupapicheck *KubernetesCertManagerStartupApiCheck `protobuf:"bytes,22,opt,name=startupapicheck,proto3" json:"startupapicheck,omitempty"`
+	// *
+	// Escape hatch: additional chart values as a YAML document, merged LAST
+	// over everything the typed fields render (Helm `-f` semantics, identical
+	// on both engines). For the chart surface beyond the typed fields —
+	// never the substitute for them. Do not put secrets here.
+	HelmValues    string `protobuf:"bytes,23,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesCertManagerSpec) Reset() {
@@ -94,63 +216,187 @@ func (x *KubernetesCertManagerSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesCertManagerSpec) GetKubernetesCertManagerVersion() string {
-	if x != nil && x.KubernetesCertManagerVersion != nil {
-		return *x.KubernetesCertManagerVersion
+func (x *KubernetesCertManagerSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
 	}
 	return ""
 }
 
-func (x *KubernetesCertManagerSpec) GetHelmChartVersion() string {
-	if x != nil && x.HelmChartVersion != nil {
-		return *x.HelmChartVersion
-	}
-	return ""
-}
-
-func (x *KubernetesCertManagerSpec) GetSkipInstallSelfSignedIssuer() bool {
+func (x *KubernetesCertManagerSpec) GetCrds() *KubernetesCertManagerCrds {
 	if x != nil {
-		return x.SkipInstallSelfSignedIssuer
+		return x.Crds
+	}
+	return nil
+}
+
+func (x *KubernetesCertManagerSpec) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesCertManagerSpec) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesCertManagerSpec) GetLogLevel() int32 {
+	if x != nil && x.LogLevel != nil {
+		return *x.LogLevel
+	}
+	return 0
+}
+
+func (x *KubernetesCertManagerSpec) GetClusterResourceNamespace() string {
+	if x != nil {
+		return x.ClusterResourceNamespace
+	}
+	return ""
+}
+
+func (x *KubernetesCertManagerSpec) GetLeaderElectionNamespace() string {
+	if x != nil && x.LeaderElectionNamespace != nil {
+		return *x.LeaderElectionNamespace
+	}
+	return ""
+}
+
+func (x *KubernetesCertManagerSpec) GetEnableCertificateOwnerRef() bool {
+	if x != nil {
+		return x.EnableCertificateOwnerRef
 	}
 	return false
 }
 
-func (x *KubernetesCertManagerSpec) GetWorkloadIdentity() *WorkloadIdentityConfig {
+func (x *KubernetesCertManagerSpec) GetFeatureGates() map[string]bool {
+	if x != nil {
+		return x.FeatureGates
+	}
+	return nil
+}
+
+func (x *KubernetesCertManagerSpec) GetDns01SelfCheck() *KubernetesCertManagerDns01SelfCheck {
+	if x != nil {
+		return x.Dns01SelfCheck
+	}
+	return nil
+}
+
+func (x *KubernetesCertManagerSpec) GetMaxConcurrentChallenges() int32 {
+	if x != nil && x.MaxConcurrentChallenges != nil {
+		return *x.MaxConcurrentChallenges
+	}
+	return 0
+}
+
+func (x *KubernetesCertManagerSpec) GetWorkloadIdentity() *kubernetes.KubernetesWorkloadIdentity {
 	if x != nil {
 		return x.WorkloadIdentity
 	}
 	return nil
 }
 
-// WorkloadIdentityConfig binds the cert-manager controller's Kubernetes
-// ServiceAccount to a cloud identity, enabling keyless authentication
-// for DNS-01 challenges.
-type WorkloadIdentityConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to Provider:
-	//
-	//	*WorkloadIdentityConfig_Gke
-	//	*WorkloadIdentityConfig_Eks
-	//	*WorkloadIdentityConfig_Aks
-	Provider      isWorkloadIdentityConfig_Provider `protobuf_oneof:"provider"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+func (x *KubernetesCertManagerSpec) GetImageRegistry() string {
+	if x != nil {
+		return x.ImageRegistry
+	}
+	return ""
 }
 
-func (x *WorkloadIdentityConfig) Reset() {
-	*x = WorkloadIdentityConfig{}
+func (x *KubernetesCertManagerSpec) GetPrometheus() *KubernetesCertManagerPrometheus {
+	if x != nil {
+		return x.Prometheus
+	}
+	return nil
+}
+
+func (x *KubernetesCertManagerSpec) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesCertManagerSpec) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
+func (x *KubernetesCertManagerSpec) GetPodDisruptionBudget() bool {
+	if x != nil {
+		return x.PodDisruptionBudget
+	}
+	return false
+}
+
+func (x *KubernetesCertManagerSpec) GetWebhook() *KubernetesCertManagerWebhook {
+	if x != nil {
+		return x.Webhook
+	}
+	return nil
+}
+
+func (x *KubernetesCertManagerSpec) GetCainjector() *KubernetesCertManagerCainjector {
+	if x != nil {
+		return x.Cainjector
+	}
+	return nil
+}
+
+func (x *KubernetesCertManagerSpec) GetStartupapicheck() *KubernetesCertManagerStartupApiCheck {
+	if x != nil {
+		return x.Startupapicheck
+	}
+	return nil
+}
+
+func (x *KubernetesCertManagerSpec) GetHelmValues() string {
+	if x != nil {
+		return x.HelmValues
+	}
+	return ""
+}
+
+// *
+// CRD installation lifecycle.
+type KubernetesCertManagerCrds struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Install the cert-manager CRDs with the release. Default TRUE (Planton
+	// opinion — the chart itself defaults to false and expects a separate
+	// kubectl apply; one component managing both halves is strictly simpler).
+	// Disable only when another installation already owns the CRDs.
+	Install *bool `protobuf:"varint,1,opt,name=install,proto3,oneof" json:"install,omitempty"`
+	// *
+	// Keep the CRDs (and therefore every Certificate/Issuer object in the
+	// cluster) when the release is uninstalled. Default TRUE, matching
+	// upstream — deleting CRDs cascades to ALL certificate data cluster-wide,
+	// a destructive act that should require an explicit false.
+	KeepOnUninstall *bool `protobuf:"varint,2,opt,name=keep_on_uninstall,json=keepOnUninstall,proto3,oneof" json:"keep_on_uninstall,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesCertManagerCrds) Reset() {
+	*x = KubernetesCertManagerCrds{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *WorkloadIdentityConfig) String() string {
+func (x *KubernetesCertManagerCrds) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*WorkloadIdentityConfig) ProtoMessage() {}
+func (*KubernetesCertManagerCrds) ProtoMessage() {}
 
-func (x *WorkloadIdentityConfig) ProtoReflect() protoreflect.Message {
+func (x *KubernetesCertManagerCrds) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -162,91 +408,56 @@ func (x *WorkloadIdentityConfig) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use WorkloadIdentityConfig.ProtoReflect.Descriptor instead.
-func (*WorkloadIdentityConfig) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesCertManagerCrds.ProtoReflect.Descriptor instead.
+func (*KubernetesCertManagerCrds) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *WorkloadIdentityConfig) GetProvider() isWorkloadIdentityConfig_Provider {
-	if x != nil {
-		return x.Provider
+func (x *KubernetesCertManagerCrds) GetInstall() bool {
+	if x != nil && x.Install != nil {
+		return *x.Install
 	}
-	return nil
+	return false
 }
 
-func (x *WorkloadIdentityConfig) GetGke() *GkeWorkloadIdentity {
-	if x != nil {
-		if x, ok := x.Provider.(*WorkloadIdentityConfig_Gke); ok {
-			return x.Gke
-		}
+func (x *KubernetesCertManagerCrds) GetKeepOnUninstall() bool {
+	if x != nil && x.KeepOnUninstall != nil {
+		return *x.KeepOnUninstall
 	}
-	return nil
+	return false
 }
 
-func (x *WorkloadIdentityConfig) GetEks() *EksIrsa {
-	if x != nil {
-		if x, ok := x.Provider.(*WorkloadIdentityConfig_Eks); ok {
-			return x.Eks
-		}
-	}
-	return nil
-}
-
-func (x *WorkloadIdentityConfig) GetAks() *AksWorkloadIdentity {
-	if x != nil {
-		if x, ok := x.Provider.(*WorkloadIdentityConfig_Aks); ok {
-			return x.Aks
-		}
-	}
-	return nil
-}
-
-type isWorkloadIdentityConfig_Provider interface {
-	isWorkloadIdentityConfig_Provider()
-}
-
-type WorkloadIdentityConfig_Gke struct {
-	Gke *GkeWorkloadIdentity `protobuf:"bytes,1,opt,name=gke,proto3,oneof"`
-}
-
-type WorkloadIdentityConfig_Eks struct {
-	Eks *EksIrsa `protobuf:"bytes,2,opt,name=eks,proto3,oneof"`
-}
-
-type WorkloadIdentityConfig_Aks struct {
-	Aks *AksWorkloadIdentity `protobuf:"bytes,3,opt,name=aks,proto3,oneof"`
-}
-
-func (*WorkloadIdentityConfig_Gke) isWorkloadIdentityConfig_Provider() {}
-
-func (*WorkloadIdentityConfig_Eks) isWorkloadIdentityConfig_Provider() {}
-
-func (*WorkloadIdentityConfig_Aks) isWorkloadIdentityConfig_Provider() {}
-
-// GkeWorkloadIdentity configures GKE Workload Identity for cert-manager.
-type GkeWorkloadIdentity struct {
+// *
+// DNS-01 self-check resolver configuration.
+type KubernetesCertManagerDns01SelfCheck struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// GCP Service Account email for Workload Identity.
-	// Must have dns.admin role on the project containing the DNS zones.
-	ServiceAccountEmail string `protobuf:"bytes,1,opt,name=service_account_email,json=serviceAccountEmail,proto3" json:"service_account_email,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// *
+	// Recursive resolvers for the self-check, each "host:port"
+	// (e.g. "8.8.8.8:53", "1.1.1.1:53").
+	RecursiveNameservers []string `protobuf:"bytes,1,rep,name=recursive_nameservers,json=recursiveNameservers,proto3" json:"recursive_nameservers,omitempty"`
+	// *
+	// When true, use the configured resolvers for ALL DNS-01 lookups, not just
+	// the initial authoritative-nameserver discovery — the full split-horizon
+	// fix.
+	RecursiveNameserversOnly bool `protobuf:"varint,2,opt,name=recursive_nameservers_only,json=recursiveNameserversOnly,proto3" json:"recursive_nameservers_only,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
-func (x *GkeWorkloadIdentity) Reset() {
-	*x = GkeWorkloadIdentity{}
+func (x *KubernetesCertManagerDns01SelfCheck) Reset() {
+	*x = KubernetesCertManagerDns01SelfCheck{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GkeWorkloadIdentity) String() string {
+func (x *KubernetesCertManagerDns01SelfCheck) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GkeWorkloadIdentity) ProtoMessage() {}
+func (*KubernetesCertManagerDns01SelfCheck) ProtoMessage() {}
 
-func (x *GkeWorkloadIdentity) ProtoReflect() protoreflect.Message {
+func (x *KubernetesCertManagerDns01SelfCheck) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -258,42 +469,62 @@ func (x *GkeWorkloadIdentity) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GkeWorkloadIdentity.ProtoReflect.Descriptor instead.
-func (*GkeWorkloadIdentity) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesCertManagerDns01SelfCheck.ProtoReflect.Descriptor instead.
+func (*KubernetesCertManagerDns01SelfCheck) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *GkeWorkloadIdentity) GetServiceAccountEmail() string {
+func (x *KubernetesCertManagerDns01SelfCheck) GetRecursiveNameservers() []string {
 	if x != nil {
-		return x.ServiceAccountEmail
+		return x.RecursiveNameservers
 	}
-	return ""
+	return nil
 }
 
-// EksIrsa configures IAM Roles for Service Accounts (IRSA) for cert-manager on EKS.
-type EksIrsa struct {
+func (x *KubernetesCertManagerDns01SelfCheck) GetRecursiveNameserversOnly() bool {
+	if x != nil {
+		return x.RecursiveNameserversOnly
+	}
+	return false
+}
+
+// *
+// Prometheus metrics configuration.
+type KubernetesCertManagerPrometheus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// IAM Role ARN for IRSA.
-	// Must have permissions to modify Route53 records.
-	RoleArn       string `protobuf:"bytes,1,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// *
+	// Expose the metrics port on all components. Chart default: true.
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// *
+	// Create ServiceMonitor resources for scrape discovery. Requires the
+	// Prometheus operator CRDs (e.g. kube-prometheus-stack) on the cluster —
+	// the release FAILS to install without them.
+	ServiceMonitor bool `protobuf:"varint,2,opt,name=service_monitor,json=serviceMonitor,proto3" json:"service_monitor,omitempty"`
+	// *
+	// Scrape interval for the ServiceMonitor (e.g. "60s"). Chart default: 60s.
+	ServiceMonitorInterval *string `protobuf:"bytes,3,opt,name=service_monitor_interval,json=serviceMonitorInterval,proto3,oneof" json:"service_monitor_interval,omitempty"`
+	// *
+	// Extra labels on the ServiceMonitor — how a Prometheus instance's
+	// serviceMonitorSelector finds it (e.g. {"release": "kube-prometheus-stack"}).
+	ServiceMonitorLabels map[string]string `protobuf:"bytes,4,rep,name=service_monitor_labels,json=serviceMonitorLabels,proto3" json:"service_monitor_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
-func (x *EksIrsa) Reset() {
-	*x = EksIrsa{}
+func (x *KubernetesCertManagerPrometheus) Reset() {
+	*x = KubernetesCertManagerPrometheus{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *EksIrsa) String() string {
+func (x *KubernetesCertManagerPrometheus) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*EksIrsa) ProtoMessage() {}
+func (*KubernetesCertManagerPrometheus) ProtoMessage() {}
 
-func (x *EksIrsa) ProtoReflect() protoreflect.Message {
+func (x *KubernetesCertManagerPrometheus) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -305,42 +536,80 @@ func (x *EksIrsa) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use EksIrsa.ProtoReflect.Descriptor instead.
-func (*EksIrsa) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesCertManagerPrometheus.ProtoReflect.Descriptor instead.
+func (*KubernetesCertManagerPrometheus) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *EksIrsa) GetRoleArn() string {
+func (x *KubernetesCertManagerPrometheus) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesCertManagerPrometheus) GetServiceMonitor() bool {
 	if x != nil {
-		return x.RoleArn
+		return x.ServiceMonitor
+	}
+	return false
+}
+
+func (x *KubernetesCertManagerPrometheus) GetServiceMonitorInterval() string {
+	if x != nil && x.ServiceMonitorInterval != nil {
+		return *x.ServiceMonitorInterval
 	}
 	return ""
 }
 
-// AksWorkloadIdentity configures Azure Workload Identity for cert-manager on AKS.
-type AksWorkloadIdentity struct {
+func (x *KubernetesCertManagerPrometheus) GetServiceMonitorLabels() map[string]string {
+	if x != nil {
+		return x.ServiceMonitorLabels
+	}
+	return nil
+}
+
+// *
+// Webhook component tuning.
+type KubernetesCertManagerWebhook struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Managed Identity Client ID.
-	// Must have DNS Zone Contributor role.
-	ClientId      string `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// *
+	// Webhook replica count. Chart default: 1.
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// Admission timeout in seconds the API server waits on the webhook.
+	// Chart default: 30 (the API server maximum).
+	TimeoutSeconds *int32 `protobuf:"varint,2,opt,name=timeout_seconds,json=timeoutSeconds,proto3,oneof" json:"timeout_seconds,omitempty"`
+	// *
+	// Run the webhook on the host network — required where the control plane
+	// cannot reach pod IPs (EKS with custom/alternative CNI is the canonical
+	// case). Pair with a secure_port that is free on the node.
+	HostNetwork bool `protobuf:"varint,3,opt,name=host_network,json=hostNetwork,proto3" json:"host_network,omitempty"`
+	// *
+	// Port the webhook serves on. Chart default: 10250. With host_network,
+	// pick a port unused on nodes (10250 collides with the kubelet).
+	SecurePort *int32 `protobuf:"varint,4,opt,name=secure_port,json=securePort,proto3,oneof" json:"secure_port,omitempty"`
+	// *
+	// Webhook container CPU/memory requests and limits.
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,5,opt,name=resources,proto3" json:"resources,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *AksWorkloadIdentity) Reset() {
-	*x = AksWorkloadIdentity{}
+func (x *KubernetesCertManagerWebhook) Reset() {
+	*x = KubernetesCertManagerWebhook{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *AksWorkloadIdentity) String() string {
+func (x *KubernetesCertManagerWebhook) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*AksWorkloadIdentity) ProtoMessage() {}
+func (*KubernetesCertManagerWebhook) ProtoMessage() {}
 
-func (x *AksWorkloadIdentity) ProtoReflect() protoreflect.Message {
+func (x *KubernetesCertManagerWebhook) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -352,14 +621,170 @@ func (x *AksWorkloadIdentity) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use AksWorkloadIdentity.ProtoReflect.Descriptor instead.
-func (*AksWorkloadIdentity) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesCertManagerWebhook.ProtoReflect.Descriptor instead.
+func (*KubernetesCertManagerWebhook) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *AksWorkloadIdentity) GetClientId() string {
+func (x *KubernetesCertManagerWebhook) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesCertManagerWebhook) GetTimeoutSeconds() int32 {
+	if x != nil && x.TimeoutSeconds != nil {
+		return *x.TimeoutSeconds
+	}
+	return 0
+}
+
+func (x *KubernetesCertManagerWebhook) GetHostNetwork() bool {
 	if x != nil {
-		return x.ClientId
+		return x.HostNetwork
+	}
+	return false
+}
+
+func (x *KubernetesCertManagerWebhook) GetSecurePort() int32 {
+	if x != nil && x.SecurePort != nil {
+		return *x.SecurePort
+	}
+	return 0
+}
+
+func (x *KubernetesCertManagerWebhook) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+// *
+// cainjector component tuning.
+type KubernetesCertManagerCainjector struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Run the cainjector. Chart default: true; cert-manager's own webhook
+	// depends on it.
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// *
+	// cainjector replica count. Chart default: 1.
+	Replicas *int32 `protobuf:"varint,2,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// cainjector container CPU/memory requests and limits.
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,3,opt,name=resources,proto3" json:"resources,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertManagerCainjector) Reset() {
+	*x = KubernetesCertManagerCainjector{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertManagerCainjector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertManagerCainjector) ProtoMessage() {}
+
+func (x *KubernetesCertManagerCainjector) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertManagerCainjector.ProtoReflect.Descriptor instead.
+func (*KubernetesCertManagerCainjector) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesCertManagerCainjector) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesCertManagerCainjector) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesCertManagerCainjector) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+// *
+// startupapicheck component tuning.
+type KubernetesCertManagerStartupApiCheck struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Run the post-install verification Job. Chart default: true.
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// *
+	// How long the check Job retries before failing the install (Go duration).
+	// Chart default: "1m".
+	Timeout       *string `protobuf:"bytes,2,opt,name=timeout,proto3,oneof" json:"timeout,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCertManagerStartupApiCheck) Reset() {
+	*x = KubernetesCertManagerStartupApiCheck{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCertManagerStartupApiCheck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCertManagerStartupApiCheck) ProtoMessage() {}
+
+func (x *KubernetesCertManagerStartupApiCheck) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCertManagerStartupApiCheck.ProtoReflect.Descriptor instead.
+func (*KubernetesCertManagerStartupApiCheck) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesCertManagerStartupApiCheck) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesCertManagerStartupApiCheck) GetTimeout() string {
+	if x != nil && x.Timeout != nil {
+		return *x.Timeout
 	}
 	return ""
 }
@@ -368,28 +793,95 @@ var File_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto pro
 
 const file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Cdev/planton/provider/kubernetes/kubernetescertmanager/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertmanager.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcb\x04\n" +
+	"Cdev/planton/provider/kubernetes/kubernetescertmanager/v1/spec.proto\x128dev.planton.provider.kubernetes.kubernetescertmanager.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/workload_identity.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe6\x11\n" +
 	"\x19KubernetesCertManagerSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12W\n" +
-	"\x1fkubernetes_cert_manager_version\x18\x04 \x01(\tB\v\x8a\xa6\x1d\av1.19.1H\x00R\x1ckubernetesCertManagerVersion\x88\x01\x01\x12>\n" +
-	"\x12helm_chart_version\x18\x05 \x01(\tB\v\x8a\xa6\x1d\av1.19.1H\x01R\x10helmChartVersion\x88\x01\x01\x12D\n" +
-	"\x1fskip_install_self_signed_issuer\x18\x06 \x01(\bR\x1bskipInstallSelfSignedIssuer\x12}\n" +
-	"\x11workload_identity\x18\a \x01(\v2P.dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfigR\x10workloadIdentityB\"\n" +
-	" _kubernetes_cert_manager_versionB\x15\n" +
-	"\x13_helm_chart_version\"\xc1\x02\n" +
-	"\x16WorkloadIdentityConfig\x12a\n" +
-	"\x03gke\x18\x01 \x01(\v2M.dev.planton.provider.kubernetes.kubernetescertmanager.v1.GkeWorkloadIdentityH\x00R\x03gke\x12U\n" +
-	"\x03eks\x18\x02 \x01(\v2A.dev.planton.provider.kubernetes.kubernetescertmanager.v1.EksIrsaH\x00R\x03eks\x12a\n" +
-	"\x03aks\x18\x03 \x01(\v2M.dev.planton.provider.kubernetes.kubernetescertmanager.v1.AksWorkloadIdentityH\x00R\x03aksB\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x125\n" +
+	"\rchart_version\x18\x03 \x01(\tB\v\x8a\xa6\x1d\av1.20.3H\x00R\fchartVersion\x88\x01\x01\x12g\n" +
+	"\x04crds\x18\x04 \x01(\v2S.dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerCrdsR\x04crds\x12-\n" +
+	"\breplicas\x18\x05 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x06 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x120\n" +
+	"\tlog_level\x18\a \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x06(\x00\x8a\xa6\x1d\x012H\x02R\blogLevel\x88\x01\x01\x12<\n" +
+	"\x1acluster_resource_namespace\x18\b \x01(\tR\x18clusterResourceNamespace\x12P\n" +
+	"\x19leader_election_namespace\x18\t \x01(\tB\x0f\x8a\xa6\x1d\vkube-systemH\x03R\x17leaderElectionNamespace\x88\x01\x01\x12?\n" +
+	"\x1cenable_certificate_owner_ref\x18\n" +
+	" \x01(\bR\x19enableCertificateOwnerRef\x12\x8a\x01\n" +
+	"\rfeature_gates\x18\v \x03(\v2e.dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.FeatureGatesEntryR\ffeatureGates\x12\x87\x01\n" +
+	"\x10dns01_self_check\x18\f \x01(\v2].dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerDns01SelfCheckR\x0edns01SelfCheck\x12N\n" +
+	"\x19max_concurrent_challenges\x18\r \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0260H\x04R\x17maxConcurrentChallenges\x88\x01\x01\x12h\n" +
+	"\x11workload_identity\x18\x0e \x01(\v2;.dev.planton.provider.kubernetes.KubernetesWorkloadIdentityR\x10workloadIdentity\x12%\n" +
+	"\x0eimage_registry\x18\x0f \x01(\tR\rimageRegistry\x12y\n" +
 	"\n" +
-	"\bprovider\"Q\n" +
-	"\x13GkeWorkloadIdentity\x12:\n" +
-	"\x15service_account_email\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13serviceAccountEmail\",\n" +
-	"\aEksIrsa\x12!\n" +
-	"\brole_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aroleArn\":\n" +
-	"\x13AksWorkloadIdentity\x12#\n" +
-	"\tclient_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bclientIdB\xc4\x03\n" +
+	"prometheus\x18\x10 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerPrometheusR\n" +
+	"prometheus\x12\x8a\x01\n" +
+	"\rnode_selector\x18\x11 \x03(\v2e.dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x12 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x122\n" +
+	"\x15pod_disruption_budget\x18\x13 \x01(\bR\x13podDisruptionBudget\x12p\n" +
+	"\awebhook\x18\x14 \x01(\v2V.dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerWebhookR\awebhook\x12y\n" +
+	"\n" +
+	"cainjector\x18\x15 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerCainjectorR\n" +
+	"cainjector\x12\x88\x01\n" +
+	"\x0fstartupapicheck\x18\x16 \x01(\v2^.dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerStartupApiCheckR\x0fstartupapicheck\x12\x1f\n" +
+	"\vhelm_values\x18\x17 \x01(\tR\n" +
+	"helmValues\x1a?\n" +
+	"\x11FeatureGatesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\bR\x05value:\x028\x01\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
+	"\x0e_chart_versionB\v\n" +
+	"\t_replicasB\f\n" +
+	"\n" +
+	"_log_levelB\x1c\n" +
+	"\x1a_leader_election_namespaceB\x1c\n" +
+	"\x1a_max_concurrent_challenges\"\xa1\x01\n" +
+	"\x19KubernetesCertManagerCrds\x12'\n" +
+	"\ainstall\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\ainstall\x88\x01\x01\x129\n" +
+	"\x11keep_on_uninstall\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x0fkeepOnUninstall\x88\x01\x01B\n" +
+	"\n" +
+	"\b_installB\x14\n" +
+	"\x12_keep_on_uninstall\"\x99\x04\n" +
+	"#KubernetesCertManagerDns01SelfCheck\x12\xac\x01\n" +
+	"\x15recursive_nameservers\x18\x01 \x03(\tBw\xbaHt\x92\x01q\"o\xba\x01l\n" +
+	"\x17dns01.nameserver_format\x124Each nameserver must be host:port, e.g. '8.8.8.8:53'\x1a\x1bthis.matches('^.+:[0-9]+$')R\x14recursiveNameservers\x12<\n" +
+	"\x1arecursive_nameservers_only\x18\x02 \x01(\bR\x18recursiveNameserversOnly:\x84\x02\xbaH\x80\x02\x1a\xfd\x01\n" +
+	"\x1bdns01.only_requires_servers\x12\x93\x01recursive_nameservers_only requires recursive_nameservers to be set — 'only' restricts lookups to the configured resolvers, so there must be some\x1aH!this.recursive_nameservers_only || size(this.recursive_nameservers) > 0\"\xd9\x03\n" +
+	"\x1fKubernetesCertManagerPrometheus\x12'\n" +
+	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12'\n" +
+	"\x0fservice_monitor\x18\x02 \x01(\bR\x0eserviceMonitor\x12F\n" +
+	"\x18service_monitor_interval\x18\x03 \x01(\tB\a\x8a\xa6\x1d\x0360sH\x01R\x16serviceMonitorInterval\x88\x01\x01\x12\xa9\x01\n" +
+	"\x16service_monitor_labels\x18\x04 \x03(\v2s.dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerPrometheus.ServiceMonitorLabelsEntryR\x14serviceMonitorLabels\x1aG\n" +
+	"\x19ServiceMonitorLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\n" +
+	"\n" +
+	"\b_enabledB\x1b\n" +
+	"\x19_service_monitor_interval\"\xef\x02\n" +
+	"\x1cKubernetesCertManagerWebhook\x12-\n" +
+	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12=\n" +
+	"\x0ftimeout_seconds\x18\x02 \x01(\x05B\x0f\xbaH\x06\x1a\x04\x18\x1e(\x01\x8a\xa6\x1d\x0230H\x01R\x0etimeoutSeconds\x88\x01\x01\x12!\n" +
+	"\fhost_network\x18\x03 \x01(\bR\vhostNetwork\x12:\n" +
+	"\vsecure_port\x18\x04 \x01(\x05B\x14\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x0510250H\x02R\n" +
+	"securePort\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x05 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\v\n" +
+	"\t_replicasB\x12\n" +
+	"\x10_timeout_secondsB\x0e\n" +
+	"\f_secure_port\"\xe5\x01\n" +
+	"\x1fKubernetesCertManagerCainjector\x12'\n" +
+	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12-\n" +
+	"\breplicas\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x03 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\n" +
+	"\n" +
+	"\b_enabledB\v\n" +
+	"\t_replicas\"\x8e\x01\n" +
+	"$KubernetesCertManagerStartupApiCheck\x12'\n" +
+	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12%\n" +
+	"\atimeout\x18\x02 \x01(\tB\x06\x8a\xa6\x1d\x021mH\x01R\atimeout\x88\x01\x01B\n" +
+	"\n" +
+	"\b_enabledB\n" +
+	"\n" +
+	"\b_timeoutB\xc4\x03\n" +
 	"<com.dev.planton.provider.kubernetes.kubernetescertmanager.v1B\tSpecProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescertmanager/v1;kubernetescertmanagerv1\xa2\x02\x05DPPKK\xaa\x028Dev.Planton.Provider.Kubernetes.Kubernetescertmanager.V1\xca\x028Dev\\Planton\\Provider\\Kubernetes\\Kubernetescertmanager\\V1\xe2\x02DDev\\Planton\\Provider\\Kubernetes\\Kubernetescertmanager\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Kubernetes::Kubernetescertmanager::V1b\x06proto3"
 
 var (
@@ -404,26 +896,44 @@ func file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_ra
 	return file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_goTypes = []any{
-	(*KubernetesCertManagerSpec)(nil), // 0: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec
-	(*WorkloadIdentityConfig)(nil),    // 1: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig
-	(*GkeWorkloadIdentity)(nil),       // 2: dev.planton.provider.kubernetes.kubernetescertmanager.v1.GkeWorkloadIdentity
-	(*EksIrsa)(nil),                   // 3: dev.planton.provider.kubernetes.kubernetescertmanager.v1.EksIrsa
-	(*AksWorkloadIdentity)(nil),       // 4: dev.planton.provider.kubernetes.kubernetescertmanager.v1.AksWorkloadIdentity
-	(*v1.StringValueOrRef)(nil),       // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*KubernetesCertManagerSpec)(nil),            // 0: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec
+	(*KubernetesCertManagerCrds)(nil),            // 1: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerCrds
+	(*KubernetesCertManagerDns01SelfCheck)(nil),  // 2: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerDns01SelfCheck
+	(*KubernetesCertManagerPrometheus)(nil),      // 3: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerPrometheus
+	(*KubernetesCertManagerWebhook)(nil),         // 4: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerWebhook
+	(*KubernetesCertManagerCainjector)(nil),      // 5: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerCainjector
+	(*KubernetesCertManagerStartupApiCheck)(nil), // 6: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerStartupApiCheck
+	nil,                                   // 7: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.FeatureGatesEntry
+	nil,                                   // 8: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.NodeSelectorEntry
+	nil,                                   // 9: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerPrometheus.ServiceMonitorLabelsEntry
+	(*v1.StringValueOrRef)(nil),           // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil), // 11: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.KubernetesWorkloadIdentity)(nil), // 12: dev.planton.provider.kubernetes.KubernetesWorkloadIdentity
+	(*kubernetes.WorkloadToleration)(nil),         // 13: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_depIdxs = []int32{
-	5, // 0: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.workload_identity:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig
-	2, // 2: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig.gke:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.GkeWorkloadIdentity
-	3, // 3: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig.eks:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.EksIrsa
-	4, // 4: dev.planton.provider.kubernetes.kubernetescertmanager.v1.WorkloadIdentityConfig.aks:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.AksWorkloadIdentity
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	10, // 0: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.crds:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerCrds
+	11, // 2: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	7,  // 3: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.feature_gates:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.FeatureGatesEntry
+	2,  // 4: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.dns01_self_check:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerDns01SelfCheck
+	12, // 5: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.workload_identity:type_name -> dev.planton.provider.kubernetes.KubernetesWorkloadIdentity
+	3,  // 6: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.prometheus:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerPrometheus
+	8,  // 7: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.NodeSelectorEntry
+	13, // 8: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	4,  // 9: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.webhook:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerWebhook
+	5,  // 10: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.cainjector:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerCainjector
+	6,  // 11: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerSpec.startupapicheck:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerStartupApiCheck
+	9,  // 12: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerPrometheus.service_monitor_labels:type_name -> dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerPrometheus.ServiceMonitorLabelsEntry
+	11, // 13: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerWebhook.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	11, // 14: dev.planton.provider.kubernetes.kubernetescertmanager.v1.KubernetesCertManagerCainjector.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_init() }
@@ -432,18 +942,18 @@ func file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_in
 		return
 	}
 	file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[1].OneofWrappers = []any{
-		(*WorkloadIdentityConfig_Gke)(nil),
-		(*WorkloadIdentityConfig_Eks)(nil),
-		(*WorkloadIdentityConfig_Aks)(nil),
-	}
+	file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetescertmanager_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -182,4 +182,4 @@ After deployment, the following outputs are available in `status.outputs`:
 - [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — pre-create a namespace to reference via `valueFrom`
 - [KubernetesIngressNginx](/docs/catalog/kubernetes/kubernetesingressnginx) — deploy the nginx ingress controller required for Grafana ingress
 - [KubernetesPostgres](/docs/catalog/kubernetes/kubernetespostgres) — deploy PostgreSQL as a Grafana database backend
-- [KubernetesRedis](/docs/catalog/kubernetes/kubernetesredis) — deploy Redis for Grafana caching
+- [KubernetesValkey](/docs/catalog/kubernetes/kubernetesvalkey) — deploy Valkey (Redis-compatible) for Grafana caching

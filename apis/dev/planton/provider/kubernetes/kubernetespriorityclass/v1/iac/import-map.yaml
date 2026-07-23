@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetespriorityclass
+spec:
+  # A PriorityClass is cluster-scoped: its identity is just its name --
+  # derivable from a prior deploy's outputs or from the spec itself.
+  values:
+    - name: priority_class_name
+      derivations:
+        - from_stack_output: priority_class_name
+        - from_spec_field: name
+      where_to_find: >-
+        `kubectl get priorityclasses` (NAME column).

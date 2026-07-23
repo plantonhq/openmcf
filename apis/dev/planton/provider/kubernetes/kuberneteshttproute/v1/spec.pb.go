@@ -29,7 +29,7 @@ const (
 // query param, or method), optionally transform them with filters, and forward
 // them to backend Services. Routes attach to a Gateway through parent_refs.
 //
-// 100% fidelity with the upstream Gateway API v1.5.1 HTTPRouteSpec
+// 100% fidelity with the upstream Gateway API v1.6.1 HTTPRouteSpec
 // (kubernetes-sigs/gateway-api apis/v1/httproute_types.go), standard channel.
 // Upstream spec fields are flattened after the Planton namespaced envelope
 // (namespace). Experimental fields are intentionally excluded
@@ -46,22 +46,9 @@ type KubernetesHttpRouteSpec struct {
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// References to the parent resources (usually Gateways) this route attaches
 	// to. Each parent must allow attachment from HTTPRoutes of this namespace.
-	//
-	// INFRA-CHART COMPOSABILITY (DD-009): parent_refs is a PLAIN reference, not an
-	// Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-	// objects, so wrapping its scalars would break 100% upstream fidelity (DD-001)
-	// and distort the typed CRD shape (dont-do #6). Because a plain string creates
-	// NO automatic DAG edge, an infra-chart author MUST express the route -> Gateway
-	// dependency via metadata.relationships, e.g.:
-	//
-	//	metadata:
-	//	  relationships:
-	//	    - kind: KubernetesGateway
-	//	      name: "{{ values.env }}-gateway"
-	//	      type: depends_on
-	//
-	// The plain `name` here is then the literal Gateway name. See the component's
-	// "Composing in Infra Charts" docs for the full pattern.
+	// Each reference's name defaults to a KubernetesGateway foreign key — wire
+	// it with valueFrom in an infra chart and the route deploys after its
+	// Gateway.
 	//
 	// Flattened from the upstream CommonRouteSpec; the experimental
 	// useDefaultGateways field is excluded (standard channel only).
@@ -1189,25 +1176,10 @@ func (x *KubernetesHttpRouteCorsFilter) GetMaxAge() int32 {
 // KubernetesHttpRouteBackendRef is a backend a matching request is forwarded
 // to, optionally with per-backend filters. The backend reference fields are
 // flattened (matching the upstream inline HTTPBackendRef and the typed CRD
-// shape) rather than nesting the shared BackendRef message.
+// shape) rather than nesting the shared BackendRef message, because each HTTP
+// backend additionally carries filters.
 //
 // Upstream: HTTPBackendRef in apis/v1/httproute_types.go
-//
-// INFRA-CHART COMPOSABILITY (DD-009): backend_refs is a PLAIN reference, not an
-// Planton foreign key (StringValueOrRef). It is an array of multi-field upstream
-// objects, so wrapping its scalars would break 100% fidelity (DD-001) and distort
-// the typed CRD shape (dont-do #6). Because a plain string creates NO automatic
-// DAG edge, an infra-chart author MUST express the route -> backend dependency via
-// metadata.relationships when the backend is an Planton-managed resource, e.g.:
-//
-//	metadata:
-//	  relationships:
-//	    - kind: KubernetesService   # or the backend's actual kind
-//	      name: "{{ values.service_name }}"
-//	      type: uses
-//
-// The plain `name` here is then the literal Kubernetes Service name. See the
-// component's "Composing in Infra Charts" docs for the full pattern.
 type KubernetesHttpRouteBackendRef struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Group of the referent. Empty string infers the core API group.
@@ -1220,9 +1192,11 @@ type KubernetesHttpRouteBackendRef struct {
 	// Upstream default: "Service".
 	// Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
 	Kind *string `protobuf:"bytes,2,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
-	// Name of the referent (for example a Kubernetes Service name). This is a
-	// plain name reference, not an Planton foreign key (see spec.parent_refs).
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Name of the referent. Defaults to a KubernetesService foreign key: in an
+	// infra chart, wire it with valueFrom against the backend Service and the
+	// route deploys after its backend. When the backend is not a
+	// Planton-managed Service, pass the literal name with `value:`.
+	Name *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Namespace of the backend. When unspecified, the route's namespace is
 	// inferred. Cross-namespace references require a ReferenceGrant.
 	Namespace *string `protobuf:"bytes,4,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
@@ -1283,11 +1257,11 @@ func (x *KubernetesHttpRouteBackendRef) GetKind() string {
 	return ""
 }
 
-func (x *KubernetesHttpRouteBackendRef) GetName() string {
+func (x *KubernetesHttpRouteBackendRef) GetName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Name
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesHttpRouteBackendRef) GetNamespace() string {
@@ -1389,7 +1363,7 @@ const file_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto_raw
 	"\n" +
 	"Adev/planton/provider/kubernetes/kuberneteshttproute/v1/spec.proto\x126dev.planton.provider.kubernetes.kuberneteshttproute.v1\x1a\x1bbuf/validate/validate.proto\x1a1dev/planton/provider/kubernetes/gateway_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe4\x03\n" +
 	"\x17KubernetesHttpRouteSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12o\n" +
 	"\vparent_refs\x18\x03 \x03(\v2D.dev.planton.provider.kubernetes.KubernetesGatewayApiParentReferenceB\b\xbaH\x05\x92\x01\x02\x10 R\n" +
 	"parentRefs\x12y\n" +
 	"\thostnames\x18\x04 \x03(\tB[\xbaHX\x92\x01U\x10\x10\"QrO\x10\x01\x18\xfd\x012H^(\\*\\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$R\thostnames\x12q\n" +
@@ -1523,12 +1497,11 @@ const file_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto_raw
 	"\amax_age\x18\x06 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x01R\x06maxAge\x88\x01\x01B\x14\n" +
 	"\x12_allow_credentialsB\n" +
 	"\n" +
-	"\b_max_age\"\x97\x04\n" +
+	"\b_max_age\"\xe8\x04\n" +
 	"\x1dKubernetesHttpRouteBackendRef\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
-	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12!\n" +
-	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\x04name\x12!\n" +
+	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12r\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xa6\x06\x92\xd4a\x1bstatus.outputs.service_nameR\x04name\x12!\n" +
 	"\tnamespace\x18\x04 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12$\n" +
 	"\x04port\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x03R\x04port\x88\x01\x01\x12(\n" +
 	"\x06weight\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xc0\x84=(\x00H\x04R\x06weight\x88\x01\x01\x12u\n" +
@@ -1608,12 +1581,13 @@ var file_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto_depId
 	9,  // 20: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteUrlRewriteFilter.path:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRoutePathModifier
 	19, // 21: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestMirrorFilter.backend_ref:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiBackendObjectReference
 	20, // 22: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteRequestMirrorFilter.fraction:type_name -> dev.planton.provider.kubernetes.KubernetesGatewayApiFraction
-	6,  // 23: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteBackendRef.filters:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	16, // 23: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteBackendRef.name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 24: dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteBackendRef.filters:type_name -> dev.planton.provider.kubernetes.kuberneteshttproute.v1.KubernetesHttpRouteFilter
+	25, // [25:25] is the sub-list for method output_type
+	25, // [25:25] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kuberneteshttproute_v1_spec_proto_init() }

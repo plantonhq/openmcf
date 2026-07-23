@@ -1,19 +1,42 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
-  name: my-mongodb
+  name: prod-mongo
 spec:
   namespace:
-    value: "<your-namespace>"
-  createNamespace: false
-  container:
-    replicas: 3
-    resources:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 1000m
-        memory: 2Gi
-    persistenceEnabled: true
-    diskSize: 20Gi
+    # The operator watches its OWN namespace by default — declare the
+    # database where KubernetesPerconaMongoOperator is installed, or
+    # widen the operator's watch.
+    value: percona-mongo
+  replica_sets:
+    - name: rs0
+      # The production shape: a majority survives one member loss, so a
+      # new primary is elected in seconds when the current one dies.
+      size: 3
+      storage:
+        size: 100Gi # grows are applied to live PVCs; shrinks are rejected
+      resources:
+        requests:
+          cpu: "1"
+          memory: 2Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi # WiredTiger sizes its cache from the memory limit
+      pod_disruption_budget:
+        # Never let voluntary disruptions (node drains, upgrades) take
+        # down more than one member — the majority must survive.
+        max_unavailable: 1
+      scheduling:
+        # Spread members across zones instead of the upstream default
+        # (one per node) — a zone loss costs one member, not the quorum.
+        anti_affinity_topology_key: topology.kubernetes.io/zone
+  tls:
+    mode: requireTLS # clients must speak TLS — the production posture
+  users:
+    - name: app
+      # No password declared — the operator generates one into the
+      # `prod-mongo-user-app` Secret; rotating the Secret rotates the
+      # database password.
+      roles:
+        - name: readWrite
+          db: app

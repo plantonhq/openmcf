@@ -1,0 +1,413 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/container_env.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/probe.proto";
+import "dev/planton/provider/kubernetes/volume_mount.proto";
+
+// =============================================================================
+// SHARED WORKLOAD CONTAINER DEFINITIONS
+// =============================================================================
+//
+// One container shape for every Kubernetes workload kind (Deployment,
+// StatefulSet, DaemonSet, Job, CronJob) and every container role within a pod:
+// the main application container, sidecar containers, and init containers all
+// use the same fully-modeled WorkloadContainer message. Modeling them
+// identically means anything expressible on the app container — probes,
+// volume mounts, security hardening, lifecycle hooks — is equally expressible
+// on a sidecar, which is exactly how the Kubernetes API treats them.
+//
+// Curation note (what is deliberately NOT modeled from core/v1 Container):
+// - stdin/tty            — interactive kubectl-attach sessions, not declarative config
+// - resizePolicy         — in-place pod resize; revisit when the feature is GA and
+//                          supported by both IaC engine providers
+// - restartPolicyRules   — container-level restart rules are still maturing upstream;
+//                          sidecars here are deployed as regular containers, which
+//                          restart with the pod like today's production patterns
+// =============================================================================
+
+/**
+ * **WorkloadContainer** is the complete, typed configuration of one container in a
+ * workload's pod. It is used for the app container, each sidecar, and each init
+ * container.
+ *
+ * Example (YAML — a hardened app container):
+ * ```yaml
+ * name: app
+ * image:
+ *   repo: ghcr.io/acme/checkout
+ *   tag: v1.4.2
+ * ports:
+ *   - name: http
+ *     containerPort: 8080
+ *     servicePort: 80
+ * env:
+ *   variables:
+ *     - name: LOG_LEVEL
+ *       value: info
+ * readinessProbe:
+ *   httpGet:
+ *     path: /healthz
+ *     portNumber: 8080
+ * securityContext:
+ *   runAsNonRoot: true
+ *   readOnlyRootFilesystem: true
+ *   capabilities:
+ *     drop: ["ALL"]
+ * ```
+ */
+message WorkloadContainer {
+  /**
+   * The container's name, unique within the pod. Required for sidecars and init
+   * containers (Kubernetes rejects unnamed containers); for the main app container the
+   * module defaults it when omitted, so minimal manifests stay minimal. Must be a valid
+   * DNS label: lowercase alphanumeric and hyphens, starting and ending alphanumeric.
+   */
+  string name = 1 [(buf.validate.field).cel = {
+    id: "container.name.dns_label"
+    message: "Container name must be a lowercase DNS label (alphanumeric and hyphens, starting and ending with an alphanumeric character)"
+    expression: "this == '' || this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')"
+  }];
+
+  /**
+   * The container image, split into repository and tag so deployment pipelines can
+   * inject a freshly built tag without rewriting the whole reference. The optional
+   * `pull_secret_name` names an existing docker-registry secret; prefer attaching pull
+   * secrets on the ServiceAccount (or `pod.image_pull_secrets`) so they apply pod-wide.
+   */
+  ContainerImage image = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "container.image.repo"
+      message: "Image repo is required — the repository half of the image reference (e.g. \"nginx\" or \"ghcr.io/acme/api\")"
+      expression: "has(this.repo) && this.repo != ''"
+    },
+    (buf.validate.field).cel = {
+      id: "container.image.tag"
+      message: "Image tag is required — pin a version (e.g. \"1.27.1\"); avoid \"latest\" for anything you intend to roll back"
+      expression: "has(this.tag) && this.tag != ''"
+    }
+  ];
+
+  /**
+   * When the kubelet pulls the image. "IfNotPresent" (the Kubernetes default for tagged
+   * images) reuses a cached copy; "Always" re-resolves the tag on every pod start —
+   * required when a mutable tag like a branch name is reused across builds; "Never"
+   * only uses pre-loaded images (air-gapped nodes, kind-loaded test images).
+   */
+  string image_pull_policy = 3 [(buf.validate.field).cel = {
+    id: "container.image_pull_policy"
+    message: "Image pull policy must be one of \"Always\", \"IfNotPresent\", or \"Never\""
+    expression: "this == '' || this in ['Always', 'IfNotPresent', 'Never']"
+  }];
+
+  /**
+   * Entrypoint override (Kubernetes `command`, Docker ENTRYPOINT). The image's
+   * entrypoint runs when omitted. Not executed in a shell — provide argv elements,
+   * e.g. ["/bin/sh", "-c", "exec my-server"].
+   */
+  repeated string command = 4;
+
+  /**
+   * Arguments to the entrypoint (Kubernetes `args`, Docker CMD). The image's CMD is
+   * used when omitted. Variable references like $(VAR_NAME) are expanded from the
+   * container's environment by the kubelet.
+   */
+  repeated string args = 5;
+
+  /**
+   * Working directory for the entrypoint. Defaults to the image's configured WORKDIR.
+   */
+  string working_dir = 6;
+
+  /**
+   * Network ports this container exposes. Purely informational to Kubernetes for plain
+   * pod-to-pod traffic, but load-bearing here: named ports are referenced by probes,
+   * and `service_port` drives the Service wiring on kinds that create one
+   * (Deployment, StatefulSet).
+   */
+  repeated WorkloadContainerPort ports = 7;
+
+  /**
+   * Environment configuration: plain variables (with Kubernetes-native value sources
+   * and Planton cross-resource references), secret variables (materialized into a
+   * managed Kubernetes Secret), and bulk envFrom imports.
+   */
+  ContainerEnv env = 8;
+
+  /**
+   * CPU and memory requests and limits. Requests drive scheduling and are what the
+   * pod is guaranteed; limits are the ceiling enforced at runtime (CPU is throttled,
+   * memory overage is OOM-killed). Omitting limits entirely leaves the container
+   * unbounded — acceptable for batch work on dedicated nodes, risky on shared ones.
+   */
+  ContainerResources resources = 9;
+
+  /**
+   * Liveness probe: restarts the container when it fails. Detects deadlocked or
+   * wedged processes. Keep it strictly about "is the process alive" — checking
+   * downstream dependencies here turns a dependency blip into a restart storm.
+   */
+  Probe liveness_probe = 10;
+
+  /**
+   * Readiness probe: removes the pod from Service endpoints while it fails. This is
+   * the probe that makes rolling updates zero-downtime — traffic only reaches pods
+   * that report ready.
+   */
+  Probe readiness_probe = 11;
+
+  /**
+   * Startup probe: holds off liveness and readiness checking until the app has
+   * started, so slow-booting applications are not killed mid-initialization. Size
+   * `failure_threshold × period_seconds` to the worst-case startup time.
+   */
+  Probe startup_probe = 12;
+
+  /**
+   * Volume mounts for this container. Each entry both declares the mount path and
+   * carries its volume source (ConfigMap, Secret, HostPath, EmptyDir, or PVC); the
+   * module derives the pod-level volume list from the union of all containers'
+   * mounts, de-duplicating by name — so two containers sharing an EmptyDir simply
+   * declare the same mount name and source.
+   */
+  repeated VolumeMount volume_mounts = 13;
+
+  /**
+   * Lifecycle hooks. `post_start` runs immediately after the container starts (the
+   * container is not Running until it completes); `pre_stop` runs before termination
+   * and is the standard lever for connection draining — e.g. a short sleep that keeps
+   * the endpoint serving while load balancers converge on the terminating state.
+   */
+  WorkloadContainerLifecycle lifecycle = 14;
+
+  /**
+   * Container-level security hardening. Settings here override the pod-level
+   * security context for this container only.
+   */
+  WorkloadContainerSecurityContext security_context = 15;
+}
+
+/**
+ * **WorkloadContainerPort** describes one network port of a container, including the
+ * optional Service-facing mapping used by workload kinds that front pods with a
+ * Kubernetes Service (Deployment and StatefulSet).
+ */
+message WorkloadContainerPort {
+  /**
+   * Port name, e.g. "http", "grpc", "metrics". Must be a lowercase DNS label that
+   * starts and ends alphanumeric. Named ports are referenced by probes and become the
+   * Service port names on service-fronted kinds.
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "container.port.name"
+      message: "Port name must contain only lowercase alphanumeric characters and hyphens, and start and end with an alphanumeric character (e.g. \"http\", \"grpc-web\")"
+      expression: "this.matches('^[a-z0-9]([a-z0-9-]*[a-z0-9])?$')"
+    }
+  ];
+
+  // The port number the container listens on (1–65535).
+  int32 container_port = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  /**
+   * L4 protocol of the port. Defaults to "TCP" when omitted — the overwhelmingly
+   * common case, so minimal manifests need not repeat it.
+   */
+  string network_protocol = 3 [(buf.validate.field).cel = {
+    id: "container.port.network_protocol"
+    message: "The network protocol must be one of \"TCP\", \"UDP\", or \"SCTP\""
+    expression: "this == '' || this in ['TCP', 'UDP', 'SCTP']"
+  }];
+
+  /**
+   * Application protocol hint (e.g. "http", "grpc", "https"). Propagated to the
+   * Service port's appProtocol on service-fronted kinds, where meshes and L7 load
+   * balancers use it to pick the right protocol handling.
+   */
+  string app_protocol = 4;
+
+  /**
+   * The port the workload's Kubernetes Service exposes for this container port.
+   * Only meaningful on kinds that create a Service (Deployment, StatefulSet); other
+   * kinds ignore it. E.g. containerPort 8080 with servicePort 80 serves the app on
+   * the conventional port while the process binds an unprivileged one. External
+   * exposure is composed separately with first-class ingress kinds referencing the
+   * workload's exported Service handle — workloads never create ingress themselves.
+   */
+  int32 service_port = 5 [(buf.validate.field).cel = {
+    id: "container.port.service_port"
+    message: "Service port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  /**
+   * Exposes the container port directly on the node's IP (hostPort). Chiefly a
+   * DaemonSet pattern (node-level agents that must be reachable on every node);
+   * on other kinds it constrains scheduling to one pod per node per port — prefer
+   * a Service unless node-local reachability is the point.
+   */
+  int32 host_port = 6 [(buf.validate.field).cel = {
+    id: "container.port.host_port"
+    message: "Host port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+}
+
+/**
+ * **WorkloadContainerLifecycle** attaches actions to the container's lifecycle
+ * transitions.
+ */
+message WorkloadContainerLifecycle {
+  /**
+   * Runs immediately after the container is created. The container does not reach
+   * Running until the hook completes; a failing post_start kills the container per
+   * its restart policy.
+   */
+  WorkloadLifecycleHandler post_start = 1;
+
+  /**
+   * Runs before the container is terminated by the kubelet (pod deletion, rolling
+   * update, eviction). The termination grace period starts BEFORE the hook runs, so
+   * keep `pod.termination_grace_period_seconds` larger than the hook's worst-case
+   * duration. The classic zero-downtime pattern is a short sleep here so the pod
+   * keeps serving while endpoint removal propagates.
+   */
+  WorkloadLifecycleHandler pre_stop = 2;
+}
+
+/**
+ * **WorkloadLifecycleHandler** is the action a lifecycle hook executes. Exactly one
+ * action must be set.
+ */
+message WorkloadLifecycleHandler {
+  oneof handler {
+    // Execute a command inside the container; non-zero exit fails the hook.
+    ExecAction exec = 1;
+
+    // Perform an HTTP GET against the container.
+    HTTPGetAction http_get = 2;
+
+    // Open a TCP connection against the container.
+    TCPSocketAction tcp_socket = 3;
+
+    // Pause for a fixed number of seconds — the idiomatic pre_stop drain hook,
+    // with no shell or sleep binary required in the image.
+    SleepAction sleep = 4;
+  }
+}
+
+/**
+ * **SleepAction** pauses the hook for the given duration. Handled by the kubelet
+ * itself, so it works in distroless images that carry no /bin/sleep.
+ */
+message SleepAction {
+  // Seconds to sleep.
+  int64 seconds = 1 [(buf.validate.field).int64.gte = 0];
+}
+
+/**
+ * **WorkloadContainerSecurityContext** hardens a single container. Anything set here
+ * overrides the pod-level security context for this container. The fields cover the
+ * complete restricted-profile checklist of the Kubernetes Pod Security Standards, so
+ * a fully hardened container is expressible without any escape hatch.
+ */
+message WorkloadContainerSecurityContext {
+  /**
+   * Runs the container with full host access — equivalent to root on the node.
+   * Required by some node-level agents (device managers, network plugins). Never
+   * combine with untrusted images.
+   */
+  bool privileged = 1;
+
+  // UID the container process runs as. Overrides the image's USER directive.
+  optional int64 run_as_user = 2;
+
+  // Primary GID the container process runs as.
+  optional int64 run_as_group = 3;
+
+  /**
+   * Refuses to start the container if its effective user is root. The standard
+   * baseline hardening — it catches images that silently default to UID 0.
+   */
+  optional bool run_as_non_root = 4;
+
+  /**
+   * Mounts the container's root filesystem read-only. Pair with EmptyDir mounts for
+   * paths the app must write (e.g. /tmp).
+   */
+  optional bool read_only_root_filesystem = 5;
+
+  /**
+   * Whether the process can gain more privileges than its parent (setuid binaries,
+   * file capabilities). The restricted Pod Security Standard requires this to be
+   * false. Always true when `privileged` is set, so leave it unset in that case.
+   */
+  optional bool allow_privilege_escalation = 6;
+
+  /**
+   * Linux capabilities to add or drop. The restricted profile drops ALL and adds
+   * back only NET_BIND_SERVICE when needed. Capability names are uppercase without
+   * the CAP_ prefix (e.g. "NET_ADMIN", "SYS_TIME").
+   */
+  WorkloadCapabilities capabilities = 7;
+
+  /**
+   * Seccomp syscall filter for the container. "RuntimeDefault" is the hardened
+   * baseline; "Localhost" selects a node-local profile file via `localhost_profile`.
+   */
+  WorkloadSeccompProfile seccomp_profile = 8;
+}
+
+/**
+ * **WorkloadCapabilities** adjusts the container's Linux capability set.
+ */
+message WorkloadCapabilities {
+  // Capabilities to add (e.g. "NET_BIND_SERVICE").
+  repeated string add = 1;
+
+  // Capabilities to drop. Use ["ALL"] as the hardened baseline.
+  repeated string drop = 2;
+}
+
+/**
+ * **WorkloadSeccompProfile** selects the seccomp profile applied to a container or
+ * to every container in the pod.
+ */
+message WorkloadSeccompProfile {
+  /**
+   * Profile type: "RuntimeDefault" (the container runtime's default filter — the
+   * recommended baseline), "Unconfined" (no filtering), or "Localhost" (a profile
+   * file installed on the node, named via localhost_profile).
+   */
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "seccomp.type"
+      message: "Seccomp profile type must be one of \"RuntimeDefault\", \"Unconfined\", or \"Localhost\""
+      expression: "this in ['RuntimeDefault', 'Unconfined', 'Localhost']"
+    }
+  ];
+
+  /**
+   * Path of the profile file relative to the node's seccomp profile root. Required
+   * when (and only meaningful when) type is "Localhost".
+   */
+  string localhost_profile = 2;
+
+  option (buf.validate.message).cel = {
+    id: "seccomp.localhost_profile.required"
+    message: "localhost_profile is required when type is \"Localhost\" and must be empty otherwise"
+    expression: "(this.type == 'Localhost' && this.localhost_profile != '') || (this.type != 'Localhost' && this.localhost_profile == '')"
+  };
+}

@@ -26,101 +26,82 @@ const (
 )
 
 // *
-// KubernetesCronJobSpec defines the configuration for deploying a cron-job on a Kubernetes cluster.
-// This message includes specifications for the container image, resources, environment variables,
-// and the cron-job schedule/policy fields. By setting these parameters, you manage how the
-// cron-job is deployed, executed, and how concurrency and retries are handled.
+// **KubernetesCronJobSpec** runs work on a recurring schedule on a Kubernetes
+// cluster as a batch/v1 CronJob: at each scheduled time the controller creates a
+// Job from `job_template`, and that Job runs pods to completion. This is the kind
+// for scheduled work — nightly backups, report generation, periodic cleanup. For
+// one-shot work use KubernetesJob; for always-on services use KubernetesDeployment.
+//
+// The spec splits cleanly in two: scheduling controls (schedule, time zone,
+// concurrency, history retention) live at the top level, and everything about the
+// work itself lives in `job_template`, which mirrors KubernetesJobSpec's batch
+// controls.
+//
+// DEPLOY-TARGET CONTRACT: this kind is a Service Hub deployment target for
+// scheduled workloads built from user code. Deployment pipelines inject the
+// freshly built artifact at `spec.job_template.container.app.image` (repo + tag).
+// This path is part of the kind's public contract and must survive any future
+// spec evolution.
 type KubernetesCronJobSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
 	// *
-	// The container image to be used for the application.
-	// The `pull_secret_name` is determined by looking up the
-	// `container_image_artifact_store_id` from the environment where the cron-job is deployed.
-	Image *kubernetes.ContainerImage `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
+	// The namespace to run the CronJob in. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource, so an infra chart creates the
+	// namespace and the CronJob in one run.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// *
-	// The CPU and memory resources allocated to the cron-job container.
-	// If not specified, default container resources (limits.cpu=1000m, limits.memory=1Gi,
-	// requests.cpu=50m, requests.memory=100Mi) are applied.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,5,opt,name=resources,proto3" json:"resources,omitempty"`
+	// When true, the module creates the namespace if it does not exist. Leave false
+	// when the namespace is owned by a KubernetesNamespace resource or pre-exists.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
 	// *
-	// Environment variables and secrets for the cron-job container.
-	Env *kubernetes.ContainerEnv `protobuf:"bytes,6,opt,name=env,proto3" json:"env,omitempty"`
+	// When to run, as a standard 5-field cron expression: minute (0-59),
+	// hour (0-23), day of month (1-31), month (1-12), day of week (0-6, Sunday=0).
+	// E.g. "0 3 * * *" is daily at 03:00, "0,15,30,45 * * * *" is every 15
+	// minutes, "0 9 * * 1-5" is weekdays at 09:00. Use standard cron only —
+	// @-style macros like "@daily" are not portable across controller versions.
+	Schedule string `protobuf:"bytes,3,opt,name=schedule,proto3" json:"schedule,omitempty"`
 	// *
-	// A cron schedule expression in standard Cron format, e.g. "0 0 * * *".
-	// This field is required.
-	Schedule string `protobuf:"bytes,7,opt,name=schedule,proto3" json:"schedule,omitempty"`
+	// IANA time zone name the schedule is evaluated in, e.g. "America/New_York"
+	// or "Asia/Kolkata". Unset means the schedule runs in the local time zone of
+	// the cluster's kube-controller-manager — usually UTC, but not guaranteed, so
+	// set this whenever the wall-clock time matters.
+	TimeZone *string `protobuf:"bytes,4,opt,name=time_zone,json=timeZone,proto3,oneof" json:"time_zone,omitempty"`
 	// *
-	// Optional deadline in seconds for starting the job if it misses its scheduled time.
-	// If set to 0, no deadline is enforced.
-	StartingDeadlineSeconds *uint64 `protobuf:"varint,8,opt,name=starting_deadline_seconds,json=startingDeadlineSeconds,proto3,oneof" json:"starting_deadline_seconds,omitempty"`
+	// How many seconds late a run may start when its scheduled time was missed
+	// (controller downtime, unschedulable cluster) before it counts as failed and
+	// is skipped. Unset means no deadline — late runs start whenever possible.
+	// Regardless of this setting, the controller gives up and stops scheduling
+	// after 100 consecutive missed runs, so very frequent schedules benefit from
+	// an explicit deadline to keep that counter bounded.
+	StartingDeadlineSeconds *int64 `protobuf:"varint,5,opt,name=starting_deadline_seconds,json=startingDeadlineSeconds,proto3,oneof" json:"starting_deadline_seconds,omitempty"`
 	// *
-	// Concurrency policy specifies how concurrent job runs are handled.
-	// Allowed values are: "Allow", "Forbid", "Replace".
-	// Default is "Forbid".
-	ConcurrencyPolicy *string `protobuf:"bytes,9,opt,name=concurrency_policy,json=concurrencyPolicy,proto3,oneof" json:"concurrency_policy,omitempty"`
+	// What happens when the next run comes due while the previous run is still
+	// going. "Forbid" (default here): skip the new run — the previous one keeps
+	// going. "Allow": run them concurrently. "Replace": cancel the running job
+	// and start the new one. This default is deliberately safer than upstream
+	// (Kubernetes defaults to Allow): overlapping cron runs are the classic
+	// scheduled-workload incident — two backups writing the same target, two
+	// migrations racing — so overlap is opt-in here.
+	ConcurrencyPolicy *string `protobuf:"bytes,6,opt,name=concurrency_policy,json=concurrencyPolicy,proto3,oneof" json:"concurrency_policy,omitempty"`
 	// *
-	// If true, no subsequent runs are scheduled.
-	// Default is false.
-	Suspend *bool `protobuf:"varint,10,opt,name=suspend,proto3,oneof" json:"suspend,omitempty"`
+	// When true, the controller stops scheduling future runs. Jobs already
+	// running are unaffected — this pauses the schedule, it does not stop work
+	// in flight.
+	Suspend bool `protobuf:"varint,7,opt,name=suspend,proto3" json:"suspend,omitempty"`
 	// *
-	// Number of successful finished jobs to retain.
-	// Default is 3.
-	SuccessfulJobsHistoryLimit *uint32 `protobuf:"varint,11,opt,name=successful_jobs_history_limit,json=successfulJobsHistoryLimit,proto3,oneof" json:"successful_jobs_history_limit,omitempty"`
+	// How many completed successful Jobs are retained (for logs and status
+	// inspection). Kubernetes defaults to 3; 0 deletes each successful Job as
+	// soon as it finishes.
+	SuccessfulJobsHistoryLimit *int32 `protobuf:"varint,8,opt,name=successful_jobs_history_limit,json=successfulJobsHistoryLimit,proto3,oneof" json:"successful_jobs_history_limit,omitempty"`
 	// *
-	// Number of failed finished jobs to retain.
-	// Default is 1.
-	FailedJobsHistoryLimit *uint32 `protobuf:"varint,12,opt,name=failed_jobs_history_limit,json=failedJobsHistoryLimit,proto3,oneof" json:"failed_jobs_history_limit,omitempty"`
+	// How many failed Jobs are retained. Kubernetes defaults to 1; keep at least
+	// one so failure logs survive for post-mortems.
+	FailedJobsHistoryLimit *int32 `protobuf:"varint,9,opt,name=failed_jobs_history_limit,json=failedJobsHistoryLimit,proto3,oneof" json:"failed_jobs_history_limit,omitempty"`
 	// *
-	// Number of retries before marking this job as failed.
-	// Default is 6.
-	BackoffLimit *uint32 `protobuf:"varint,13,opt,name=backoff_limit,json=backoffLimit,proto3,oneof" json:"backoff_limit,omitempty"`
-	// *
-	// Pod restart policy.
-	// Allowed values: "Always", "OnFailure", "Never".
-	// Default is "Never".
-	RestartPolicy *string `protobuf:"bytes,14,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
-	// *
-	// An optional list of commands (equivalent to an ENTRYPOINT override) for the cron-job container.
-	// If omitted, the default ENTRYPOINT in the image will be used.
-	// Example: ["sh","-c","echo Hello from Cron"]
-	Command []string `protobuf:"bytes,15,rep,name=command,proto3" json:"command,omitempty"`
-	// *
-	// An optional list of arguments passed to the container command or the image's default ENTRYPOINT.
-	// If omitted, the default CMD in the image will be used.
-	// Example: ["-f","/path/to/config.yaml"]
-	Args []string `protobuf:"bytes,16,rep,name=args,proto3" json:"args,omitempty"`
-	// *
-	// ConfigMaps to create alongside the CronJob.
-	// Key is the ConfigMap name, value is the content.
-	// These ConfigMaps can be referenced in volume mounts.
-	//
-	// Example:
-	//
-	//	config_maps:
-	//	  backup-script: |
-	//	    #!/bin/bash
-	//	    echo "Running backup..."
-	//	    pg_dump $DATABASE_URL > /backup/dump.sql
-	ConfigMaps map[string]string `protobuf:"bytes,17,rep,name=config_maps,json=configMaps,proto3" json:"config_maps,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// *
-	// Volume mounts for the CronJob container.
-	// Supports mounting ConfigMaps, Secrets, HostPaths, EmptyDirs, and PVCs.
-	// ConfigMaps defined in spec.config_maps can be referenced here.
-	//
-	// Example:
-	//
-	//	volume_mounts:
-	//	  - name: backup-script
-	//	    mountPath: /scripts/backup.sh
-	//	    configMap:
-	//	      name: backup-script
-	//	      key: backup-script
-	//	      path: backup.sh
-	VolumeMounts  []*kubernetes.VolumeMount `protobuf:"bytes,18,rep,name=volume_mounts,json=volumeMounts,proto3" json:"volume_mounts,omitempty"`
+	// The Job created at each scheduled run: its containers, pod configuration,
+	// and batch controls (parallelism, retries, deadlines, failure and success
+	// policies).
+	JobTemplate   *KubernetesCronJobJobTemplate `protobuf:"bytes,10,opt,name=job_template,json=jobTemplate,proto3" json:"job_template,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -169,27 +150,6 @@ func (x *KubernetesCronJobSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesCronJobSpec) GetImage() *kubernetes.ContainerImage {
-	if x != nil {
-		return x.Image
-	}
-	return nil
-}
-
-func (x *KubernetesCronJobSpec) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-func (x *KubernetesCronJobSpec) GetEnv() *kubernetes.ContainerEnv {
-	if x != nil {
-		return x.Env
-	}
-	return nil
-}
-
 func (x *KubernetesCronJobSpec) GetSchedule() string {
 	if x != nil {
 		return x.Schedule
@@ -197,7 +157,14 @@ func (x *KubernetesCronJobSpec) GetSchedule() string {
 	return ""
 }
 
-func (x *KubernetesCronJobSpec) GetStartingDeadlineSeconds() uint64 {
+func (x *KubernetesCronJobSpec) GetTimeZone() string {
+	if x != nil && x.TimeZone != nil {
+		return *x.TimeZone
+	}
+	return ""
+}
+
+func (x *KubernetesCronJobSpec) GetStartingDeadlineSeconds() int64 {
 	if x != nil && x.StartingDeadlineSeconds != nil {
 		return *x.StartingDeadlineSeconds
 	}
@@ -212,107 +179,779 @@ func (x *KubernetesCronJobSpec) GetConcurrencyPolicy() string {
 }
 
 func (x *KubernetesCronJobSpec) GetSuspend() bool {
-	if x != nil && x.Suspend != nil {
-		return *x.Suspend
+	if x != nil {
+		return x.Suspend
 	}
 	return false
 }
 
-func (x *KubernetesCronJobSpec) GetSuccessfulJobsHistoryLimit() uint32 {
+func (x *KubernetesCronJobSpec) GetSuccessfulJobsHistoryLimit() int32 {
 	if x != nil && x.SuccessfulJobsHistoryLimit != nil {
 		return *x.SuccessfulJobsHistoryLimit
 	}
 	return 0
 }
 
-func (x *KubernetesCronJobSpec) GetFailedJobsHistoryLimit() uint32 {
+func (x *KubernetesCronJobSpec) GetFailedJobsHistoryLimit() int32 {
 	if x != nil && x.FailedJobsHistoryLimit != nil {
 		return *x.FailedJobsHistoryLimit
 	}
 	return 0
 }
 
-func (x *KubernetesCronJobSpec) GetBackoffLimit() uint32 {
+func (x *KubernetesCronJobSpec) GetJobTemplate() *KubernetesCronJobJobTemplate {
+	if x != nil {
+		return x.JobTemplate
+	}
+	return nil
+}
+
+// *
+// **KubernetesCronJobJobTemplate** is the Job stamped out at each scheduled run.
+// It mirrors KubernetesJobSpec's batch controls, minus `suspend` — suspension
+// lives at the CronJob level, where it pauses the schedule itself.
+type KubernetesCronJobJobTemplate struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// The containers of every run's pods: one main application container that
+	// performs the work and any sidecars. All containers share the pod's network
+	// namespace and volumes.
+	Container *KubernetesCronJobContainer `protobuf:"bytes,1,opt,name=container,proto3" json:"container,omitempty"`
+	// *
+	// Pod-level configuration shared by every run's pods: identity
+	// (ServiceAccount reference), init containers, scheduling, security
+	// hardening, DNS, and termination behavior.
+	Pod *kubernetes.WorkloadPod `protobuf:"bytes,2,opt,name=pod,proto3" json:"pod,omitempty"`
+	// *
+	// Maximum number of pods running at any one time within a run. The controller
+	// runs fewer when the remaining work is smaller (completions minus
+	// successes). Defaults to 1 — sequential execution; raise it to fan out
+	// parallel batch work.
+	Parallelism *int32 `protobuf:"varint,3,opt,name=parallelism,proto3,oneof" json:"parallelism,omitempty"`
+	// *
+	// Number of successful pod completions required for each run's Job to
+	// succeed. Defaults to 1. In Indexed mode this is also the number of
+	// indexes — each pod is assigned an index from 0 to completions-1 and the Job
+	// completes when every index has one successful pod.
+	Completions *int32 `protobuf:"varint,4,opt,name=completions,proto3,oneof" json:"completions,omitempty"`
+	// *
+	// How pod completions are tracked. "NonIndexed" (default): pods are
+	// interchangeable and the Job completes after `completions` successes.
+	// "Indexed": each pod receives a completion index (0 to completions-1,
+	// exposed via the batch.kubernetes.io/job-completion-index annotation and the
+	// pod hostname), so each pod can claim its own partition of the work — the
+	// mode for parallel processing of partitioned data.
+	CompletionMode *string `protobuf:"bytes,5,opt,name=completion_mode,json=completionMode,proto3,oneof" json:"completion_mode,omitempty"`
+	// *
+	// Number of pod-failure retries before a run's Job is marked failed.
+	// Kubernetes defaults to 6, with exponential back-off between retries. Note:
+	// when backoff_limit_per_index is set, upstream stops counting failures
+	// globally and this limit is effectively unlimited unless set explicitly.
+	BackoffLimit *int32 `protobuf:"varint,6,opt,name=backoff_limit,json=backoffLimit,proto3,oneof" json:"backoff_limit,omitempty"`
+	// *
+	// Retry budget per completion index instead of per Job — one flaky partition
+	// exhausts only its own retries rather than the whole run's. Indexed mode
+	// only, and requires restart_policy "Never". Unset keeps the global
+	// backoff_limit behavior.
+	BackoffLimitPerIndex *uint32 `protobuf:"varint,7,opt,name=backoff_limit_per_index,json=backoffLimitPerIndex,proto3,oneof" json:"backoff_limit_per_index,omitempty"`
+	// *
+	// Maximum number of indexes that may fail (exhaust their per-index retries)
+	// before the run's Job is marked failed and terminated. Requires
+	// backoff_limit_per_index. Unset lets every index run to its own outcome and
+	// the Job completes with whatever mix of succeeded and failed indexes
+	// results.
+	MaxFailedIndexes *uint32 `protobuf:"varint,8,opt,name=max_failed_indexes,json=maxFailedIndexes,proto3,oneof" json:"max_failed_indexes,omitempty"`
+	// *
+	// Hard wall-clock limit in seconds for each run's Job, counted from its
+	// start time. When exceeded, all running pods are killed and the Job is
+	// marked failed — regardless of remaining retries. Unset means no deadline.
+	// Especially valuable on CronJobs with concurrency_policy "Forbid", where a
+	// hung run silently blocks every subsequent run.
+	ActiveDeadlineSeconds *int64 `protobuf:"varint,9,opt,name=active_deadline_seconds,json=activeDeadlineSeconds,proto3,oneof" json:"active_deadline_seconds,omitempty"`
+	// *
+	// Seconds after a run's Job finishes (success or failure) before the Job and
+	// its pods are automatically deleted. 0 deletes immediately on finish; unset
+	// leaves cleanup to the CronJob's history limits — the usual choice here,
+	// since the history limits already bound retention.
+	TtlSecondsAfterFinished *int32 `protobuf:"varint,10,opt,name=ttl_seconds_after_finished,json=ttlSecondsAfterFinished,proto3,oneof" json:"ttl_seconds_after_finished,omitempty"`
+	// *
+	// What the kubelet does when a container in a run's pod exits non-zero:
+	// "Never" (default) leaves the pod failed and lets the Job controller create
+	// a replacement pod, keeping one pod per attempt for debugging; "OnFailure"
+	// restarts the container in place, reusing the pod. "Always" is invalid for
+	// Jobs — it would restart even successfully completed containers, so the Job
+	// could never finish.
+	RestartPolicy *string `protobuf:"bytes,11,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
+	// *
+	// Fine-grained handling of pod failures based on container exit codes or pod
+	// conditions — e.g. fail a run immediately on a "misconfiguration" exit code,
+	// or ignore failures caused by node disruption so they don't burn the retry
+	// budget. Omit for the default behavior (every failure counts toward
+	// backoff_limit).
+	PodFailurePolicy *KubernetesCronJobPodFailurePolicy `protobuf:"bytes,12,opt,name=pod_failure_policy,json=podFailurePolicy,proto3" json:"pod_failure_policy,omitempty"`
+	// *
+	// Early-success criteria for Indexed runs — declare the Job succeeded once
+	// the leading indexes (or enough indexes) finish, without waiting for every
+	// index. Omit for the default behavior (success requires `completions`
+	// successful pods).
+	SuccessPolicy *KubernetesCronJobSuccessPolicy `protobuf:"bytes,13,opt,name=success_policy,json=successPolicy,proto3" json:"success_policy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCronJobJobTemplate) Reset() {
+	*x = KubernetesCronJobJobTemplate{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCronJobJobTemplate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCronJobJobTemplate) ProtoMessage() {}
+
+func (x *KubernetesCronJobJobTemplate) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCronJobJobTemplate.ProtoReflect.Descriptor instead.
+func (*KubernetesCronJobJobTemplate) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesCronJobJobTemplate) GetContainer() *KubernetesCronJobContainer {
+	if x != nil {
+		return x.Container
+	}
+	return nil
+}
+
+func (x *KubernetesCronJobJobTemplate) GetPod() *kubernetes.WorkloadPod {
+	if x != nil {
+		return x.Pod
+	}
+	return nil
+}
+
+func (x *KubernetesCronJobJobTemplate) GetParallelism() int32 {
+	if x != nil && x.Parallelism != nil {
+		return *x.Parallelism
+	}
+	return 0
+}
+
+func (x *KubernetesCronJobJobTemplate) GetCompletions() int32 {
+	if x != nil && x.Completions != nil {
+		return *x.Completions
+	}
+	return 0
+}
+
+func (x *KubernetesCronJobJobTemplate) GetCompletionMode() string {
+	if x != nil && x.CompletionMode != nil {
+		return *x.CompletionMode
+	}
+	return ""
+}
+
+func (x *KubernetesCronJobJobTemplate) GetBackoffLimit() int32 {
 	if x != nil && x.BackoffLimit != nil {
 		return *x.BackoffLimit
 	}
 	return 0
 }
 
-func (x *KubernetesCronJobSpec) GetRestartPolicy() string {
+func (x *KubernetesCronJobJobTemplate) GetBackoffLimitPerIndex() uint32 {
+	if x != nil && x.BackoffLimitPerIndex != nil {
+		return *x.BackoffLimitPerIndex
+	}
+	return 0
+}
+
+func (x *KubernetesCronJobJobTemplate) GetMaxFailedIndexes() uint32 {
+	if x != nil && x.MaxFailedIndexes != nil {
+		return *x.MaxFailedIndexes
+	}
+	return 0
+}
+
+func (x *KubernetesCronJobJobTemplate) GetActiveDeadlineSeconds() int64 {
+	if x != nil && x.ActiveDeadlineSeconds != nil {
+		return *x.ActiveDeadlineSeconds
+	}
+	return 0
+}
+
+func (x *KubernetesCronJobJobTemplate) GetTtlSecondsAfterFinished() int32 {
+	if x != nil && x.TtlSecondsAfterFinished != nil {
+		return *x.TtlSecondsAfterFinished
+	}
+	return 0
+}
+
+func (x *KubernetesCronJobJobTemplate) GetRestartPolicy() string {
 	if x != nil && x.RestartPolicy != nil {
 		return *x.RestartPolicy
 	}
 	return ""
 }
 
-func (x *KubernetesCronJobSpec) GetCommand() []string {
+func (x *KubernetesCronJobJobTemplate) GetPodFailurePolicy() *KubernetesCronJobPodFailurePolicy {
 	if x != nil {
-		return x.Command
+		return x.PodFailurePolicy
 	}
 	return nil
 }
 
-func (x *KubernetesCronJobSpec) GetArgs() []string {
+func (x *KubernetesCronJobJobTemplate) GetSuccessPolicy() *KubernetesCronJobSuccessPolicy {
 	if x != nil {
-		return x.Args
+		return x.SuccessPolicy
 	}
 	return nil
 }
 
-func (x *KubernetesCronJobSpec) GetConfigMaps() map[string]string {
+// *
+// **KubernetesCronJobContainer** groups the main application container and its
+// sidecars for each run's pods. The `app` path is load-bearing: deployment
+// pipelines inject the built image at `spec.job_template.container.app.image`
+// (deploy-target contract).
+type KubernetesCronJobContainer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// The main application container — the process that performs the scheduled
+	// work and whose exit code decides the pod's success or failure. Its image is
+	// the pipeline injection point.
+	App *kubernetes.WorkloadContainer `protobuf:"bytes,1,opt,name=app,proto3" json:"app,omitempty"`
+	// *
+	// Sidecar containers running alongside the app in every run's pods — log
+	// shippers, proxies. Sidecars are full containers: probes, mounts, security
+	// context, and lifecycle hooks all apply. Each sidecar must be named.
+	// WARNING: a Job pod only completes when ALL its containers exit — a sidecar
+	// that never exits keeps every run from completing (and with
+	// concurrency_policy "Forbid", blocks all future runs). Use
+	// termination-aware sidecars, or have the app signal them to shut down when
+	// its work is done.
+	Sidecars      []*kubernetes.WorkloadContainer `protobuf:"bytes,2,rep,name=sidecars,proto3" json:"sidecars,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCronJobContainer) Reset() {
+	*x = KubernetesCronJobContainer{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCronJobContainer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCronJobContainer) ProtoMessage() {}
+
+func (x *KubernetesCronJobContainer) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[2]
 	if x != nil {
-		return x.ConfigMaps
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCronJobContainer.ProtoReflect.Descriptor instead.
+func (*KubernetesCronJobContainer) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesCronJobContainer) GetApp() *kubernetes.WorkloadContainer {
+	if x != nil {
+		return x.App
 	}
 	return nil
 }
 
-func (x *KubernetesCronJobSpec) GetVolumeMounts() []*kubernetes.VolumeMount {
+func (x *KubernetesCronJobContainer) GetSidecars() []*kubernetes.WorkloadContainer {
 	if x != nil {
-		return x.VolumeMounts
+		return x.Sidecars
 	}
 	return nil
+}
+
+// *
+// **KubernetesCronJobPodFailurePolicy** decides, per pod failure, whether the
+// failure counts against the retry budget, is ignored, or terminates the run's
+// Job (or index) outright. Rules are evaluated in order and the first matching
+// rule wins; failures matching no rule get the default Count handling. Requires
+// restart_policy "Never" — it cannot be combined with "OnFailure", because
+// in-place container restarts never surface as pod failures for the rules to
+// match.
+type KubernetesCronJobPodFailurePolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Ordered rules; the first rule matching a pod failure decides its handling.
+	Rules         []*KubernetesCronJobPodFailurePolicyRule `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCronJobPodFailurePolicy) Reset() {
+	*x = KubernetesCronJobPodFailurePolicy{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCronJobPodFailurePolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCronJobPodFailurePolicy) ProtoMessage() {}
+
+func (x *KubernetesCronJobPodFailurePolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCronJobPodFailurePolicy.ProtoReflect.Descriptor instead.
+func (*KubernetesCronJobPodFailurePolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesCronJobPodFailurePolicy) GetRules() []*KubernetesCronJobPodFailurePolicyRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+// *
+// **KubernetesCronJobPodFailurePolicyRule** pairs one action with one trigger:
+// either a container exit-code check or a pod-condition check, never both.
+type KubernetesCronJobPodFailurePolicyRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// What happens when the rule matches. "FailJob": the run's Job is marked
+	// failed immediately and all running pods are terminated, ignoring
+	// backoff_limit — for unrecoverable errors like misconfiguration. "Ignore":
+	// the failure does not count toward backoff_limit and a replacement pod is
+	// created — for infrastructure-caused failures like node disruption.
+	// "Count": the default handling, the failure counts toward backoff_limit.
+	// "FailIndex": only the pod's completion index is marked failed and not
+	// retried — Indexed mode only, and requires backoff_limit_per_index.
+	Action string `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
+	// *
+	// Trigger on container exit codes — e.g. exit code 42 meaning "bad input,
+	// do not retry".
+	OnExitCodes *KubernetesCronJobPodFailurePolicyOnExitCodes `protobuf:"bytes,2,opt,name=on_exit_codes,json=onExitCodes,proto3" json:"on_exit_codes,omitempty"`
+	// *
+	// Trigger on pod conditions — e.g. type "DisruptionTarget" to recognize
+	// pods killed by node drains or preemption. The rule matches when at least
+	// one pattern matches an actual pod condition.
+	OnPodConditions []*KubernetesCronJobPodFailurePolicyOnPodCondition `protobuf:"bytes,3,rep,name=on_pod_conditions,json=onPodConditions,proto3" json:"on_pod_conditions,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesCronJobPodFailurePolicyRule) Reset() {
+	*x = KubernetesCronJobPodFailurePolicyRule{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCronJobPodFailurePolicyRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCronJobPodFailurePolicyRule) ProtoMessage() {}
+
+func (x *KubernetesCronJobPodFailurePolicyRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCronJobPodFailurePolicyRule.ProtoReflect.Descriptor instead.
+func (*KubernetesCronJobPodFailurePolicyRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesCronJobPodFailurePolicyRule) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *KubernetesCronJobPodFailurePolicyRule) GetOnExitCodes() *KubernetesCronJobPodFailurePolicyOnExitCodes {
+	if x != nil {
+		return x.OnExitCodes
+	}
+	return nil
+}
+
+func (x *KubernetesCronJobPodFailurePolicyRule) GetOnPodConditions() []*KubernetesCronJobPodFailurePolicyOnPodCondition {
+	if x != nil {
+		return x.OnPodConditions
+	}
+	return nil
+}
+
+// *
+// **KubernetesCronJobPodFailurePolicyOnExitCodes** matches a pod failure by the
+// exit codes of its failed containers. Containers that exited 0 (success) are
+// never considered.
+type KubernetesCronJobPodFailurePolicyOnExitCodes struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Restricts the exit-code check to the named container (app, sidecar, or
+	// init container). Empty matches any container in the pod.
+	ContainerName string `protobuf:"bytes,1,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
+	// *
+	// How exit codes relate to `values`: "In" matches when a failed container's
+	// exit code is in the set; "NotIn" matches when it is not.
+	Operator string `protobuf:"bytes,2,opt,name=operator,proto3" json:"operator,omitempty"`
+	// *
+	// The exit codes checked against the operator. Must not contain duplicates,
+	// and cannot contain 0 for the "In" operator — exit code 0 is success and is
+	// excluded from the check.
+	Values        []int32 `protobuf:"varint,3,rep,packed,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCronJobPodFailurePolicyOnExitCodes) Reset() {
+	*x = KubernetesCronJobPodFailurePolicyOnExitCodes{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCronJobPodFailurePolicyOnExitCodes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCronJobPodFailurePolicyOnExitCodes) ProtoMessage() {}
+
+func (x *KubernetesCronJobPodFailurePolicyOnExitCodes) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCronJobPodFailurePolicyOnExitCodes.ProtoReflect.Descriptor instead.
+func (*KubernetesCronJobPodFailurePolicyOnExitCodes) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesCronJobPodFailurePolicyOnExitCodes) GetContainerName() string {
+	if x != nil {
+		return x.ContainerName
+	}
+	return ""
+}
+
+func (x *KubernetesCronJobPodFailurePolicyOnExitCodes) GetOperator() string {
+	if x != nil {
+		return x.Operator
+	}
+	return ""
+}
+
+func (x *KubernetesCronJobPodFailurePolicyOnExitCodes) GetValues() []int32 {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+// *
+// **KubernetesCronJobPodFailurePolicyOnPodCondition** matches a pod failure by
+// an actual pod condition — the lever for treating infrastructure-caused
+// failures differently from application failures.
+type KubernetesCronJobPodFailurePolicyOnPodCondition struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// The pod condition type to match, e.g. "DisruptionTarget" (pod terminated
+	// by node drain, preemption, or taint eviction).
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// *
+	// The condition status that must be present for the match. Defaults to
+	// "True" — the overwhelmingly common intent.
+	Status        *string `protobuf:"bytes,2,opt,name=status,proto3,oneof" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCronJobPodFailurePolicyOnPodCondition) Reset() {
+	*x = KubernetesCronJobPodFailurePolicyOnPodCondition{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCronJobPodFailurePolicyOnPodCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCronJobPodFailurePolicyOnPodCondition) ProtoMessage() {}
+
+func (x *KubernetesCronJobPodFailurePolicyOnPodCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCronJobPodFailurePolicyOnPodCondition.ProtoReflect.Descriptor instead.
+func (*KubernetesCronJobPodFailurePolicyOnPodCondition) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesCronJobPodFailurePolicyOnPodCondition) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *KubernetesCronJobPodFailurePolicyOnPodCondition) GetStatus() string {
+	if x != nil && x.Status != nil {
+		return *x.Status
+	}
+	return ""
+}
+
+// *
+// **KubernetesCronJobSuccessPolicy** declares a run's Job succeeded before
+// every completion finishes — Indexed mode only. The Job succeeds as soon as
+// ANY rule is satisfied; lingering pods are then terminated. The pattern for
+// leader/worker batch topologies where only the leader index's success matters.
+type KubernetesCronJobSuccessPolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Alternative success rules; the Job succeeds when any one of them is met.
+	Rules         []*KubernetesCronJobSuccessPolicyRule `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesCronJobSuccessPolicy) Reset() {
+	*x = KubernetesCronJobSuccessPolicy{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCronJobSuccessPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCronJobSuccessPolicy) ProtoMessage() {}
+
+func (x *KubernetesCronJobSuccessPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCronJobSuccessPolicy.ProtoReflect.Descriptor instead.
+func (*KubernetesCronJobSuccessPolicy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesCronJobSuccessPolicy) GetRules() []*KubernetesCronJobSuccessPolicyRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+// *
+// **KubernetesCronJobSuccessPolicyRule** is one way a run's Job may be declared
+// succeeded. Set at least one of the two criteria; when both are set, the count
+// is checked only within the listed indexes.
+type KubernetesCronJobSuccessPolicyRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Indexes that must succeed, as comma-separated integers or ranges within
+	// 0 to completions-1 — e.g. "0" (leader only) or "0-2,4".
+	SucceededIndexes string `protobuf:"bytes,1,opt,name=succeeded_indexes,json=succeededIndexes,proto3" json:"succeeded_indexes,omitempty"`
+	// *
+	// Minimum number of succeeded indexes. When combined with succeeded_indexes,
+	// only successes within that set are counted.
+	SucceededCount *int32 `protobuf:"varint,2,opt,name=succeeded_count,json=succeededCount,proto3,oneof" json:"succeeded_count,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *KubernetesCronJobSuccessPolicyRule) Reset() {
+	*x = KubernetesCronJobSuccessPolicyRule{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesCronJobSuccessPolicyRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesCronJobSuccessPolicyRule) ProtoMessage() {}
+
+func (x *KubernetesCronJobSuccessPolicyRule) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesCronJobSuccessPolicyRule.ProtoReflect.Descriptor instead.
+func (*KubernetesCronJobSuccessPolicyRule) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *KubernetesCronJobSuccessPolicyRule) GetSucceededIndexes() string {
+	if x != nil {
+		return x.SucceededIndexes
+	}
+	return ""
+}
+
+func (x *KubernetesCronJobSuccessPolicyRule) GetSucceededCount() int32 {
+	if x != nil && x.SucceededCount != nil {
+		return *x.SucceededCount
+	}
+	return 0
 }
 
 var File_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetescronjob/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetescronjob.v1\x1a\x1bbuf/validate/validate.proto\x1a3dev/planton/provider/kubernetes/container_env.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa0\v\n" +
+	"?dev/planton/provider/kubernetes/kubernetescronjob/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetescronjob.v1\x1a\x1bbuf/validate/validate.proto\x1a8dev/planton/provider/kubernetes/workload_container.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd5\t\n" +
 	"\x15KubernetesCronJobSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12E\n" +
-	"\x05image\x18\x04 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12t\n" +
-	"\tresources\x18\x05 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100MiR\tresources\x12?\n" +
-	"\x03env\x18\x06 \x01(\v2-.dev.planton.provider.kubernetes.ContainerEnvR\x03env\x12\"\n" +
-	"\bschedule\x18\a \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bschedule\x12F\n" +
-	"\x19starting_deadline_seconds\x18\b \x01(\x04B\x05\x8a\xa6\x1d\x010H\x00R\x17startingDeadlineSeconds\x88\x01\x01\x12[\n" +
-	"\x12concurrency_policy\x18\t \x01(\tB'\xbaH\x1ar\x18R\x05AllowR\x06ForbidR\aReplace\x8a\xa6\x1d\x06ForbidH\x01R\x11concurrencyPolicy\x88\x01\x01\x12(\n" +
-	"\asuspend\x18\n" +
-	" \x01(\bB\t\x8a\xa6\x1d\x05falseH\x02R\asuspend\x88\x01\x01\x12M\n" +
-	"\x1dsuccessful_jobs_history_limit\x18\v \x01(\rB\x05\x8a\xa6\x1d\x013H\x03R\x1asuccessfulJobsHistoryLimit\x88\x01\x01\x12E\n" +
-	"\x19failed_jobs_history_limit\x18\f \x01(\rB\x05\x8a\xa6\x1d\x011H\x04R\x16failedJobsHistoryLimit\x88\x01\x01\x12/\n" +
-	"\rbackoff_limit\x18\r \x01(\rB\x05\x8a\xa6\x1d\x016H\x05R\fbackoffLimit\x88\x01\x01\x12T\n" +
-	"\x0erestart_policy\x18\x0e \x01(\tB(\xbaH\x1cr\x1aR\x06AlwaysR\tOnFailureR\x05Never\x8a\xa6\x1d\x05NeverH\x06R\rrestartPolicy\x88\x01\x01\x12\x18\n" +
-	"\acommand\x18\x0f \x03(\tR\acommand\x12\x12\n" +
-	"\x04args\x18\x10 \x03(\tR\x04args\x12|\n" +
-	"\vconfig_maps\x18\x11 \x03(\v2[.dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.ConfigMapsEntryR\n" +
-	"configMaps\x12Q\n" +
-	"\rvolume_mounts\x18\x12 \x03(\v2,.dev.planton.provider.kubernetes.VolumeMountR\fvolumeMounts\x1a=\n" +
-	"\x0fConfigMapsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x1c\n" +
-	"\x1a_starting_deadline_secondsB\x15\n" +
-	"\x13_concurrency_policyB\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\x9c\x02\n" +
+	"\bschedule\x18\x03 \x01(\tB\xff\x01\xbaH\xfb\x01\xba\x01\xf4\x01\n" +
+	"\rspec.schedule\x12\xaa\x01Schedule must be a standard 5-field cron expression: minute hour day-of-month month day-of-week (e.g. \"0 3 * * *\" for daily at 03:00, \"*/15 * * * *\" for every 15 minutes)\x1a6this.matches('^\\\\S+\\\\s+\\\\S+\\\\s+\\\\S+\\\\s+\\\\S+\\\\s+\\\\S+$')\xc8\x01\x01R\bschedule\x12 \n" +
+	"\ttime_zone\x18\x04 \x01(\tH\x00R\btimeZone\x88\x01\x01\x12H\n" +
+	"\x19starting_deadline_seconds\x18\x05 \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x01R\x17startingDeadlineSeconds\x88\x01\x01\x12\xd9\x01\n" +
+	"\x12concurrency_policy\x18\x06 \x01(\tB\xa4\x01\xbaH\x96\x01\xba\x01\x92\x01\n" +
+	"\x17spec.concurrency_policy\x12AConcurrency policy must be one of \"Allow\", \"Forbid\", or \"Replace\"\x1a4this == '' || this in ['Allow', 'Forbid', 'Replace']\x8a\xa6\x1d\x06ForbidH\x02R\x11concurrencyPolicy\x88\x01\x01\x12\x18\n" +
+	"\asuspend\x18\a \x01(\bR\asuspend\x12T\n" +
+	"\x1dsuccessful_jobs_history_limit\x18\b \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x013H\x03R\x1asuccessfulJobsHistoryLimit\x88\x01\x01\x12L\n" +
+	"\x19failed_jobs_history_limit\x18\t \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x011H\x04R\x16failedJobsHistoryLimit\x88\x01\x01\x12}\n" +
+	"\fjob_template\x18\n" +
+	" \x01(\v2R.dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobJobTemplateB\x06\xbaH\x03\xc8\x01\x01R\vjobTemplateB\f\n" +
 	"\n" +
-	"\b_suspendB \n" +
+	"_time_zoneB\x1c\n" +
+	"\x1a_starting_deadline_secondsB\x15\n" +
+	"\x13_concurrency_policyB \n" +
 	"\x1e_successful_jobs_history_limitB\x1c\n" +
-	"\x1a_failed_jobs_history_limitB\x10\n" +
-	"\x0e_backoff_limitB\x11\n" +
-	"\x0f_restart_policyB\xa8\x03\n" +
+	"\x1a_failed_jobs_history_limit\"\xb1\f\n" +
+	"\x1cKubernetesCronJobJobTemplate\x12v\n" +
+	"\tcontainer\x18\x01 \x01(\v2P.dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12>\n" +
+	"\x03pod\x18\x02 \x01(\v2,.dev.planton.provider.kubernetes.WorkloadPodR\x03pod\x123\n" +
+	"\vparallelism\x18\x03 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x011H\x00R\vparallelism\x88\x01\x01\x123\n" +
+	"\vcompletions\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x011H\x01R\vcompletions\x88\x01\x01\x12\xd3\x01\n" +
+	"\x0fcompletion_mode\x18\x05 \x01(\tB\xa4\x01\xbaH\x92\x01\xba\x01\x8e\x01\n" +
+	"!spec.job_template.completion_mode\x128Completion mode must be either \"NonIndexed\" or \"Indexed\"\x1a/this == '' || this in ['NonIndexed', 'Indexed']\x8a\xa6\x1d\n" +
+	"NonIndexedH\x02R\x0ecompletionMode\x88\x01\x01\x126\n" +
+	"\rbackoff_limit\x18\x06 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x016H\x03R\fbackoffLimit\x88\x01\x01\x12:\n" +
+	"\x17backoff_limit_per_index\x18\a \x01(\rH\x04R\x14backoffLimitPerIndex\x88\x01\x01\x121\n" +
+	"\x12max_failed_indexes\x18\b \x01(\rH\x05R\x10maxFailedIndexes\x88\x01\x01\x12D\n" +
+	"\x17active_deadline_seconds\x18\t \x01(\x03B\a\xbaH\x04\"\x02(\x01H\x06R\x15activeDeadlineSeconds\x88\x01\x01\x12I\n" +
+	"\x1attl_seconds_after_finished\x18\n" +
+	" \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\aR\x17ttlSecondsAfterFinished\x88\x01\x01\x12\x94\x02\n" +
+	"\x0erestart_policy\x18\v \x01(\tB\xe7\x01\xbaH\xda\x01\xba\x01\xd6\x01\n" +
+	" spec.job_template.restart_policy\x12\x83\x01Restart policy must be either \"Never\" or \"OnFailure\" — \"Always\" would restart completed containers and the Job could never finish\x1a,this == '' || this in ['Never', 'OnFailure']\x8a\xa6\x1d\x05NeverH\bR\rrestartPolicy\x88\x01\x01\x12\x85\x01\n" +
+	"\x12pod_failure_policy\x18\f \x01(\v2W.dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyR\x10podFailurePolicy\x12{\n" +
+	"\x0esuccess_policy\x18\r \x01(\v2T.dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSuccessPolicyR\rsuccessPolicyB\x0e\n" +
+	"\f_parallelismB\x0e\n" +
+	"\f_completionsB\x12\n" +
+	"\x10_completion_modeB\x10\n" +
+	"\x0e_backoff_limitB\x1a\n" +
+	"\x18_backoff_limit_per_indexB\x15\n" +
+	"\x13_max_failed_indexesB\x1a\n" +
+	"\x18_active_deadline_secondsB\x1d\n" +
+	"\x1b_ttl_seconds_after_finishedB\x11\n" +
+	"\x0f_restart_policy\"\xb4\x02\n" +
+	"\x1aKubernetesCronJobContainer\x12L\n" +
+	"\x03app\x18\x01 \x01(\v22.dev.planton.provider.kubernetes.WorkloadContainerB\x06\xbaH\x03\xc8\x01\x01R\x03app\x12\xc7\x01\n" +
+	"\bsidecars\x18\x02 \x03(\v22.dev.planton.provider.kubernetes.WorkloadContainerBw\xbaHt\xba\x01q\n" +
+	"*spec.job_template.container.sidecars.named\x12(Every sidecar container must have a name\x1a\x19this.all(c, c.name != '')R\bsidecars\"\xa0\x01\n" +
+	"!KubernetesCronJobPodFailurePolicy\x12{\n" +
+	"\x05rules\x18\x01 \x03(\v2[.dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyRuleB\b\xbaH\x05\x92\x01\x02\b\x01R\x05rules\"\xa2\x06\n" +
+	"%KubernetesCronJobPodFailurePolicyRule\x12\xcf\x01\n" +
+	"\x06action\x18\x01 \x01(\tB\xb6\x01\xbaH\xb2\x01\xba\x01\xab\x01\n" +
+	"0spec.job_template.pod_failure_policy.rule.action\x12BAction must be one of \"FailJob\", \"Ignore\", \"Count\", or \"FailIndex\"\x1a3this in ['FailJob', 'Ignore', 'Count', 'FailIndex']\xc8\x01\x01R\x06action\x12\x86\x01\n" +
+	"\ron_exit_codes\x18\x02 \x01(\v2b.dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyOnExitCodesR\vonExitCodes\x12\x91\x01\n" +
+	"\x11on_pod_conditions\x18\x03 \x03(\v2e.dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyOnPodConditionR\x0fonPodConditions:\x89\x02\xbaH\x85\x02\x1a\x82\x02\n" +
+	"=spec.job_template.pod_failure_policy.rule.exactly_one_trigger\x12>Set exactly one of on_exit_codes or on_pod_conditions per rule\x1a\x80\x01(has(this.on_exit_codes) && size(this.on_pod_conditions) == 0) || (!has(this.on_exit_codes) && size(this.on_pod_conditions) > 0)\"\xa0\x02\n" +
+	",KubernetesCronJobPodFailurePolicyOnExitCodes\x12%\n" +
+	"\x0econtainer_name\x18\x01 \x01(\tR\rcontainerName\x12\xa6\x01\n" +
+	"\boperator\x18\x02 \x01(\tB\x89\x01\xbaH\x85\x01\xba\x01\x7f\n" +
+	";spec.job_template.pod_failure_policy.on_exit_codes.operator\x12'Operator must be either \"In\" or \"NotIn\"\x1a\x17this in ['In', 'NotIn']\xc8\x01\x01R\boperator\x12 \n" +
+	"\x06values\x18\x03 \x03(\x05B\b\xbaH\x05\x92\x01\x02\b\x01R\x06values\"\xbb\x02\n" +
+	"/KubernetesCronJobPodFailurePolicyOnPodCondition\x12\x1a\n" +
+	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\xe0\x01\n" +
+	"\x06status\x18\x02 \x01(\tB\xc2\x01\xbaH\xb6\x01\xba\x01\xb2\x01\n" +
+	"=spec.job_template.pod_failure_policy.on_pod_conditions.status\x12=Condition status must be one of \"True\", \"False\", or \"Unknown\"\x1a2this == '' || this in ['True', 'False', 'Unknown']\x8a\xa6\x1d\x04TrueH\x00R\x06status\x88\x01\x01B\t\n" +
+	"\a_status\"\x9a\x01\n" +
+	"\x1eKubernetesCronJobSuccessPolicy\x12x\n" +
+	"\x05rules\x18\x01 \x03(\v2X.dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSuccessPolicyRuleB\b\xbaH\x05\x92\x01\x02\b\x01R\x05rules\"\xcd\x04\n" +
+	"\"KubernetesCronJobSuccessPolicyRule\x12\x87\x02\n" +
+	"\x11succeeded_indexes\x18\x01 \x01(\tB\xd9\x01\xbaH\xd5\x01\xba\x01\xd1\x01\n" +
+	"7spec.job_template.success_policy.rule.succeeded_indexes\x12PSucceeded indexes must be comma-separated integers or ranges (e.g. \"0\", \"0-2,4\")\x1aDthis == '' || this.matches('^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$')R\x10succeededIndexes\x125\n" +
+	"\x0fsucceeded_count\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R\x0esucceededCount\x88\x01\x01:\xd1\x01\xbaH\xcd\x01\x1a\xca\x01\n" +
+	"<spec.job_template.success_policy.rule.at_least_one_criterion\x12OEach success rule must set at least one of succeeded_indexes or succeeded_count\x1a9this.succeeded_indexes != '' || has(this.succeeded_count)B\x12\n" +
+	"\x10_succeeded_countB\xa8\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetescronjob.v1B\tSpecProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescronjob/v1;kubernetescronjobv1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetescronjob.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetescronjob\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetescronjob\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetescronjob::V1b\x06proto3"
 
 var (
@@ -327,28 +966,39 @@ func file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDes
 	return file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_goTypes = []any{
-	(*KubernetesCronJobSpec)(nil),         // 0: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec
-	nil,                                   // 1: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.ConfigMapsEntry
-	(*v1.StringValueOrRef)(nil),           // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerImage)(nil),     // 3: dev.planton.provider.kubernetes.ContainerImage
-	(*kubernetes.ContainerResources)(nil), // 4: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerEnv)(nil),       // 5: dev.planton.provider.kubernetes.ContainerEnv
-	(*kubernetes.VolumeMount)(nil),        // 6: dev.planton.provider.kubernetes.VolumeMount
+	(*KubernetesCronJobSpec)(nil),                           // 0: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec
+	(*KubernetesCronJobJobTemplate)(nil),                    // 1: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobJobTemplate
+	(*KubernetesCronJobContainer)(nil),                      // 2: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobContainer
+	(*KubernetesCronJobPodFailurePolicy)(nil),               // 3: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicy
+	(*KubernetesCronJobPodFailurePolicyRule)(nil),           // 4: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyRule
+	(*KubernetesCronJobPodFailurePolicyOnExitCodes)(nil),    // 5: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyOnExitCodes
+	(*KubernetesCronJobPodFailurePolicyOnPodCondition)(nil), // 6: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyOnPodCondition
+	(*KubernetesCronJobSuccessPolicy)(nil),                  // 7: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSuccessPolicy
+	(*KubernetesCronJobSuccessPolicyRule)(nil),              // 8: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSuccessPolicyRule
+	(*v1.StringValueOrRef)(nil),                             // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.WorkloadPod)(nil),                          // 10: dev.planton.provider.kubernetes.WorkloadPod
+	(*kubernetes.WorkloadContainer)(nil),                    // 11: dev.planton.provider.kubernetes.WorkloadContainer
 }
 var file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_depIdxs = []int32{
-	2, // 0: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	4, // 2: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	5, // 3: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.env:type_name -> dev.planton.provider.kubernetes.ContainerEnv
-	1, // 4: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.config_maps:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.ConfigMapsEntry
-	6, // 5: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.volume_mounts:type_name -> dev.planton.provider.kubernetes.VolumeMount
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	9,  // 0: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSpec.job_template:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobJobTemplate
+	2,  // 2: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobJobTemplate.container:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobContainer
+	10, // 3: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobJobTemplate.pod:type_name -> dev.planton.provider.kubernetes.WorkloadPod
+	3,  // 4: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobJobTemplate.pod_failure_policy:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicy
+	7,  // 5: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobJobTemplate.success_policy:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSuccessPolicy
+	11, // 6: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobContainer.app:type_name -> dev.planton.provider.kubernetes.WorkloadContainer
+	11, // 7: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobContainer.sidecars:type_name -> dev.planton.provider.kubernetes.WorkloadContainer
+	4,  // 8: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicy.rules:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyRule
+	5,  // 9: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyRule.on_exit_codes:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyOnExitCodes
+	6,  // 10: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyRule.on_pod_conditions:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobPodFailurePolicyOnPodCondition
+	8,  // 11: dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSuccessPolicy.rules:type_name -> dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJobSuccessPolicyRule
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_init() }
@@ -357,13 +1007,16 @@ func file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_init()
 		return
 	}
 	file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetescronjob_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,7 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
-
+name: kubernetes-percona-mysql-operator
+runtime: go
+description: Percona Operator for MySQL installation from the official pxc-operator Helm chart — reconciles PerconaXtraDBCluster resources into Galera clusters with automated failover, HAProxy/ProxySQL routing, and scheduled XtraBackup backups

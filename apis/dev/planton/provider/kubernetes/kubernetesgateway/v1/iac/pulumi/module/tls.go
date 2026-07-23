@@ -27,7 +27,7 @@ func buildBackendTls(backend *kubernetesgatewayv1.KubernetesGatewayBackendTls) g
 	args := gatewayv1.GatewaySpecTlsBackendArgs{}
 	if ref := backend.GetClientCertificateRef(); ref != nil {
 		clientCertRef := gatewayv1.GatewaySpecTlsBackendClientCertificateRefArgs{
-			Name: pulumi.String(ref.GetName()),
+			Name: pulumi.String(ref.GetName().GetValue()),
 		}
 		if group := ref.GetGroup(); group != "" {
 			clientCertRef.Group = pulumi.String(group)
@@ -110,7 +110,7 @@ func buildDefaultCaCertificateRef(ref *kubernetesapis.KubernetesGatewayApiObject
 	args := gatewayv1.GatewaySpecTlsFrontendDefaultValidationCaCertificateRefsArgs{
 		Group: pulumi.String(ref.GetGroup()),
 		Kind:  pulumi.String(ref.GetKind()),
-		Name:  pulumi.String(ref.GetName()),
+		Name:  pulumi.String(ref.GetName().GetValue()),
 	}
 	if namespace := ref.GetNamespace(); namespace != "" {
 		args.Namespace = pulumi.String(namespace)
@@ -122,7 +122,7 @@ func buildPerPortCaCertificateRef(ref *kubernetesapis.KubernetesGatewayApiObject
 	args := gatewayv1.GatewaySpecTlsFrontendPerPortTlsValidationCaCertificateRefsArgs{
 		Group: pulumi.String(ref.GetGroup()),
 		Kind:  pulumi.String(ref.GetKind()),
-		Name:  pulumi.String(ref.GetName()),
+		Name:  pulumi.String(ref.GetName().GetValue()),
 	}
 	if namespace := ref.GetNamespace(); namespace != "" {
 		args.Namespace = pulumi.String(namespace)

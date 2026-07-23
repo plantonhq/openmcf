@@ -1,11 +1,73 @@
+# Full-surface offline-proof manifest: exercises the Cloudflare arm
+# (declared credential + provider flags + zone references), the complete
+# watching/sync/registry surface, workload identity, scheduling, sizing,
+# observability, image override, and the helm_values escape hatch — so the
+# offline tofu plan and pulumi preview proofs cover arms the live kind
+# lanes exclude. Placeholder values; never applied to a real cluster.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesExternalDns
 metadata:
-  name: test-external-dns
+  name: hack-external-dns
 spec:
-  gke:
-    project_id:
-      value: test-gcp-project
-    dns_zone_id:
-      value: test-dns-zone-id
-
+  namespace:
+    value: external-dns
+  createNamespace: true
+  chartVersion: 1.21.1
+  cloudflare:
+    apiToken: hack-placeholder-token
+    zoneIdFilters:
+      - value: 023e105f4ecef8ad9ca31a8372d0c353
+    proxied: true
+    dnsRecordsPerPage: 5000
+  workloadIdentity:
+    eks:
+      roleArn:
+        value: arn:aws:iam::123456789012:role/external-dns
+  sources:
+    - service
+    - ingress
+    - gateway-httproute
+    - crd
+  policy: sync
+  registry: txt
+  txtOwnerId: hack-cluster
+  txtPrefix: "edns-"
+  domainFilters:
+    - example.org
+  excludeDomains:
+    - internal.example.org
+  annotationFilter: "external-dns.alpha.kubernetes.io/include=true"
+  labelFilter: "team=platform"
+  managedRecordTypes:
+    - A
+    - AAAA
+    - CNAME
+  interval: 2m
+  triggerLoopOnEvent: true
+  namespaced: false
+  logLevel: debug
+  logFormat: json
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  nodeSelector:
+    kubernetes.io/os: linux
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: platform
+      effect: NoSchedule
+  priorityClassName: system-cluster-critical
+  prometheus:
+    serviceMonitor: true
+    serviceMonitorInterval: 1m
+    serviceMonitorLabels:
+      release: kube-prometheus-stack
+  imageRepository: registry.example.com/external-dns/external-dns
+  imageTag: v0.21.0
+  helmValues: |
+    revisionHistoryLimit: 3

@@ -1,0 +1,31 @@
+# The baseline database: one database node and one HAProxy proxy (the
+# Kind-friendly development shape with unsafe opt-ins), 1Gi storage —
+# the verifier drives to Ready + the proxy write Service.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMysql
+metadata:
+  name: e2e-my-minimal
+spec:
+  namespace:
+    value: e2e-my-minimal
+  create_namespace: true
+  instances: 1
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  proxy:
+    haproxy:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+  unsafe:
+    cluster_size: true
+    proxy_size: true

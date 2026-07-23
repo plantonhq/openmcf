@@ -1,19 +1,31 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
-  name: my-mongodb
+  name: dev-mongo
 spec:
   namespace:
-    value: "<your-namespace>"
-  createNamespace: false
-  container:
-    replicas: 1
-    resources:
-      requests:
-        cpu: 50m
-        memory: 100Mi
-      limits:
-        cpu: 1000m
-        memory: 1Gi
-    persistenceEnabled: true
-    diskSize: 10Gi
+    # The operator watches its OWN namespace by default — declare the
+    # database where KubernetesPerconaMongoOperator is installed, or
+    # widen the operator's watch.
+    value: percona-mongo
+  replica_sets:
+    - name: rs0 # the upstream convention for the first replica set
+      # One member = no failover: a single point of failure, fine for
+      # development. The first production step is 3 members (see
+      # 02-replica-set).
+      size: 1
+      storage:
+        size: 5Gi # grows are applied to live PVCs; shrinks are rejected
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi # WiredTiger sizes its cache from the memory limit
+  unsafe:
+    # The operator REJECTS replica sets smaller than 3 members unless
+    # explicitly opted in — a development convenience, never production.
+    replset_size: true
+  # No backup block — a deliberate development choice, not a default to
+  # forget in production.

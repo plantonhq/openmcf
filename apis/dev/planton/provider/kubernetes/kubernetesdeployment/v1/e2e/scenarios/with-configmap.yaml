@@ -1,11 +1,16 @@
+# Composed configuration: the ConfigMap is a first-class KubernetesConfigMap
+# fixture (declared via the e2e-prerequisites annotation) and the workload
+# mounts it by name — the composition pattern that replaced the old inline
+# config_maps passthrough.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesDeployment
 metadata:
   name: e2e-dep-cm
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesConfigMap"
 spec:
   namespace:
-    value: e2e-dep-cm-ns
-  create_namespace: true
+    value: default
   version: main
   container:
     app:
@@ -25,7 +30,8 @@ spec:
           network_protocol: TCP
           app_protocol: http
           service_port: 80
-  config_maps:
-    app-config: |
-      server_port: 8080
-      log_level: info
+      volume_mounts:
+        - name: app-config
+          mount_path: /etc/app-config
+          config_map:
+            name: e2e-cfg-minimal

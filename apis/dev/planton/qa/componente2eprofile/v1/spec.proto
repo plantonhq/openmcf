@@ -18,6 +18,16 @@ message ComponentE2EProfileSpec {
     skip = 3;
     // Module is a stub with no real deployment logic yet.
     stub = 4;
+    // Every lane requires an externally provided real cluster (the component
+    // cannot run on a local kind cluster at all — e.g. its controller talks
+    // to cloud APIs at startup). Skipped with deferred_reason wherever no
+    // external cluster is supplied (PLANTON_E2E_KUBECONFIG unset); runs in
+    // batched real-cluster lanes. Scenario-level cluster requirements on the
+    // manifests (the e2e-cluster-profile annotation) still gate WHICH real
+    // cluster satisfies each scenario. Deliberately distinct from `green`
+    // so CI matrices built from green components never schedule lanes that
+    // can only skip.
+    real_cluster = 5;
   }
 
   // Dependency tier within the provider (1 = simplest, higher = more dependencies).

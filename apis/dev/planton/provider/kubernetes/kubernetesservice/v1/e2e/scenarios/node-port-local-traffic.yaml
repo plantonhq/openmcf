@@ -3,7 +3,8 @@ kind: KubernetesService
 metadata:
   name: e2e-svc-np-local
 spec:
-  namespace: default
+  namespace:
+    value: default
   name: e2e-svc-np-local
   type: node_port
   external_traffic_policy: local

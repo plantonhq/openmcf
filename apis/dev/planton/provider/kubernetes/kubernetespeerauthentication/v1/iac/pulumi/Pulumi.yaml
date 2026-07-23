@@ -1,5 +1,4 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
+name: kubernetes-peer-authentication
 runtime:
   name: go
 description: Pulumi module that provisions an Istio PeerAuthentication from a KubernetesPeerAuthentication manifest.

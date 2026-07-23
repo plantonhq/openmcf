@@ -14,8 +14,8 @@ Installs the Kubernetes Gateway API Custom Resource Definitions (CRDs) on a targ
 
 When you deploy a KubernetesGatewayApiCrds resource, Planton provisions:
 
-- **Standard Channel CRDs** — `GatewayClass`, `Gateway`, `HTTPRoute`, and `ReferenceGrant` custom resource definitions, enabling the core Gateway API surface
-- **Experimental Channel CRDs** (when `installChannel` is set to `experimental`) — all standard CRDs plus `TCPRoute`, `UDPRoute`, `TLSRoute`, and `GRPCRoute` experimental custom resource definitions
+- **Standard Channel CRDs** — as of Gateway API v1.6: `GatewayClass`, `Gateway`, `ListenerSet`, `HTTPRoute`, `GRPCRoute`, `TLSRoute`, `TCPRoute`, `UDPRoute`, `ReferenceGrant`, and `BackendTLSPolicy` custom resource definitions, enabling the full stable Gateway API surface
+- **Experimental Channel CRDs** (when `installChannel` is set to `experimental`) — all standard CRDs (with additional experimental fields) plus experimental resources such as `XBackend`, `XBackendTrafficPolicy`, and `XMesh`
 
 No namespaced workloads are created. The CRDs are cluster-scoped and make the Gateway API resource types available for any namespace in the cluster.
 
@@ -48,7 +48,7 @@ Deploy:
 planton apply -f gateway-api-crds.yaml
 ```
 
-This installs the standard-channel Gateway API CRDs at the default version (v1.2.1) on the cluster configured in your environment.
+This installs the standard-channel Gateway API CRDs at the default version (v1.6.1) on the cluster configured in your environment.
 
 ## Configuration Reference
 
@@ -60,8 +60,8 @@ This component has no strictly required spec fields. An empty `spec: {}` install
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `version` | `string` | `v1.2.1` | Gateway API release version to install. Must match the pattern `v<major>.<minor>.<patch>` with an optional pre-release suffix (e.g., `v1.3.0`, `v1.2.1-rc1`). |
-| `installChannel.channel` | `enum` | `standard` | CRD installation channel. `standard` installs Gateway, GatewayClass, HTTPRoute, and ReferenceGrant. `experimental` adds TCPRoute, UDPRoute, TLSRoute, and GRPCRoute. |
+| `version` | `string` | `v1.6.1` | Gateway API release version to install. Must match the pattern `v<major>.<minor>.<patch>` with an optional pre-release suffix (e.g., `v1.6.1`, `v1.6.0-rc1`). Installing an older version narrows what the catalog's Gateway API kinds can deploy (TCPRoute/UDPRoute are standard-channel from v1.6.0; ListenerSet from v1.5.0). |
+| `installChannel.channel` | `enum` | `standard` | CRD installation channel. `standard` installs the full stable set (GatewayClass, Gateway, ListenerSet, all five route kinds, ReferenceGrant, BackendTLSPolicy). `experimental` adds experimental fields and resources such as XBackend, XBackendTrafficPolicy, and XMesh. |
 
 ## Examples
 
@@ -84,7 +84,7 @@ spec: {}
 
 ### Experimental Channel with Specific Version
 
-Installs all Gateway API CRDs, including the experimental route types, at a pinned version:
+Installs all Gateway API CRDs, including the experimental resources, at a pinned version:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
@@ -97,7 +97,7 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: staging.KubernetesGatewayApiCrds.gateway-api-experimental
 spec:
-  version: "v1.3.0"
+  version: "v1.6.1"
   installChannel:
     channel: experimental
 ```
@@ -117,7 +117,7 @@ metadata:
     pulumi.planton.dev/project: my-project
     pulumi.planton.dev/stack.name: prod.KubernetesGatewayApiCrds.gateway-api-prod
 spec:
-  version: "v1.2.1"
+  version: "v1.6.1"
   installChannel:
     channel: standard
 ```
@@ -128,12 +128,13 @@ After deployment, the following outputs are available in `status.outputs`:
 
 | Output | Type | Description |
 |--------|------|-------------|
-| `installedVersion` | `string` | Gateway API version that was installed (e.g., `v1.2.1`, `v1.3.0`) |
+| `installedVersion` | `string` | Gateway API version that was installed (e.g., `v1.6.1`) |
 | `installedChannel` | `string` | Installation channel that was used (`standard` or `experimental`) |
-| `installedManifestUrl` | `string` | Full URL of the Gateway API CRD bundle that was applied (encodes version + channel, e.g., `.../releases/download/v1.5.1/experimental-install.yaml`) |
+| `installedManifestUrl` | `string` | Full URL of the Gateway API CRD bundle that was applied (encodes version + channel, e.g., `.../releases/download/v1.6.1/standard-install.yaml`) |
 
 ## Related Components
 
 - [KubernetesHelmRelease](/docs/catalog/kubernetes/helm-release) — deploy a Gateway API controller (such as Envoy Gateway or Istio) after the CRDs are in place
-- [KubernetesManifest](/docs/catalog/kubernetes/manifest) — apply Gateway and HTTPRoute manifests that reference the installed CRDs
+- [KubernetesGatewayClass](/docs/catalog/kubernetes/gateway-class) and [KubernetesGateway](/docs/catalog/kubernetes/gateway) — the first-class Gateway API kinds that require these CRDs
+- [KubernetesHttpRoute](/docs/catalog/kubernetes/http-route) and its route siblings (gRPC, TLS, TCP, UDP) — attach routing to a Gateway
 - [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — create namespaces for Gateway API controller workloads

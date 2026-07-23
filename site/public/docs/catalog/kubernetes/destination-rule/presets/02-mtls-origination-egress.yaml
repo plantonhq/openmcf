@@ -9,7 +9,8 @@ metadata:
 spec:
   namespace:
     value: <namespace>
-  host: <external-host>
+  host:
+    value: <external-host>
   workload_selector:
     match_labels:
       app: <client-app-label>

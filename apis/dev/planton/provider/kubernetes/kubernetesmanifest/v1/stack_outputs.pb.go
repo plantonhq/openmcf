@@ -21,13 +21,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesManifestStackOutputs contains the outputs from the Kubernetes manifest deployment.
+// *
+// **KubernetesManifestStackOutputs** captures the observable handles of an
+// applied raw manifest. The resource inventory is derived by parsing the
+// input YAML — identically on both engines — so downstream tooling can see
+// WHAT was applied without re-parsing the manifest itself.
 type KubernetesManifestStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Kubernetes namespace where the manifest resources were deployed.
-	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The anchor namespace: where namespaced documents without an explicit
+	// metadata.namespace were applied.
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// One entry per applied document, in manifest order, formatted as
+	// "<apiVersion>/<Kind>/<name>" (e.g. "apps/v1/Deployment/app",
+	// "v1/ConfigMap/app-config"). Documents keep the name they declare; the
+	// entry does not include the namespace (see `namespace` for the anchor).
+	AppliedResources []string `protobuf:"bytes,2,rep,name=applied_resources,json=appliedResources,proto3" json:"applied_resources,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *KubernetesManifestStackOutputs) Reset() {
@@ -67,13 +77,21 @@ func (x *KubernetesManifestStackOutputs) GetNamespace() string {
 	return ""
 }
 
+func (x *KubernetesManifestStackOutputs) GetAppliedResources() []string {
+	if x != nil {
+		return x.AppliedResources
+	}
+	return nil
+}
+
 var File_dev_planton_provider_kubernetes_kubernetesmanifest_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesmanifest_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Idev/planton/provider/kubernetes/kubernetesmanifest/v1/stack_outputs.proto\x125dev.planton.provider.kubernetes.kubernetesmanifest.v1\">\n" +
+	"Idev/planton/provider/kubernetes/kubernetesmanifest/v1/stack_outputs.proto\x125dev.planton.provider.kubernetes.kubernetesmanifest.v1\"k\n" +
 	"\x1eKubernetesManifestStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespaceB\xb7\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12+\n" +
+	"\x11applied_resources\x18\x02 \x03(\tR\x10appliedResourcesB\xb7\x03\n" +
 	"9com.dev.planton.provider.kubernetes.kubernetesmanifest.v1B\x11StackOutputsProtoP\x01Zlgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmanifest/v1;kubernetesmanifestv1\xa2\x02\x05DPPKK\xaa\x025Dev.Planton.Provider.Kubernetes.Kubernetesmanifest.V1\xca\x025Dev\\Planton\\Provider\\Kubernetes\\Kubernetesmanifest\\V1\xe2\x02ADev\\Planton\\Provider\\Kubernetes\\Kubernetesmanifest\\V1\\GPBMetadata\xea\x02:Dev::Planton::Provider::Kubernetes::Kubernetesmanifest::V1b\x06proto3"
 
 var (

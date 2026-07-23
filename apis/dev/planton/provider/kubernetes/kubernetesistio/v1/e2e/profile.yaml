@@ -3,11 +3,9 @@ kind: ComponentE2EProfile
 metadata:
   name: kubernetesistio
 spec:
-  tier: 4
-  status: deferred
-  deferred_reason: "gateway LoadBalancer timeout on kind"
+  tier: 1
+  status: green
   validated_provisioners:
     - pulumi
-  limitations:
-    - "Gateway LB stays Pending; base + istiod deploy fine"
-  timeout_minutes: 15
+    - terraform
+  timeout_minutes: 30

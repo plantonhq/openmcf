@@ -1,0 +1,3 @@
+name: kubernetes-external-secrets-operator
+runtime: go
+description: External Secrets Operator installation from the official Helm chart with typed configuration and ambient workload identity

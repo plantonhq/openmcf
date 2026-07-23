@@ -21,11 +21,21 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// cron-job-kubernetes-stack outputs
+// *
+// **KubernetesCronJobStackOutputs** captures the observable handles of a
+// deployed CronJob. CronJobs front no Service; the useful handles are the
+// object's identity and its effective schedule.
 type KubernetesCronJobStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which cron-job-kubernetes is created.
-	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// The namespace the CronJob was created in.
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// The name of the CronJob object as created in the cluster.
+	CronJobName string `protobuf:"bytes,2,opt,name=cron_job_name,json=cronJobName,proto3" json:"cron_job_name,omitempty"`
+	// *
+	// The effective cron expression the CronJob runs on. Exported so dependents
+	// and audits read the schedule from outputs — the deployed truth — rather
+	// than from the spec.
+	Schedule      string `protobuf:"bytes,3,opt,name=schedule,proto3" json:"schedule,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -67,13 +77,29 @@ func (x *KubernetesCronJobStackOutputs) GetNamespace() string {
 	return ""
 }
 
+func (x *KubernetesCronJobStackOutputs) GetCronJobName() string {
+	if x != nil {
+		return x.CronJobName
+	}
+	return ""
+}
+
+func (x *KubernetesCronJobStackOutputs) GetSchedule() string {
+	if x != nil {
+		return x.Schedule
+	}
+	return ""
+}
+
 var File_dev_planton_provider_kubernetes_kubernetescronjob_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetescronjob_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Hdev/planton/provider/kubernetes/kubernetescronjob/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetescronjob.v1\"=\n" +
+	"Hdev/planton/provider/kubernetes/kubernetescronjob/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetescronjob.v1\"}\n" +
 	"\x1dKubernetesCronJobStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespaceB\xb0\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\"\n" +
+	"\rcron_job_name\x18\x02 \x01(\tR\vcronJobName\x12\x1a\n" +
+	"\bschedule\x18\x03 \x01(\tR\bscheduleB\xb0\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetescronjob.v1B\x11StackOutputsProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescronjob/v1;kubernetescronjobv1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetescronjob.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetescronjob\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetescronjob\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetescronjob::V1b\x06proto3"
 
 var (

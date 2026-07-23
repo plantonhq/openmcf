@@ -1,49 +1,17 @@
-##############################################
-# main.tf
+# KubernetesStatefulSet Terraform module.
 #
-# Main orchestration file for KubernetesStatefulSet
-# deployment using Terraform.
+# Deploys a stateful workload: optional namespace (this file), env and
+# image-pull satellite Secrets (secret.tf), the headless governing Service
+# (service.tf), the apps/v1 StatefulSet with its volume claim templates
+# (statefulset.tf), and optional PDB (pdb.tf).
 #
-# This module creates a production-ready Kubernetes
-# StatefulSet with the following capabilities:
-#
-# Infrastructure Components:
-#  1. Kubernetes Namespace (defined here)
-#  2. Service Account with RBAC (statefulset.tf)
-#  3. Kubernetes StatefulSet with:
-#     - Main application container
-#     - Optional sidecar containers
-#     - Health probes (startup, liveness, readiness)
-#     - Resource requests and limits
-#     - Environment variables and secrets
-#     - Persistent volume claims
-#  4. Headless Service for stable network identity (service.tf)
-#  5. ClusterIP Service for client access (service.tf)
-#  6. Environment Secrets (if configured) (secret.tf)
-#  7. Image Pull Secret for private registries (statefulset.tf)
-#
-# StatefulSet Features:
-#  - Stable, unique network identifiers
-#  - Stable, persistent storage via PVCs
-#  - Ordered, graceful deployment and scaling
-#  - Ordered, automated rolling updates
-#
-# Module Structure:
-#  - main.tf: Namespace creation and documentation (this file)
-#  - statefulset.tf: StatefulSet, ServiceAccount, ImagePullSecret
-#  - service.tf: Headless and ClusterIP Services
-#  - secret.tf: Application secrets management
-#  - locals.tf: Computed values and label management
-#  - variables.tf: Input variable definitions
-#  - outputs.tf: Module outputs (FQDNs, service names, etc.)
-##############################################
+# Identity and exposure are composed, not created: pods run as the
+# ServiceAccount referenced in spec.pod.service_account, and external exposure
+# attaches through first-class ingress kinds referencing this workload's
+# exported Service handle. This module never creates ServiceAccounts, RBAC
+# objects, certificates, gateways, or routes. There is deliberately no HPA:
+# stateful members join and leave through application-aware procedures.
 
-##############################################
-# Namespace Resource
-#
-# Creates a dedicated Kubernetes namespace for the
-# statefulset deployment if create_namespace is true.
-##############################################
 resource "kubernetes_namespace" "this" {
   count = var.spec.create_namespace ? 1 : 0
 

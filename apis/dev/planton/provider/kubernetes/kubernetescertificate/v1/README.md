@@ -1,130 +1,48 @@
-# KubernetesCertificate
+# Kubernetes Certificate
 
-> Declarative cert-manager Certificate management for any Kubernetes cluster
+## When NOT to Use This
+
+**If nothing on the cluster should manage the certificate's lifecycle, don't create one here.** A KubernetesCertificate asks cert-manager to keep a certificate issued and RENEWED for as long as the resource exists. Certificates minted outside the cluster (uploaded wildcard certs, appliance-managed certs) belong in a KubernetesSecret instead — consumers reference a TLS Secret either way.
 
 ## Overview
 
-KubernetesCertificate creates a cert-manager [Certificate](https://cert-manager.io/docs/concepts/certificate/) resource that requests a signed TLS certificate from a specified Issuer or ClusterIssuer. The resulting certificate and private key are stored in a Kubernetes Secret, ready for consumption by Ingress controllers, Gateway APIs, or internal CA bootstrap chains.
+**KubernetesCertificate** requests one signed X.509 certificate from a cert-manager issuer and keeps it renewed. The signed certificate, private key, and CA chain land in a Kubernetes TLS Secret (`secret_name`) — the handle every consumer references: Ingress `tls.secretName`, Gateway listener `certificate_refs`, workload volume mounts, and CA-backed issuers (`ca_secret_name`).
 
-This component supports two issuer types via a proto oneof:
-- **ClusterIssuer** -- cluster-scoped, typically ACME / Let's Encrypt (most common for public TLS)
-- **Issuer** -- namespace-scoped, typically for internal CA or self-signed certificate workflows
+The spec covers the complete cert-manager.io/v1 request surface:
 
-## Prerequisites
+- **Names**: DNS (wildcards included), IP, URI (SPIFFE), email, otherName (Microsoft UPN) SANs; common name; subject attributes; or a `literal_subject` LDAP DN when attribute ORDER matters
+- **Issuer selection**: a Planton-managed ClusterIssuer or Issuer by reference (composable in charts), or an `external` third-party issuer kind (e.g. AWS Private CA)
+- **Lifetime**: `duration`, and renewal as an absolute window (`renew_before`) or a percentage of actual lifetime (`renew_before_percentage` — scales when the CA overrides the requested duration)
+- **Key material**: RSA/ECDSA/Ed25519 with per-algorithm size validation, PKCS#1/PKCS#8 encoding, rotation policy
+- **CA issuance**: `is_ca` plus X.509 `name_constraints` — the delegated-internal-CA guardrail
+- **Outputs beyond PEM**: JKS/PKCS#12 keystores (inline sensitive passwords), DER and combined-PEM additional formats, labels/annotations on the Secret via `secret_template`
 
-- **cert-manager must be installed** on the target cluster (via KubernetesCertManager or manually)
-- A configured **Issuer or ClusterIssuer** to sign the certificate (via KubernetesClusterIssuer, KubernetesIssuer, or manually)
+Contradictions are rejected at validation with messages that say what to fix: `literal_subject` vs `subject`/`common_name`, `renew_before` vs `renew_before_percentage`, key sizes that don't match the algorithm family, usages outside the x509 vocabulary.
 
-## Quick Start
+## Deploys never block on issuance
 
-### Public TLS Certificate (via ClusterIssuer)
+Issuance time belongs to the issuer — an ACME order can take minutes, an unreachable CA would block forever. Neither engine waits for Ready; consumers express the dependency through composition, and `kubectl wait certificate/<name> --for condition=Ready` is the operational check.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesCertificate
-metadata:
-  name: my-app-cert
-spec:
-  namespace:
-    value: my-app
-  dnsNames:
-    - app.example.com
-  secretName: my-app-tls
-  issuerRef:
-    clusterIssuer:
-      name:
-        value: example.com
-```
+## Essential Configuration Fields
 
-### Self-Signed Root CA Certificate (CA Bootstrap)
+### Required
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesCertificate
-metadata:
-  name: my-root-ca
-spec:
-  namespace:
-    value: cert-manager
-  dnsNames:
-    - my-root-ca
-  secretName: my-root-ca-secret
-  isCa: true
-  issuerRef:
-    issuer:
-      name:
-        value: selfsigned-issuer
-  durationConfig:
-    duration: "87600h"
-    renewBefore: "2160h"
-  privateKey:
-    algorithm: rsa
-    size: 4096
-    encoding: pkcs1
-    rotationPolicy: never
-```
-
-### Deploy
-
-```bash
-planton pulumi up --manifest certificate.yaml --stack org/project/env
-```
-
-## How It Works
-
-1. The module creates a single cert-manager Certificate CR in the specified namespace
-2. cert-manager's controller watches for Certificate resources and communicates with the configured Issuer to obtain a signed certificate
-3. The signed certificate and private key are stored in the Kubernetes Secret named by `secret_name`
-4. Consumers (Ingress, Gateway, CA Issuer) reference the Secret directly
-
-## CA Bootstrap Workflow
-
-KubernetesCertificate supports internal PKI bootstrap by setting `is_ca: true`:
-
-```
-Step 1: KubernetesIssuer (SelfSigned type)
-   Creates a self-signed Issuer in a namespace
-        ↓
-Step 2: KubernetesCertificate (is_ca=true, issuerRef → SelfSigned Issuer)
-   Requests a self-signed CA certificate, stored in a Secret
-        ↓
-Step 3: KubernetesIssuer (CA type, ca_secret_name → Step 2's Secret)
-   Creates a CA Issuer backed by the root CA certificate
-        ↓
-Step 4: KubernetesCertificate (issuerRef → CA Issuer)
-   Requests leaf certificates signed by the internal CA
-```
-
-## Configuration Reference
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `namespace` | StringValueOrRef | Yes | Namespace for the Certificate resource |
-| `dnsNames` | string[] | Yes | DNS Subject Alternative Names (at least one) |
-| `secretName` | string | Yes | Secret name for the signed certificate and key |
-| `issuerRef.clusterIssuer.name` | StringValueOrRef | One of | ClusterIssuer name (cluster-scoped) |
-| `issuerRef.issuer.name` | StringValueOrRef | One of | Issuer name (namespace-scoped) |
-| `isCa` | bool | No | Issue as a CA certificate (default: false) |
-| `durationConfig.duration` | string | No | Certificate lifetime (default: 2160h = 90 days) |
-| `durationConfig.renewBefore` | string | No | Renew this long before expiry (default: 360h = 15 days) |
-| `privateKey.algorithm` | enum | No | RSA, ECDSA, or Ed25519 (default: RSA) |
-| `privateKey.size` | int | No | Key size in bits (default: 2048) |
-| `privateKey.encoding` | enum | No | PKCS1 or PKCS8 (default: PKCS1) |
-| `privateKey.rotationPolicy` | enum | No | Always or Never (default: Always) |
+- **`spec.namespace`**: where the Certificate and its Secret live
+- **`spec.secret_name`**: the TLS Secret name consumers reference — exported as `status.outputs.secret_name`
+- **`spec.issuer_ref`**: `cluster_issuer` / `issuer` / `external`
+- At least one requested name (any SAN type, common name, or literal subject)
 
 ## Stack Outputs
 
-| Output | Description |
-|--------|-------------|
-| `namespace` | Namespace where the Certificate was created |
-| `certificate_name` | Name of the Certificate resource |
-| `secret_name` | TLS Secret name (use for Gateway certificateRefs, Ingress tls.secretName, or CA Issuer ca_secret_name) |
+| Output | Purpose |
+|---|---|
+| `namespace` | Certificate (and Secret) namespace |
+| `certificate_name` | The Certificate resource name |
+| `secret_name` | The TLS Secret handle — Ingress TLS, Gateway certificate refs, CA Issuer input |
 
-## Related Components
+## Composing in Infra Charts
 
-- **KubernetesClusterIssuer** -- creates ACME ClusterIssuers for public TLS
-- **KubernetesIssuer** -- creates namespace-scoped Issuers (SelfSigned, CA)
-- **KubernetesCertManager** -- installs the cert-manager controller (prerequisite)
+Reference `status.outputs.secret_name` from anything that consumes TLS Secrets. The root-CA bootstrap composes this kind twice: once with `is_ca: true` against a self-signed issuer (producing the CA Secret a `ca` Issuer signs with), then as leaf certificates against that CA issuer.
 
 ---
 

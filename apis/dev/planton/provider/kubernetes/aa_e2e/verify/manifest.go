@@ -6,6 +6,7 @@ package verify
 
 import (
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -63,4 +64,177 @@ func ParseManifestInfo(manifestPath string) (*ManifestInfo, error) {
 	}
 
 	return info, nil
+}
+
+// manifestSpecString reads one scalar spec field (protojson camelCase key)
+// from a manifest — for verifiers that need a spec detail beyond the
+// kind/name/namespace triple (e.g. a Certificate's target Secret name).
+func manifestSpecString(manifestPath, key string) (string, error) {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to read manifest %s", manifestPath)
+	}
+
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return "", errors.Wrapf(err, "failed to parse manifest YAML %s", manifestPath)
+	}
+
+	spec, ok := raw["spec"].(map[string]interface{})
+	if !ok {
+		return "", errors.Errorf("manifest %s has no spec block", manifestPath)
+	}
+	value, ok := spec[key].(string)
+	if !ok || value == "" {
+		return "", errors.Errorf("manifest %s spec.%s is missing or not a string", manifestPath, key)
+	}
+	return value, nil
+}
+
+// manifestSpecMap reads the manifest's spec block, tolerating every error
+// with a nil return — for verifier construction that has usable defaults
+// when a detail is absent.
+func manifestSpecMap(manifestPath string) map[string]interface{} {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil
+	}
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+	spec, _ := raw["spec"].(map[string]interface{})
+	return spec
+}
+
+// manifestNestedSpecString reads spec.<parent>.<key> (protojson camelCase
+// keys), returning "" when absent — for optional nested details with
+// defaults (e.g. an ingress-nginx instance's class name).
+func manifestNestedSpecString(manifestPath, parent, key string) string {
+	spec := manifestSpecMap(manifestPath)
+	if spec == nil {
+		return ""
+	}
+	nested, ok := spec[parent].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	value, _ := nested[key].(string)
+	return value
+}
+
+// manifestSpecFirstString reads the first element of a repeated string spec
+// field (protojson camelCase key), returning "" when absent or empty — for
+// scenarios that key a behavioral probe off a list value (e.g. an
+// HTTPRoute's first hostname).
+func manifestSpecFirstString(manifestPath, key string) (string, error) {
+	spec := manifestSpecMap(manifestPath)
+	if spec == nil {
+		return "", nil
+	}
+	list, ok := spec[key].([]interface{})
+	if !ok || len(list) == 0 {
+		return "", nil
+	}
+	value, _ := list[0].(string)
+	return value, nil
+}
+
+// manifestSpecInt reads one integer spec field (protojson camelCase key),
+// returning the fallback when absent or not numeric.
+func manifestSpecInt(manifestPath, key string, fallback int64) int64 {
+	spec := manifestSpecMap(manifestPath)
+	if spec == nil {
+		return fallback
+	}
+	switch v := spec[key].(type) {
+	case int:
+		return int64(v)
+	case int64:
+		return v
+	case float64:
+		return int64(v)
+	default:
+		return fallback
+	}
+}
+
+// manifestBarmanPluginEnabled reports whether the operator manifest enables
+// the Barman Cloud plugin (spec.barmanCloudPlugin.enabled) — the verifier
+// asserts the plugin deployment only when the spec asked for it.
+func manifestBarmanPluginEnabled(manifestPath string) bool {
+	spec := manifestSpecMap(manifestPath)
+	if spec == nil {
+		return false
+	}
+	plugin, ok := spec["barmanCloudPlugin"].(map[string]interface{})
+	if !ok {
+		// Scenario manifests use the snake_case field convention.
+		plugin, ok = spec["barman_cloud_plugin"].(map[string]interface{})
+		if !ok {
+			return false
+		}
+	}
+	enabled, _ := plugin["enabled"].(bool)
+	return enabled
+}
+
+// manifestHasPrerequisite reports whether the manifest's e2e-prerequisites
+// annotation names the given kind — how a scenario signals it runs with a
+// fixture (e.g. an HPA scenario that installs metrics-server and can
+// therefore be verified behaviorally).
+func manifestHasPrerequisite(manifestPath, kind string) bool {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return false
+	}
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return false
+	}
+	metadata, ok := raw["metadata"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	annotations, ok := metadata["annotations"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	value, _ := annotations["planton.dev/e2e-prerequisites"].(string)
+	for _, entry := range strings.Split(value, ",") {
+		if strings.TrimSpace(entry) == kind {
+			return true
+		}
+	}
+	return false
+}
+
+// manifestHasPrerequisiteSuffix reports whether any e2e-prerequisites entry
+// ends with the given suffix — how a verifier recognizes a MANIFEST-PATH
+// fixture (e.g. a behavioral scenario's scale-target Deployment) without
+// coupling to the repo-relative prefix of the path.
+func manifestHasPrerequisiteSuffix(manifestPath, suffix string) bool {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return false
+	}
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return false
+	}
+	metadata, ok := raw["metadata"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	annotations, ok := metadata["annotations"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	value, _ := annotations["planton.dev/e2e-prerequisites"].(string)
+	for _, entry := range strings.Split(value, ",") {
+		if strings.HasSuffix(strings.TrimSpace(entry), suffix) {
+			return true
+		}
+	}
+	return false
 }

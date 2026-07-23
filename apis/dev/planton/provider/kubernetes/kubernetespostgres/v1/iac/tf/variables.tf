@@ -1,145 +1,254 @@
+# Typed mirror of KubernetesPostgresSpec (spec.proto). The spec arrives from
+# the proto->tfvars converter in snake_case with every StringValueOrRef
+# foreign key -- `namespace` (KubernetesNamespace), `storage.storage_class`
+# (KubernetesStorageClass), `certificates.server_tls_secret`
+# (KubernetesCertificate), and the workload-identity references -- resolved
+# to a literal string before Terraform runs.
+#
+# optional() defaults mirror the proto's (dev.planton.shared.options.default)
+# annotations, so the module renders the same resource whether or not the
+# platform's defaulting middleware ran. Fields whose ABSENCE is meaningful
+# (enable_pdb, resize_in_use_volumes, connection_limit) carry NO default:
+# the module renders them only on explicit divergence from the upstream
+# default, exactly like the Pulumi module's *OrNil helpers.
+
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
-
 variable "spec" {
-  description = "spec"
+  description = "KubernetesPostgres specification"
   type = object({
-    # Kubernetes namespace to install PostgreSQL.
-    namespace = string
-
-    # flag to indicate if the namespace should be created.
-    # Default MUST be false to match the proto3 default (spec.proto field 3) and the
-    # Pulumi module: an unset create_namespace serializes away (proto omits false), so a
-    # tofu default of true diverged -- the module created a namespace from spec.namespace
-    # even when callers (e.g. an InfraChart with a dedicated KubernetesNamespace) never
-    # asked it to, which on an unresolved/empty namespace produced an invalid (empty) name.
+    namespace        = string
     create_namespace = optional(bool, false)
+    instances        = optional(number, 1)
+    image_name       = optional(string, "")
 
-    # The container specifications for the PostgreSQL deployment.
-    container = object({
-
-      # The number of replicas of PostgreSQL pods.
-      replicas = number
-
-      # The CPU and memory resources allocated to the PostgreSQL container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-
-      # The storage size to allocate for each PostgreSQL instance (e.g., "1Gi").
-      # A default value is set if the client does not provide a value.
-      disk_size = string
+    storage = object({
+      size                  = string
+      storage_class         = optional(string, "")
+      resize_in_use_volumes = optional(bool)
     })
 
-    # The ingress configuration for the PostgreSQL deployment.
-    ingress = optional(object({
-
-      # A flag to enable or disable ingress.
-      enabled = bool
-
-      # The full hostname for external access.
-      hostname = string
+    wal_storage = optional(object({
+      size                  = string
+      storage_class         = optional(string, "")
+      resize_in_use_volumes = optional(bool)
     }))
 
-    # Per-database backup configuration. WAL-G streams base backups and WAL to an
-    # S3-compatible bucket; the module composes the full target from bucket +
-    # object_prefix and appends the per-cluster/per-version suffix.
-    backup_config = optional(object({
-
-      # Enable continuous WAL-G backups for this database (USE_WALG_BACKUP).
-      enabled = optional(bool)
-
-      # Bucket that stores this database's backups. Planton resolves the value-or-ref
-      # to a plain bucket name before tfvars.
-      bucket = optional(string)
-
-      # Base path under the bucket; the module appends the per-cluster/per-version suffix.
-      object_prefix = optional(string)
-
-      # Cron schedule for base backups (BACKUP_SCHEDULE).
-      schedule = optional(string)
-
-      # Number of base backups to retain (BACKUP_NUM_TO_RETAIN).
-      retain_count = optional(number)
-
-      # Credentials WAL-G uses to write backups. The module creates a Secret from
-      # these credentials and references it via secretKeyRef in the pod env.
-      credentials = optional(object({
-        cloudflare_account_id = string
-        access_key_id         = string
-        secret_access_key     = string
+    resources = optional(object({
+      limits = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
       }))
+      requests = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+    }))
 
-      # Disaster-recovery restore configuration (Zalando spec.standby + STANDBY_* env).
-      restore = optional(object({
+    postgresql = optional(object({
+      parameters               = optional(map(string), {})
+      pg_hba                   = optional(list(string), [])
+      pg_ident                 = optional(list(string), [])
+      shared_preload_libraries = optional(list(string), [])
+      synchronous = optional(object({
+        method          = optional(string, "any")
+        number          = number
+        data_durability = optional(string, "required")
+      }))
+      enable_alter_system = optional(bool, false)
+    }))
 
-        # When true, the database bootstraps as a read-only standby from the source backup.
-        enabled = optional(bool, false)
-
-        # Bucket holding the source backup. Resolved to a plain name before tfvars.
-        bucket = optional(string)
-
-        # Path under the bucket locating the source backup.
-        object_prefix = optional(string)
-
-        # Credentials used to read the source backup during standby bootstrap.
-        credentials = optional(object({
-          cloudflare_account_id = string
-          access_key_id         = string
-          secret_access_key     = string
+    bootstrap = optional(object({
+      initdb = optional(object({
+        database                  = optional(string, "app")
+        owner                     = optional(string, "")
+        owner_password            = optional(string, "")
+        data_checksums            = optional(bool, false)
+        encoding                  = optional(string, "UTF8")
+        locale_collate            = optional(string, "")
+        locale_ctype              = optional(string, "")
+        post_init_sql             = optional(list(string), [])
+        post_init_application_sql = optional(list(string), [])
+        import = optional(object({
+          type                    = string
+          source_external_cluster = string
+          databases               = list(string)
+          roles                   = optional(list(string), [])
+          schema_only             = optional(bool, false)
         }))
       }))
+      recovery = optional(object({
+        object_store = object({
+          destination_path = string
+          s3 = optional(object({
+            region          = optional(string, "")
+            endpoint_url    = optional(string, "")
+            endpoint_ca_pem = optional(string, "")
+            keyless         = optional(bool, false)
+            access_keys = optional(object({
+              access_key_id     = string
+              secret_access_key = string
+            }))
+          }))
+          gcs = optional(object({
+            keyless                  = optional(bool, false)
+            service_account_key_json = optional(string, "")
+          }))
+          azure_blob = optional(object({
+            keyless           = optional(bool, false)
+            connection_string = optional(string, "")
+            storage_account   = optional(string, "")
+            storage_key       = optional(string, "")
+          }))
+          wal = optional(object({
+            compression  = optional(string, "")
+            max_parallel = optional(number)
+          }))
+          data = optional(object({
+            compression          = optional(string, "")
+            jobs                 = optional(number)
+            immediate_checkpoint = optional(bool, false)
+          }))
+        })
+        source_server_name = string
+        recovery_target = optional(object({
+          target_time      = optional(string, "")
+          target_lsn       = optional(string, "")
+          target_name      = optional(string, "")
+          target_immediate = optional(bool, false)
+          backup_id        = optional(string, "")
+        }))
+      }))
+      pg_basebackup = optional(object({
+        source = string
+      }))
     }))
 
-    # List of databases to create.
-    # Each database has a name and an optional owner role.
-    # The operator will create these databases during cluster initialization.
-    # If not specified, only the default "postgres" database will be available.
-    # Note: Owner roles must be declared in the 'users' field.
-    databases = optional(list(object({
-      name       = string
-      owner_role = optional(string, "")
+    external_clusters = optional(list(object({
+      name                  = string
+      connection_parameters = optional(map(string), {})
+      password              = optional(string, "")
     })), [])
 
-    # List of PostgreSQL users/roles to create.
-    # Users must be declared here before being used as database owners.
-    # Each user has a name and optional flags (e.g., ["createdb"], ["superuser"]).
-    # Empty flags array means standard user with login privileges only.
-    users = optional(list(object({
-      name  = string
-      flags = optional(list(string), [])
+    superuser = optional(object({
+      enabled  = optional(bool, false)
+      password = optional(string, "")
+    }))
+
+    roles = optional(list(object({
+      name             = string
+      comment          = optional(string, "")
+      ensure           = optional(string, "present")
+      password         = optional(string, "")
+      disable_password = optional(bool, false)
+      login            = optional(bool, false)
+      superuser        = optional(bool, false)
+      createdb         = optional(bool, false)
+      createrole       = optional(bool, false)
+      replication      = optional(bool, false)
+      bypassrls        = optional(bool, false)
+      in_roles         = optional(list(string), [])
+      connection_limit = optional(number)
     })), [])
+
+    backup = optional(object({
+      object_store = object({
+        destination_path = string
+        s3 = optional(object({
+          region          = optional(string, "")
+          endpoint_url    = optional(string, "")
+          endpoint_ca_pem = optional(string, "")
+          keyless         = optional(bool, false)
+          access_keys = optional(object({
+            access_key_id     = string
+            secret_access_key = string
+          }))
+        }))
+        gcs = optional(object({
+          keyless                  = optional(bool, false)
+          service_account_key_json = optional(string, "")
+        }))
+        azure_blob = optional(object({
+          keyless           = optional(bool, false)
+          connection_string = optional(string, "")
+          storage_account   = optional(string, "")
+          storage_key       = optional(string, "")
+        }))
+        wal = optional(object({
+          compression  = optional(string, "")
+          max_parallel = optional(number)
+        }))
+        data = optional(object({
+          compression          = optional(string, "")
+          jobs                 = optional(number)
+          immediate_checkpoint = optional(bool, false)
+        }))
+      })
+      retention_policy = optional(string, "")
+      schedules = optional(list(object({
+        name      = string
+        schedule  = string
+        immediate = optional(bool, false)
+        suspend   = optional(bool, false)
+        target    = optional(string, "prefer-standby")
+      })), [])
+    }))
+
+    workload_identity = optional(object({
+      gke = optional(object({
+        service_account_email = string
+      }))
+      eks = optional(object({
+        role_arn = string
+      }))
+      aks = optional(object({
+        client_id = string
+        tenant_id = optional(string, "")
+      }))
+    }))
+
+    certificates = optional(object({
+      server_tls_secret    = optional(string, "")
+      server_ca_secret     = optional(string, "")
+      server_alt_dns_names = optional(list(string), [])
+    }))
+
+    monitoring = optional(object({
+      tls_enabled             = optional(bool, false)
+      disable_default_queries = optional(bool, false)
+    }))
+
+    scheduling = optional(object({
+      anti_affinity_type = optional(string, "preferred")
+      topology_key       = optional(string, "")
+      node_selector      = optional(map(string), {})
+      tolerations = optional(list(object({
+        key                = optional(string, "")
+        operator           = optional(string, "")
+        value              = optional(string, "")
+        effect             = optional(string, "")
+        toleration_seconds = optional(number)
+      })), [])
+      priority_class_name = optional(string, "")
+    }))
+
+    update_strategy = optional(object({
+      primary_update_strategy = optional(string, "unsupervised")
+      primary_update_method   = optional(string, "restart")
+    }))
+
+    enable_pdb         = optional(bool)
+    image_pull_secrets = optional(list(string), [])
   })
 }

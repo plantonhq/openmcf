@@ -142,12 +142,12 @@ func TestTransform_AwsVpc(t *testing.T) {
 func TestTransform_KubernetesPostgres(t *testing.T) {
 	outputs := map[string]string{
 		"namespace":            "db-prod",
-		"service":              "postgres-master",
-		"kube_endpoint":        "postgres-master.db-prod.svc.cluster.local:5432",
-		"external_hostname":    "postgres.example.com",
-		"username_secret.name": "postgres.db-prod.credentials.postgresql.acid.zalan.do",
+		"cluster_name":         "orders-db",
+		"rw_service":           "orders-db-rw",
+		"kube_endpoint":        "orders-db-rw.db-prod.svc.cluster.local:5432",
+		"username_secret.name": "orders-db-app",
 		"username_secret.key":  "username",
-		"password_secret.name": "postgres.db-prod.credentials.postgresql.acid.zalan.do",
+		"password_secret.name": "orders-db-app",
 		"password_secret.key":  "password",
 	}
 
@@ -164,13 +164,13 @@ func TestTransform_KubernetesPostgres(t *testing.T) {
 	if typed.GetNamespace() != "db-prod" {
 		t.Errorf("namespace: expected %q, got %q", "db-prod", typed.GetNamespace())
 	}
-	if typed.GetService() != "postgres-master" {
-		t.Errorf("service: expected %q, got %q", "postgres-master", typed.GetService())
+	if typed.GetRwService() != "orders-db-rw" {
+		t.Errorf("rw_service: expected %q, got %q", "orders-db-rw", typed.GetRwService())
 	}
 	if typed.GetUsernameSecret() == nil {
 		t.Fatal("username_secret: expected non-nil")
 	}
-	if typed.GetUsernameSecret().GetName() != "postgres.db-prod.credentials.postgresql.acid.zalan.do" {
+	if typed.GetUsernameSecret().GetName() != "orders-db-app" {
 		t.Errorf("username_secret.name: got %q", typed.GetUsernameSecret().GetName())
 	}
 	if typed.GetUsernameSecret().GetKey() != "username" {

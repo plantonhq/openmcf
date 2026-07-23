@@ -1,0 +1,110 @@
+# Full HTTPRouteSpec: every match form, every standard-channel filter
+# (header modifiers, mirror with percent, redirect, rewrite, CORS),
+# per-backend filters, weighted backends, and rule timeouts.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesHttpRoute
+metadata:
+  name: e2e-route-full
+spec:
+  namespace:
+    value: default
+  parent_refs:
+    - name:
+        value: e2e-gateway
+      section_name: https
+  hostnames:
+    - full.e2e.example.com
+  rules:
+    - name: primary
+      matches:
+        - path:
+            type: PathPrefix
+            value: /api
+          headers:
+            - type: Exact
+              name: x-tenant
+              value: acme
+          query_params:
+            - type: Exact
+              name: version
+              value: v2
+          method: GET
+      filters:
+        - type: RequestHeaderModifier
+          request_header_modifier:
+            set:
+              - name: x-forwarded-tier
+                value: production
+            add:
+              - name: x-trace
+                value: enabled
+            remove:
+              - x-legacy
+        - type: RequestMirror
+          request_mirror:
+            backend_ref:
+              name:
+                value: audit-svc
+              port: 8080
+            percent: 25
+        - type: CORS
+          cors:
+            allow_origins:
+              - https://console.e2e.example.com
+            allow_credentials: true
+            allow_methods:
+              - GET
+              - POST
+            allow_headers:
+              - authorization
+            expose_headers:
+              - x-request-id
+            max_age: 600
+      backend_refs:
+        - name:
+            value: web
+          port: 80
+          weight: 90
+        - name:
+            value: web-canary
+          port: 80
+          weight: 10
+          filters:
+            - type: ResponseHeaderModifier
+              response_header_modifier:
+                add:
+                  - name: x-canary
+                    value: "true"
+      timeouts:
+        request: 30s
+        backend_request: 10s
+    - name: redirect-old-host
+      matches:
+        - path:
+            type: PathPrefix
+            value: /old
+      filters:
+        - type: RequestRedirect
+          request_redirect:
+            scheme: https
+            hostname: full.e2e.example.com
+            path:
+              type: ReplacePrefixMatch
+              replace_prefix_match: /new
+            status_code: 308
+    - name: rewrite
+      matches:
+        - path:
+            type: PathPrefix
+            value: /legacy
+      filters:
+        - type: URLRewrite
+          url_rewrite:
+            hostname: internal.e2e.example.com
+            path:
+              type: ReplacePrefixMatch
+              replace_prefix_match: /v2
+      backend_refs:
+        - name:
+            value: legacy-adapter
+          port: 8080

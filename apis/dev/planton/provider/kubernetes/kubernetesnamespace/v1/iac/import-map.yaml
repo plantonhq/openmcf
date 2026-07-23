@@ -1,0 +1,52 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesnamespace
+spec:
+  # The namespace object itself is fully derivable (its name IS the identity).
+  # The child objects (quota, limit range, network policies) follow the
+  # module's deterministic naming, documented per value: nothing in the
+  # derivation vocabulary can concatenate strings, so those import as guided
+  # manual values rather than blind derivations.
+  values:
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: name
+        - from_metadata_name: true
+      where_to_find: >-
+        `kubectl get namespaces` (NAME column).
+    - name: resource_quota_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: name
+      where_to_find: >-
+        Same as the namespace name -- the quota lives inside the namespace.
+    - name: resource_quota_name
+      derivations: []
+      where_to_find: >-
+        `kubectl get resourcequota -n <namespace>` (NAME column); this
+        module names it "<namespace>-quota".
+    - name: limit_range_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: name
+      where_to_find: >-
+        Same as the namespace name -- the limit range lives inside the
+        namespace.
+    - name: limit_range_name
+      derivations: []
+      where_to_find: >-
+        `kubectl get limitrange -n <namespace>` (NAME column); this module
+        names it "<namespace>-limits".
+    - name: network_policy_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: name
+      where_to_find: >-
+        Same as the namespace name -- the policies live inside the namespace.
+    - name: network_policy_name
+      derivations: []
+      where_to_find: >-
+        `kubectl get networkpolicy -n <namespace>` (NAME column); this module
+        names them "<namespace>-ingress-policy" and "<namespace>-egress-policy".

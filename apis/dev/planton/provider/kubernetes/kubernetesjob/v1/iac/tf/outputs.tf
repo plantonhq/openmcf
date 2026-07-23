@@ -1,19 +1,17 @@
+# Stack outputs — must flatten onto KubernetesJobStackOutputs
+# (stack_outputs.proto) identically to the Pulumi module's exports.
+
 output "namespace" {
-  description = "The Kubernetes namespace where the Job is deployed"
+  description = "The namespace the Job was created in"
   value       = local.namespace
 }
 
 output "job_name" {
-  description = "The name of the Job resource"
-  value       = kubernetes_job_v1.this.metadata[0].name
+  description = "The name of the Job object as created in the cluster"
+  value       = var.metadata.name
 }
 
-output "service_account_name" {
-  description = "The service account used by the Job"
-  value       = kubernetes_service_account.this.metadata[0].name
-}
-
-output "resource_id" {
-  description = "The unique resource ID for this Job"
-  value       = local.resource_id
+output "selector_labels" {
+  description = "The pod-location labels as a sorted k=v,k=v string — ready for locating this Job's pods with kubectl get pods -l or kubectl logs -l"
+  value       = local.selector_labels_string
 }

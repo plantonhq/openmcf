@@ -1,41 +1,13 @@
-##############################################
-# main.tf
+# KubernetesJob Terraform module.
 #
-# Main orchestration file for KubernetesJob
-# deployment using Terraform.
+# Runs work to completion: optional namespace (this file), env and image-pull
+# satellite Secrets (secret.tf), and the batch/v1 Job itself (job.tf).
 #
-# This module creates the following resources:
-#  1. Kubernetes Namespace (defined here)
-#  2. Service Account for the Job (job.tf)
-#  3. Image Pull Secret (if docker_config_json provided) (job.tf)
-#  4. Environment Secrets (if spec.env.secrets provided) (secret.tf)
-#  5. Job Resource (job.tf)
-#
-# The module follows best practices:
-#  - Uses namespace isolation for each Job
-#  - Creates dedicated service account for RBAC
-#  - Supports private container registries
-#  - Implements proper resource management
-#  - Provides comprehensive labeling
-#
-# For examples and usage patterns, see:
-#  - examples.md for Terraform examples
-#  - ../README.md for component documentation
-#  - ../../docs/README.md for research and best practices
-##############################################
+# Identity is composed, not created: pods run as the ServiceAccount referenced
+# in spec.pod.service_account. This module never creates ServiceAccounts, RBAC
+# objects, certificates, gateways, or routes — and Jobs front no Service, so
+# nothing here creates exposure either.
 
-##############################################
-# 1. Create or Reference Namespace
-#
-# Conditionally create namespace based on create_namespace flag:
-#  - If true: Create new namespace with labels
-#  - If false: Reference existing namespace
-#
-# Each Job gets its own namespace for:
-#  - Resource isolation
-#  - Security boundary
-#  - Easier cleanup and management
-##############################################
 resource "kubernetes_namespace" "this" {
   count = var.spec.create_namespace ? 1 : 0
 
@@ -44,24 +16,3 @@ resource "kubernetes_namespace" "this" {
     labels = local.final_labels
   }
 }
-
-# Data source for existing namespace (when not creating)
-data "kubernetes_namespace" "existing" {
-  count = var.spec.create_namespace ? 0 : 1
-
-  metadata {
-    name = local.namespace
-  }
-}
-
-##############################################
-# Additional Resources
-#
-# Other resources are defined in dedicated files:
-#  - job.tf: ServiceAccount, ImagePullSecret, and Job
-#  - secret.tf: Environment secrets (if configured)
-#  - configmap.tf: ConfigMaps from spec.config_maps
-#  - outputs.tf: Module outputs
-#  - locals.tf: Local variables and computed values
-#  - variables.tf: Input variable definitions
-##############################################

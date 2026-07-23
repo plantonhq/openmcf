@@ -89,9 +89,19 @@ type ImportValue struct {
 	Derivations []*ImportValueDerivation `protobuf:"bytes,2,rep,name=derivations,proto3" json:"derivations,omitempty"`
 	// Exactly where a user finds this value in the provider's console/CLI --
 	// shown whenever the platform must ask instead of derive.
-	WhereToFind   string `protobuf:"bytes,3,opt,name=where_to_find,json=whereToFind,proto3" json:"where_to_find,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	WhereToFind string `protobuf:"bytes,3,opt,name=where_to_find,json=whereToFind,proto3" json:"where_to_find,omitempty"`
+	// Scopes this declaration to addresses of ONE Terraform logical resource
+	// name (the `istiod` in `helm_release.istiod`). Needed when a module
+	// declares SEVERAL resources of the same type whose ID placeholders carry
+	// different values -- e.g. a control-plane module installing multiple Helm
+	// releases: each release's `{release_name}` is a different constant. A
+	// scoped declaration wins over an unscoped one for its resource; addresses
+	// with no scoped declaration fall back to the unscoped declaration of the
+	// same placeholder name. Leave empty (the common case) when the component
+	// has at most one resource per type.
+	TofuResourceName string `protobuf:"bytes,4,opt,name=tofu_resource_name,json=tofuResourceName,proto3" json:"tofu_resource_name,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ImportValue) Reset() {
@@ -145,6 +155,13 @@ func (x *ImportValue) GetWhereToFind() string {
 	return ""
 }
 
+func (x *ImportValue) GetTofuResourceName() string {
+	if x != nil {
+		return x.TofuResourceName
+	}
+	return ""
+}
+
 // ImportValueDerivation is a single way to derive a placeholder value
 // without asking the user.
 type ImportValueDerivation struct {
@@ -156,6 +173,8 @@ type ImportValueDerivation struct {
 	//	*ImportValueDerivation_FromStackOutput
 	//	*ImportValueDerivation_FromArnPart
 	//	*ImportValueDerivation_FromAddressKey
+	//	*ImportValueDerivation_FromMetadataNameSuffix
+	//	*ImportValueDerivation_Literal
 	Source        isImportValueDerivation_Source `protobuf_oneof:"source"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -243,6 +262,24 @@ func (x *ImportValueDerivation) GetFromAddressKey() bool {
 	return false
 }
 
+func (x *ImportValueDerivation) GetFromMetadataNameSuffix() string {
+	if x != nil {
+		if x, ok := x.Source.(*ImportValueDerivation_FromMetadataNameSuffix); ok {
+			return x.FromMetadataNameSuffix
+		}
+	}
+	return ""
+}
+
+func (x *ImportValueDerivation) GetLiteral() string {
+	if x != nil {
+		if x, ok := x.Source.(*ImportValueDerivation_Literal); ok {
+			return x.Literal
+		}
+	}
+	return ""
+}
+
 type isImportValueDerivation_Source interface {
 	isImportValueDerivation_Source()
 }
@@ -280,6 +317,26 @@ type ImportValueDerivation_FromAddressKey struct {
 	FromAddressKey bool `protobuf:"varint,5,opt,name=from_address_key,json=fromAddressKey,proto3,oneof"`
 }
 
+type ImportValueDerivation_FromMetadataNameSuffix struct {
+	// metadata.name plus this literal suffix -- for satellite resources a
+	// module names by convention off the parent's name (a workload's
+	// "<name>-hpa" autoscaler, its "<name>-env-secrets" Secret). Keeps
+	// convention-named satellites blind-derivable without exporting their
+	// names as stack outputs.
+	FromMetadataNameSuffix string `protobuf:"bytes,6,opt,name=from_metadata_name_suffix,json=fromMetadataNameSuffix,proto3,oneof"`
+}
+
+type ImportValueDerivation_Literal struct {
+	// A constant the module hardcodes -- for placeholder values that are
+	// properties of the module itself rather than of any one resource. The
+	// canonical case is kubectl_manifest's composed import ID
+	// ("{api_version}//{kind}//{name}[//{namespace}]"): a typed-CR module
+	// renders exactly one apiVersion and kind, so the map author declares
+	// them as literals. Never use a literal for anything a user could vary
+	// per resource -- that is what the other derivations are for.
+	Literal string `protobuf:"bytes,7,opt,name=literal,proto3,oneof"`
+}
+
 func (*ImportValueDerivation_FromMetadataName) isImportValueDerivation_Source() {}
 
 func (*ImportValueDerivation_FromSpecField) isImportValueDerivation_Source() {}
@@ -290,23 +347,30 @@ func (*ImportValueDerivation_FromArnPart) isImportValueDerivation_Source() {}
 
 func (*ImportValueDerivation_FromAddressKey) isImportValueDerivation_Source() {}
 
+func (*ImportValueDerivation_FromMetadataNameSuffix) isImportValueDerivation_Source() {}
+
+func (*ImportValueDerivation_Literal) isImportValueDerivation_Source() {}
+
 var File_dev_planton_iac_componentimportmap_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"0dev/planton/iac/componentimportmap/v1/spec.proto\x12%dev.planton.iac.componentimportmap.v1\"d\n" +
 	"\x16ComponentImportMapSpec\x12J\n" +
-	"\x06values\x18\x01 \x03(\v22.dev.planton.iac.componentimportmap.v1.ImportValueR\x06values\"\xa5\x01\n" +
+	"\x06values\x18\x01 \x03(\v22.dev.planton.iac.componentimportmap.v1.ImportValueR\x06values\"\xd3\x01\n" +
 	"\vImportValue\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12^\n" +
 	"\vderivations\x18\x02 \x03(\v2<.dev.planton.iac.componentimportmap.v1.ImportValueDerivationR\vderivations\x12\"\n" +
-	"\rwhere_to_find\x18\x03 \x01(\tR\vwhereToFind\"\xfb\x01\n" +
+	"\rwhere_to_find\x18\x03 \x01(\tR\vwhereToFind\x12,\n" +
+	"\x12tofu_resource_name\x18\x04 \x01(\tR\x10tofuResourceName\"\xd4\x02\n" +
 	"\x15ImportValueDerivation\x12.\n" +
 	"\x12from_metadata_name\x18\x01 \x01(\bH\x00R\x10fromMetadataName\x12(\n" +
 	"\x0ffrom_spec_field\x18\x02 \x01(\tH\x00R\rfromSpecField\x12,\n" +
 	"\x11from_stack_output\x18\x03 \x01(\tH\x00R\x0ffromStackOutput\x12$\n" +
 	"\rfrom_arn_part\x18\x04 \x01(\tH\x00R\vfromArnPart\x12*\n" +
-	"\x10from_address_key\x18\x05 \x01(\bH\x00R\x0efromAddressKeyB\b\n" +
+	"\x10from_address_key\x18\x05 \x01(\bH\x00R\x0efromAddressKey\x12;\n" +
+	"\x19from_metadata_name_suffix\x18\x06 \x01(\tH\x00R\x16fromMetadataNameSuffix\x12\x1a\n" +
+	"\aliteral\x18\a \x01(\tH\x00R\aliteralB\b\n" +
 	"\x06sourceB\xcd\x02\n" +
 	")com.dev.planton.iac.componentimportmap.v1B\tSpecProtoP\x01Z\\github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1;componentimportmapv1\xa2\x02\x04DPIC\xaa\x02%Dev.Planton.Iac.Componentimportmap.V1\xca\x02%Dev\\Planton\\Iac\\Componentimportmap\\V1\xe2\x021Dev\\Planton\\Iac\\Componentimportmap\\V1\\GPBMetadata\xea\x02)Dev::Planton::Iac::Componentimportmap::V1b\x06proto3"
 
@@ -349,6 +413,8 @@ func file_dev_planton_iac_componentimportmap_v1_spec_proto_init() {
 		(*ImportValueDerivation_FromStackOutput)(nil),
 		(*ImportValueDerivation_FromArnPart)(nil),
 		(*ImportValueDerivation_FromAddressKey)(nil),
+		(*ImportValueDerivation_FromMetadataNameSuffix)(nil),
+		(*ImportValueDerivation_Literal)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

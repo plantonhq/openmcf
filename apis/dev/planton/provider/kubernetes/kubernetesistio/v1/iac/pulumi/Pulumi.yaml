@@ -1,6 +1,4 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-aws-module-test
+name: kubernetes-istio
 runtime:
   name: go
-#  options:
-#    binary: ./debug.sh
+description: Pulumi module that installs the Istio control plane (base, istiod, and in ambient mode cni + ztunnel) from a KubernetesIstio manifest.

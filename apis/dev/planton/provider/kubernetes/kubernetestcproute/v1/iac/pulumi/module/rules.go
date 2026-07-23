@@ -3,17 +3,17 @@ package module
 import (
 	kubernetesapis "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	kubernetestcproutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestcproute/v1"
-	gatewayv1alpha2 "github.com/plantonhq/planton/pkg/kubernetes/kubernetestypes/gatewayapis/kubernetes/gateway/v1alpha2"
+	gatewayv1 "github.com/plantonhq/planton/pkg/kubernetes/kubernetestypes/gatewayapis/kubernetes/gateway/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // buildRules maps the Planton TCP route rules onto the typed crd2pulumi rules
 // array. A TCP route rule carries only an optional name and the backend refs
 // (no matches, no filters).
-func buildRules(rules []*kubernetestcproutev1.KubernetesTcpRouteRule) gatewayv1alpha2.TCPRouteSpecRulesArray {
-	arr := gatewayv1alpha2.TCPRouteSpecRulesArray{}
+func buildRules(rules []*kubernetestcproutev1.KubernetesTcpRouteRule) gatewayv1.TCPRouteSpecRulesArray {
+	arr := gatewayv1.TCPRouteSpecRulesArray{}
 	for _, r := range rules {
-		args := gatewayv1alpha2.TCPRouteSpecRulesArgs{}
+		args := gatewayv1.TCPRouteSpecRulesArgs{}
 		if name := r.GetName(); name != "" {
 			args.Name = pulumi.String(name)
 		}
@@ -30,14 +30,13 @@ func buildRules(rules []*kubernetestcproutev1.KubernetesTcpRouteRule) gatewayv1a
 // Optional fields are only set when present so controller defaults flow through.
 // TCP routes have no per-backend filters.
 //
-// Note: backend_refs is a plain reference, not an Planton foreign key (DD-009).
-// Infra-chart authors express the route -> backend dependency via
-// metadata.relationships (type: uses) when the backend is Planton-managed.
-func buildBackendRefs(backendRefs []*kubernetesapis.KubernetesGatewayApiBackendRef) gatewayv1alpha2.TCPRouteSpecRulesBackendRefsArray {
-	arr := gatewayv1alpha2.TCPRouteSpecRulesBackendRefsArray{}
+// Each backend's name is a KubernetesService foreign key resolved to its
+// literal value before the module runs, so GetValue() returns the final name.
+func buildBackendRefs(backendRefs []*kubernetesapis.KubernetesGatewayApiBackendRef) gatewayv1.TCPRouteSpecRulesBackendRefsArray {
+	arr := gatewayv1.TCPRouteSpecRulesBackendRefsArray{}
 	for _, b := range backendRefs {
-		args := gatewayv1alpha2.TCPRouteSpecRulesBackendRefsArgs{
-			Name: pulumi.String(b.GetName()),
+		args := gatewayv1.TCPRouteSpecRulesBackendRefsArgs{
+			Name: pulumi.String(b.GetName().GetValue()),
 		}
 		if group := b.GetGroup(); group != "" {
 			args.Group = pulumi.String(group)

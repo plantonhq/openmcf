@@ -30,7 +30,7 @@ const (
 //
 // 100% fidelity with the upstream istio.io/api PeerAuthentication
 // (security/v1beta1/peer_authentication.proto, served as security.istio.io/v1),
-// pinned to the 1.26 line (tag 1.26.8). Upstream spec fields are flattened
+// pinned to the 1.30 line (tag 1.30.3). Upstream spec fields are flattened
 // directly after the Planton namespaced envelope (namespace);
 // there is no nested `peer_authentication` sub-message.
 //
@@ -199,7 +199,7 @@ const file_dev_planton_provider_kubernetes_kubernetespeerauthentication_v1_spec_
 	"\n" +
 	"Jdev/planton/provider/kubernetes/kubernetespeerauthentication/v1/spec.proto\x12?dev.planton.provider.kubernetes.kubernetespeerauthentication.v1\x1a\x1bbuf/validate/validate.proto\x1a/dev/planton/provider/kubernetes/istio_api.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb1\a\n" +
 	" KubernetesPeerAuthenticationSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xc4\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12_\n" +
 	"\bselector\x18\x03 \x01(\v2C.dev.planton.provider.kubernetes.KubernetesIstioApiWorkloadSelectorR\bselector\x12z\n" +
 	"\x04mtls\x18\x04 \x01(\v2f.dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationMutualTlsR\x04mtls\x12\xae\x01\n" +
 	"\x0fport_level_mtls\x18\x05 \x03(\v2t.dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.PortLevelMtlsEntryB\x10\xbaH\r\x9a\x01\n" +

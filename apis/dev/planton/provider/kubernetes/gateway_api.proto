@@ -3,28 +3,37 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes;
 
 import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // Shared Gateway API types used across multiple Planton Gateway API components.
-// Translated from kubernetes-sigs/gateway-api v1.5.1:
+// Translated from kubernetes-sigs/gateway-api v1.6.1:
 //   - apis/v1/shared_types.go
 //   - apis/v1/object_reference_types.go
+//   - apis/v1/gateway_types.go (listener building blocks shared with ListenerSet)
 //   - apis/v1/gatewayclass_types.go (ParametersReference only)
+//   - apis/v1/listenerset_types.go (ParentGatewayReference)
 //
 // Status types (RouteStatus, RouteParentStatus, GatewayStatus, etc.) are
 // intentionally excluded — Planton captures deployment outputs via
 // stack_outputs.proto, not CRD status subresources.
 //
-// Types used only by excluded resources (ParentGatewayReference for ListenerSet)
-// are also excluded.
-//
 // Note on reference field validation: every object-reference message below
-// repeats the same group/kind/name (and, where present, section_name)
-// buf.validate rules. This duplication is intentional — it mirrors upstream's
-// per-field type aliases (Group, Kind, ObjectName, SectionName), each carrying
-// its own kubebuilder markers. buf.validate predefined-rules are deliberately
-// NOT used to DRY this up: there is no precedent for them anywhere in this repo,
-// and a shared wrapper message would distort the flat upstream shape (dont-do
-// #6/#7). Keep each message self-contained and faithful to its upstream type.
+// repeats the same group/kind (and, where present, section_name) buf.validate
+// rules. This duplication is intentional — it mirrors upstream's per-field
+// type aliases (Group, Kind, ObjectName, SectionName), each carrying its own
+// kubebuilder markers. buf.validate predefined-rules are deliberately NOT used
+// to DRY this up: there is no precedent for them anywhere in this repo, and a
+// shared wrapper message would distort the flat upstream shape. Keep each
+// message self-contained and faithful to its upstream type.
+//
+// Note on `name` fields: where a reference's default target is a resource kind
+// Planton models as a first-class component (Gateway, Service, Secret,
+// ConfigMap), the name is a StringValueOrRef foreign key so infra charts can
+// wire it with valueFrom and the resource graph gets a real dependency edge.
+// The upstream length/format constraints on those names are enforced by the
+// Kubernetes API server at apply time; the referenced object's own creation
+// already validated them. When the reference targets something other than the
+// default kind (set via group/kind), pass the literal name with `value:`.
 
 // KubernetesGatewayApiParentReference identifies an API object (usually a
 // Gateway) that can be considered a parent of a route resource.
@@ -58,13 +67,15 @@ message KubernetesGatewayApiParentReference {
   // ReferenceGrant in the target namespace.
   optional string namespace = 3;
 
-  // Name of the referent.
-  string name = 4 [
+  // Name of the referent. Defaults to a KubernetesGateway foreign key: in an
+  // infra chart, wire it with valueFrom against the Gateway resource and the
+  // route deploys after (and follows renames of) its Gateway. When the parent
+  // is not a Planton-managed Gateway (a ListenerSet, a mesh Service, or an
+  // externally created Gateway), pass the literal name with `value:`.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 4 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {
-      min_len: 1
-      max_len: 253
-    }
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.gateway_name"
   ];
 
   // Name of a section within the target resource (e.g., a Gateway Listener
@@ -83,6 +94,52 @@ message KubernetesGatewayApiParentReference {
     gte: 1
     lte: 65535
   }];
+}
+
+// KubernetesGatewayApiParentGatewayReference identifies the Gateway a
+// ListenerSet attaches its listeners to. Unlike the route-side
+// ParentReference it has no section_name or port — a ListenerSet always
+// attaches to the Gateway as a whole.
+//
+// Upstream: ParentGatewayReference in apis/v1/listenerset_types.go
+message KubernetesGatewayApiParentGatewayReference {
+  // Group of the referent.
+  //
+  // Upstream default: "gateway.networking.k8s.io"
+  // Group pattern: empty or an RFC 1123 subdomain (max 253).
+  optional string group = 1 [(buf.validate.field).string = {
+    max_len: 253
+    pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+  }];
+
+  // Kind of the referent.
+  //
+  // Upstream default: "Gateway"
+  // Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+  optional string kind = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 63
+    pattern: "^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$"
+  }];
+
+  // Namespace of the referent. When unspecified, the ListenerSet's own
+  // namespace is assumed. The parent Gateway must allow attachment from the
+  // ListenerSet's namespace via its allowed_listeners configuration.
+  optional string namespace = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 63
+    pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+  }];
+
+  // Name of the parent Gateway. Defaults to a KubernetesGateway foreign key:
+  // in an infra chart, wire it with valueFrom against the Gateway resource so
+  // the ListenerSet deploys after its Gateway. Pass the literal name with
+  // `value:` when the Gateway is not Planton-managed.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.gateway_name"
+  ];
 }
 
 // KubernetesGatewayApiBackendObjectReference defines a reference to a backend
@@ -117,13 +174,15 @@ message KubernetesGatewayApiBackendObjectReference {
     pattern: "^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$"
   }];
 
-  // Name of the referent.
-  string name = 3 [
+  // Name of the referent. Defaults to a KubernetesService foreign key: in an
+  // infra chart, wire it with valueFrom against the backend Service and the
+  // route deploys after its backend. When the backend is not a
+  // Planton-managed Service (a custom backend kind, or a Service created
+  // outside Planton), pass the literal name with `value:`.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {
-      min_len: 1
-      max_len: 253
-    }
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.service_name"
   ];
 
   // Namespace of the backend. When unspecified, the local namespace is inferred.
@@ -147,10 +206,10 @@ message KubernetesGatewayApiBackendObjectReference {
 // per-route backend ref because each backend additionally carries filters.
 //
 // Field validations mirror the upstream kubebuilder markers on
-// BackendObjectReference (group/kind/name patterns + bounds). As of T08 every
-// shared reference type in this file carries these same group/kind/name rules,
-// so the family is uniform. namespace is intentionally left unconstrained across
-// all of them — a deliberate family-wide convention, not a per-type gap.
+// BackendObjectReference (group/kind patterns + bounds). Every shared
+// reference type in this file carries these same group/kind rules, so the
+// family is uniform. namespace is intentionally left unconstrained across all
+// of them — a deliberate family-wide convention, not a per-type gap.
 message KubernetesGatewayApiBackendRef {
   // Group of the referent. Empty string infers the core API group.
   //
@@ -171,13 +230,15 @@ message KubernetesGatewayApiBackendRef {
     pattern: "^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$"
   }];
 
-  // Name of the referent (for example a Kubernetes Service name).
-  string name = 3 [
+  // Name of the referent. Defaults to a KubernetesService foreign key: in an
+  // infra chart, wire it with valueFrom against the backend Service and the
+  // route deploys after its backend. When the backend is not a
+  // Planton-managed Service (a custom backend kind, or a Service created
+  // outside Planton), pass the literal name with `value:`.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {
-      min_len: 1
-      max_len: 253
-    }
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.service_name"
   ];
 
   // Namespace of the backend. When unspecified, the local namespace is inferred.
@@ -208,11 +269,22 @@ message KubernetesGatewayApiLocalObjectReference {
   // Group of the referent (e.g., "gateway.networking.k8s.io").
   // Empty string infers the core API group.
   //
+  // Upstream requires the KEY to be present, but its Group type explicitly
+  // allows the empty value -- so this is a proto3 `optional` string with a
+  // presence `required` rule: it must be SET (and is therefore emitted to
+  // the rendered CR, whose CRD rejects a missing key) but may be empty.
+  // The `optional` is what keeps the projection faithful: protojson omits
+  // unset proto3 scalars, so a non-optional empty-string group would be
+  // dropped from the manifest and rejected by the API server.
+  //
   // Group pattern: empty or an RFC 1123 subdomain (max 253).
-  string group = 1 [(buf.validate.field).string = {
-    max_len: 253
-    pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
-  }];
+  optional string group = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 253
+      pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+    }
+  ];
 
   // Kind of the referent (e.g., "HTTPRoute" or "Service").
   //
@@ -261,13 +333,16 @@ message KubernetesGatewayApiSecretObjectReference {
     pattern: "^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$"
   }];
 
-  // Name of the referent.
-  string name = 3 [
+  // Name of the referent. Defaults to a KubernetesSecret foreign key. The
+  // Secret is typically produced by cert-manager: reference a
+  // KubernetesCertificate's status.outputs.secret_name with valueFrom to wire
+  // a certificate the moment it is issued, or a KubernetesSecret directly for
+  // externally provisioned material. Pass the literal name with `value:` when
+  // the Secret is not Planton-managed.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {
-      min_len: 1
-      max_len: 253
-    }
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name"
   ];
 
   // Namespace of the referenced object. When unspecified, the local namespace
@@ -280,13 +355,25 @@ message KubernetesGatewayApiSecretObjectReference {
 //
 // Upstream: ObjectReference in apis/v1/object_reference_types.go
 message KubernetesGatewayApiObjectReference {
-  // Group of the referent. Empty string infers the core API group.
+  // Group of the referent. Empty string infers the core API group
+  // (e.g. for ConfigMap CA bundles).
+  //
+  // Upstream requires the KEY to be present, but its Group type explicitly
+  // allows the empty value -- so this is a proto3 `optional` string with a
+  // presence `required` rule: it must be SET (and is therefore emitted to
+  // the rendered CR, whose CRD rejects a missing key) but may be empty.
+  // The `optional` is what keeps the projection faithful: protojson omits
+  // unset proto3 scalars, so a non-optional empty-string group would be
+  // dropped from the manifest and rejected by the API server.
   //
   // Group pattern: empty or an RFC 1123 subdomain (max 253).
-  string group = 1 [(buf.validate.field).string = {
-    max_len: 253
-    pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
-  }];
+  optional string group = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 253
+      pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+    }
+  ];
 
   // Kind of the referent (e.g., "ConfigMap" or "Service").
   //
@@ -301,13 +388,15 @@ message KubernetesGatewayApiObjectReference {
     }
   ];
 
-  // Name of the referent.
-  string name = 3 [
+  // Name of the referent. Defaults to a KubernetesConfigMap foreign key (this
+  // reference's primary use is CA-bundle ConfigMaps for client-certificate
+  // validation): wire it with valueFrom against the ConfigMap resource, or
+  // pass the literal name with `value:` when the object is a different kind
+  // or not Planton-managed.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {
-      min_len: 1
-      max_len: 253
-    }
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesConfigMap,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.configmap_name"
   ];
 
   // Namespace of the referenced object. When unspecified, the local namespace
@@ -320,13 +409,25 @@ message KubernetesGatewayApiObjectReference {
 //
 // Upstream: ParametersReference in apis/v1/gatewayclass_types.go
 message KubernetesGatewayApiParametersReference {
-  // Group of the referent. Empty string infers the core API group.
+  // Group of the referent. Empty string infers the core API group
+  // (e.g. for ConfigMap parameters).
+  //
+  // Upstream requires the KEY to be present, but its Group type explicitly
+  // allows the empty value -- so this is a proto3 `optional` string with a
+  // presence `required` rule: it must be SET (and is therefore emitted to
+  // the rendered CR, whose CRD rejects a missing key) but may be empty.
+  // The `optional` is what keeps the projection faithful: protojson omits
+  // unset proto3 scalars, so a non-optional empty-string group would be
+  // dropped from the manifest and rejected by the API server.
   //
   // Group pattern: empty or an RFC 1123 subdomain (max 253).
-  string group = 1 [(buf.validate.field).string = {
-    max_len: 253
-    pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
-  }];
+  optional string group = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 253
+      pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+    }
+  ];
 
   // Kind of the referent.
   //
@@ -353,6 +454,161 @@ message KubernetesGatewayApiParametersReference {
   // Namespace of the referent. Required for namespace-scoped resources,
   // must be unset for cluster-scoped resources.
   optional string namespace = 4;
+}
+
+// KubernetesGatewayApiListenerTlsConfig describes the TLS behavior of a
+// listener. Shared by KubernetesGateway listeners and KubernetesListenerSet
+// listener entries — upstream uses one ListenerTLSConfig type for both, so
+// sharing the message here makes drift between the two kinds structurally
+// impossible.
+//
+// Upstream: ListenerTLSConfig in apis/v1/gateway_types.go
+message KubernetesGatewayApiListenerTlsConfig {
+  // when terminating TLS, the listener must have somewhere to source its
+  // certificate from (an explicit certificate reference or an
+  // implementation-specific option). Mode left unset defaults to Terminate.
+  option (buf.validate.message).cel = {
+    id: "listener_tls.terminate_requires_cert_or_options"
+    message: "certificate_refs or options must be provided when tls mode is Terminate (the default)"
+    expression: "(!has(this.mode) || this.mode == '' || this.mode == 'Terminate') ? (size(this.certificate_refs) > 0 || size(this.options) > 0) : true"
+  };
+
+  // How the listener handles the client's TLS session. "Terminate" (default)
+  // decrypts at the Gateway and requires a certificate. "Passthrough" forwards
+  // the encrypted stream untouched (TLSRoute only) and ignores certificate_refs.
+  //
+  // Upstream default: "Terminate". Closed enum: Terminate | Passthrough.
+  optional string mode = 1 [(buf.validate.field).cel = {
+    id: "listener_tls.mode_enum"
+    message: "tls mode must be either 'Terminate' or 'Passthrough'"
+    expression: "this == '' || this in ['Terminate', 'Passthrough']"
+  }];
+
+  // References to Kubernetes Secrets holding the TLS certificate/key used to
+  // terminate the listener. A single reference to a kubernetes.io/tls Secret
+  // has Core support; multiple references are implementation-specific.
+  //
+  // Each reference's name is a KubernetesSecret foreign key; the Secret is
+  // typically produced by a KubernetesCertificate (cert-manager) — wire
+  // valueFrom against the Certificate's status.outputs.secret_name so the
+  // listener terminates with the issued certificate. See
+  // KubernetesGatewayApiSecretObjectReference.
+  repeated KubernetesGatewayApiSecretObjectReference certificate_refs = 2 [(buf.validate.field).repeated.max_items = 64];
+
+  // Implementation-specific TLS options (for example minimum TLS version or
+  // cipher suites). Keys should be domain-prefixed to avoid ambiguity.
+  //
+  // Upstream key/value: Gateway API AnnotationKey (1-253) / AnnotationValue
+  // (0-4096).
+  map<string, string> options = 3 [(buf.validate.field).map = {
+    max_pairs: 16
+    keys: {
+      string: {
+        min_len: 1
+        max_len: 253
+        pattern: "^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]$"
+      }
+    }
+    values: {
+      string: {max_len: 4096}
+    }
+  }];
+}
+
+// KubernetesGatewayApiAllowedRoutes defines which Routes may attach to a
+// listener. Shared by KubernetesGateway listeners and KubernetesListenerSet
+// listener entries (one upstream AllowedRoutes type serves both).
+//
+// Upstream: AllowedRoutes in apis/v1/gateway_types.go
+message KubernetesGatewayApiAllowedRoutes {
+  // Namespaces from which Routes may attach. Defaults to the Gateway's own
+  // namespace.
+  KubernetesGatewayApiRouteNamespaces namespaces = 1;
+
+  // Route kinds allowed to bind to this listener. When empty, allowed kinds
+  // are inferred from the listener protocol.
+  repeated KubernetesGatewayApiRouteGroupKind kinds = 2 [(buf.validate.field).repeated.max_items = 8];
+}
+
+// KubernetesGatewayApiRouteNamespaces indicates the namespaces Routes are
+// selected from.
+//
+// Upstream: RouteNamespaces in apis/v1/gateway_types.go
+message KubernetesGatewayApiRouteNamespaces {
+  // Where Routes are selected from: "All" (any namespace), "Selector"
+  // (namespaces matching the selector), or "Same" (the Gateway's namespace).
+  //
+  // Upstream default: "Same". Closed enum: All | Selector | Same.
+  optional string from = 1 [(buf.validate.field).cel = {
+    id: "route_namespaces.from_enum"
+    message: "from must be one of 'All', 'Selector', or 'Same'"
+    expression: "this == '' || this in ['All', 'Selector', 'Same']"
+  }];
+
+  // Namespace label selector. Required (and only honored) when `from` is
+  // "Selector".
+  KubernetesGatewayApiLabelSelector selector = 2;
+}
+
+// KubernetesGatewayApiRouteGroupKind identifies a Route group and kind allowed
+// on a listener.
+//
+// Upstream: RouteGroupKind in apis/v1/gateway_types.go
+message KubernetesGatewayApiRouteGroupKind {
+  // API group of the Route. Empty string selects the core API group.
+  //
+  // Upstream default: "gateway.networking.k8s.io".
+  // Group pattern: empty or an RFC 1123 subdomain (max 253).
+  optional string group = 1 [(buf.validate.field).string = {
+    max_len: 253
+    pattern: "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+  }];
+
+  // Kind of the Route (for example "HTTPRoute", "GRPCRoute", "TLSRoute").
+  //
+  // Kind pattern: 1-63 chars, ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+  string kind = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 63
+      pattern: "^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$"
+    }
+  ];
+}
+
+// KubernetesGatewayApiLabelSelector is a Kubernetes label selector used to
+// choose namespaces (mirrors metav1.LabelSelector). Reused for AllowedRoutes
+// and the Gateway's AllowedListeners namespace selection.
+message KubernetesGatewayApiLabelSelector {
+  // Map of {key,value} pairs. A namespace matches if it carries all of these
+  // labels.
+  map<string, string> match_labels = 1;
+
+  // List of label selector requirements, ANDed together with match_labels.
+  repeated KubernetesGatewayApiLabelSelectorRequirement match_expressions = 2;
+}
+
+// KubernetesGatewayApiLabelSelectorRequirement is a single label selector
+// requirement (mirrors metav1.LabelSelectorRequirement).
+message KubernetesGatewayApiLabelSelectorRequirement {
+  // Label key the requirement applies to.
+  string key = 1 [(buf.validate.field).required = true];
+
+  // Relationship between the key and values: "In", "NotIn", "Exists", or
+  // "DoesNotExist". For "Exists"/"DoesNotExist", values must be empty.
+  string operator = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "label_selector.operator_enum"
+      message: "operator must be one of 'In', 'NotIn', 'Exists', or 'DoesNotExist'"
+      expression: "this in ['In', 'NotIn', 'Exists', 'DoesNotExist']"
+    }
+  ];
+
+  // Values for the requirement. Must be non-empty for "In"/"NotIn" and empty
+  // for "Exists"/"DoesNotExist".
+  repeated string values = 3;
 }
 
 // KubernetesGatewayApiSessionPersistence defines session persistence
@@ -441,6 +697,7 @@ message KubernetesGatewayApiFraction {
 //   3. Component-specific enums (ProtocolType, HTTPMethod, etc.) are defined
 //      nested inside each component's spec.proto per forge convention
 //
-// Valid values are documented in field comments. Component specs that need
-// typed enum validation for their own fields will define nested enums
-// following DD-003 (uppercase external standard exception).
+// Valid values are documented in field comments. Where a value set matches an
+// external standard's constants (HTTP methods, Gateway API mode names), the
+// uppercase spellings are kept verbatim — matching the standard beats matching
+// the catalog's lowercase enum convention.

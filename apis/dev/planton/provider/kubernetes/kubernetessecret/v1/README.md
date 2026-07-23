@@ -18,7 +18,7 @@ Kubernetes Secrets are foundational to every cluster, yet creating and managing 
 
 ## Relationship to Other Components
 
-- **KubernetesExternalSecrets** (enum 829): Syncs secrets _from external stores_ (AWS Secrets Manager, Vault, etc.) into Kubernetes. Use when secrets originate in an external provider.
+- **KubernetesExternalSecret** (with the External Secrets Operator installed via **KubernetesExternalSecretsOperator**): Syncs secrets _from external backends_ (AWS Secrets Manager, Vault, etc.) into Kubernetes. Use when secrets originate in an external provider.
 - **KubernetesSecret** (this component): Creates secrets _directly_ with literal values provided at deploy time. Use when secret data is available in your CI/CD pipeline, environment config, or IaC variables.
 
 These are complementary components, not overlapping.
@@ -91,7 +91,7 @@ Use **KubernetesSecret** when you need:
 
 **Do NOT use** when:
 
-- Secret values originate in an external store (use **KubernetesExternalSecrets** instead)
+- Secret values originate in an external backend (use **KubernetesExternalSecret** instead)
 - You need dynamic secret rotation (consider Vault or External Secrets Operator)
 
 ## Prerequisites

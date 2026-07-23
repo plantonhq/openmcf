@@ -2,8 +2,17 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1;
 
-// kubernetes-percona-mysql-operator-kubernetes stack outputs
+/**
+ * **KubernetesPerconaMysqlOperatorStackOutputs** — the composition
+ * handles a deployed Percona Operator for MySQL exports. The operator
+ * has no per-database surface of its own; KubernetesMysql resources
+ * compose against the CRDs it installs, so the handles here identify
+ * the installation rather than any workload.
+ */
 message KubernetesPerconaMysqlOperatorStackOutputs {
-  // Namespace where the operator is installed
+  // Namespace the operator runs in.
   string namespace = 1;
+
+  // Helm release name of the operator (`metadata.name`).
+  string release_name = 2;
 }

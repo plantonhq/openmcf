@@ -6,7 +6,6 @@ spec:
   namespace:
     value: "<your-namespace>"
   createNamespace: false
-  version: latest
   container:
     app:
       image:
@@ -23,5 +22,8 @@ spec:
         variables:
           - name: WORKER_CONCURRENCY
             value: "4"
-  availability:
-    minReplicas: 1
+        secrets:
+          - name: QUEUE_CONNECTION_STRING
+            secretRef:
+              name: "<your-existing-secret>"
+              key: "<your-secret-key>"

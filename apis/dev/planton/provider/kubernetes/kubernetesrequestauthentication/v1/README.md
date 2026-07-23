@@ -76,14 +76,14 @@ planton apply -f requestauthentication.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `selector.match_labels` | map | Pod labels selecting target workloads. Omit to cover the whole namespace. Mutually exclusive with `target_refs`. |
-| `target_refs` | list | Resources (Gateway / Service / ServiceEntry) the policy binds to. Required for waypoints. Mutually exclusive with `selector`. |
+| `target_refs` | list | Resources (Gateway / Service / ServiceEntry) the policy binds to. Required for waypoints. Mutually exclusive with `selector`. Each `name` is a foreign key defaulting to a `KubernetesGateway` reference; pass literals with `value:`. |
 | `jwt_rules` | list | JWT validation rules (see below). When empty, the policy is a no-op. |
 
 ### JWT rule fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `issuer` | string | **Required.** Must match the token's `iss` claim. |
+| `issuer` | string | Must match the token's `iss` claim. May be omitted only when `jwks_uri` is set -- at least one of the two is required, so the verifier can locate the signing keys. An issuer-less rule validates any issuer against the fixed key set. |
 | `audiences` | list | Accepted `aud` values. When empty, the workload's service name is accepted. |
 | `jwks_uri` | string | URL of the issuer's JWKS. Mutually exclusive with `jwks`. Must be `http(s)://`. |
 | `jwks` | string | Inline JWKS. Mutually exclusive with `jwks_uri`. |
@@ -94,6 +94,7 @@ planton apply -f requestauthentication.yaml
 | `forward_original_token` | bool | Forward the original token upstream (default false). |
 | `output_claim_to_headers` | list | Copy verified claims to headers (`header`, `claim`). Header names allow `[-_A-Za-z0-9]`. |
 | `timeout` | string | Max JWKS-fetch time, a duration like `5s` (default 5s, minimum 1ms). |
+| `space_delimited_claims` | list | Claim names whose string values are treated as space-delimited lists (the OAuth2 `scope` convention, e.g. `"read write admin"`) by authorization policies and claim-to-header operations. Up to 64. |
 
 ## Examples
 
@@ -133,10 +134,36 @@ spec:
 ## Composing in Infra Charts
 
 `namespace` is a `StringValueOrRef`, so it can reference a `KubernetesNamespace`
-output via `valueFrom`. Neither `selector.match_labels` nor `target_refs` is a
-foreign key -- istiod resolves them at runtime, so they create no automatic DAG edge
-to the workload or resource they target. To order this policy relative to those
-resources in an infra chart, declare the dependency on `metadata.relationships`:
+output via `valueFrom`. Each `target_refs[].name` is also a foreign key: it defaults
+to a `KubernetesGateway` reference (`status.outputs.gateway_name`), so wiring it with
+`valueFrom` gives the chart a real dependency edge from the policy to the gateway it
+protects:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: edge-ns
+      fieldPath: spec.name
+  target_refs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: edge-gateway
+          fieldPath: status.outputs.gateway_name
+  jwt_rules:
+    - issuer: https://accounts.example.com
+      jwks_uri: https://accounts.example.com/.well-known/jwks.json
+```
+
+When the target is a Service, a ServiceEntry, or any resource not managed as a
+Planton kind, pass the literal name with `value:`. `selector.match_labels` is a plain
+label match, not a foreign key -- istiod resolves it at runtime, so it creates no
+automatic DAG edge to the workloads it selects. To order this policy relative to those
+workloads in an infra chart, declare the dependency on `metadata.relationships`:
 
 ```yaml
 metadata:

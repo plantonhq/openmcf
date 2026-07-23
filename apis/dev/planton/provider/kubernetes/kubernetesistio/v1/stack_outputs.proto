@@ -2,28 +2,40 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesistio.v1;
 
-//kubernetes-istio stack outputs
+/**
+ * KubernetesIstioStackOutputs captures the handles downstream resources compose
+ * against once the Istio control plane is installed:
+ *  * Gateway API Gateways select the mesh through `gateway_class_name`,
+ *  * mesh policy kinds (PeerAuthentication, AuthorizationPolicy, ...) target
+ *    workloads whose proxies this control plane programs,
+ *  * multi-revision setups discover the control-plane identity through
+ *    `revision` and `istiod_service_name`.
+ */
 message KubernetesIstioStackOutputs {
-  //kubernetes namespace in which kubernetes-istio is created.
+  // Namespace the control plane is installed in (e.g. "istio-system").
   string namespace = 1;
 
-  //kubernetes service name for kubernetes-istio.
-  //ex: main-kubernetes-istio
-  //in the above example, "main" is the name of the kubernetes-istio
-  string service = 2;
+  // Name of the istiod Service in that namespace ("istiod" for the default
+  // revision, "istiod-<revision>" for a named revision) — the discovery address
+  // data-plane proxies and remote clusters connect to.
+  string istiod_service_name = 2;
 
-  //command to setup port-forwarding to open kubernetes-istio from developers laptop.
-  //this might come handy when kubernetes-istio ingress is disabled for security reasons.
-  //this is rendered by combining kubernetes_istio_kubernetes_service and kubernetes_namespace
-  //ex: kubectl port-forward svc/kubernetes_istio_kubernetes_service -n kubernetes_namespace 6379:6379
-  //running the command from this attribute makes it possible to access kubernetes-istio using http://localhost:8080/gitlab
-  string port_forward_command = 3;
+  // The control-plane revision installed ("default" when no revision is named).
+  // Workloads pin to a revisioned control plane with the `istio.io/rev` label.
+  string revision = 3;
 
-  //kubernetes endpoint to connect to kubernetes-istio from the web browser.
-  //ex: main-kubernetes-istio.namespace.svc.cluster.local:6379
-  string kube_endpoint = 4;
+  // Name of the GatewayClass istiod serves ("istio"). Create a KubernetesGateway
+  // with this gateway_class_name and istiod provisions and programs the gateway
+  // deployment automatically — the composition seam for north-south exposure.
+  string gateway_class_name = 4;
 
-  //public endpoint to open kubernetes-istio from clients outside kubernetes.
-  //ex: https://gls-planton-pcs-dev-main.data.dev.planton.live:6379/gitlab
-  string ingress_endpoint = 5;
+  // The mesh's trust domain (the identity root of every workload certificate,
+  // e.g. "cluster.local") — the prefix of principal strings in
+  // KubernetesAuthorizationPolicy rules.
+  string trust_domain = 5;
+
+  // The data plane mode the mesh was installed with ("sidecar" or "ambient") —
+  // tells composed resources whether workloads enroll via sidecar injection
+  // labels or the ambient dataplane-mode label.
+  string dataplane_mode = 6;
 }

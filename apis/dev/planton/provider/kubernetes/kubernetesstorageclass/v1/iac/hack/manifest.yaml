@@ -1,0 +1,28 @@
+# Full-surface test manifest for the offline plan proofs. Exercises
+# parameters, retain reclaim, wait_for_first_consumer binding, expansion,
+# mount options, zone topology restriction, and the default-class marker.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesStorageClass
+metadata:
+  name: test-storage-class
+spec:
+  name: test-storage-class
+  labels:
+    team: platform-engineering
+  provisioner: ebs.csi.aws.com
+  parameters:
+    type: gp3
+    iops: "6000"
+    encrypted: "true"
+  reclaim_policy: retain
+  volume_binding_mode: wait_for_first_consumer
+  allow_volume_expansion: true
+  mount_options:
+    - noatime
+  allowed_topologies:
+    - match_label_expressions:
+        - key: topology.kubernetes.io/zone
+          values:
+            - us-east-1a
+            - us-east-1b
+  is_default_class: true

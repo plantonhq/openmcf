@@ -1,0 +1,181 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetespostgres
+spec:
+  # The module renders up to THREE kubectl_manifest resource types with
+  # different GVKs — the Cluster, the Barman Cloud ObjectStore(s), and the
+  # ScheduledBackups — so the composed-ID placeholders {api_version}/{kind}/
+  # {name} are declared PER Terraform logical resource via
+  # tofu_resource_name scoping. The declared-credential Secrets and the
+  # optional anchor namespace ride their own rows. Every satellite name is
+  # deterministic (derived from metadata.name), so the whole family imports
+  # blind.
+  values:
+    # ── the Cluster CR ──────────────────────────────────────────────────
+    - name: api_version
+      tofu_resource_name: cluster
+      derivations:
+        - literal: postgresql.cnpg.io/v1
+      where_to_find: Always "postgresql.cnpg.io/v1" — the Cluster CR's group/version.
+    - name: kind
+      tofu_resource_name: cluster
+      derivations:
+        - literal: Cluster
+      where_to_find: Always "Cluster" — the CR kind this module applies.
+    - name: name
+      tofu_resource_name: cluster
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: cluster_name
+      where_to_find: >-
+        The Cluster's metadata.name (equals the Planton resource name) —
+        `kubectl get clusters.postgresql.cnpg.io -A` (NAME column).
+    # ── the backup ObjectStore CR ───────────────────────────────────────
+    - name: api_version
+      tofu_resource_name: backup_object_store
+      derivations:
+        - literal: barmancloud.cnpg.io/v1
+      where_to_find: Always "barmancloud.cnpg.io/v1" — the ObjectStore CR's group/version.
+    - name: kind
+      tofu_resource_name: backup_object_store
+      derivations:
+        - literal: ObjectStore
+      where_to_find: Always "ObjectStore" — the CR kind this module applies.
+    - name: name
+      tofu_resource_name: backup_object_store
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        The backup store is named after the cluster —
+        `kubectl get objectstores.barmancloud.cnpg.io -n <namespace>`.
+    # ── the recovery-source ObjectStore CR ──────────────────────────────
+    - name: api_version
+      tofu_resource_name: recovery_object_store
+      derivations:
+        - literal: barmancloud.cnpg.io/v1
+      where_to_find: Always "barmancloud.cnpg.io/v1" — the ObjectStore CR's group/version.
+    - name: kind
+      tofu_resource_name: recovery_object_store
+      derivations:
+        - literal: ObjectStore
+      where_to_find: Always "ObjectStore" — the CR kind this module applies.
+    - name: name
+      tofu_resource_name: recovery_object_store
+      derivations:
+        - from_metadata_name_suffix: "-recovery-source"
+      where_to_find: >-
+        Present only for recovery bootstraps; always
+        "<resource-name>-recovery-source".
+    # ── the ScheduledBackup CRs (for_each keyed by the CR name) ─────────
+    - name: api_version
+      tofu_resource_name: scheduled_backup
+      derivations:
+        - literal: postgresql.cnpg.io/v1
+      where_to_find: Always "postgresql.cnpg.io/v1" — the ScheduledBackup CR's group/version.
+    - name: kind
+      tofu_resource_name: scheduled_backup
+      derivations:
+        - literal: ScheduledBackup
+      where_to_find: Always "ScheduledBackup" — the CR kind this module applies.
+    - name: name
+      tofu_resource_name: scheduled_backup
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The module keys each ScheduledBackup's address by the CR name it
+        renders ("<resource-name>-<schedule-name>") —
+        `kubectl get scheduledbackups.postgresql.cnpg.io -n <namespace>`.
+    # ── shared namespace segment for every namespaced CR ────────────────
+    - name: namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        The cluster's namespace — `kubectl get clusters.postgresql.cnpg.io -A`
+        (NAMESPACE column).
+    # ── declared-credential Secrets ─────────────────────────────────────
+    # The for_each families (role passwords, external-cluster passwords)
+    # are keyed by the FULL Secret name, so the unscoped from_address_key
+    # fallback derives them. The SINGLETON secrets are count-indexed
+    # (address key "0"), so each carries a scoped from_metadata_name_suffix
+    # derivation — every singleton name is metadata.name + a fixed suffix.
+    - name: secret_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The module keys each per-role / per-external-cluster Secret's
+        address by the deterministic name it renders
+        ("<name>-role-<role>", "<name>-ext-<ext>") —
+        `kubectl get secrets -n <namespace>`.
+    - name: secret_name
+      tofu_resource_name: provided_app_secret
+      derivations:
+        - from_metadata_name_suffix: "-app-provided"
+      where_to_find: >-
+        Present only when initdb declares an owner password; always
+        "<resource-name>-app-provided".
+    - name: secret_name
+      tofu_resource_name: provided_superuser_secret
+      derivations:
+        - from_metadata_name_suffix: "-superuser-provided"
+      where_to_find: >-
+        Present only when a superuser password is declared; always
+        "<resource-name>-superuser-provided".
+    - name: secret_name
+      tofu_resource_name: backup_credentials_secret
+      derivations:
+        - from_metadata_name_suffix: "-backup-creds"
+      where_to_find: >-
+        Present only for declared-key backup arms; always
+        "<resource-name>-backup-creds".
+    - name: secret_name
+      tofu_resource_name: recovery_credentials_secret
+      derivations:
+        - from_metadata_name_suffix: "-recovery-creds"
+      where_to_find: >-
+        Present only for declared-key recovery-source arms; always
+        "<resource-name>-recovery-creds".
+    - name: secret_name
+      tofu_resource_name: backup_region_secret
+      derivations:
+        - from_metadata_name_suffix: "-region"
+      where_to_find: >-
+        Present only when the backup S3 arm sets a region; always
+        "<resource-name>-region".
+    - name: secret_name
+      tofu_resource_name: recovery_region_secret
+      derivations:
+        - from_metadata_name_suffix: "-recovery-source-region"
+      where_to_find: >-
+        Present only when the recovery S3 arm sets a region; always
+        "<resource-name>-recovery-source-region".
+    - name: secret_name
+      tofu_resource_name: backup_endpoint_ca_secret
+      derivations:
+        - from_metadata_name_suffix: "-backup-endpoint-ca"
+      where_to_find: >-
+        Present only when the backup S3 arm declares an endpoint CA;
+        always "<resource-name>-backup-endpoint-ca".
+    - name: secret_name
+      tofu_resource_name: recovery_endpoint_ca_secret
+      derivations:
+        - from_metadata_name_suffix: "-recovery-endpoint-ca"
+      where_to_find: >-
+        Present only when the recovery S3 arm declares an endpoint CA;
+        always "<resource-name>-recovery-endpoint-ca".
+    - name: secret_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the cluster — every satellite the module renders
+        is namespaced with it.
+    # ── the optional anchor namespace ───────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the cluster's
+        namespace itself.

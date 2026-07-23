@@ -21,17 +21,23 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesJobStackOutputs defines the outputs from a KubernetesJob deployment.
-// These outputs are populated after the IaC module successfully deploys the job
-// and are available in status.outputs for reference by other resources.
+// *
+// **KubernetesJobStackOutputs** captures the observable handles of a deployed
+// Job. Jobs front no Service, so the useful handles are the object's identity
+// and the label selector for finding its pods.
 type KubernetesJobStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Kubernetes namespace in which the job is created.
+	// The namespace the Job was created in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// The name of the job as created in Kubernetes.
-	JobName       string `protobuf:"bytes,2,opt,name=job_name,json=jobName,proto3" json:"job_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The name of the Job object as created in the cluster.
+	JobName string `protobuf:"bytes,2,opt,name=job_name,json=jobName,proto3" json:"job_name,omitempty"`
+	// *
+	// The controller-generated job-name label selector as a "k=v,k=v" string —
+	// ready for locating this Job's pods with `kubectl get pods -l` or `kubectl
+	// logs -l` for post-run inspection.
+	SelectorLabels string `protobuf:"bytes,3,opt,name=selector_labels,json=selectorLabels,proto3" json:"selector_labels,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *KubernetesJobStackOutputs) Reset() {
@@ -78,14 +84,22 @@ func (x *KubernetesJobStackOutputs) GetJobName() string {
 	return ""
 }
 
+func (x *KubernetesJobStackOutputs) GetSelectorLabels() string {
+	if x != nil {
+		return x.SelectorLabels
+	}
+	return ""
+}
+
 var File_dev_planton_provider_kubernetes_kubernetesjob_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesjob_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/kubernetes/kubernetesjob/v1/stack_outputs.proto\x120dev.planton.provider.kubernetes.kubernetesjob.v1\"T\n" +
+	"Ddev/planton/provider/kubernetes/kubernetesjob/v1/stack_outputs.proto\x120dev.planton.provider.kubernetes.kubernetesjob.v1\"}\n" +
 	"\x19KubernetesJobStackOutputs\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x19\n" +
-	"\bjob_name\x18\x02 \x01(\tR\ajobNameB\x94\x03\n" +
+	"\bjob_name\x18\x02 \x01(\tR\ajobName\x12'\n" +
+	"\x0fselector_labels\x18\x03 \x01(\tR\x0eselectorLabelsB\x94\x03\n" +
 	"4com.dev.planton.provider.kubernetes.kubernetesjob.v1B\x11StackOutputsProtoP\x01Zbgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjob/v1;kubernetesjobv1\xa2\x02\x05DPPKK\xaa\x020Dev.Planton.Provider.Kubernetes.Kubernetesjob.V1\xca\x020Dev\\Planton\\Provider\\Kubernetes\\Kubernetesjob\\V1\xe2\x02<Dev\\Planton\\Provider\\Kubernetes\\Kubernetesjob\\V1\\GPBMetadata\xea\x025Dev::Planton::Provider::Kubernetes::Kubernetesjob::V1b\x06proto3"
 
 var (

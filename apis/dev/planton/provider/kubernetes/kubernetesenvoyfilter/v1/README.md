@@ -27,8 +27,9 @@ Each entry in `config_patches` has three parts:
 1. **`apply_to`** -- which kind of Envoy object the patch targets (`LISTENER`, `HTTP_FILTER`,
    `CLUSTER`, `ROUTE_CONFIGURATION`, ...).
 2. **`match`** -- the conditions that select the specific object: a `context`
-   (`SIDECAR_INBOUND` / `SIDECAR_OUTBOUND` / `GATEWAY` / `ANY`), an optional `proxy` match,
-   and **at most one** of `listener`, `route_configuration`, or `cluster`.
+   (`SIDECAR_INBOUND` / `SIDECAR_OUTBOUND` / `GATEWAY` / `WAYPOINT` / `ANY`), an optional
+   `proxy` match, and **at most one** of `listener`, `route_configuration`, `cluster`, or
+   `waypoint`.
 3. **`patch`** -- the `operation` (`MERGE`, `ADD`, `INSERT_BEFORE`, `REPLACE`, ...) and the
    free-form `value` (the Envoy config fragment), plus an optional `filter_class`.
 
@@ -95,7 +96,7 @@ planton apply -f envoyfilter.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `workload_selector.labels` | map | Pod/VM labels the patches apply to. Mutually exclusive with `target_refs`. |
-| `target_refs` | list | Attach to specific resources (`group`/`kind`/`name`); max 16; no cross-namespace. Mutually exclusive with `workload_selector`. |
+| `target_refs` | list | Attach to specific resources (`group`/`kind`/`name`); max 16; no cross-namespace. Mutually exclusive with `workload_selector`. Each `name` is a foreign key defaulting to a `KubernetesGateway` reference; pass literals with `value:`. |
 | `config_patches` | list | Ordered patches (see below). An empty list is a valid no-op. |
 | `priority` | int | Patch-set ordering within a context (default 0; negatives first, positives last). |
 
@@ -104,16 +105,18 @@ planton apply -f envoyfilter.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `apply_to` | string | `LISTENER`, `FILTER_CHAIN`, `NETWORK_FILTER`, `HTTP_FILTER`, `ROUTE_CONFIGURATION`, `VIRTUAL_HOST`, `HTTP_ROUTE`, `CLUSTER`, `EXTENSION_CONFIG`, `LISTENER_FILTER`, or `BOOTSTRAP` (deprecated). |
-| `match.context` | string | `ANY` (default), `SIDECAR_INBOUND`, `SIDECAR_OUTBOUND`, `GATEWAY`. |
+| `match.context` | string | `ANY` (default), `SIDECAR_INBOUND`, `SIDECAR_OUTBOUND`, `GATEWAY`, `WAYPOINT`. |
 | `match.proxy` | object | `proxy_version` (RE2 regex) and/or exact `metadata` key-values. |
 | `match.listener` | object | Listener match: `port_number`, `filter_chain` (`name`/`sni`/`transport_protocol`/`application_protocols`/`filter`→`sub_filter`/`destination_port`), `listener_filter`, `name`. |
 | `match.route_configuration` | object | Route-config match: `port_number`, `port_name`, `gateway`, `vhost` (`name`/`domain_name`/`route`→`name`/`action`), `name`. |
 | `match.cluster` | object | Cluster match: `port_number`, `service`, `subset`, `name`. |
+| `match.waypoint` | object | Ambient waypoint-proxy match: `filter` (`name`→`sub_filter.name`), `port_number` (1-65535), `route.name` (default generated routes are named `default`). |
 | `patch.operation` | string | `MERGE`, `ADD`, `REMOVE`, `INSERT_BEFORE`, `INSERT_AFTER`, `INSERT_FIRST`, `REPLACE`. |
 | `patch.value` | object | Free-form Envoy config (xDS JSON), merged via proto-merge. Not needed for `REMOVE`. |
 | `patch.filter_class` | string | `AUTHN`, `AUTHZ`, or `STATS` (filter insertion point, used with `ADD`). |
 
-At most one of `match.listener`, `match.route_configuration`, or `match.cluster` may be set.
+At most one of `match.listener`, `match.route_configuration`, `match.cluster`, or
+`match.waypoint` may be set.
 
 ## Examples
 
@@ -126,7 +129,8 @@ spec:
   target_refs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      name: public-gateway
+      name:
+        value: public-gateway
   config_patches:
     - apply_to: HTTP_FILTER
       match:
@@ -167,18 +171,11 @@ spec:
 ## Composing in Infra Charts
 
 `namespace` is a `StringValueOrRef`, so it can reference a `KubernetesNamespace` output via
-`valueFrom`. Neither `workload_selector.labels` nor any `target_refs` entry is a foreign key --
-istiod resolves them at runtime, so they create no automatic DAG edge to a workload, gateway,
-or service. To order this EnvoyFilter relative to what it patches, declare the dependency on
-`metadata.relationships`:
+`valueFrom`. Each `target_refs[].name` is also a foreign key: it defaults to a
+`KubernetesGateway` reference (`status.outputs.gateway_name`), so wiring it with `valueFrom`
+gives the chart a real dependency edge from the EnvoyFilter to the gateway it patches:
 
 ```yaml
-metadata:
-  name: gateway-cors
-  relationships:
-    - kind: KubernetesGateway
-      name: public-gateway
-      type: depends_on
 spec:
   namespace:
     valueFrom:
@@ -188,7 +185,11 @@ spec:
   target_refs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      name: public-gateway
+      name:
+        valueFrom:
+          kind: KubernetesGateway
+          name: public-gateway
+          fieldPath: status.outputs.gateway_name
   config_patches:
     - apply_to: HTTP_FILTER
       patch:
@@ -196,6 +197,13 @@ spec:
         value:
           name: envoy.filters.http.cors
 ```
+
+When the target is a Service, a ServiceEntry, or any resource not managed as a Planton
+kind, pass the literal name with `value:`. `workload_selector.labels` is a plain label
+match, not a foreign key -- istiod matches it against pod labels at runtime, so it creates
+no automatic DAG edge. To order this EnvoyFilter relative to the workloads it patches,
+declare the dependency on `metadata.relationships`
+(`depends_on` -> KubernetesDeployment).
 
 See `docs/README.md` for the full composability rationale and the escape-hatch posture.
 

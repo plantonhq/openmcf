@@ -17,5 +17,3 @@ build:deps vet fmt
 .PHONY: update-deps
 update-deps:
 	go get github.com/plantonhq/planton@latest
-
-	go get github.com/plantonhq/kubernetes-crd-pulumi-types@latest

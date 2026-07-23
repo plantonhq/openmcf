@@ -18,6 +18,7 @@ to the canary; adjust the weights to shift traffic.
 - **`method.service`** -- scopes the split to one gRPC service; omit `matches` to
   split all traffic on the route.
 - **`backendRefs[].port`** -- required when the backend is a core Service.
+- **`parentRefs[].name` / `backendRefs[].name` are foreign keys** -- write `value: <literal>` for existing resources, or `valueFrom:` to reference a Planton-managed `KubernetesGateway` / `KubernetesService` and deploy in dependency order.
 
 ## Prerequisites
 
@@ -31,9 +32,9 @@ to the canary; adjust the weights to shift traffic.
 
 | Placeholder | Description |
 |-------------|-------------|
-| `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to. |
-| `<api-hostname>` | Public hostname this route serves, e.g. `api.example.com`. |
-| `<grpc-service>` | Fully-qualified gRPC service, e.g. `helloworld.Greeter`. |
+| `<gateway-name>` | Name of the `KubernetesGateway` this route attaches to (inside `name.value`, or switch to `valueFrom`). |
+| `api.example.com` | Public hostname this route serves (a literal example value -- replace with your real host). |
+| `helloworld.Greeter` | Fully-qualified gRPC service (a literal example value -- replace with yours). |
 | `<stable-service-name>` | Name of the stable backend Kubernetes Service. |
 | `<canary-service-name>` | Name of the canary backend Kubernetes Service. |
 

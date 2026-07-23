@@ -12,7 +12,7 @@ const (
 	ExperimentalInstallManifest = "experimental-install.yaml"
 
 	// Default Gateway API version
-	DefaultVersion = "v1.2.1"
+	DefaultVersion = "v1.6.1"
 )
 
 // GetManifestURL returns the download URL for Gateway API CRD manifests

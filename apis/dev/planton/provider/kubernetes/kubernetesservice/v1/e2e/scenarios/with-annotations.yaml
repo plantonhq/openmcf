@@ -3,7 +3,8 @@ kind: KubernetesService
 metadata:
   name: e2e-svc-annot
 spec:
-  namespace: default
+  namespace:
+    value: default
   name: e2e-svc-annot
   selector:
     app: test-app

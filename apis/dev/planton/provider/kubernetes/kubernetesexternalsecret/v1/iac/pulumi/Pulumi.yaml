@@ -1,0 +1,3 @@
+name: kubernetes-external-secret
+runtime: go
+description: One secret sync declaration — external store entries materialized as a Kubernetes Secret by the External Secrets Operator

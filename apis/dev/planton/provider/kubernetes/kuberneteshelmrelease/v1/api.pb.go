@@ -23,18 +23,29 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// kubernetes-helm-release
+// *
+// **KubernetesHelmRelease** installs an upstream Helm chart as a real Helm
+// release, following the Kubernetes Resource Model (KRM). This is the
+// catalog's sole intentional passthrough: the chart's own values surface is
+// the configuration contract, expressed through Helm's values-file plus
+// `--set`-style override model. Both engines produce the same release —
+// hooks run, history is recorded, `helm list` sees it.
 type KubernetesHelmRelease struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// api-version
+	// API version for this resource.
+	// Always set to "kubernetes.planton.dev/v1".
 	ApiVersion string `protobuf:"bytes,1,opt,name=api_version,json=apiVersion,proto3" json:"api_version,omitempty"`
-	// resource-kind
+	// Resource kind identifier.
+	// Always set to "KubernetesHelmRelease".
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
-	// metadata
+	// Metadata for the Helm release resource. The resource name doubles as
+	// the Helm release name unless spec.release_name overrides it.
 	Metadata *shared.CloudResourceMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	// spec
+	// Specification of the chart to install: identity (repo/chart/version),
+	// values layers, repository auth, and release lifecycle behavior.
 	Spec *KubernetesHelmReleaseSpec `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
-	// status
+	// Status of the Helm release resource.
+	// Contains outputs populated after deployment.
 	Status        *KubernetesHelmReleaseStatus `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -105,11 +116,13 @@ func (x *KubernetesHelmRelease) GetStatus() *KubernetesHelmReleaseStatus {
 	return nil
 }
 
-// kubernetes-helm-release status.
+// *
+// **KubernetesHelmReleaseStatus** captures the runtime status of an installed
+// Helm release, including the outputs generated after installation.
 type KubernetesHelmReleaseStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// stack-outputs
-	// kubernetes-helm-release stack-outputs
+	// Outputs from the Helm release installation.
+	// Contains the release identity and Helm-recorded state.
 	Outputs       *KubernetesHelmReleaseStackOutputs `protobuf:"bytes,1,opt,name=outputs,proto3" json:"outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

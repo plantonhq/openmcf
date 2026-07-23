@@ -22,36 +22,47 @@ const (
 )
 
 // *
-// **KubernetesServiceStackOutputs** captures observable outputs from a Kubernetes Service deployment.
-// These outputs provide essential information for referencing the service, connecting to it,
-// and integrating it with other resources.
+// **KubernetesServiceStackOutputs** captures the observable handles of a deployed
+// Service. Downstream resources compose on these: Ingress backends and sibling
+// workloads connect through `kube_endpoint`, external-dns publishes the
+// load-balancer address, and operators reach the workload locally through the
+// port-forward command.
 type KubernetesServiceStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// The name of the created Kubernetes Service.
-	// This is the primary identifier for referencing the service within the cluster.
+	// The name of the Service object as created in the cluster.
 	ServiceName string `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
-	// *
-	// The namespace in which the service was created.
+	// The namespace the Service was created in.
 	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// *
-	// The type of the created service (ClusterIP, NodePort, LoadBalancer, ExternalName).
+	// The service type as deployed (ClusterIP, NodePort, LoadBalancer, ExternalName).
 	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
 	// *
-	// The cluster-internal IP address assigned to the service.
-	// Empty for headless services (clusterIP: None) and ExternalName services.
+	// The cluster-internal virtual IP assigned to the Service. Empty for headless
+	// services (which have no virtual IP) and ExternalName services (which are DNS
+	// aliases).
 	ClusterIp string `protobuf:"bytes,4,opt,name=cluster_ip,json=clusterIp,proto3" json:"cluster_ip,omitempty"`
 	// *
-	// The external IP address or hostname assigned by the cloud provider's load balancer.
-	// Only populated for LoadBalancer-type services after the load balancer is provisioned.
-	// May be an IP address or a hostname depending on the cloud provider.
-	LoadBalancerIngress string `protobuf:"bytes,5,opt,name=load_balancer_ingress,json=loadBalancerIngress,proto3" json:"load_balancer_ingress,omitempty"`
+	// The IP address of the provisioned load balancer. Populated only for
+	// LoadBalancer services on providers that expose an IP (GCP, Azure, MetalLB);
+	// AWS-style providers populate `load_balancer_hostname` instead.
+	LoadBalancerIp string `protobuf:"bytes,5,opt,name=load_balancer_ip,json=loadBalancerIp,proto3" json:"load_balancer_ip,omitempty"`
 	// *
-	// The fully qualified internal DNS name for the service.
-	// Format: <service-name>.<namespace>.svc.cluster.local
-	InternalDnsName string `protobuf:"bytes,6,opt,name=internal_dns_name,json=internalDnsName,proto3" json:"internal_dns_name,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The DNS hostname of the provisioned load balancer. Populated only for
+	// LoadBalancer services on providers that expose a hostname (AWS ELB/NLB);
+	// IP-based providers populate `load_balancer_ip` instead.
+	LoadBalancerHostname string `protobuf:"bytes,6,opt,name=load_balancer_hostname,json=loadBalancerHostname,proto3" json:"load_balancer_hostname,omitempty"`
+	// *
+	// In-cluster DNS endpoint of the Service — the handle exposure kinds and
+	// sibling workloads connect to.
+	// ex: my-app.my-ns.svc.cluster.local
+	KubeEndpoint string `protobuf:"bytes,7,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
+	// *
+	// Ready-to-run port-forward command for reaching the Service from a developer
+	// machine without any external exposure. Empty for ExternalName services
+	// (there is nothing to forward to).
+	// ex: kubectl port-forward -n my-ns service/my-app 8080:80
+	PortForwardCommand string `protobuf:"bytes,8,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesServiceStackOutputs) Reset() {
@@ -112,16 +123,30 @@ func (x *KubernetesServiceStackOutputs) GetClusterIp() string {
 	return ""
 }
 
-func (x *KubernetesServiceStackOutputs) GetLoadBalancerIngress() string {
+func (x *KubernetesServiceStackOutputs) GetLoadBalancerIp() string {
 	if x != nil {
-		return x.LoadBalancerIngress
+		return x.LoadBalancerIp
 	}
 	return ""
 }
 
-func (x *KubernetesServiceStackOutputs) GetInternalDnsName() string {
+func (x *KubernetesServiceStackOutputs) GetLoadBalancerHostname() string {
 	if x != nil {
-		return x.InternalDnsName
+		return x.LoadBalancerHostname
+	}
+	return ""
+}
+
+func (x *KubernetesServiceStackOutputs) GetKubeEndpoint() string {
+	if x != nil {
+		return x.KubeEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesServiceStackOutputs) GetPortForwardCommand() string {
+	if x != nil {
+		return x.PortForwardCommand
 	}
 	return ""
 }
@@ -130,15 +155,17 @@ var File_dev_planton_provider_kubernetes_kubernetesservice_v1_stack_outputs_prot
 
 const file_dev_planton_provider_kubernetes_kubernetesservice_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Hdev/planton/provider/kubernetes/kubernetesservice/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetesservice.v1\"\xf3\x01\n" +
+	"Hdev/planton/provider/kubernetes/kubernetesservice/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetesservice.v1\"\xca\x02\n" +
 	"\x1dKubernetesServiceStackOutputs\x12!\n" +
 	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
 	"\x04type\x18\x03 \x01(\tR\x04type\x12\x1d\n" +
 	"\n" +
-	"cluster_ip\x18\x04 \x01(\tR\tclusterIp\x122\n" +
-	"\x15load_balancer_ingress\x18\x05 \x01(\tR\x13loadBalancerIngress\x12*\n" +
-	"\x11internal_dns_name\x18\x06 \x01(\tR\x0finternalDnsNameB\xb0\x03\n" +
+	"cluster_ip\x18\x04 \x01(\tR\tclusterIp\x12(\n" +
+	"\x10load_balancer_ip\x18\x05 \x01(\tR\x0eloadBalancerIp\x124\n" +
+	"\x16load_balancer_hostname\x18\x06 \x01(\tR\x14loadBalancerHostname\x12#\n" +
+	"\rkube_endpoint\x18\a \x01(\tR\fkubeEndpoint\x120\n" +
+	"\x14port_forward_command\x18\b \x01(\tR\x12portForwardCommandB\xb0\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetesservice.v1B\x11StackOutputsProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesservice/v1;kubernetesservicev1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetesservice.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetesservice\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetesservice\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetesservice::V1b\x06proto3"
 
 var (

@@ -18,14 +18,62 @@ import (
 // Kubernetes Tier 1 components: native K8s resources, zero dependencies.
 var kubernetesTier1Components = []string{
 	"kubernetesnamespace",
+	"kubernetesconfigmap",
 	"kubernetesdeployment",
 	"kubernetesstatefulset",
 	"kubernetessecret",
+	"kubernetesserviceaccount",
+	"kubernetesrbac",
 	"kubernetesservice",
 	"kubernetescronjob",
 	"kubernetesjob",
 	"kubernetesdaemonset",
 	"kubernetesmanifest",
+	"kuberneteshelmrelease",
+	"kubernetesexternaldns",
+	"kubernetesexternalsecretsoperator",
+	"kubernetesclustersecretstore",
+	"kubernetessecretstore",
+	"kubernetesexternalsecret",
+	"kubernetesingressnginx",
+	"kubernetesmetricsserver",
+	// Gateway API family. The CR kinds declare KubernetesGatewayApiCrds as a
+	// registry prerequisite, which the harness installs (standard channel)
+	// before applying the route/gateway scenario; verification is
+	// controller-free (applies succeed once the CRDs are present).
+	"kubernetesgatewayapicrds",
+	"kubernetesgatewayclass",
+	"kubernetesgateway",
+	"kuberneteslistenerset",
+	"kuberneteshttproute",
+	"kubernetesgrpcroute",
+	"kubernetestcproute",
+	"kubernetesudproute",
+	"kubernetestlsroute",
+	"kubernetesreferencegrant",
+	// Istio family. KubernetesIstio installs the control plane (istiod + the
+	// Istio CRDs, plus cni + ztunnel in ambient mode); KubernetesIstioBaseCrds
+	// installs the CRDs-only bundle the seven typed CR kinds declare as a
+	// registry prerequisite. The httproute behavioral-routing scenario and the
+	// authorizationpolicy behavioral-deny scenario chain KubernetesIstio as a
+	// fixture — istiod is the catalog's first in-catalog Gateway API
+	// implementation, so live routing and live L7 enforcement are proven here.
+	"kubernetesistio",
+	"kubernetesistiobasecrds",
+	"kubernetespeerauthentication",
+	"kubernetesrequestauthentication",
+	"kubernetesauthorizationpolicy",
+	"kubernetesserviceentry",
+	"kubernetesdestinationrule",
+	"kubernetesenvoyfilter",
+	"kubernetestelemetry",
+	// Postgres flagship. KubernetesPostgres declares
+	// KubernetesCloudNativePgOperator as a registry prerequisite, which the
+	// harness installs before applying the Cluster scenario; the
+	// behavioral-failover scenario proves data durability live (write →
+	// primary loss → promotion → read-back).
+	"kubernetescloudnativepgoperator",
+	"kubernetespostgres",
 }
 
 // Kubernetes Tier 3 components: operator-dependent. Each declares its operator
@@ -35,61 +83,30 @@ var kubernetesTier1Components = []string{
 // harness installs the operator before the test and tears it down after
 // (see e2e/framework/runner/dependencies.go -- ResolveDependencies).
 var kubernetesTier3Components = []string{
-	"kubernetespostgres",
 	"kuberneteskafka",
 	"kuberneteselasticsearch",
 	"kubernetesmongodb",
+	"kubernetesmysql",
 	"kubernetessolr",
 	"kubernetesclickhouse",
 }
 
-// Kubernetes Tier 4 components: operators, addons, and cluster-level infrastructure.
-// Includes operators that were previously only exercised as Tier 3 fixtures,
-// plus new components tested in session 010.
+// Kubernetes Tier 4 components: operators, addons, and cluster-level
+// infrastructure, including operators that are also exercised as Tier 3
+// fixtures.
 var kubernetesTier4Components = []string{
-	// Operators already proven as Tier 3 fixtures -- now standalone
-	"kuberneteszalandopostgresoperator",
 	"kubernetesstrimzikafkaoperator",
 	"kuberneteselasticoperator",
 	"kubernetesaltinityoperator",
-	// New Tier 4 (session 010)
-	"kubernetesgatewayapicrds",
 	"kubernetesgharunnerscalesetcontroller",
 	"kubernetesrookcephoperator",
-	"kubernetesexternalsecrets",
-	"kubernetesingressnginx",
 	"kubernetestekton",
 	"kubernetestektonoperator",
-	"kubernetesistio",
-	// Istio base CRDs installer (868). The CRDs-only prerequisite for the typed
-	// Istio API components; analog of kubernetesgatewayapicrds.
-	"kubernetesistiobasecrds",
-	// Gateway API deployment components (854-860). Each declares
-	// KubernetesGatewayApiCrds as a registry prerequisite, which the harness
-	// installs (experimental v1.5.1) before applying the route/gateway scenario.
-	"kubernetesgatewayclass",
-	"kubernetesgateway",
-	"kuberneteshttproute",
-	"kubernetesgrpcroute",
-	"kubernetestcproute",
-	"kubernetestlsroute",
-	"kubernetesreferencegrant",
-	// Istio API deployment components (861-867). Each declares
-	// KubernetesIstioBaseCrds as a registry prerequisite, which the harness
-	// installs (istio/base CRDs, no istiod) before applying the scenario.
-	// Verification asserts the typed Istio CR exists.
-	"kubernetespeerauthentication",
-	"kubernetesrequestauthentication",
-	"kubernetesauthorizationpolicy",
-	"kubernetesserviceentry",
-	"kubernetesdestinationrule",
-	"kubernetesenvoyfilter",
-	"kubernetestelemetry",
 }
 
 // Kubernetes Tier 2 components: Helm-based, self-contained chart installs.
 var kubernetesTier2Components = []string{
-	"kubernetesredis",
+	"kubernetesvalkey",
 	"kubernetesgrafana",
 	"kubernetesopenbao",
 	"kubernetesargocd",
@@ -100,172 +117,599 @@ var kubernetesTier2Components = []string{
 	"kubernetessolroperator",
 	"kubernetesperconamongooperator",
 	"kubernetesperconamysqloperator",
-	"kubernetesperconapostgresoperator",
-	"kubernetesgitlab",
 	"kubernetestemporal",
 	"kubernetessignoz",
 }
 
 // ─── Tier 1 Pulumi ──────────────────────────────────────────────────────────
 
-func TestKubernetesNamespace_Pulumi(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesnamespace", "pulumi") }
-func TestKubernetesDeployment_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesdeployment", "pulumi") }
-func TestKubernetesStatefulSet_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesstatefulset", "pulumi") }
-func TestKubernetesSecret_Pulumi(t *testing.T)     { runAllScenariosForComponent(t, "kubernetessecret", "pulumi") }
-func TestKubernetesService_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "kubernetesservice", "pulumi") }
-func TestKubernetesCronJob_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "kubernetescronjob", "pulumi") }
-func TestKubernetesJob_Pulumi(t *testing.T)        { runAllScenariosForComponent(t, "kubernetesjob", "pulumi") }
-func TestKubernetesDaemonSet_Pulumi(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesdaemonset", "pulumi") }
-func TestKubernetesManifest_Pulumi(t *testing.T)   { runAllScenariosForComponent(t, "kubernetesmanifest", "pulumi") }
+func TestKubernetesNamespace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesnamespace", "pulumi")
+}
+func TestKubernetesConfigMap_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesconfigmap", "pulumi")
+}
+func TestKubernetesServiceAccount_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesserviceaccount", "pulumi")
+}
+func TestKubernetesRbac_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesrbac", "pulumi")
+}
+func TestKubernetesDeployment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesdeployment", "pulumi")
+}
+func TestKubernetesStatefulSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesstatefulset", "pulumi")
+}
+func TestKubernetesSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessecret", "pulumi")
+}
+func TestKubernetesService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesservice", "pulumi")
+}
+func TestKubernetesIngress_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesingress", "pulumi")
+}
+func TestKubernetesNetworkPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesnetworkpolicy", "pulumi")
+}
+func TestKubernetesCronJob_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescronjob", "pulumi")
+}
+func TestKubernetesJob_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesjob", "pulumi")
+}
+func TestKubernetesDaemonSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesdaemonset", "pulumi")
+}
+func TestKubernetesManifest_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmanifest", "pulumi")
+}
+func TestKubernetesHelmRelease_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteshelmrelease", "pulumi")
+}
+func TestKubernetesPersistentVolumeClaim_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespersistentvolumeclaim", "pulumi")
+}
+func TestKubernetesStorageClass_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesstorageclass", "pulumi")
+}
+func TestKubernetesResourceQuota_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesresourcequota", "pulumi")
+}
+func TestKubernetesPriorityClass_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespriorityclass", "pulumi")
+}
+func TestKubernetesPodDisruptionBudget_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespoddisruptionbudget", "pulumi")
+}
+func TestKubernetesHorizontalPodAutoscaler_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteshorizontalpodautoscaler", "pulumi")
+}
+func TestKubernetesCertManager_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescertmanager", "pulumi")
+}
+func TestKubernetesClusterIssuer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesclusterissuer", "pulumi")
+}
+func TestKubernetesIssuer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesissuer", "pulumi")
+}
+func TestKubernetesCertificate_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescertificate", "pulumi")
+}
+func TestKubernetesExternalDns_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesexternaldns", "pulumi")
+}
+func TestKubernetesExternalSecretsOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesexternalsecretsoperator", "pulumi")
+}
+func TestKubernetesClusterSecretStore_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesclustersecretstore", "pulumi")
+}
+func TestKubernetesSecretStore_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessecretstore", "pulumi")
+}
+func TestKubernetesExternalSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesexternalsecret", "pulumi")
+}
+func TestKubernetesIngressNginx_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesingressnginx", "pulumi")
+}
+func TestKubernetesMetricsServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmetricsserver", "pulumi")
+}
+
+func TestKubernetesCilium_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescilium", "pulumi")
+}
+
+func TestKubernetesKeda_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskeda", "pulumi")
+}
+
+func TestKubernetesClusterAutoscaler_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesclusterautoscaler", "pulumi")
+}
+
+func TestKubernetesVelero_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesvelero", "pulumi")
+}
+
+// Karpenter's three kinds carry deferred profiles (the controller cannot
+// start off AWS), so these entrypoints skip on kind and activate when the
+// batched EKS real-cluster lane flips the profiles green.
+func TestKubernetesKarpenter_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenter", "pulumi")
+}
+
+func TestKubernetesKarpenterNodePool_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenternodepool", "pulumi")
+}
+
+func TestKubernetesKarpenterEc2NodeClass_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenterec2nodeclass", "pulumi")
+}
 
 // ─── Tier 1 Terraform ───────────────────────────────────────────────────────
 
-func TestKubernetesNamespace_Terraform(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesnamespace", "terraform") }
-func TestKubernetesDeployment_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesdeployment", "terraform") }
-func TestKubernetesStatefulSet_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesstatefulset", "terraform") }
-func TestKubernetesSecret_Terraform(t *testing.T)     { runAllScenariosForComponent(t, "kubernetessecret", "terraform") }
-func TestKubernetesService_Terraform(t *testing.T)    { runAllScenariosForComponent(t, "kubernetesservice", "terraform") }
-func TestKubernetesCronJob_Terraform(t *testing.T)    { runAllScenariosForComponent(t, "kubernetescronjob", "terraform") }
-func TestKubernetesJob_Terraform(t *testing.T)        { runAllScenariosForComponent(t, "kubernetesjob", "terraform") }
-func TestKubernetesDaemonSet_Terraform(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesdaemonset", "terraform") }
-func TestKubernetesManifest_Terraform(t *testing.T)   { runAllScenariosForComponent(t, "kubernetesmanifest", "terraform") }
+func TestKubernetesNamespace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesnamespace", "terraform")
+}
+func TestKubernetesConfigMap_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesconfigmap", "terraform")
+}
+func TestKubernetesServiceAccount_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesserviceaccount", "terraform")
+}
+func TestKubernetesRbac_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesrbac", "terraform")
+}
+func TestKubernetesDeployment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesdeployment", "terraform")
+}
+func TestKubernetesStatefulSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesstatefulset", "terraform")
+}
+func TestKubernetesSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessecret", "terraform")
+}
+func TestKubernetesService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesservice", "terraform")
+}
+func TestKubernetesIngress_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesingress", "terraform")
+}
+func TestKubernetesNetworkPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesnetworkpolicy", "terraform")
+}
+func TestKubernetesCronJob_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescronjob", "terraform")
+}
+func TestKubernetesJob_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesjob", "terraform")
+}
+func TestKubernetesDaemonSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesdaemonset", "terraform")
+}
+func TestKubernetesManifest_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmanifest", "terraform")
+}
+func TestKubernetesHelmRelease_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteshelmrelease", "terraform")
+}
+func TestKubernetesPersistentVolumeClaim_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespersistentvolumeclaim", "terraform")
+}
+func TestKubernetesStorageClass_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesstorageclass", "terraform")
+}
+func TestKubernetesResourceQuota_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesresourcequota", "terraform")
+}
+func TestKubernetesPriorityClass_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespriorityclass", "terraform")
+}
+func TestKubernetesPodDisruptionBudget_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespoddisruptionbudget", "terraform")
+}
+func TestKubernetesHorizontalPodAutoscaler_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteshorizontalpodautoscaler", "terraform")
+}
+func TestKubernetesCertManager_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescertmanager", "terraform")
+}
+func TestKubernetesClusterIssuer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesclusterissuer", "terraform")
+}
+func TestKubernetesIssuer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesissuer", "terraform")
+}
+func TestKubernetesCertificate_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescertificate", "terraform")
+}
+func TestKubernetesExternalDns_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesexternaldns", "terraform")
+}
+func TestKubernetesExternalSecretsOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesexternalsecretsoperator", "terraform")
+}
+func TestKubernetesClusterSecretStore_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesclustersecretstore", "terraform")
+}
+func TestKubernetesSecretStore_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessecretstore", "terraform")
+}
+func TestKubernetesExternalSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesexternalsecret", "terraform")
+}
+func TestKubernetesIngressNginx_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesingressnginx", "terraform")
+}
+func TestKubernetesMetricsServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmetricsserver", "terraform")
+}
+
+func TestKubernetesCilium_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescilium", "terraform")
+}
+
+func TestKubernetesKeda_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskeda", "terraform")
+}
+
+func TestKubernetesClusterAutoscaler_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesclusterautoscaler", "terraform")
+}
+
+func TestKubernetesVelero_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesvelero", "terraform")
+}
+
+func TestKubernetesKarpenter_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenter", "terraform")
+}
+
+func TestKubernetesKarpenterNodePool_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenternodepool", "terraform")
+}
+
+func TestKubernetesKarpenterEc2NodeClass_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenterec2nodeclass", "terraform")
+}
 
 // ─── Tier 2 Pulumi (Helm-based) ─────────────────────────────────────────────
 
-func TestKubernetesRedis_Pulumi(t *testing.T)                  { runAllScenariosForComponent(t, "kubernetesredis", "pulumi") }
-func TestKubernetesGrafana_Pulumi(t *testing.T)                { runAllScenariosForComponent(t, "kubernetesgrafana", "pulumi") }
-func TestKubernetesOpenBao_Pulumi(t *testing.T)                { runAllScenariosForComponent(t, "kubernetesopenbao", "pulumi") }
-func TestKubernetesArgoCD_Pulumi(t *testing.T)                 { runAllScenariosForComponent(t, "kubernetesargocd", "pulumi") }
-func TestKubernetesLocust_Pulumi(t *testing.T)                 { runAllScenariosForComponent(t, "kuberneteslocust", "pulumi") }
-func TestKubernetesNats_Pulumi(t *testing.T)                   { runAllScenariosForComponent(t, "kubernetesnats", "pulumi") }
-func TestKubernetesNeo4j_Pulumi(t *testing.T)                  { runAllScenariosForComponent(t, "kubernetesneo4j", "pulumi") }
-func TestKubernetesJenkins_Pulumi(t *testing.T)                { runAllScenariosForComponent(t, "kubernetesjenkins", "pulumi") }
-func TestKubernetesSolrOperator_Pulumi(t *testing.T)           { runAllScenariosForComponent(t, "kubernetessolroperator", "pulumi") }
-func TestKubernetesPerconaMongoOperator_Pulumi(t *testing.T)   { runAllScenariosForComponent(t, "kubernetesperconamongooperator", "pulumi") }
-func TestKubernetesPerconaMysqlOperator_Pulumi(t *testing.T)   { runAllScenariosForComponent(t, "kubernetesperconamysqloperator", "pulumi") }
-func TestKubernetesPerconaPostgresOperator_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesperconapostgresoperator", "pulumi") }
-func TestKubernetesGitlab_Pulumi(t *testing.T)                 { runAllScenariosForComponent(t, "kubernetesgitlab", "pulumi") }
-func TestKubernetesTemporal_Pulumi(t *testing.T)               { runAllScenariosForComponent(t, "kubernetestemporal", "pulumi") }
-func TestKubernetesSignoz_Pulumi(t *testing.T)                 { runAllScenariosForComponent(t, "kubernetessignoz", "pulumi") }
+func TestKubernetesValkey_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesvalkey", "pulumi")
+}
+func TestKubernetesGrafana_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgrafana", "pulumi")
+}
+func TestKubernetesOpenBao_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesopenbao", "pulumi")
+}
+func TestKubernetesArgoCD_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesargocd", "pulumi")
+}
+func TestKubernetesLocust_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteslocust", "pulumi")
+}
+func TestKubernetesNats_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesnats", "pulumi")
+}
+func TestKubernetesNeo4j_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesneo4j", "pulumi")
+}
+func TestKubernetesJenkins_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesjenkins", "pulumi")
+}
+func TestKubernetesSolrOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessolroperator", "pulumi")
+}
+func TestKubernetesPerconaMongoOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesperconamongooperator", "pulumi")
+}
+func TestKubernetesPerconaMysqlOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesperconamysqloperator", "pulumi")
+}
+func TestKubernetesTemporal_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestemporal", "pulumi")
+}
+func TestKubernetesSignoz_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessignoz", "pulumi")
+}
 
 // ─── Tier 2 Terraform (Helm-based) ──────────────────────────────────────────
 
-func TestKubernetesRedis_Terraform(t *testing.T)                  { runAllScenariosForComponent(t, "kubernetesredis", "terraform") }
-func TestKubernetesGrafana_Terraform(t *testing.T)                { runAllScenariosForComponent(t, "kubernetesgrafana", "terraform") }
-func TestKubernetesArgoCD_Terraform(t *testing.T)                 { runAllScenariosForComponent(t, "kubernetesargocd", "terraform") }
-func TestKubernetesLocust_Terraform(t *testing.T)                 { runAllScenariosForComponent(t, "kuberneteslocust", "terraform") }
-func TestKubernetesNats_Terraform(t *testing.T)                   { runAllScenariosForComponent(t, "kubernetesnats", "terraform") }
-func TestKubernetesSolrOperator_Terraform(t *testing.T)           { runAllScenariosForComponent(t, "kubernetessolroperator", "terraform") }
-func TestKubernetesPerconaMongoOperator_Terraform(t *testing.T)   { runAllScenariosForComponent(t, "kubernetesperconamongooperator", "terraform") }
-func TestKubernetesPerconaMysqlOperator_Terraform(t *testing.T)   { runAllScenariosForComponent(t, "kubernetesperconamysqloperator", "terraform") }
-func TestKubernetesPerconaPostgresOperator_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesperconapostgresoperator", "terraform") }
-func TestKubernetesTemporal_Terraform(t *testing.T)                { runAllScenariosForComponent(t, "kubernetestemporal", "terraform") }
-func TestKubernetesSignoz_Terraform(t *testing.T)                  { runAllScenariosForComponent(t, "kubernetessignoz", "terraform") }
+func TestKubernetesValkey_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesvalkey", "terraform")
+}
+func TestKubernetesGrafana_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgrafana", "terraform")
+}
+func TestKubernetesArgoCD_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesargocd", "terraform")
+}
+func TestKubernetesLocust_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteslocust", "terraform")
+}
+func TestKubernetesNats_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesnats", "terraform")
+}
+func TestKubernetesSolrOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessolroperator", "terraform")
+}
+func TestKubernetesPerconaMongoOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesperconamongooperator", "terraform")
+}
+func TestKubernetesPerconaMysqlOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesperconamysqloperator", "terraform")
+}
+func TestKubernetesTemporal_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestemporal", "terraform")
+}
+func TestKubernetesSignoz_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessignoz", "terraform")
+}
+
+// ─── Tier 1 Pulumi/Terraform (Postgres flagship) ────────────────────────────
+// KubernetesPostgres declares KubernetesCloudNativePgOperator as a registry
+// prerequisite; the harness installs the operator (with the Barman Cloud
+// plugin per the prerequisite manifest) before every Cluster scenario.
+
+func TestKubernetesCloudNativePgOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescloudnativepgoperator", "pulumi")
+}
+func TestKubernetesCloudNativePgOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetescloudnativepgoperator", "terraform")
+}
+func TestKubernetesPostgres_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespostgres", "pulumi")
+}
+func TestKubernetesPostgres_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespostgres", "terraform")
+}
 
 // ─── Tier 3 Pulumi (operator-dependent) ─────────────────────────────────────
 
-func TestKubernetesPostgres_Pulumi(t *testing.T)       { runAllScenariosForComponent(t, "kubernetespostgres", "pulumi") }
-func TestKubernetesKafka_Pulumi(t *testing.T)          { runAllScenariosForComponent(t, "kuberneteskafka", "pulumi") }
-func TestKubernetesElasticsearch_Pulumi(t *testing.T)  { runAllScenariosForComponent(t, "kuberneteselasticsearch", "pulumi") }
-func TestKubernetesMongodb_Pulumi(t *testing.T)        { runAllScenariosForComponent(t, "kubernetesmongodb", "pulumi") }
-func TestKubernetesSolr_Pulumi(t *testing.T)           { runAllScenariosForComponent(t, "kubernetessolr", "pulumi") }
-func TestKubernetesClickHouse_Pulumi(t *testing.T)     { runAllScenariosForComponent(t, "kubernetesclickhouse", "pulumi") }
+func TestKubernetesKafka_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafka", "pulumi")
+}
+func TestKubernetesElasticsearch_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteselasticsearch", "pulumi")
+}
+func TestKubernetesMongodb_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmongodb", "pulumi")
+}
+func TestKubernetesMysql_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmysql", "pulumi")
+}
+func TestKubernetesSolr_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessolr", "pulumi")
+}
+func TestKubernetesClickHouse_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesclickhouse", "pulumi")
+}
 
 // ─── Tier 3 Terraform (operator-dependent) ──────────────────────────────────
 
-func TestKubernetesPostgres_Terraform(t *testing.T)       { runAllScenariosForComponent(t, "kubernetespostgres", "terraform") }
-func TestKubernetesKafka_Terraform(t *testing.T)          { runAllScenariosForComponent(t, "kuberneteskafka", "terraform") }
-func TestKubernetesElasticsearch_Terraform(t *testing.T)  { runAllScenariosForComponent(t, "kuberneteselasticsearch", "terraform") }
-func TestKubernetesMongodb_Terraform(t *testing.T)        { runAllScenariosForComponent(t, "kubernetesmongodb", "terraform") }
-func TestKubernetesSolr_Terraform(t *testing.T)           { runAllScenariosForComponent(t, "kubernetessolr", "terraform") }
-func TestKubernetesClickHouse_Terraform(t *testing.T)     { runAllScenariosForComponent(t, "kubernetesclickhouse", "terraform") }
+func TestKubernetesKafka_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafka", "terraform")
+}
+func TestKubernetesElasticsearch_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteselasticsearch", "terraform")
+}
+func TestKubernetesMongodb_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmongodb", "terraform")
+}
+func TestKubernetesMysql_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmysql", "terraform")
+}
+func TestKubernetesSolr_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessolr", "terraform")
+}
+func TestKubernetesClickHouse_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesclickhouse", "terraform")
+}
 
 // ─── Tier 4 Pulumi (operators, addons) ──────────────────────────────────────
 
-func TestKubernetesZalandoPostgresOperator_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "kuberneteszalandopostgresoperator", "pulumi") }
-func TestKubernetesStrimziKafkaOperator_Pulumi(t *testing.T)       { runAllScenariosForComponent(t, "kubernetesstrimzikafkaoperator", "pulumi") }
-func TestKubernetesElasticOperator_Pulumi(t *testing.T)            { runAllScenariosForComponent(t, "kuberneteselasticoperator", "pulumi") }
-func TestKubernetesAltinityOperator_Pulumi(t *testing.T)           { runAllScenariosForComponent(t, "kubernetesaltinityoperator", "pulumi") }
-func TestKubernetesGatewayApiCrds_Pulumi(t *testing.T)             { runAllScenariosForComponent(t, "kubernetesgatewayapicrds", "pulumi") }
-func TestKubernetesGhaRunnerScaleSetController_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesgharunnerscalesetcontroller", "pulumi") }
-func TestKubernetesRookCephOperator_Pulumi(t *testing.T)           { runAllScenariosForComponent(t, "kubernetesrookcephoperator", "pulumi") }
-func TestKubernetesExternalSecrets_Pulumi(t *testing.T)            { runAllScenariosForComponent(t, "kubernetesexternalsecrets", "pulumi") }
-func TestKubernetesIngressNginx_Pulumi(t *testing.T)               { runAllScenariosForComponent(t, "kubernetesingressnginx", "pulumi") }
-func TestKubernetesTekton_Pulumi(t *testing.T)                     { runAllScenariosForComponent(t, "kubernetestekton", "pulumi") }
-func TestKubernetesTektonOperator_Pulumi(t *testing.T)             { runAllScenariosForComponent(t, "kubernetestektonoperator", "pulumi") }
-func TestKubernetesIstio_Pulumi(t *testing.T)                      { runAllScenariosForComponent(t, "kubernetesistio", "pulumi") }
-func TestKubernetesIstioBaseCrds_Pulumi(t *testing.T)             { runAllScenariosForComponent(t, "kubernetesistiobasecrds", "pulumi") }
+func TestKubernetesStrimziKafkaOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesstrimzikafkaoperator", "pulumi")
+}
+func TestKubernetesElasticOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteselasticoperator", "pulumi")
+}
+func TestKubernetesAltinityOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesaltinityoperator", "pulumi")
+}
+func TestKubernetesGatewayApiCrds_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgatewayapicrds", "pulumi")
+}
+func TestKubernetesGhaRunnerScaleSetController_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgharunnerscalesetcontroller", "pulumi")
+}
+func TestKubernetesRookCephOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesrookcephoperator", "pulumi")
+}
+func TestKubernetesTekton_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestekton", "pulumi")
+}
+func TestKubernetesTektonOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestektonoperator", "pulumi")
+}
+func TestKubernetesIstio_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesistio", "pulumi")
+}
+func TestKubernetesIstioBaseCrds_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesistiobasecrds", "pulumi")
+}
 
 // ─── Tier 4 Terraform (operators, addons) ───────────────────────────────────
 
-func TestKubernetesZalandoPostgresOperator_Terraform(t *testing.T)    { runAllScenariosForComponent(t, "kuberneteszalandopostgresoperator", "terraform") }
-func TestKubernetesStrimziKafkaOperator_Terraform(t *testing.T)       { runAllScenariosForComponent(t, "kubernetesstrimzikafkaoperator", "terraform") }
-func TestKubernetesElasticOperator_Terraform(t *testing.T)            { runAllScenariosForComponent(t, "kuberneteselasticoperator", "terraform") }
-func TestKubernetesAltinityOperator_Terraform(t *testing.T)           { runAllScenariosForComponent(t, "kubernetesaltinityoperator", "terraform") }
-func TestKubernetesGatewayApiCrds_Terraform(t *testing.T)             { runAllScenariosForComponent(t, "kubernetesgatewayapicrds", "terraform") }
-func TestKubernetesGhaRunnerScaleSetController_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesgharunnerscalesetcontroller", "terraform") }
-func TestKubernetesRookCephOperator_Terraform(t *testing.T)           { runAllScenariosForComponent(t, "kubernetesrookcephoperator", "terraform") }
-func TestKubernetesExternalSecrets_Terraform(t *testing.T)            { runAllScenariosForComponent(t, "kubernetesexternalsecrets", "terraform") }
-func TestKubernetesTekton_Terraform(t *testing.T)                     { runAllScenariosForComponent(t, "kubernetestekton", "terraform") }
-func TestKubernetesIstioBaseCrds_Terraform(t *testing.T)             { runAllScenariosForComponent(t, "kubernetesistiobasecrds", "terraform") }
+func TestKubernetesStrimziKafkaOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesstrimzikafkaoperator", "terraform")
+}
+func TestKubernetesElasticOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteselasticoperator", "terraform")
+}
+func TestKubernetesAltinityOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesaltinityoperator", "terraform")
+}
+func TestKubernetesGatewayApiCrds_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgatewayapicrds", "terraform")
+}
+func TestKubernetesGhaRunnerScaleSetController_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgharunnerscalesetcontroller", "terraform")
+}
+func TestKubernetesRookCephOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesrookcephoperator", "terraform")
+}
+func TestKubernetesTekton_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestekton", "terraform")
+}
+func TestKubernetesIstioBaseCrds_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesistiobasecrds", "terraform")
+}
+func TestKubernetesIstio_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesistio", "terraform")
+}
 
-// ─── Gateway API Pulumi (854-860) ───────────────────────────────────────────
+// ─── Gateway API Pulumi ─────────────────────────────────────────────────────
 // Each kind declares KubernetesGatewayApiCrds as a registry prerequisite, which
 // the harness installs before the scenario applies. Verification asserts the CR
 // exists (controller-free: applies succeed once the CRDs are present).
 
-func TestKubernetesGatewayClass_Pulumi(t *testing.T)    { runAllScenariosForComponent(t, "kubernetesgatewayclass", "pulumi") }
-func TestKubernetesGateway_Pulumi(t *testing.T)         { runAllScenariosForComponent(t, "kubernetesgateway", "pulumi") }
-func TestKubernetesHttpRoute_Pulumi(t *testing.T)       { runAllScenariosForComponent(t, "kuberneteshttproute", "pulumi") }
-func TestKubernetesGrpcRoute_Pulumi(t *testing.T)       { runAllScenariosForComponent(t, "kubernetesgrpcroute", "pulumi") }
-func TestKubernetesTcpRoute_Pulumi(t *testing.T)        { runAllScenariosForComponent(t, "kubernetestcproute", "pulumi") }
-func TestKubernetesTlsRoute_Pulumi(t *testing.T)        { runAllScenariosForComponent(t, "kubernetestlsroute", "pulumi") }
-func TestKubernetesReferenceGrant_Pulumi(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesreferencegrant", "pulumi") }
+func TestKubernetesGatewayClass_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgatewayclass", "pulumi")
+}
+func TestKubernetesGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgateway", "pulumi")
+}
+func TestKubernetesHttpRoute_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteshttproute", "pulumi")
+}
+func TestKubernetesGrpcRoute_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgrpcroute", "pulumi")
+}
+func TestKubernetesTcpRoute_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestcproute", "pulumi")
+}
+func TestKubernetesTlsRoute_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestlsroute", "pulumi")
+}
+func TestKubernetesReferenceGrant_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesreferencegrant", "pulumi")
+}
 
-// ─── Gateway API Terraform (854-860) ────────────────────────────────────────
+func TestKubernetesBackendTlsPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesbackendtlspolicy", "pulumi")
+}
+func TestKubernetesUdpRoute_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesudproute", "pulumi")
+}
+func TestKubernetesListenerSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteslistenerset", "pulumi")
+}
 
-func TestKubernetesGatewayClass_Terraform(t *testing.T)    { runAllScenariosForComponent(t, "kubernetesgatewayclass", "terraform") }
-func TestKubernetesGateway_Terraform(t *testing.T)         { runAllScenariosForComponent(t, "kubernetesgateway", "terraform") }
-func TestKubernetesHttpRoute_Terraform(t *testing.T)       { runAllScenariosForComponent(t, "kuberneteshttproute", "terraform") }
-func TestKubernetesGrpcRoute_Terraform(t *testing.T)       { runAllScenariosForComponent(t, "kubernetesgrpcroute", "terraform") }
-func TestKubernetesTcpRoute_Terraform(t *testing.T)        { runAllScenariosForComponent(t, "kubernetestcproute", "terraform") }
-func TestKubernetesTlsRoute_Terraform(t *testing.T)        { runAllScenariosForComponent(t, "kubernetestlsroute", "terraform") }
-func TestKubernetesReferenceGrant_Terraform(t *testing.T)  { runAllScenariosForComponent(t, "kubernetesreferencegrant", "terraform") }
+// ─── Gateway API Terraform ──────────────────────────────────────────────────
 
-// ─── Istio API Pulumi (861-867) ─────────────────────────────────────────────
+func TestKubernetesGatewayClass_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgatewayclass", "terraform")
+}
+func TestKubernetesGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgateway", "terraform")
+}
+func TestKubernetesHttpRoute_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteshttproute", "terraform")
+}
+func TestKubernetesGrpcRoute_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgrpcroute", "terraform")
+}
+func TestKubernetesTcpRoute_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestcproute", "terraform")
+}
+func TestKubernetesTlsRoute_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestlsroute", "terraform")
+}
+func TestKubernetesReferenceGrant_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesreferencegrant", "terraform")
+}
+
+func TestKubernetesBackendTlsPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesbackendtlspolicy", "terraform")
+}
+func TestKubernetesUdpRoute_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesudproute", "terraform")
+}
+func TestKubernetesListenerSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteslistenerset", "terraform")
+}
+
+// ─── Istio API Pulumi (853-859) ─────────────────────────────────────────────
 // Each kind declares KubernetesIstioBaseCrds as a registry prerequisite, which
 // the harness installs (istio/base CRDs, no istiod) before the scenario applies.
-// Verification asserts the typed Istio CR exists.
+// Verification asserts the typed Istio CR exists (object-grade); the
+// authorizationpolicy behavioral-deny scenario additionally chains a real mesh.
 
-func TestKubernetesPeerAuthentication_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetespeerauthentication", "pulumi") }
+func TestKubernetesPeerAuthentication_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespeerauthentication", "pulumi")
+}
 
-func TestKubernetesRequestAuthentication_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesrequestauthentication", "pulumi") }
+func TestKubernetesRequestAuthentication_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesrequestauthentication", "pulumi")
+}
 
-func TestKubernetesAuthorizationPolicy_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesauthorizationpolicy", "pulumi") }
+func TestKubernetesAuthorizationPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesauthorizationpolicy", "pulumi")
+}
 
-func TestKubernetesServiceEntry_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesserviceentry", "pulumi") }
+func TestKubernetesServiceEntry_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesserviceentry", "pulumi")
+}
 
-func TestKubernetesDestinationRule_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesdestinationrule", "pulumi") }
+func TestKubernetesDestinationRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesdestinationrule", "pulumi")
+}
 
-func TestKubernetesEnvoyFilter_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetesenvoyfilter", "pulumi") }
+func TestKubernetesEnvoyFilter_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesenvoyfilter", "pulumi")
+}
 
-func TestKubernetesTelemetry_Pulumi(t *testing.T) { runAllScenariosForComponent(t, "kubernetestelemetry", "pulumi") }
+func TestKubernetesTelemetry_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestelemetry", "pulumi")
+}
 
-// ─── Istio API Terraform (861-867) ──────────────────────────────────────────
+// ─── Istio API Terraform (853-859) ──────────────────────────────────────────
 
-func TestKubernetesPeerAuthentication_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetespeerauthentication", "terraform") }
+func TestKubernetesPeerAuthentication_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetespeerauthentication", "terraform")
+}
 
-func TestKubernetesRequestAuthentication_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesrequestauthentication", "terraform") }
+func TestKubernetesRequestAuthentication_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesrequestauthentication", "terraform")
+}
 
-func TestKubernetesAuthorizationPolicy_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesauthorizationpolicy", "terraform") }
+func TestKubernetesAuthorizationPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesauthorizationpolicy", "terraform")
+}
 
-func TestKubernetesServiceEntry_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesserviceentry", "terraform") }
+func TestKubernetesServiceEntry_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesserviceentry", "terraform")
+}
 
-func TestKubernetesDestinationRule_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesdestinationrule", "terraform") }
+func TestKubernetesDestinationRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesdestinationrule", "terraform")
+}
 
-func TestKubernetesEnvoyFilter_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetesenvoyfilter", "terraform") }
+func TestKubernetesEnvoyFilter_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesenvoyfilter", "terraform")
+}
 
-func TestKubernetesTelemetry_Terraform(t *testing.T) { runAllScenariosForComponent(t, "kubernetestelemetry", "terraform") }
+func TestKubernetesTelemetry_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestelemetry", "terraform")
+}
 
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a component
 // using the specified IaC engine ("pulumi" or "terraform").
@@ -282,6 +726,17 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 				reason = cp.Spec.Status.String()
 			}
 			t.Skipf("component %s E2E profile status is %s: %s", component, cp.Spec.Status, reason)
+		case componentv1.ComponentE2EProfileSpec_real_cluster:
+			// Runs only against an externally provided real cluster; the
+			// scenarios' own cluster-profile annotations then gate WHICH
+			// real cluster satisfies each of them.
+			if !testHarness.External() {
+				reason := cp.Spec.DeferredReason
+				if reason == "" {
+					reason = "every lane requires an externally provided real cluster"
+				}
+				t.Skipf("component %s E2E profile status is %s: %s", component, cp.Spec.Status, reason)
+			}
 		}
 	}
 
@@ -321,6 +776,34 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenario discovery.TestScenario) {
 	t.Helper()
 
+	// Scenarios restricted to one engine (the e2e-engines annotation — spec
+	// arms the other engine rejects by documented PARITY-EXCEPTION design)
+	// skip the excluded engine's lane with the reason instead of failing on
+	// their own designed rejection.
+	if ok, err := runner.ScenarioSupportsEngine(scenario.ManifestPath, engine); err != nil {
+		t.Fatalf("reading engine restriction for scenario %s/%s: %v", component, scenario.Name, err)
+	} else if !ok {
+		t.Skipf("scenario %s/%s does not run on engine %s (per %s)",
+			component, scenario.Name, engine, runner.ScenarioEnginesAnnotation)
+	}
+
+	// Route the scenario to the cluster its manifest asks for (the
+	// e2e-cluster-profile annotation; default = the shared cluster) and point
+	// the process KUBECONFIG at it. Both engines read cluster credentials
+	// through the environment and scenarios run serially within a process, so
+	// activating per scenario is what keeps multi-cluster runs race-free.
+	// A skip reason means the scenario's profile cannot be satisfied in this
+	// lane by design (real-cluster profiles locally; unmatched profiles on an
+	// external cluster) — honest skip, never a wrong-cluster run.
+	scenarioHarness, skipReason, err := harnessForScenario(scenario.ManifestPath)
+	if err != nil {
+		t.Fatalf("failed to resolve cluster for scenario %s/%s: %v", component, scenario.Name, err)
+	}
+	if skipReason != "" {
+		t.Skipf("scenario %s/%s: %s", component, scenario.Name, skipReason)
+	}
+	scenarioHarness.ActivateKubeconfig()
+
 	tc := &provider.ComponentTestContext{
 		Component:    component,
 		Provider:     "kubernetes",
@@ -347,7 +830,7 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 	}
 
 	ctx := context.Background()
-	result := runner.RunComponentTest(ctx, tc, testHarness)
+	result := runner.RunComponentTest(ctx, tc, scenarioHarness)
 
 	for _, phase := range result.Phases {
 		status := "PASS"

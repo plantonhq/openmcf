@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetespriorityclass.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesPriorityClassSpec** defines one rung of the cluster's workload
+ * importance ladder. Pods reference the class by name (the shared workload
+ * pod spec's `priority_class_name`); the scheduler places higher-priority
+ * pods first when capacity is scarce and — unless preemption is disabled —
+ * EVICTS lower-priority pods to make room for a higher-priority pod that
+ * cannot otherwise schedule.
+ *
+ * A typical ladder is small and deliberate: e.g. "critical" (1000000,
+ * preempting) for revenue-path services, "standard" (1000, the global
+ * default) for everything unmarked, and "batch" (-100, non-preempting) for
+ * work that should never displace services. Built-in classes
+ * `system-cluster-critical` and `system-node-critical` sit above the
+ * user-definable range and belong to Kubernetes itself.
+ *
+ * PriorityClasses are cluster-scoped. The spec covers the complete
+ * scheduling.k8s.io/v1 PriorityClass surface.
+ */
+message KubernetesPriorityClassSpec {
+  /**
+   * The name of the PriorityClass (its `metadata.name` in the cluster) — the
+   * value pods reference in `priority_class_name`. Must be a valid DNS
+   * subdomain and must not use the reserved `system-` prefix.
+   */
+  string name = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 253,
+    (buf.validate.field).cel = {
+      id: "name.dns_subdomain"
+      message: "Name must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)"
+      expression: "this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')"
+    },
+    (buf.validate.field).cel = {
+      id: "name.system_prefix_reserved"
+      message: "Names beginning with \"system-\" are reserved for Kubernetes' built-in priority classes"
+      expression: "!this.startsWith('system-')"
+    }
+  ];
+
+  /**
+   * Additional labels to apply to the PriorityClass object.
+   * Merged with the standard Planton governance labels.
+   */
+  map<string, string> labels = 2;
+
+  /**
+   * Annotations to apply to the PriorityClass object.
+   */
+  map<string, string> annotations = 3;
+
+  /**
+   * The priority integer pods of this class receive — higher schedules (and
+   * preempts) ahead of lower. User-defined classes must stay at or below
+   * 1,000,000,000 (one billion); the range above is reserved for Kubernetes
+   * system classes. Negative values are valid and useful for
+   * "always-preemptable" batch tiers. IMMUTABLE after creation: changing the
+   * value replaces the class (both engines force replacement).
+   */
+  int32 value = 4 [(buf.validate.field).int32.lte = 1000000000];
+
+  /**
+   * Makes this class the cluster-wide default for pods that name NO priority
+   * class (pods that would otherwise get priority 0). Only one class should
+   * be the global default — when several claim it, Kubernetes uses the
+   * SMALLEST such value, which is rarely what anyone intended. Changing the
+   * default never re-prioritizes existing pods; it applies to pods created
+   * afterwards.
+   */
+  bool global_default = 5;
+
+  /**
+   * Human guidance on when to use this class (surfaced by `kubectl describe
+   * priorityclass`). Write it for the next engineer choosing a class for
+   * their workload.
+   */
+  string description = 6;
+
+  /**
+   * **KubernetesPriorityClassPreemptionPolicy** is whether pending pods of
+   * this class may evict lower-priority pods.
+   */
+  enum KubernetesPriorityClassPreemptionPolicy {
+    // Unspecified. Defaults to preempt_lower_priority.
+    kubernetes_priority_class_preemption_policy_unspecified = 0;
+
+    // Pods of this class evict lower-priority pods to make room — the
+    // default, and what "critical" tiers want.
+    preempt_lower_priority = 1;
+
+    // Pods of this class wait in the queue ahead of lower-priority pods but
+    // never evict anything already running. The right policy for
+    // high-priority BATCH work: jump the line without disrupting services.
+    never = 2;
+  }
+
+  /**
+   * Whether pending pods of this class preempt running pods.
+   * Default: preempt_lower_priority
+   */
+  optional KubernetesPriorityClassPreemptionPolicy preemption_policy = 7 [
+    (dev.planton.shared.options.default) = "preempt_lower_priority",
+    (buf.validate.field).enum.defined_only = true
+  ];
+}

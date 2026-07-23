@@ -26,7 +26,7 @@ spec:
           app_protocol: http
           service_port: 80
   availability:
-    min_replicas: 2
+    replicas: 2
     pod_disruption_budget:
       enabled: true
       min_available: "1"

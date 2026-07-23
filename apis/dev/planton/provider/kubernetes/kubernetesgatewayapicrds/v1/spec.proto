@@ -12,11 +12,15 @@ import "dev/planton/shared/options/options.proto";
 // and service mesh traffic. Installing these CRDs enables Gateway, HTTPRoute,
 // GRPCRoute, and other Gateway API resources to be used in the cluster.
 message KubernetesGatewayApiCrdsSpec {
-  // Gateway API version to install (e.g., "v1.2.1", "v1.3.0").
-  // Defaults to v1.2.1 if not specified.
+  // Gateway API version to install (e.g., "v1.6.1").
+  // Defaults to v1.6.1 if not specified — the version the catalog's Gateway
+  // API projection kinds (Gateway, routes, ListenerSet, ReferenceGrant) are
+  // designed against. Installing an older version narrows what those kinds
+  // can deploy (for example, TCPRoute and UDPRoute are standard-channel only
+  // from v1.6.0, and ListenerSet from v1.5.0).
   // Must start with 'v' followed by a valid semver version.
   optional string version = 2 [
-    (dev.planton.shared.options.default) = "v1.2.1",
+    (dev.planton.shared.options.default) = "v1.6.1",
     (buf.validate.field).string = {
       min_len: 1
       pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+(-[a-zA-Z0-9]+)?$"
@@ -29,11 +33,16 @@ message KubernetesGatewayApiCrdsSpec {
   message InstallChannel {
     enum GatewayApiInstallChannel {
       gateway_api_install_channel_unspecified = 0;
-      // Standard channel: GatewayClass, Gateway, HTTPRoute, GRPCRoute, TLSRoute,
-      // ReferenceGrant (GRPCRoute and TLSRoute graduated to standard as of v1.5.1).
+      // Standard channel (GA/beta resources). As of v1.6: GatewayClass,
+      // Gateway, ListenerSet, HTTPRoute, GRPCRoute, TLSRoute, TCPRoute,
+      // UDPRoute, ReferenceGrant, BackendTLSPolicy. This is the channel the
+      // catalog's projection kinds target.
       standard = 1;
-      // Experimental channel: includes all standard resources plus TCPRoute and
-      // UDPRoute.
+      // Experimental channel: all standard resources (with additional
+      // experimental fields) plus experimental resources such as XBackend,
+      // XBackendTrafficPolicy, and XMesh. Future releases may break or remove
+      // experimental resources — prefer standard unless a specific
+      // experimental feature is required.
       experimental = 2;
     }
     GatewayApiInstallChannel channel = 1 [(buf.validate.field).enum.defined_only = true];

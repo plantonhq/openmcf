@@ -1,112 +1,583 @@
-locals {
-  # The Pulumi module exports the resource_id LABEL only when metadata.id is set;
-  # everything else (CR name, service, secret names) keys off metadata.name. We
-  # follow the same basis so tofu- and pulumi-provisioned Postgres are identical.
-  # (metadata.id is optional, so it is null when unset -- normalize to "" because
-  # `try` only catches errors, not nulls.)
-  resource_id = var.metadata.id == null ? "" : var.metadata.id
+# Computed values for the KubernetesPostgres module. Every resolution here
+# has an exact twin in the Pulumi module's locals.go / cluster.go /
+# bootstrap.go / backup.go / secrets.go — keep them in lockstep: same
+# resource names, same rendered CR bodies, same Secret names/keys/types.
+#
+# HCL DISCIPLINE (applies to every conditional object in this file):
+# conditional entries are written as `key = cond ? value : null` inside ONE
+# object literal, pruned with `{ for k, v in {...} : k => v if v != null }`.
+# The two tempting alternatives are both broken: `cond ? {...} : {}`
+# ternaries fail plan-time type unification when branches carry different
+# attributes, and `merge(concat(cond ? [{...}] : [], ...)...)` silently
+# UNIFIES primitive-only sibling objects into map(string) — numbers and
+# booleans arrive at the API as strings and server-side validation rejects
+# the object. The null-prune form preserves every value's type: instances,
+# synchronous.number, maxParallel, jobs, tolerationSeconds, connectionLimit
+# render as YAML numbers; the presence-gated booleans as booleans.
+#
+# Optional nested blocks are read with try(): HCL's && does NOT
+# short-circuit, so chained null checks still dereference the null.
+#
+# PRESENCE-SENSITIVE FIELDS (rendered only on divergence from the CRD/
+# operator default, exactly like the Pulumi module):
+#   - enablePDB: absent already means true to the operator — only an
+#     explicit false is rendered.
+#   - storage.resizeInUseVolumes: CRD default true — only false renders.
+#   - affinity.podAntiAffinityType: operator default "preferred" — only
+#     "required" renders.
+#   - roles[].ensure: "present" is the default — only "absent" renders.
+#   - roles[].connectionLimit: -1 (unlimited) is the engine default — only
+#     a real limit renders.
 
-  # Resource identity labels mirror the Pulumi module exactly: the kuberneteslabelkeys
-  # keys are planton.ai/<key> and resource_kind is the CloudResourceKind enum string
-  # ("KubernetesPostgres"). Kept byte-for-byte identical to avoid drift between engines.
-  final_labels = merge(
+locals {
+  # ClusterName is metadata.name — the naming root CloudNativePG derives
+  # every object from: pods `<name>-N`, services `<name>-rw/-ro/-r`,
+  # credential secrets `<name>-app` / `<name>-superuser`.
+  cluster_name = var.metadata.name
+  namespace    = var.spec.namespace
+
+  # Resource-identity labels stamped on every module-created object
+  # (namespace, Cluster, ObjectStores, ScheduledBackups, credential
+  # Secrets). CloudNativePG derives ITS objects' identity from the Cluster
+  # name; these labels tie the whole family back to the Planton resource.
+  labels = merge(
     {
-      "planton.ai/resource" = "true"
-      "planton.ai/name"     = var.metadata.name
-      "planton.ai/kind"     = "KubernetesPostgres"
+      "planton.ai/resource"      = "true"
+      "planton.ai/resource-name" = var.metadata.name
+      "planton.ai/resource-kind" = "KubernetesPostgres"
     },
-    local.resource_id != "" ? { "planton.ai/id" = local.resource_id } : {},
-    try(var.metadata.org, "") != "" ? { "planton.ai/organization" = var.metadata.org } : {},
-    try(var.metadata.env, "") != "" ? { "planton.ai/environment" = var.metadata.env } : {},
+    var.metadata.id != null && var.metadata.id != "" ? { "planton.ai/resource-id" = var.metadata.id } : {},
+    var.metadata.org != null && var.metadata.org != "" ? { "planton.ai/organization" = var.metadata.org } : {},
+    var.metadata.env != null && var.metadata.env != "" ? { "planton.ai/environment" = var.metadata.env } : {}
   )
 
-  # The external LoadBalancer selects the Spilo pods the Zalando operator creates.
-  # Those pods carry application=spilo -- NOT our resource labels -- so the selector
-  # must be application=spilo (matching the Pulumi module), or it matches zero pods.
-  postgres_pod_selector_labels = {
-    application = "spilo"
-  }
+  # Traffic service names (operator-created; exported as outputs).
+  rw_service_name = "${local.cluster_name}-rw"
+  ro_service_name = "${local.cluster_name}-ro"
+  r_service_name  = "${local.cluster_name}-r"
+  kube_endpoint   = "${local.cluster_name}-rw.${local.namespace}.svc.cluster.local:5432"
 
-  # Namespace is the requested spec namespace (Pulumi reads spec.namespace too).
-  namespace = var.spec.namespace
+  # BarmanCloudPluginName is the CNPG-I plugin identifier the Cluster's
+  # plugins list and every ScheduledBackup reference — the plugin's
+  # registered name, fixed by upstream.
+  barman_cloud_plugin_name = "barman-cloud.cloudnative-pg.io"
 
-  # Service name (matches the Pulumi `service` output).
-  kube_service_name = "${var.metadata.name}-master"
+  # Name of the synthetic externalClusters entry recovery bootstraps read
+  # from. Any stable label works (the entry only exists to carry the
+  # recovery ObjectStore reference); "origin" follows upstream's examples.
+  recovery_source_external_cluster_name = "origin"
 
-  # Fully qualified domain name for the service.
-  kube_service_fqdn = "${local.kube_service_name}.${local.namespace}.svc.cluster.local"
+  # Deterministic names for the module-created satellites. Deterministic
+  # (never engine-generated suffixes) so the import recipes can derive
+  # them blind and both engines agree byte-for-byte.
+  backup_object_store_name       = local.cluster_name
+  recovery_object_store_name     = "${local.cluster_name}-recovery-source"
+  backup_creds_secret_name       = "${local.cluster_name}-backup-creds"
+  recovery_creds_secret_name     = "${local.cluster_name}-recovery-creds"
+  backup_endpoint_ca_name        = "${local.cluster_name}-backup-endpoint-ca"
+  recovery_endpoint_ca_name      = "${local.cluster_name}-recovery-endpoint-ca"
+  provided_app_secret_name       = "${local.cluster_name}-app-provided"
+  provided_superuser_secret_name = "${local.cluster_name}-superuser-provided"
+  operator_superuser_secret_name = "${local.cluster_name}-superuser"
+  app_secret_name                = "${local.cluster_name}-app"
 
-  # Handy port-forward command.
-  kube_port_forward_command = "kubectl port-forward -n ${local.namespace} service/${local.kube_service_name} 8080:8080"
+  # Bootstrap arms (the spec's oneof guarantees at most one is non-null).
+  initdb        = try(var.spec.bootstrap.initdb, null)
+  recovery      = try(var.spec.bootstrap.recovery, null)
+  pg_basebackup = try(var.spec.bootstrap.pg_basebackup, null)
+  backup        = try(var.spec.backup, null)
 
-  # Ingress configuration.
-  ingress_is_enabled        = try(var.spec.ingress.enabled, false)
-  ingress_external_hostname = try(var.spec.ingress.hostname, null)
+  # Where the application credential actually lives: the operator-generated
+  # `<name>-app` normally, or the module-provided secret when initdb
+  # declares an owner password (the operator then adopts it instead of
+  # generating its own).
+  effective_app_secret_name = try(local.initdb.owner_password, "") != "" ? local.provided_app_secret_name : local.app_secret_name
 
-  # Namespace reference: use created namespace name if created, otherwise use local.namespace.
-  namespace_name = var.spec.create_namespace ? kubernetes_namespace_v1.postgres_namespace[0].metadata[0].name : local.namespace
+  # basic-auth username for the provided app secret: the OWNER's name —
+  # falling back to the database name and then the upstream initdb default
+  # ("app"), the same chain the operator itself applies.
+  provided_app_username = (
+    try(local.initdb.owner, "") != "" ? local.initdb.owner :
+    try(local.initdb.database, "") != "" ? local.initdb.database :
+    "app"
+  )
 
-  # Computed resource names to avoid conflicts when multiple instances share a namespace.
-  external_lb_service_name = "${var.metadata.name}-external-lb"
-
-  # ── Backup / restore ──
-  backup_config   = try(var.spec.backup_config, null)
-  backup_enabled  = try(local.backup_config.enabled, false)
-  backup_creds    = try(local.backup_config.credentials, null)
-  restore_config  = try(local.backup_config.restore, null)
-  restore_enabled = try(local.restore_config.enabled, false)
-  restore_creds   = local.restore_enabled ? try(local.restore_config.credentials, null) : null
-
-  backup_creds_present  = local.backup_enabled && local.backup_creds != null
-  restore_creds_present = local.restore_enabled && local.restore_creds != null
-
-  # Names of the per-database R2 credential Secrets (created in credentials.tf).
-  backup_r2_secret_name  = "${var.metadata.name}-backup-r2-credentials"
-  restore_r2_secret_name = "${var.metadata.name}-restore-r2-credentials"
-
-  # WAL-G push target: s3://<bucket>[/<object_prefix>]/$(SCOPE)/$(PGVERSION). Spilo/Patroni
-  # substitutes the suffix at runtime. Empty when backups are disabled or no bucket is set.
-  backup_bucket        = try(local.backup_config.bucket, "")
-  backup_object_prefix = try(local.backup_config.object_prefix, "")
-  backup_walg_s3_prefix = (local.backup_enabled && local.backup_bucket != "") ? (
-    local.backup_object_prefix != "" ?
-    format("s3://%s/%s/$(SCOPE)/$(PGVERSION)", local.backup_bucket, local.backup_object_prefix) :
-    format("s3://%s/$(SCOPE)/$(PGVERSION)", local.backup_bucket)
+  # Populated only when superuser access is enabled — the operator deletes
+  # the secret (and blanks the password) otherwise.
+  superuser_secret_name_output = try(var.spec.superuser.enabled, false) ? (
+    try(var.spec.superuser.password, "") != "" ? local.provided_superuser_secret_name : local.operator_superuser_secret_name
   ) : ""
 
-  # Zalando spec.standby block for cross-cluster disaster recovery. Present only when
-  # restore is enabled; the database then bootstraps read-only from the source backup.
-  standby_block = local.restore_enabled ? {
-    s3_wal_path = format("s3://%s/%s", try(local.restore_config.bucket, ""), try(local.restore_config.object_prefix, ""))
-  } : null
+  # ---- credential Secret payloads -----------------------------------------
+  # Per-role basic-auth pairs (`<name>-role-<role>`) — the exact shape
+  # CloudNativePG watches; rotating the value rotates the database password.
+  # Keyed by the FULL Secret name (not the bare role name): the state
+  # address key is what the import recipes derive the live object name from
+  # (from_address_key), so the key and the rendered name must be identical.
+  role_password_secrets = {
+    for r in var.spec.roles : "${local.cluster_name}-role-${r.name}" => {
+      username = r.name
+      password = r.password
+    } if try(r.password, "") != ""
+  }
 
-  # Per-database backup env. When credentials are set, the dedicated R2 target
-  # (endpoint/region/path-style as plain values; credentials via secretKeyRef) is added.
-  # Each entry is appended via a single-element conditional so plain ({name,value}) and
-  # secretKeyRef ({name,valueFrom}) entries can coexist (concat preserves per-element
-  # tuple types; a single mixed-shape ternary would not type-check).
-  backup_env = !local.backup_enabled ? [] : concat(
-    [{ name = "USE_WALG_BACKUP", value = "true" }],
-    local.backup_walg_s3_prefix != "" ? [{ name = "WALG_S3_PREFIX", value = local.backup_walg_s3_prefix }] : [],
-    try(local.backup_config.schedule, "") != "" ? [{ name = "BACKUP_SCHEDULE", value = local.backup_config.schedule }] : [],
-    try(local.backup_config.retain_count, null) != null ? [{ name = "BACKUP_NUM_TO_RETAIN", value = tostring(local.backup_config.retain_count) }] : [],
-    local.backup_creds_present ? [{ name = "AWS_ENDPOINT", value = format("https://%s.r2.cloudflarestorage.com", local.backup_creds.cloudflare_account_id) }] : [],
-    local.backup_creds_present ? [{ name = "AWS_REGION", value = "auto" }] : [],
-    local.backup_creds_present ? [{ name = "AWS_FORCE_PATH_STYLE", value = "true" }] : [],
-    local.backup_creds_present ? [{ name = "USE_WALG_RESTORE", value = "true" }] : [],
-    local.backup_creds_present ? [{ name = "AWS_ACCESS_KEY_ID", valueFrom = { secretKeyRef = { name = local.backup_r2_secret_name, key = "access_key_id" } } }] : [],
-    local.backup_creds_present ? [{ name = "AWS_SECRET_ACCESS_KEY", valueFrom = { secretKeyRef = { name = local.backup_r2_secret_name, key = "secret_access_key" } } }] : [],
+  # Per-external-cluster passwords (single `password` key; the operator
+  # renders a passfile from it).
+  # Keyed by the FULL Secret name — same from_address_key contract as the
+  # role secrets above.
+  external_cluster_password_secrets = {
+    for e in var.spec.external_clusters : "${local.cluster_name}-ext-${e.name}" => e.password if try(e.password, "") != ""
+  }
+
+  # ---- Barman Cloud ObjectStores -------------------------------------------
+  # One rendering context per store so the backup store (named after the
+  # cluster) and the recovery-source store (`<name>-recovery-source`)
+  # share the exact same configuration rendering. Recovery reads an
+  # EXISTING archive: retention never applies to it (the plugin must not
+  # prune the source cluster's backups).
+  object_store_contexts = merge(
+    local.backup != null ? {
+      backup = {
+        store_name              = local.backup_object_store_name
+        object_store            = local.backup.object_store
+        retention_policy        = try(local.backup.retention_policy, "")
+        creds_secret_name       = local.backup_creds_secret_name
+        endpoint_ca_secret_name = local.backup_endpoint_ca_name
+      }
+    } : {},
+    local.recovery != null ? {
+      recovery = {
+        store_name              = local.recovery_object_store_name
+        object_store            = local.recovery.object_store
+        retention_policy        = ""
+        creds_secret_name       = local.recovery_creds_secret_name
+        endpoint_ca_secret_name = local.recovery_endpoint_ca_name
+      }
+    } : {}
   )
 
-  # STANDBY_* env for R2 access during standby bootstrap. Present only when restore is
-  # enabled AND credentials are supplied; credentials via secretKeyRef.
-  standby_env = concat(
-    local.restore_creds_present ? [{ name = "STANDBY_AWS_ENDPOINT", value = format("https://%s.r2.cloudflarestorage.com", local.restore_creds.cloudflare_account_id) }] : [],
-    local.restore_creds_present ? [{ name = "STANDBY_AWS_FORCE_PATH_STYLE", value = "true" }] : [],
-    local.restore_creds_present ? [{ name = "STANDBY_AWS_ACCESS_KEY_ID", valueFrom = { secretKeyRef = { name = local.restore_r2_secret_name, key = "access_key_id" } } }] : [],
-    local.restore_creds_present ? [{ name = "STANDBY_AWS_SECRET_ACCESS_KEY", valueFrom = { secretKeyRef = { name = local.restore_r2_secret_name, key = "secret_access_key" } } }] : [],
+  # Declared credentials for each store, materialized as one deterministic
+  # Opaque Secret per store (`<name>-backup-creds` / `<name>-recovery-creds`)
+  # whose keys depend on the backend arm. Keyless arms render the backend's
+  # ambient-identity flag instead and need NO creds Secret — except Azure
+  # keyless, where the storage account still identifies the endpoint and
+  # rides the Secret (AZURE_STORAGE_ACCOUNT) even without a key.
+  # All values are strings, so this chained ternary unifies safely to
+  # map(string) — no number/bool stringification risk here.
+  object_store_creds_data = {
+    for key, ctx in local.object_store_contexts : key => (
+      try(ctx.object_store.s3.access_keys, null) != null ? {
+        ACCESS_KEY_ID     = ctx.object_store.s3.access_keys.access_key_id
+        SECRET_ACCESS_KEY = ctx.object_store.s3.access_keys.secret_access_key
+        } : try(ctx.object_store.gcs, null) != null && !try(ctx.object_store.gcs.keyless, false) ? {
+        APPLICATION_CREDENTIALS = ctx.object_store.gcs.service_account_key_json
+        } : try(ctx.object_store.azure_blob, null) == null ? null : (
+        try(ctx.object_store.azure_blob.keyless, false) ? {
+          AZURE_STORAGE_ACCOUNT = ctx.object_store.azure_blob.storage_account
+          } : try(ctx.object_store.azure_blob.connection_string, "") != "" ? {
+          AZURE_STORAGE_CONNECTION_STRING = ctx.object_store.azure_blob.connection_string
+          } : {
+          AZURE_STORAGE_ACCOUNT = ctx.object_store.azure_blob.storage_account
+          AZURE_STORAGE_KEY     = ctx.object_store.azure_blob.storage_key
+        }
+      )
+    )
+  }
+
+  # The ObjectStore CR bodies. The CRD FORBIDS configuration.serverName —
+  # the plugin takes the source server name as a per-Cluster plugin
+  # parameter instead (see the synthetic "origin" externalClusters entry)
+  # — so this rendering never sets it.
+  #
+  # The CRD models the S3 region as a SecretKeySelector (not a plain
+  # string), so the literal region rides its own deterministic single-key
+  # Secret (`<store>-region`, key AWS_REGION) — works identically for the
+  # keyless and declared-key postures.
+  object_store_manifests = {
+    for key, ctx in local.object_store_contexts : key => {
+      apiVersion = "barmancloud.cnpg.io/v1"
+      kind       = "ObjectStore"
+      metadata = {
+        name      = ctx.store_name
+        namespace = local.namespace
+        labels    = local.labels
+      }
+      spec = {
+        for sk, sv in {
+          configuration = {
+            for ck, cv in {
+              destinationPath = ctx.object_store.destination_path
+              endpointURL     = try(ctx.object_store.s3.endpoint_url, "") != "" ? ctx.object_store.s3.endpoint_url : null
+              endpointCA      = try(ctx.object_store.s3.endpoint_ca_pem, "") != "" ? { name = ctx.endpoint_ca_secret_name, key = "ca.crt" } : null
+
+              s3Credentials = try(ctx.object_store.s3, null) == null ? null : {
+                for k, v in {
+                  inheritFromIAMRole = try(ctx.object_store.s3.keyless, false) ? true : null
+                  accessKeyId        = try(ctx.object_store.s3.access_keys, null) != null ? { name = ctx.creds_secret_name, key = "ACCESS_KEY_ID" } : null
+                  secretAccessKey    = try(ctx.object_store.s3.access_keys, null) != null ? { name = ctx.creds_secret_name, key = "SECRET_ACCESS_KEY" } : null
+                  region             = try(ctx.object_store.s3.region, "") != "" ? { name = "${ctx.store_name}-region", key = "AWS_REGION" } : null
+                } : k => v if v != null
+              }
+
+              googleCredentials = try(ctx.object_store.gcs, null) == null ? null : {
+                for k, v in {
+                  gkeEnvironment         = try(ctx.object_store.gcs.keyless, false) ? true : null
+                  applicationCredentials = try(ctx.object_store.gcs.keyless, false) ? null : { name = ctx.creds_secret_name, key = "APPLICATION_CREDENTIALS" }
+                } : k => v if v != null
+              }
+
+              azureCredentials = try(ctx.object_store.azure_blob, null) == null ? null : {
+                for k, v in {
+                  inheritFromAzureAD = try(ctx.object_store.azure_blob.keyless, false) ? true : null
+                  connectionString   = !try(ctx.object_store.azure_blob.keyless, false) && try(ctx.object_store.azure_blob.connection_string, "") != "" ? { name = ctx.creds_secret_name, key = "AZURE_STORAGE_CONNECTION_STRING" } : null
+                  storageAccount     = try(ctx.object_store.azure_blob.keyless, false) || try(ctx.object_store.azure_blob.connection_string, "") == "" ? { name = ctx.creds_secret_name, key = "AZURE_STORAGE_ACCOUNT" } : null
+                  storageKey         = !try(ctx.object_store.azure_blob.keyless, false) && try(ctx.object_store.azure_blob.connection_string, "") == "" ? { name = ctx.creds_secret_name, key = "AZURE_STORAGE_KEY" } : null
+                } : k => v if v != null
+              }
+
+              wal = try(ctx.object_store.wal, null) == null ? null : {
+                for k, v in {
+                  compression = try(ctx.object_store.wal.compression, "") != "" ? ctx.object_store.wal.compression : null
+                  maxParallel = try(ctx.object_store.wal.max_parallel, null)
+                } : k => v if v != null
+              }
+
+              data = try(ctx.object_store.data, null) == null ? null : {
+                for k, v in {
+                  compression         = try(ctx.object_store.data.compression, "") != "" ? ctx.object_store.data.compression : null
+                  jobs                = try(ctx.object_store.data.jobs, null)
+                  immediateCheckpoint = try(ctx.object_store.data.immediate_checkpoint, false) ? true : null
+                } : k => v if v != null
+              }
+            } : ck => cv if cv != null
+          }
+          # retentionPolicy only ever renders on the BACKUP store (the
+          # recovery context pins it empty above).
+          retentionPolicy = ctx.retention_policy != "" ? ctx.retention_policy : null
+        } : sk => sv if sv != null
+      }
+    }
+  }
+
+  # ---- Cluster CR: bootstrap ------------------------------------------------
+  # Bootstrap is how the cluster is BORN, so it is immutable — the operator
+  # ignores changes after the first reconcile.
+  initdb_body = local.initdb == null ? null : {
+    for k, v in {
+      database = try(local.initdb.database, "") != "" ? local.initdb.database : null
+      owner    = try(local.initdb.owner, "") != "" ? local.initdb.owner : null
+      # The module materialized the declared owner password as a basic-auth
+      # Secret; the operator adopts it as the app credential instead of
+      # generating `<name>-app`.
+      secret        = try(local.initdb.owner_password, "") != "" ? { name = local.provided_app_secret_name } : null
+      dataChecksums = try(local.initdb.data_checksums, false) ? true : null
+      encoding      = try(local.initdb.encoding, "") != "" ? local.initdb.encoding : null
+      localeCollate = try(local.initdb.locale_collate, "") != "" ? local.initdb.locale_collate : null
+      localeCType   = try(local.initdb.locale_ctype, "") != "" ? local.initdb.locale_ctype : null
+
+      postInitSQL            = length(try(local.initdb.post_init_sql, [])) > 0 ? local.initdb.post_init_sql : null
+      postInitApplicationSQL = length(try(local.initdb.post_init_application_sql, [])) > 0 ? local.initdb.post_init_application_sql : null
+
+      import = try(local.initdb.import, null) == null ? null : {
+        for ik, iv in {
+          type       = local.initdb.import.type
+          source     = { externalCluster = local.initdb.import.source_external_cluster }
+          databases  = local.initdb.import.databases
+          roles      = length(try(local.initdb.import.roles, [])) > 0 ? local.initdb.import.roles : null
+          schemaOnly = try(local.initdb.import.schema_only, false) ? true : null
+        } : ik => iv if iv != null
+      }
+    } : k => v if v != null
+  }
+
+  # Recovery reads through the synthetic externalClusters entry ("origin")
+  # the module renders below, whose plugin block points at the
+  # `<name>-recovery-source` ObjectStore with the SOURCE cluster's
+  # serverName.
+  recovery_body = local.recovery == null ? null : {
+    for k, v in {
+      source = local.recovery_source_external_cluster_name
+      recoveryTarget = try(local.recovery.recovery_target, null) == null ? null : {
+        for tk, tv in {
+          targetTime      = try(local.recovery.recovery_target.target_time, "") != "" ? local.recovery.recovery_target.target_time : null
+          targetLSN       = try(local.recovery.recovery_target.target_lsn, "") != "" ? local.recovery.recovery_target.target_lsn : null
+          targetName      = try(local.recovery.recovery_target.target_name, "") != "" ? local.recovery.recovery_target.target_name : null
+          targetImmediate = try(local.recovery.recovery_target.target_immediate, false) ? true : null
+          backupID        = try(local.recovery.recovery_target.backup_id, "") != "" ? local.recovery.recovery_target.backup_id : null
+        } : tk => tv if tv != null
+      }
+    } : k => v if v != null
+  }
+
+  pg_basebackup_body = local.pg_basebackup == null ? null : {
+    source = local.pg_basebackup.source
+  }
+
+  bootstrap_body = {
+    for k, v in {
+      initdb        = local.initdb_body
+      recovery      = local.recovery_body
+      pg_basebackup = local.pg_basebackup_body
+    } : k => v if v != null
+  }
+
+  # ---- Cluster CR: externalClusters ------------------------------------------
+  # The user-declared entries (pg_basebackup / import sources) plus — when
+  # the bootstrap is a recovery — the synthetic "origin" entry that carries
+  # the recovery-source ObjectStore reference. serverName rides the plugin
+  # parameters: it is the folder the SOURCE cluster wrote in the store (its
+  # cluster name), and the ObjectStore CRD forbids it inline.
+  declared_external_clusters = [
+    for e in var.spec.external_clusters : {
+      for k, v in {
+        name                 = e.name
+        connectionParameters = length(try(e.connection_parameters, {})) > 0 ? e.connection_parameters : null
+        password             = try(e.password, "") != "" ? { name = "${local.cluster_name}-ext-${e.name}", key = "password" } : null
+      } : k => v if v != null
+    }
+  ]
+
+  external_clusters = concat(
+    local.declared_external_clusters,
+    local.recovery == null ? [] : [{
+      name = local.recovery_source_external_cluster_name
+      plugin = {
+        name = local.barman_cloud_plugin_name
+        parameters = {
+          barmanObjectName = local.recovery_object_store_name
+          serverName       = local.recovery.source_server_name
+        }
+      }
+    }]
   )
 
-  # Pulumi merges standby env first, then backup env.
-  all_env = concat(local.standby_env, local.backup_env)
+  # ---- Cluster CR: sub-blocks -------------------------------------------------
+  storage_body = {
+    for k, v in {
+      size         = var.spec.storage.size
+      storageClass = try(var.spec.storage.storage_class, "") != "" ? var.spec.storage.storage_class : null
+      # resize_in_use_volumes renders only when it DIVERGES from the shared
+      # default (true) — the CRD default already covers the true case.
+      resizeInUseVolumes = try(var.spec.storage.resize_in_use_volumes, null) == false ? false : null
+    } : k => v if v != null
+  }
+
+  wal_storage_body = try(var.spec.wal_storage, null) == null ? null : {
+    for k, v in {
+      size               = var.spec.wal_storage.size
+      storageClass       = try(var.spec.wal_storage.storage_class, "") != "" ? var.spec.wal_storage.storage_class : null
+      resizeInUseVolumes = try(var.spec.wal_storage.resize_in_use_volumes, null) == false ? false : null
+    } : k => v if v != null
+  }
+
+  resources_body = try(var.spec.resources, null) == null ? null : {
+    for k, v in {
+      limits = try(var.spec.resources.limits, null) == null ? null : {
+        cpu    = var.spec.resources.limits.cpu
+        memory = var.spec.resources.limits.memory
+      }
+      requests = try(var.spec.resources.requests, null) == null ? null : {
+        cpu    = var.spec.resources.requests.cpu
+        memory = var.spec.resources.requests.memory
+      }
+    } : k => v if v != null
+  }
+
+  # postgresql stanza. The CRD's own field names are snake_case here
+  # (pg_hba, pg_ident, shared_preload_libraries) — CloudNativePG mirrors
+  # the PostgreSQL file names.
+  postgresql_body = {
+    for k, v in {
+      parameters               = length(try(var.spec.postgresql.parameters, {})) > 0 ? var.spec.postgresql.parameters : null
+      pg_hba                   = length(try(var.spec.postgresql.pg_hba, [])) > 0 ? var.spec.postgresql.pg_hba : null
+      pg_ident                 = length(try(var.spec.postgresql.pg_ident, [])) > 0 ? var.spec.postgresql.pg_ident : null
+      shared_preload_libraries = length(try(var.spec.postgresql.shared_preload_libraries, [])) > 0 ? var.spec.postgresql.shared_preload_libraries : null
+      synchronous = try(var.spec.postgresql.synchronous, null) == null ? null : {
+        method         = var.spec.postgresql.synchronous.method
+        number         = var.spec.postgresql.synchronous.number
+        dataDurability = var.spec.postgresql.synchronous.data_durability
+      }
+      enableAlterSystem = try(var.spec.postgresql.enable_alter_system, false) ? true : null
+    } : k => v if v != null
+  }
+
+  managed_roles = [
+    for r in var.spec.roles : {
+      for k, v in {
+        name    = r.name
+        comment = try(r.comment, "") != "" ? r.comment : null
+        ensure  = try(r.ensure, "") != "" && try(r.ensure, "") != "present" ? r.ensure : null
+        # The declared password lives in the `<name>-role-<role>` basic-auth
+        # Secret this module materializes; the operator watches it.
+        passwordSecret  = try(r.password, "") != "" ? { name = "${local.cluster_name}-role-${r.name}" } : null
+        disablePassword = try(r.disable_password, false) ? true : null
+        login           = try(r.login, false) ? true : null
+        superuser       = try(r.superuser, false) ? true : null
+        createdb        = try(r.createdb, false) ? true : null
+        createrole      = try(r.createrole, false) ? true : null
+        replication     = try(r.replication, false) ? true : null
+        bypassrls       = try(r.bypassrls, false) ? true : null
+        inRoles         = length(try(r.in_roles, [])) > 0 ? r.in_roles : null
+        connectionLimit = try(r.connection_limit, null) != null && try(r.connection_limit, -1) != -1 ? r.connection_limit : null
+      } : k => v if v != null
+    }
+  ]
+
+  # Keyless cloud identity rides the instance ServiceAccount: the operator
+  # creates one ServiceAccount per cluster (named after it), and the
+  # template's annotations are what the cloud webhooks key on. All values
+  # are strings — this merge cannot hit the type-unification trap.
+  workload_identity_annotations = merge(
+    try(var.spec.workload_identity.gke, null) != null ? {
+      "iam.gke.io/gcp-service-account" = var.spec.workload_identity.gke.service_account_email
+    } : {},
+    try(var.spec.workload_identity.eks, null) != null ? {
+      "eks.amazonaws.com/role-arn" = var.spec.workload_identity.eks.role_arn
+    } : {},
+    try(var.spec.workload_identity.aks, null) != null ? merge(
+      { "azure.workload.identity/client-id" = var.spec.workload_identity.aks.client_id },
+      try(var.spec.workload_identity.aks.tenant_id, "") != "" ? {
+        "azure.workload.identity/tenant-id" = var.spec.workload_identity.aks.tenant_id
+      } : {}
+    ) : {}
+  )
+
+  certificates_body = {
+    for k, v in {
+      serverTLSSecret   = try(var.spec.certificates.server_tls_secret, "") != "" ? var.spec.certificates.server_tls_secret : null
+      serverCASecret    = try(var.spec.certificates.server_ca_secret, "") != "" ? var.spec.certificates.server_ca_secret : null
+      serverAltDNSNames = length(try(var.spec.certificates.server_alt_dns_names, [])) > 0 ? var.spec.certificates.server_alt_dns_names : null
+    } : k => v if v != null
+  }
+
+  monitoring_body = {
+    for k, v in {
+      tls                   = try(var.spec.monitoring.tls_enabled, false) ? { enabled = true } : null
+      disableDefaultQueries = try(var.spec.monitoring.disable_default_queries, false) ? true : null
+    } : k => v if v != null
+  }
+
+  # The operator's anti-affinity is on by default; only the TYPE (when it
+  # diverges from "preferred") and the topology key need rendering.
+  affinity_body = {
+    for k, v in {
+      podAntiAffinityType = try(var.spec.scheduling.anti_affinity_type, "") != "" && try(var.spec.scheduling.anti_affinity_type, "") != "preferred" ? var.spec.scheduling.anti_affinity_type : null
+      topologyKey         = try(var.spec.scheduling.topology_key, "") != "" ? var.spec.scheduling.topology_key : null
+      nodeSelector        = length(try(var.spec.scheduling.node_selector, {})) > 0 ? var.spec.scheduling.node_selector : null
+      tolerations = length(try(var.spec.scheduling.tolerations, [])) > 0 ? [
+        for t in var.spec.scheduling.tolerations : {
+          for tk, tv in {
+            key               = try(t.key, "") != "" ? t.key : null
+            operator          = try(t.operator, "") != "" ? t.operator : null
+            value             = try(t.value, "") != "" ? t.value : null
+            effect            = try(t.effect, "") != "" ? t.effect : null
+            tolerationSeconds = try(t.toleration_seconds, null)
+          } : tk => tv if tv != null
+        }
+      ] : null
+    } : k => v if v != null
+  }
+
+  # ---- the Cluster CR ----------------------------------------------------------
+  cluster_manifest = {
+    apiVersion = "postgresql.cnpg.io/v1"
+    kind       = "Cluster"
+    metadata = {
+      name      = local.cluster_name
+      namespace = local.namespace
+      labels    = local.labels
+    }
+    spec = {
+      for k, v in {
+        instances = var.spec.instances
+        imageName = try(var.spec.image_name, "") != "" ? var.spec.image_name : null
+
+        storage    = local.storage_body
+        walStorage = local.wal_storage_body
+        resources  = local.resources_body
+
+        postgresql = length(local.postgresql_body) > 0 ? local.postgresql_body : null
+        bootstrap  = length(local.bootstrap_body) > 0 ? local.bootstrap_body : null
+
+        externalClusters = length(local.external_clusters) > 0 ? local.external_clusters : null
+
+        # Superuser posture: the enable flag and (optionally) the provided
+        # password secret. The operator blanks the postgres password and
+        # deletes the secret whenever access is disabled.
+        enableSuperuserAccess = try(var.spec.superuser.enabled, false) ? true : null
+        superuserSecret       = try(var.spec.superuser.enabled, false) && try(var.spec.superuser.password, "") != "" ? { name = local.provided_superuser_secret_name } : null
+
+        managed = length(local.managed_roles) > 0 ? { roles = local.managed_roles } : null
+
+        # The Barman Cloud plugin wiring: designating the plugin as the WAL
+        # archiver is what starts continuous archiving into the ObjectStore.
+        # PLUGIN-BASED, deliberately: CloudNativePG's in-tree barmanObjectStore
+        # backup method is deprecated upstream and not modeled here.
+        plugins = local.backup != null ? [{
+          name          = local.barman_cloud_plugin_name
+          isWALArchiver = true
+          parameters    = { barmanObjectName = local.backup_object_store_name }
+        }] : null
+
+        serviceAccountTemplate = length(local.workload_identity_annotations) > 0 ? {
+          metadata = { annotations = local.workload_identity_annotations }
+        } : null
+
+        certificates = length(local.certificates_body) > 0 ? local.certificates_body : null
+        monitoring   = length(local.monitoring_body) > 0 ? local.monitoring_body : null
+        affinity     = length(local.affinity_body) > 0 ? local.affinity_body : null
+
+        priorityClassName = try(var.spec.scheduling.priority_class_name, "") != "" ? var.spec.scheduling.priority_class_name : null
+
+        primaryUpdateStrategy = try(var.spec.update_strategy.primary_update_strategy, "") != "" ? var.spec.update_strategy.primary_update_strategy : null
+        primaryUpdateMethod   = try(var.spec.update_strategy.primary_update_method, "") != "" ? var.spec.update_strategy.primary_update_method : null
+
+        # enable_pdb defaults to true both here and upstream; only an
+        # explicit false needs rendering (presence-sensitive — an absent
+        # key already means true to the operator).
+        enablePDB = try(var.spec.enable_pdb, null) == false ? false : null
+
+        imagePullSecrets = length(var.spec.image_pull_secrets) > 0 ? [
+          for s in var.spec.image_pull_secrets : { name = s }
+        ] : null
+      } : k => v if v != null
+    }
+  }
+
+  # ---- ScheduledBackups ----------------------------------------------------------
+  # One ScheduledBackup per declared schedule, named `<cluster>-<schedule>`,
+  # each explicitly method=plugin against the cluster's backup ObjectStore —
+  # never the deprecated in-tree barmanObjectStore method.
+  # Keyed by the FULL CR name (`<cluster>-<schedule>`) — the state address
+  # key is what the import recipes derive the live object name from
+  # (from_address_key), so the key and metadata.name must be identical.
+  scheduled_backup_manifests = {
+    for s in try(local.backup.schedules, []) : "${local.cluster_name}-${s.name}" => {
+      apiVersion = "postgresql.cnpg.io/v1"
+      kind       = "ScheduledBackup"
+      metadata = {
+        name      = "${local.cluster_name}-${s.name}"
+        namespace = local.namespace
+        labels    = local.labels
+      }
+      spec = {
+        for k, v in {
+          schedule = s.schedule
+          cluster  = { name = local.cluster_name }
+          method   = "plugin"
+          pluginConfiguration = {
+            name       = local.barman_cloud_plugin_name
+            parameters = { barmanObjectName = local.backup_object_store_name }
+          }
+          # Scheduled backups belong to their schedule: deleting the
+          # schedule garbage-collects its Backup records while the stored
+          # objects in the bucket survive either way.
+          backupOwnerReference = "self"
+          immediate            = try(s.immediate, false) ? true : null
+          suspend              = try(s.suspend, false) ? true : null
+          target               = try(s.target, "") != "" ? s.target : null
+        } : k => v if v != null
+      }
+    }
+  }
 }

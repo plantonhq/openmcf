@@ -3,11 +3,12 @@ syntax = "proto3";
 package dev.planton.provider.kubernetes;
 
 import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 
 // Shared Istio API types used across multiple Planton Istio components
 // (DestinationRule, ServiceEntry, PeerAuthentication, RequestAuthentication,
-// AuthorizationPolicy, Telemetry, EnvoyFilter). Translated from istio.io/api 1.26
-// (pinned at tag 1.26.8). Mirrors the sibling `gateway_api.proto` convention:
+// AuthorizationPolicy, Telemetry, EnvoyFilter). Translated from istio.io/api 1.30
+// (pinned at tag 1.30.3). Mirrors the sibling `gateway_api.proto` convention:
 // package dev.planton.provider.kubernetes, messages prefixed `KubernetesIstioApi*`
 // (kept out of the `KubernetesIstio` mesh-install kind's own message namespace).
 //
@@ -144,17 +145,13 @@ message KubernetesIstioApiStringMatch {
 // `istio.type.v1beta1.PolicyTargetReference`. Consumers: RequestAuthentication,
 // AuthorizationPolicy, and Telemetry.
 //
-// Infra-chart composability: a target reference is a PLAIN cross-resource reference, not
-// an Planton foreign key (StringValueOrRef). istiod resolves `group`/`kind`/`name`
-// against the cluster at runtime, so it creates NO automatic DAG edge. In an infra
-// chart, order the policy after the resource it targets via metadata.relationships,
-// e.g. (`uses` -> KubernetesGateway / KubernetesService / KubernetesServiceEntry):
-//   metadata:
-//     relationships:
-//       - kind: KubernetesGateway
-//         name: "{{ values.gateway }}"
-//         type: depends_on
-// See the consuming component's "Composing in Infra Charts" docs.
+// Infra-chart composability: `name` is a foreign key. The dominant target for these
+// policies is a Gateway (ingress authn/authz/telemetry), so the name defaults to a
+// KubernetesGateway reference — wiring it with valueFrom gives the chart a real
+// dependency edge from the policy to the gateway it protects. When the target is a
+// Service, a ServiceEntry, or any resource not managed as a Planton kind, pass the
+// literal name with `value:` (istiod resolves group/kind/name against the cluster at
+// runtime either way).
 message KubernetesIstioApiPolicyTargetReference {
   // Group of the target resource. Empty for the core API group (Services). Faithful
   // to the upstream pattern (empty, or a DNS-1123 subdomain).
@@ -173,17 +170,19 @@ message KubernetesIstioApiPolicyTargetReference {
     }
   ];
 
-  // Name of the target resource. Required.
-  string name = 3 [
+  // Name of the target resource. Required. Defaults to a KubernetesGateway foreign
+  // key (the policy attaches to a Gateway API Gateway) — in an infra chart, wire it
+  // with valueFrom so the policy deploys after its gateway. For other target kinds,
+  // pass the literal name with `value:`. Upstream bounds the name at 253 characters;
+  // the API server enforces that at apply (a StringValueOrRef carries no bound).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {
-      min_len: 1
-      max_len: 253
-    }
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.gateway_name"
   ];
 
   // Namespace of the target resource. Cross-namespace attachment is not supported
-  // upstream in the 1.26 line, so this must be empty (the target is resolved in the
+  // upstream in the 1.30 line, so this must be empty (the target is resolved in the
   // policy's own namespace). Mirrors the upstream XValidation rule
   // "cross namespace referencing is not currently supported".
   string namespace = 4 [(buf.validate.field).cel = {

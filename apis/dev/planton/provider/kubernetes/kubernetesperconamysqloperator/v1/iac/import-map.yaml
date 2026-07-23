@@ -1,0 +1,41 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesperconamysqloperator
+spec:
+  # The Percona Operator for MySQL (PXC) installs as one Helm release
+  # NAMED AFTER metadata.name, plus the optional anchor namespace. Several
+  # operators can coexist when watch scopes are fenced; the release name
+  # is never a fixed chart name.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "pxc-operator".
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    # The module-owned validation webhook (widened-watch arms only). The
+    # resource is count-indexed, so the row is scoped and the name derived
+    # literally — the object's name is fixed upstream.
+    - name: validating_webhook_configuration_name
+      tofu_resource_name: pxc_validation
+      derivations:
+        - literal: percona-xtradbcluster-webhook
+      where_to_find: >-
+        Present only when watch.cluster_wide or watch.namespaces widens
+        the operator's scope; always "percona-xtradbcluster-webhook" —
+        `kubectl get validatingwebhookconfigurations`.

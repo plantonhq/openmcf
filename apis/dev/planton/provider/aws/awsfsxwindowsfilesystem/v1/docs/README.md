@@ -2,6 +2,8 @@
 
 This document provides a deep technical reference for Amazon FSx for Windows File Server as deployed via the AwsFsxWindowsFileSystem API. It covers the SMB protocol, deployment types, Active Directory integration, storage options, networking, audit logging, backup behavior, PowerShell administration, DNS aliases, and pricing considerations.
 
+File system creation is a long-running operation — the Terraform provider's default create timeout is 45 minutes; budget deploy windows accordingly.
+
 ---
 
 ## 1. SMB Protocol Basics

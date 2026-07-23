@@ -9,42 +9,76 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds computed values derived from the stack input for use across
+// the module.
 type Locals struct {
-	Labels                map[string]string
-	Namespace             string
-	KubernetesHelmRelease *kuberneteshelmreleasev1.KubernetesHelmRelease
+	Spec *kuberneteshelmreleasev1.KubernetesHelmReleaseSpec
+
+	// Resource-identity labels stamped on the namespace this module creates
+	// (never injected into the chart's own resources — Helm owns those).
+	Labels map[string]string
+
+	// The namespace the release installs into (resolved literal from the
+	// spec's value-or-ref).
+	Namespace string
+
+	// The Helm release name: spec.release_name when set, otherwise the
+	// resource's metadata.name — identical resolution in the Terraform
+	// module.
+	ReleaseName string
+
+	// Helm's own defaults resolved for the optional knobs (like the A4
+	// kinds resolve API-server defaults) so both engines send identical
+	// values whether or not the spec set the fields: timeout 300s,
+	// max_history 10.
+	TimeoutSeconds int
+	MaxHistory     int
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kuberneteshelmreleasev1.KubernetesHelmReleaseStackInput) *Locals {
-	locals := &Locals{}
-
-	locals.KubernetesHelmRelease = stackInput.Target
-
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kuberneteshelmreleasev1.KubernetesHelmReleaseStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	locals.Labels = map[string]string{
+	// Resource-identity labels: the kuberneteslabelkeys set, identical to
+	// what the Terraform module stamps for the same manifest. User-supplied
+	// values never override the identity keys.
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesHelmRelease.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// get namespace from spec, it is required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
+	releaseName := spec.GetReleaseName()
+	if releaseName == "" {
+		releaseName = target.Metadata.Name
+	}
 
-	// export namespace as an output
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	timeoutSeconds := 300
+	if spec.TimeoutSeconds != nil {
+		timeoutSeconds = int(spec.GetTimeoutSeconds())
+	}
+	maxHistory := 10
+	if spec.MaxHistory != nil {
+		maxHistory = int(spec.GetMaxHistory())
+	}
 
-	return locals
+	return &Locals{
+		Spec:           spec,
+		Labels:         labels,
+		Namespace:      spec.Namespace.GetValue(),
+		ReleaseName:    releaseName,
+		TimeoutSeconds: timeoutSeconds,
+		MaxHistory:     maxHistory,
+	}
 }

@@ -21,30 +21,18 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
-	case "kubernetes:external-secrets.io/v1alpha1:ClusterSecretStore":
-		r = &ClusterSecretStore{}
-	case "kubernetes:external-secrets.io/v1alpha1:ClusterSecretStoreList":
-		r = &ClusterSecretStoreList{}
-	case "kubernetes:external-secrets.io/v1alpha1:ClusterSecretStorePatch":
-		r = &ClusterSecretStorePatch{}
-	case "kubernetes:external-secrets.io/v1alpha1:ExternalSecret":
-		r = &ExternalSecret{}
-	case "kubernetes:external-secrets.io/v1alpha1:ExternalSecretList":
-		r = &ExternalSecretList{}
-	case "kubernetes:external-secrets.io/v1alpha1:ExternalSecretPatch":
-		r = &ExternalSecretPatch{}
+	case "kubernetes:external-secrets.io/v1alpha1:ClusterPushSecret":
+		r = &ClusterPushSecret{}
+	case "kubernetes:external-secrets.io/v1alpha1:ClusterPushSecretList":
+		r = &ClusterPushSecretList{}
+	case "kubernetes:external-secrets.io/v1alpha1:ClusterPushSecretPatch":
+		r = &ClusterPushSecretPatch{}
 	case "kubernetes:external-secrets.io/v1alpha1:PushSecret":
 		r = &PushSecret{}
 	case "kubernetes:external-secrets.io/v1alpha1:PushSecretList":
 		r = &PushSecretList{}
 	case "kubernetes:external-secrets.io/v1alpha1:PushSecretPatch":
 		r = &PushSecretPatch{}
-	case "kubernetes:external-secrets.io/v1alpha1:SecretStore":
-		r = &SecretStore{}
-	case "kubernetes:external-secrets.io/v1alpha1:SecretStoreList":
-		r = &SecretStoreList{}
-	case "kubernetes:external-secrets.io/v1alpha1:SecretStorePatch":
-		r = &SecretStorePatch{}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
 	}

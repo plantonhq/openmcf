@@ -1,0 +1,3 @@
+name: kubernetes-metrics-server
+runtime: go
+description: metrics-server installation from the official Helm chart — the cluster's resource-metrics pipeline for kubectl top and HPA scaling

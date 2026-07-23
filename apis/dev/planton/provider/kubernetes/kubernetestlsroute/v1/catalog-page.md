@@ -5,6 +5,9 @@ that attach to a Gateway and forward connections, by SNI hostname, to backend
 Services. The backend terminates TLS, so the encrypted stream is forwarded end to
 end (the Gateway never sees plaintext).
 
+TLSRoute is a standard-channel resource served as
+`gateway.networking.k8s.io/v1` (standard since Gateway API v1.5).
+
 ## What Gets Created
 
 - A namespaced `gateway.networking.k8s.io/v1` `TLSRoute` custom resource.
@@ -29,13 +32,15 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tls
   hostnames:
     - secure.example.com
   rules:
     - backendRefs:
-        - name: secure-backend
+        - name:
+            value: secure-backend
           port: 8443
 ```
 
@@ -50,16 +55,16 @@ planton apply -f tlsroute.yaml
 | Field | Type | Description |
 |-------|------|-------------|
 | `namespace` | reference | Namespace to create the route in. |
-| `hostnames` | list | One to 16 SNI hostnames that select this route (no IPs). |
+| `hostnames` | list | One to 1024 SNI hostnames that select this route (no IPs). |
 | `rules` | list | Exactly one routing rule. |
 
 ### Optional Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. |
+| `parentRefs` | list | Gateways (and optional listener `sectionName`) the route attaches to. Each `name` is a reference (defaults to `KubernetesGateway`). |
 | `rules[].name` | string | Optional rule name. |
-| `rules[].backendRefs` | list | Weighted backends to forward to. |
+| `rules[].backendRefs` | list | Weighted backends; each `name` is a reference (defaults to `KubernetesService`). |
 
 ## Examples
 
@@ -70,13 +75,15 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tls
   hostnames:
     - secure.example.com
   rules:
     - backendRefs:
-        - name: secure-backend
+        - name:
+            value: secure-backend
           port: 8443
 ```
 
@@ -87,16 +94,19 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: my-gateway
+    - name:
+        value: my-gateway
       sectionName: tls
   hostnames:
     - secure.example.com
   rules:
     - backendRefs:
-        - name: secure-stable
+        - name:
+            value: secure-stable
           port: 8443
           weight: 90
-        - name: secure-canary
+        - name:
+            value: secure-canary
           port: 8443
           weight: 10
 ```

@@ -6,18 +6,26 @@ spec:
   namespace:
     value: app-ns
   parentRefs:
-    - name: <gateway-name>
+    # Foreign key: `value:` for a literal Gateway name, `valueFrom:` (kind
+    # KubernetesGateway, fieldPath status.outputs.gateway_name) to reference a
+    # Planton-managed Gateway and deploy in dependency order.
+    - name:
+        value: <gateway-name>
   hostnames:
-    - <app-hostname>
+    - app.example.com
   rules:
     - matches:
         - path:
             type: PathPrefix
             value: /
       backendRefs:
-        - name: <stable-service-name>
+        # Backend Service names are foreign keys too: `value:` for a literal
+        # name, `valueFrom:` for a Planton-managed KubernetesService.
+        - name:
+            value: <stable-service-name>
           port: 8080
           weight: 90
-        - name: <canary-service-name>
+        - name:
+            value: <canary-service-name>
           port: 8080
           weight: 10

@@ -6,5 +6,5 @@ spec:
   namespace:
     value: <namespace>
   jwt_rules:
-    - issuer: <issuer-url>
-      jwks_uri: <jwks-url>
+    - issuer: https://accounts.example.com
+      jwks_uri: https://accounts.example.com/.well-known/jwks.json

@@ -21,32 +21,47 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesStatefulSetStackOutputs contains the outputs from deploying a KubernetesStatefulSet.
+// *
+// **KubernetesStatefulSetStackOutputs** captures the observable handles of a deployed
+// stateful set. Downstream resources compose on these: routes and network policies
+// match `selector_labels`, clients connect through `service` / `kube_endpoint`, and
+// member-aware clients address individual replicas through `pod_dns_template`.
 type KubernetesStatefulSetStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes namespace in which the stateful set is deployed.
+	// The namespace the workload was deployed into.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Kubernetes headless service name for the stateful set.
-	// This service enables stable network identity for pods.
-	// Pod DNS: <pod-name>.<headless-service>.<namespace>.svc.cluster.local
-	HeadlessService string `protobuf:"bytes,2,opt,name=headless_service,json=headlessService,proto3" json:"headless_service,omitempty"`
-	// Kubernetes ClusterIP service name for client access (if ports are defined).
-	// This service provides load-balanced access to stateful set pods.
+	// The name of the StatefulSet object as created in the cluster.
+	StatefulSetName string `protobuf:"bytes,2,opt,name=stateful_set_name,json=statefulSetName,proto3" json:"stateful_set_name,omitempty"`
+	// *
+	// The headless governing Service of the StatefulSet — the Service that gives each
+	// replica its stable per-pod DNS name. Load-balanced client access also goes
+	// through this name.
 	Service string `protobuf:"bytes,3,opt,name=service,proto3" json:"service,omitempty"`
-	// Command to setup port-forwarding to access the stateful set from a local machine.
-	// Example: kubectl port-forward svc/<service> -n <namespace> 8080:8080
-	PortForwardCommand string `protobuf:"bytes,4,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// Kubernetes endpoint for internal access.
-	// Example: <service>.<namespace>.svc.cluster.local:8080
-	KubeEndpoint string `protobuf:"bytes,5,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// Public endpoint for external access (if ingress is enabled).
-	// Example: https://myapp.example.com
-	ExternalHostname string `protobuf:"bytes,6,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// Internal endpoint for access within the cluster (if ingress is enabled).
-	// Example: https://internal-myapp.example.com
-	InternalHostname string `protobuf:"bytes,7,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// *
+	// The pod selector labels as a "k=v,k=v" string — the exact labels the Service
+	// selects on, ready for NetworkPolicy podSelectors, `kubectl get pods -l`, and
+	// pod-affinity terms in sibling workloads.
+	SelectorLabels string `protobuf:"bytes,4,opt,name=selector_labels,json=selectorLabels,proto3" json:"selector_labels,omitempty"`
+	// *
+	// Ready-to-run port-forward command for reaching the workload from a developer
+	// machine without any external exposure.
+	// ex: kubectl port-forward -n my-ns service/my-db 5432:5432
+	PortForwardCommand string `protobuf:"bytes,5,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	// *
+	// In-cluster DNS endpoint of the Service — the handle exposure kinds
+	// (KubernetesIngress, KubernetesHttpRoute and the other Gateway API route kinds)
+	// and sibling workloads connect to.
+	// ex: my-db.my-ns.svc.cluster.local
+	KubeEndpoint string `protobuf:"bytes,6,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
+	// *
+	// Template for each replica's stable DNS name:
+	// "<name>-<ordinal>.<service>.<namespace>.svc.cluster.local". Substitute the
+	// ordinal to address a specific member — e.g. replica 0 of a StatefulSet "my-db"
+	// in namespace "my-ns" is "my-db-0.my-db.my-ns.svc.cluster.local". This is how
+	// clustered clients build their member lists.
+	PodDnsTemplate string `protobuf:"bytes,7,opt,name=pod_dns_template,json=podDnsTemplate,proto3" json:"pod_dns_template,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *KubernetesStatefulSetStackOutputs) Reset() {
@@ -86,9 +101,9 @@ func (x *KubernetesStatefulSetStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesStatefulSetStackOutputs) GetHeadlessService() string {
+func (x *KubernetesStatefulSetStackOutputs) GetStatefulSetName() string {
 	if x != nil {
-		return x.HeadlessService
+		return x.StatefulSetName
 	}
 	return ""
 }
@@ -96,6 +111,13 @@ func (x *KubernetesStatefulSetStackOutputs) GetHeadlessService() string {
 func (x *KubernetesStatefulSetStackOutputs) GetService() string {
 	if x != nil {
 		return x.Service
+	}
+	return ""
+}
+
+func (x *KubernetesStatefulSetStackOutputs) GetSelectorLabels() string {
+	if x != nil {
+		return x.SelectorLabels
 	}
 	return ""
 }
@@ -114,16 +136,9 @@ func (x *KubernetesStatefulSetStackOutputs) GetKubeEndpoint() string {
 	return ""
 }
 
-func (x *KubernetesStatefulSetStackOutputs) GetExternalHostname() string {
+func (x *KubernetesStatefulSetStackOutputs) GetPodDnsTemplate() string {
 	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesStatefulSetStackOutputs) GetInternalHostname() string {
-	if x != nil {
-		return x.InternalHostname
+		return x.PodDnsTemplate
 	}
 	return ""
 }
@@ -132,15 +147,15 @@ var File_dev_planton_provider_kubernetes_kubernetesstatefulset_v1_stack_outputs_
 
 const file_dev_planton_provider_kubernetes_kubernetesstatefulset_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Ldev/planton/provider/kubernetes/kubernetesstatefulset/v1/stack_outputs.proto\x128dev.planton.provider.kubernetes.kubernetesstatefulset.v1\"\xb7\x02\n" +
+	"Ldev/planton/provider/kubernetes/kubernetesstatefulset/v1/stack_outputs.proto\x128dev.planton.provider.kubernetes.kubernetesstatefulset.v1\"\xb1\x02\n" +
 	"!KubernetesStatefulSetStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12)\n" +
-	"\x10headless_service\x18\x02 \x01(\tR\x0fheadlessService\x12\x18\n" +
-	"\aservice\x18\x03 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x04 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x05 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x06 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\a \x01(\tR\x10internalHostnameB\xcc\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12*\n" +
+	"\x11stateful_set_name\x18\x02 \x01(\tR\x0fstatefulSetName\x12\x18\n" +
+	"\aservice\x18\x03 \x01(\tR\aservice\x12'\n" +
+	"\x0fselector_labels\x18\x04 \x01(\tR\x0eselectorLabels\x120\n" +
+	"\x14port_forward_command\x18\x05 \x01(\tR\x12portForwardCommand\x12#\n" +
+	"\rkube_endpoint\x18\x06 \x01(\tR\fkubeEndpoint\x12(\n" +
+	"\x10pod_dns_template\x18\a \x01(\tR\x0epodDnsTemplateB\xcc\x03\n" +
 	"<com.dev.planton.provider.kubernetes.kubernetesstatefulset.v1B\x11StackOutputsProtoP\x01Zrgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstatefulset/v1;kubernetesstatefulsetv1\xa2\x02\x05DPPKK\xaa\x028Dev.Planton.Provider.Kubernetes.Kubernetesstatefulset.V1\xca\x028Dev\\Planton\\Provider\\Kubernetes\\Kubernetesstatefulset\\V1\xe2\x02DDev\\Planton\\Provider\\Kubernetes\\Kubernetesstatefulset\\V1\\GPBMetadata\xea\x02=Dev::Planton::Provider::Kubernetes::Kubernetesstatefulset::V1b\x06proto3"
 
 var (

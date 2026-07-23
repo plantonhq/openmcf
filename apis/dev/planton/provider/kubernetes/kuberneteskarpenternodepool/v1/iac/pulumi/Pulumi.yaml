@@ -1,0 +1,3 @@
+name: kubernetes-karpenter-node-pool
+runtime: go
+description: Pulumi module that provisions a Karpenter NodePool from a KubernetesKarpenterNodePool manifest.

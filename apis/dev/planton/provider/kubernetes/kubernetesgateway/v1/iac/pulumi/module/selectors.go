@@ -1,7 +1,7 @@
 package module
 
 import (
-	kubernetesgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgateway/v1"
+	kubernetesapis "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	gatewayv1 "github.com/plantonhq/planton/pkg/kubernetes/kubernetestypes/gatewayapis/kubernetes/gateway/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -9,10 +9,10 @@ import (
 // The Gateway CRD generates two structurally identical but distinct Go types
 // for the namespace label selector: one under a listener's AllowedRoutes and
 // one under the Gateway's AllowedListeners. They are not interchangeable, so a
-// single proto KubernetesGatewayLabelSelector is mapped by two dedicated
-// builders.
+// single shared proto KubernetesGatewayApiLabelSelector is mapped by two
+// dedicated builders.
 
-func buildAllowedRoutesSelector(selector *kubernetesgatewayv1.KubernetesGatewayLabelSelector) gatewayv1.GatewaySpecListenersAllowedRoutesNamespacesSelectorArgs {
+func buildAllowedRoutesSelector(selector *kubernetesapis.KubernetesGatewayApiLabelSelector) gatewayv1.GatewaySpecListenersAllowedRoutesNamespacesSelectorArgs {
 	args := gatewayv1.GatewaySpecListenersAllowedRoutesNamespacesSelectorArgs{}
 	if matchLabels := selector.GetMatchLabels(); len(matchLabels) > 0 {
 		args.MatchLabels = pulumi.ToStringMap(matchLabels)
@@ -34,7 +34,7 @@ func buildAllowedRoutesSelector(selector *kubernetesgatewayv1.KubernetesGatewayL
 	return args
 }
 
-func buildAllowedListenersSelector(selector *kubernetesgatewayv1.KubernetesGatewayLabelSelector) gatewayv1.GatewaySpecAllowedListenersNamespacesSelectorArgs {
+func buildAllowedListenersSelector(selector *kubernetesapis.KubernetesGatewayApiLabelSelector) gatewayv1.GatewaySpecAllowedListenersNamespacesSelectorArgs {
 	args := gatewayv1.GatewaySpecAllowedListenersNamespacesSelectorArgs{}
 	if matchLabels := selector.GetMatchLabels(); len(matchLabels) > 0 {
 		args.MatchLabels = pulumi.ToStringMap(matchLabels)

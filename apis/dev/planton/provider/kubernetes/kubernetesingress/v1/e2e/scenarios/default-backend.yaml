@@ -1,0 +1,18 @@
+# Default backend only: every request the controller routes here lands on one
+# Service — the catch-all / single-service exposure shape, with a wildcard
+# SNI-only TLS block (no secret; the controller serves its default cert).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesIngress
+metadata:
+  name: e2e-ing-default
+spec:
+  namespace:
+    value: default
+  name: e2e-ing-default
+  default_backend:
+    service_name:
+      value: catch-all-svc
+    port_number: 80
+  tls:
+    - hosts:
+        - "*.e2e.example.com"

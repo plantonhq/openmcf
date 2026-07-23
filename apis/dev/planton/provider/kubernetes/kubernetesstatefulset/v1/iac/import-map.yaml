@@ -1,0 +1,67 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesstatefulset
+spec:
+  # Every object this module creates keys off the workload's namespace/name
+  # pair. The StatefulSet, its governing Service, and the PDB share
+  # metadata.name; the env Secret carries a fixed suffix ("-env-secrets")
+  # that the schema cannot derive mechanically, so it falls back to guided
+  # entry.
+  values:
+    - name: stateful_set_name
+      derivations:
+        - from_stack_output: stateful_set_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `kubectl get statefulsets -A` (NAME column).
+    - name: stateful_set_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `kubectl get statefulsets -A` (NAMESPACE column).
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the workload's namespace.
+    - name: service_name
+      derivations:
+        - from_stack_output: service
+        - from_metadata_name: true
+      where_to_find: >-
+        `kubectl get services -n <namespace>` — the governing Service shares
+        the workload's name.
+    - name: service_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the workload.
+    - name: pdb_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `kubectl get pdb -n <namespace>` — shares the workload's name; only
+        present when the disruption budget is enabled.
+    - name: pdb_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the workload.
+    - name: secret_name
+      derivations:
+        - from_metadata_name_suffix: "-env-secrets"
+      where_to_find: >-
+        `kubectl get secrets -n <namespace>` — named
+        "<metadata.name>-env-secrets"; only present when the spec carries
+        literal secret env values.
+    - name: secret_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the workload.

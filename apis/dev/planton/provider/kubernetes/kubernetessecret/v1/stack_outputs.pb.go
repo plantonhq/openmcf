@@ -36,7 +36,7 @@ type KubernetesSecretStackOutputs struct {
 	// *
 	// The Kubernetes secret type string.
 	// Possible values: "Opaque", "kubernetes.io/tls", "kubernetes.io/dockerconfigjson",
-	// "kubernetes.io/basic-auth", "kubernetes.io/ssh-auth"
+	// "kubernetes.io/basic-auth", "kubernetes.io/ssh-auth", "kubernetes.io/service-account-token"
 	SecretType    string `protobuf:"bytes,3,opt,name=secret_type,json=secretType,proto3" json:"secret_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

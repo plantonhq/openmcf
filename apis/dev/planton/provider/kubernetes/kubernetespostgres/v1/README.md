@@ -1,110 +1,295 @@
-# Overview
+# Kubernetes Postgres
 
-The **Postgres Kubernetes API resource** is designed to simplify the deployment and management of PostgreSQL databases within Kubernetes environments. This API resource allows users to configure PostgreSQL containers, resource allocations, and ingress settings efficiently, ensuring consistency and reliability in managing PostgreSQL instances.
+## When NOT to Use This
 
-## Why We Created This API Resource
+**The operator must already be on the cluster.** This component declares
+a database; KubernetesCloudNativePgOperator installs the ENGINE that
+reconciles it (with `barman_cloud_plugin.enabled` when backups are
+declared). Deploy the operator first, databases after.
 
-Deploying and managing PostgreSQL databases in Kubernetes can be complex due to the need to handle container resources, replicas, and ingress configurations. This API resource was developed to:
+Also not the right component when:
 
-- **Simplify PostgreSQL Deployment**: Provides an easy-to-use interface for deploying PostgreSQL in Kubernetes environments.
-- **Ensure Consistency**: Offers a standardized approach to deploying PostgreSQL across different Kubernetes clusters and environments.
-- **Optimize Resource Management**: Allows fine-tuning of CPU, memory, and storage allocations for PostgreSQL containers.
-- **Streamline Ingress Management**: Facilitates ingress configuration to allow secure access to PostgreSQL instances.
+- **You want the operator itself** — installing and configuring
+  CloudNativePG (watch scope, reconcile concurrency, the backup plugin)
+  is KubernetesCloudNativePgOperator; this component is one PostgreSQL
+  cluster it manages.
+- **You want external exposure baked in** — this component never creates
+  a LoadBalancer or a route. The cluster is in-cluster plumbing
+  reachable at the exported `kube_endpoint`; to reach it from outside,
+  compose a first-class exposure kind (a KubernetesService of type
+  LoadBalancer selecting the primary's pods, or a TCP route on a
+  Gateway) against the exported service names.
+- **You need a CloudNativePG surface the spec deliberately leaves out**
+  — tablespaces, replica (distributed) clusters, the PgBouncer Pooler,
+  LDAP authentication, image catalogs (see the research doc for the full
+  list and reasons). Those are reachable today by declaring the raw
+  custom resources through KubernetesManifest.
 
-## Key Features
+## Overview
 
-### Environment Integration
+**KubernetesPostgres** declares a production-grade PostgreSQL cluster
+reconciled by CloudNativePG. The spec renders a `postgresql.cnpg.io/v1`
+Cluster custom resource — and, when backups are declared, the companion
+Barman Cloud `ObjectStore` and `ScheduledBackup` resources — so one
+resource carries the whole database story: instances and streaming
+replication with automated failover, storage (with a separate WAL volume
+when I/O isolation matters), PostgreSQL configuration, bootstrap (fresh
+initdb, restore from a backup, physical replication from an existing
+server, or logical import), declarative roles, continuous WAL archiving
+plus scheduled base backups to S3/GCS/Azure-Blob/S3-compatible stores,
+TLS, and monitoring.
 
-- **Environment Info**: Automatically integrates with the Planton environment management system, ensuring that PostgreSQL is deployed in the right context.
-- **Stack Job Settings**: Supports stack-update settings for consistent infrastructure-as-code deployments.
+**The naming contract**: every object CloudNativePG creates derives from
+`metadata.name` — instance pods (`<name>-1`, `<name>-2`, ...), the
+traffic Services (`<name>-rw` primary read-write, `<name>-ro` replicas
+only, `<name>-r` any instance), and the credential Secrets
+(`<name>-app`, `<name>-superuser`). Applications connect through the
+SERVICES, never a pod: after a failover the `-rw` Service re-points to
+the new primary automatically.
 
-### Kubernetes Credential Management
+**Key design points:**
 
-- **Kubernetes Credential ID**: Specifies the Kubernetes credentials (`kubernetes_credential_id`) for securely deploying and managing the PostgreSQL container in Kubernetes.
+- **Backups are plugin-based** — the backup block renders a Barman Cloud
+  `ObjectStore` resource plus the Cluster's plugin wiring (WAL archiving
+  starts immediately) and one `ScheduledBackup` per declared schedule.
+  CloudNativePG's built-in object-store support is deprecated upstream
+  and deliberately not modeled. The operator must be installed with
+  `barman_cloud_plugin.enabled`.
+- **Secrets never appear inline** — every declared credential (owner
+  password, role passwords, superuser password, external-cluster
+  passwords, object-store keys) materializes as a deterministic
+  Kubernetes Secret; the rendered custom resources carry only
+  secretKeyRef pointers. Keyless backup arms need no Secret at all.
+- **Bootstrap is how the cluster is born** — exactly one method (initdb
+  / recovery / pg_basebackup), immutable after creation; the operator
+  ignores changes after the first reconcile.
+- **Exposure is composed, never embedded** — no ingress block exists in
+  the spec; external reachability is a separate first-class kind wired
+  against the exported service names.
 
-### PostgreSQL Container Configuration
+## Essential Configuration Fields
 
-#### Resource Management
+### Required
 
-- **Replicas**: Define the number of PostgreSQL replicas to ensure high availability and fault tolerance. The recommended default is 1 replica.
+- **`spec.namespace`**: namespace for the cluster — literal or a
+  KubernetesNamespace reference
+- **`spec.storage.size`**: PGDATA volume size (one PVC per instance;
+  sizes can only grow — the operator rejects shrinks)
+- **`spec.bootstrap`**: exactly one of `initdb` (fresh empty database —
+  the standard path), `recovery` (restore from an object-store backup —
+  disaster recovery, cloning, PITR), or `pg_basebackup` (physical
+  streaming from a declared external cluster — same-major-version
+  migration)
 
-- **Container Resources**: Customize the CPU and memory resources for the PostgreSQL container to ensure optimal performance. The recommended default values are:
-    - **CPU Requests**: `50m`
-    - **Memory Requests**: `256Mi`
-    - **CPU Limits**: `1`
-    - **Memory Limits**: `1Gi`
+### Common
 
-- **Disk Size**: Configure the storage size for each PostgreSQL instance. The default value is `1Gi`, but you can specify a different size based on your requirements.
+- **`spec.instances`**: one primary plus (instances − 1) streaming
+  replicas; 1 for development, 2 for automated failover, 3 is the
+  production convention (default 1)
+- **`spec.image_name`**: PostgreSQL image, tag or digest form (e.g.
+  `ghcr.io/cloudnative-pg/postgresql:17.5`); empty = the operator's
+  default for its release
+- **`spec.storage.storage_class`**: literal class name or a
+  KubernetesStorageClass reference; `spec.wal_storage` adds a dedicated
+  WAL volume (set at creation) for write-heavy I/O isolation
+- **`spec.resources`**: per-instance CPU/memory — the operator derives
+  PostgreSQL memory tuning hints from the limits
+- **`spec.postgresql`**: `parameters` (postgresql.conf — merged over the
+  operator's defaults; restart-requiring changes roll out
+  automatically), `pg_hba` / `pg_ident` rules, `shared_preload_libraries`,
+  `enable_alter_system`, and `synchronous` (quorum or priority
+  synchronous replication — the zero-data-loss posture; `number` must be
+  below the instance count)
+- **`spec.bootstrap.initdb`**: database/owner names, optional declared
+  `owner_password` (otherwise operator-generated), `data_checksums`
+  (cannot be enabled later — set true for new production clusters),
+  encoding/locale, post-init SQL, and `import` for logical migration
+  from any reachable PostgreSQL (RDS, Cloud SQL, self-managed)
+- **`spec.roles`**: declaratively managed roles — attributes, membership,
+  connection limits, and (when a password is declared) a watched
+  credential Secret whose rotation rotates the database password
+- **`spec.superuser`**: disabled by default (upstream posture — password
+  blanked); enable only when something genuinely needs superuser SQL
+- **`spec.backup`**: the `object_store` (destination path + S3 / GCS /
+  Azure-Blob backend with keyless XOR declared-key credentials, WAL and
+  base-backup tuning), `retention_policy` (`30d` / `8w` / `6m`), and
+  `schedules` — six-field cron (seconds first), `immediate` for
+  protection from day one
+- **`spec.workload_identity`**: keyless cloud identity for the instance
+  pods' ServiceAccount — pair with the backup block's keyless arm (table
+  below)
+- **`spec.certificates`**: `server_tls_secret` (a KubernetesCertificate
+  reference — the cert-manager seam) with `server_ca_secret`, or
+  `server_alt_dns_names` on the operator-generated certificate; empty =
+  the operator self-signs per cluster
+- **`spec.monitoring`**: the per-instance Prometheus exporter (port
+  9187) — TLS and default-query knobs
+- **`spec.scheduling`**: `anti_affinity_type` (`preferred` default;
+  `required` is the production posture — instances stay Pending unless
+  separate nodes exist), `topology_key` (zones instead of nodes),
+  node selector, tolerations, priority class
+- **`spec.update_strategy`**: how rolling updates treat the primary —
+  `unsupervised`/`supervised`, `restart`/`switchover`
+- **`spec.enable_pdb`**: PodDisruptionBudget protecting the primary from
+  voluntary eviction (default true)
 
-### Namespace Management
+## Environment Injection
 
-- **Flexible Namespace Control**: Choose whether the component creates the namespace or uses an existing one
-  - Set `create_namespace: true` to have the component create and manage the namespace
-  - Set `create_namespace: false` to deploy into an existing namespace that you manage separately
-- **Use Cases**:
-  - **New deployments**: Use `create_namespace: true` for component-managed namespace with proper labels
-  - **Shared namespaces**: Use `create_namespace: false` when multiple components share a namespace
-  - **Pre-configured environments**: Use `create_namespace: false` when namespaces are created by platform teams
+How backups reach the object store keylessly, per host cloud: the
+`workload_identity` arm annotates the cluster's ServiceAccount (the
+identity the instance pods run as), and the backup backend's `keyless`
+flag tells the Barman Cloud plugin to use that ambient identity.
 
-### Ingress Configuration
+| Environment | `workload_identity` arm | Backup backend arm | Declared-credential alternative |
+|---|---|---|---|
+| EKS / AWS S3 | `eks.role_arn` — the `eks.amazonaws.com/role-arn` annotation (IRSA) | `s3.keyless: true` | `s3.access_keys` — materialized as the `<name>-backup-creds` Secret |
+| GKE / GCS | `gke.service_account_email` — the `iam.gke.io/gcp-service-account` annotation | `gcs.keyless: true` | `gcs.service_account_key_json` |
+| AKS / Azure Blob | `aks.client_id` (+ optional `tenant_id`) — the `azure.workload.identity/*` annotations | `azure_blob.keyless: true` + `storage_account` (identifies the endpoint) | `connection_string` XOR `storage_account` + `storage_key` |
+| S3-compatible (MinIO, R2, Ceph RGW, ...) | — | `s3.endpoint_url` + `access_keys` (keyless is spec-rejected: it only mints AWS credentials) | `endpoint_ca_pem` for self-signed endpoints |
 
-- **Ingress Spec**: Manage and control external access to the PostgreSQL instance by configuring ingress with a custom hostname. When enabled, creates a LoadBalancer service with external-dns annotations for automatic DNS configuration. Users specify the exact hostname (e.g., `postgres.example.com`) instead of auto-constructed patterns, providing full control over the ingress endpoint.
+The cloud-side half of each keyless contract (IRSA trust policy, GCP WI
+binding, Entra federated credential) is written against the cluster's
+own ServiceAccount — CloudNativePG names it after the cluster, in the
+cluster's namespace.
 
-### User Configuration
+## Stack Outputs
 
-- **Declarative User Management**: Define PostgreSQL users/roles via the `users` field. Each user has a `name` and optional `flags` for permissions.
-- **User Flags**: Common flags include `createdb`, `superuser`, `createrole`, `inherit`, `login`, and `replication`. Empty flags (`[]`) creates a standard user with login privileges.
-- **Example Configuration**:
-  ```yaml
-  users:
-    - name: app_user
-      flags: []           # Standard user
-    - name: analytics
-      flags:
-        - createdb        # Can create databases
-  ```
-- **Required for Database Owners**: Users must be declared before being referenced as database owners.
+| Output | Purpose |
+|---|---|
+| `namespace` | Namespace the cluster runs in |
+| `cluster_name` | Name of the Cluster resource (equals `metadata.name`) — every derived object is prefixed with it |
+| `rw_service` | Read-write Service (`<name>-rw`) — always points at the current primary; the Service applications write through |
+| `ro_service` | Read-only Service (`<name>-ro`) — replicas only; the read-scaling handle |
+| `r_service` | Any-instance read Service (`<name>-r`) — every ready instance including the primary |
+| `kube_endpoint` | In-cluster endpoint of the read-write Service (`<name>-rw.<namespace>.svc.cluster.local:5432`) |
+| `port_forward_command` | Port-forward command for workstation access when no exposure is composed |
+| `username_secret` | `{name, key}` of the application user's name (the `<name>-app` Secret's `username` key) |
+| `password_secret` | `{name, key}` of the application user's password — the same Secret also carries ready-made `uri` / `jdbc-uri` connection strings |
+| `superuser_secret_name` | Superuser credential Secret (`<name>-superuser`) — populated only when superuser access is enabled |
 
-### Database Configuration
+## Composing in Infra Charts
 
-- **Multiple Databases**: Specify databases to create during cluster initialization via the `databases` field. This is a map where keys are database names and values are owner role names.
-- **Owner Role Requirement**: Owner roles must be declared in the `users` field before being referenced as database owners. The operator will skip database creation if the owner doesn't exist.
-- **Example Configuration**:
-  ```yaml
-  users:
-    - name: app_user
-      flags: []
-  databases:
-    app_database: app_user
-  ```
-- **Default Behavior**: If no databases are specified, only the default `postgres` database is available.
+- **`spec.namespace`** is a foreign key (default kind
+  KubernetesNamespace, field path `spec.name`);
+  **`storage.storage_class`** references a KubernetesStorageClass
+  (`status.outputs.storage_class_name`);
+  **`certificates.server_tls_secret`** references a
+  KubernetesCertificate (`status.outputs.secret_name`) — the
+  cert-manager seam; **`workload_identity`** arms reference AwsIamRole /
+  GcpServiceAccount / AzureUserAssignedIdentity outputs.
+- **Applications consume the outputs**: `kube_endpoint` as the
+  connection host, `username_secret` / `password_secret` as env-from
+  references — the credential rides the operator-managed Secret, never
+  the manifest.
+- **Exposure composes, never embeds**: a KubernetesService of type
+  LoadBalancer (or a TCP route on a Gateway) targets the `rw_service`
+  output; put externally reachable hostnames in
+  `certificates.server_alt_dns_names` so the server certificate covers
+  them.
+- **The operator is a cluster prerequisite**, not a reference: deploy
+  KubernetesCloudNativePgOperator (plugin enabled for backups) before
+  any database.
 
-### Backup Configuration
+## Examples
 
-- **Automatic Backups to R2/S3**: Configure automated continuous backups to Cloudflare R2 or any S3-compatible storage using WAL-G. Set custom backup schedules and S3 prefixes per database.
-- **Operator-Level Defaults**: Inherits backup configuration from the PostgreSQL operator if not specified, allowing for centralized backup management.
-- **Per-Database Overrides**: Override operator-level backup settings with custom schedules, S3 paths, or enable/disable backups on a per-database basis.
+### Development (single instance, small)
 
-### Disaster Recovery
+```yaml
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPostgres
+metadata:
+  name: dev-db
+spec:
+  namespace:
+    value: dev-db
+  create_namespace: true
+  instances: 1
+  storage:
+    size: 5Gi
+  bootstrap:
+    initdb:
+      database: app
+```
 
-- **Cross-Cluster Restore**: Restore PostgreSQL databases from R2/S3 backups to any Kubernetes cluster, independent of source cluster availability. Enables true disaster recovery scenarios.
-- **Technology-Agnostic Design**: Restore API works with multiple PostgreSQL operators (Zalando, Percona, CloudNativePG) through a unified interface.
-- **Two-Stage Workflow**:
-  - **Stage 1 (Bootstrap)**: Set `restore.enabled: true` to create a read-only standby database restored from backup, allowing data validation before promotion.
-  - **Stage 2 (Promote)**: Set `restore.enabled: false` to promote the standby to a read-write primary database.
-- **Component Independence**: Each database can specify its own R2/S3 credentials for complete deployment independence.
-- **Graceful Fallback**: Bucket name and credentials fall back to operator-level configuration if not specified per-database.
+### Production (3 instances, synchronous replication, keyless S3 backups)
 
-## Benefits
+```yaml
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPostgres
+metadata:
+  name: orders-db
+spec:
+  namespace:
+    value: orders
+  create_namespace: true
+  instances: 3
+  storage:
+    size: 100Gi
+  wal_storage:
+    size: 20Gi
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  postgresql:
+    synchronous:
+      method: any
+      number: 1
+  bootstrap:
+    initdb:
+      database: orders
+      data_checksums: true
+  backup:
+    object_store:
+      destination_path: s3://acme-pg-backups/orders-db
+      s3:
+        region: us-west-2
+        keyless: true # IRSA — no stored keys
+    retention_policy: 30d
+    schedules:
+      - name: daily
+        schedule: "0 0 2 * * *" # six fields — seconds first
+        immediate: true
+  workload_identity:
+    eks:
+      role_arn:
+        value: arn:aws:iam::111111111111:role/orders-db-backups
+  scheduling:
+    anti_affinity_type: required
+```
 
-- **Simplified Deployment**: Reduces the complexity of deploying PostgreSQL on Kubernetes by providing an easy-to-use API resource.
-- **Consistent Configuration**: Ensures PostgreSQL deployments follow a consistent configuration across different Kubernetes clusters and environments.
-- **Resource Optimization**: Enables fine-tuning of CPU, memory, and storage allocations to optimize the performance of PostgreSQL instances.
-- **Secure Access**: Configures ingress rules to allow secure and controlled access to PostgreSQL instances.
-- **Flexible Namespace Management**: Supports both component-managed and externally-managed namespaces for different deployment scenarios.
-- **Automated Backups**: Continuous backup to R2/S3 with configurable schedules, ensuring data protection without manual intervention.
-- **Disaster Recovery Ready**: Restore databases across clusters from backup files alone, enabling recovery even when source cluster is completely destroyed.
-- **Operator Flexibility**: Technology-agnostic restore design works across different PostgreSQL operators without API changes.
+### Clone / disaster recovery (restore from another cluster's backups)
+
+```yaml
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPostgres
+metadata:
+  name: orders-db-clone
+spec:
+  namespace:
+    value: orders-staging
+  create_namespace: true
+  instances: 1
+  storage:
+    size: 100Gi
+  bootstrap:
+    recovery:
+      object_store:
+        destination_path: s3://acme-pg-backups/orders-db # the SOURCE archive
+        s3:
+          region: us-west-2
+          keyless: true
+      source_server_name: orders-db
+      recovery_target:
+        target_time: "2026-07-20T06:00:00Z" # PITR — omit for full recovery
+  workload_identity:
+    eks:
+      role_arn:
+        value: arn:aws:iam::111111111111:role/orders-db-backups
+```
 
 ---
 

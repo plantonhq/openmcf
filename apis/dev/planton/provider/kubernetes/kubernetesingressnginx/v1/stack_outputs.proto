@@ -2,14 +2,38 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesingressnginx.v1;
 
-// KubernetesIngressNginxStackOutputs defines the outputs for the Ingress Nginx stack.
+// KubernetesIngressNginxStackOutputs captures observable outputs after the
+// ingress-nginx controller installation.
 message KubernetesIngressNginxStackOutputs {
-  // The namespace where the Ingress Nginx is deployed.
+  // Kubernetes namespace the controller was installed into.
   string namespace = 1;
-  // The name of the release, typically the Helm release name.
+
+  // Helm release name (= metadata.name; controller resources are named
+  // "<release>-controller").
   string release_name = 2;
-  // The name of the service created by the Ingress Nginx controller.
-  string service_name = 3;
-  // The type of service, e.g., "LoadBalancer", "ClusterIP", etc.
-  string service_type = 4;
+
+  // Name of the IngressClass this controller owns — what KubernetesIngress
+  // resources reference in `ingress_class_name` to route through this
+  // controller.
+  string ingress_class_name = 3;
+
+  // Name of the controller's external Service (the traffic entry point;
+  // type per spec.service.type). External-dns and manual DNS records point
+  // at this Service's address.
+  string controller_service_name = 4;
+
+  // Name of the controller's internal Service — populated only when
+  // spec.service.internal.enabled is true.
+  string internal_service_name = 5;
+
+  // External IP address of the controller's LoadBalancer, once the host
+  // cloud provisions it (GCP/Azure populate an IP). Empty on clusters
+  // without a cloud LB controller (e.g. kind) and on providers that
+  // populate a hostname instead.
+  string load_balancer_ip = 6;
+
+  // External hostname of the controller's LoadBalancer (AWS ELB/NLB
+  // populate a DNS name). Empty when the provider populates an IP, and on
+  // clusters without a cloud LB controller.
+  string load_balancer_hostname = 7;
 }

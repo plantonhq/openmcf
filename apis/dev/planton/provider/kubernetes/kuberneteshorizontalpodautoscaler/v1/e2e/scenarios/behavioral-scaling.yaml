@@ -1,0 +1,29 @@
+# The behavioral proof: with metrics-server installed (kind prerequisite)
+# and a CPU-burning target Deployment (manifest-path fixture), the HPA must
+# reach ScalingActive AND raise desiredReplicas above min — real metric
+# flow, real scaling decision, not just object existence. The verifier
+# switches to behavioral assertions precisely because this scenario names
+# KubernetesMetricsServer in its prerequisites.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesHorizontalPodAutoscaler
+metadata:
+  name: e2e-hpa-behavioral
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesMetricsServer, apis/dev/planton/provider/kubernetes/kuberneteshorizontalpodautoscaler/v1/e2e/fixture-cpu-burner.yaml"
+spec:
+  namespace:
+    value: e2e-hpa-behavioral-ns
+  name: e2e-hpa-behavioral
+  scale_target:
+    name:
+      valueFrom:
+        name: e2e-hpa-burner
+  min_replicas: 1
+  max_replicas: 3
+  metrics:
+    - type: resource
+      resource:
+        name: cpu
+        target:
+          type: utilization
+          average_utilization: 50

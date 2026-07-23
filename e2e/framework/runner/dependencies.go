@@ -407,7 +407,17 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 		return DependencyState{}, errors.Errorf("dependency %q pulumi module not found at %s", dep.KindSlug, moduleDir)
 	}
 
-	stackLabel := "dep-" + dep.KindSlug
+	manifestName, err := manifestMetadataName(dep.ManifestPath)
+	if err != nil {
+		return DependencyState{}, errors.Wrapf(err, "failed to read manifest name for dependency %q", dep.KindSlug)
+	}
+
+	// The stack label carries the MANIFEST name, not just the kind slug: a
+	// scenario may chain several extra-instance fixtures of one kind (e.g. a
+	// meshed client and backend, both KubernetesDeployment), and kind-only
+	// labels would make the second fixture's `pulumi up` land on the first
+	// fixture's stack — silently REPLACING it instead of adding an instance.
+	stackLabel := "dep-" + dep.KindSlug + "-" + manifestName
 	if docIndex > 0 {
 		stackLabel = fmt.Sprintf("%s-%d", stackLabel, docIndex)
 	}
@@ -416,13 +426,8 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 		stackName = stackName[:50]
 	}
 
-	fmt.Printf("  [deps] Deploying dependency %s...\n", dep.KindSlug)
+	fmt.Printf("  [deps] Deploying dependency %s (%s)...\n", dep.KindSlug, manifestName)
 	start := time.Now()
-
-	manifestName, err := manifestMetadataName(dep.ManifestPath)
-	if err != nil {
-		return DependencyState{}, errors.Wrapf(err, "failed to read manifest name for dependency %q", dep.KindSlug)
-	}
 
 	stackInputPath, err := BuildStackInput(dep.ManifestPath, moduleDir)
 	if err != nil {
@@ -642,6 +647,43 @@ func manifestKindSlug(manifestPath string) (string, error) {
 		return "", errors.Errorf("manifest %s declares kind %q, which is not a registered cloud resource kind", manifestPath, name)
 	}
 	return strings.ToLower(kind.String()), nil
+}
+
+// ManifestAnnotation reads a single metadata annotation from a KRM manifest,
+// returning "" when the annotation (or the annotations map) is absent. The
+// exported form serves the test entrypoints' scenario-routing needs (e.g.
+// per-scenario cluster-profile selection) without duplicating manifest
+// parsing outside the framework.
+func ManifestAnnotation(manifestPath, key string) (string, error) {
+	return manifestAnnotation(manifestPath, key)
+}
+
+// ScenarioEnginesAnnotation restricts a scenario to a subset of IaC engines
+// (comma-separated: "pulumi", "terraform"). Absent = both engines, which is
+// the norm and the parity bar. Use it ONLY when a scenario exercises a
+// surface one engine rejects BY DOCUMENTED DESIGN — e.g. a spec arm the
+// Terraform provider cannot express, guarded by a PARITY-EXCEPTION
+// precondition: the scenario proving that arm live is honest about which
+// engine can run it, and the other engine's lane skips with the reason
+// instead of failing on its own designed rejection.
+const ScenarioEnginesAnnotation = "planton.dev/e2e-engines"
+
+// ScenarioSupportsEngine reports whether a scenario runs on the given engine
+// per its ScenarioEnginesAnnotation (absent = every engine).
+func ScenarioSupportsEngine(manifestPath, engine string) (bool, error) {
+	value, err := manifestAnnotation(manifestPath, ScenarioEnginesAnnotation)
+	if err != nil {
+		return false, err
+	}
+	if value == "" {
+		return true, nil
+	}
+	for _, e := range strings.Split(value, ",") {
+		if strings.TrimSpace(e) == engine {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // manifestAnnotation reads a single metadata annotation from a KRM manifest,

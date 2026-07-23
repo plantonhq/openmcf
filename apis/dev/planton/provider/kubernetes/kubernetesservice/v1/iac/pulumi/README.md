@@ -1,75 +1,77 @@
-# KubernetesService Pulumi Module
+# Kubernetes Service - Pulumi Module
 
 ## Overview
 
-This Pulumi module creates and manages Kubernetes Service resources based on the `KubernetesServiceSpec` protobuf schema. It supports all four Kubernetes service types (ClusterIP, NodePort, LoadBalancer, ExternalName) plus headless services.
+This Pulumi module creates and manages a standalone Kubernetes Service. It supports the complete core/v1 ServiceSpec surface: all four service types (ClusterIP, NodePort, LoadBalancer, ExternalName), headless services, traffic policies, topology-aware `trafficDistribution`, session affinity, LoadBalancer tuning knobs, and dual-stack addressing.
 
-## Usage
+This is the reference engine for the component: it applies the full spec, including `traffic_distribution`, which the Terraform module cannot (the Terraform kubernetes provider does not expose the field — the Terraform module fails its plan loudly when it is set).
 
-### Via Planton CLI (Recommended)
+## Architecture
 
-```bash
-# Preview changes
-planton pulumi preview --manifest manifest.yaml
-
-# Deploy
-planton pulumi up --manifest manifest.yaml
-
-# Tear down
-planton pulumi down --manifest manifest.yaml
+```
+iac/pulumi/
+├── main.go          # Entrypoint: loads stack input, calls module
+├── Pulumi.yaml      # Pulumi project configuration
+├── Makefile         # Make targets for preview/up/down/refresh
+└── module/
+    ├── main.go      # Orchestrator: provider init, resource creation, output export
+    ├── locals.go    # Derived values: labels, namespace default, enum → API string translation
+    ├── service.go   # Creates kubernetes.core.v1.Service resource
+    └── outputs.go   # Exports the eight stack outputs
 ```
 
-### Via Makefile
+## How It Works
 
-```bash
-make preview manifest=path/to/manifest.yaml
-make up manifest=path/to/manifest.yaml
-make down manifest=path/to/manifest.yaml
-```
+1. **Stack Input Loading**: The entrypoint loads `KubernetesServiceStackInput` from Pulumi config
+2. **Locals Initialization**: `locals.go` computes:
+   - Standard Planton labels merged with user labels (identity keys win on conflict)
+   - The target namespace (foreign-key references are pre-resolved; falls back to `default` when omitted)
+   - Kubernetes API string forms of every spec enum (`load_balancer` → `LoadBalancer`, `client_ip` → `ClientIP`, `prefer_same_zone` → `PreferSameZone`, ...), resolved once so the resource and the outputs agree on wire values
+3. **Provider Creation**: Kubernetes provider is initialized from `provider_config`
+4. **Service Creation**: `service.go` builds the ServiceSpec, sending each optional field only when the user set it — for several fields (clusterIP, healthCheckNodePort, loadBalancerClass) an empty value is not the same as an omitted one, since they are immutable or type-gated:
+   - Ports and selector are skipped for ExternalName (a pure DNS alias)
+   - `headless: true` becomes `clusterIP: "None"`; otherwise a set `cluster_ip_address` is honored
+   - `external_traffic_policy` is sent only for NodePort/LoadBalancer; `internal_traffic_policy` never for ExternalName
+   - LoadBalancer-only knobs (source ranges, class, node-port allocation, health-check port) are sent only for LoadBalancer
+   - Dual-stack families and policy are sent only when requested
+5. **Output Export**: `outputs.go` exports all eight outputs unconditionally (empty when not applicable) so both engines flatten the identical field set
 
-### Via debug.sh (Local Development)
+## Load Balancer Await Behavior
 
-```bash
-export MANIFEST_PATH=../hack/manifest.yaml
-./debug.sh
-```
-
-## Stack Input
-
-The module receives a `KubernetesServiceStackInput` containing:
-
-- `target` -- The complete `KubernetesService` resource (metadata + spec)
-- `provider_config` -- Kubernetes cluster connection details and credentials
-
-The stack input is loaded from the `stack-input` Pulumi config key, which the Planton CLI sets automatically from the manifest.
-
-## Module Structure
-
-| File | Purpose |
-|------|---------|
-| `main.go` | Entrypoint, loads stack input and calls module |
-| `module/main.go` | Orchestrates provider setup, service creation, and output export |
-| `module/locals.go` | Transforms spec fields into Pulumi-friendly values |
-| `module/service.go` | Creates the `kubernetes.core/v1.Service` resource |
-| `module/outputs.go` | Exports stack outputs (cluster IP, LB address, DNS name) |
+For `type: load_balancer`, Pulumi's await logic waits for the load-balancer ingress to be populated before the resource is considered created — so `load_balancer_ip` / `load_balancer_hostname` are reliably resolved in the outputs. A provider populates one or the other (GCP/Azure/MetalLB expose an IP; AWS ELB/NLB expose a hostname); both are exported independently, empty when absent.
 
 ## Outputs
 
-| Output Key | Description |
-|------------|-------------|
-| `service_name` | The created service name |
-| `namespace` | The namespace where the service was created |
-| `type` | The service type (ClusterIP, NodePort, LoadBalancer, ExternalName) |
-| `cluster_ip` | The allocated cluster IP (None for headless, empty for ExternalName) |
-| `load_balancer_ingress` | The LB hostname/IP (only for LoadBalancer type) |
-| `internal_dns_name` | Fully qualified cluster DNS name |
+| Output | Description |
+|--------|-------------|
+| `service_name` | Name of the Service object as created in the cluster |
+| `namespace` | Namespace the Service was created in |
+| `type` | Service type as deployed (ClusterIP, NodePort, LoadBalancer, ExternalName) |
+| `cluster_ip` | Cluster-internal virtual IP; empty for headless and ExternalName services |
+| `load_balancer_ip` | Provisioned load balancer IP; empty on hostname-based providers and non-LB types |
+| `load_balancer_hostname` | Provisioned load balancer hostname; empty on IP-based providers and non-LB types |
+| `kube_endpoint` | In-cluster DNS endpoint (`<name>.<namespace>.svc.cluster.local`) |
+| `port_forward_command` | Ready-to-run `kubectl port-forward` command; empty for ExternalName services |
 
-## Required Pulumi Plugins
+## Usage
 
-- `pulumi-kubernetes` v4.x
+```bash
+# Preview changes
+make preview manifest=../../hack/manifest.yaml
 
-## Troubleshooting
+# Deploy
+make up manifest=../../hack/manifest.yaml
 
-- **Provider error**: Ensure `provider_config` contains valid cluster credentials
-- **Namespace not found**: The target namespace must already exist in the cluster
-- **NodePort conflict**: If a specific node port is in use, let Kubernetes auto-allocate by omitting `node_port`
+# Destroy
+make down manifest=../../hack/manifest.yaml
+```
+
+## Debug
+
+```bash
+# Build the module
+go build ./module/...
+
+# Build the entrypoint
+go build .
+```
