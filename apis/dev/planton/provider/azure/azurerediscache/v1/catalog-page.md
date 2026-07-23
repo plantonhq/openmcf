@@ -6,6 +6,13 @@ production surface: tier/size selection, Microsoft Entra (token)
 authentication up to a fully keyless posture, VNet injection,
 clustering, RDB/AOF persistence, patch windows, and IP firewall rules.
 
+> **Retirement notice:** Azure is retiring classic Azure Cache for Redis
+> in favor of Azure Managed Redis -- ARM has begun rejecting NEW cache
+> creations region by region (observed first on Premium creations, while
+> Basic/Standard elsewhere still succeed). Existing caches keep running
+> and this kind manages them fully; choose **Azure Managed Redis** for
+> new deployments.
+
 ## What Gets Created
 
 When you deploy an AzureRedisCache resource, Planton provisions:
