@@ -22,6 +22,13 @@ import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 // backend connection and, unless subject_alt_names is set, as the identity
 // the backend certificate must prove.
 //
+// IMPORTANT: the policy only takes effect when the Gateway's controller
+// IMPLEMENTS BackendTLSPolicy — support is still uneven across
+// implementations (verify your gateway controller's documentation). A
+// policy targeting a Service behind a non-implementing gateway is accepted
+// by the API server and then silently ignored: the gateway keeps sending
+// plaintext (or its own default TLS posture) to the backend.
+//
 // 100% fidelity with the upstream Gateway API v1.6.1 BackendTLSPolicySpec
 // (kubernetes-sigs/gateway-api apis/v1/backendtlspolicy_types.go), standard
 // channel. BackendTLSPolicy is served as gateway.networking.k8s.io/v1 (the

@@ -71,7 +71,10 @@ type KubernetesCloudNativePgOperatorSpec struct {
 	// Helm chart version to install (e.g. "0.29.0", which ships operator
 	// 1.30.0 — chart and app versions move separately; the chart pin
 	// governs). Pin deliberately; upgrades re-run the release with the new
-	// chart.
+	// chart. Pick versions from the chart repository's index
+	// (`helm search repo`): the served chart is the contract — the upstream
+	// source tree's Chart.yaml can claim a version at a tag that was never
+	// served.
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// CloudNativePG custom resource definitions (Cluster, ScheduledBackup,

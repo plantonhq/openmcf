@@ -62,7 +62,10 @@ message KubernetesCloudNativePgOperatorSpec {
    * Helm chart version to install (e.g. "0.29.0", which ships operator
    * 1.30.0 — chart and app versions move separately; the chart pin
    * governs). Pin deliberately; upgrades re-run the release with the new
-   * chart.
+   * chart. Pick versions from the chart repository's index
+   * (`helm search repo`): the served chart is the contract — the upstream
+   * source tree's Chart.yaml can claim a version at a tag that was never
+   * served.
    */
   optional string chart_version = 3 [(dev.planton.shared.options.default) = "0.29.0"];
 

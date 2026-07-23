@@ -70,7 +70,10 @@ type KubernetesVeleroSpec struct {
 	// Helm chart version to install (e.g. "12.1.0", which ships Velero
 	// 1.18 — chart and app versions move separately; the chart pin
 	// governs). Pin deliberately; upgrades re-run the release with the new
-	// chart.
+	// chart. Pick versions from the chart repository's index
+	// (`helm search repo`): the served chart is the contract — the upstream
+	// source tree's Chart.yaml can claim a version at a tag that was never
+	// served.
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// Velero custom resource definitions (Backup, Restore, Schedule,
@@ -906,6 +909,14 @@ type KubernetesVeleroVolumeSnapshots struct {
 	// PVCs through the CSI snapshot API instead of provider-native
 	// instance snapshots — the modern path on EKS/GKE/AKS with CSI
 	// drivers.
+	//
+	// Requires the cluster's snapshot controller AND a VolumeSnapshotClass
+	// for the volume's CSI driver labeled
+	// `velero.io/csi-volumesnapshot-class: "true"` — without that class the
+	// backup still reports Completed while the volumes were never
+	// snapshotted (they ride fs-backup if enabled, or carry no data at
+	// all). Verify volume snapshots appear in the backup's own resource
+	// list before trusting it.
 	EnableCsi bool `protobuf:"varint,2,opt,name=enable_csi,json=enableCsi,proto3" json:"enable_csi,omitempty"`
 	// *
 	// Move CSI snapshot data INTO the backup store by default (Velero's

@@ -175,7 +175,10 @@ type KubernetesMetricsServerSpec struct {
 	// Helm chart version to install (e.g. "3.13.1", which ships
 	// metrics-server 0.8.1 — chart and app versions are numbered
 	// independently). Pin deliberately; upgrades re-run the release with the
-	// new chart.
+	// new chart. Pick versions from the chart repository's index
+	// (`helm search repo`): the served chart is the contract — the upstream
+	// source tree's Chart.yaml can claim a version at a tag that was never
+	// served.
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// Replica count. One is standard; run 2 with `pod_disruption_budget` for

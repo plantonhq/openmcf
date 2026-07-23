@@ -73,7 +73,10 @@ type KubernetesCiliumSpec struct {
 	// *
 	// Helm chart version to install (e.g. "1.19.6" — Cilium chart and app
 	// versions move together). Pin deliberately; upgrades re-run the release
-	// with the new chart.
+	// with the new chart. Pick versions from the chart repository's index
+	// (`helm search repo`): the served chart is the contract — the upstream
+	// source tree's Chart.yaml can claim a version at a tag that was never
+	// served.
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// Cluster identity for Cilium: the name distinguishes this cluster in
@@ -771,6 +774,11 @@ type KubernetesCiliumEncryption struct {
 	// pre-created key Secret, supports key rotation policies). Upstream also
 	// accepts "ztunnel" for Istio ambient interop — deliberately not typed;
 	// reach it via helm_values with an ambient mesh.
+	//
+	// WireGuard rides the NODE kernel's module: verify the node OS ships it
+	// (mainstream cloud images do; container-VM and older distro kernels may
+	// not) — on a node without the module the agent fails to start rather
+	// than silently sending plaintext.
 	Type *string `protobuf:"bytes,2,opt,name=type,proto3,oneof" json:"type,omitempty"`
 	// *
 	// Also encrypt pure node-to-node traffic (not just pod traffic).

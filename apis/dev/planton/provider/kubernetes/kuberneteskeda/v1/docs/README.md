@@ -56,6 +56,12 @@ makes sense when this release owns the CRDs, so it renders only when
 `install && keep` — and a CEL rule refuses `keep_on_uninstall: true` with
 `install: false` (nothing to keep).
 
+Kept CRDs also pin the install namespace: they retain the Helm release's
+namespace in their ownership metadata, so re-installing KEDA into a
+different namespace fails with Helm's release-ownership error on the
+surviving CRDs. Treat the namespace as permanent — moving requires first
+deleting the kept CRDs, with the cascade above.
+
 ## Component Sizing: Standbys, Not Capacity
 
 `operator.replicas` and `metrics_server.replicas` (chart default 1) do not

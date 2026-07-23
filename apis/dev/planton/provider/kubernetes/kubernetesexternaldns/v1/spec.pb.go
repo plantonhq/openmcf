@@ -64,7 +64,10 @@ type KubernetesExternalDnsSpec struct {
 	// Helm chart version to install (chart releases are cut separately from the
 	// controller: chart 1.21.x ships controller v0.21.x — the chart's
 	// appVersion decides the image tag unless image_tag overrides it). Pin
-	// deliberately; upgrades re-run the release with the new chart.
+	// deliberately; upgrades re-run the release with the new chart. Pick
+	// versions from the chart repository's index (`helm search repo`): the
+	// served chart is the contract — the upstream source tree's Chart.yaml
+	// can claim a version at a tag that was never served.
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// The DNS provider records are written to. Exactly one must be set — one

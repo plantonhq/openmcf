@@ -105,6 +105,14 @@ type KubernetesKedaSpec struct {
 	// Namespace to install KEDA into ("keda" is the upstream convention).
 	// Accepts a literal namespace name or a reference to a
 	// KubernetesNamespace resource.
+	//
+	// Treat the namespace as PERMANENT while CRDs are kept (the
+	// `crds.keep_on_uninstall` default): kept CRDs retain the Helm release's
+	// namespace in their ownership metadata, so re-installing into a
+	// DIFFERENT namespace fails with Helm's release-ownership error on the
+	// surviving CRDs. Moving an install requires first deleting the kept
+	// CRDs — which cascades to every scaling declaration in the cluster
+	// (ScaledObjects, ScaledJobs, TriggerAuthentications).
 	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// *
 	// When true, the namespace is created (with the standard Planton
@@ -114,7 +122,10 @@ type KubernetesKedaSpec struct {
 	// *
 	// Helm chart version to install (e.g. "2.20.1", which ships KEDA 2.20.1 —
 	// chart and app versions move together). Pin deliberately; upgrades
-	// re-run the release with the new chart.
+	// re-run the release with the new chart. Pick versions from the chart
+	// repository's index (`helm search repo`): the served chart is the
+	// contract — the upstream source tree's Chart.yaml can claim a version at
+	// a tag that was never served.
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// KEDA custom resource definitions (ScaledObject, ScaledJob,

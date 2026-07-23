@@ -73,7 +73,10 @@ type KubernetesClusterAutoscalerSpec struct {
 	// governs). Pin deliberately; upgrades re-run the release with the new
 	// chart. Keep the autoscaler's MINOR version aligned with the cluster's
 	// Kubernetes minor per upstream guidance (override the image tag via
-	// helm_values when the cluster runs an older minor).
+	// helm_values when the cluster runs an older minor). Pick versions from
+	// the chart repository's index (`helm search repo`): the served chart is
+	// the contract — the upstream source tree's Chart.yaml can claim a
+	// version at a tag that was never served.
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// The node-group provider the autoscaler drives. Exactly one arm —

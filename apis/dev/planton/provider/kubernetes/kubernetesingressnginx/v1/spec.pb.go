@@ -275,7 +275,10 @@ type KubernetesIngressNginxSpec struct {
 	// Helm chart version to install (e.g. "4.15.1", which ships controller
 	// v1.15.1 — chart and controller versions are released together but
 	// numbered independently). Pin deliberately; upgrades re-run the release
-	// with the new chart.
+	// with the new chart. Pick versions from the chart repository's index
+	// (`helm search repo`): the served chart is the contract — the upstream
+	// source tree's Chart.yaml can claim a version at a tag that was never
+	// served.
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// The IngressClass this controller owns — how Ingress resources select

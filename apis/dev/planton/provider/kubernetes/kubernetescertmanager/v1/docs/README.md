@@ -25,7 +25,11 @@ The typed spec covers the chart's meaningful configuration surface:
   — the upstream chart defaults false and expects a separate kubectl apply;
   one component owning both halves is strictly simpler), keep on uninstall
   (TRUE, upstream-aligned: deleting the CRDs cascades to every certificate
-  object cluster-wide)
+  object cluster-wide). Kept CRDs pin the install namespace — they retain
+  the Helm release's namespace in their ownership metadata, so
+  re-installing into a different namespace fails with Helm's
+  release-ownership error on the surviving CRDs; treat the namespace as
+  permanent
 - **Controller**: replicas, resources, log level, leader-election namespace,
   cluster-resource namespace, certificate owner refs, feature gates (typed
   map rendered to the chart's comma-string), max concurrent challenges

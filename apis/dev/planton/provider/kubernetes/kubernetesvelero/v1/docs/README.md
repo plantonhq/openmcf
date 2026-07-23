@@ -127,6 +127,17 @@ Volume data travels one of two ways, and the spec models both:
   provider, making backups portable across clusters and regions. It
   rides CSI snapshots and the node-agent (CEL-enforced pairing on the
   CSI side).
+
+  CSI snapshots have two cluster prerequisites Velero does NOT install:
+  the external snapshot controller (a managed add-on on EKS/GKE/AKS,
+  often absent on self-managed clusters) and a `VolumeSnapshotClass`
+  for each volume's CSI driver labeled
+  `velero.io/csi-volumesnapshot-class: "true"` — that label is how
+  Velero selects the class. Without them a backup still reports
+  Completed while the volumes were never snapshotted (they ride
+  fs-backup if enabled, or carry no data at all). After the first
+  CSI-enabled backup, confirm the backup's resource list actually
+  contains VolumeSnapshot entries before trusting it for recovery.
 - **File-system backup** (`fs_backup` — the kopia uploader through the
   node-agent DaemonSet): reads volume data directly from pods, working
   on ANY volume type including clusters without snapshot support.

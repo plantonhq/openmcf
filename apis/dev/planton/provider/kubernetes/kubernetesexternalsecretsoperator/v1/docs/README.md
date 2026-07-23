@@ -96,6 +96,12 @@ cluster-wide. The modules render the standard
 `helm.sh/resource-policy: keep` annotation onto the CRDs (via the chart's
 `crds.annotations`), so that destructive act requires an explicit `false`.
 
+Kept CRDs also pin the install namespace: they retain the Helm release's
+namespace in their ownership metadata, so re-installing the operator into
+a different namespace fails with Helm's release-ownership error on the
+surviving CRDs. Treat the namespace as permanent — moving requires first
+deleting the kept CRDs, with the cascade above.
+
 ## Install Semantics
 
 Both engines install a REAL Helm release and wait (600s timeout) for all

@@ -82,7 +82,10 @@ type KubernetesKarpenterSpec struct {
 	// *
 	// Helm chart version to install (e.g. "1.14.0" — the karpenter and
 	// karpenter-crd charts version together with the controller). Pin
-	// deliberately; upgrades re-run both releases with the new charts.
+	// deliberately; upgrades re-run both releases with the new charts. Pick
+	// versions from the OCI registry's published tags
+	// (`oci://public.ecr.aws/karpenter`): the served chart is the contract —
+	// the upstream source tree's Chart.yaml can lag the published tags.
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// Karpenter custom resource definitions (NodePool, NodeClaim,
