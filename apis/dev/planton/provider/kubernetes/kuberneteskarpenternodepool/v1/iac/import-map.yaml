@@ -1,0 +1,32 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kuberneteskarpenternodepool
+spec:
+  # One kubectl_manifest applying the Karpenter NodePool CR. The composed
+  # import ID is apiVersion//kind//name — apiVersion and kind are constants
+  # of this module (it renders exactly one GVK), declared as literals.
+  # NodePool is cluster-scoped, so the optional namespace segment drops.
+  values:
+    - name: api_version
+      derivations:
+        - literal: karpenter.sh/v1
+      where_to_find: >-
+        Always "karpenter.sh/v1" — the module pins the served NodePool
+        version.
+    - name: kind
+      derivations:
+        - literal: NodePool
+      where_to_find: Always "NodePool" — the CR kind this module applies.
+    - name: name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: node_pool_name
+      where_to_find: >-
+        The NodePool's metadata.name (equals the Planton resource name) —
+        `kubectl get nodepools` (NAME column).
+    - name: namespace
+      where_to_find: >-
+        Not applicable — NodePool is cluster-scoped, so the composed import
+        ID has no namespace segment (the optional [//{namespace}] group
+        drops).

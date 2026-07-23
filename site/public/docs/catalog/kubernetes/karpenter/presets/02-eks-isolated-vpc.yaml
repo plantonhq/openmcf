@@ -1,0 +1,25 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarpenter
+metadata:
+  name: karpenter
+spec:
+  namespace:
+    value: kube-system # upstream's recommended home since v1
+  createNamespace: false # kube-system already exists
+  chartVersion: "1.14.0" # spec default — pin deliberately
+  crds:
+    install: true # spec default
+    keepOnUninstall: true # spec default — uninstall keeps every fleet declaration
+  cluster:
+    name: '<eks-cluster-name>'
+    eksControlPlane: true # discovery via DescribeCluster (through the EKS VPC endpoint)
+  aws:
+    irsaRoleArn: arn:aws:iam::123456789012:role/karpenter-controller # replace account id and role name
+    interruptionQueue: karpenter-interruptions
+    # No internet-reachable AWS endpoints beyond the provisioned VPC
+    # endpoints: Karpenter avoids services without one — including the
+    # pricing API, so price-aware consolidation falls back to static data.
+    isolatedVpc: true
+    # VPC CNI custom networking: one ENI per node belongs to the CNI, so
+    # it is reserved outside Karpenter's max-pods and kube-reserved math.
+    reservedEnis: 1

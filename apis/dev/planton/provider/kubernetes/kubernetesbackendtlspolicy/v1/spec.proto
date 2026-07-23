@@ -197,11 +197,14 @@ message KubernetesBackendTlsPolicyValidation {
   // "wellKnownCACertificates" (capital CA) and the API server rejects the
   // miscased key as undeclared — the faithful-projection contract includes
   // acronym casing.
-  optional string well_known_ca_certificates = 2 [json_name = "wellKnownCACertificates", (buf.validate.field).string = {
-    min_len: 1
-    max_len: 253
-    pattern: "^(System|([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]))$"
-  }];
+  optional string well_known_ca_certificates = 2 [
+    json_name = "wellKnownCACertificates",
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 253
+      pattern: "^(System|([a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/([A-Za-z0-9][-A-Za-z0-9_.]{0,61})?[A-Za-z0-9]))$"
+    }
+  ];
 
   // Hostname for the backend connection, doing double duty (upstream Core):
   // it is sent as the SNI (RFC 6066), and — unless subject_alt_names is set

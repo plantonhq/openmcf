@@ -1,0 +1,38 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarpenterNodePool
+metadata:
+  name: general-purpose # the rendered NodePool is cluster-scoped and named after this
+spec:
+  template:
+    nodeClassRef:
+      group: karpenter.k8s.aws # spec default (AWS provider)
+      kind: EC2NodeClass # spec default (AWS provider)
+      name:
+        value: '<ec2-node-class-name>' # metadata.name of your KubernetesKarpenterEc2NodeClass
+    requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+          - on-demand # predictable capacity — no interruption exposure
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+          - amd64
+      - key: karpenter.k8s.aws/instance-category
+        operator: In
+        values: # compute-, general- and memory-optimized families
+          - c
+          - m
+          - r
+      - key: karpenter.k8s.aws/instance-generation
+        operator: Gt
+        values:
+          - "4" # current-generation instances only
+    expireAfter: 720h # CRD default (30 days) — eventually-consistent node recycling
+  disruption:
+    # CRD default made explicit: replace or remove nodes whenever cheaper
+    # capacity fits the pods.
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m # brief settle window instead of the immediate 0s default
+  limits:
+    cpu: "1000" # provisioning stops at 1000 vCPUs — the pool's cost ceiling

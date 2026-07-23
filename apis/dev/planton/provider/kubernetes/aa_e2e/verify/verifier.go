@@ -251,6 +251,50 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Behavioral: manifestHasPrerequisiteSuffix(manifestPath, "fixture-scale-target.yaml"),
 		}, nil
 
+	// Cluster Autoscaler: install proof down to the reconcile loop's own
+	// heartbeat (the status ConfigMap). The kind lane runs the KWOK
+	// simulation arm; real node-group scaling rides the real-cluster lanes.
+	case "kubernetesclusterautoscaler":
+		return &ClusterAutoscalerInstallVerifier{
+			Namespace: info.Namespace,
+		}, nil
+
+	// Velero: install proof down to the BackupStorageLocation handshake;
+	// the behavioral scenario (recognized by name) additionally proves a
+	// full backup → namespace-loss → restore cycle against the MinIO
+	// fixture, with verifier-owned Backup/Restore CRs.
+	case "kubernetesvelero":
+		return &VeleroInstallVerifier{
+			Namespace:  info.Namespace,
+			Behavioral: strings.Contains(manifestPath, "behavioral-backup-restore"),
+		}, nil
+
+	// Karpenter: the controller cannot start off AWS (region/credentials/
+	// instance-type discovery are fatal at startup), so these run only on
+	// the batched EKS real-cluster lanes — the profiles are deferred and
+	// the kind entrypoints skip them. The controller install is verified
+	// like other operators (namespace + running pods; Karpenter exposes a
+	// metrics Service, so the generic Helm shape fits).
+	case "kuberneteskarpenter":
+		return &HelmComponentVerifier{
+			Namespace:     info.Namespace,
+			ComponentName: "karpenter",
+		}, nil
+
+	// Karpenter fleet CRs are cluster-scoped objects reconciled by the
+	// controller; the object's presence is the verifiable contract (node
+	// provisioning itself is the EKS lane's behavioral assertion).
+	case "kuberneteskarpenternodepool":
+		return &ResourceExistenceVerifier{
+			Kind: "nodepools.karpenter.sh",
+			Name: info.Name,
+		}, nil
+	case "kuberneteskarpenterec2nodeclass":
+		return &ResourceExistenceVerifier{
+			Kind: "ec2nodeclasses.karpenter.k8s.aws",
+			Name: info.Name,
+		}, nil
+
 	// A claim under a WaitForFirstConsumer StorageClass is correctly Pending
 	// until a pod consumes it, so existence (not Bound) is the verifiable
 	// contract; the composed consumer scenario proves real binding.

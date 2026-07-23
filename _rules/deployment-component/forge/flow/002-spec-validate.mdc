@@ -80,6 +80,18 @@ This shipped as a real defect across six GCP kinds before a review caught it.
 - Include a multi-digit case (e.g. `europe-west12`) in the spec test whenever a
   location pattern is introduced.
 
+NEGATED all() OVER AN OPTIONAL REPEATED FIELD IS VACUOUSLY VIOLATED
+CEL's `all()` over an EMPTY list is true, so an exclusivity rule written as
+`!this.all(x, <bad-shape>)` on a repeated field FIRES on every manifest that
+omits the list entirely — the minimal valid manifest fails validation, and
+nothing catches it offline unless a spec test covers the omitted-list case.
+When mirroring an upstream CRD's `!self.all(...)`-shaped rule (upstream CEL
+only runs when the field exists; a proto repeated field is always "present"),
+guard it with `this.size() == 0 || …` — UNLESS the list carries
+`min_items >= 1`, where the guard is dead code and should be omitted. Always
+include an omits-the-optional-list accept case in the spec tests for any
+message-level or repeated-field rule.
+
 RequiredWith MIRRORS ARGUMENT PRESENCE, NOT VALUE PRESENCE
 When mirroring a provider schema's `RequiredWith` pairing as a CEL, remember it
 requires the paired ARGUMENT to be present in configuration -- an EMPTY value can

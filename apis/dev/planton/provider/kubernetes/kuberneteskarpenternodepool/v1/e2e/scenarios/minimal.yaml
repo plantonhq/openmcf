@@ -1,0 +1,31 @@
+# Minimal NodePool for the batched EKS real-cluster lane: a general-purpose
+# on-demand pool referencing the sibling EC2NodeClass through the foreign
+# key. Not runnable on kind (see the deferred profile).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarpenterNodePool
+metadata:
+  name: e2e-karpenter-nodepool-minimal
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesKarpenterEc2NodeClass"
+spec:
+  template:
+    node_class_ref:
+      name:
+        valueFrom:
+          kind: KubernetesKarpenterEc2NodeClass
+          name: e2e-karpenter-nodeclass-minimal
+          fieldPath: status.outputs.node_class_name
+    requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+          - on-demand
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+          - amd64
+  disruption:
+    consolidation_policy: WhenEmptyOrUnderutilized
+    consolidate_after: 1m
+  limits:
+    cpu: "100"

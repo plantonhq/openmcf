@@ -1,0 +1,3 @@
+name: kubernetes-cluster-autoscaler
+runtime: go
+description: Kubernetes Cluster Autoscaler installation from the official Helm chart — grows and shrinks existing node groups (EC2 ASGs, Azure VMSS, GCE MIGs, Cluster API machines) based on pod schedulability

@@ -2928,6 +2928,41 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8skeda"
   }];
+  KubernetesKarpenter = 863 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skarp"
+  }];
+  KubernetesKarpenterNodePool = 864 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skarpnp"
+    prerequisites: [KubernetesKarpenter]
+    kubernetes_manifest_projection: {
+      api_version: "karpenter.sh/v1"
+      kind: "NodePool"
+    }
+  }];
+  KubernetesKarpenterEc2NodeClass = 865 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skarpenc"
+    prerequisites: [KubernetesKarpenter]
+    kubernetes_manifest_projection: {
+      api_version: "karpenter.k8s.aws/v1"
+      kind: "EC2NodeClass"
+    }
+  }];
+  KubernetesClusterAutoscaler = 866 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8scas"
+  }];
+  KubernetesVelero = 867 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8svel"
+  }];
   // 870–889: Kubernetes observability
   KubernetesPrometheus = 870 [(kind_meta) = {
     provider: kubernetes

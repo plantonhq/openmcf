@@ -223,6 +223,29 @@ func TestKubernetesKeda_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskeda", "pulumi")
 }
 
+func TestKubernetesClusterAutoscaler_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesclusterautoscaler", "pulumi")
+}
+
+func TestKubernetesVelero_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesvelero", "pulumi")
+}
+
+// Karpenter's three kinds carry deferred profiles (the controller cannot
+// start off AWS), so these entrypoints skip on kind and activate when the
+// batched EKS real-cluster lane flips the profiles green.
+func TestKubernetesKarpenter_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenter", "pulumi")
+}
+
+func TestKubernetesKarpenterNodePool_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenternodepool", "pulumi")
+}
+
+func TestKubernetesKarpenterEc2NodeClass_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenterec2nodeclass", "pulumi")
+}
+
 // ─── Tier 1 Terraform ───────────────────────────────────────────────────────
 
 func TestKubernetesNamespace_Terraform(t *testing.T) {
@@ -328,6 +351,26 @@ func TestKubernetesCilium_Terraform(t *testing.T) {
 
 func TestKubernetesKeda_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskeda", "terraform")
+}
+
+func TestKubernetesClusterAutoscaler_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesclusterautoscaler", "terraform")
+}
+
+func TestKubernetesVelero_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesvelero", "terraform")
+}
+
+func TestKubernetesKarpenter_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenter", "terraform")
+}
+
+func TestKubernetesKarpenterNodePool_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenternodepool", "terraform")
+}
+
+func TestKubernetesKarpenterEc2NodeClass_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarpenterec2nodeclass", "terraform")
 }
 
 // ─── Tier 2 Pulumi (Helm-based) ─────────────────────────────────────────────

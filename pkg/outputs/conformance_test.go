@@ -570,6 +570,81 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesKarpenter: install identity (two fixed-name releases)
+			// + the controller service-account handle IRSA trust policies are
+			// written against, from both engines must land on the
+			// StackOutputs proto.
+			name: "KubernetesKarpenter",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKarpenter,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "kube-system",
+				"release_name":         "karpenter",
+				"crd_release_name":     "karpenter-crd",
+				"service_account_name": "karpenter",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "crd_release_name", "service_account_name",
+			},
+		},
+		{
+			// KubernetesKarpenterNodePool: the created cluster-scoped CR's
+			// identity (the karpenter.sh/nodepool join key) from both engines
+			// must land on the StackOutputs proto.
+			name: "KubernetesKarpenterNodePool",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKarpenterNodePool,
+			rawOutputs: map[string]interface{}{
+				"node_pool_name": "gp-spot-pool",
+			},
+			mustPopulate: []string{
+				"node_pool_name",
+			},
+		},
+		{
+			// KubernetesKarpenterEc2NodeClass: the created cluster-scoped
+			// CR's identity (what NodePools reference via node_class_ref)
+			// from both engines must land on the StackOutputs proto.
+			name: "KubernetesKarpenterEc2NodeClass",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKarpenterEc2NodeClass,
+			rawOutputs: map[string]interface{}{
+				"node_class_name": "default-al2023",
+			},
+			mustPopulate: []string{
+				"node_class_name",
+			},
+		},
+		{
+			// KubernetesClusterAutoscaler: install identity + the
+			// service-account handle keyless cloud bindings are written
+			// against, from both engines must land on the StackOutputs proto.
+			name: "KubernetesClusterAutoscaler",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesClusterAutoscaler,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "kube-system",
+				"release_name":         "cluster-autoscaler",
+				"service_account_name": "cluster-autoscaler-aws-cluster-autoscaler",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_account_name",
+			},
+		},
+		{
+			// KubernetesVelero: install identity + the server
+			// service-account handle keyless bindings target + the default
+			// BackupStorageLocation name Backups/Schedules reference, from
+			// both engines must land on the StackOutputs proto.
+			name: "KubernetesVelero",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesVelero,
+			rawOutputs: map[string]interface{}{
+				"namespace":                    "velero",
+				"release_name":                 "velero",
+				"service_account_name":         "velero-server",
+				"backup_storage_location_name": "default",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_account_name", "backup_storage_location_name",
+			},
+		},
+		{
 			// KubernetesGatewayApiCrds: install identity (version, channel,
 			// manifest URL) from both engines must land on the StackOutputs proto.
 			name: "KubernetesGatewayApiCrds",

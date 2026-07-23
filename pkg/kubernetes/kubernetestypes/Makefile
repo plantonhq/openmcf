@@ -60,6 +60,13 @@ percona_postgres_operator_release=v2.0.0
 #Note: Using 'main' branch as CRDs are not published as release assets
 nack_release=v0.21.1
 
+#https://github.com/aws/karpenter-provider-aws/tree/v1.14.0/pkg/apis/crds
+#Note: the karpenter/karpenter-crd Helm charts are OCI-served
+#(public.ecr.aws/karpenter); the repo-tag vendored Chart.yaml lags the
+#served chart, so the release pin below is verified against the ECR
+#registry API, never the vendored chart version.
+karpenter_release=v1.14.0
+
 .PHONY: clean
 clean:
 	rm -rf ${go_build_dir}
@@ -76,6 +83,11 @@ gen-gateway-apis:
 	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_udproutes.yaml \
 	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_listenersets.yaml \
 	https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${gateway_apis}/config/crd/standard/gateway.networking.k8s.io_backendtlspolicies.yaml
+
+.PHONY: gen-karpenter
+gen-karpenter:
+	crd2pulumi --force --goPath=karpenter https://raw.githubusercontent.com/aws/karpenter-provider-aws/${karpenter_release}/pkg/apis/crds/karpenter.sh_nodepools.yaml \
+		https://raw.githubusercontent.com/aws/karpenter-provider-aws/${karpenter_release}/pkg/apis/crds/karpenter.k8s.aws_ec2nodeclasses.yaml
 
 .PHONY: gen-istio
 gen-istio:
@@ -156,7 +168,7 @@ gen-nack:
 	crd2pulumi --force --goPath=nack https://raw.githubusercontent.com/nats-io/nack/${nack_release}/deploy/crds.yml
 
 .PHONY: gen
-gen: clean gen-gateway-apis gen-istio gen-cert-manager gen-solr-operator gen-strimzi-operator gen-zalando-operator gen-external-secrets gen-elastic-operator gen-keycloak gen-altinity-operator gen-percona-mongodb gen-percona-mysql gen-percona-postgres gen-nack
+gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-solr-operator gen-strimzi-operator gen-zalando-operator gen-external-secrets gen-elastic-operator gen-keycloak gen-altinity-operator gen-percona-mongodb gen-percona-mysql gen-percona-postgres gen-nack
 
 .PHONY: build
 build: clean gen

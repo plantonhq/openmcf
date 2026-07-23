@@ -383,6 +383,19 @@ Based on scenario:
   Verify what the repository actually serves
   (`curl <repo-url>/index.yaml`, match the entry's `appVersion`) and pin
   THAT chart version in the spec default and both modules' fallbacks.
+  **OCI-served charts have no index.yaml** — verify through the registry's
+  tags API instead (`curl "https://<registry>/v2/<repo>/tags/list"` with a
+  pull-scope bearer token from the registry's `/token` endpoint, or
+  `helm show chart oci://<repo>/<chart> --version <v>`), and READ the
+  served chart itself when designing (pull the chart tgz; the vendored
+  copy at the repo tag lags the same way). OCI charts also wire
+  differently per engine: the Terraform helm provider takes
+  `repository = "oci://<registry>/<namespace>"` plus the bare `chart`
+  name and joins them internally, while Pulumi's helm Release takes the
+  fully JOINED `oci://…/<chart>` as the chart reference with NO
+  repository opts — the two-sided pattern (with comments at both sites)
+  lives in the kuberneteshelmrelease modules and every OCI-backed typed
+  kind since.
 - **Custom resources apply through `kubectl_manifest` (alekc/kubectl), not
   the hashicorp provider's `kubernetes_manifest`**: `kubernetes_manifest`
   requires a reachable cluster AND the CRD's OpenAPI schema at PLAN time,

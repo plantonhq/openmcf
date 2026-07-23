@@ -1,0 +1,18 @@
+# Minimal EC2NodeClass for the batched EKS real-cluster lane: AL2023 alias
+# AMI, discovery-tagged subnets and security groups, node role. The
+# discovery tags and role are the batch's fixtures. Not runnable on kind
+# (see the deferred profile).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarpenterEc2NodeClass
+metadata:
+  name: e2e-karpenter-nodeclass-minimal
+spec:
+  ami_selector_terms:
+    - alias: al2023@latest
+  subnet_selector_terms:
+    - tags:
+        karpenter.sh/discovery: planton-e2e-eks
+  security_group_selector_terms:
+    - tags:
+        karpenter.sh/discovery: planton-e2e-eks
+  role: planton-e2e-karpenter-node

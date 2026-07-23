@@ -1,0 +1,38 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarpenterNodePool
+metadata:
+  name: gpu-dedicated
+spec:
+  template:
+    nodeClassRef:
+      group: karpenter.k8s.aws # spec default
+      kind: EC2NodeClass # spec default
+      name:
+        value: '<ec2-node-class-name>' # metadata.name of your KubernetesKarpenterEc2NodeClass
+    requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+          - on-demand # GPU jobs rarely tolerate spot reclaims mid-run
+      - key: karpenter.k8s.aws/instance-family
+        operator: In
+        values:
+          - g5 # NVIDIA A10G family — adjust to your accelerator needs
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+          - amd64
+    # The standard dedicated-pool pattern: only pods tolerating the taint
+    # schedule onto (and therefore trigger provisioning of) GPU nodes.
+    taints:
+      - key: nvidia.com/gpu
+        value: "true"
+        effect: NoSchedule
+    expireAfter: 168h # 7 days — recycle expensive GPU nodes faster than the 720h default
+  disruption:
+    # Only consolidate nodes with no workload pods — never repack a
+    # running GPU job onto another node to save cost.
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m # keep a warm GPU node briefly for follow-on jobs
+  limits:
+    nvidia.com/gpu: "16" # pool-wide accelerator ceiling

@@ -1,0 +1,3 @@
+name: kubernetes-velero
+runtime: go
+description: Velero installation from the official Helm chart — cluster backup and disaster recovery to S3/GCS/Azure Blob with CSI snapshots, file-system backup and scheduled backups

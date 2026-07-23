@@ -1,0 +1,19 @@
+# Minimal Karpenter for the batched EKS real-cluster lane: CRDs + controller
+# with EKS discovery and IRSA. The cluster name/role are the batch's
+# fixtures (substituted when the real-cluster lane is provisioned — see the
+# deferred profile). Not runnable on kind: the controller requires AWS at
+# startup.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarpenter
+metadata:
+  name: e2e-karpenter-minimal
+spec:
+  namespace:
+    value: kube-system
+  cluster:
+    name: planton-e2e-eks
+    eks_control_plane: true
+  aws:
+    irsa_role_arn: arn:aws:iam::111111111111:role/planton-e2e-karpenter
+  controller:
+    replicas: 1

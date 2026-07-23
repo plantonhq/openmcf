@@ -1,0 +1,41 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kuberneteskarpenter
+spec:
+  # Karpenter installs as up to TWO Helm releases in one namespace — the CRD
+  # release ("karpenter-crd", present unless crds.install is false) and the
+  # controller release ("karpenter") — plus the optional anchor namespace.
+  # Because two helm_release resources share one id_format, {release_name}
+  # is declared PER Terraform logical resource via tofu_resource_name
+  # scoping; {release_namespace} is the same for both.
+  values:
+    - name: release_name
+      tofu_resource_name: crds
+      derivations:
+        - literal: karpenter-crd
+      where_to_find: >-
+        Always "karpenter-crd" — the module fixes the CRD release name
+        (present unless crds.install is false). Confirm with
+        `helm list -n <namespace>` (NAME column).
+    - name: release_name
+      tofu_resource_name: controller
+      derivations:
+        - from_stack_output: release_name
+      where_to_find: >-
+        Always "karpenter" — the module fixes the controller release name
+        (one node-provisioning fleet per cluster). Confirm with
+        `helm list -n <namespace>` (NAME column).
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "kube-system".
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself (never imported for kube-system installs).

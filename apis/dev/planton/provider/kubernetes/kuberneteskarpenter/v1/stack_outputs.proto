@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskarpenter.v1;
+
+// KubernetesKarpenterStackOutputs captures observable outputs after
+// Karpenter is installed on the target cluster.
+message KubernetesKarpenterStackOutputs {
+  // Namespace Karpenter was installed into (the resolved spec.namespace).
+  string namespace = 1;
+
+  // Controller Helm release name — fixed "karpenter" (one installation per
+  // cluster; the controller owns node lifecycle and the karpenter.sh label
+  // domain).
+  string release_name = 2;
+
+  // CRD Helm release name — fixed "karpenter-crd" (empty when
+  // spec.crds.install is false and something else manages the CRDs).
+  string crd_release_name = 3;
+
+  // Name of the controller's Kubernetes service account (the chart's fixed
+  // "karpenter") — the subject IRSA trust policies and EKS Pod Identity
+  // associations are written against.
+  string service_account_name = 4;
+}

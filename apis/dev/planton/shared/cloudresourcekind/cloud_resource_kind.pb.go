@@ -929,6 +929,11 @@ const (
 	CloudResourceKind_KubernetesMetricsServer         CloudResourceKind = 860
 	CloudResourceKind_KubernetesCilium                CloudResourceKind = 861
 	CloudResourceKind_KubernetesKeda                  CloudResourceKind = 862
+	CloudResourceKind_KubernetesKarpenter             CloudResourceKind = 863
+	CloudResourceKind_KubernetesKarpenterNodePool     CloudResourceKind = 864
+	CloudResourceKind_KubernetesKarpenterEc2NodeClass CloudResourceKind = 865
+	CloudResourceKind_KubernetesClusterAutoscaler     CloudResourceKind = 866
+	CloudResourceKind_KubernetesVelero                CloudResourceKind = 867
 	// 870–889: Kubernetes observability
 	CloudResourceKind_KubernetesPrometheus CloudResourceKind = 870
 	CloudResourceKind_KubernetesGrafana    CloudResourceKind = 871
@@ -1529,6 +1534,11 @@ var (
 		860:  "KubernetesMetricsServer",
 		861:  "KubernetesCilium",
 		862:  "KubernetesKeda",
+		863:  "KubernetesKarpenter",
+		864:  "KubernetesKarpenterNodePool",
+		865:  "KubernetesKarpenterEc2NodeClass",
+		866:  "KubernetesClusterAutoscaler",
+		867:  "KubernetesVelero",
 		870:  "KubernetesPrometheus",
 		871:  "KubernetesGrafana",
 		872:  "KubernetesSignoz",
@@ -2113,6 +2123,11 @@ var (
 		"KubernetesMetricsServer":                        860,
 		"KubernetesCilium":                               861,
 		"KubernetesKeda":                                 862,
+		"KubernetesKarpenter":                            863,
+		"KubernetesKarpenterNodePool":                    864,
+		"KubernetesKarpenterEc2NodeClass":                865,
+		"KubernetesClusterAutoscaler":                    866,
+		"KubernetesVelero":                               867,
 		"KubernetesPrometheus":                           870,
 		"KubernetesGrafana":                              871,
 		"KubernetesSignoz":                               872,
@@ -2588,7 +2603,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x80\xdc\x01\n" +
+	"\x02v1\x10\x01*\xc8\xde\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -2993,7 +3008,15 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x1cnetworking.istio.io/v1alpha3\x12\vEnvoyFilter\x121\n" +
 	"\x17KubernetesMetricsServer\x10\xdc\x06\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8smetsrv\x12'\n" +
 	"\x10KubernetesCilium\x10\xdd\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scil\x12&\n" +
-	"\x0eKubernetesKeda\x10\xde\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8skeda\x12,\n" +
+	"\x0eKubernetesKeda\x10\xde\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8skeda\x12+\n" +
+	"\x13KubernetesKarpenter\x10\xdf\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8skarp\x12V\n" +
+	"\x1bKubernetesKarpenterNodePool\x10\xe0\x06\x1a4\xa2\xf7\x040\b\x13\x10\x01\"\tk8skarpnp:\x02\xdf\x06B\x1b\n" +
+	"\x0fkarpenter.sh/v1\x12\bNodePool\x12d\n" +
+	"\x1fKubernetesKarpenterEc2NodeClass\x10\xe1\x06\x1a>\xa2\xf7\x04:\b\x13\x10\x01\"\n" +
+	"k8skarpenc:\x02\xdf\x06B$\n" +
+	"\x14karpenter.k8s.aws/v1\x12\fEC2NodeClass\x122\n" +
+	"\x1bKubernetesClusterAutoscaler\x10\xe2\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scas\x12'\n" +
+	"\x10KubernetesVelero\x10\xe3\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svel\x12,\n" +
 	"\x14KubernetesPrometheus\x10\xe6\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sprom\x12(\n" +
 	"\x11KubernetesGrafana\x10\xe7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sgfn\x12'\n" +
 	"\x10KubernetesSignoz\x10\xe8\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssgz\x12(\n" +

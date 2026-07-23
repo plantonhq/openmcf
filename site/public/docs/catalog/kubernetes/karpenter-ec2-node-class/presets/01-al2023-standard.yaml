@@ -1,0 +1,20 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarpenterEc2NodeClass
+metadata:
+  name: al2023-standard # the rendered EC2NodeClass is cluster-scoped and named after this
+spec:
+  amiSelectorTerms:
+    # EKS-optimized Amazon Linux 2023. NOTE: "latest" drifts nodes when a
+    # new AMI ships — pin a release ("al2023@v20240807") in production.
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    # The karpenter.sh/discovery tag is the convention EKS setups tag
+    # their private subnets with.
+    - tags:
+        karpenter.sh/discovery: '<eks-cluster-name>'
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: '<eks-cluster-name>'
+  # IAM role nodes assume; Karpenter manages the instance profile for it
+  # (recommended over instance_profile — the controller needs iam:PassRole).
+  role: '<karpenter-node-role-name>'

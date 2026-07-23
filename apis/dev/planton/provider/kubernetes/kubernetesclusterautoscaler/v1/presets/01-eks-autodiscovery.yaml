@@ -1,0 +1,25 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesClusterAutoscaler
+metadata:
+  name: cluster-autoscaler
+spec:
+  namespace:
+    value: kube-system # upstream convention — system-critical eviction umbrella
+  createNamespace: false # kube-system already exists
+  chartVersion: "9.59.0" # spec default — pin deliberately; keep the autoscaler minor aligned with the cluster's
+  aws:
+    region: '<aws-region>'
+    # Tag-based auto-discovery (the recommended mode): every ASG carrying
+    # k8s.io/cluster-autoscaler/enabled + k8s.io/cluster-autoscaler/<name>
+    # is managed — new node groups enroll by tagging alone.
+    autoDiscovery:
+      clusterName: '<eks-cluster-name>'
+    # IRSA: the keyless posture — the role's trust policy must allow the
+    # cluster's OIDC provider and the autoscaler's service account.
+    # Replace the account id and role name.
+    irsaRoleArn: arn:aws:iam::123456789012:role/cluster-autoscaler
+  scaling:
+    expander: least-waste # the common production choice (upstream default is random)
+    # One-ASG-per-zone is the multi-AZ norm on AWS — treat those groups
+    # as one and keep their sizes balanced.
+    balanceSimilarNodeGroups: true
