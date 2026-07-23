@@ -8,7 +8,7 @@ import (
 
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	peerauthv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespeerauthentication/v1"
-	kubernetesredisv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesredis/v1"
+	kubernetesvalkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
@@ -85,23 +85,22 @@ func TestRenderTFVars_DispatchesByKind(t *testing.T) {
 
 	// Provider-abstraction kind -> snake_case path (the converter must not be
 	// flipped globally; only annotated kinds switch).
-	redis := &kubernetesredisv1.KubernetesRedis{
+	valkey := &kubernetesvalkeyv1.KubernetesValkey{
 		ApiVersion: "kubernetes.planton.dev/v1",
-		Kind:       "KubernetesRedis",
-		Metadata:   &shared.CloudResourceMetadata{Name: "red-one"},
-		Spec: &kubernetesredisv1.KubernetesRedisSpec{
-			Container: &kubernetesredisv1.KubernetesRedisContainer{
-				DiskSize:           "2Gi",
-				PersistenceEnabled: true,
-				Replicas:           1,
+		Kind:       "KubernetesValkey",
+		Metadata:   &shared.CloudResourceMetadata{Name: "vlk-one"},
+		Spec: &kubernetesvalkeyv1.KubernetesValkeySpec{
+			Config: &kubernetesvalkeyv1.KubernetesValkeyConfig{
+				MaxMemory:  "256mb",
+				AppendOnly: true,
 			},
 		},
 	}
-	renderRedis, err := RenderTFVars(redis)
+	renderValkey, err := RenderTFVars(valkey)
 	if err != nil {
 		t.Fatalf("RenderTFVars(provider): %v", err)
 	}
-	if !strings.Contains(renderRedis, "persistence_enabled") || strings.Contains(renderRedis, "persistenceEnabled") {
-		t.Errorf("provider-abstraction kind should stay snake_case:\n%s", renderRedis)
+	if !strings.Contains(renderValkey, "append_only") || strings.Contains(renderValkey, "appendOnly") {
+		t.Errorf("provider-abstraction kind should stay snake_case:\n%s", renderValkey)
 	}
 }

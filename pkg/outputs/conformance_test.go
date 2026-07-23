@@ -42,6 +42,99 @@ func TestStackOutputsConformance(t *testing.T) {
 		mustPopulate []string
 	}{
 		{
+			// KubernetesValkey: the official-chart naming contract — the
+			// write/read/headless Services, the endpoint, and the
+			// module-materialized auth Secret handle.
+			name: "KubernetesValkey",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesValkey,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"service":              "session-cache",
+				"read_service":         "session-cache-read",
+				"headless_service":     "session-cache-headless",
+				"kube_endpoint":        "session-cache.team-alpha.svc.cluster.local:6379",
+				"port_forward_command": "kubectl port-forward svc/session-cache -n team-alpha 6379:6379",
+				"username":             "default",
+				"password_secret": map[string]interface{}{
+					"name": "session-cache-auth",
+					"key":  "default",
+				},
+			},
+			mustPopulate: []string{
+				"namespace", "service", "read_service", "headless_service",
+				"kube_endpoint", "port_forward_command", "username",
+				"password_secret",
+			},
+		},
+		{
+			// KubernetesMysql: the PXC naming contract — the proxy write and
+			// read Services, the endpoint, and the operator-managed
+			// system-users Secret's root key.
+			name: "KubernetesMysql",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesMysql,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"cluster_name":         "orders-mysql",
+				"primary_service":      "orders-mysql-haproxy",
+				"replicas_service":     "orders-mysql-haproxy-replicas",
+				"kube_endpoint":        "orders-mysql-haproxy.team-alpha.svc.cluster.local:3306",
+				"port_forward_command": "kubectl port-forward svc/orders-mysql-haproxy -n team-alpha 3306:3306",
+				"root_password_secret": map[string]interface{}{
+					"name": "orders-mysql-secrets",
+					"key":  "root",
+				},
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "primary_service", "replicas_service",
+				"kube_endpoint", "port_forward_command",
+				"root_password_secret",
+			},
+		},
+		{
+			// KubernetesMongodb: the PSMDB naming contract — the replica-set
+			// discovery Service, the endpoint with the driver's replicaSet
+			// parameter source, and the system-users Secret's admin key.
+			name: "KubernetesMongodb",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesMongodb,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"cluster_name":         "orders-mongo",
+				"service":              "orders-mongo-rs0",
+				"kube_endpoint":        "orders-mongo-rs0.team-alpha.svc.cluster.local:27017",
+				"replica_set":          "rs0",
+				"port_forward_command": "kubectl port-forward svc/orders-mongo-rs0 -n team-alpha 27017:27017",
+				"admin_password_secret": map[string]interface{}{
+					"name": "orders-mongo-secrets",
+					"key":  "MONGODB_DATABASE_ADMIN_PASSWORD",
+				},
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "service", "kube_endpoint",
+				"replica_set", "port_forward_command",
+				"admin_password_secret",
+			},
+		},
+		{
+			// KubernetesPerconaMongoOperator: installation identity handles.
+			name: "KubernetesPerconaMongoOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":    "psmdb-operator-system",
+				"release_name": "psmdb-op",
+			},
+			mustPopulate: []string{"namespace", "release_name"},
+		},
+		{
+			// KubernetesPerconaMysqlOperator: installation identity handles.
+			name: "KubernetesPerconaMysqlOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPerconaMysqlOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":    "pxc-operator-system",
+				"release_name": "pxc-op",
+			},
+			mustPopulate: []string{"namespace", "release_name"},
+		},
+		{
 			// KubernetesPostgres: the CloudNativePG naming contract — the
 			// three traffic services, the rw endpoint, and the credential
 			// Secret handles (nested objects that flatten to

@@ -1,351 +1,103 @@
 # KubernetesPerconaMongoOperator Terraform Module
 
-## Overview
+Installs the Percona Operator for MongoDB from the official
+`psmdb-operator` Helm chart
+(`https://percona.github.io/percona-helm-charts`) as a single Helm
+release named after `metadata.name`. The typed spec renders into chart
+values in `locals.tf` (`local.typed_values`); the `helm_values` escape
+hatch is passed as a SECOND values document the provider merges over
+the first with Helm `-f` semantics — the exact semantic twin of the
+Pulumi module's `buildHelmValues` + `mergeMaps`.
 
-This Terraform module deploys the Percona Operator for MongoDB to a Kubernetes cluster. The operator enables the management of MongoDB database clusters within Kubernetes using custom resources.
+## Module Behavior
 
-## Key Features
+- **The release name is `metadata.name`** — the chart derives every
+  resource name from the release (Deployment, ServiceAccount, RBAC
+  through its fullname helper), so distinct release names keep multiple
+  namespace-scoped installations from colliding.
+- **CRDs never cascade-delete databases** — the chart ships the
+  PerconaServerMongoDB CRDs in its Helm-native `crds/` directory:
+  installed on first install, never upgraded or deleted by Helm, so
+  uninstalling the release leaves the database clusters intact (the
+  upstream safety posture); no CRD knob is needed or modeled.
+- **Readiness is verified at install time** — `wait` + `atomic` +
+  `cleanup_on_fail` with a 600s timeout. An operator that never becomes
+  ready (an unpullable image from a private mirror is the classic case)
+  fails THIS apply with a readiness timeout instead of surfacing later
+  as PerconaServerMongoDB resources that never reconcile.
+- **The module (not Helm) owns namespace creation** — `create_namespace`
+  drives a `kubernetes_namespace_v1` resource carrying the standard
+  governance labels; `helm_release.create_namespace` is always false.
 
-### Terraform-Based Deployment
-- **HCL Configuration**: Uses standard Terraform HCL for infrastructure definition
-- **State Management**: Leverages Terraform state for tracking operator deployment
-- **Provider Integration**: Integrates with Kubernetes and Helm providers seamlessly
+## Rendering Quirks
 
-### Operator Management
-- **Helm Chart Deployment**: Deploys using the official Percona Helm chart
-- **CRD Installation**: Automatically installs MongoDB Custom Resource Definitions
-- **Resource Configuration**: Configurable CPU and memory resources for the operator pod
-- **Flexible Namespace Management**: Optionally creates namespace or uses existing one
+- **Chart-default-matching values render only on divergence** —
+  `watchAllNamespaces`, `logStructured`, and `disableTelemetry` all
+  default false upstream and render only when on.
+- **Watch scope maps to two independent chart values** —
+  `watch.cluster_wide` renders `watchAllNamespaces: true`;
+  `watch.namespaces` renders the comma-joined `watchNamespace` string.
+  Spec CEL rules make the two arms mutually exclusive, so at most one
+  renders; both unset means the operator watches its own namespace (the
+  upstream default). The chart's own `createNamespace` value (create
+  the WATCHED namespaces) is never rendered — the module owns only the
+  installation namespace, and watched namespaces must already exist.
+- **`maxConcurrentReconciles` renders as a STRING** — the chart's own
+  default is the string `"1"` (the deployment template quotes the value
+  into an environment variable either way); rendering the string keeps
+  both engines byte-identical with the chart's values file.
+- **Pull secrets render as the raw Kubernetes object list**
+  (`[{name: ...}]`) — the chart pipes `imagePullSecrets` straight into
+  the pod spec with `toYaml`.
+- **The image override renders only the halves that are set** — the
+  chart composes `<repository>:<tag>` itself, so an unset half keeps
+  the chart's default for it (repository
+  `percona/percona-server-mongodb-operator`; tag = the chart version).
+- **Null-prune idiom throughout** — conditional entries are written as
+  `key = cond ? value : null` inside one object literal and pruned, so
+  numbers and booleans keep their types in the rendered YAML.
 
-### Infrastructure as Code
-- **Declarative Configuration**: Define desired state using Terraform syntax
-- **Version Control**: Track changes to operator configuration in Git
-- **Reproducible Deployments**: Consistently deploy across environments
+## Resources
 
-## Prerequisites
-
-- Terraform >= 1.0
-- Kubernetes cluster with appropriate access
-- kubectl configured with cluster access
-- Helm provider configured
-
-## Module Structure
-
-```
-tf/
-├── main.tf          # Main resources (namespace, Helm release)
-├── provider.tf      # Provider configurations (Kubernetes, Helm)
-├── variables.tf     # Input variables
-└── README.md        # This file
-```
-
-## Resources Created
-
-1. **Kubernetes Namespace** (optional): Created only if `create_namespace` is true
-2. **Helm Release**: Deploys the Percona Operator for MongoDB
-3. **CRDs**: PerconaServerMongoDB and related custom resources
-
-## Input Variables
-
-### metadata
-Metadata for the resource, including name and labels.
-
-**Type**: `object`
-
-**Fields**:
-- `name` (string, required): Name of the operator deployment
-- `id` (string, optional): Unique identifier
-- `org` (string, optional): Organization name
-- `env` (string, optional): Environment name
-- `labels` (map(string), optional): Key-value labels
-- `tags` (list(string), optional): List of tags
-- `version` (object, optional): Version information
-
-### spec
-Specification for the operator deployment.
-
-**Type**: `object`
-
-**Fields**:
-- `namespace` (string, optional): Namespace to install the operator (defaults to "percona-operator")
-- `create_namespace` (bool, optional): Whether to create the namespace (defaults to true)
-- `container` (object, required): Container specifications
-  - `resources` (object, required): Resource allocations
-    - `limits` (object): Maximum resources
-      - `cpu` (string): CPU limit (e.g., "1000m")
-      - `memory` (string): Memory limit (e.g., "1Gi")
-    - `requests` (object): Guaranteed resources
-      - `cpu` (string): CPU request (e.g., "100m")
-      - `memory` (string): Memory request (e.g., "256Mi")
-
-## Outputs
-
-### namespace
-The Kubernetes namespace where the operator is deployed.
-
-**Type**: `string`
-
-**Value**: `percona-operator` (or custom namespace from spec)
+| Resource | Condition |
+|---|---|
+| `kubernetes_namespace_v1.percona_mongo_operator` | `spec.create_namespace` |
+| `helm_release.percona_mongo_operator` | always |
 
 ## Usage
 
-### Basic Example
-
-```hcl
-module "percona_operator" {
-  source = "./tf"
-
-  metadata = {
-    name = "percona-operator-prod"
-  }
-
-  spec = {
-    container = {
-      resources = {
-        requests = {
-          cpu    = "100m"
-          memory = "256Mi"
-        }
-        limits = {
-          cpu    = "1000m"
-          memory = "1Gi"
-        }
-      }
-    }
-  }
-}
-```
-
-### With Custom Resources
-
-```hcl
-module "percona_operator_large" {
-  source = "./tf"
-
-  metadata = {
-    name = "percona-operator-large"
-    labels = {
-      environment = "production"
-      team        = "data-platform"
-    }
-  }
-
-  spec = {
-    namespace = "percona-operator-prod"
-    container = {
-      resources = {
-        requests = {
-          cpu    = "200m"
-          memory = "512Mi"
-        }
-        limits = {
-          cpu    = "2000m"
-          memory = "2Gi"
-        }
-      }
-    }
-  }
-}
-```
-
-## Namespace Management
-
-The module supports two namespace management strategies:
-
-### 1. Module-Managed Namespace (Default)
-
-Set `create_namespace = true` (or omit, as true is the default):
-
-```hcl
-spec = {
-  namespace        = "percona-operator"
-  create_namespace = true
-  # ...
-}
-```
-
-The module will create the namespace with appropriate labels.
-
-### 2. Externally-Managed Namespace
-
-Set `create_namespace = false`:
-
-```hcl
-spec = {
-  namespace        = "shared-operators"
-  create_namespace = false
-  # ...
-}
-```
-
-The namespace must exist before applying this module. Create it separately:
-
 ```bash
-kubectl create namespace shared-operators
+planton tofu apply --manifest percona-mongo-operator.yaml
 ```
 
-Or manage it with a separate Terraform resource:
-
-```hcl
-resource "kubernetes_namespace" "shared" {
-  metadata {
-    name = "shared-operators"
-    # custom labels, annotations, etc.
-  }
-}
-
-module "percona_operator" {
-  source = "./tf"
-  
-  spec = {
-    namespace        = kubernetes_namespace.shared.metadata[0].name
-    create_namespace = false
-    # ...
-  }
-}
-```
-
-## Deployment
-
-### Initialize Terraform
+## Local Development
 
 ```bash
 terraform init
+terraform validate
+terraform plan -var-file=terraform.tfvars.json
+terraform apply -var-file=terraform.tfvars.json
 ```
 
-### Plan Changes
+## Inputs
 
-```bash
-terraform plan -var-file="operator.tfvars"
-```
+See `variables.tf` for the full variable specification (generated from
+the spec proto). The spec arrives from the proto→tfvars converter in
+snake_case with the `namespace` foreign key (KubernetesNamespace)
+resolved to a literal string before Terraform runs.
 
-### Apply Configuration
+## Outputs
 
-```bash
-terraform apply -var-file="operator.tfvars"
-```
+| Output | Description |
+|--------|-------------|
+| `namespace` | Namespace the operator runs in |
+| `release_name` | Helm release name of the operator (`metadata.name`) |
 
-### Destroy Resources
+## Parity
 
-```bash
-terraform destroy -var-file="operator.tfvars"
-```
-
-## Verification
-
-After deployment, verify the operator is running:
-
-```bash
-# Check operator pod
-kubectl get pods -n percona-operator
-
-# Check operator logs
-kubectl logs -n percona-operator -l app.kubernetes.io/name=kubernetes-percona-mongo-operator
-
-# Verify CRDs
-kubectl get crds | grep percona
-```
-
-## Configuration
-
-### Helm Chart Configuration
-
-The module configures the Helm chart with the following defaults:
-
-- **Chart Repository**: `https://percona.github.io/percona-helm-charts/`
-- **Chart Name**: `psmdb-operator`
-- **Chart Version**: `1.16.0`
-- **Timeout**: 300 seconds
-- **Atomic**: true (rollback on failure)
-- **Cleanup on Fail**: true
-
-### Resource Defaults
-
-Default resource allocations:
-- **CPU Request**: 100m
-- **Memory Request**: 256Mi
-- **CPU Limit**: 1000m
-- **Memory Limit**: 1Gi
-
-## Troubleshooting
-
-### Helm Release Failed
-
-Check Helm release status:
-```bash
-helm list -n percona-operator
-helm status -n percona-operator psmdb-operator
-```
-
-### CRDs Not Installed
-
-Verify CRD installation:
-```bash
-kubectl get crds | grep percona
-```
-
-The Percona Helm chart automatically installs CRDs.
-
-### Resource Limits Too Low
-
-If the operator is resource-constrained, increase the limits in your variables file:
-
-```hcl
-spec = {
-  container = {
-    resources = {
-      limits = {
-        cpu    = "2000m"
-        memory = "2Gi"
-      }
-    }
-  }
-}
-```
-
-## Integration with Other Modules
-
-After deploying the operator, you can deploy MongoDB clusters using:
-- Terraform MongoDB module
-- PerconaServerMongoDB CRDs directly
-- MongoDBKubernetes Planton resource
-
-## State Management
-
-### Local Backend
-
-For development, use local state:
-
-```hcl
-terraform {
-  backend "local" {
-    path = "terraform.tfstate"
-  }
-}
-```
-
-### Remote Backend (Recommended for Production)
-
-For production, use remote state:
-
-```hcl
-terraform {
-  backend "s3" {
-    bucket = "my-terraform-state"
-    key    = "percona-operator/terraform.tfstate"
-    region = "us-west-2"
-  }
-}
-```
-
-## Contributing
-
-Contributions are welcome! Please ensure:
-- All variables are properly documented
-- Examples are tested and working
-- README is updated with new features
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
+Kept in lockstep with the Pulumi module (`../pulumi/module/`): same
+chart identity and pinned default version (1.22.0), same
+`metadata.name` release name, same values rendering (the
+divergence-only rendering of chart defaults, the string-typed
+`maxConcurrentReconciles`, the watch-scope mapping), same atomic/wait
+posture, same outputs.

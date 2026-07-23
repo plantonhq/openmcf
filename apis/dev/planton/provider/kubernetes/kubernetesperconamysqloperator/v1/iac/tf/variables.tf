@@ -1,50 +1,64 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "Specification for the Percona Operator for MySQL deployment"
+  description = "KubernetesPerconaMysqlOperator specification"
   type = object({
-    # Kubernetes namespace to install the operator
     namespace = string
-
-    # Flag to indicate if the namespace should be created
-    create_namespace = bool
-
-    # The container specifications for the operator deployment.
-    container = object({
-      # The CPU and memory resources allocated to the operator container.
-      resources = object({
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-    })
+    create_namespace = optional(bool, false)
+    chart_version = optional(string)
+    replicas = optional(number)
+    watch = optional(object({
+      cluster_wide = optional(bool, false)
+      namespaces = optional(list(string), [])
+    }))
+    max_concurrent_reconciles = optional(number)
+    s3_workers_limit = optional(number)
+    log = optional(object({
+      structured = optional(bool, false)
+      level = optional(string)
+    }))
+    disable_telemetry = optional(bool, false)
+    leader_election = optional(object({
+      enabled = optional(bool)
+      lease_duration = optional(string)
+      renew_deadline = optional(string)
+      retry_period = optional(string)
+    }))
+    xtrabackup_sidecar = optional(bool, false)
+    resources = optional(object({
+      limits = optional(object({
+        cpu = optional(string, "")
+        memory = optional(string, "")
+      }))
+      requests = optional(object({
+        cpu = optional(string, "")
+        memory = optional(string, "")
+      }))
+    }))
+    node_selector = optional(map(string), {})
+    tolerations = optional(list(object({
+      key = optional(string, "")
+      operator = optional(string, "")
+      value = optional(string, "")
+      effect = optional(string, "")
+      toleration_seconds = optional(number)
+    })), [])
+    image_pull_secrets = optional(list(string), [])
+    image = optional(object({
+      repository = optional(string, "")
+      tag = optional(string, "")
+    }))
+    helm_values = optional(string, "")
   })
 }
-

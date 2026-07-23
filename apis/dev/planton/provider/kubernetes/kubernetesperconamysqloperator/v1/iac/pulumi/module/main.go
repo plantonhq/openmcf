@@ -4,90 +4,101 @@ import (
 	"github.com/pkg/errors"
 	kubernetesperconamysqloperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconamysqloperator/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
-	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources is the single entry-point consumed by the Planton
-// runtime.  It wires together noun-style helpers in a Terraform-like
-// top-down order so the flow is easy for DevOps engineers to follow.
+// Resources installs the Percona Operator for MySQL (based on Percona
+// XtraDB Cluster) from the official pxc-operator Helm chart as a single
+// Helm release named after metadata.name. The operator reconciles
+// PerconaXtraDBCluster custom resources (declared through KubernetesMysql)
+// into Galera clusters with automated failover, HAProxy/ProxySQL routing,
+// and scheduled XtraBackup backups.
+//
+// CRD LIFECYCLE: the chart ships the PerconaXtraDBCluster CRDs in its
+// Helm-native crds/ directory — installed on first install, never upgraded
+// or deleted by Helm. Uninstalling the release therefore NEVER
+// cascade-deletes the database clusters (the upstream safety posture).
+//
+// The typed spec renders into chart values (values.go); the helm_values
+// escape hatch merges last with Helm -f semantics — the exact semantic
+// twin of the Terraform module's helm_release with
+// values = [typed, helm_values].
 func Resources(ctx *pulumi.Context, stackInput *kubernetesperconamysqloperatorv1.KubernetesPerconaMysqlOperatorStackInput) error {
-	// ----------------------------- locals ---------------------------------
 	locals := initializeLocals(ctx, stackInput)
 
-	// ------------------------- kubernetes provider ------------------------
-	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
-		ctx, stackInput.ProviderConfig, "kubernetes")
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
+		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to set up kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
 	// ------------------------------ namespace ----------------------------
-	// Conditionally create namespace based on create_namespace flag
 	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	var namespaceDeps []pulumi.ResourceOption
+	var operatorDeps []pulumi.Resource
 	if createdNamespace != nil {
-		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+		operatorDeps = append(operatorDeps, createdNamespace)
 	}
 
-	// ------------------------------ helm ----------------------------------
-	if err := helmChart(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to deploy Percona MySQL Operator Helm chart")
+	// --------------------- validation webhook (widened watch) -------------
+	// Rendered BEFORE the release so the operator's own registration
+	// attempt finds it and only refreshes the CA bundle — see webhook.go
+	// for the full lifecycle rationale.
+	createdWebhook, err := validationWebhook(ctx, locals, kubernetesProvider, operatorDeps)
+	if err != nil {
+		return errors.Wrap(err, "failed to create validation webhook configuration")
 	}
+	if createdWebhook != nil {
+		operatorDeps = append(operatorDeps, createdWebhook)
+	}
+
+	// ------------------------------ operator release ----------------------
+	mergedValues, err := buildHelmValues(locals)
+	if err != nil {
+		return errors.Wrap(err, "failed to build helm values")
+	}
+
+	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, &helmv3.ReleaseArgs{
+		Name:      pulumi.String(locals.ReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		Chart:     pulumi.String(vars.HelmChartName),
+		Version:   pulumi.String(locals.ChartVersion),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(vars.HelmChartRepo),
+		},
+		Values: pulumi.ToMap(mergedValues),
+		// The module owns namespace creation (create_namespace flag).
+		CreateNamespace: pulumi.Bool(false),
+		// Wait for the operator to become Available — an operator that
+		// never becomes ready (an unpullable image from a private mirror
+		// is the classic case) should fail THIS deploy with a readiness
+		// timeout, not surface later as PerconaXtraDBCluster resources
+		// that mysteriously never reconcile.
+		Atomic:        pulumi.Bool(true),
+		CleanupOnFail: pulumi.Bool(true),
+		Timeout:       pulumi.Int(vars.HelmTimeoutSeconds),
+	}, append([]pulumi.ResourceOption{
+		pulumi.Provider(kubernetesProvider)},
+		dependsOn(operatorDeps)...)...)
+	if err != nil {
+		return errors.Wrap(err, "failed to install pxc-operator helm release")
+	}
+
+	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	ctx.Export(OpReleaseName, pulumi.String(locals.ReleaseName))
 
 	return nil
 }
 
-// helmChart installs the Percona MySQL Operator Helm chart.
-func helmChart(ctx *pulumi.Context, locals *Locals, kubernetesProvider pulumi.ProviderResource, namespaceDeps []pulumi.ResourceOption) error {
-	target := locals.KubernetesPerconaMysqlOperator
-
-	// prepare helm values with resource limits from spec
-	helmValues := pulumi.Map{
-		"resources": pulumi.Map{
-			"limits": pulumi.Map{
-				"cpu":    pulumi.String(target.Spec.Container.Resources.Limits.Cpu),
-				"memory": pulumi.String(target.Spec.Container.Resources.Limits.Memory),
-			},
-			"requests": pulumi.Map{
-				"cpu":    pulumi.String(target.Spec.Container.Resources.Requests.Cpu),
-				"memory": pulumi.String(target.Spec.Container.Resources.Requests.Memory),
-			},
-		},
+// dependsOn wraps a possibly-empty dependency list into resource options
+// (an empty DependsOn is a valid no-op).
+func dependsOn(deps []pulumi.Resource) []pulumi.ResourceOption {
+	if len(deps) == 0 {
+		return nil
 	}
-
-	// deploy the operator via Helm
-	// Use locals.HelmReleaseName for the Kubernetes release name to avoid conflicts
-	// when multiple instances are deployed to the same namespace
-	releaseOpts := []pulumi.ResourceOption{
-		pulumi.Provider(kubernetesProvider),
-		pulumi.IgnoreChanges([]string{"status", "description", "resourceNames"}),
-	}
-	releaseOpts = append(releaseOpts, namespaceDeps...)
-	_, err := helm.NewRelease(ctx, locals.HelmReleaseName,
-		&helm.ReleaseArgs{
-			Name:            pulumi.String(locals.HelmReleaseName),
-			Namespace:       pulumi.String(locals.Namespace),
-			Chart:           pulumi.String(vars.HelmChartName),
-			Version:         pulumi.String(vars.HelmChartVersion),
-			CreateNamespace: pulumi.Bool(false),
-			Atomic:          pulumi.Bool(true),
-			CleanupOnFail:   pulumi.Bool(true),
-			WaitForJobs:     pulumi.Bool(true),
-			Timeout:         pulumi.Int(300),
-			Values:          helmValues,
-			RepositoryOpts: helm.RepositoryOptsArgs{
-				Repo: pulumi.String(vars.HelmChartRepo),
-			},
-		},
-		releaseOpts...)
-	if err != nil {
-		return errors.Wrap(err, "failed to install percona-mysql-operator helm release")
-	}
-
-	return nil
+	return []pulumi.ResourceOption{pulumi.DependsOn(deps)}
 }

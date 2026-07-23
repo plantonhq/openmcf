@@ -400,6 +400,22 @@ Based on scenario:
   holds only same-typed strings (identity labels, secret data), plain
   merge with `cond ? {k = v} : {}` is safe — the hazard is mixed primitive
   types.
+- **crd2pulumi cannot type a CRD field that is a map of NESTED objects**
+  (name-keyed maps whose values are objects — e.g. backup-storage maps):
+  it generates `map[string]map[string]string`, which structurally cannot
+  carry the nested bodies, and any adapter smuggling heterogeneous values
+  through the generated input type PANICS at runtime inside the provider's
+  input marshaling. When a rebuild meets such a CRD, render the whole CR
+  via `apiextensions.NewCustomResource` + `kubernetes.UntypedArgs` (plain
+  nested maps mirroring the Terraform `yamlencode` locals) and delete the
+  unconsumed generated package — full text in the forge rule's Phase 5.
+- **Operators that create cluster-scoped singletons at RUNTIME (fixed-name
+  webhooks and the like) need the MODULE to own those objects** — created
+  before the release, deleted with the resource, operator-managed fields
+  ignored, `pulumi.com/patchForce` on the Pulumi side — because Kubernetes
+  never garbage-collects a cluster-scoped dependent of a namespaced owner
+  and uninstall otherwise strands a Fail-closed webhook that bricks the
+  cluster. Full text in the forge rule's Phase 5.
 - **`try(x, "") != ""` does NOT guard an `optional` scalar inside a PRESENT
   block**: proto `optional` fields arrive in tfvars as `null` (a present key
   with a null value), so `try()` succeeds, returns null, and `null != ""` is

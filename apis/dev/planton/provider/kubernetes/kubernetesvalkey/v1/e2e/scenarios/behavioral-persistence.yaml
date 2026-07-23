@@ -1,0 +1,33 @@
+# The durability proof: a standalone instance with a persistent volume and
+# APPEND-ONLY persistence, plus declared ACL auth. The behavioral verifier
+# (switched on by this scenario's name) writes a marker key, DELETES the
+# pod outright, and reads the marker back on the replacement — real only
+# because the append-only file on the volume carries every write across the
+# pod's death.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesValkey
+metadata:
+  name: e2e-vlk-persist
+spec:
+  namespace:
+    value: e2e-vlk-persist
+  create_namespace: true
+  persistence:
+    size: 1Gi
+  config:
+    append_only: true
+    max_memory: 128mb
+  auth:
+    users:
+      - name: default
+        password: e2e-valkey-default-password
+      - name: reader
+        password: e2e-valkey-reader-password
+        permissions: "~* -@all +@read +ping +info"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi

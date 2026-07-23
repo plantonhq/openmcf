@@ -10,12 +10,12 @@ order: 200
 presets:
   - slug: "01-single-instance"
     rank: "01"
-    title: "Single Instance MongoDB"
-    excerpt: "This preset deploys a single-replica MongoDB instance with persistence enabled. Suitable for development, testing, or applications that do not require replica set features."
+    title: "Single Instance"
+    excerpt: "This preset declares the smallest useful MongoDB cluster: one replica set (`rs0`) with a single member, small storage, no backups. It is a single point of failure by construction — the development..."
   - slug: "02-replica-set"
     rank: "02"
-    title: "MongoDB Replica Set"
-    excerpt: "This preset deploys a 3-node MongoDB replica set with persistence. Provides automatic failover and read scaling for production workloads."
+    title: "Replica Set"
+    excerpt: "This preset declares the production MongoDB posture: a three-member replica set with automated failover (a new primary is elected in seconds when the current one dies), explicit resources, a..."
 ---
 
 # MongoDB Presets

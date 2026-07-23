@@ -237,4 +237,4 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — deploys containerized workloads into namespaces managed by this component
 - [KubernetesPostgres](/docs/catalog/kubernetes/postgres) — deploys PostgreSQL into a namespace, often co-deployed alongside application namespaces
-- [KubernetesRedis](/docs/catalog/kubernetes/redis) — deploys Redis into a namespace for caching and pub/sub workloads
+- [KubernetesValkey](/docs/catalog/kubernetes/valkey) — deploys Valkey (Redis-compatible) into a namespace for caching and pub/sub workloads

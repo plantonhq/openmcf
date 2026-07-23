@@ -1,138 +1,99 @@
 # KubernetesPerconaMysqlOperator Pulumi Module
 
-## Key Features
+Installs the Percona Operator for MySQL (based on Percona XtraDB
+Cluster) from the official `pxc-operator` Helm chart
+(`https://percona.github.io/percona-helm-charts`) as a single Helm
+release named after `metadata.name`. The typed spec renders into chart
+values in `module/values.go`; the `helm_values` escape hatch merges
+LAST over them with Helm `-f` semantics (maps deep-merge, later
+document wins, lists replace) — the exact semantic twin of the
+Terraform module's `helm_release` with `values = [typed, helm_values]`.
 
-### Standardized API Resource Structure
-- **apiVersion & kind**: Aligns with Kubernetes standards, ensuring familiarity and ease of integration.
-- **metadata**: Facilitates resource identification and management through standard Kubernetes metadata fields.
-- **spec**: Defines the desired state of the operator deployment, including container resource specifications.
-- **status**: Provides real-time updates and outputs from the deployed infrastructure, enhancing visibility and monitoring.
+## What the Module Creates
 
-### Comprehensive Operator Configuration
-- **Resource Allocation**: Define CPU and memory resources for the operator pod to optimize performance and cost.
-- **Automated CRD Installation**: Automatically installs MySQL CRDs required for cluster management.
-- **Namespace Management**: Creates a dedicated `percona-mysql-operator` namespace for clean resource isolation.
-- **Helm-Based Deployment**: Leverages the official Percona Helm chart for reliable, version-controlled deployments.
+1. **Namespace** (optional) — created with the standard governance
+   labels when `create_namespace` is true; otherwise the namespace must
+   already exist
+2. **Helm Release `<metadata.name>`** — the `pxc-operator` chart
+   (pinned default 1.20.0; chart and operator versions move together
+   for this chart). The chart derives every resource name from the
+   release through its fullname helper, so distinct release names keep
+   multiple namespace-scoped installations from colliding
 
-### Seamless Kubernetes Integration
-- **Multi-Cluster Support**: Deploy the operator to any Kubernetes cluster with proper credentials.
-- **Kubernetes Credentials Management**: Securely manage cluster credentials through Planton's credential system.
-- **Automated Outputs Handling**: Capture and manage Pulumi outputs within the API resource status, providing essential information such as namespace.
+## Rendering Notes
 
-### Developer-Friendly CLI
-- **Unified Deployment Command**: Utilize the `planton pulumi up --manifest <api-resource.yaml>` command to deploy the operator effortlessly.
-- **Default Module Configuration**: Automatically configure stack inputs using default Pulumi modules, reducing setup complexity.
-- **Git Integration**: Specify custom Pulumi modules via Git repository details for customized deployments.
+- **Chart-default-matching values render only on divergence** —
+  `watchAllNamespaces`, `logStructured`, `disableTelemetry`, and the
+  `featureGates.xtrabackupSidecar` gate all default off upstream and
+  render only when on — the rendered values stay minimal on both
+  engines.
+- **Watch scope maps to two independent chart values** —
+  `watch.cluster_wide` renders `watchAllNamespaces: true`;
+  `watch.namespaces` renders the comma-joined `watchNamespace` string.
+  Spec CEL rules make the two arms mutually exclusive, so at most one
+  renders; both unset means the operator watches its own namespace (the
+  upstream default). The chart's own `createNamespace` value (create
+  the WATCHED namespaces) is never rendered — the module owns only the
+  installation namespace, and watched namespaces must already exist.
+- **The `resources` key renders only when the spec sets it** — the
+  chart SHIPS default requests/limits (requests 100m/20Mi, limits
+  200m/500Mi), and an empty spec must leave them intact. Helm
+  deep-merges per key, so a partial spec block overrides only the
+  halves it carries.
+- **The image override is TWO chart values with a precedence rule** —
+  the chart's image helper uses `image` verbatim when non-empty, else
+  `<operatorImageRepository>:<chart app version>`. A repository alone
+  maps to `operatorImageRepository` (tag stays the chart version); any
+  custom TAG requires the full `image` override
+  (`<repository>:<tag>`), with the repository half falling back to the
+  chart's own default (`percona/percona-xtradb-cluster-operator`) when
+  the spec leaves it empty.
+- **Leader election flattens to four top-level chart values** —
+  `leaderElectionEnabled`, `leaseDuration`, `renewDeadline`,
+  `retryPeriod` — each rendered on presence.
+- **Pull secrets render as the raw Kubernetes object list**
+  (`[{name: ...}]`) — the chart pipes `imagePullSecrets` straight into
+  the pod spec with `toYaml`.
+- **CRDs never cascade-delete databases** — the chart ships the
+  PerconaXtraDBCluster CRDs in its Helm-native `crds/` directory:
+  installed on first install, never upgraded or deleted by Helm, so
+  uninstalling the release leaves the database clusters intact (the
+  upstream safety posture); no CRD knob is needed or modeled.
 
-### Production-Grade Deployment
-- **Atomic Deployments**: Helm releases are atomic, ensuring all-or-nothing deployments with automatic rollback on failure.
-- **Cleanup on Fail**: Automatically cleans up resources if deployment fails.
-- **Configurable Timeouts**: 300-second timeout ensures sufficient time for operator initialization.
-- **Resource Limits**: Enforces resource limits to prevent resource exhaustion.
+## Wait / Atomic Posture
 
-## Installation
-
-To use the KubernetesPerconaMysqlOperator Pulumi module, ensure that you have:
-- Pulumi CLI installed
-- Access to a Kubernetes cluster
-- Valid Kubernetes cluster credentials configured in Planton
+The release installs with `Atomic` + `CleanupOnFail` and a 600s
+timeout, waiting for readiness. An operator that never becomes ready
+(an unpullable image from a private mirror is the classic case) fails
+THIS deploy with a readiness timeout instead of surfacing later as
+PerconaXtraDBCluster resources that mysteriously never reconcile.
 
 ## Usage
 
-Refer to the examples section for detailed usage instructions.
-
-## Module Architecture
-
-### Components
-
-1. **Namespace Creation**: Creates the `percona-mysql-operator` namespace with proper labels
-2. **Helm Release**: Deploys the operator using the official Percona Helm chart
-3. **Resource Configuration**: Applies resource limits and requests from the spec
-4. **Output Capture**: Exports the namespace to stack outputs for reference
-
-### Helm Chart Details
-
-- **Chart Name**: `ps-operator`
-- **Repository**: `https://percona.github.io/percona-helm-charts/`
-- **Version**: `0.8.0` (configurable in vars.go)
-- **Key Values**:
-  - `resources` - Resource limits from spec
-
-## API Reference
-
-### KubernetesPerconaMysqlOperatorSpec
-Defines the desired state of the operator deployment.
-
-- **namespace**: Optional namespace (defaults to "percona-mysql-operator")
-- **container**: Container resource specifications for the operator pod
-
-### KubernetesPerconaMysqlOperatorSpecContainer
-Specifies the container-level configurations for the operator.
-
-- **resources**: CPU and memory resource allocations
-  - **requests**: Guaranteed resources (default: 100m CPU, 256Mi memory)
-  - **limits**: Maximum resources (default: 1000m CPU, 1Gi memory)
-
-### KubernetesPerconaMysqlOperatorStackOutputs
-Provides outputs from the deployed operator infrastructure.
-
-- **namespace**: Kubernetes namespace where the operator is deployed
-
-## Development
-
-### Building the Module
-
-```bash
-cd apis/project/planton/provider/kubernetes/kubernetesperconamysqloperator/v1/iac/pulumi
-make build
+```shell
+planton pulumi up --manifest hack/manifest.yaml --module-dir <path-to-this-module>
 ```
 
-### Local Testing
+## Outputs
 
-```bash
-# Set up stack input
-export PULUMI_STACK_INPUT=/path/to/manifest.yaml
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the operator runs in |
+| `release_name` | Helm release name of the operator (`metadata.name`) |
 
-# Run locally
-./debug.sh
-```
+## Module Structure
 
-### Updating Dependencies
-
-```bash
-make update-deps
-```
-
-## Troubleshooting
-
-### Operator Pod Not Starting
-
-Check the operator pod logs:
-```bash
-kubectl logs -n percona-mysql-operator -l app.kubernetes.io/name=kubernetes-percona-mysql-operator
-```
-
-### CRDs Not Installed
-
-Verify CRD installation:
-```bash
-kubectl get crds | grep percona
-```
-
-Expected CRDs:
-- `perconaservermysqls.ps.percona.com`
-- `perconaservermysqlbackups.ps.percona.com`
-- `perconaservermysqlrestores.ps.percona.com`
-
-### Resource Limits Too Low
-
-If the operator is being OOMKilled or CPU throttled, increase the resource limits in the manifest.
-
-## Contributing
-
-Contributions are welcome! Please refer to the contributing guidelines for more information on how to get involved.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
+- `main.go`: entrypoint that calls the module
+- `module/main.go`: namespace → operator release → output exports
+- `module/values.go`: typed-spec → chart values rendering (sizing,
+  watch scope, reconciliation throughput, logging, telemetry, leader
+  election, feature gates, scheduling, image) and the escape-hatch
+  merge
+- `module/locals.go`: resolved namespace, release name
+  (`metadata.name`), chart version — kept in lockstep with the
+  Terraform module's `locals.tf`
+- `module/vars.go`: chart identity (repository, `pxc-operator`), the
+  pinned default version (1.20.0), the chart's default image
+  repository (for the tag-only override), the 600s timeout
+- `module/helpers.go`: shared shape renderers (resources, tolerations,
+  the Helm `-f` merge)

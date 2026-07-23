@@ -50,14 +50,6 @@ keycloak_release=25.0.4
 #https://github.com/Altinity/clickhouse-operator/tree/0.25.4
 altinity_operator_release=0.25.4
 
-#https://github.com/percona/percona-server-mongodb-operator/tree/main/deploy
-#https://github.com/percona/percona-server-mongodb-operator/releases/tag/v1.20.1
-percona_mongodb_operator_release=v1.20.1
-
-#https://github.com/percona/percona-server-mysql-operator/tree/main/deploy
-#https://github.com/percona/percona-server-mysql-operator/releases/tag/v0.12.0
-percona_mysql_operator_release=v0.12.0
-
 #https://github.com/nats-io/nack/releases
 #https://github.com/nats-io/nack/tree/main/deploy
 #Note: Using 'main' branch as CRDs are not published as release assets
@@ -158,20 +150,21 @@ gen-altinity-operator:
 	crd2pulumi --force --goPath=altinityoperator /tmp/altinity-crds-only.yaml
 	@echo "Generated Altinity operator types (excluding ClickHouseOperatorConfiguration)"
 
-.PHONY: gen-percona-mongodb
-gen-percona-mongodb:
-	crd2pulumi --force --goPath=perconamongodb https://raw.githubusercontent.com/percona/percona-server-mongodb-operator/${percona_mongodb_operator_release}/deploy/crd.yaml
-
-.PHONY: gen-percona-mysql
-gen-percona-mysql:
-	crd2pulumi --force --goPath=perconamysql https://raw.githubusercontent.com/percona/percona-server-mysql-operator/${percona_mysql_operator_release}/deploy/crd.yaml
+# No generated types for the Percona PXC / PSMDB CRDs, deliberately: both
+# schemas type their backup `storages` as a map of NESTED objects, which
+# crd2pulumi flattens to map[string]map[string]string — a generated type
+# that structurally cannot carry the nested s3/gcs/azure storage bodies.
+# The KubernetesMysql and KubernetesMongodb Pulumi modules render those CRs
+# through apiextensions.CustomResource with untyped args instead (the same
+# posture as the cert-manager issuer kinds), so the generated packages
+# would have no consumer.
 
 .PHONY: gen-nack
 gen-nack:
 	crd2pulumi --force --goPath=nack https://raw.githubusercontent.com/nats-io/nack/${nack_release}/deploy/crds.yml
 
 .PHONY: gen
-gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-strimzi-operator gen-external-secrets gen-elastic-operator gen-keycloak gen-altinity-operator gen-percona-mongodb gen-percona-mysql gen-nack
+gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-strimzi-operator gen-external-secrets gen-elastic-operator gen-keycloak gen-altinity-operator gen-nack
 
 .PHONY: build
 build: clean gen

@@ -1,0 +1,45 @@
+# The data-durability proof: a 3-member replica set. The behavioral
+# verifier (switched on by this scenario's name) writes a marker document
+# with MAJORITY write concern through the primary — guaranteed on a
+# majority before the disaster — DELETES the primary pod, waits for the
+# survivors to elect a new primary, and reads the marker back through it.
+# Declared users and the log-collector ride along so those surfaces deploy
+# live too.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMongodb
+metadata:
+  name: e2e-mdb-failover
+spec:
+  namespace:
+    value: e2e-mdb-failover
+  create_namespace: true
+  replica_sets:
+    - name: rs0
+      storage:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      # The operator's default hostname anti-affinity can never place
+      # three members on a single-node cluster — "none" is the
+      # operator's own OFF switch. The proof here is majority-write
+      # durability through a primary election, not node placement.
+      scheduling:
+        anti_affinity_topology_key: "none"
+  users:
+    - name: appuser
+      db: admin
+      password: e2e-mongodb-app-password
+      roles:
+        - name: readWrite
+          db: appdb
+  log_collector:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi

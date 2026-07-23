@@ -292,5 +292,5 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — provides the target namespace via `valueFrom` reference
 - [KubernetesDeployment](/docs/catalog/kubernetes/kubernetesdeployment) — application deployments that connect to NATS as a messaging backend
-- [KubernetesRedis](/docs/catalog/kubernetes/kubernetesredis) — often deployed alongside NATS for caching in event-driven architectures
+- [KubernetesValkey](/docs/catalog/kubernetes/kubernetesvalkey) — Redis-compatible store often deployed alongside NATS for caching in event-driven architectures
 - [KubernetesPostgres](/docs/catalog/kubernetes/kubernetespostgres) — persistent storage for applications consuming NATS events

@@ -9,62 +9,65 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Locals keeps all frequently-used, derived values in one place –
-// similar to a Terraform "locals {}" block.
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	Namespace                      string
-	Labels                         map[string]string
-	KubernetesPerconaMongoOperator *kubernetesperconamongooperatorv1.KubernetesPerconaMongoOperator
+	Spec *kubernetesperconamongooperatorv1.KubernetesPerconaMongoOperatorSpec
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	HelmReleaseName string
+	// Resource-identity labels stamped on the module-created satellites
+	// (the namespace — never injected into the chart's own resources;
+	// Helm owns those).
+	Labels map[string]string
+
+	// Namespace the operator installs into (resolved literal from the
+	// spec's value-or-ref). With the default watch scope this is also
+	// the only namespace the operator reconciles databases in.
+	Namespace string
+
+	// Helm release name — metadata.name. The chart derives every
+	// resource name from the release (Deployment, ServiceAccount, RBAC
+	// through its fullname helper), so distinct release names keep
+	// multiple namespace-scoped installations from colliding.
+	ReleaseName string
+
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
+	ChartVersion string
 }
 
-// initializeLocals builds the Locals struct and immediately exports the
-// values required by KubernetesPerconaMongoOperatorStackOutputs.
-func initializeLocals(ctx *pulumi.Context,
-	stackInput *kubernetesperconamongooperatorv1.KubernetesPerconaMongoOperatorStackInput) *Locals {
-
-	locals := &Locals{}
-	locals.KubernetesPerconaMongoOperator = stackInput.Target
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesperconamongooperatorv1.KubernetesPerconaMongoOperatorStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	// ------------------------------- labels ----------------------------------
-	locals.Labels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator.String(),
 	}
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// get namespace from spec, it is required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
+	}
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name} for the Helm release name
-	locals.HelmReleaseName = target.Metadata.Name
-
-	// export namespace as an output
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	return locals
-}
-
-// vars contains Helm chart configuration constants.
-var vars = struct {
-	HelmChartName    string
-	HelmChartRepo    string
-	HelmChartVersion string
-}{
-	HelmChartName:    "psmdb-operator",
-	HelmChartRepo:    "https://percona.github.io/percona-helm-charts/",
-	HelmChartVersion: "1.20.1",
+	return &Locals{
+		Spec:         spec,
+		Labels:       labels,
+		Namespace:    spec.Namespace.GetValue(),
+		ReleaseName:  target.Metadata.Name,
+		ChartVersion: chartVersion,
+	}
 }

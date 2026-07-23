@@ -10,7 +10,7 @@ const (
 	ProviderProfileRelPath = "aa_e2e/profile.yaml"
 
 	// ComponentProfileRelPath is the path to the component E2E profile relative
-	// to the component directory (e.g., kubernetesredis/v1/e2e/profile.yaml).
+	// to the component directory (e.g., kubernetesvalkey/v1/e2e/profile.yaml).
 	ComponentProfileRelPath = "v1/e2e/profile.yaml"
 
 	// ComponentScenariosRelDir is the path to the component test scenarios relative

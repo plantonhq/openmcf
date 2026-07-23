@@ -21,11 +21,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// percona-operator-kubernetes stack outputs
+// *
+// **KubernetesPerconaMongoOperatorStackOutputs** — the composition
+// handles a deployed Percona Operator for MongoDB exports. The operator
+// has no per-database surface of its own; KubernetesMongodb resources
+// compose against the CRDs it installs, so the handles here identify
+// the installation rather than any workload.
 type KubernetesPerconaMongoOperatorStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Namespace where the operator is installed
-	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Namespace the operator runs in.
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Helm release name of the operator (`metadata.name`).
+	ReleaseName   string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -67,13 +74,21 @@ func (x *KubernetesPerconaMongoOperatorStackOutputs) GetNamespace() string {
 	return ""
 }
 
+func (x *KubernetesPerconaMongoOperatorStackOutputs) GetReleaseName() string {
+	if x != nil {
+		return x.ReleaseName
+	}
+	return ""
+}
+
 var File_dev_planton_provider_kubernetes_kubernetesperconamongooperator_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesperconamongooperator_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Udev/planton/provider/kubernetes/kubernetesperconamongooperator/v1/stack_outputs.proto\x12Adev.planton.provider.kubernetes.kubernetesperconamongooperator.v1\"J\n" +
+	"Udev/planton/provider/kubernetes/kubernetesperconamongooperator/v1/stack_outputs.proto\x12Adev.planton.provider.kubernetes.kubernetesperconamongooperator.v1\"m\n" +
 	"*KubernetesPerconaMongoOperatorStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespaceB\x8c\x04\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseNameB\x8c\x04\n" +
 	"Ecom.dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1B\x11StackOutputsProtoP\x01Z\x84\x01github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconamongooperator/v1;kubernetesperconamongooperatorv1\xa2\x02\x05DPPKK\xaa\x02ADev.Planton.Provider.Kubernetes.Kubernetesperconamongooperator.V1\xca\x02ADev\\Planton\\Provider\\Kubernetes\\Kubernetesperconamongooperator\\V1\xe2\x02MDev\\Planton\\Provider\\Kubernetes\\Kubernetesperconamongooperator\\V1\\GPBMetadata\xea\x02FDev::Planton::Provider::Kubernetes::Kubernetesperconamongooperator::V1b\x06proto3"
 
 var (

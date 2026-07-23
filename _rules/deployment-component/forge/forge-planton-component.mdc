@@ -231,6 +231,38 @@ The following 20 rules execute in order. Each rule is atomic and can be run indi
 13. **010-pulumi-entrypoint** - Generate entrypoint (main.go, Pulumi.yaml, Makefile)
 14. **012-pulumi-docs** - Generate iac/pulumi/README.md
 
+**CR-rendering kinds — verify the generated SDK can actually CARRY the CRD
+before adopting it.** crd2pulumi flattens a CRD field typed as a map of
+NESTED objects (schemas using `additionalProperties` with object values —
+e.g. name-keyed backup-storage maps) into `map[string]map[string]string`,
+a generated type that structurally cannot hold the nested bodies; any
+adapter that smuggles heterogeneous values through it panics at runtime
+inside the provider's input marshaling. When the CRD carries such a field,
+render the WHOLE CR with `apiextensions.NewCustomResource` +
+`kubernetes.UntypedArgs` (a plain nested `map[string]interface{}` — the
+exact twin of the Terraform module's `yamlencode` locals), record the
+reason in the builder's header comment, and do not generate the typed
+package at all: an SDK no module consumes is dead weight. The operator's
+server-side schema validation plus the live E2E lanes are the shape-error
+safety net the typed SDK would have been.
+
+**Operator kinds — own every cluster-scoped object the operator creates
+at RUNTIME.** Some operators register cluster-scoped singletons at startup
+(the classic case: a fixed-name Fail-closed `ValidatingWebhookConfiguration`
+pointing at a Service in the operator's own namespace). Kubernetes never
+garbage-collects a cluster-scoped dependent of a namespaced owner, and an
+operator that finds the object already present typically refreshes only
+parts of it — so left to the operator, UNINSTALL strands an object that
+can brick the whole cluster's admissions. Read the operator's startup
+source in the clone for such registrations; when found, the module renders
+the object itself (created BEFORE the release, deleted with the resource),
+ignores the operator-managed fields (CA bundles, ownerReferences) via
+`ignore_changes` / `IgnoreChanges`, and — on the Pulumi side — annotates it
+`pulumi.com/patchForce: "true"` so server-side apply adopts an instance a
+previous operator created instead of failing on the field conflict. The
+E2E verifier asserts the object exists while deployed and is GONE after
+destroy.
+
 ### Phase 6: Terraform Implementation (Rules 013, 015)
 
 15. **013-terraform-module** - Generate tf/ (variables.tf, main.tf, locals.tf, outputs.tf, provider.tf), richly commented to the module-comment bar
@@ -687,13 +719,24 @@ and cannot be imported into the current release"), and the failure is
 live-only — every offline gate passes. When the chart is self-contained
 for the arm, the scenario needs no fixture at all.
 
-**Keep-on-uninstall CRDs pin their Helm release NAMESPACE — scenarios for
-such kinds need a stable, dedicated namespace.** CRDs that survive uninstall
-(`helm.sh/resource-policy: keep`, or a crds/ directory Helm never deletes)
-retain their `meta.helm.sh/release-namespace` ownership annotation. A later
-install of the same release in a DIFFERENT namespace hits the
-release-ownership error on objects that "should not exist" — live-only, and
-easy to trigger by moving a scenario between namespaces. Two corollaries:
+**Keep-on-uninstall CRDs come in TWO classes with different blast radii —
+know which one the chart ships before writing the guidance.** (1)
+Chart-TEMPLATED CRDs kept via `helm.sh/resource-policy: keep` are
+release-owned: they retain `meta.helm.sh/release-namespace` ownership
+annotations, so a later install of the same release in a DIFFERENT
+namespace hits the release-ownership error on objects that "should not
+exist" — live-only, and easy to trigger by moving a scenario between
+namespaces; scenarios for such kinds need a stable, dedicated namespace.
+(2) `crds/`-directory CRDs are created RAW by Helm on first install with
+NO ownership metadata at all (verified in the Helm source) — they pin
+nothing and collide with nothing, but Helm also never UPGRADES them:
+a chart-version upgrade runs new controller code against old CRDs, and
+the honest spec/docs story is "apply the new release's CRDs yourself when
+the upgrade calls for it", never a claimed auto-upgrade. One more
+corollary of surviving CRDs, either class: operators that AUTO-DETECT an
+integration by CRD presence (cert-manager is the classic) are fooled by
+controller-less remnants on a long-lived cluster — a dead-webhook dry-run
+failure at reconcile, not install. Two release-ownership corollaries:
 (1) never place a component's E2E scenario in `kube-system` or another
 shared system namespace — the cleanup phase asserts namespace absence,
 which a system namespace can never satisfy (and upstream docs defaulting to

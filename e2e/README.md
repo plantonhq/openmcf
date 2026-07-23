@@ -305,12 +305,12 @@ Declares a component's E2E readiness:
 apiVersion: qa.planton.dev/v1
 kind: ComponentE2EProfile
 metadata:
-  name: kubernetesredis
+  name: kubernetesvalkey
 spec:
-  tier: 2
+  tier: 1
   status: green
   validated_provisioners: [pulumi, terraform]
-  timeout_minutes: 15
+  timeout_minutes: 25
 ```
 
 Status values:

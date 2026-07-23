@@ -1,54 +1,549 @@
+# Computed values for the KubernetesMongodb module. Every resolution here
+# has an exact twin in the Pulumi module's locals.go / mongodb.go /
+# secrets.go — keep them in lockstep: same resource names, same rendered
+# CR body, same Secret names/keys/types.
+#
+# HCL DISCIPLINE (applies to every conditional object in this file):
+# conditional entries are written as `key = cond ? value : null` inside ONE
+# object literal, pruned with `{ for k, v in {...} : k => v if v != null }`.
+# The two tempting alternatives are both broken: `cond ? {...} : {}`
+# ternaries fail plan-time type unification when branches carry different
+# attributes, and `merge(concat(cond ? [{...}] : [], ...)...)` silently
+# UNIFIES primitive-only sibling objects into map(string) — numbers and
+# booleans arrive at the API as strings and server-side validation rejects
+# the object. The null-prune form preserves every value's type: sizes,
+# oplogSpanMin, retention.count, tolerationSeconds, PDB bounds render as
+# YAML numbers; the presence-gated booleans as booleans.
+#
+# Optional nested blocks are read with try(): HCL's && does NOT
+# short-circuit, so chained null checks still dereference the null.
+#
+# PRESENCE-SENSITIVE KEYS (rendered only when they carry signal, exactly
+# like the Pulumi module):
+#   - sharding: OMITTED entirely unless spec.sharding.enabled — the
+#     operator's zero value for an absent key is sharding disabled (the
+#     CRD declares no default; psmdb_defaults.go only errors on a missing
+#     configsvr/mongos when Enabled is true).
+#   - logcollector: OMITTED when the spec block is absent. NOTE: operator
+#     v1.22.0 treats an absent key as DISABLED (IsLogCollectorEnabled()
+#     requires the block to be present AND enabled) — the sidecar only
+#     runs when the spec declares it.
+#   - unsafeFlags: only flags that are true render; the whole block is
+#     omitted when none are.
+#   - affinity: antiAffinityTopologyKey renders only when the spec sets
+#     one (upstream default kubernetes.io/hostname); the literal "none"
+#     passes through verbatim — it is the operator's own OFF switch
+#     (AffinityOff = "none" in psmdb_defaults.go).
+
 locals {
-  # Derive a stable resource ID
-  resource_id = (
-    var.metadata.id != null && var.metadata.id != ""
-    ? var.metadata.id
-    : var.metadata.name
+  # ClusterName is metadata.name — the naming root the operator derives
+  # every object from: pods `<name>-<rs>-N`, the per-set headless
+  # Services `<name>-<rs>`, the mongos Service `<name>-mongos`, and the
+  # system-users Secret `<name>-secrets`.
+  cluster_name = var.metadata.name
+  namespace    = var.spec.namespace
+
+  # Resource-identity labels stamped on every module-created object
+  # (namespace, the PerconaServerMongoDB CR, credential Secrets). The
+  # operator derives ITS objects' identity from the CR name; these labels
+  # tie the whole family back to the Planton resource.
+  labels = merge(
+    {
+      "planton.ai/resource"      = "true"
+      "planton.ai/resource-name" = var.metadata.name
+      "planton.ai/resource-kind" = "KubernetesMongodb"
+    },
+    var.metadata.id != null && var.metadata.id != "" ? { "planton.ai/resource-id" = var.metadata.id } : {},
+    var.metadata.org != null && var.metadata.org != "" ? { "planton.ai/organization" = var.metadata.org } : {},
+    var.metadata.env != null && var.metadata.env != "" ? { "planton.ai/environment" = var.metadata.env } : {}
   )
 
-  # Base labels
-  base_labels = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_kind" = "mongodb_kubernetes"
+  # Module-owned constants, pinned to the operator release the module
+  # targets (KubernetesPerconaMongoOperator at v1.22.0). crVersion tells
+  # the operator which schema/behavior contract the CR was written
+  # against; the images are the upstream-published companions of that
+  # release. upgradeOptions is deliberately constant: automated version
+  # application is not modeled — version changes happen by editing
+  # image_name (a SmartUpdate rolling upgrade), never behind the module's
+  # back.
+  cr_version               = "1.22.0"
+  default_image            = "percona/percona-server-mongodb:8.0.19-7"
+  backup_image             = "percona/percona-backup-mongodb:2.12.0"
+  logcollector_image       = "percona/fluentbit:4.0.1-2"
+  version_service_endpoint = "https://check.percona.com"
+
+  # The operator deletes member pods in order on CR deletion — the safe
+  # teardown for a replica set (primary last).
+  finalizers = ["percona.com/delete-psmdb-pods-in-order"]
+
+  # The system-users Secret. Rendered EXPLICITLY as spec.secrets.users:
+  # the operator's own fallback for an unset name is the static
+  # "percona-server-mongodb-users" (psmdb_defaults.go) — shared across
+  # every cluster in the namespace — so per-cluster naming requires the
+  # module to pin `<name>-secrets` (the upstream cr.yaml convention).
+  users_secret_name = "${local.cluster_name}-secrets"
+
+  sharding_enabled       = try(var.spec.sharding.enabled, false)
+  first_replica_set_name = var.spec.replica_sets[0].name
+
+  # The Service applications connect to: the mongos router Service when
+  # sharding, otherwise the first replica set's headless Service (drivers
+  # discover every member through it).
+  service_name  = local.sharding_enabled ? "${local.cluster_name}-mongos" : "${local.cluster_name}-${local.first_replica_set_name}"
+  kube_endpoint = "${local.service_name}.${local.namespace}.svc.cluster.local:27017"
+
+  # The driver's replicaSet parameter — empty for sharded clusters
+  # (mongos needs none).
+  replica_set_output = local.sharding_enabled ? "" : local.first_replica_set_name
+
+  backup = try(var.spec.backup, null)
+
+  # ---- credential Secret payloads -----------------------------------------
+  # Declared user passwords (`<name>-user-<username>`, single `password`
+  # key) — the exact Secret shape the operator watches for declarative
+  # users; rotating the value rotates the database password. Users with
+  # no declared password get NO Secret and NO passwordSecretRef: the
+  # operator generates a password into its own Secret.
+  # Keyed by the FULL Secret name (not the bare username): the state
+  # address key is what the import recipes derive the live object name
+  # from (from_address_key), so the key and the rendered name must be
+  # identical.
+  user_password_secrets = {
+    for u in var.spec.users : "${local.cluster_name}-user-${u.name}" => u.password
+    if try(u.password, "") != ""
   }
 
-  # Organization label only if var.metadata.org is non-empty
-  org_label = (
-    var.metadata.org != null && var.metadata.org != ""
-    ) ? {
-    "organization" = var.metadata.org
-  } : {}
-
-  # Environment label only if var.metadata.env is non-empty
-  env_label = (
-    var.metadata.env != null && try(var.metadata.env, "") != ""
-    ) ? {
-    "environment" = var.metadata.env
-  } : {}
-
-  # Merge base, org, and environment labels
-  final_labels = merge(local.base_labels, local.org_label, local.env_label)
-
-  # Use resource_id as the namespace name
-  namespace = local.resource_id
-
-  # The service name for MongoDB (Helm chart overrides "fullname")
-  kube_service_name = var.metadata.name
-
-  # Construct labels for the MongoDB pods
-  mongodb_pod_selector_labels = {
-    "app.kubernetes.io/component" = "mongodb"
-    "app.kubernetes.io/instance"  = local.resource_id
-    "app.kubernetes.io/name"      = "mongodb"
+  # Declared backup-storage credentials (`<name>-backup-<storage>`), one
+  # Opaque Secret per storage whose keys are EXACTLY what the operator's
+  # PBM integration reads (pkg/psmdb/backup/pbm.go):
+  #   - s3:    AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+  #   - gcs:   GCS_CLIENT_EMAIL / GCS_PRIVATE_KEY — the operator reads
+  #            the two FIELDS, not the JSON key file, so the module
+  #            extracts them from the declared service-account key with
+  #            jsondecode (malformed JSON fails the plan loudly).
+  #   - azure: AZURE_STORAGE_ACCOUNT_NAME / AZURE_STORAGE_ACCOUNT_KEY
+  # Keyless arms (S3 without access_keys, GCS without a key) create NO
+  # Secret and render NO credentialsSecret — the PBM agents use the pods'
+  # ambient cloud identity.
+  # All values are strings, so this chained ternary unifies safely to
+  # map(string) — no number/bool stringification risk here.
+  backup_credential_secrets = local.backup == null ? {} : {
+    for s in local.backup.storages : "${local.cluster_name}-backup-${s.name}" => (
+      try(s.s3.access_keys, null) != null ? {
+        AWS_ACCESS_KEY_ID     = s.s3.access_keys.access_key_id
+        AWS_SECRET_ACCESS_KEY = s.s3.access_keys.secret_access_key
+        } : try(s.gcs, null) != null && try(s.gcs.service_account_key_json, "") != "" ? {
+        GCS_CLIENT_EMAIL = jsondecode(s.gcs.service_account_key_json).client_email
+        GCS_PRIVATE_KEY  = jsondecode(s.gcs.service_account_key_json).private_key
+        } : try(s.azure, null) != null ? {
+        AZURE_STORAGE_ACCOUNT_NAME = s.azure.storage_account
+        AZURE_STORAGE_ACCOUNT_KEY  = s.azure.access_key
+      } : null
+    )
+    if(
+      try(s.s3.access_keys, null) != null ||
+      (try(s.gcs, null) != null && try(s.gcs.service_account_key_json, "") != "") ||
+      try(s.azure, null) != null
+    )
   }
 
-  # Ingress configuration
-  ingress_is_enabled        = try(var.spec.ingress.enabled, false)
-  ingress_external_hostname = try(var.spec.ingress.hostname, null)
+  # ---- CR: unsafeFlags ------------------------------------------------------
+  # Only flags that are TRUE render; the block is omitted when none are.
+  # tls.mode "disabled" REQUIRES unsafeFlags.tls — deliberately NOT
+  # auto-set here: unsafe.tls is the user's explicit opt-in, and the
+  # operator rejecting a disabled-TLS cluster without it is the designed
+  # loud failure.
+  unsafe_flags = {
+    for k, v in {
+      tls               = try(var.spec.unsafe.tls, false) ? true : null
+      replsetSize       = try(var.spec.unsafe.replset_size, false) ? true : null
+      mongosSize        = try(var.spec.unsafe.mongos_size, false) ? true : null
+      backupIfUnhealthy = try(var.spec.unsafe.backup_if_unhealthy, false) ? true : null
+    } : k => v if v != null
+  }
 
-  # Computed resource names to avoid conflicts when multiple instances share a namespace
-  # Format: {metadata.name}-{purpose}
-  password_secret_name     = "${var.metadata.name}-password"
-  external_lb_service_name = "${var.metadata.name}-external-lb"
+  # ---- CR: tls ----------------------------------------------------------------
+  # Rendered only when the spec declares a TLS posture; an absent block
+  # leaves the operator's own default (preferTLS with self-generated
+  # certificates). issuerConf points cert-manager at an
+  # organization-trusted chain; group is always cert-manager.io.
+  tls_body = try(var.spec.tls, null) == null ? null : {
+    for k, v in {
+      mode                 = coalesce(try(var.spec.tls.mode, null), "preferTLS")
+      certValidityDuration = try(var.spec.tls.cert_validity_duration, "") != "" ? var.spec.tls.cert_validity_duration : null
+      issuerConf = try(var.spec.tls.issuer, "") != "" ? {
+        name  = var.spec.tls.issuer
+        kind  = coalesce(try(var.spec.tls.issuer_kind, null), "ClusterIssuer")
+        group = "cert-manager.io"
+      } : null
+    } : k => v if v != null
+  }
+
+  # ---- CR: replsets --------------------------------------------------------
+  # One entry per declared replica set (each becomes a shard when
+  # sharding is enabled). Sizes render with the spec's declared defaults
+  # applied (3 members, 1 arbiter) so both engines emit identical bodies.
+  replsets = [
+    for rs in var.spec.replica_sets : {
+      for k, v in {
+        name = rs.name
+        size = coalesce(try(rs.size, null), 3)
+
+        # Extra mongod configuration merged over the operator's defaults
+        # — passed VERBATIM (mongod.conf YAML shape).
+        configuration = try(rs.mongod_config, "") != "" ? rs.mongod_config : null
+
+        resources = try(rs.resources, null) == null ? null : {
+          for rk, rv in {
+            limits = try(rs.resources.limits, null) == null ? null : {
+              for lk, lv in {
+                cpu    = try(rs.resources.limits.cpu, "") != "" ? rs.resources.limits.cpu : null
+                memory = try(rs.resources.limits.memory, "") != "" ? rs.resources.limits.memory : null
+              } : lk => lv if lv != null
+            }
+            requests = try(rs.resources.requests, null) == null ? null : {
+              for rk2, rv2 in {
+                cpu    = try(rs.resources.requests.cpu, "") != "" ? rs.resources.requests.cpu : null
+                memory = try(rs.resources.requests.memory, "") != "" ? rs.resources.requests.memory : null
+              } : rk2 => rv2 if rv2 != null
+            }
+          } : rk => rv if rv != null
+        }
+
+        # One PVC per member; grows are applied in place, shrinks
+        # rejected by the operator.
+        volumeSpec = {
+          persistentVolumeClaim = {
+            for pk, pv in {
+              storageClassName = try(rs.storage.storage_class, "") != "" ? rs.storage.storage_class : null
+              resources        = { requests = { storage = rs.storage.size } }
+            } : pk => pv if pv != null
+          }
+        }
+
+        # The operator's anti-affinity spreads members across
+        # kubernetes.io/hostname by default; only a declared topology key
+        # renders. "none" is the operator's own OFF switch and passes
+        # through verbatim.
+        affinity = try(rs.scheduling.anti_affinity_topology_key, "") != "" ? {
+          antiAffinityTopologyKey = rs.scheduling.anti_affinity_topology_key
+        } : null
+
+        nodeSelector = length(try(rs.scheduling.node_selector, {})) > 0 ? rs.scheduling.node_selector : null
+
+        tolerations = length(try(rs.scheduling.tolerations, [])) > 0 ? [
+          for t in rs.scheduling.tolerations : {
+            for tk, tv in {
+              key               = try(t.key, "") != "" ? t.key : null
+              operator          = try(t.operator, "") != "" ? t.operator : null
+              value             = try(t.value, "") != "" ? t.value : null
+              effect            = try(t.effect, "") != "" ? t.effect : null
+              tolerationSeconds = try(t.toleration_seconds, null)
+            } : tk => tv if tv != null
+          }
+        ] : null
+
+        priorityClassName = try(rs.scheduling.priority_class_name, "") != "" ? rs.scheduling.priority_class_name : null
+
+        # PDB renders only when a bound is declared (the spec CEL forbids
+        # both); an absent key leaves the operator default (max one
+        # member down).
+        podDisruptionBudget = (
+          try(rs.pod_disruption_budget.max_unavailable, 0) > 0 || try(rs.pod_disruption_budget.min_available, 0) > 0
+          ) ? {
+          for pk, pv in {
+            maxUnavailable = try(rs.pod_disruption_budget.max_unavailable, 0) > 0 ? rs.pod_disruption_budget.max_unavailable : null
+            minAvailable   = try(rs.pod_disruption_budget.min_available, 0) > 0 ? rs.pod_disruption_budget.min_available : null
+          } : pk => pv if pv != null
+        } : null
+
+        # Per-member Services (the managed-cloud LoadBalancer /
+        # cross-cluster recipe surface).
+        expose = try(rs.expose.enabled, false) ? {
+          for ek, ev in {
+            enabled     = true
+            type        = coalesce(try(rs.expose.type, null), "ClusterIP")
+            annotations = length(try(rs.expose.annotations, {})) > 0 ? rs.expose.annotations : null
+          } : ek => ev if ev != null
+        } : null
+
+        # Arbiter: votes, no data. Its affinity mirrors the set's so the
+        # arbiter spreads across the same topology as the members it
+        # breaks ties for.
+        arbiter = try(rs.arbiter.enabled, false) ? {
+          for ak, av in {
+            enabled = true
+            size    = coalesce(try(rs.arbiter.size, null), 1)
+            affinity = try(rs.scheduling.anti_affinity_topology_key, "") != "" ? {
+              antiAffinityTopologyKey = rs.scheduling.anti_affinity_topology_key
+            } : null
+          } : ak => av if av != null
+        } : null
+      } : k => v if v != null
+    }
+  ]
+
+  # ---- CR: sharding ----------------------------------------------------------
+  # OMITTED entirely unless enabled: the operator's zero value for an
+  # absent key is sharding disabled, and only an enabled topology
+  # requires configsvr/mongos declarations (spec CEL mirrors that).
+  sharding_body = !local.sharding_enabled ? null : {
+    enabled = true
+
+    # The balancer default is enabled upstream; the flag renders
+    # explicitly either way so flipping it is a clean diff.
+    balancer = {
+      enabled = try(var.spec.sharding.balancer_enabled, null) == null ? true : var.spec.sharding.balancer_enabled
+    }
+
+    configsvrReplSet = {
+      for k, v in {
+        size = coalesce(try(var.spec.sharding.config_server.size, null), 3)
+
+        resources = try(var.spec.sharding.config_server.resources, null) == null ? null : {
+          for rk, rv in {
+            limits = try(var.spec.sharding.config_server.resources.limits, null) == null ? null : {
+              for lk, lv in {
+                cpu    = try(var.spec.sharding.config_server.resources.limits.cpu, "") != "" ? var.spec.sharding.config_server.resources.limits.cpu : null
+                memory = try(var.spec.sharding.config_server.resources.limits.memory, "") != "" ? var.spec.sharding.config_server.resources.limits.memory : null
+              } : lk => lv if lv != null
+            }
+            requests = try(var.spec.sharding.config_server.resources.requests, null) == null ? null : {
+              for rk2, rv2 in {
+                cpu    = try(var.spec.sharding.config_server.resources.requests.cpu, "") != "" ? var.spec.sharding.config_server.resources.requests.cpu : null
+                memory = try(var.spec.sharding.config_server.resources.requests.memory, "") != "" ? var.spec.sharding.config_server.resources.requests.memory : null
+              } : rk2 => rv2 if rv2 != null
+            }
+          } : rk => rv if rv != null
+        }
+
+        volumeSpec = {
+          persistentVolumeClaim = {
+            for pk, pv in {
+              storageClassName = try(var.spec.sharding.config_server.storage.storage_class, "") != "" ? var.spec.sharding.config_server.storage.storage_class : null
+              resources        = { requests = { storage = var.spec.sharding.config_server.storage.size } }
+            } : pk => pv if pv != null
+          }
+        }
+      } : k => v if v != null
+    }
+
+    mongos = {
+      for k, v in {
+        size = coalesce(try(var.spec.sharding.mongos.size, null), 3)
+
+        resources = try(var.spec.sharding.mongos.resources, null) == null ? null : {
+          for rk, rv in {
+            limits = try(var.spec.sharding.mongos.resources.limits, null) == null ? null : {
+              for lk, lv in {
+                cpu    = try(var.spec.sharding.mongos.resources.limits.cpu, "") != "" ? var.spec.sharding.mongos.resources.limits.cpu : null
+                memory = try(var.spec.sharding.mongos.resources.limits.memory, "") != "" ? var.spec.sharding.mongos.resources.limits.memory : null
+              } : lk => lv if lv != null
+            }
+            requests = try(var.spec.sharding.mongos.resources.requests, null) == null ? null : {
+              for rk2, rv2 in {
+                cpu    = try(var.spec.sharding.mongos.resources.requests.cpu, "") != "" ? var.spec.sharding.mongos.resources.requests.cpu : null
+                memory = try(var.spec.sharding.mongos.resources.requests.memory, "") != "" ? var.spec.sharding.mongos.resources.requests.memory : null
+              } : rk2 => rv2 if rv2 != null
+            }
+          } : rk => rv if rv != null
+        }
+
+        # The mongos Service always exists (upstream MongosExpose has NO
+        # enabled field — unlike the per-set ExposeTogglable); the spec's
+        # expose.enabled gates whether the module renders customization
+        # over the operator's ClusterIP default.
+        expose = try(var.spec.sharding.mongos.expose.enabled, false) ? {
+          for ek, ev in {
+            type        = coalesce(try(var.spec.sharding.mongos.expose.type, null), "ClusterIP")
+            annotations = length(try(var.spec.sharding.mongos.expose.annotations, {})) > 0 ? var.spec.sharding.mongos.expose.annotations : null
+          } : ek => ev if ev != null
+        } : null
+      } : k => v if v != null
+    }
+  }
+
+  # ---- CR: users --------------------------------------------------------------
+  # Declarative application users. passwordSecretRef renders ONLY when a
+  # password is declared (the module materializes that Secret); otherwise
+  # the operator generates a password into its own per-user Secret.
+  users = [
+    for u in var.spec.users : {
+      for k, v in {
+        name  = u.name
+        db    = coalesce(try(u.db, null), "admin")
+        roles = [for r in u.roles : { name = r.name, db = r.db }]
+        passwordSecretRef = try(u.password, "") != "" ? {
+          name = "${local.cluster_name}-user-${u.name}"
+          key  = "password"
+        } : null
+      } : k => v if v != null
+    }
+  ]
+
+  # ---- CR: backup ---------------------------------------------------------------
+  # storages is a MAP keyed by storage name (the CRD shape); tasks and
+  # PITR reference entries by that name. credentialsSecret renders only
+  # for declared-key arms — keyless S3/GCS use the pods' ambient cloud
+  # identity.
+  backup_storages = local.backup == null ? null : {
+    for s in local.backup.storages : s.name => {
+      for k, v in {
+        main = try(s.main, false) ? true : null
+        # Exactly one backend arm exists (spec oneof).
+        type = try(s.s3, null) != null ? "s3" : try(s.gcs, null) != null ? "gcs" : "azure"
+
+        s3 = try(s.s3, null) == null ? null : {
+          for sk, sv in {
+            bucket                = s.s3.bucket
+            region                = try(s.s3.region, "") != "" ? s.s3.region : null
+            prefix                = try(s.s3.prefix, "") != "" ? s.s3.prefix : null
+            endpointUrl           = try(s.s3.endpoint_url, "") != "" ? s.s3.endpoint_url : null
+            insecureSkipTLSVerify = try(s.s3.insecure_skip_tls_verify, false) ? true : null
+            credentialsSecret     = try(s.s3.access_keys, null) != null ? "${local.cluster_name}-backup-${s.name}" : null
+          } : sk => sv if sv != null
+        }
+
+        gcs = try(s.gcs, null) == null ? null : {
+          for gk, gv in {
+            bucket            = s.gcs.bucket
+            prefix            = try(s.gcs.prefix, "") != "" ? s.gcs.prefix : null
+            credentialsSecret = try(s.gcs.service_account_key_json, "") != "" ? "${local.cluster_name}-backup-${s.name}" : null
+          } : gk => gv if gv != null
+        }
+
+        azure = try(s.azure, null) == null ? null : {
+          for ak, av in {
+            container         = s.azure.container
+            prefix            = try(s.azure.prefix, "") != "" ? s.azure.prefix : null
+            endpointUrl       = try(s.azure.endpoint_url, "") != "" ? s.azure.endpoint_url : null
+            credentialsSecret = "${local.cluster_name}-backup-${s.name}"
+          } : ak => av if av != null
+        }
+      } : k => v if v != null
+    }
+  }
+
+  # Scheduled tasks: enabled is the inverse of the spec's suspend (the
+  # declaration survives a suspension); retention renders only when keep
+  # is declared, always type "count" (the only retention the operator
+  # models).
+  backup_tasks = local.backup == null ? null : [
+    for t in local.backup.tasks : {
+      for k, v in {
+        name            = t.name
+        enabled         = !try(t.suspend, false)
+        schedule        = t.schedule
+        storageName     = t.storage_name
+        type            = coalesce(try(t.type, null), "logical")
+        compressionType = coalesce(try(t.compression, null), "gzip")
+        retention = try(t.keep, null) == null ? null : {
+          count             = t.keep
+          type              = "count"
+          deleteFromStorage = try(t.delete_from_storage, null) == null ? true : t.delete_from_storage
+        }
+      } : k => v if v != null
+    }
+  ]
+
+  # PITR: oplog chunks land on the main storage. Rendered with the
+  # spec's declared defaults applied (10-minute chunks, gzip).
+  pitr_body = try(local.backup.pitr, null) == null ? null : {
+    for k, v in {
+      enabled         = local.backup.pitr.enabled
+      oplogOnly       = try(local.backup.pitr.oplog_only, false) ? true : null
+      oplogSpanMin    = coalesce(try(local.backup.pitr.oplog_span_min, null), 10)
+      compressionType = coalesce(try(local.backup.pitr.compression, null), "gzip")
+    } : k => v if v != null
+  }
+
+  backup_body = local.backup == null ? null : {
+    for k, v in {
+      enabled  = true
+      image    = local.backup_image
+      storages = local.backup_storages
+      pitr     = local.pitr_body
+      tasks    = length(local.backup_tasks) > 0 ? local.backup_tasks : null
+    } : k => v if v != null
+  }
+
+  # ---- CR: logcollector -----------------------------------------------------
+  # Rendered only when the spec declares the block; the enabled flag
+  # defaults true within it. An ABSENT key means no sidecar (operator
+  # v1.22.0: IsLogCollectorEnabled() requires the block present AND
+  # enabled).
+  logcollector_body = try(var.spec.log_collector, null) == null ? null : {
+    for k, v in {
+      enabled = try(var.spec.log_collector.enabled, null) == null ? true : var.spec.log_collector.enabled
+      image   = local.logcollector_image
+
+      resources = try(var.spec.log_collector.resources, null) == null ? null : {
+        for rk, rv in {
+          limits = try(var.spec.log_collector.resources.limits, null) == null ? null : {
+            for lk, lv in {
+              cpu    = try(var.spec.log_collector.resources.limits.cpu, "") != "" ? var.spec.log_collector.resources.limits.cpu : null
+              memory = try(var.spec.log_collector.resources.limits.memory, "") != "" ? var.spec.log_collector.resources.limits.memory : null
+            } : lk => lv if lv != null
+          }
+          requests = try(var.spec.log_collector.resources.requests, null) == null ? null : {
+            for rk2, rv2 in {
+              cpu    = try(var.spec.log_collector.resources.requests.cpu, "") != "" ? var.spec.log_collector.resources.requests.cpu : null
+              memory = try(var.spec.log_collector.resources.requests.memory, "") != "" ? var.spec.log_collector.resources.requests.memory : null
+            } : rk2 => rv2 if rv2 != null
+          }
+        } : rk => rv if rv != null
+      }
+    } : k => v if v != null
+  }
+
+  # ---- the PerconaServerMongoDB CR ---------------------------------------------
+  mongodb_manifest = {
+    apiVersion = "psmdb.percona.com/v1"
+    kind       = "PerconaServerMongoDB"
+    metadata = {
+      name       = local.cluster_name
+      namespace  = local.namespace
+      labels     = local.labels
+      finalizers = local.finalizers
+    }
+    spec = {
+      for k, v in {
+        crVersion = local.cr_version
+        image     = try(var.spec.image_name, "") != "" ? var.spec.image_name : local.default_image
+
+        # SmartUpdate (the upstream default) unless the spec diverges —
+        # rendered explicitly so the update posture is visible in the CR.
+        updateStrategy = coalesce(try(var.spec.update_strategy, null), "SmartUpdate")
+
+        # Module-owned constants: the version service is upstream's, and
+        # automated version application is deliberately not modeled —
+        # versions change by editing image_name, never behind the
+        # module's back.
+        upgradeOptions = {
+          versionServiceEndpoint = local.version_service_endpoint
+          apply                  = "disabled"
+        }
+
+        pause = try(var.spec.pause, false) ? true : null
+
+        imagePullSecrets = length(var.spec.image_pull_secrets) > 0 ? [
+          for s in var.spec.image_pull_secrets : { name = s }
+        ] : null
+
+        unsafeFlags = length(local.unsafe_flags) > 0 ? local.unsafe_flags : null
+
+        tls = local.tls_body
+
+        secrets = { users = local.users_secret_name }
+
+        replsets = local.replsets
+        sharding = local.sharding_body
+
+        users = length(local.users) > 0 ? local.users : null
+
+        backup       = local.backup_body
+        logcollector = local.logcollector_body
+      } : k => v if v != null
+    }
+  }
 }

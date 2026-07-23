@@ -1,15 +1,63 @@
+# Full-surface test manifest: exercises every typed arm of the spec so the
+# offline plan proofs cover what the live lanes may not. Not a realistic
+# production shape — see presets for those.
+#
+# watch.namespaces is set (and watch.clusterWide left false): the spec CEL
+# rules make the two arms mutually exclusive, and the namespace fence
+# exercises the comma-joined watchNamespace rendering — the richer of the
+# two mappings. image sets BOTH repository and tag, exercising the chart's
+# full-image override ("<repository>:<tag>") alongside
+# operatorImageRepository.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesPerconaMysqlOperator
 metadata:
-  name: percona-mysql-operator-test
+  name: hack-pxc-operator
 spec:
-  namespace: percona-mysql-operator
-  container:
-    resources:
-      limits:
-        cpu: 1000m
-        memory: 1Gi
-      requests:
-        cpu: 100m
-        memory: 256Mi
-
+  namespace:
+    value: hack-pxc-system
+  createNamespace: true
+  chartVersion: "1.20.0"
+  replicas: 2
+  watch:
+    namespaces:
+      - team-a
+      - team-b
+  maxConcurrentReconciles: 5
+  s3WorkersLimit: 20
+  log:
+    structured: true
+    level: ERROR
+  disableTelemetry: true
+  leaderElection:
+    enabled: true
+    leaseDuration: 90s
+    renewDeadline: 60s
+    retryPeriod: 15s
+  xtrabackupSidecar: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  nodeSelector:
+    kubernetes.io/os: linux
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: dedicated
+      operator: Equal
+      value: databases
+      effect: NoExecute
+      tolerationSeconds: 300
+  imagePullSecrets:
+    - hack-registry-credentials
+  image:
+    repository: mirror.example.com/percona/percona-xtradb-cluster-operator
+    tag: 1.20.0
+  helmValues: |
+    podAnnotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "8080"

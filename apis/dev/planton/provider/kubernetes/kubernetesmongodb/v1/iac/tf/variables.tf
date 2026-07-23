@@ -1,81 +1,186 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
-
 variable "spec" {
-  description = "spec"
+  description = "KubernetesMongodb specification"
   type = object({
-    # Kubernetes namespace to install the component
     namespace = string
-
-    # flag to indicate if the namespace should be created
     create_namespace = optional(bool, false)
-
-    # The specifications for the MongoDB container deployment.
-    container = object({
-
-      # The number of MongoDB pods to deploy.
-      replicas = number
-
-      # The CPU and memory resources allocated to the MongoDB container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
+    image_name = optional(string, "")
+    replica_sets = list(object({
+      name = string
+      size = optional(number)
+      storage = object({
+        size = string
+        storage_class = optional(string, "")
       })
-
-      # A flag to enable or disable data persistence for MongoDB.
-      # When enabled, in-memory data is persisted to a storage volume, allowing data to survive pod restarts.
-      persistence_enabled = bool
-
-      # Description for disk_size
-      disk_size = string
-    })
-
-    # The ingress configuration for the MongoDB deployment.
-    ingress = optional(object({
-
-      # A flag to enable or disable ingress.
-      enabled = bool
-
-      # The full hostname for MongoDB access.
-      hostname = string
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+      mongod_config = optional(string, "")
+      arbiter = optional(object({
+        enabled = optional(bool, false)
+        size = optional(number)
+      }))
+      expose = optional(object({
+        enabled = optional(bool, false)
+        type = optional(string)
+        annotations = optional(map(string), {})
+      }))
+      pod_disruption_budget = optional(object({
+        max_unavailable = optional(number, 0)
+        min_available = optional(number, 0)
+      }))
+      scheduling = optional(object({
+        anti_affinity_topology_key = optional(string, "")
+        node_selector = optional(map(string), {})
+        tolerations = optional(list(object({
+          key = optional(string, "")
+          operator = optional(string, "")
+          value = optional(string, "")
+          effect = optional(string, "")
+          toleration_seconds = optional(number)
+        })), [])
+        priority_class_name = optional(string, "")
+      }))
     }))
-
-    # A map of key-value pairs that provide additional customization options for the Helm chart used
-    # to deploy MongoDB on Kubernetes. These values allow for further refinement of the deployment,
-    # such as customizing resource limits, setting environment variables, or specifying version tags.
-    # For detailed information on the available options, refer to the Helm chart documentation at:
-    # https://artifacthub.io/packages/helm/bitnami/mongodb
-    helm_values = optional(map(string))
+    sharding = optional(object({
+      enabled = optional(bool, false)
+      config_server = optional(object({
+        size = optional(number)
+        storage = object({
+          size = string
+          storage_class = optional(string, "")
+        })
+        resources = optional(object({
+          limits = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+          requests = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+        }))
+      }))
+      mongos = optional(object({
+        size = optional(number)
+        resources = optional(object({
+          limits = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+          requests = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+        }))
+        expose = optional(object({
+          enabled = optional(bool, false)
+          type = optional(string)
+          annotations = optional(map(string), {})
+        }))
+      }))
+      balancer_enabled = optional(bool)
+    }))
+    tls = optional(object({
+      mode = optional(string)
+      issuer = optional(string, "")
+      issuer_kind = optional(string)
+      cert_validity_duration = optional(string, "")
+    }))
+    users = optional(list(object({
+      name = string
+      db = optional(string)
+      password = optional(string, "")
+      roles = list(object({
+        name = string
+        db = string
+      }))
+    })), [])
+    backup = optional(object({
+      storages = list(object({
+        name = string
+        main = optional(bool, false)
+        s3 = optional(object({
+          bucket = string
+          region = optional(string, "")
+          prefix = optional(string, "")
+          endpoint_url = optional(string, "")
+          insecure_skip_tls_verify = optional(bool, false)
+          access_keys = optional(object({
+            access_key_id = string
+            secret_access_key = string
+          }))
+        }))
+        gcs = optional(object({
+          bucket = string
+          prefix = optional(string, "")
+          service_account_key_json = optional(string, "")
+        }))
+        azure = optional(object({
+          container = string
+          prefix = optional(string, "")
+          endpoint_url = optional(string, "")
+          storage_account = string
+          access_key = string
+        }))
+      }))
+      tasks = optional(list(object({
+        name = string
+        schedule = string
+        storage_name = string
+        type = optional(string)
+        keep = optional(number)
+        delete_from_storage = optional(bool)
+        suspend = optional(bool, false)
+        compression = optional(string)
+      })), [])
+      pitr = optional(object({
+        enabled = optional(bool, false)
+        oplog_only = optional(bool, false)
+        oplog_span_min = optional(number)
+        compression = optional(string)
+      }))
+    }))
+    update_strategy = optional(string)
+    log_collector = optional(object({
+      enabled = optional(bool)
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+    }))
+    unsafe = optional(object({
+      replset_size = optional(bool, false)
+      mongos_size = optional(bool, false)
+      tls = optional(bool, false)
+      backup_if_unhealthy = optional(bool, false)
+    }))
+    pause = optional(bool, false)
+    image_pull_secrets = optional(list(string), [])
   })
 }

@@ -17,8 +17,6 @@ type ResourceVerifier interface {
 // pods only (no service requirement).
 var operatorKinds = map[string]bool{
 	// Tier 2/3 fixture operators (tested since sessions 3-9)
-	"kubernetesperconamongooperator": true,
-	"kubernetesperconamysqloperator": true,
 	"kubernetessolroperator":         true,
 	"kubernetesaltinityoperator":     true,
 	"kuberneteselasticoperator":      true,
@@ -36,7 +34,6 @@ var operatorKinds = map[string]bool{
 var crdWorkloadKinds = map[string]bool{
 	"kuberneteskafka":         true,
 	"kuberneteselasticsearch": true,
-	"kubernetesmongodb":       true,
 	"kubernetessolr":          true,
 	"kubernetesclickhouse":    true,
 }
@@ -47,7 +44,6 @@ var crdWorkloadKinds = map[string]bool{
 // (case-insensitive via lowercasing).
 var helmTier2Kinds = map[string]bool{
 	// Tier 2 Helm applications
-	"kubernetesredis":    true,
 	"kubernetesnats":     true,
 	"kubernetesgrafana":  true,
 	"kubernetesneo4j":    true,
@@ -413,6 +409,74 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 		return &CnpgOperatorInstallVerifier{
 			Namespace:     info.Namespace,
 			PluginEnabled: manifestBarmanPluginEnabled(manifestPath),
+		}, nil
+
+	// Percona operator installs: the operator Deployment Available plus
+	// the CRDs the database kinds render against, Established.
+	case "kubernetesperconamongooperator":
+		return &PsmdbOperatorInstallVerifier{
+			Namespace:   info.Namespace,
+			ReleaseName: info.Name,
+		}, nil
+	case "kubernetesperconamysqloperator":
+		return &PxcOperatorInstallVerifier{
+			Namespace:    info.Namespace,
+			ReleaseName:  info.Name,
+			WatchWidened: pxcWatchWidened(manifestSpecMap(manifestPath)),
+		}, nil
+
+	// A Percona-operator-managed MongoDB cluster: the resource in state
+	// ready + the replica-set Service. The behavioral-failover scenario
+	// (recognized by name) proves data durability through a live primary
+	// loss and election; the with-backup scenario drives a real PBM
+	// backup to completion.
+	case "kubernetesmongodb":
+		spec := manifestSpecMap(manifestPath)
+		rsName, rsSize := mongodbFirstReplset(spec)
+		return &PsmdbClusterVerifier{
+			Namespace:     info.Namespace,
+			ClusterName:   info.Name,
+			ReplsetName:   rsName,
+			Size:          rsSize,
+			Behavioral:    strings.Contains(manifestPath, "behavioral-failover"),
+			BackupProof:   strings.Contains(manifestPath, "with-backup"),
+			BackupStorage: mongodbFirstBackupStorage(spec),
+		}, nil
+
+	// A Percona-operator-managed MySQL (XtraDB) cluster: the resource in
+	// state ready + the proxy's write Service. The behavioral-durability
+	// scenario proves Galera's synchronous replication through a live
+	// node loss; the with-backup scenario drives a real XtraBackup to
+	// completion.
+	case "kubernetesmysql":
+		spec := manifestSpecMap(manifestPath)
+		return &PxcClusterVerifier{
+			Namespace:     info.Namespace,
+			ClusterName:   info.Name,
+			Size:          manifestSpecInt(manifestPath, "instances", 3),
+			ProxyService:  mysqlProxyService(info.Name, spec),
+			Behavioral:    strings.Contains(manifestPath, "behavioral-durability"),
+			BackupProof:   strings.Contains(manifestPath, "with-backup"),
+			BackupStorage: mysqlFirstBackupStorage(spec),
+		}, nil
+
+	// A Valkey instance from the official chart: workload ready + the
+	// write Service. The behavioral-persistence scenario proves
+	// durability through a pod loss; the replication scenario proves
+	// propagation through the read Service.
+	case "kubernetesvalkey":
+		spec := manifestSpecMap(manifestPath)
+		replication, replicas := valkeyReplication(spec)
+		_, hasAuth := spec["auth"]
+		return &ValkeyVerifier{
+			Namespace:        info.Namespace,
+			Name:             info.Name,
+			Replication:      replication,
+			Replicas:         replicas,
+			AuthDeclared:     hasAuth,
+			PersistenceProof: strings.Contains(manifestPath, "behavioral-persistence"),
+			ReplicationProof: strings.Contains(manifestPath, "with-replication"),
+			ServicePort:      valkeyServicePort(spec),
 		}, nil
 
 	// A CloudNativePG-managed PostgreSQL cluster: Ready condition + every

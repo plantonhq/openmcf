@@ -1,0 +1,37 @@
+# The tuned install: cluster-wide watch, structured logging, raised
+# reconcile and backup-upload concurrency, telemetry off, leader-election
+# timing, the XtraBackup-sidecar feature gate, explicit sizing, and an
+# escape-hatch value — the full rendered-values surface deployed live.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPerconaMysqlOperator
+metadata:
+  name: e2e-pxc-op-tuned
+spec:
+  namespace:
+    value: e2e-pxc-op-tuned
+  create_namespace: true
+  replicas: 1
+  watch:
+    cluster_wide: true
+  max_concurrent_reconciles: 2
+  s3_workers_limit: 4
+  log:
+    structured: true
+    level: INFO
+  disable_telemetry: true
+  leader_election:
+    enabled: true
+    lease_duration: 30s
+    renew_deadline: 20s
+    retry_period: 5s
+  xtrabackup_sidecar: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  helm_values: |
+    podAnnotations:
+      e2e.planton.dev/lane: tuned-full

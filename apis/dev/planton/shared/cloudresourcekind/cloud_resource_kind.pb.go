@@ -945,10 +945,11 @@ const (
 	// 900–929: Kubernetes data platforms
 	CloudResourceKind_KubernetesCloudNativePgOperator CloudResourceKind = 900
 	CloudResourceKind_KubernetesPostgres              CloudResourceKind = 901
+	CloudResourceKind_KubernetesValkey                CloudResourceKind = 902
 	CloudResourceKind_KubernetesPerconaMysqlOperator  CloudResourceKind = 903
-	CloudResourceKind_KubernetesPerconaMongoOperator  CloudResourceKind = 904
-	CloudResourceKind_KubernetesMongodb               CloudResourceKind = 905
-	CloudResourceKind_KubernetesRedis                 CloudResourceKind = 906
+	CloudResourceKind_KubernetesMysql                 CloudResourceKind = 904
+	CloudResourceKind_KubernetesPerconaMongoOperator  CloudResourceKind = 905
+	CloudResourceKind_KubernetesMongodb               CloudResourceKind = 906
 	CloudResourceKind_KubernetesStrimziKafkaOperator  CloudResourceKind = 907
 	CloudResourceKind_KubernetesKafka                 CloudResourceKind = 908
 	CloudResourceKind_KubernetesElasticOperator       CloudResourceKind = 909
@@ -1546,10 +1547,11 @@ var (
 		892:  "KubernetesOpenFga",
 		900:  "KubernetesCloudNativePgOperator",
 		901:  "KubernetesPostgres",
+		902:  "KubernetesValkey",
 		903:  "KubernetesPerconaMysqlOperator",
-		904:  "KubernetesPerconaMongoOperator",
-		905:  "KubernetesMongodb",
-		906:  "KubernetesRedis",
+		904:  "KubernetesMysql",
+		905:  "KubernetesPerconaMongoOperator",
+		906:  "KubernetesMongodb",
 		907:  "KubernetesStrimziKafkaOperator",
 		908:  "KubernetesKafka",
 		909:  "KubernetesElasticOperator",
@@ -2134,10 +2136,11 @@ var (
 		"KubernetesOpenFga":                              892,
 		"KubernetesCloudNativePgOperator":                900,
 		"KubernetesPostgres":                             901,
+		"KubernetesValkey":                               902,
 		"KubernetesPerconaMysqlOperator":                 903,
-		"KubernetesPerconaMongoOperator":                 904,
-		"KubernetesMongodb":                              905,
-		"KubernetesRedis":                                906,
+		"KubernetesMysql":                                904,
+		"KubernetesPerconaMongoOperator":                 905,
+		"KubernetesMongodb":                              906,
 		"KubernetesStrimziKafkaOperator":                 907,
 		"KubernetesKafka":                                908,
 		"KubernetesElasticOperator":                      909,
@@ -2600,7 +2603,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x89\xde\x01\n" +
+	"\x02v1\x10\x01*\xb8\xde\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3021,11 +3024,12 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x11KubernetesOpenBao\x10\xfb\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sbao\x12(\n" +
 	"\x11KubernetesOpenFga\x10\xfc\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sfga\x129\n" +
 	"\x1fKubernetesCloudNativePgOperator\x10\x84\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8scnpgop\x12,\n" +
-	"\x12KubernetesPostgres\x10\x85\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8spg:\x02\x84\a\x12=\n" +
-	"\x1eKubernetesPerconaMysqlOperator\x10\x87\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\x0ek8sprcnmysqlop\x12;\n" +
-	"\x1eKubernetesPerconaMongoOperator\x10\x88\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\fk8sprcnmdbop\x12,\n" +
-	"\x11KubernetesMongodb\x10\x89\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8smdb:\x02\x88\a\x12&\n" +
-	"\x0fKubernetesRedis\x10\x8a\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sred\x127\n" +
+	"\x12KubernetesPostgres\x10\x85\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8spg:\x02\x84\a\x12'\n" +
+	"\x10KubernetesValkey\x10\x86\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svlk\x12=\n" +
+	"\x1eKubernetesPerconaMysqlOperator\x10\x87\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\x0ek8sprcnmysqlop\x12,\n" +
+	"\x0fKubernetesMysql\x10\x88\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8smysql:\x02\x87\a\x12;\n" +
+	"\x1eKubernetesPerconaMongoOperator\x10\x89\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\fk8sprcnmdbop\x12,\n" +
+	"\x11KubernetesMongodb\x10\x8a\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8smdb:\x02\x89\a\x127\n" +
 	"\x1eKubernetesStrimziKafkaOperator\x10\x8b\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sstzop\x12*\n" +
 	"\x0fKubernetesKafka\x10\x8c\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8skaf:\x02\x8b\a\x122\n" +
 	"\x19KubernetesElasticOperator\x10\x8d\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8selaop\x121\n" +

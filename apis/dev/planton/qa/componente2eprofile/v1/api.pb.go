@@ -31,7 +31,7 @@ const (
 //	apiVersion: qa.planton.dev/v1
 //	kind: ComponentE2EProfile
 //	metadata:
-//	  name: kubernetesredis
+//	  name: kubernetesvalkey
 //	spec:
 //	  tier: 2
 //	  status: green

@@ -207,3 +207,7 @@ spec:
     - terraform_type: kubernetes_cluster_role_binding_v1
       pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:ClusterRoleBinding
       id_format: "{cluster_role_binding_name}"
+    # --- Admission registration (cluster-scoped) ------------------------------
+    - terraform_type: kubernetes_validating_webhook_configuration_v1
+      pulumi_type: kubernetes:admissionregistration.k8s.io/v1:ValidatingWebhookConfiguration
+      id_format: "{validating_webhook_configuration_name}"

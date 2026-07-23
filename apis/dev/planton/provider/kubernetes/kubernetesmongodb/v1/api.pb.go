@@ -23,7 +23,12 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// mongodb-kubernetes
+// *
+// KubernetesMongodb declares a production-grade MongoDB cluster on
+// Kubernetes: replica sets with automated failover, optional sharding,
+// scheduled backups with point-in-time recovery, TLS, and declarative
+// users — reconciled by the Percona Operator for MongoDB
+// (KubernetesPerconaMongoOperator).
 type KubernetesMongodb struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version
@@ -105,7 +110,7 @@ func (x *KubernetesMongodb) GetStatus() *KubernetesMongodbStatus {
 	return nil
 }
 
-// mongodb-kubernetes status.
+// KubernetesMongodb status.
 type KubernetesMongodbStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// stack-outputs

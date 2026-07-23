@@ -10,8 +10,8 @@ order: 200
 presets:
   - slug: "01-standard"
     rank: "01"
-    title: "Standard Percona Operator for MySQL"
-    excerpt: "This preset deploys the Percona Operator for MySQL with recommended default resources. The operator automates the creation, scaling, and management of Percona XtraDB Cluster and Percona Server for..."
+    title: "Standard"
+    excerpt: "This preset installs the Percona Operator for MySQL (XtraDB Cluster) in its standard posture: the pinned `pxc-operator` chart, own-namespace watch scope, telemetry off, structured logs, and explicit..."
 ---
 
 # Percona MySQL Operator Presets

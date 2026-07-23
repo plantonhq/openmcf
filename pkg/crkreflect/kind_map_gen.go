@@ -470,6 +470,7 @@ import (
 	kubernetesmanifestv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmanifest/v1"
 	kubernetesmetricsserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmetricsserver/v1"
 	kubernetesmongodbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmongodb/v1"
+	kubernetesmysqlv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmysql/v1"
 	kubernetesnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnamespace/v1"
 	kubernetesnatsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnats/v1"
 	kubernetesneo4jv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesneo4j/v1"
@@ -485,7 +486,6 @@ import (
 	kubernetespriorityclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespriorityclass/v1"
 	kubernetesprometheusv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesprometheus/v1"
 	kubernetesrbacv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrbac/v1"
-	kubernetesredisv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesredis/v1"
 	kubernetesreferencegrantv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesreferencegrant/v1"
 	kubernetesrequestauthenticationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrequestauthentication/v1"
 	kubernetesresourcequotav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesresourcequota/v1"
@@ -509,6 +509,7 @@ import (
 	kubernetestemporalv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestemporal/v1"
 	kubernetestlsroutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestlsroute/v1"
 	kubernetesudproutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesudproute/v1"
+	kubernetesvalkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1"
 	kubernetesvelerov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvelero/v1"
 	ocialarmv1 "github.com/plantonhq/planton/apis/dev/planton/provider/oci/ocialarm/v1"
 	ociapigatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/oci/ociapigateway/v1"
@@ -1106,6 +1107,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesManifest:                    &kubernetesmanifestv1.KubernetesManifest{},
 	cloudresourcekind.CloudResourceKind_KubernetesMetricsServer:               &kubernetesmetricsserverv1.KubernetesMetricsServer{},
 	cloudresourcekind.CloudResourceKind_KubernetesMongodb:                     &kubernetesmongodbv1.KubernetesMongodb{},
+	cloudresourcekind.CloudResourceKind_KubernetesMysql:                       &kubernetesmysqlv1.KubernetesMysql{},
 	cloudresourcekind.CloudResourceKind_KubernetesNamespace:                   &kubernetesnamespacev1.KubernetesNamespace{},
 	cloudresourcekind.CloudResourceKind_KubernetesNats:                        &kubernetesnatsv1.KubernetesNats{},
 	cloudresourcekind.CloudResourceKind_KubernetesNeo4j:                       &kubernetesneo4jv1.KubernetesNeo4J{},
@@ -1121,7 +1123,6 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesPriorityClass:               &kubernetespriorityclassv1.KubernetesPriorityClass{},
 	cloudresourcekind.CloudResourceKind_KubernetesPrometheus:                  &kubernetesprometheusv1.KubernetesPrometheus{},
 	cloudresourcekind.CloudResourceKind_KubernetesRbac:                        &kubernetesrbacv1.KubernetesRbac{},
-	cloudresourcekind.CloudResourceKind_KubernetesRedis:                       &kubernetesredisv1.KubernetesRedis{},
 	cloudresourcekind.CloudResourceKind_KubernetesReferenceGrant:              &kubernetesreferencegrantv1.KubernetesReferenceGrant{},
 	cloudresourcekind.CloudResourceKind_KubernetesRequestAuthentication:       &kubernetesrequestauthenticationv1.KubernetesRequestAuthentication{},
 	cloudresourcekind.CloudResourceKind_KubernetesResourceQuota:               &kubernetesresourcequotav1.KubernetesResourceQuota{},
@@ -1145,6 +1146,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesTemporal:                    &kubernetestemporalv1.KubernetesTemporal{},
 	cloudresourcekind.CloudResourceKind_KubernetesTlsRoute:                    &kubernetestlsroutev1.KubernetesTlsRoute{},
 	cloudresourcekind.CloudResourceKind_KubernetesUdpRoute:                    &kubernetesudproutev1.KubernetesUdpRoute{},
+	cloudresourcekind.CloudResourceKind_KubernetesValkey:                      &kubernetesvalkeyv1.KubernetesValkey{},
 	cloudresourcekind.CloudResourceKind_KubernetesVelero:                      &kubernetesvelerov1.KubernetesVelero{},
 }
 

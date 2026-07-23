@@ -37,8 +37,8 @@ func TestHasPrerequisites(t *testing.T) {
 	if !HasPrerequisites(cloudresourcekind.CloudResourceKind_KubernetesPostgres) {
 		t.Fatal("expected KubernetesPostgres to have prerequisites")
 	}
-	if HasPrerequisites(cloudresourcekind.CloudResourceKind_KubernetesRedis) {
-		t.Fatal("expected KubernetesRedis to have no prerequisites")
+	if HasPrerequisites(cloudresourcekind.CloudResourceKind_KubernetesValkey) {
+		t.Fatal("expected KubernetesValkey to have no prerequisites")
 	}
 }
 
@@ -65,7 +65,7 @@ func TestTransitivePrerequisites_NoDeps(t *testing.T) {
 	}
 }
 
-func TestAllSixOperatorDependentComponents(t *testing.T) {
+func TestAllSevenOperatorDependentComponents(t *testing.T) {
 	cases := []struct {
 		kind   cloudresourcekind.CloudResourceKind
 		expect cloudresourcekind.CloudResourceKind
@@ -74,6 +74,7 @@ func TestAllSixOperatorDependentComponents(t *testing.T) {
 		{cloudresourcekind.CloudResourceKind_KubernetesKafka, cloudresourcekind.CloudResourceKind_KubernetesStrimziKafkaOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesElasticsearch, cloudresourcekind.CloudResourceKind_KubernetesElasticOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesMongodb, cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator},
+		{cloudresourcekind.CloudResourceKind_KubernetesMysql, cloudresourcekind.CloudResourceKind_KubernetesPerconaMysqlOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesSolr, cloudresourcekind.CloudResourceKind_KubernetesSolrOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesClickHouse, cloudresourcekind.CloudResourceKind_KubernetesAltinityOperator},
 	}

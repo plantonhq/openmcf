@@ -1,39 +1,43 @@
+# Stack outputs — identical names and derivations in the Pulumi module's
+# outputs.go / main.go exports (KubernetesMongodbStackOutputs).
+
 output "namespace" {
-  description = "The namespace in which MongoDB is deployed."
+  description = "Namespace the cluster runs in"
   value       = local.namespace
 }
 
+output "cluster_name" {
+  description = "Name of the PerconaServerMongoDB resource (equals metadata.name) — every operator-created object derives from it"
+  value       = local.cluster_name
+}
+
 output "service" {
-  description = "The base name of the MongoDB service (Helm fullname override)."
-  value       = local.kube_service_name
+  description = "The Service applications connect to: `<name>-mongos` when sharding is enabled, otherwise the first replica set's headless Service (`<name>-<rs>`)"
+  value       = local.service_name
 }
 
 output "kube_endpoint" {
-  description = "Internal DNS name of the MongoDB service within the cluster."
-  value       = "${local.kube_service_name}.${local.namespace}.svc.cluster.local"
+  description = "In-cluster connection endpoint (`<service>.<namespace>.svc.cluster.local:27017`); replica-set clusters connect with `?replicaSet=<replica_set>` so the driver follows failovers"
+  value       = local.kube_endpoint
+}
+
+output "replica_set" {
+  description = "The first replica set's name (the driver's replicaSet parameter) — empty for sharded clusters (mongos needs none)"
+  value       = local.replica_set_output
 }
 
 output "port_forward_command" {
-  description = "Handy command to port-forward traffic to the MongoDB service on localhost:8080 -> 27017."
-  value       = "kubectl port-forward -n ${local.namespace} service/${local.kube_service_name} 8080:27017"
+  description = "Port-forward command for reaching the database from a workstation when no exposure is composed"
+  value       = "kubectl port-forward svc/${local.service_name} -n ${local.namespace} 27017:27017"
 }
 
-output "external_hostname" {
-  description = "The external hostname for MongoDB if ingress is enabled."
-  value       = local.ingress_external_hostname
-}
-
-output "username" {
-  description = "The default MongoDB root username."
-  value       = "root"
-}
-
-output "password_secret_name" {
-  description = "Name of the Secret holding the MongoDB root password."
-  value       = local.password_secret_name
-}
-
-output "password_secret_key" {
-  description = "Key within the Secret that contains the MongoDB root password."
-  value       = "mongodb-root-password"
+# The operator-managed system-users Secret (`<name>-secrets`): the module
+# pins its name via spec.secrets.users, and the operator generates the
+# built-in account passwords into it.
+output "admin_password_secret" {
+  description = "Secret key holding the database-admin password (paired username key: MONGODB_DATABASE_ADMIN_USER)"
+  value = {
+    name = local.users_secret_name
+    key  = "MONGODB_DATABASE_ADMIN_PASSWORD"
+  }
 }

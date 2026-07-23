@@ -1,0 +1,853 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesmysql.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesMysqlSpec** declares a production-grade MySQL cluster
+ * reconciled by the Percona Operator for MySQL based on Percona XtraDB
+ * Cluster (KubernetesPerconaMysqlOperator must be on the cluster). The
+ * spec renders a `pxc.percona.com/v1` PerconaXtraDBCluster custom
+ * resource: Galera SYNCHRONOUS multi-primary replication (every node
+ * holds the full dataset; a committed transaction is certified on every
+ * node — losing a node loses no data), automated recovery, HAProxy or
+ * ProxySQL query routing, scheduled XtraBackup backups with
+ * point-in-time recovery, TLS, and declarative users.
+ *
+ * CLUSTER SIZE: Galera needs a quorum — 3 nodes is the production
+ * shape (5 for more read capacity). Sizes below 3 lose quorum-based
+ * safety and are rejected by the operator unless the `unsafe` block
+ * explicitly opts in (the single-node development posture).
+ *
+ * APPLICATIONS CONNECT THROUGH THE PROXY, never a database pod: the
+ * proxy layer (HAProxy by default) routes writes to one healthy node,
+ * detects failures, and re-routes without client changes. The chart of
+ * services: `<name>-haproxy` (writes, port 3306; reads via 3307) — or
+ * `<name>-proxysql` when ProxySQL is chosen.
+ *
+ * NAMING CONTRACT: every object derives from `metadata.name` — pods
+ * (`<name>-pxc-0..N`), Services (`<name>-pxc`, `<name>-haproxy` /
+ * `<name>-proxysql`), and the system-users Secret (`<name>-secrets`,
+ * operator-generated passwords for root and the internal accounts).
+ *
+ * EXPOSURE IS COMPOSED, never embedded: the cluster is in-cluster
+ * plumbing reachable at the exported `kube_endpoint`. To reach it from
+ * outside, compose a first-class exposure kind — the proxy's
+ * `expose_primary` service type/annotations exist for the managed-cloud
+ * LoadBalancer recipes, documented per environment.
+ *
+ * DELIBERATELY NOT MODELED (reachable via the operator's own upstream
+ * surface where noted, recorded in the research doc):
+ * cross-cluster replication channels, PMM client integration, sidecar
+ * containers, Vault keyring encryption, hostPath/emptyDir storage.
+ */
+message KubernetesMysqlSpec {
+  /**
+   * Namespace to create the MySQL cluster in. The reconciling operator
+   * must watch this namespace (the default operator posture watches its
+   * OWN namespace — install the operator there, or widen its watch).
+   * Accepts a literal namespace name or a reference to a
+   * KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before the cluster and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Percona XtraDB Cluster container image, tag form (e.g.
+   * "percona/percona-xtradb-cluster:8.4.8-8.1" — MySQL 8.4). Empty =
+   * the module's default for the pinned operator. This is how the MySQL
+   * version is chosen; changing it on a live cluster performs a
+   * SmartUpdate rolling upgrade.
+   */
+  string image_name = 3;
+
+  /**
+   * Number of database nodes. 3 is the production shape (Galera
+   * quorum); 5 adds read capacity. 1 is a development posture that
+   * REQUIRES unsafe.cluster_size.
+   */
+  optional int32 instances = 4 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Storage for every database node. Required: the operator provisions
+   * one PVC per node and grows are applied in place (never shrinks).
+   */
+  KubernetesMysqlStorage storage = 5 [(buf.validate.field).required = true];
+
+  /**
+   * CPU/memory for every database node pod. Empty = no requests/limits
+   * (fine for evaluation, not production).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 6;
+
+  /**
+   * Extra my.cnf configuration appended to the operator's defaults
+   * (`[mysqld]` sections and friends, verbatim). Galera/wsrep and SST
+   * essentials are operator-managed — override them only when you know
+   * the interaction.
+   */
+  string mysql_config = 7;
+
+  /**
+   * Automatic full-cluster-crash recovery: when every node is down
+   * (node-pool replacement, full AZ outage), the operator finds the
+   * node with the newest data and bootstraps the cluster from it.
+   * Upstream default: true.
+   */
+  optional bool auto_recovery = 8 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * The query-routing proxy in front of the database nodes. Omitted =
+   * HAProxy with 3 replicas (the upstream default posture). Exactly one
+   * proxy flavor may be enabled.
+   */
+  KubernetesMysqlProxy proxy = 9;
+
+  /**
+   * TLS for client and replication traffic. Omitted = enabled with
+   * operator-generated certificates (the upstream default). Point
+   * issuer at a cert-manager (Cluster)Issuer for an
+   * organization-trusted chain; disabling TLS entirely REQUIRES
+   * unsafe.tls.
+   */
+  KubernetesMysqlTls tls = 10;
+
+  /**
+   * Declarative application users: the operator creates them, keeps
+   * their grants reconciled, and manages their password Secrets.
+   */
+  repeated KubernetesMysqlUser users = 11 [(buf.validate.field).cel = {
+    id: "spec.users.unique_names"
+    message: "each user needs a distinct name"
+    expression: "this.all(u1, this.exists_one(u2, u1.name == u2.name))"
+  }];
+
+  /**
+   * Scheduled XtraBackup backups (and point-in-time recovery) to
+   * S3/S3-compatible/Azure-Blob stores or a PVC. Omitted = no backups
+   * (a deliberate choice to make, not a default to forget).
+   */
+  KubernetesMysqlBackup backup = 12;
+
+  /**
+   * Where database pods run: anti-affinity spreading, node selection,
+   * tolerations, and scheduling priority.
+   */
+  KubernetesMysqlScheduling scheduling = 13;
+
+  /**
+   * PodDisruptionBudget for the database nodes. Omitted = the upstream
+   * default (max one node down to voluntary disruptions).
+   */
+  KubernetesMysqlPodDisruptionBudget pod_disruption_budget = 14;
+
+  /**
+   * The log-collector sidecar (fluent-bit) shipping mysqld logs.
+   * Omitted = enabled (the upstream default).
+   */
+  KubernetesMysqlLogCollector log_collector = 15;
+
+  /**
+   * How updates roll across the cluster: SmartUpdate (the operator
+   * orders restarts safely — the upstream default), RollingUpdate
+   * (StatefulSet semantics), or OnDelete.
+   */
+  optional string update_strategy = 16 [
+    (dev.planton.shared.options.default) = "SmartUpdate",
+    (buf.validate.field).cel = {
+      id: "spec.update_strategy_enum"
+      message: "update_strategy must be SmartUpdate, RollingUpdate, or OnDelete"
+      expression: "this == '' || this in ['SmartUpdate', 'RollingUpdate', 'OnDelete']"
+    }
+  ];
+
+  /**
+   * Explicit opt-in to unsafe topologies and postures the operator
+   * otherwise REJECTS. Development conveniences — never production.
+   */
+  KubernetesMysqlUnsafe unsafe = 17;
+
+  /**
+   * Pause the cluster: scale everything to zero while keeping the data
+   * volumes (and resume by flipping back).
+   */
+  bool pause = 18;
+
+  /**
+   * Names of image-pull secrets (in the cluster's namespace) for
+   * pulling images from a private registry.
+   */
+  repeated string image_pull_secrets = 19 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing Kubernetes Secrets (references), not secret material"];
+
+  option (buf.validate.message).cel = {
+    id: "spec.instances_quorum_or_unsafe"
+    message: "fewer than 3 nodes loses Galera quorum safety — the operator rejects it unless unsafe.cluster_size explicitly opts in (development only)"
+    expression: "(!has(this.instances) || this.instances >= 3) || (has(this.unsafe) && this.unsafe.cluster_size)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.tls_disabled_or_unsafe"
+    message: "disabling TLS is a plaintext development posture — the operator rejects it unless unsafe.tls explicitly opts in"
+    expression: "(!has(this.tls) || !has(this.tls.enabled) || this.tls.enabled) || (has(this.unsafe) && this.unsafe.tls)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.proxy_replicas_or_unsafe"
+    message: "fewer than 2 proxy replicas loses write-path availability — the operator rejects it unless unsafe.proxy_size explicitly opts in (development only)"
+    expression: "(!has(this.proxy) || ((!has(this.proxy.haproxy) || !has(this.proxy.haproxy.replicas) || this.proxy.haproxy.replicas >= 2) && (!has(this.proxy.proxysql) || !has(this.proxy.proxysql.replicas) || this.proxy.proxysql.replicas >= 2))) || (has(this.unsafe) && this.unsafe.proxy_size)"
+  };
+}
+
+/**
+ * One PVC specification.
+ */
+message KubernetesMysqlStorage {
+  /**
+   * Volume size as a Kubernetes quantity (e.g. "10Gi"). Grows are
+   * applied to live PVCs; shrinks are rejected.
+   */
+  string size = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.storage.size_quantity"
+      message: "size must be a Kubernetes quantity like '10Gi' or '500Mi'"
+      expression: "this.matches('^[0-9]+(\\\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$')"
+    }
+  ];
+
+  /**
+   * StorageClass for the PVCs. Empty = the cluster's default class.
+   * Accepts a literal class name or a reference to a
+   * KubernetesStorageClass resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_class_name"
+  ];
+}
+
+/**
+ * The query-routing proxy. Exactly one flavor.
+ */
+message KubernetesMysqlProxy {
+  oneof flavor {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * HAProxy — the upstream default: TCP routing, writes to one
+     * healthy node (port 3306), reads load-balanced (port 3307).
+     * Lighter than ProxySQL; no query awareness.
+     */
+    KubernetesMysqlHaproxy haproxy = 1;
+
+    /**
+     * ProxySQL — SQL-aware routing: query rules, read/write split at
+     * the statement level, a stateful configuration database on its own
+     * volume. The heavier, more capable choice.
+     */
+    KubernetesMysqlProxysql proxysql = 2;
+  }
+}
+
+/**
+ * HAProxy proxy layer.
+ */
+message KubernetesMysqlHaproxy {
+  /**
+   * HAProxy replicas. Upstream default: 3 (2+ for availability of the
+   * write path). 1 REQUIRES unsafe.proxy_size.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * CPU/memory for each HAProxy pod.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+
+  /**
+   * Extra haproxy.cfg content replacing the operator's global/defaults
+   * sections (verbatim; the upstream default configuration is the
+   * baseline to copy from).
+   */
+  string config = 3;
+
+  /**
+   * The PRIMARY (write) Service — `<name>-haproxy`. Type and per-cloud
+   * annotations for the managed-LoadBalancer recipes.
+   */
+  KubernetesMysqlProxyService expose_primary = 4;
+
+  /**
+   * The REPLICAS (read) Service — `<name>-haproxy-replicas`, port
+   * 3307 load-balanced across all nodes. Omitted = enabled (the
+   * upstream default).
+   */
+  KubernetesMysqlHaproxyReplicasService expose_replicas = 5;
+}
+
+/**
+ * The HAProxy replicas (read) Service.
+ */
+message KubernetesMysqlHaproxyReplicasService {
+  /**
+   * Render the replicas Service. Upstream default: true.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Route reads to REPLICA nodes only, keeping the write node free of
+   * read traffic. Upstream default: false (reads hit every node).
+   */
+  bool only_readers = 2;
+
+  /**
+   * Service type: ClusterIP (default), NodePort, or LoadBalancer.
+   */
+  optional string type = 3 [
+    (dev.planton.shared.options.default) = "ClusterIP",
+    (buf.validate.field).cel = {
+      id: "spec.proxy.haproxy.expose_replicas.type_enum"
+      message: "service type must be ClusterIP, NodePort, or LoadBalancer"
+      expression: "this == '' || this in ['ClusterIP', 'NodePort', 'LoadBalancer']"
+    }
+  ];
+
+  /**
+   * Service annotations (per-cloud LoadBalancer recipes).
+   */
+  map<string, string> annotations = 4;
+}
+
+/**
+ * ProxySQL proxy layer.
+ */
+message KubernetesMysqlProxysql {
+  /**
+   * ProxySQL replicas. Upstream default: 3. 1 REQUIRES
+   * unsafe.proxy_size.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * CPU/memory for each ProxySQL pod.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+
+  /**
+   * Storage for ProxySQL's own configuration database. Required —
+   * ProxySQL is stateful.
+   */
+  KubernetesMysqlStorage storage = 3 [(buf.validate.field).required = true];
+
+  /**
+   * Extra proxysql.cnf content replacing the operator's defaults
+   * (verbatim).
+   */
+  string config = 4;
+
+  /**
+   * The client-facing Service — `<name>-proxysql`. Type and per-cloud
+   * annotations for the managed-LoadBalancer recipes.
+   */
+  KubernetesMysqlProxyService expose_primary = 5;
+}
+
+/**
+ * A proxy client Service.
+ */
+message KubernetesMysqlProxyService {
+  /**
+   * Service type: ClusterIP (default), NodePort, or LoadBalancer.
+   */
+  optional string type = 1 [
+    (dev.planton.shared.options.default) = "ClusterIP",
+    (buf.validate.field).cel = {
+      id: "spec.proxy.service.type_enum"
+      message: "service type must be ClusterIP, NodePort, or LoadBalancer"
+      expression: "this == '' || this in ['ClusterIP', 'NodePort', 'LoadBalancer']"
+    }
+  ];
+
+  /**
+   * Service annotations — the per-cloud LoadBalancer recipe surface.
+   */
+  map<string, string> annotations = 2;
+}
+
+/**
+ * TLS posture.
+ */
+message KubernetesMysqlTls {
+  /**
+   * Serve TLS. Upstream default: true (operator-generated
+   * certificates). Disabling REQUIRES unsafe.tls — a plaintext MySQL
+   * wire is a development posture.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * cert-manager issuer for the cluster's certificates instead of the
+   * operator's self-generated ones — the organization-trust seam.
+   * References a KubernetesClusterIssuer (set issuer_kind to "Issuer"
+   * for a namespaced KubernetesIssuer).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef issuer = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesClusterIssuer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * Kind of the cert-manager issuer named above: "ClusterIssuer" (the
+   * default) or "Issuer" (must live in the database's namespace).
+   */
+  optional string issuer_kind = 3 [
+    (dev.planton.shared.options.default) = "ClusterIssuer",
+    (buf.validate.field).cel = {
+      id: "spec.tls.issuer_kind_enum"
+      message: "issuer_kind must be ClusterIssuer or Issuer"
+      expression: "this == '' || this in ['ClusterIssuer', 'Issuer']"
+    }
+  ];
+
+  /**
+   * Additional DNS SANs for the generated certificates (external
+   * hostnames the database is reached at through composed exposure).
+   */
+  repeated string sans = 4;
+}
+
+/**
+ * A declaratively managed application user.
+ */
+message KubernetesMysqlUser {
+  /**
+   * Username.
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Databases the grants below apply to. Empty = server-wide grants
+   * (*.*) — administrative users only.
+   */
+  repeated string dbs = 2;
+
+  /**
+   * MySQL hosts clause per grant (e.g. "%" for anywhere — the upstream
+   * default).
+   */
+  repeated string hosts = 3;
+
+  /**
+   * Privileges to grant (SELECT, INSERT, UPDATE, DELETE, ALL, ...).
+   * Empty = the operator's default (ALL on the listed dbs).
+   */
+  repeated string grants = 4;
+
+  /**
+   * GRANT OPTION: the user can grant its own privileges onward.
+   */
+  bool with_grant_option = 5;
+
+  /**
+   * Password, materialized as a Kubernetes Secret the operator watches
+   * (`<cluster>-user-<name>` unless the operator generates one) —
+   * rotating the value rotates the database password. Empty = the
+   * operator generates a password into the same Secret.
+   */
+  string password = 6 [(dev.planton.shared.options.sensitive) = true];
+}
+
+/**
+ * Scheduled backups + point-in-time recovery.
+ */
+message KubernetesMysqlBackup {
+  /**
+   * Backup storage destinations, referenced by schedules and PITR via
+   * their names.
+   */
+  repeated KubernetesMysqlBackupStorage storages = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "spec.backup.storages.unique_names"
+      message: "each backup storage needs a distinct name"
+      expression: "this.all(s1, this.exists_one(s2, s1.name == s2.name))"
+    }
+  ];
+
+  /**
+   * Scheduled backups (rendered into the cluster's backup schedule —
+   * the operator runs one XtraBackup job per tick).
+   */
+  repeated KubernetesMysqlBackupSchedule schedules = 2 [(buf.validate.field).cel = {
+    id: "spec.backup.schedules.unique_names"
+    message: "each backup schedule needs a distinct name"
+    expression: "this.all(s1, this.exists_one(s2, s1.name == s2.name))"
+  }];
+
+  /**
+   * Point-in-time recovery: continuously upload binlog events so a
+   * restore can land between backups. The referenced storage should be
+   * DEDICATED to PITR (the upstream recommendation — never share it
+   * with base backups).
+   */
+  KubernetesMysqlPitr pitr = 3;
+}
+
+/**
+ * One backup storage destination.
+ */
+message KubernetesMysqlBackupStorage {
+  /**
+   * Name schedules and PITR reference this storage by.
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.backup.storages.name_format"
+      message: "storage name must be a lowercase DNS label (letters, numbers, hyphens)"
+      expression: "this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * Backend. Exactly one arm; declared credentials materialize as a
+   * Kubernetes Secret the backup jobs read — never plaintext in the
+   * rendered resource.
+   */
+  oneof backend {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * AWS S3 — or ANY S3-compatible store (MinIO, Ceph RGW, GCS via
+     * its S3 interoperability endpoint, ...) via the endpoint_url
+     * override.
+     */
+    KubernetesMysqlS3Storage s3 = 2;
+
+    /**
+     * Azure Blob Storage.
+     */
+    KubernetesMysqlAzureStorage azure = 3;
+
+    /**
+     * A PersistentVolumeClaim next to the cluster — backups without an
+     * object store. No PITR and no off-cluster durability; prefer an
+     * object store for production.
+     */
+    KubernetesMysqlPvcStorage pvc = 4;
+  }
+
+  /**
+   * Verify the store's TLS certificate. Upstream default: true —
+   * disable only for self-signed test endpoints.
+   */
+  optional bool verify_tls = 5 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * S3 / S3-compatible backup storage.
+ */
+message KubernetesMysqlS3Storage {
+  /**
+   * Bucket name.
+   */
+  string bucket = 1 [(buf.validate.field).required = true];
+
+  /**
+   * AWS region of the bucket. Required for real S3; S3-compatible
+   * stores use their expected value (MinIO accepts any).
+   */
+  string region = 2;
+
+  /**
+   * Key prefix inside the bucket (a folder for this cluster's
+   * backups).
+   */
+  string prefix = 3;
+
+  /**
+   * S3-COMPATIBLE ARM: endpoint URL of the store (e.g.
+   * http://minio.minio-system.svc:9000 for in-cluster MinIO,
+   * https://storage.googleapis.com for GCS interoperability). Empty =
+   * real AWS S3.
+   */
+  string endpoint_url = 4 [(buf.validate.field).cel = {
+    id: "spec.backup.s3.endpoint_format"
+    message: "endpoint_url must be an http(s) URL (e.g. http://minio.minio-system.svc:9000)"
+    expression: "this == '' || this.startsWith('http://') || this.startsWith('https://')"
+  }];
+
+  /**
+   * Force path-style addressing (bucket in the path, not the
+   * subdomain) — required by MinIO and most self-hosted stores.
+   */
+  bool force_path_style = 5;
+
+  /**
+   * Access keys, materialized as a Kubernetes Secret the backup jobs
+   * read. Required: XtraBackup's S3 uploads authenticate with keys
+   * (for AWS, mint scoped keys for a backup-only IAM user).
+   */
+  KubernetesMysqlS3AccessKeys access_keys = 6 [(buf.validate.field).required = true];
+}
+
+/**
+ * Static S3 access keys.
+ */
+message KubernetesMysqlS3AccessKeys {
+  /**
+   * Access key ID — the public identifier of the key pair, not a
+   * secret. For MinIO this is the access key / username.
+   */
+  string access_key_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Secret access key (for MinIO: the secret key / password).
+   */
+  string secret_access_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+/**
+ * Azure Blob backup storage.
+ */
+message KubernetesMysqlAzureStorage {
+  /**
+   * Blob container name.
+   */
+  string container = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key prefix inside the container.
+   */
+  string prefix = 2;
+
+  /**
+   * Endpoint URL override (sovereign clouds, Azurite). Empty = the
+   * account's default blob endpoint.
+   */
+  string endpoint_url = 3;
+
+  /**
+   * Storage-account name.
+   */
+  string storage_account = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Storage-account access key, materialized as a Kubernetes Secret
+   * the backup jobs read.
+   */
+  string access_key = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+/**
+ * PVC backup storage.
+ */
+message KubernetesMysqlPvcStorage {
+  /**
+   * The backup volume.
+   */
+  KubernetesMysqlStorage volume = 1 [(buf.validate.field).required = true];
+}
+
+/**
+ * One backup schedule entry.
+ */
+message KubernetesMysqlBackupSchedule {
+  /**
+   * Schedule name.
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.backup.schedules.name_format"
+      message: "schedule name must be a lowercase DNS label (letters, numbers, hyphens)"
+      expression: "this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')"
+    }
+  ];
+
+  /**
+   * Standard FIVE-field cron expression (e.g. "0 2 * * *" = daily at
+   * 02:00).
+   */
+  string schedule = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.backup.schedules.cron_five_fields"
+      message: "schedule is a five-field cron expression — e.g. '0 2 * * *' for daily at 02:00"
+      expression: "this.split(' ').filter(f, f != '').size() == 5"
+    }
+  ];
+
+  /**
+   * Name of the declared storage this schedule writes to.
+   */
+  string storage_name = 3 [(buf.validate.field).required = true];
+
+  /**
+   * How many backups this schedule keeps. Older ones are pruned.
+   */
+  optional int32 keep = 4 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Also delete pruned backups FROM THE STORE (not just the cluster's
+   * records). Upstream default when retention is set: true.
+   */
+  optional bool delete_from_storage = 5 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * Point-in-time recovery.
+ */
+message KubernetesMysqlPitr {
+  /**
+   * Continuously ship binlogs to the storage below.
+   */
+  bool enabled = 1;
+
+  /**
+   * Name of the declared storage binlogs land in. DEDICATE a storage
+   * to PITR (never the base-backup storage — the upstream
+   * requirement).
+   */
+  string storage_name = 2;
+
+  /**
+   * Seconds between binlog uploads. Upstream default: 60 — the
+   * recovery-point objective for a total-cluster loss.
+   */
+  optional int32 time_between_uploads = 3 [
+    (dev.planton.shared.options.default) = "60",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "spec.backup.pitr.enabled_needs_storage"
+    message: "PITR needs storage_name — the declared backup storage binlogs are shipped to"
+    expression: "!this.enabled || this.storage_name != ''"
+  };
+}
+
+/**
+ * Database pod scheduling.
+ */
+message KubernetesMysqlScheduling {
+  /**
+   * Topology key the operator's anti-affinity spreads database nodes
+   * across. Upstream default: kubernetes.io/hostname (one node per
+   * host); use topology.kubernetes.io/zone to spread across zones, or
+   * "none" to disable anti-affinity (development only).
+   */
+  string anti_affinity_topology_key = 1;
+
+  /**
+   * Node selector for the database pods.
+   */
+  map<string, string> node_selector = 2;
+
+  /**
+   * Tolerations for the database pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 3;
+
+  /**
+   * PriorityClass for the database pods — databases should outlive
+   * stateless workloads under node pressure.
+   */
+  string priority_class_name = 4;
+}
+
+/**
+ * PodDisruptionBudget for the database nodes.
+ */
+message KubernetesMysqlPodDisruptionBudget {
+  /**
+   * Maximum database pods down during voluntary disruptions. Upstream
+   * default: 1 — never raise it above (instances - quorum). Mutually
+   * exclusive with min_available.
+   */
+  int32 max_unavailable = 1 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * Minimum database pods that must stay up. Mutually exclusive with
+   * max_unavailable.
+   */
+  int32 min_available = 2 [(buf.validate.field).int32.gte = 0];
+
+  option (buf.validate.message).cel = {
+    id: "spec.pdb.single_bound"
+    message: "declare at most one PDB bound — max_unavailable or min_available"
+    expression: "!(this.max_unavailable > 0 && this.min_available > 0)"
+  };
+}
+
+/**
+ * The fluent-bit log-collector sidecar.
+ */
+message KubernetesMysqlLogCollector {
+  /**
+   * Run the sidecar. Upstream default: true.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * CPU/memory for the sidecar.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+}
+
+/**
+ * Explicit opt-in to configurations the operator otherwise rejects.
+ * Every flag here trades safety for convenience — development only.
+ */
+message KubernetesMysqlUnsafe {
+  /**
+   * Allow fewer than 3 database nodes (single-node development
+   * clusters).
+   */
+  bool cluster_size = 1;
+
+  /**
+   * Allow disabling TLS (tls.enabled false).
+   */
+  bool tls = 2;
+
+  /**
+   * Allow fewer than 2 proxy replicas.
+   */
+  bool proxy_size = 3;
+
+  /**
+   * Allow backups to run against an unhealthy cluster.
+   */
+  bool backup_if_unhealthy = 4;
+}

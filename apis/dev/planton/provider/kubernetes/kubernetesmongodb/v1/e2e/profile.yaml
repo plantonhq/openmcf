@@ -3,9 +3,9 @@ kind: ComponentE2EProfile
 metadata:
   name: kubernetesmongodb
 spec:
-  tier: 3
+  tier: 1
   status: green
   validated_provisioners:
     - pulumi
     - terraform
-  timeout_minutes: 15
+  timeout_minutes: 40

@@ -187,4 +187,4 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — pre-create a namespace to reference via `valueFrom`
 - [KubernetesPostgres](/docs/catalog/kubernetes/kubernetespostgres) — deploy PostgreSQL for Jenkins pipeline data or external storage
-- [KubernetesRedis](/docs/catalog/kubernetes/kubernetesredis) — deploy Redis for caching in CI/CD pipelines
+- [KubernetesValkey](/docs/catalog/kubernetes/kubernetesvalkey) — deploy Valkey (Redis-compatible) for caching in CI/CD pipelines

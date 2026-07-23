@@ -3007,26 +3007,32 @@ enum CloudResourceKind {
     id_prefix: "k8spg"
     prerequisites: [KubernetesCloudNativePgOperator]
   }];
+  KubernetesValkey = 902 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8svlk"
+  }];
   KubernetesPerconaMysqlOperator = 903 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sprcnmysqlop"
   }];
-  KubernetesPerconaMongoOperator = 904 [(kind_meta) = {
+  KubernetesMysql = 904 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8smysql"
+    prerequisites: [KubernetesPerconaMysqlOperator]
+  }];
+  KubernetesPerconaMongoOperator = 905 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sprcnmdbop"
   }];
-  KubernetesMongodb = 905 [(kind_meta) = {
+  KubernetesMongodb = 906 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8smdb"
     prerequisites: [KubernetesPerconaMongoOperator]
-  }];
-  KubernetesRedis = 906 [(kind_meta) = {
-    provider: kubernetes
-    version: v1
-    id_prefix: "k8sred"
   }];
   KubernetesStrimziKafkaOperator = 907 [(kind_meta) = {
     provider: kubernetes

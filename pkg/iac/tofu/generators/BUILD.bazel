@@ -49,7 +49,7 @@ go_test(
         "//apis/dev/planton/provider/kubernetes",
         "//apis/dev/planton/provider/kubernetes/kubernetescronjob/v1:kubernetescronjob",
         "//apis/dev/planton/provider/kubernetes/kubernetespeerauthentication/v1:kubernetespeerauthentication",
-        "//apis/dev/planton/provider/kubernetes/kubernetesredis/v1:kubernetesredis",
+        "//apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1:kubernetesvalkey",
         "//apis/dev/planton/shared",
         "//apis/dev/planton/shared/foreignkey/v1:foreignkey",
         "//pkg/crkreflect",

@@ -113,6 +113,36 @@ func KubectlResourceExists(ctx context.Context, kubeconfig, kind, name, namespac
 	return errors.Wrapf(lastErr, "resource %s/%s not found after 5 attempts", kind, name)
 }
 
+// kubectlGetJSONPath reads one jsonpath expression off a live object,
+// retrying while the object is still materializing. Returns the raw
+// (untrimmed) kubectl output.
+func kubectlGetJSONPath(ctx context.Context, kubeconfig, kind, name, namespace, jsonPath string) (string, error) {
+	args := BuildKubectlArgs(kubeconfig, "get", kind, name, namespace)
+	args = append(args, "-o", "jsonpath="+jsonPath)
+
+	var lastErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		cmd := exec.CommandContext(ctx, "kubectl", args...)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err == nil {
+			return stdout.String(), nil
+		} else {
+			lastErr = errors.Wrapf(err, "kubectl get %s %s: %s", kind, name, stderr.String())
+		}
+
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(time.Duration(attempt+1) * 2 * time.Second):
+		}
+	}
+
+	return "", errors.Wrapf(lastErr, "resource %s/%s not readable after 5 attempts", kind, name)
+}
+
 // KubectlResourceAbsent waits for a specific resource to be gone, retrying up to 10 times.
 func KubectlResourceAbsent(ctx context.Context, kubeconfig, kind, name, namespace string) error {
 	args := BuildKubectlArgs(kubeconfig, "get", kind, name, namespace)

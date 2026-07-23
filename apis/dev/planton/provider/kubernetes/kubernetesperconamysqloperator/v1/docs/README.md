@@ -118,7 +118,7 @@ Both **Moco** (from Cybozu) and **Bitpoke** (evolved from Presslabs) are valid A
 
 ### The Critical Distinction: Percona PS vs. PXC
 
-The research prompt specified `KubernetesPerconaMysqlOperator`, which refers to the **Percona Server (PS) Operator**. However, according to Percona's official documentation and GitHub repository, **the PS Operator is a tech preview release and not recommended for production**.
+Percona ships two distinct MySQL operators, and the naming invites confusion. The **Percona Server for MySQL (PS) Operator** is, according to Percona's own documentation and GitHub repository, **a tech preview release and not recommended for production**.
 
 The **production-ready, enterprise-grade solution** from Percona is the **Percona XtraDB Cluster (PXC) Operator**, which uses:
 - **Galera library** for virtually synchronous replication (zero RPO)
@@ -128,7 +128,7 @@ The **production-ready, enterprise-grade solution** from Percona is the **Percon
 
 The PS Operator, by contrast, uses traditional asynchronous replication or MySQL Group Replication and requires the external Orchestrator tool for failover—a significantly less mature and integrated architecture.
 
-**Planton's decision:** We deploy the operator infrastructure that **supports both PS and PXC**. However, users building production workloads should create `PerconaXtraDBCluster` custom resources, not `PerconaServerMySQL` resources. The naming of our API resource acknowledges the operator package but doesn't constrain users to the tech-preview PS implementation.
+**Planton's decision:** `KubernetesPerconaMysqlOperator` deploys the **PXC Operator** — the official `pxc-operator` Helm chart — and nothing else. That chart ships the PXC CRDs only (`PerconaXtraDBCluster`, `PerconaXtraDBClusterBackup`, `PerconaXtraDBClusterRestore`); the tech-preview PS Operator is a separate chart with separate CRDs and is deliberately not installed. Databases declared with KubernetesMysql render `PerconaXtraDBCluster` resources against exactly the CRDs this component provides.
 
 ## Why Galera (PXC) Changes the Game
 
@@ -246,12 +246,12 @@ Planton's `KubernetesPerconaMysqlOperator` resource deploys the Percona Operator
 
 When you deploy a `KubernetesPerconaMysqlOperator` resource, Planton installs:
 - The Percona Operator deployment (the controller application)
-- Custom Resource Definitions (CRDs) for `PerconaXtraDBCluster`, `PerconaServerMySQL`, `PerconaXtraDBClusterBackup`, `PerconaXtraDBClusterRestore`
+- Custom Resource Definitions (CRDs) for `PerconaXtraDBCluster`, `PerconaXtraDBClusterBackup`, `PerconaXtraDBClusterRestore` (the `pxc-operator` chart ships PXC CRDs only)
 - RBAC (ServiceAccounts, Roles, RoleBindings) required for the operator to function
 
 ### After the Operator is Installed
 
-Once the operator is running, you create database clusters by deploying the operator's CRDs:
+Once the operator is running, databases are declared with **KubernetesMysql** resources — one per MySQL cluster — which render `PerconaXtraDBCluster` custom resources the operator reconciles. The raw CRD remains reachable (through KubernetesManifest) for surfaces the typed spec deliberately leaves out. For reference, the CR shape the operator consumes:
 
 **For production workloads (recommended):**
 ```yaml
@@ -312,22 +312,13 @@ spec:
 ### Why This Architecture
 
 Planton's philosophy is **separation of concerns**:
-1. The `KubernetesPerconaMysqlOperator` resource manages the **operator lifecycle** (installation, upgrades, resource allocation for the operator itself)
-2. The operator's native CRDs manage the **database lifecycle** (clusters, backups, restores)
+1. The `KubernetesPerconaMysqlOperator` resource manages the **operator lifecycle** (installation, upgrades, watch scope, resource allocation for the operator itself)
+2. `KubernetesMysql` resources manage the **database lifecycle** (clusters, users, backups) by rendering the operator's `PerconaXtraDBCluster` CRD
 
 This separation allows:
 - **Operator upgrades** without touching database configurations
 - **Multiple database clusters** managed by a single operator instance
-- **Flexibility** to use the full power of the operator's CRDs without Planton abstracting away critical features
-
-### Abstraction Philosophy
-
-Planton **does not** create a simplified API wrapper around database cluster creation. The operator's CRDs (`PerconaXtraDBCluster`, etc.) are already well-designed, declarative, and stable. Adding an abstraction layer would:
-- Hide powerful features users need for production
-- Create a maintenance burden (keeping the abstraction in sync with operator updates)
-- Force users to learn two APIs instead of one
-
-Instead, Planton focuses on the **platform layer**: deploying and managing the operator itself, ensuring it runs reliably with appropriate resource allocation and RBAC configurations.
+- **Escape hatches at both layers** — `helm_values` for chart surface beyond the operator spec's typed fields, and KubernetesManifest for CRD surface beyond the database spec's typed fields
 
 ## Conclusion: The Operator Revolution
 

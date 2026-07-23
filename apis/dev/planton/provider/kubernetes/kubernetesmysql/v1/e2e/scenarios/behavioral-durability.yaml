@@ -1,0 +1,54 @@
+# The Galera durability proof: 3 database nodes behind HAProxy — the
+# production shape. The behavioral verifier (switched on by this scenario's
+# name) writes a marker row THROUGH THE PROXY (the application path,
+# certified on every node synchronously), DELETES a database node outright,
+# proves the marker is still served DURING the outage, waits for the node
+# to rejoin, and reads the marker again at full strength. Declared users
+# ride along so the user-materialization path deploys live too.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMysql
+metadata:
+  name: e2e-my-durability
+spec:
+  namespace:
+    value: e2e-my-durability
+  create_namespace: true
+  storage:
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 700Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  proxy:
+    haproxy:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+  # The operator's default hostname anti-affinity can never place three
+  # database nodes on a single-node cluster — "none" is the operator's
+  # own OFF switch. The proof here is Galera's synchronous replication,
+  # not node placement (that is real-cluster material).
+  scheduling:
+    anti_affinity_topology_key: "none"
+  unsafe:
+    proxy_size: true
+  users:
+    - name: appuser
+      dbs:
+        - appdb
+      hosts:
+        - "%"
+      grants:
+        - SELECT
+        - INSERT
+        - UPDATE
+        - DELETE
+      password: e2e-mysql-app-password

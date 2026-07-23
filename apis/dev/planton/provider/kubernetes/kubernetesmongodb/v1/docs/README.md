@@ -8,7 +8,7 @@ That wisdom is now outdated.
 
 Modern Kubernetes has evolved to provide the primitives needed for stateful workloads (StatefulSets, persistent volumes, stable network identities), and more importantly, the **Operator pattern** has emerged to encode database-specific operational knowledge into self-healing controllers. Today, running MongoDB on Kubernetes isn't just viable—when done correctly, it can provide better reliability, easier scaling, and more consistent operations than traditional deployment methods.
 
-But here's the critical insight: not all deployment methods are created equal. The path from "Hello World" to production-grade MongoDB on Kubernetes passes through several maturity levels, each solving different problems. This document explains what those levels are, which approaches are production-ready, and why Planton chose the Percona Operator as its default backend.
+But here's the critical insight: not all deployment methods are created equal. The path from "Hello World" to production-grade MongoDB on Kubernetes passes through several maturity levels, each solving different problems. This document explains what those levels are, which approaches are production-ready, and why Planton chose the Percona Operator as the engine behind **KubernetesMongodb**.
 
 ## The Evolution: From Anti-Patterns to Production
 
@@ -59,12 +59,12 @@ This is an **impedance mismatch**: Kubernetes abstracts away state and identity,
 
 ### Level 3: The Production Solution (Kubernetes Operators)
 
-**What it is:** A Kubernetes Operator is a custom controller that extends Kubernetes with application-specific operational knowledge. For MongoDB, this means a controller that watches custom resources (like `kind: MongoDB` or `kind: PerconaServerMongoDB`) and continuously reconciles the actual state of the cluster with the desired state you declare.
+**What it is:** A Kubernetes Operator is a custom controller that extends Kubernetes with application-specific operational knowledge. For MongoDB, this means a controller that watches custom resources (like `kind: PerconaServerMongoDB`) and continuously reconciles the actual state of the cluster with the desired state you declare.
 
 **What it solves:** Everything. An Operator encodes the domain expertise of a human MongoDB administrator into software:
 
-- **Automated scaling:** Change `spec.members: 3` to `spec.members: 5`, and the Operator scales the StatefulSet, waits for new pods to be ready, then automatically runs `rs.add()` commands to join them to the cluster.
-- **Automated backups:** Schedule point-in-time recovery (PITR) backups with oplog streaming to S3, GCS, or Azure Blob Storage.
+- **Automated scaling:** Change a replica set's size from 3 to 5, and the Operator scales the StatefulSet, waits for new pods to be ready, then automatically joins them to the replica set.
+- **Automated backups:** Schedule logical, physical, and incremental backups with point-in-time recovery (PITR) via oplog streaming to S3, GCS, or Azure Blob Storage.
 - **Safe upgrades:** The Operator orchestrates rolling upgrades, upgrading secondaries first, then stepping down and upgrading the primary.
 - **Self-healing:** If a pod fails, the Operator doesn't just restart it—it ensures the MongoDB cluster recognizes it and maintains quorum.
 
@@ -102,7 +102,7 @@ For an open-source infrastructure framework like Planton, choosing the right ope
 
 The MongoDB Community Operator is intentionally crippled—it lacks sharding and automated backups, which are classified as "Enterprise" features. This isn't an accident; it's product segmentation designed to upsell users to the expensive MongoDB Enterprise Advanced subscription.
 
-More concerning for Planton: MongoDB Community Server is licensed under the **Server Side Public License (SSPL)**, a viral license that's not OSI-approved. The SSPL requires any entity offering the software *as a service* to open-source all of its own management and service-delivery code. Planton's `MongodbKubernetes` API—which abstracts and manages MongoDB deployment—could legally be considered such a service, creating existential licensing risk for the entire framework.
+More concerning for Planton: MongoDB Community Server is licensed under the **Server Side Public License (SSPL)**, a viral license that's not OSI-approved. The SSPL requires any entity offering the software *as a service* to open-source all of its own management and service-delivery code. Planton's KubernetesMongodb API—which abstracts and manages MongoDB deployment—could legally be considered such a service, creating existential licensing risk for the entire framework.
 
 ### The KubeDB Dead End
 
@@ -119,13 +119,13 @@ The Percona Operator for MongoDB is the only solution that avoids all legal and 
 
 **Legally Sound:**
 - The operator code is 100% Apache 2.0 licensed
-- It deploys **Percona Server for MongoDB**, a fully compatible, enhanced fork that is **SSPL-free**
+- It deploys **Percona Server for MongoDB**, a fully compatible, enhanced distribution that is **SSPL-free**
 - No commercial licenses, no viral restrictions, no legal risk
 
 **Production-Ready and Free:**
 - ✅ Automated backups with PITR via integrated Percona Backup for MongoDB
 - ✅ Automated sharding support
-- ✅ Safe, orchestrated rolling upgrades
+- ✅ Safe, orchestrated rolling upgrades (SmartUpdate)
 - ✅ Automated storage and compute scaling (horizontal and vertical)
 - ✅ Full TLS/SSL support with automated certificate management
 - ✅ Integrated monitoring with Percona Monitoring and Management (PMM)
@@ -134,115 +134,119 @@ This is not a "community edition" with missing features. This is a complete, ent
 
 ## Planton's Choice: Percona Operator
 
-The `MongodbKubernetes` API in Planton is built on top of the **Percona Operator for MongoDB**. This is the only choice that aligns with the philosophy of an open-source infrastructure framework:
+**KubernetesMongodb** is built on the Percona Operator for MongoDB. This is the only choice that aligns with the philosophy of an open-source infrastructure framework:
 
-1. **No Legal Risk:** Completely Apache 2.0 licensed with an SSPL-free database fork.
+1. **No Legal Risk:** Completely Apache 2.0 licensed with an SSPL-free database distribution.
 2. **No Paywalls:** All production features—PITR backups, sharding, scaling—are free.
 3. **Production-Proven:** Used by organizations that require enterprise-grade reliability without enterprise-grade costs.
-4. **Best-Practice Defaults:** Planton's API abstracts away complexity while enforcing best practices (like pod anti-affinity for HA) under the hood.
+4. **Best-Practice Defaults:** The spec enforces safe postures (three-member replica sets, TLS, anti-affinity) and makes every unsafe deviation an explicit opt-in.
 
 ### How It Works
 
-When you create a `MongodbKubernetes` resource in Planton:
+The engine and the databases are two components, composed deliberately:
 
-1. The controller ensures the Percona Operator is installed in your cluster (as a prerequisite).
-2. Your simple, high-level configuration is translated into a `PerconaServerMongoDB` custom resource.
-3. Best-practice defaults are applied automatically (pod anti-affinity, resource requests/limits, TLS).
-4. The Percona Operator takes over, managing the full lifecycle of your MongoDB cluster.
+1. **KubernetesPerconaMongoOperator** installs the operator from the official Helm chart — a cluster prerequisite deployed first. By default the operator watches its OWN namespace, so databases live beside it (or the watch is widened).
+2. Each **KubernetesMongodb** resource renders one `psmdb.percona.com/v1` PerconaServerMongoDB custom resource — replica sets, optional sharding, TLS, users, backups.
+3. The Percona Operator takes over, managing the full lifecycle of the MongoDB cluster: elections, failover, rolling upgrades, backup scheduling, user reconciliation.
 
-You get the simplicity of a "Day 1" Helm experience with the power and reliability of a "Day 2" Operator solution—without the licensing traps or operational complexity.
-
-## Configuration Philosophy: The 80/20 Principle
-
-Most infrastructure APIs suffer from the same problem: they expose *everything*, overwhelming users with hundreds of configuration options when 80% of users only need to configure 20% of the fields.
-
-Planton's `MongodbKubernetes` API follows the **80/20 principle**: expose the essential fields as top-level, required properties, and group advanced/edge-case options into an optional `advanced` configuration block.
-
-### Essential Fields (What You'll Actually Configure)
-
-1. **Replicas:** How many MongoDB members in the replica set (1 for dev, 3+ for production)
-2. **Version:** The MongoDB version (e.g., "8.0")
-3. **Resources:** CPU and memory requests/limits (critical for stability)
-4. **Persistence:** Enable persistent storage and set disk size
-5. **Authentication:** Enable auth and provide credentials (via Kubernetes Secret)
-
-### Advanced Fields (What You Probably Won't Touch)
-
-- Custom `mongod.conf` parameters
-- Sharding topologies (config servers, mongos routers, shard count)
-- Advanced backup schedules and retention policies
-- Pod affinity/anti-affinity rules (sane defaults applied automatically)
-- Custom initialization scripts
-
-One field that's technically "advanced"—**pod anti-affinity**—is so critical for high availability that Planton *enforces it by default* whenever `replicas > 1`. This protects you from the common mistake of placing all replica set members on the same node, which turns a simple node failure into a full cluster outage.
+You get the simplicity of a "Day 1" declarative experience with the power and reliability of a "Day 2" Operator solution—without the licensing traps or operational complexity.
 
 ### Example Configurations
 
-**Development (Ephemeral, 1 Replica):**
+Every example below is the real spec surface (snake_case fields; `namespace` accepts a literal `value:` or a KubernetesNamespace reference).
+
+**Development (single member, unsafe by declaration):**
 
 ```yaml
-version: "8.0"
-replicas: 1
-persistence:
-  enabled: false
-resources:
-  requests:
-    cpu: "500m"
-    memory: "1Gi"
-  limits:
-    cpu: "1"
-    memory: "1Gi"
-auth:
-  rootPasswordSecret: "mongo-dev-creds"
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMongodb
+metadata:
+  name: dev-mongo
+spec:
+  namespace:
+    value: percona-mongo # where the operator watches
+  replica_sets:
+    - name: rs0
+      size: 1
+      storage:
+        size: 5Gi
+  unsafe:
+    replset_size: true # the operator rejects 1-member sets without this
 ```
 
-**Staging (HA, 3 Replicas, Persistent):**
+**Staging (HA, 3 members, explicit resources):**
 
 ```yaml
-version: "8.0"
-replicas: 3  # 3-member replica set for HA
-persistence:
-  enabled: true
-  size: "50Gi"
-resources:
-  requests:
-    cpu: "1"
-    memory: "4Gi"
-  limits:
-    cpu: "2"
-    memory: "4Gi"
-auth:
-  rootPasswordSecret: "mongo-staging-creds"
-# Pod anti-affinity enforced automatically
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMongodb
+metadata:
+  name: staging-mongo
+spec:
+  namespace:
+    value: percona-mongo
+  replica_sets:
+    - name: rs0
+      size: 3 # a majority survives one loss — automated failover
+      storage:
+        size: 50Gi
+      resources:
+        requests:
+          cpu: "1"
+          memory: 4Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi # WiredTiger sizes its cache from the limit
 ```
 
-**Production (HA, 3 Replicas, Backups + PITR):**
+**Production (HA, backups + PITR, required TLS, declared user):**
 
 ```yaml
-version: "8.0"
-replicas: 3
-persistence:
-  enabled: true
-  size: "500Gi"  # Large, production-sized volume
-resources:
-  requests:
-    cpu: "4"
-    memory: "16Gi"
-  limits:
-    cpu: "8"
-    memory: "16Gi"
-auth:
-  rootPasswordSecret: "mongo-prod-creds"
-backup:
-  enabled: true
-  pitr: true  # Point-in-Time Recovery
-  schedule: "0 0 * * *"  # Daily at midnight
-  retention: 5  # Keep 5 daily backups
-  storage:
-    type: "s3"
-    bucket: "my-prod-mongo-backups"
-    region: "us-east-1"
-    credentialsSecret: "s3-backup-creds"
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMongodb
+metadata:
+  name: prod-mongo
+spec:
+  namespace:
+    value: percona-mongo
+  replica_sets:
+    - name: rs0
+      size: 3
+      storage:
+        size: 500Gi
+      resources:
+        requests:
+          cpu: "4"
+          memory: 16Gi
+        limits:
+          cpu: "8"
+          memory: 16Gi
+      pod_disruption_budget:
+        max_unavailable: 1
+      scheduling:
+        anti_affinity_topology_key: topology.kubernetes.io/zone
+  tls:
+    mode: requireTLS
+  users:
+    - name: app
+      roles:
+        - name: readWrite
+          db: app
+  backup:
+    storages:
+      - name: primary
+        s3:
+          bucket: my-prod-mongo-backups
+          region: us-east-1
+          access_keys:
+            access_key_id: AKIAEXAMPLE
+            secret_access_key: <backup-user-secret-key>
+    tasks:
+      - name: nightly
+        schedule: "0 0 * * *" # daily at midnight, five-field cron
+        storage_name: primary
+        keep: 5
+    pitr:
+      enabled: true # continuous oplog archiving between backups
 ```
 
 ## Production Best Practices
@@ -251,26 +255,26 @@ Running MongoDB on Kubernetes in production requires more than just correct conf
 
 ### High Availability
 
-**Replica Sets:** Always use at least 3 members in production to maintain quorum if one member fails.
+**Replica Sets:** Always use at least 3 members in production to maintain quorum if one member fails. The spec enforces this: smaller sets require the explicit `unsafe.replset_size` opt-in.
 
-**Pod Anti-Affinity (Critical):** Ensure MongoDB pods are scheduled on different nodes. Planton enforces this by default when `replicas > 1` using `podAntiAffinity` with `topologyKey: kubernetes.io/hostname`. This prevents a single node failure from taking down multiple replica set members.
+**Anti-Affinity (Critical):** The operator spreads members across nodes by default (`kubernetes.io/hostname`). For true resilience, set `scheduling.anti_affinity_topology_key: topology.kubernetes.io/zone` so the cluster survives zone-level failures, and declare a `pod_disruption_budget` so voluntary disruptions never break the majority.
 
-**Multi-AZ Deployment:** For true resilience, spread pods across availability zones using `topologySpreadConstraints` to ensure the cluster survives zone-level failures.
+**Arbiters over even numbers:** Even member counts waste a vote; declare the `arbiter` block (votes, holds no data) instead of a fourth data member.
 
 ### Backup and Disaster Recovery
 
-**Never rely on manual backups.** Production systems require automated, application-consistent backups.
+**Never rely on manual backups.** Production systems require automated, application-consistent backups — the `backup` block with named storages and scheduled tasks.
 
-**Point-in-Time Recovery (PITR):** The gold standard is continuous oplog backup, which enables recovery to any specific moment (e.g., 5 minutes before a bad query was executed). The Percona Operator provides this for free via integrated Percona Backup for MongoDB (PBM).
+**Point-in-Time Recovery (PITR):** The gold standard is continuous oplog archiving, which enables recovery to any specific moment (e.g., 5 minutes before a bad query was executed). Set `pitr.enabled: true`; oplog chunks land on the main storage, and PITR needs at least one completed base backup to be meaningful.
 
 **Test your restores.** Backups you've never tested are backups that don't work.
 
 ### Security Hardening
 
-1. **Authentication:** Always enable authentication (SCRAM). Never run with open access.
-2. **Authorization (RBAC):** Use MongoDB's internal role-based access control. Applications should connect with least-privilege users, not the root account.
-3. **Encryption-in-Transit (TLS):** All traffic—between application and database, and between MongoDB replica set members—must be encrypted using TLS/SSL.
-4. **Encryption-at-Rest:** Use a StorageClass that provisions encrypted volumes (e.g., dm-crypt, cloud provider encryption).
+1. **Authentication:** Always on — the operator manages the system users (SCRAM) and their `<name>-secrets` Secret; there is no unauthenticated posture.
+2. **Authorization (RBAC):** Declare application users with least-privilege `roles`; applications should never connect as the database admin.
+3. **Encryption-in-Transit (TLS):** The default is `preferTLS`; production should set `tls.mode: requireTLS`, with certificates issued by a cert-manager (Cluster)Issuer via `tls.issuer` for an organization-trusted chain. Disabling TLS requires the explicit `unsafe.tls` opt-in.
+4. **Encryption-at-Rest:** Use a StorageClass that provisions encrypted volumes (e.g., cloud provider encryption) via `storage.storage_class`.
 5. **Network Isolation:** Use Kubernetes `NetworkPolicy` to enforce zero-trust networking. MongoDB pods should only accept traffic on port 27017 from authorized application pods.
 
 ### Monitoring
@@ -282,20 +286,20 @@ Deploy the Prometheus `mongodb_exporter` to scrape metrics. Key metrics to track
 - **Resource Usage:** `mongodb_connections`, `mongodb_memory_usage_bytes`
 - **Replication:** Oplog lag, replication health
 
-The Percona Operator integrates natively with Percona Monitoring and Management (PMM) for comprehensive, pre-built dashboards.
+The Percona Operator integrates natively with Percona Monitoring and Management (PMM) for comprehensive, pre-built dashboards. The fluent-bit log-collector sidecar (the `log_collector` block — off unless declared) ships mongod logs alongside.
 
 ### Resource Planning
 
-**Storage:** Always use a StorageClass backed by SSDs. Don't rely on default provisioners that might use slow magnetic disks.
+**Storage:** Always use a StorageClass backed by SSDs. Don't rely on default provisioners that might use slow magnetic disks. Sizes can only grow — the operator applies grows to live PVCs and rejects shrinks, so starting lean is safe.
 
-**CPU and Memory:** *Always* set resource requests (guaranteed minimum) and limits (hard cap). Failure to do so is the #1 cause of pod evictions and production instability.
+**CPU and Memory:** *Always* set `resources` with both requests and limits. WiredTiger sizes its cache from the memory limit, and failure to bound memory is the #1 cause of pod evictions and production instability.
 
 ### Common Production Pitfalls
 
 1. **Skipping resource requests/limits:** Leads to "noisy neighbor" problems and OOMKilled pods.
-2. **Ignoring pod anti-affinity:** All replica set members on the same node = single point of failure.
+2. **The watch-scope surprise:** The operator watches its own namespace by default — a database declared in another namespace is silently never reconciled. Install the operator beside the databases or widen its watch.
 3. **Underprovisioning IOPS:** Choosing cheap, slow storage that can't handle database I/O demands.
-4. **No backup strategy:** Discovering that backups weren't configured *after* data loss.
+4. **No backup strategy:** Discovering that backups weren't configured *after* data loss. The spec makes this a visible omission, not a silent default.
 5. **The licensing trap:** Choosing MongoDB Community Operator and discovering in production that critical features are paywalled.
 
 ## Decision Framework: Which Path Should You Take?
@@ -353,7 +357,6 @@ Helm charts provide a quick start but leave you with a mountain of manual operat
 
 The Percona Operator for MongoDB represents a third path: a 100% open-source, legally sound, enterprise-grade solution that automates the full lifecycle of MongoDB on Kubernetes—without paywalls, without commercial licenses, and without compromise.
 
-Planton builds on this foundation, providing a simple, opinionated API that enforces best practices by default while giving you full access to advanced features when you need them. You get the best of both worlds: the ease of "Day 1" and the power of "Day 2."
+Planton builds on this foundation: KubernetesPerconaMongoOperator installs the engine, KubernetesMongodb declares each cluster with best practices enforced by default and every unsafe deviation an explicit opt-in. You get the best of both worlds: the ease of "Day 1" and the power of "Day 2."
 
 Start on the right path from the beginning. Your future self will thank you.
-

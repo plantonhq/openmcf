@@ -1,12 +1,11 @@
 package module
 
 const (
-	OpNamespace          = "namespace"
-	OpService            = "service"
-	OpPortForwardCommand = "port_forward_command"
-	OpKubeEndpoint       = "kube_endpoint"
-	OpExternalHostname   = "external_hostname"
-	OpUsername           = "username"
-	OpPasswordSecretName = "password_secret.name"
-	OpPasswordSecretKey  = "password_secret.key"
+	OpNamespace           = "namespace"
+	OpClusterName         = "cluster_name"
+	OpService             = "service"
+	OpKubeEndpoint        = "kube_endpoint"
+	OpReplicaSet          = "replica_set"
+	OpPortForwardCommand  = "port_forward_command"
+	OpAdminPasswordSecret = "admin_password_secret"
 )

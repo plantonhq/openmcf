@@ -8,211 +8,90 @@ componentName: "kubernetesmongodb"
 
 # Kubernetes MongoDB
 
-Deploys a MongoDB instance on Kubernetes using the Percona Server for MongoDB operator, with automatic password generation, configurable replica sets, optional data persistence via PersistentVolumeClaims, and optional external access through a LoadBalancer Service with external-dns integration.
+Declares a production-grade MongoDB cluster reconciled by the Percona
+Operator for MongoDB — replica sets with automated failover, optional
+sharding (mongos routers + config servers), scheduled backups with
+point-in-time recovery via Percona Backup for MongoDB, TLS, and
+declarative users. The server is Percona Server for MongoDB, a fully
+MongoDB-compatible open-source distribution: every driver, tool, and
+query works unchanged. One resource per MongoDB cluster; applications
+connect through the operator-managed Services.
 
 ## What Gets Created
 
-When you deploy a KubernetesMongodb resource, Planton provisions:
-
-- **Namespace** — created only when `createNamespace` is `true`
-- **Random Password** — a 12-character password with mixed case, numbers, and special characters, generated automatically
-- **Password Secret** — a Kubernetes Secret storing the generated password for MongoDB authentication
-- **PerconaServerMongoDB CRD** — deploys MongoDB via the Percona Server for MongoDB operator with a configurable replica set, resource limits, and optional persistent storage
-- **LoadBalancer Service** — created only when ingress is enabled, exposes MongoDB on port 27017 with an `external-dns.alpha.kubernetes.io/hostname` annotation for automatic DNS record creation
+- **Namespace** (optional) — created and owned when `create_namespace`
+  is set
+- **PerconaServerMongoDB** (`psmdb.percona.com/v1`, named
+  `metadata.name`) — the MongoDB cluster; the operator derives
+  everything from it: member pods (`<name>-<rs>-0..N`), the
+  per-replica-set headless Services (`<name>-<rs>`), the mongos Service
+  (`<name>-mongos`, sharding only), and the system-users Secret
+  (`<name>-secrets`, operator-generated passwords for the built-in
+  accounts)
+- **Credential Secrets** — every declared password/key materializes as
+  a deterministic Secret (`<name>-user-<username>` for declarative
+  users, `<name>-backup-<storage>` for backup-store credentials);
+  keyless backup arms need none
 
 ## Prerequisites
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, or set `createNamespace` to `true`
-- **Percona Server for MongoDB operator** installed in the cluster (the operator manages the PerconaServerMongoDB custom resource)
-- **A StorageClass** available in the cluster if enabling persistence (most managed Kubernetes clusters provide a default)
-- **external-dns** running in the cluster if enabling ingress with a hostname
+- The Percona MongoDB operator on the cluster
+  (KubernetesPerconaMongoOperator) — it must watch the database's
+  namespace (the default posture watches its OWN namespace: install
+  the operator there, or widen its watch)
+- For backups: S3, an S3-compatible endpoint (MinIO, Ceph RGW, ...),
+  GCS, or Azure Blob storage
+- For organization-trusted TLS: a cert-manager ClusterIssuer or Issuer
+  referenced by `tls.issuer`
 
 ## Quick Start
 
-Create a file `mongodb.yaml`:
-
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesMongodb
 metadata:
-  name: my-mongodb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesMongodb.my-mongodb
-spec:
-  namespace: database
-  createNamespace: true
-```
-
-Deploy:
-
-```shell
-planton apply -f mongodb.yaml
-```
-
-This creates a single-replica MongoDB instance with persistence enabled, a 1Gi PersistentVolumeClaim, default resource limits (1000m CPU, 1Gi memory), and a randomly generated password stored in a Kubernetes Secret.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `string` | Kubernetes namespace for the MongoDB deployment. Can reference a KubernetesNamespace resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
-| `container.replicas` | `int32` | `1` | Number of MongoDB replica set members. |
-| `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each MongoDB pod. |
-| `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for each MongoDB pod. |
-| `container.resources.requests.cpu` | `string` | `50m` | Minimum guaranteed CPU for each MongoDB pod. |
-| `container.resources.requests.memory` | `string` | `100Mi` | Minimum guaranteed memory for each MongoDB pod. |
-| `container.persistenceEnabled` | `bool` | `true` | Enables persistent storage for MongoDB data. When enabled, data is persisted to a PersistentVolumeClaim and survives pod restarts. |
-| `container.diskSize` | `string` | `1Gi` | Size of the PersistentVolumeClaim attached to each MongoDB pod. Required when `persistenceEnabled` is `true`. Must be a valid Kubernetes quantity (e.g., `1Gi`, `10Gi`). Cannot be modified after creation. |
-| `ingress.enabled` | `bool` | `false` | Creates a LoadBalancer Service with external-dns annotations exposing MongoDB on port 27017. |
-| `ingress.hostname` | `string` | — | Hostname for external access (e.g., `mongodb.example.com`). Configured automatically via external-dns. Required when `ingress.enabled` is `true`. |
-| `helmValues` | `map<string, string>` | — | Additional key-value pairs passed to the Helm chart for further customization. See the [Bitnami MongoDB chart documentation](https://artifacthub.io/packages/helm/bitnami/mongodb) for available options. |
-
-## Examples
-
-### Development MongoDB without Persistence
-
-A lightweight MongoDB instance for development with persistence disabled and reduced resources:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesMongodb
-metadata:
-  name: dev-mongodb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesMongodb.dev-mongodb
-spec:
-  namespace: dev
-  createNamespace: true
-  container:
-    persistenceEnabled: false
-    resources:
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
-      requests:
-        cpu: "100m"
-        memory: "128Mi"
-```
-
-### Production MongoDB with Increased Storage
-
-A production MongoDB instance with a larger replica set, more disk, and higher resource limits:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesMongodb
-metadata:
-  name: prod-mongodb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesMongodb.prod-mongodb
-spec:
-  namespace: production
-  container:
-    replicas: 3
-    resources:
-      limits:
-        cpu: "2000m"
-        memory: "4Gi"
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-    persistenceEnabled: true
-    diskSize: "50Gi"
-```
-
-### MongoDB with External Access
-
-MongoDB exposed outside the cluster via a LoadBalancer with automatic DNS management:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesMongodb
-metadata:
-  name: shared-mongodb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesMongodb.shared-mongodb
-spec:
-  namespace: shared-services
-  container:
-    replicas: 3
-    resources:
-      limits:
-        cpu: "2000m"
-        memory: "4Gi"
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-    persistenceEnabled: true
-    diskSize: "100Gi"
-  ingress:
-    enabled: true
-    hostname: mongodb.example.com
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed namespace instead of hardcoding the name:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesMongodb
-metadata:
-  name: app-mongodb
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesMongodb.app-mongodb
+  name: orders-db
 spec:
   namespace:
-    valueFrom:
-      kind: KubernetesNamespace
-      name: app-namespace
-      field: spec.name
-  container:
-    persistenceEnabled: true
-    diskSize: "20Gi"
+    value: percona-mongo # where the operator watches
+  replica_sets:
+    - name: rs0
+      size: 3
+      storage:
+        size: 50Gi
+  users:
+    - name: app
+      roles:
+        - name: readWrite
+          db: orders
 ```
+
+The operator brings up a three-member replica set with automated
+failover; applications connect at the exported `kube_endpoint` (with
+`?replicaSet=rs0` so the driver follows failovers), using the declared
+user's operator-managed Secret or the admin credential from
+`<name>-secrets`.
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the cluster runs in |
+| `cluster_name` | PerconaServerMongoDB name (equals `metadata.name`) |
+| `service` | The Service applications connect to — `<name>-mongos` when sharded, otherwise the first replica set's headless Service (`<name>-<rs>`) |
+| `kube_endpoint` | In-cluster connection host (`<service>.<namespace>.svc.cluster.local:27017`) |
+| `replica_set` | The first replica set's name (the driver's `replicaSet` parameter) — empty for sharded clusters |
+| `port_forward_command` | Workstation access when no exposure is composed |
+| `admin_password_secret` | `{name, key}` of the database-admin password (the operator-managed `<name>-secrets` Secret, key `MONGODB_DATABASE_ADMIN_PASSWORD`) |
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where MongoDB is deployed |
-| `service` | `string` | Kubernetes Service name for the MongoDB instance (format: `{name}`) |
-| `port_forward_command` | `string` | kubectl port-forward command for local access |
-| `kube_endpoint` | `string` | Cluster-internal FQDN (e.g., `my-mongodb.database.svc.cluster.local`) |
-| `external_hostname` | `string` | Public hostname for external access, only set when ingress is enabled |
-| `internal_hostname` | `string` | Internal hostname for cluster-internal access |
-| `username` | `string` | MongoDB admin username (always `databaseAdmin`) |
-| `password_secret.name` | `string` | Name of the Kubernetes Secret containing the MongoDB password (format: `{name}-password`) |
-| `password_secret.key` | `string` | Key within the password Secret (always `MONGODB_DATABASE_ADMIN_PASSWORD`) |
+## Next Steps
 
-## Related Components
-
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace via `valueFrom` reference
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — application deployments that connect to MongoDB as a data store
-- [KubernetesExternalDns](/docs/catalog/kubernetes/kubernetesexternaldns) — manages DNS records for the LoadBalancer ingress hostname
+Compose exposure when the database must be reachable from outside — a
+first-class exposure kind against the exported service name (this
+component never embeds one; the per-set `expose` block exists for the
+managed-cloud LoadBalancer recipes). Move to `tls.mode: requireTLS`
+for production. Declare a backup block with a nightly task and
+point-in-time recovery, and prove restore early — a backup you have
+never restored is a hope, not a plan. Shard only when a single replica
+set's write volume or working set no longer fits: enable `sharding`
+and every declared replica set becomes a shard behind mongos.

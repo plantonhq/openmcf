@@ -6,14 +6,37 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
 
 func TestKubernetesPerconaMysqlOperator(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, "KubernetesPerconaMysqlOperator Suite")
+}
+
+func int32Ptr(i int32) *int32    { return &i }
+func boolPtr(b bool) *bool       { return &b }
+func stringPtr(s string) *string { return &s }
+
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+func valueFrom(kind cloudresourcekind.CloudResourceKind, name, fieldPath string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{
+				Kind:      kind,
+				Name:      name,
+				FieldPath: fieldPath,
+			},
+		},
+	}
 }
 
 var _ = ginkgo.Describe("KubernetesPerconaMysqlOperator Validation Tests", func() {
@@ -24,78 +47,139 @@ var _ = ginkgo.Describe("KubernetesPerconaMysqlOperator Validation Tests", func(
 			ApiVersion: "kubernetes.planton.dev/v1",
 			Kind:       "KubernetesPerconaMysqlOperator",
 			Metadata: &shared.CloudResourceMetadata{
-				Name: "test-percona-mysql-operator",
+				Name: "test-pxc-operator",
 			},
 			Spec: &KubernetesPerconaMysqlOperatorSpec{
-				Namespace: &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-						Value: "percona-mysql-operator",
-					},
-				},
-				Container: &KubernetesPerconaMysqlOperatorSpecContainer{
-					Resources: &kubernetes.ContainerResources{
-						Limits: &kubernetes.CpuMemory{
-							Cpu:    "1000m",
-							Memory: "1Gi",
-						},
-						Requests: &kubernetes.CpuMemory{
-							Cpu:    "100m",
-							Memory: "256Mi",
-						},
-					},
-				},
+				Namespace: literal("mysql-operator"),
 			},
 		}
 	})
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("percona_mysql_operator", func() {
-			ginkgo.It("should not return a validation error", func() {
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("minimal spec should not return a validation error (every optional block omitted)", func() {
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
-	})
 
-	ginkgo.Describe("When namespace is provided", func() {
-		ginkgo.Context("with valid lowercase namespace", func() {
-			ginkgo.It("should pass validation", func() {
-				input.Spec.Namespace = &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-						Value: "my-namespace-123",
-					},
+		ginkgo.It("namespace as a reference should be valid", func() {
+			input.Spec.Namespace = valueFrom(cloudresourcekind.CloudResourceKind_KubernetesNamespace, "mysql-operator", "spec.name")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("one replica should be valid (gte 1 boundary)", func() {
+			input.Spec.Replicas = int32Ptr(1)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("cluster-wide watch without namespaces should be valid (cluster_wide_xor_namespaces)", func() {
+			input.Spec.Watch = &KubernetesPerconaMysqlOperatorWatch{ClusterWide: true}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("a fenced namespace list without cluster_wide should be valid (cluster_wide_xor_namespaces)", func() {
+			input.Spec.Watch = &KubernetesPerconaMysqlOperatorWatch{
+				Namespaces: []string{"databases", "staging"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("an empty watch block should be valid (own-namespace posture)", func() {
+			input.Spec.Watch = &KubernetesPerconaMysqlOperatorWatch{}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("each allowed log level should be valid (level_enum)", func() {
+			for _, level := range []string{"DEBUG", "INFO", "ERROR"} {
+				input.Spec.Log = &KubernetesPerconaMysqlOperatorLog{
+					Structured: true,
+					Level:      stringPtr(level),
 				}
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			}
+		})
+
+		ginkgo.It("leader election with tuned lease timings should be valid", func() {
+			input.Spec.Replicas = int32Ptr(2)
+			input.Spec.LeaderElection = &KubernetesPerconaMysqlOperatorLeaderElection{
+				Enabled:       boolPtr(true),
+				LeaseDuration: stringPtr("60s"),
+				RenewDeadline: stringPtr("40s"),
+				RetryPeriod:   stringPtr("10s"),
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("full-surface spec with every block populated should be valid", func() {
+			input.Spec = &KubernetesPerconaMysqlOperatorSpec{
+				Namespace:               literal("mysql-operator"),
+				CreateNamespace:         true,
+				ChartVersion:            stringPtr("1.20.0"),
+				Replicas:                int32Ptr(2),
+				Watch:                   &KubernetesPerconaMysqlOperatorWatch{ClusterWide: true},
+				MaxConcurrentReconciles: int32Ptr(4),
+				S3WorkersLimit:          int32Ptr(10),
+				Log: &KubernetesPerconaMysqlOperatorLog{
+					Structured: true,
+					Level:      stringPtr("INFO"),
+				},
+				DisableTelemetry: true,
+				LeaderElection: &KubernetesPerconaMysqlOperatorLeaderElection{
+					Enabled:       boolPtr(true),
+					LeaseDuration: stringPtr("60s"),
+					RenewDeadline: stringPtr("40s"),
+					RetryPeriod:   stringPtr("10s"),
+				},
+				XtrabackupSidecar: true,
+				Resources: &kubernetes.ContainerResources{
+					Requests: &kubernetes.CpuMemory{Cpu: "100m", Memory: "20Mi"},
+					Limits:   &kubernetes.CpuMemory{Cpu: "200m", Memory: "500Mi"},
+				},
+				NodeSelector: map[string]string{"workload": "operators"},
+				Tolerations: []*kubernetes.WorkloadToleration{
+					{Key: "dedicated", Operator: "Equal", Value: "operators", Effect: "NoSchedule"},
+				},
+				ImagePullSecrets: []string{"registry-pull"},
+				Image: &KubernetesPerconaMysqlOperatorImage{
+					Repository: "my-mirror.example.com/percona-xtradb-cluster-operator",
+					Tag:        "1.20.0",
+				},
+				HelmValues: "podAnnotations:\n  team: data\n",
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 	})
 
-	ginkgo.Describe("When container resources are required", func() {
-		ginkgo.Context("with missing container spec", func() {
-			ginkgo.It("should fail validation", func() {
-				input.Spec.Container = nil
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-		})
-	})
-
-	ginkgo.Describe("Namespace creation flag", func() {
-		ginkgo.Context("When create_namespace is true", func() {
-			ginkgo.It("should pass validation", func() {
-				input.Spec.CreateNamespace = true
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+	ginkgo.Describe("When invalid input is passed", func() {
+		ginkgo.It("missing namespace should fail (required)", func() {
+			input.Spec.Namespace = nil
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.Context("When create_namespace is false", func() {
-			ginkgo.It("should pass validation", func() {
-				input.Spec.CreateNamespace = false
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("zero replicas should fail (gte 1)", func() {
+			input.Spec.Replicas = int32Ptr(0)
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("zero max_concurrent_reconciles should fail (gte 1)", func() {
+			input.Spec.MaxConcurrentReconciles = int32Ptr(0)
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("zero s3_workers_limit should fail (gte 1)", func() {
+			input.Spec.S3WorkersLimit = int32Ptr(0)
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("cluster_wide combined with namespaces should fail (cluster_wide_xor_namespaces)", func() {
+			input.Spec.Watch = &KubernetesPerconaMysqlOperatorWatch{
+				ClusterWide: true,
+				Namespaces:  []string{"databases"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("unknown log level should fail (level_enum)", func() {
+			input.Spec.Log = &KubernetesPerconaMysqlOperatorLog{Level: stringPtr("WARN")}
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 	})
 })

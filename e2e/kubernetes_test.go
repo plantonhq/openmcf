@@ -86,6 +86,7 @@ var kubernetesTier3Components = []string{
 	"kuberneteskafka",
 	"kuberneteselasticsearch",
 	"kubernetesmongodb",
+	"kubernetesmysql",
 	"kubernetessolr",
 	"kubernetesclickhouse",
 }
@@ -105,7 +106,7 @@ var kubernetesTier4Components = []string{
 
 // Kubernetes Tier 2 components: Helm-based, self-contained chart installs.
 var kubernetesTier2Components = []string{
-	"kubernetesredis",
+	"kubernetesvalkey",
 	"kubernetesgrafana",
 	"kubernetesopenbao",
 	"kubernetesargocd",
@@ -379,8 +380,8 @@ func TestKubernetesKarpenterEc2NodeClass_Terraform(t *testing.T) {
 
 // ─── Tier 2 Pulumi (Helm-based) ─────────────────────────────────────────────
 
-func TestKubernetesRedis_Pulumi(t *testing.T) {
-	runAllScenariosForComponent(t, "kubernetesredis", "pulumi")
+func TestKubernetesValkey_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesvalkey", "pulumi")
 }
 func TestKubernetesGrafana_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgrafana", "pulumi")
@@ -421,8 +422,8 @@ func TestKubernetesSignoz_Pulumi(t *testing.T) {
 
 // ─── Tier 2 Terraform (Helm-based) ──────────────────────────────────────────
 
-func TestKubernetesRedis_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "kubernetesredis", "terraform")
+func TestKubernetesValkey_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesvalkey", "terraform")
 }
 func TestKubernetesGrafana_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgrafana", "terraform")
@@ -481,6 +482,9 @@ func TestKubernetesElasticsearch_Pulumi(t *testing.T) {
 func TestKubernetesMongodb_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesmongodb", "pulumi")
 }
+func TestKubernetesMysql_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmysql", "pulumi")
+}
 func TestKubernetesSolr_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetessolr", "pulumi")
 }
@@ -498,6 +502,9 @@ func TestKubernetesElasticsearch_Terraform(t *testing.T) {
 }
 func TestKubernetesMongodb_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesmongodb", "terraform")
+}
+func TestKubernetesMysql_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmysql", "terraform")
 }
 func TestKubernetesSolr_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetessolr", "terraform")

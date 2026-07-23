@@ -8,7 +8,7 @@ import (
 
 	testkubernetesv1 "github.com/plantonhq/planton/apis/dev/planton/provider/_test/testcloudresourcekubernetes/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
-	kubernetesredisv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesredis/v1"
+	kubernetesvalkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 )
@@ -107,30 +107,29 @@ func TestProtoToTFVars_ApiVersionKindSkipped(t *testing.T) {
 	}
 }
 
-func TestProtoToTFVars_Redis_BackwardCompatible(t *testing.T) {
-	msg := &kubernetesredisv1.KubernetesRedis{
+func TestProtoToTFVars_Valkey_ProviderAbstraction(t *testing.T) {
+	msg := &kubernetesvalkeyv1.KubernetesValkey{
 		ApiVersion: "kubernetes.planton.dev/v1",
-		Kind:       "KubernetesRedis",
+		Kind:       "KubernetesValkey",
 		Metadata: &shared.CloudResourceMetadata{
 			Name: "red-one",
 			Labels: map[string]string{
 				"env": "production",
 			},
 		},
-		Spec: &kubernetesredisv1.KubernetesRedisSpec{
-			Container: &kubernetesredisv1.KubernetesRedisContainer{
-				DiskSize:           "2Gi",
-				PersistenceEnabled: true,
-				Replicas:           1,
-				Resources: &kubernetes.ContainerResources{
-					Limits: &kubernetes.CpuMemory{
-						Cpu:    "1000m",
-						Memory: "1Gi",
-					},
-					Requests: &kubernetes.CpuMemory{
-						Cpu:    "50m",
-						Memory: "100Mi",
-					},
+		Spec: &kubernetesvalkeyv1.KubernetesValkeySpec{
+			Config: &kubernetesvalkeyv1.KubernetesValkeyConfig{
+				MaxMemory:  "256mb",
+				AppendOnly: true,
+			},
+			Resources: &kubernetes.ContainerResources{
+				Limits: &kubernetes.CpuMemory{
+					Cpu:    "1000m",
+					Memory: "1Gi",
+				},
+				Requests: &kubernetes.CpuMemory{
+					Cpu:    "50m",
+					Memory: "100Mi",
 				},
 			},
 		},

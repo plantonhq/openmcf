@@ -239,11 +239,11 @@ e2e-test-kubernetes-tier1:  ## Run Kubernetes Tier 1 (native K8s) E2E tests only
 
 .PHONY: e2e-test-kubernetes-tier2
 e2e-test-kubernetes-tier2:  ## Run Kubernetes Tier 2 (Helm-based) E2E tests only
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesRedis|KubernetesGrafana|KubernetesOpenBao|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesJenkins|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator)_" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesOpenBao|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesJenkins|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier3
 e2e-test-kubernetes-tier3:  ## Run Kubernetes Tier 3 (operator-dependent) E2E tests -- fixtures deployed automatically
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesKafka|KubernetesElasticsearch|KubernetesMongodb|KubernetesSolr|KubernetesClickHouse)_" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesKafka|KubernetesElasticsearch|KubernetesMongodb|KubernetesMysql|KubernetesSolr|KubernetesClickHouse)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier4
 e2e-test-kubernetes-tier4:  ## Run Kubernetes Tier 4 (operators, addons, cluster infra) E2E tests
@@ -257,11 +257,11 @@ e2e-test-kubernetes-terraform-tier1:  ## Run Kubernetes Tier 1 Terraform E2E tes
 
 .PHONY: e2e-test-kubernetes-terraform-tier2
 e2e-test-kubernetes-terraform-tier2:  ## Run Kubernetes Tier 2 Terraform (Helm-based) E2E tests only
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesRedis|KubernetesGrafana|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator)_Terraform" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator)_Terraform" ./e2e/
 
 .PHONY: e2e-test-kubernetes-terraform-tier3
 e2e-test-kubernetes-terraform-tier3:  ## Run Kubernetes Tier 3 Terraform (operator-dependent) E2E tests
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesKafka|KubernetesElasticsearch|KubernetesMongodb|KubernetesSolr|KubernetesClickHouse)_Terraform" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesKafka|KubernetesElasticsearch|KubernetesMongodb|KubernetesMysql|KubernetesSolr|KubernetesClickHouse)_Terraform" ./e2e/
 
 .PHONY: e2e-test-kubernetes-terraform-tier4
 e2e-test-kubernetes-terraform-tier4:  ## Run Kubernetes Tier 4 Terraform (operators, addons) E2E tests
@@ -308,7 +308,7 @@ $(if $(findstring Auth0,$(component)),./e2e/auth0/...,./e2e/...)))))
 
 .PHONY: e2e-test-component
 e2e-test-component:  ## Single component E2E test (usage: make e2e-test-component component=KubernetesNamespace)
-	go test -tags=e2e -timeout=15m -v -count=1 -run "Test.*$(component)" $(strip $(e2e_component_pkg))
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test.*$(component)" $(strip $(e2e_component_pkg))
 
 .PHONY: e2e-matrix
 e2e-matrix:  ## Regenerate E2E GitHub Actions matrix JSON from profiles
