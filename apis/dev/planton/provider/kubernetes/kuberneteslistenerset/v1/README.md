@@ -158,3 +158,7 @@ When the Gateway or Secret is not Planton-managed, pass the literal name with
 - [`KubernetesCertificate`](../kubernetescertificate/) -- provisions the TLS Secret HTTPS listeners reference.
 - [`KubernetesHttpRoute`](../kuberneteshttproute/) -- routes that attach to the merged listeners.
 - [`KubernetesNamespace`](../kubernetesnamespace/) -- the namespace the ListenerSet is created in.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

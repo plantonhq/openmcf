@@ -70,3 +70,7 @@ exactly the shape that deserves a first-class, composable node:
 - `addon_name`: the EKS catalog name it was installed under
 - `addon_version`: the version actually running (the resolved AWS
   default when the spec pinned nothing)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

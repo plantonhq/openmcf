@@ -97,6 +97,9 @@ platform:
     # runner:
     #   storageSize: 2Gi
     #   storageClassName: your-class
+    # vault:
+    #   storageSize: 2Gi
+    #   storageClassName: your-class
 ```
 
 Set storage before installing: Kubernetes fixes a volume's class and size at
@@ -108,6 +111,32 @@ checks the default class can provision, and if a volume ever sticks, the
 
 ```bash
 kubectl get plantonplatform planton -n planton -o jsonpath='{.status.components}' | jq
+```
+
+## Secrets
+
+Every install ships with a bundled secrets manager (OpenBAO, the open-source
+Vault fork), deployed and bootstrapped automatically: the operator
+initializes it, unseals it after every restart, and registers it as the
+organization's default secret store -- pasting a cloud credential into a
+connection works on a fresh install with zero configuration. The unseal keys
+and root token live in the `<name>-openbao-init` Secret next to the platform
+(the Secret's annotation explains itself); teams that prefer to hold their
+own keys set `spec.vault.initMode: manual` and run the unseal ceremony
+themselves.
+
+Preferring a cloud secret store is a layered choice, not an opt-out: declare
+it and it wins (see `values.eks.yaml` for AWS Secrets Manager with pod
+identity -- no stored keys at all). The vault still runs underneath, serving
+the platform's own signing and encryption keys.
+
+Opting out entirely is supported but deliberate:
+
+```yaml
+platform:
+  spec:
+    vault:
+      enabled: false   # loses pasted-credential storage and keyless connections
 ```
 
 ## One operator per cluster
@@ -150,3 +179,7 @@ the cluster is gone:
 ```bash
 kubectl delete crd plantonplatforms.planton.ai
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

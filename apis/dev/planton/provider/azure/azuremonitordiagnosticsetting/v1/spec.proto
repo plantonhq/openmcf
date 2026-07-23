@@ -84,6 +84,7 @@ message AzureMonitorDiagnosticSettingSpec {
   // or a reference to an AzureStorageAccount output.
   dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 7 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
   ];
 
@@ -104,6 +105,7 @@ message AzureMonitorDiagnosticSettingSpec {
   // an AzureEventHub output.
   dev.planton.shared.foreignkey.v1.StringValueOrRef eventhub_name = 9 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHub,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.event_hub_name"
   ];
 

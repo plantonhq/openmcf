@@ -517,3 +517,7 @@ kubectl create rolebinding app-binding \
 - `CivoIpAddress` - Reserve static IPs for LoadBalancers
 - `CivoDnsZone` - Configure DNS for cluster services
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

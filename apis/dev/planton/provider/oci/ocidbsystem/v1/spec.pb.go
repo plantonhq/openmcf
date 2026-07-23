@@ -1276,7 +1276,7 @@ var File_dev_planton_provider_oci_ocidbsystem_v1_spec_proto protoreflect.FileDes
 
 const file_dev_planton_provider_oci_ocidbsystem_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2dev/planton/provider/oci/ocidbsystem/v1/spec.proto\x12'dev.planton.provider.oci.ocidbsystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x87-\n" +
+	"2dev/planton/provider/oci/ocidbsystem/v1/spec.proto\x12'dev.planton.provider.oci.ocidbsystem.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x8c-\n" +
 	"\x0fOciDbSystemSpec\x12\x87\x01\n" +
 	"\x0ecompartment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe7\x19\x92\xd4a\x1dstatus.outputs.compartment_idR\rcompartmentId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x128\n" +
@@ -1297,8 +1297,8 @@ const file_dev_planton_provider_oci_ocidbsystem_v1_spec_proto_rawDesc = "" +
 	"\x06domain\x18\x0f \x01(\tR\x06domain\x12!\n" +
 	"\fcluster_name\x18\x10 \x01(\tR\vclusterName\x12#\n" +
 	"\rfault_domains\x18\x11 \x03(\tR\ffaultDomains\x12~\n" +
-	"\ansg_ids\x18\x12 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xe6\x19\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIds\x12\x7f\n" +
-	"\x10backup_subnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_idR\x0ebackupSubnetId\x12\x9a\x01\n" +
+	"\ansg_ids\x18\x12 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xe6\x19\x92\xd4a(status.outputs.network_security_group_idR\x06nsgIds\x12\x83\x01\n" +
+	"\x10backup_subnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xe5\x19\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x0ebackupSubnetId\x12\x9a\x01\n" +
 	"\x16backup_network_nsg_ids\x18\x14 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xe6\x19\x92\xd4a(status.outputs.network_security_group_idR\x13backupNetworkNsgIds\x12P\n" +
 	"\n" +
 	"kms_key_id\x18\x15 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\bkmsKeyId\x12+\n" +

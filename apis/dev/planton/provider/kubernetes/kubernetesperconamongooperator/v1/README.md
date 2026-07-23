@@ -64,3 +64,7 @@ top of the typed surface.
 Databases compose against the CRDs the operator installs — declare a
 [KubernetesMongodb](../kubernetesmongodb/v1/README.md) with its namespace
 inside the operator's watch scope.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

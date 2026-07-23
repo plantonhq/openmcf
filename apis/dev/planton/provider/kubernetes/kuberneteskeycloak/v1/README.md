@@ -65,3 +65,7 @@ This provides flexibility for different deployment scenarios:
 - **Resource Optimization**: Enables precise control over resource allocation for containers, optimizing performance and cost.
 - **Enhanced Security**: Provides a centralized identity and access management solution for securing your applications and services.
 - **Flexibility**: Customize Keycloak configurations to meet specific identity and access management requirements.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

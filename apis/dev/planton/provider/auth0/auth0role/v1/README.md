@@ -47,3 +47,7 @@ spec:
 - [Add permissions to roles](https://auth0.com/docs/manage-users/access-control/configure-core-rbac/roles/add-permissions-to-roles)
 - [Terraform auth0_role](https://registry.terraform.io/providers/auth0/auth0/latest/docs/resources/role)
 - [Terraform auth0_role_permissions](https://registry.terraform.io/providers/auth0/auth0/latest/docs/resources/role_permissions)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

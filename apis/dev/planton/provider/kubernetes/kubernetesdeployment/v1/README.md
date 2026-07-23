@@ -198,3 +198,7 @@ Use **KubernetesDeployment** when you need:
 - [Pod Disruption Budgets](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/)
 - [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
 - [Deployment API Reference](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/deployment-v1/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

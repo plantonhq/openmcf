@@ -58,3 +58,7 @@ The GCP API gives a DeployedIndex no labels and no project field (it lives insid
 - **automatic** -- Zero-configuration serving compute
 - **dedicated** -- Pinned machine type with explicit replica bounds
 - **peered-reserved-ranges** -- Deployment pinned to reserved IP ranges with JWT auth
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -122,3 +122,7 @@ the team moves in.
   app and review the artifacts bucket's storage class after the first few
   training cycles — big cold datasets belong in the data-lakehouse chart's
   tiered lake, not in hot artifact storage.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

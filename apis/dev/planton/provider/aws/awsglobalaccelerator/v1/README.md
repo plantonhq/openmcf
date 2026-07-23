@@ -167,3 +167,7 @@ Traffic flows as: **Client → nearest AWS edge location → AWS global backbone
 - [Global Accelerator FAQ](https://aws.amazon.com/global-accelerator/faqs/)
 - [Global Accelerator Pricing](https://aws.amazon.com/global-accelerator/pricing/)
 - [AWS Edge Locations](https://aws.amazon.com/cloudfront/features/#Amazon_CloudFront_Infrastructure)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

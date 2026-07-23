@@ -148,3 +148,7 @@ Use **KubernetesNamespace** when you need:
 - [Multi-Tenancy Best Practices](https://kubernetes.io/docs/concepts/security/multi-tenancy/)
 - [Istio Sidecar Injection](https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/)
 - [Namespace-as-a-Service Pattern](https://docs.rafay.co/template_catalog/get_started/namespace_asaservice/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

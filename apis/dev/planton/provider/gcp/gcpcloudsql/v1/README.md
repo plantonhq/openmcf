@@ -159,3 +159,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 - [Cloud SQL documentation](https://cloud.google.com/sql/docs)
 - [About the Cloud SQL Auth Proxy](https://cloud.google.com/sql/docs/postgres/sql-proxy)
 - [Instance settings reference](https://cloud.google.com/sql/docs/postgres/instance-settings)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

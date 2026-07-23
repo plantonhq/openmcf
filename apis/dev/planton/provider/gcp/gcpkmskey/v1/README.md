@@ -79,3 +79,7 @@ Cross-field rules enforced before deploy: rotation only on ENCRYPT_DECRYPT keys;
 - [GcpKmsKeyRing](../gcpkmskeyring/v1/) — the parent container (required)
 - [GcpBigQueryDataset](../gcpbigquerydataset/v1/), [GcpSpannerDatabase](../gcpspannerdatabase/v1/), [GcpCloudSql](../gcpcloudsql/v1/), [GcpGkeCluster](../gcpgkecluster/v1/), [GcpPubSubTopic](../gcppubsubtopic/v1/) — CMEK consumers referencing `key_id`
 - [GcpProjectIamMember](../gcpprojectiammember/v1/) — models the encrypter/decrypter grants as first-class nodes
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

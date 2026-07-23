@@ -84,6 +84,28 @@ features, or improve documentation, your efforts are appreciated and will help m
 - **Issue Reporting**: If you encounter a bug or have a feature request, please open an issue before working on it to
   discuss the best approach.
 
+## Licensing
+
+This project is licensed under [Apache-2.0](LICENSE), and contributions are accepted
+under the same terms — inbound equals outbound. This is what the license itself says
+(section 5): any contribution you intentionally submit for inclusion is licensed
+under Apache-2.0, without additional terms.
+
+By contributing, you affirm that you have the right to submit the code you
+contribute — it is your own work, or you have permission to contribute it under
+these terms.
+
+Two files travel with the project wherever it goes: [LICENSE](LICENSE) and
+[NOTICE](NOTICE) (the attribution every redistribution carries). For use of the
+Planton name and logo, see [TRADEMARKS.md](TRADEMARKS.md).
+
+On your first pull request, the CLA bot will ask you to sign the
+[Contributor License Agreement](CLA.md) — a one-time comment on the PR. The
+CLA is what lets the project be stewarded for the long term (its grants are
+spelled out in [CLA.md](CLA.md)); your signature is recorded in this
+repository, and you keep every right to use your own contributions however
+you wish.
+
 ## Community and Support
 
 We encourage you to join our community and contribute to the project:

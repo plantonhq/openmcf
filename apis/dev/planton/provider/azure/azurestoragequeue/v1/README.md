@@ -51,3 +51,7 @@ Client URLs compose from the ACCOUNT's endpoint plus this queue's name:
 - [Design research](docs/README.md) -- field mapping, recorded skips
 - [Presets](presets/) -- remixable starting points
 - [Terraform module](iac/tf/README.md) / [Pulumi module](iac/pulumi/README.md)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

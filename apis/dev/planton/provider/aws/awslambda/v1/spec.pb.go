@@ -1312,7 +1312,7 @@ var File_dev_planton_provider_aws_awslambda_v1_spec_proto protoreflect.FileDescr
 
 const file_dev_planton_provider_aws_awslambda_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0dev/planton/provider/aws/awslambda/v1/spec.proto\x12%dev.planton.provider.aws.awslambda.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb6(\n" +
+	"0dev/planton/provider/aws/awslambda/v1/spec.proto\x12%dev.planton.provider.aws.awslambda.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xba(\n" +
 	"\rAwsLambdaSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\x12u\n" +
@@ -1330,9 +1330,9 @@ const file_dev_planton_provider_aws_awslambda_v1_spec_proto_rawDesc = "" +
 	"\xd8\x01\x01\x1a\x05\x18\x84\a(\x01R\x0etimeoutSeconds\x12@\n" +
 	"\x14ephemeral_storage_mb\x18\r \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80P(\x80\x04R\x12ephemeralStorageMb\x12g\n" +
 	"\venvironment\x18\x0e \x03(\v2E.dev.planton.provider.aws.awslambda.v1.AwsLambdaSpec.EnvironmentEntryR\venvironment\x12s\n" +
-	"\vkms_key_arn\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12t\n" +
+	"\vkms_key_arn\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12x\n" +
 	"\n" +
-	"subnet_ids\x18\x10 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
+	"subnet_ids\x18\x10 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\tsubnetIds\x12\x8b\x01\n" +
 	"\x12security_group_ids\x18\x11 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12<\n" +
 	"\x1bipv6_allowed_for_dual_stack\x18\x12 \x01(\bR\x17ipv6AllowedForDualStack\x12\x8a\x01\n" +
 	"\x16dead_letter_target_arn\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe1\x01\x92\xd4a\x18status.outputs.queue_arnR\x13deadLetterTargetArn\x12@\n" +

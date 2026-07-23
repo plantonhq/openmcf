@@ -54,3 +54,7 @@ This resource provides complete support for production-grade VPC deployments, in
 - **Automatic Labeling**: Standard Planton labels applied as Scaleway tags for resource management, cost allocation, and compliance.
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations.
 - **Infra-Chart Composability**: Designed as a Layer 0 foundation that downstream resources reference via `StringValueOrRef`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

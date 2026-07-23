@@ -201,3 +201,7 @@ spec:
         karpenter.sh/discovery: my-eks-cluster
   role: KarpenterNodeRole-my-eks-cluster
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

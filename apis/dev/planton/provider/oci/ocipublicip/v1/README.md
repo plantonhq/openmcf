@@ -48,3 +48,7 @@ This component manages a single OCI public IP resource through a declarative YAM
 | `iac/pulumi/module/public_ip.go` | Creates the `core.PublicIp` resource and exports outputs |
 | `iac/pulumi/module/locals.go` | Initializes display name fallback and freeform tags |
 | `iac/pulumi/module/outputs.go` | Output key constants |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

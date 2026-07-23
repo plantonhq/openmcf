@@ -144,3 +144,7 @@ fga model transform --file model.fga --output-format json
 - [OpenFGA Concepts: Authorization Models](https://openfga.dev/docs/concepts#what-is-an-authorization-model)
 - [OpenFGA Modeling Guide](https://openfga.dev/docs/modeling)
 - [OpenFGA Schema Version 1.1](https://openfga.dev/docs/modeling/migrating/migrating-schema-1-1)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

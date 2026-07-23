@@ -174,6 +174,7 @@ message CloudflareR2BucketCustomDomainConfig {
   // value or referenced from a CloudflareDnsZone resource. Required when enabled.
   dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
   ];
 

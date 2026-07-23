@@ -256,3 +256,7 @@ These limitations reflect the Civo provider's current capabilities. For advanced
 
 - **v1**: Initial release with bucket provisioning, region selection, versioning flag, and tags support
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

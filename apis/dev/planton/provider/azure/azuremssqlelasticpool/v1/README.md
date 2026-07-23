@@ -52,3 +52,7 @@ unrepresentable.
 
 - **AzureMssqlServer** -- the parent logical server (`server_id`)
 - **AzureMssqlDatabase** -- member databases joining via `elastic_pool_id`
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

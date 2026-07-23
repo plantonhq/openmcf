@@ -45,3 +45,7 @@ spec:
 - `CloudflareEmailRoutingRule` — references this address as a forwarding target.
 - `CloudflareEmailRoutingZone` — enables Email Routing and a catch-all that can
   forward to this address.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -119,3 +119,7 @@ These fields cannot be changed after creation — modifying them destroys and re
 - (Optional) A VPC with private subnets for VPC-based deployment
 - (Optional) A KMS key for customer-managed encryption
 - (Optional) A Redis ACL user group (`AwsElasticacheUserGroup`) for fine-grained access control — compose via `AwsElasticacheUser` → `AwsElasticacheUserGroup` → cache
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

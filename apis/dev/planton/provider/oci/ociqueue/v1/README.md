@@ -40,3 +40,7 @@ OCI Queue is a serverless messaging service for asynchronous communication betwe
 - **KMS encryption** — customer-managed keys for message content encryption at rest.
 - **Dead-letter queue** — automatic poison message isolation after configurable delivery attempts.
 - **Messages endpoint** — output provides the URL for producing and consuming messages.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

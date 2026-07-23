@@ -89,3 +89,7 @@ OS disk), `AzureUserAssignedIdentity` (user-assigned identity),
   principal or its user-assigned identities
 - **`AzureKeyVault`** — certificates installed onto the VM at
   provisioning time (`secrets`)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

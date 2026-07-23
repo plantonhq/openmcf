@@ -236,3 +236,7 @@ After deployment:
 ## License
 
 Rook is a CNCF graduated project licensed under Apache License 2.0.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

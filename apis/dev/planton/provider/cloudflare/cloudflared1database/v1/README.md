@@ -286,3 +286,7 @@ Both produce identical infrastructure. Choose based on your team's preference.
 
 This component is part of Planton and follows the same license.
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

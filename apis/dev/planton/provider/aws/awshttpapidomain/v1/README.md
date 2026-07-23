@@ -138,3 +138,7 @@ spec:
 - **Routing mode / routing rules** (`aws_apigatewayv2_routing_rule`): header/path rule-based routing is a separate resource family; the default API-mapping-only mode covers the mapping surface this component models. Revisit on concrete pull.
 - **Edge-optimized endpoint type**: a REST API (v1) feature; v2 domains are REGIONAL only.
 - **Per-kind tags**: identity tags derive from metadata.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

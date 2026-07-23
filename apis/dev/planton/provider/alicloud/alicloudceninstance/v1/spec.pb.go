@@ -246,9 +246,9 @@ const file_dev_planton_provider_alicloud_alicloudceninstance_v1_spec_proto_rawDe
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x13\n" +
-	"\x11_protection_level\"\xbc\x03\n" +
-	"\x15AliCloudCenAttachment\x12\x84\x01\n" +
-	"\x11child_instance_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_idR\x0fchildInstanceId\x12\xbe\x01\n" +
+	"\x11_protection_level\"\xc0\x03\n" +
+	"\x15AliCloudCenAttachment\x12\x88\x01\n" +
+	"\x11child_instance_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x17\x92\xd4a\x15status.outputs.vpc_id\x98\xd4a\x01R\x0fchildInstanceId\x12\xbe\x01\n" +
 	"\x13child_instance_type\x18\x02 \x01(\tB\x88\x01\xbaH~\xba\x01{\n" +
 	"\x19child_instance_type_valid\x121child_instance_type must be one of: VPC, VBR, CCN\x1a+this == '' || this in ['VPC', 'VBR', 'CCN']\x8a\xa6\x1d\x03VPCH\x00R\x11childInstanceType\x88\x01\x01\x12C\n" +
 	"\x18child_instance_region_id\x18\x03 \x01(\tB\n" +

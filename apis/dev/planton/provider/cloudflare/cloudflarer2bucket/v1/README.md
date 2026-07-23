@@ -424,3 +424,7 @@ See the [Common Patterns](#common-patterns) above and the ready-to-use [presets]
 
 **Bottom Line**: Cloudflare R2 gives you S3-compatible object storage with zero egress fees, strong consistency, and production-grade durability at a fraction of the cost of AWS/GCP/Azure. Perfect for content delivery, multi-cloud architectures, and escaping vendor lock-in.
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

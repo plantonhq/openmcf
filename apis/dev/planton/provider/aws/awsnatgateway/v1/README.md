@@ -43,3 +43,7 @@ This resource makes the NAT gateway a first-class, independently composable buil
 - **Composable Elastic IP** referenced rather than embedded, preserving the IP's own lifecycle.
 - **Consistent resource-identity tagging** applied to the gateway.
 - **Infrastructure as Code** with full Pulumi (Go) and Terraform (HCL) implementations producing identical outputs.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

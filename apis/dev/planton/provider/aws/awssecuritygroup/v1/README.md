@@ -108,3 +108,7 @@ spec:
         - pl-63a5400a
       description: HTTPS to S3 via the gateway endpoint prefix list
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

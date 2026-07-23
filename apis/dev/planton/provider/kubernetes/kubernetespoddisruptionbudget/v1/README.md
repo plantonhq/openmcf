@@ -128,3 +128,7 @@ Use **KubernetesPodDisruptionBudget** when you need:
 - [Specifying a Disruption Budget](https://kubernetes.io/docs/tasks/run-application/configure-pdb/)
 - [PodDisruptionBudget API Reference](https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/pod-disruption-budget-v1/)
 - [Unhealthy Pod Eviction Policy](https://kubernetes.io/docs/tasks/run-application/configure-pdb/#unhealthy-pod-eviction-policy)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

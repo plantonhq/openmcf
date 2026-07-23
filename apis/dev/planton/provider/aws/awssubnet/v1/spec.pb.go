@@ -9,6 +9,7 @@ package awssubnetv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -381,10 +382,10 @@ var File_dev_planton_provider_aws_awssubnet_v1_spec_proto protoreflect.FileDescr
 
 const file_dev_planton_provider_aws_awssubnet_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0dev/planton/provider/aws/awssubnet/v1/spec.proto\x12%dev.planton.provider.aws.awssubnet.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbe\x11\n" +
+	"0dev/planton/provider/aws/awssubnet/v1/spec.proto\x12%dev.planton.provider.aws.awssubnet.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc8\x11\n" +
 	"\rAwsSubnetSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12o\n" +
-	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x124\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12y\n" +
+	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06in vpc\x88\xd4a\xd8\x01\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x124\n" +
 	"\x11availability_zone\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x10availabilityZone\x12Q\n" +
 	"\n" +
 	"cidr_block\x18\x04 \x01(\tB2\xbaH/\xc8\x01\x01r*2(^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$R\tcidrBlock\x124\n" +

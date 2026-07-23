@@ -1061,7 +1061,7 @@ var File_dev_planton_provider_scaleway_scalewayserverlesscontainer_v1_spec_proto
 
 const file_dev_planton_provider_scaleway_scalewayserverlesscontainer_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/scaleway/scalewayserverlesscontainer/v1/spec.proto\x12<dev.planton.provider.scaleway.scalewayserverlesscontainer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x83\x0e\n" +
+	"Gdev/planton/provider/scaleway/scalewayserverlesscontainer/v1/spec.proto\x12<dev.planton.provider.scaleway.scalewayserverlesscontainer.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x87\x0e\n" +
 	"\x1fScalewayServerlessContainerSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12|\n" +
 	"\x05image\x18\x02 \x01(\v2^.dev.planton.provider.scaleway.scalewayserverlesscontainer.v1.ScalewayServerlessContainerImageB\x06\xbaH\x03\xc8\x01\x01R\x05image\x12'\n" +
@@ -1081,8 +1081,8 @@ const file_dev_planton_provider_scaleway_scalewayserverlesscontainer_v1_spec_pro
 	"\bprotocol\x18\r \x01(\x0e2a.dev.planton.provider.scaleway.scalewayserverlesscontainer.v1.ScalewayServerlessContainerProtocolR\bprotocol\x12\x1a\n" +
 	"\bcommands\x18\x0e \x03(\tR\bcommands\x12\x12\n" +
 	"\x04args\x18\x0f \x03(\tR\x04args\x12n\n" +
-	"\x03env\x18\x10 \x01(\v2\\.dev.planton.provider.scaleway.scalewayserverlesscontainer.v1.ScalewayServerlessContainerEnvR\x03env\x12\x8c\x01\n" +
-	"\x12private_network_id\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xf1\x15\x92\xd4a!status.outputs.private_network_idR\x10privateNetworkId\x12\x18\n" +
+	"\x03env\x18\x10 \x01(\v2\\.dev.planton.provider.scaleway.scalewayserverlesscontainer.v1.ScalewayServerlessContainerEnvR\x03env\x12\x90\x01\n" +
+	"\x12private_network_id\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\xf1\x15\x92\xd4a!status.outputs.private_network_id\x98\xd4a\x01R\x10privateNetworkId\x12\x18\n" +
 	"\asandbox\x18\x12 \x01(\tR\asandbox\x12\x87\x01\n" +
 	"\fhealth_check\x18\x13 \x01(\v2d.dev.planton.provider.scaleway.scalewayserverlesscontainer.v1.ScalewayServerlessContainerHealthCheckR\vhealthCheck\x12\x8d\x01\n" +
 	"\x0escaling_option\x18\x14 \x01(\v2f.dev.planton.provider.scaleway.scalewayserverlesscontainer.v1.ScalewayServerlessContainerScalingOptionR\rscalingOption\x123\n" +

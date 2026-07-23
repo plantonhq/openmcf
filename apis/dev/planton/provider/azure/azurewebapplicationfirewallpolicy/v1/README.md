@@ -63,3 +63,7 @@ levels of an `AzureApplicationGateway`, most specific wins:
 
 - **AzureApplicationGateway** -- the L7 load balancer that enforces the policy
 - **AzureResourceGroup** -- the policy's container
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

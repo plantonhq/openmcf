@@ -306,3 +306,7 @@ For issues, questions, or contributions:
 - **Documentation**: [Planton Docs](https://planton.dev)
 - **Elastic ECK Documentation**: [Elastic ECK Docs](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html)
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

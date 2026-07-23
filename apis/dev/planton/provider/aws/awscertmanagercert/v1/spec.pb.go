@@ -431,15 +431,15 @@ var File_dev_planton_provider_aws_awscertmanagercert_v1_spec_proto protoreflect.
 
 const file_dev_planton_provider_aws_awscertmanagercert_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9dev/planton/provider/aws/awscertmanagercert/v1/spec.proto\x12.dev.planton.provider.aws.awscertmanagercert.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9e\x14\n" +
+	"9dev/planton/provider/aws/awscertmanagercert/v1/spec.proto\x12.dev.planton.provider.aws.awscertmanagercert.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa2\x14\n" +
 	"\x16AwsCertManagerCertSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12s\n" +
 	"\x13primary_domain_name\x18\x02 \x01(\tBC\xbaH@\xd8\x01\x01r;29^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$R\x11primaryDomainName\x12}\n" +
 	"\x16alternate_domain_names\x18\x03 \x03(\tBG\xbaHD\x92\x01A\x18\x01\"=r;29^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$R\x14alternateDomainNames\x12A\n" +
 	"\x11validation_method\x18\x04 \x01(\tB\x14\xbaH\x11\xd8\x01\x01r\fR\x03DNSR\x05EMAILR\x10validationMethod\x12\x81\x01\n" +
 	"\x12validation_options\x18\x05 \x03(\v2R.dev.planton.provider.aws.awscertmanagercert.v1.AwsCertManagerCertValidationOptionR\x11validationOptions\x12v\n" +
-	"\rkey_algorithm\x18\x06 \x01(\tBQ\xbaHN\xd8\x01\x01rIR\bRSA_2048R\bRSA_3072R\bRSA_4096R\rEC_prime256v1R\fEC_secp384r1R\fEC_secp521r1R\fkeyAlgorithm\x12\x88\x01\n" +
-	"\x16route53_hosted_zone_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\x13route53HostedZoneId\x12=\n" +
+	"\rkey_algorithm\x18\x06 \x01(\tBQ\xbaHN\xd8\x01\x01rIR\bRSA_2048R\bRSA_3072R\bRSA_4096R\rEC_prime256v1R\fEC_secp384r1R\fEC_secp521r1R\fkeyAlgorithm\x12\x8c\x01\n" +
+	"\x16route53_hosted_zone_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x13route53HostedZoneId\x12=\n" +
 	"\x13wait_for_validation\x18\b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x11waitForValidation\x88\x01\x01\x12c\n" +
 	"\aoptions\x18\t \x01(\v2I.dev.planton.provider.aws.awscertmanagercert.v1.AwsCertManagerCertOptionsR\aoptions\x12f\n" +
 	"\bimported\x18\n" +

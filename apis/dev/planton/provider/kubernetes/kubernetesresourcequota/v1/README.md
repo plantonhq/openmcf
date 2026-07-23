@@ -164,3 +164,7 @@ Use **KubernetesResourceQuota** when you need:
 - [Kubernetes Limit Ranges Documentation](https://kubernetes.io/docs/concepts/policy/limit-range/)
 - [ResourceQuota API Reference](https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/resource-quota-v1/)
 - [LimitRange API Reference](https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/limit-range-v1/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

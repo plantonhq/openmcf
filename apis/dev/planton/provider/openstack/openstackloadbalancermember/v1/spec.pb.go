@@ -168,14 +168,14 @@ var File_dev_planton_provider_openstack_openstackloadbalancermember_v1_spec_prot
 
 const file_dev_planton_provider_openstack_openstackloadbalancermember_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Hdev/planton/provider/openstack/openstackloadbalancermember/v1/spec.proto\x12=dev.planton.provider.openstack.openstackloadbalancermember.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb4\x05\n" +
+	"Hdev/planton/provider/openstack/openstackloadbalancermember/v1/spec.proto\x12=dev.planton.provider.openstack.openstackloadbalancermember.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb8\x05\n" +
 	"\x1fOpenStackLoadBalancerMemberSpec\x12r\n" +
 	"\apool_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x13\x92\xd4a\x16status.outputs.pool_idR\x06poolId\x12$\n" +
 	"\aaddress\x18\x02 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\aaddress\x12\x8a\x01\n" +
 	"\rprotocol_port\x18\x03 \x01(\x05Be\xbaHb\xba\x01\\\n" +
-	"\x13protocol_port_range\x12)protocol_port must be between 1 and 65535\x1a\x1athis >= 1 && this <= 65535\xc8\x01\x01R\fprotocolPort\x12r\n" +
-	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xc6\x13\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12m\n" +
+	"\x13protocol_port_range\x12)protocol_port must be between 1 and 65535\x1a\x1athis >= 1 && this <= 65535\xc8\x01\x01R\fprotocolPort\x12v\n" +
+	"\tsubnet_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xc6\x13\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12m\n" +
 	"\x06weight\x18\x05 \x01(\x05BP\xbaHM\xba\x01J\n" +
 	"\fweight_range\x12 weight must be between 0 and 256\x1a\x18this >= 0 && this <= 256H\x00R\x06weight\x88\x01\x01\x123\n" +
 	"\x0eadmin_state_up\x18\x06 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\fadminStateUp\x88\x01\x01\x12\x1c\n" +

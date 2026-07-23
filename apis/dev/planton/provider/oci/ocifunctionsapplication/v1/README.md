@@ -41,3 +41,7 @@ OCI Functions is a serverless compute platform that runs code in response to eve
 - **Freeform tags** — automatically populated from `metadata.labels`, including `resource_kind`, `resource_id`, `organization`, and `environment`.
 - **Image signature verification** — prevents deployment of unsigned or tampered container images.
 - **APM tracing** — distributed tracing for function invocations across the OCI observability stack.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

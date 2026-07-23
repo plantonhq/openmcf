@@ -235,7 +235,7 @@ var File_dev_planton_provider_azure_azurecontainerappenvironmentstorage_v1_spec_
 
 const file_dev_planton_provider_azure_azurecontainerappenvironmentstorage_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ldev/planton/provider/azure/azurecontainerappenvironmentstorage/v1/spec.proto\x12Adev.planton.provider.azure.azurecontainerappenvironmentstorage.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbb\v\n" +
+	"Ldev/planton/provider/azure/azurecontainerappenvironmentstorage/v1/spec.proto\x12Adev.planton.provider.azure.azurecontainerappenvironmentstorage.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc3\v\n" +
 	"'AzureContainerAppEnvironmentStorageSpec\x12\xa1\x01\n" +
 	"\x1ccontainer_app_environment_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xb8\x03\x92\xd4a\x1dstatus.outputs.environment_idR\x19containerAppEnvironmentId\x12\xda\x02\n" +
 	"\fstorage_name\x18\x02 \x01(\tB\xb6\x02\xbaH\xb2\x02\xba\x01\xa5\x02\n" +
@@ -244,10 +244,10 @@ const file_dev_planton_provider_azure_azurecontainerappenvironmentstorage_v1_spe
 	"share_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xeb\x03\x92\xd4a\x19status.outputs.share_nameR\tshareName\x12\x9d\x01\n" +
 	"\vaccess_mode\x18\x04 \x01(\x0e2p.dev.planton.provider.azure.azurecontainerappenvironmentstorage.v1.AzureContainerAppEnvironmentStorageAccessModeB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\n" +
-	"accessMode\x12\x83\x01\n" +
-	"\faccount_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\x99\x03\x92\xd4a#status.outputs.storage_account_nameR\vaccountName\x12\x81\x01\n" +
+	"accessMode\x12\x87\x01\n" +
+	"\faccount_name\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\x99\x03\x92\xd4a#status.outputs.storage_account_name\x98\xd4a\x01R\vaccountName\x12\x85\x01\n" +
 	"\n" +
-	"access_key\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xa0\xa6\x1d\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.primary_access_keyR\taccessKey\x12$\n" +
+	"access_key\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xa0\xa6\x1d\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.primary_access_key\x98\xd4a\x01R\taccessKey\x12$\n" +
 	"\x0enfs_server_url\x18\a \x01(\tR\fnfsServerUrl:\xc1\x02\xbaH\xbd\x02\x1a\xba\x02\n" +
 	"\x1fenvironment_storage_smb_xor_nfs\x12tregister the share over exactly one protocol: SMB (account_name + access_key together) or NFS (nfs_server_url alone)\x1a\xa0\x01(has(this.account_name) && has(this.access_key) && this.nfs_server_url == '') || (!has(this.account_name) && !has(this.access_key) && this.nfs_server_url != '')*\x93\x01\n" +
 	"-AzureContainerAppEnvironmentStorageAccessMode\x12C\n" +

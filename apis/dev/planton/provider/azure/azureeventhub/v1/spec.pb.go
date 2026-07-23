@@ -733,12 +733,12 @@ const file_dev_planton_provider_azure_azureeventhub_v1_spec_proto_rawDesc = "" +
 	"\b_enabledB\x16\n" +
 	"\x14_interval_in_secondsB\x16\n" +
 	"\x14_size_limit_in_bytesB\x16\n" +
-	"\x14_skip_empty_archives\"\x92\f\n" +
+	"\x14_skip_empty_archives\"\x96\f\n" +
 	"\x1fAzureEventHubCaptureDestination\x12\xf5\x03\n" +
 	"\x13archive_name_format\x18\x01 \x01(\tB\xc4\x03\xbaH\xc0\x03\xba\x01\xb9\x03\n" +
 	",event_hub_capture_archive_name_format_tokens\x12\x82\x01archive_name_format must contain all of {Namespace}, {EventHub}, {PartitionId}, {Year}, {Month}, {Day}, {Hour}, {Minute}, {Second}\x1a\x83\x02this.contains('{Namespace}') && this.contains('{EventHub}') && this.contains('{PartitionId}') && this.contains('{Year}') && this.contains('{Month}') && this.contains('{Day}') && this.contains('{Hour}') && this.contains('{Minute}') && this.contains('{Second}')\xc8\x01\x01R\x11archiveNameFormat\x12\x90\x01\n" +
-	"\x13blob_container_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x03\x92\xd4a\x1dstatus.outputs.container_nameR\x11blobContainerName\x12\x92\x01\n" +
-	"\x12storage_account_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xa4\x01\n" +
+	"\x13blob_container_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x03\x92\xd4a\x1dstatus.outputs.container_nameR\x11blobContainerName\x12\x96\x01\n" +
+	"\x12storage_account_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_id\x98\xd4a\x01R\x10storageAccountId\x12\xa4\x01\n" +
 	"\x1bstorage_authentication_type\x18\x04 \x01(\x0e2Z.dev.planton.provider.azure.azureeventhub.v1.AzureEventHubCaptureStorageAuthenticationTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x19storageAuthenticationType\x12\x93\x01\n" +
 	"\x19storage_authentication_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17storageAuthenticationId:\x91\x03\xbaH\x8d\x03\x1a\x8a\x03\n" +
 	",event_hub_capture_identity_matches_auth_type\x12\xb5\x01storage_authentication_id is required with USER_ASSIGNED and must be absent otherwise -- Azure requires the identity for the user-assigned path and silently ignores it on the others\x1a\xa1\x01(this.storage_authentication_type == 3 && has(this.storage_authentication_id)) || (this.storage_authentication_type != 3 && !has(this.storage_authentication_id))*e\n" +

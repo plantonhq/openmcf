@@ -175,3 +175,7 @@ aws events create-partner-event-source-connection \
 - [Terraform auth0_event_stream Resource](https://registry.terraform.io/providers/auth0/auth0/latest/docs/resources/event_stream)
 - [Pulumi Auth0 EventStream Resource](https://www.pulumi.com/registry/packages/auth0/api-docs/eventstream/)
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

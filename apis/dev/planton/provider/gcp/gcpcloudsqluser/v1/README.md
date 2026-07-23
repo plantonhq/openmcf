@@ -108,3 +108,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 - [Creating and managing users](https://cloud.google.com/sql/docs/postgres/create-manage-users)
 - [IAM database authentication](https://cloud.google.com/sql/docs/postgres/iam-authentication)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

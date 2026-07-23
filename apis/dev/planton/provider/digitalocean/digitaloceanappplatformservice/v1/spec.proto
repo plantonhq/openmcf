@@ -66,6 +66,7 @@ message DigitalOceanAppPlatformServiceSpec {
   // Provide a reference to a DigitalOceanDnsZone resource (typically its domain name). The system will create the necessary DNS records.
   dev.planton.shared.foreignkey.v1.StringValueOrRef custom_domain = 12 [
     (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDnsZone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.domain_name"
   ];
 }

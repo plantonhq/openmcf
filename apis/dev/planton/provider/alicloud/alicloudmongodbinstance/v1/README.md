@@ -34,3 +34,7 @@ terraform validate
 
 - [Catalog Page](catalog-page.md) -- user-facing documentation
 - [Examples](examples.md) -- YAML configuration examples
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

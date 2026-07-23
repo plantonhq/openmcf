@@ -63,3 +63,7 @@ User-defined `labels` organize the endpoint for cost attribution and ownership; 
 - **basic-public** -- Minimal public endpoint
 - **private-vpc-peered** -- VPC-peered with CMEK encryption
 - **private-psc** -- Private Service Connect with project allowlist
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

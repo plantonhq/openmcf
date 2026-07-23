@@ -125,3 +125,7 @@ resolved just-in-time at deploy. Plain configuration belongs in `vars`.
 
 - `CloudflareKvNamespace` / `CloudflareWorkersKvPair`, `CloudflareD1Database`,
   `CloudflareR2Bucket`, `CloudflareHyperdriveConfig`, `CloudflareDnsZone`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

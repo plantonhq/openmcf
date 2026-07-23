@@ -71,3 +71,7 @@ spec:
 - `CloudflareWorker` — produces to a queue via its `queues` binding; a worker
   consumer is referenced by `consumer.scriptName`.
 - `CloudflareR2Bucket` — forwards object events to a queue via `eventNotifications`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

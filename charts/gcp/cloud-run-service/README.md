@@ -178,3 +178,7 @@ but creation fails if it does not exist yet.
 - **One connection policy per (network, class, region):** deploying this
   chart twice into the same network and region needs
   `serviceConnectionPolicyEnabled=false` on the second deployment.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

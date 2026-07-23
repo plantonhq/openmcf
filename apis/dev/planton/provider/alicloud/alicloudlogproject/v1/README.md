@@ -55,3 +55,7 @@ An SLS project is the top-level container for log data in Alibaba Cloud. This co
 - **AliCloudAckManagedCluster** -- references this project for cluster audit and event logging
 - **AliCloudFcFunction** -- references this project for function execution logging
 - **AliCloudSaeApplication** -- references this project for application logging
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

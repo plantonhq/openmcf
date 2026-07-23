@@ -71,3 +71,7 @@ The `value_from` reference is resolved by the InfraChart DAG engine, wiring this
 ## Pulumi Resource
 
 `openstack.networking.Router`
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

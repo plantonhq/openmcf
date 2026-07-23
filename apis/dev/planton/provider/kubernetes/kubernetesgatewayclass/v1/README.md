@@ -61,3 +61,7 @@ planton pulumi up --manifest gateway-class.yaml --stack org/project/env
 - **KubernetesGatewayApiCrds** -- installs the Gateway API CRDs (prerequisite)
 - **KubernetesGateway** -- references this class via `gatewayClassName` to define listeners and entry points
 - **KubernetesHttpRoute / KubernetesGrpcRoute** -- attach routes to a Gateway of this class
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -63,3 +63,7 @@ Choose a CIDR that does not overlap with other VPCs if you plan to use VPC peeri
 - **AliCloudAckManagedCluster** -- deploys Kubernetes clusters in this VPC
 - **AliCloudRdsInstance** -- deploys database instances in this VPC (via VSwitch)
 - **AliCloudPrivateDnsZone** -- attaches private DNS zones to this VPC
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

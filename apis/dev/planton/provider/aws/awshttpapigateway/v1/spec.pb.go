@@ -1311,9 +1311,9 @@ const file_dev_planton_provider_aws_awshttpapigateway_v1_spec_proto_rawDesc = ""
 	"\x10identity_sources\x18\x06 \x03(\tR\x0fidentitySources\x12,\n" +
 	"\x12result_ttl_seconds\x18\a \x01(\x05R\x10resultTtlSeconds\x126\n" +
 	"\x17enable_simple_responses\x18\b \x01(\bR\x15enableSimpleResponses\x12I\n" +
-	"!authorizer_payload_format_version\x18\t \x01(\tR\x1eauthorizerPayloadFormatVersion\"\x83\x02\n" +
-	"\x1aAwsHttpApiGatewayJwtConfig\x12p\n" +
-	"\x06issuer\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x15status.outputs.issuerR\x06issuer\x12s\n" +
+	"!authorizer_payload_format_version\x18\t \x01(\tR\x1eauthorizerPayloadFormatVersion\"\x87\x02\n" +
+	"\x1aAwsHttpApiGatewayJwtConfig\x12t\n" +
+	"\x06issuer\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xac\x02\x92\xd4a\x15status.outputs.issuer\x98\xd4a\x01R\x06issuer\x12s\n" +
 	"\taudiences\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xe6\x02\x92\xd4a\x18status.outputs.client_idR\taudiencesB\xfe\x02\n" +
 	"1com.dev.planton.provider.aws.awshttpapigateway.v1B\tSpecProtoP\x01Zcgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awshttpapigateway/v1;awshttpapigatewayv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Aws.Awshttpapigateway.V1\xca\x02-Dev\\Planton\\Provider\\Aws\\Awshttpapigateway\\V1\xe2\x029Dev\\Planton\\Provider\\Aws\\Awshttpapigateway\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Aws::Awshttpapigateway::V1b\x06proto3"
 

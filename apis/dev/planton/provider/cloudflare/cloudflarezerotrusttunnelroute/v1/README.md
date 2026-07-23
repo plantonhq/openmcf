@@ -49,3 +49,7 @@ spec:
 
 A route sits above a tunnel and (optionally) a virtual network. Use distinct virtual
 networks to advertise overlapping CIDRs through different tunnels without collision.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

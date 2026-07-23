@@ -140,4 +140,4 @@ container block as your app expects them.
 
 ---
 
-© Planton. Licensed under [Apache-2.0](../../../LICENSE).
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

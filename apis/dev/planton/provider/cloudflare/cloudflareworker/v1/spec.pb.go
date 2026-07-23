@@ -1804,12 +1804,12 @@ const file_dev_planton_provider_cloudflare_cloudflareworker_v1_spec_proto_rawDes
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\"a\n" +
 	"\x1aCloudflareWorkerWorkersDev\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12)\n" +
-	"\x10previews_enabled\x18\x02 \x01(\bR\x0fpreviewsEnabled\"\xb0\x01\n" +
+	"\x10previews_enabled\x18\x02 \x01(\bR\x0fpreviewsEnabled\"\xb4\x01\n" +
 	"\x1cCloudflareWorkerCustomDomain\x12\"\n" +
-	"\bhostname\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bhostname\x12l\n" +
-	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\"\xad\x01\n" +
-	"\x15CloudflareWorkerRoute\x12r\n" +
-	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12 \n" +
+	"\bhostname\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bhostname\x12p\n" +
+	"\azone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\"\xb1\x01\n" +
+	"\x15CloudflareWorkerRoute\x12v\n" +
+	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x06zoneId\x12 \n" +
 	"\apattern\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\apattern\"\xe2\x01\n" +
 	"\x1dCloudflareWorkerObservability\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\xa6\x01\n" +

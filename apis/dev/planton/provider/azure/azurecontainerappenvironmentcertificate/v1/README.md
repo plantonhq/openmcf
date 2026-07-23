@@ -63,3 +63,7 @@ spec:
 ```
 
 The Key Vault path requires the environment's managed identity to hold read access to the vault's secrets (Key Vault Secrets User under RBAC) -- compose an `AzureRoleAssignment` for it.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

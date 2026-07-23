@@ -109,3 +109,7 @@ spec:
   name: my-web-app
   # ...
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

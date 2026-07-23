@@ -86,3 +86,7 @@ pair.
 - The deploying credential needs
   `Microsoft.Network/privateDnsZones/virtualNetworkLinks/write` on the
   zone and `Microsoft.Network/virtualNetworks/join/action` on the network
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

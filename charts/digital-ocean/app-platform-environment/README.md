@@ -45,3 +45,7 @@ planton chart build --values values.dev.yaml \
                          --org acme \
                          --env dev
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

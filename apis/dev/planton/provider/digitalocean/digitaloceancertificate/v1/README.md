@@ -256,3 +256,7 @@ For issues, questions, or contributions, refer to the [Planton documentation](ht
 
 **TL;DR**: Use Let's Encrypt for free, auto-renewing certificates when DNS is in DigitalOcean. Use Custom for commercial certs or external DNS. Always monitor expiration independently.
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -90,6 +90,7 @@ message AzureContainerAppEnvironmentStorageSpec {
   // **ForceNew**: Changing this destroys and recreates the registration.
   dev.planton.shared.foreignkey.v1.StringValueOrRef account_name = 5 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_name"
   ];
 
@@ -99,6 +100,7 @@ message AzureContainerAppEnvironmentStorageSpec {
   dev.planton.shared.foreignkey.v1.StringValueOrRef access_key = 6 [
     (dev.planton.shared.options.sensitive) = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_access_key"
   ];
 

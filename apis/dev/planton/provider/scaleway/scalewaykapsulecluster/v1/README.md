@@ -72,3 +72,7 @@ ScalewayVpc (Layer 0)
 - [Kapsule Pricing](https://www.scaleway.com/en/pricing/?tags=available,managedkubernetes)
 - [Cluster API Reference](https://www.scaleway.com/en/developers/api/kubernetes/)
 - [CNI Comparison](https://www.scaleway.com/en/docs/containers/kubernetes/reference-content/cni-overview/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

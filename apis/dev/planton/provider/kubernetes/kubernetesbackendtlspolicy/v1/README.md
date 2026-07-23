@@ -195,3 +195,7 @@ backend Services it secures.
 - [Kubernetes Service](kubernetesservice)
 - [Kubernetes Config Map](kubernetesconfigmap)
 - [Kubernetes Namespace](kubernetesnamespace)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

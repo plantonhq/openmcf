@@ -1540,9 +1540,9 @@ const file_dev_planton_provider_aws_awsecstaskdefinition_v1_spec_proto_rawDesc =
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12a\n" +
 	"\x03efs\x18\x02 \x01(\v2O.dev.planton.provider.aws.awsecstaskdefinition.v1.AwsEcsTaskDefinitionEfsVolumeR\x03efs\x12\x1b\n" +
 	"\thost_path\x18\x03 \x01(\tR\bhostPath:y\xbaHv\x1at\n" +
-	"\x11efs_xor_host_path\x127a volume is backed by either efs or host_path, not both\x1a&!has(this.efs) || this.host_path == ''\"\x82\x03\n" +
-	"\x1dAwsEcsTaskDefinitionEfsVolume\x12\x86\x01\n" +
-	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_idR\ffileSystemId\x12%\n" +
+	"\x11efs_xor_host_path\x127a volume is backed by either efs or host_path, not both\x1a&!has(this.efs) || this.host_path == ''\"\x86\x03\n" +
+	"\x1dAwsEcsTaskDefinitionEfsVolume\x12\x8a\x01\n" +
+	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\ffileSystemId\x12%\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tR\rrootDirectory\x12\x83\x01\n" +
 	"\x0faccess_point_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\xe8\x02\x92\xd4a\x1estatus.outputs.access_point_idR\raccessPointId\x12+\n" +
 	"\x11iam_authorization\x18\x04 \x01(\bR\x10iamAuthorization\"\xdb\x04\n" +

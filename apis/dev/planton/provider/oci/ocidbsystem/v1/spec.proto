@@ -133,6 +133,7 @@ message OciDbSystemSpec {
   // configurations. Changing this forces recreation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef backup_subnet_id = 19 [
     (dev.planton.shared.foreignkey.v1.default_kind) = OciSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 

@@ -48,3 +48,7 @@ User-defined `labels` organize the endpoint for cost attribution and ownership; 
 - **public** -- Public endpoint for straightforward querying
 - **vpc-peered** -- Private endpoint inside a peered VPC
 - **psc** -- Private Service Connect with consumer allowlist
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

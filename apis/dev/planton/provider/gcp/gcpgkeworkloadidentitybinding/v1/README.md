@@ -102,3 +102,7 @@ GSA's own project is inferred from its email.
 - **GcpServiceAccount** — creates the GSA this binding targets
 - **GcpGkeCluster** — the cluster whose project hosts the identity pool
 - **GcpProjectIamMember** — grants the GSA its project-level roles
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

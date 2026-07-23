@@ -51,3 +51,7 @@ terraform validate
 ## Configuration Reference
 
 See [catalog-page.md](catalog-page.md) for complete field documentation, examples, and presets.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

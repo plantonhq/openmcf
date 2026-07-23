@@ -36,6 +36,15 @@ The bar for every component:
   memory or assumptions. Upstream validators/docs are the floor for the field *set*, not
   automatic truth for every constraint; live rejection wins. Design for complete, typed
   coverage of what real advanced use needs — not a generic map passthrough of upstream knobs.
+- **Read provider source for FACTS; never copy its code text.** The Terraform provider
+  repos are MPL-2.0 (file-level copyleft that must not be mixed into this Apache-2.0
+  work), and Terraform core and other HashiCorp repos are BUSL (not open source at all).
+  Field sets, defaults, validation bounds, and ForceNew behavior are facts — extract them
+  freely; the module implementation is original authorship informed by those facts. If a
+  snippet seems so canonical it can only be written one way, that is a fact, not an
+  expression — reproduce it from the schema, never paste it. This does NOT restrict normal
+  dependency usage: consuming the Pulumi provider SDKs from go.mod and calling their APIs
+  is exactly what those Apache-2.0 SDKs are for.
 - **Mirror a sibling's STRUCTURE, never its DEPTH.** Copying the nearest sibling's *shape*
   (the four protos, FK refs, output naming, file layout) is correct and required. Copying its
   *field coverage or quality ceiling* is NOT — much of the existing surface was authored

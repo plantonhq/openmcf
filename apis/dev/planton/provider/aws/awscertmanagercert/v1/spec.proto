@@ -119,6 +119,7 @@ message AwsCertManagerCertSpec {
   // authoritative for every domain on the certificate.
   dev.planton.shared.foreignkey.v1.StringValueOrRef route53_hosted_zone_id = 7 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsRoute53Zone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
   ];
 

@@ -86,3 +86,7 @@ Layer 2:  ┌────────────┐  ┌───────�
 | Node Pool | ~5-8 minutes |
 | RocketMQ + Redis + NAS | ~5-8 minutes (parallel) |
 | **Total** | **~18-25 minutes** |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

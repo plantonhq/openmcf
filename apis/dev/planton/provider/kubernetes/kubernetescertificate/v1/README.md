@@ -43,3 +43,7 @@ Issuance time belongs to the issuer — an ACME order can take minutes, an unrea
 ## Composing in Infra Charts
 
 Reference `status.outputs.secret_name` from anything that consumes TLS Secrets. The root-CA bootstrap composes this kind twice: once with `is_ca: true` against a self-signed issuer (producing the CA Secret a `ca` Issuer signs with), then as leaf certificates against that CA issuer.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

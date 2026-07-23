@@ -205,10 +205,10 @@ var File_dev_planton_provider_azure_azurestorageobjectreplication_v1_spec_proto 
 
 const file_dev_planton_provider_azure_azurestorageobjectreplication_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/azure/azurestorageobjectreplication/v1/spec.proto\x12;dev.planton.provider.azure.azurestorageobjectreplication.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf5\x03\n" +
-	"!AzureStorageObjectReplicationSpec\x12\x9f\x01\n" +
-	"\x19source_storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x16sourceStorageAccountId\x12\xa9\x01\n" +
-	"\x1edestination_storage_account_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_idR\x1bdestinationStorageAccountId\x12\x81\x01\n" +
+	"Fdev/planton/provider/azure/azurestorageobjectreplication/v1/spec.proto\x12;dev.planton.provider.azure.azurestorageobjectreplication.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xfd\x03\n" +
+	"!AzureStorageObjectReplicationSpec\x12\xa3\x01\n" +
+	"\x19source_storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_id\x98\xd4a\x01R\x16sourceStorageAccountId\x12\xad\x01\n" +
+	"\x1edestination_storage_account_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x03\x92\xd4a!status.outputs.storage_account_id\x98\xd4a\x01R\x1bdestinationStorageAccountId\x12\x81\x01\n" +
 	"\x05rules\x18\x03 \x03(\v2^.dev.planton.provider.azure.azurestorageobjectreplication.v1.AzureStorageObjectReplicationRuleB\v\xbaH\b\x92\x01\x05\b\x01\x10\xe8\aR\x05rules\"\xc9\x06\n" +
 	"!AzureStorageObjectReplicationRule\x12\x94\x01\n" +
 	"\x15source_container_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xea\x03\x92\xd4a\x1dstatus.outputs.container_nameR\x13sourceContainerName\x12\x9e\x01\n" +

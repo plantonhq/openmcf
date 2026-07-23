@@ -83,3 +83,7 @@ workspaceId:
 ```
 
 See `presets/` for pay-as-you-go, commitment-tier, and private-hardened starting points.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

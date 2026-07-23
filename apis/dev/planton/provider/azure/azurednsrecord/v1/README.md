@@ -62,3 +62,7 @@ spec:
     addresses:
       - 203.0.113.10
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

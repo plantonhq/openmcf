@@ -41,3 +41,7 @@ This chart provisions a **VM-based workload environment on Oracle Cloud Infrastr
 | `lb_backend_port` | Backend port | `8080` |
 | `enable_block_volume` | Create block volume | `false` |
 | `block_volume_size_gb` | Volume size (GB) | `100` |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

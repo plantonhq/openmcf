@@ -60,3 +60,7 @@ security events, missing heartbeats, anything KQL can express.
 
 See `presets/` for error-spike, latency-threshold, and missing-heartbeat
 starting points.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

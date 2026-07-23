@@ -39,3 +39,7 @@ This resource provides complete support for production-grade node pool managemen
 - **DigitalOcean Tags**: Cost attribution and organizational tagging.
 - **Lifecycle Independence**: Modify or delete pools without affecting the parent cluster.
 - **Best Practices**: Follows the "sacrificial default pool" pattern for safe cluster management.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -155,3 +155,7 @@ This component has the most FK connections of any OpenStack component:
 - **OpenStackSecurityGroup** (2505) -- Network access control
 - **OpenStackServerGroup** (2509) -- Placement control
 - **OpenStackVolumeAttach** (2511) -- Post-launch volume attachment (Phase 3)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

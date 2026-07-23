@@ -135,6 +135,7 @@ message AzureFunctionAppSpec {
   // enforces it).
   dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_name = 5 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_name"
   ];
 
@@ -148,6 +149,7 @@ message AzureFunctionAppSpec {
   dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_access_key = 6 [
     (dev.planton.shared.options.sensitive) = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_access_key"
   ];
 
@@ -299,6 +301,7 @@ message AzureFunctionAppSpec {
   // Not supported on Consumption plans (Y1).
   dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_subnet_id = 24 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
@@ -907,6 +910,7 @@ message AzureFunctionAppIpRestriction {
   // Traffic from this subnet is allowed/denied based on the action.
   dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_subnet_id = 6 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
@@ -952,6 +956,7 @@ message AzureFunctionAppIpRestrictionHeaders {
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef x_azure_fdid = 3 [
     (buf.validate.field).repeated.max_items = 8,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorProfile,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_guid"
   ];
 
@@ -1038,6 +1043,7 @@ message AzureFunctionAppStorageMount {
     (buf.validate.field).required = true,
     (dev.planton.shared.options.sensitive) = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_access_key"
   ];
 

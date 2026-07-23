@@ -36,3 +36,7 @@ Same posture as KubernetesClusterIssuer: readiness depends on external reachabil
 ## Composing in Infra Charts
 
 The CA-chain composition is the signature pattern: self-signed Issuer, root CA Certificate referencing it, CA Issuer referencing the root's Secret output, leaf Certificates referencing the CA Issuer — all four resources in one chart, all wiring through exported outputs.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

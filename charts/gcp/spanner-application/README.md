@@ -101,3 +101,7 @@ limits (the two are mutually exclusive by GCP's own contract).
 - **Multi-region configs change the autoscaling math** — the instance
   template pins the CPU target at 65% (regional guidance); lower it to
   45% when `spanner_config` is a multi-region config.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -77,3 +77,7 @@ Three design decisions worth knowing:
 - **Keyless everything**: once every producer/consumer runs with a managed identity, flip `keyless_only_enabled` — SAS shuts off namespace-wide and the chart's SAS credentials disappear.
 - **Beyond 40 TUs**: sustained throttling at the ceiling means PREMIUM (processing units, 90-day retention, up to 1024 partitions) or a dedicated cluster.
 - **Lakehouse growth**: the archive account is the raw zone; when curated zones and per-zone encryption enter the picture, the `data-lakehouse-storage` chart is the next step.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

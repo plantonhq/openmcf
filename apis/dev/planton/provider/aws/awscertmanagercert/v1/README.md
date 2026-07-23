@@ -49,3 +49,7 @@ Exactly one of `primary_domain_name` / `imported` drives the mode; validation ru
 - [DNS Validation for ACM Certificates](https://docs.aws.amazon.com/acm/latest/userguide/dns-validation.html)
 - [Importing Certificates into ACM](https://docs.aws.amazon.com/acm/latest/userguide/import-certificate.html)
 - [AWS Private Certificate Authority](https://docs.aws.amazon.com/privateca/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -84,3 +84,7 @@ vpcConnectorArn:
 
 - **VPC Ingress Connections** (`aws_apprunner_vpc_ingress_connection`): the INBOUND private-access plane (PrivateLink into a private service) -- a separate surface that composes against the service's exported ARN; deferred until concrete pull.
 - **Per-kind tags**: identity tags derive from metadata; custom user tags are a platform-wide concern.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

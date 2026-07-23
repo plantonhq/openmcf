@@ -256,3 +256,7 @@ spec:
     chainingMode: aws-cni # the incumbent keeps IPAM and interface wiring
     exclusive: false      # mandatory with chaining (CEL-enforced)
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

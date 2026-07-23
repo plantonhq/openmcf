@@ -114,3 +114,7 @@ mysql://{administrator_login}:{password}@{fqdn}:3306/{database}?ssl-mode=REQUIRE
 - **AzurePrivateEndpoint** -- alternative private connectivity (Private Link)
 - **AzureUserAssignedIdentity** -- CMK unwrap identity / the Entra administrator's backing identity
 - **AzureKeyVaultKey** -- the customer-managed encryption key
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

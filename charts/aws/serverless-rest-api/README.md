@@ -164,3 +164,7 @@ client ships with, where the password never crosses the wire.
 - **Teardown.** `table_deletion_protection` is on by default — flip it
   to `false` and apply before destroying, or the teardown stops at the
   table (by design).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

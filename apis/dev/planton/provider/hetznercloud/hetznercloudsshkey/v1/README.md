@@ -56,3 +56,7 @@ None. `HetznerCloudSshKey` is a root resource with no foreign key dependencies.
 - [Hetzner Cloud SSH Keys Documentation](https://docs.hetzner.cloud/#ssh-keys)
 - [Terraform hcloud_ssh_key Resource](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/ssh_key)
 - [Pulumi hcloud.SshKey Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/sshkey/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

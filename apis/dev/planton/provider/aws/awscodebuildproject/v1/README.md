@@ -237,3 +237,7 @@ spec:
 - **Legacy `branch_filter` webhook argument** — `filterGroups` with a `HEAD_REF` filter is the same capability in the modern, composable shape.
 - **Source credentials (`aws_codebuild_source_credential`)** — an account/region-wide credential import; the per-source `auth` block (CodeConnections/Secrets Manager) is the modern path.
 - **Report groups / fleets** — shared account-level resources with independent lifecycles; the project composes with fleets through `environment.fleetArn`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

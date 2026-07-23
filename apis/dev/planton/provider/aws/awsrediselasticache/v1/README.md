@@ -268,3 +268,7 @@ After deployment, the following outputs are available in `status.outputs`:
 - [AwsSnsTopic](/docs/catalog/aws/sns-topic) — receives cluster event notifications
 - [AwsElasticacheUser](/docs/catalog/aws/awselasticacheuser) — RBAC identity (WHO / WHAT)
 - [AwsElasticacheUserGroup](/docs/catalog/aws/awselasticacheusergroup) — collects users; referenced in `userGroupIds`
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

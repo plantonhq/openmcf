@@ -88,3 +88,7 @@ routes:
 
 - **REST API (v1) VPC links** (`aws_api_gateway_vpc_link`): a different, NLB-only resource belonging to the REST API surface.
 - **Per-kind tags**: identity tags derive from metadata; custom user tags are a platform-wide concern.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

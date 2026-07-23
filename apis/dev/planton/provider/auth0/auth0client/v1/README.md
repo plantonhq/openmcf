@@ -106,3 +106,7 @@ planton apply --manifest auth0-client.yaml \
 - [Research Documentation](./docs/README.md) - In-depth analysis of Auth0 applications
 
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

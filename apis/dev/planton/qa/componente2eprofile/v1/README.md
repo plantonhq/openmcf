@@ -84,3 +84,7 @@ Kubernetes:
 | 4    | Operators/addons   | Cluster-level infra  | CertManager, Istio, ExternalSecrets |
 
 Other providers will define their own tier semantics as E2E expands.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -3063,9 +3063,9 @@ const file_dev_planton_provider_gcp_gcpdataproccluster_v1_spec_proto_rawDesc = "
 	"\x10node_pool_config\x18\x03 \x01(\v2P.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterNodePoolConfigR\x0enodePoolConfig\"\xad\x02\n" +
 	"\"GcpDataprocClusterGkeClusterConfig\x12\x8a\x01\n" +
 	"\x12gke_cluster_target\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xdf\x04\x92\xd4a\x19status.outputs.cluster_idR\x10gkeClusterTarget\x12z\n" +
-	"\x10node_pool_target\x18\x02 \x03(\v2P.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterNodePoolTargetR\x0enodePoolTarget\"\xd4\x03\n" +
-	")GcpDataprocClusterKubernetesClusterConfig\x12y\n" +
-	"\x14kubernetes_namespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\x13kubernetesNamespace\x12\x88\x01\n" +
+	"\x10node_pool_target\x18\x02 \x03(\v2P.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterNodePoolTargetR\x0enodePoolTarget\"\xd8\x03\n" +
+	")GcpDataprocClusterKubernetesClusterConfig\x12}\n" +
+	"\x14kubernetes_namespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xa0\x06\x92\xd4a\tspec.name\x98\xd4a\x01R\x13kubernetesNamespace\x12\x88\x01\n" +
 	"\x12gke_cluster_config\x18\x02 \x01(\v2R.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterGkeClusterConfigB\x06\xbaH\x03\xc8\x01\x01R\x10gkeClusterConfig\x12\xa0\x01\n" +
 	"\x1akubernetes_software_config\x18\x03 \x01(\v2Z.dev.planton.provider.gcp.gcpdataproccluster.v1.GcpDataprocClusterKubernetesSoftwareConfigB\x06\xbaH\x03\xc8\x01\x01R\x18kubernetesSoftwareConfig\"\xb0\x01\n" +
 	"*GcpDataprocClusterSparkHistoryServerConfig\x12\x81\x01\n" +

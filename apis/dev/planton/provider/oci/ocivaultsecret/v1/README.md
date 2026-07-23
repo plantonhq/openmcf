@@ -45,3 +45,7 @@ Secrets management is a critical part of any infrastructure platform. OCI Vault 
 - **Encryption at rest** — all secret content is encrypted by the specified KMS master key.
 - **Automatic rotation** — scheduled rotation updates credentials in target systems without manual intervention.
 - **Version history** — content updates create new versions, enabling rollback and audit trails.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

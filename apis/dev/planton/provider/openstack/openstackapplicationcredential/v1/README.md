@@ -48,3 +48,7 @@ Application credentials allow applications and CI/CD pipelines to authenticate t
 ## Pulumi Resource
 
 `openstack.identity.ApplicationCredential`
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

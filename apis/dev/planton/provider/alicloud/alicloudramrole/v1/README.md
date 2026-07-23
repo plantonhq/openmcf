@@ -84,3 +84,7 @@ RAM roles are account-global and not region-scoped. The `region` field configure
 - **AliCloudAckManagedCluster** -- references this role for cluster service authentication
 - **AliCloudFcFunction** -- references this role for function execution permissions
 - **AliCloudEcsInstance** -- references this role for instance profile
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

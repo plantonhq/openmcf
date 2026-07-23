@@ -34,3 +34,7 @@ The **AwsSnsTopic** resource provides a standardized way to provision and manage
 - **Fan-out**: one topic, many `AwsSnsSubscription` resources targeting different SQS queues, each with its own filter policy.
 - **Operational alerts**: CloudWatch alarms publish to the topic; email/SMS subscriptions notify humans, an SQS subscription feeds automation.
 - **Ordered event streams**: a FIFO topic with `archive_policy` feeding SQS FIFO queues, with replay-based backfill for new consumers.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -135,3 +135,7 @@ These will be available as separate deployment components:
 - [OpenFGA Concepts: What is a Store](https://openfga.dev/docs/concepts#what-is-a-store)
 - [Terraform Provider OpenFGA](https://registry.terraform.io/providers/openfga/openfga/latest/docs)
 - [OpenFGA Store Resource](https://registry.terraform.io/providers/openfga/openfga/latest/docs/resources/store)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

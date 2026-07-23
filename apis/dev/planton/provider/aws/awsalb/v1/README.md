@@ -84,3 +84,7 @@ behind it.
 - `load_balancer_name`: final name assigned to the ALB (metadata.name, truncated to AWS's 32-character limit when necessary)
 - `load_balancer_dns_name`: DNS name assigned by AWS
 - `load_balancer_hosted_zone_id`: Route53 hosted zone ID for the ALB's DNS entry, for alias records
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -66,3 +66,7 @@ own component -- instead of folding it into the load balancer -- lets you:
 ## Stack outputs
 
 - `listener_arn`: ARN of the listener (what listener rules attach through)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

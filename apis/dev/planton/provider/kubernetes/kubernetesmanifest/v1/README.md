@@ -128,3 +128,7 @@ Use **KubernetesManifest** when:
 - [Server-Side Apply](https://kubernetes.io/docs/reference/using-api/server-side-apply/)
 - [Pulumi Kubernetes yaml/v2 ConfigGroup](https://www.pulumi.com/registry/packages/kubernetes/api-docs/yaml/v2/configgroup/)
 - [alekc/kubectl Terraform Provider](https://registry.terraform.io/providers/alekc/kubectl/latest/docs)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

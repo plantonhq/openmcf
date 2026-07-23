@@ -94,3 +94,7 @@ Use **KubernetesJob** when you need:
 - [Indexed Jobs for Parallel Processing](https://kubernetes.io/docs/tasks/job/indexed-parallel-processing-static/)
 - [Pod Failure Policy](https://kubernetes.io/docs/concepts/workloads/controllers/job/#pod-failure-policy)
 - [Job API Reference](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/job-v1/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -90,3 +90,7 @@ architecture, and it deserves a first-class, composable node:
   `aws_vpc_endpoint_security_group_association`) are folded into the
   spec's repeated reference fields -- glue with no independent
   lifecycle.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

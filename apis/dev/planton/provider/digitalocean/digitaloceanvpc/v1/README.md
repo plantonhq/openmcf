@@ -49,3 +49,7 @@ This resource provides complete support for production-grade VPC deployments, in
 - **Description Field**: Document VPC purpose for team clarity.
 - **Default VPC Configuration**: Optional setting for regional default VPC.
 - **Immutability Protection**: Design enforces planning before deployment.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

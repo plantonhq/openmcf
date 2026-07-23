@@ -63,3 +63,7 @@ actionGroupId:
 ```
 
 See `presets/` for on-call, automation, and role-fan-out starting points.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

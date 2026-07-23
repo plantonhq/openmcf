@@ -80,3 +80,7 @@ After deploying the Altinity Operator, you can:
 3. Configure cluster topologies (shards, replicas, ZooKeeper)
 4. Monitor operator and cluster health through Kubernetes tools
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

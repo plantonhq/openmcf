@@ -116,3 +116,7 @@ flowchart LR
 - `OpenStackNetwork` -- External network providing the IP pool
 - `OpenStackNetworkPort` -- Port target for association
 - `examples.md` -- Full YAML examples for all configurations
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

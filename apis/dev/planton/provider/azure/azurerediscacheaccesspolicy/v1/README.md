@@ -43,3 +43,7 @@ the three-kind composition: cache → policy → grant.
 - [Design research](docs/README.md) -- field mapping, the split verdict
 - [Presets](presets/) -- prefix read-only, writer-without-admin, queue worker
 - [Terraform module](iac/tf/README.md) / [Pulumi module](iac/pulumi/README.md)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

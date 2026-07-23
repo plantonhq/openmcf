@@ -64,3 +64,7 @@ This chart provisions an **analytics and data lake platform on Oracle Cloud Infr
 2. **Store**: Raw data lands in the Object Storage data lake bucket
 3. **Analyze**: ADW queries data directly from Object Storage using external tables
 4. **Monitor**: All operations logged to the centralized log group
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

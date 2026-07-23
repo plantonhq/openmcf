@@ -80,3 +80,7 @@ At most one source (`image` / `sourceSnapshot` / `sourceDisk`) may be set — en
 | `type` | Disk type (plain type name, e.g. `pd-balanced`) |
 
 See the [presets](presets/) for remixable starting points and [docs/README.md](docs/README.md) for the deep dive.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

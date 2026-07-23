@@ -356,3 +356,7 @@ civo instance create --region LON1 ...
 - `CivoKubernetesCluster` - Use reserved IPs for LoadBalancer services
 - `CivoDnsZone` - Point DNS records to reserved IPs
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

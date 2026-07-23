@@ -63,3 +63,7 @@ Pools are named containers. NIC-based membership is expressed **from the member 
 - **AzureVirtualMachineScaleSet** -- scale-set instances join pools through their network profile
 - **AzureApplicationGateway** -- Layer 7 alternative with HTTP routing and WAF
 - **AzureDnsRecord** -- DNS records pointing at frontend addresses
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

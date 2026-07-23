@@ -46,3 +46,7 @@ Object Storage is OCI's primary durable object store for unstructured data — b
 - **KMS encryption** — customer-managed keys for encryption at rest when regulatory requirements exceed Oracle-managed defaults.
 - **Replication** — asynchronous cross-region replication for RPO-based disaster recovery.
 - **Retention locks** — time-locked retention rules prevent early deletion, meeting regulatory hold requirements.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

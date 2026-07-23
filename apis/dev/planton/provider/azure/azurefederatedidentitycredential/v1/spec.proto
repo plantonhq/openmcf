@@ -72,6 +72,7 @@ message AzureFederatedIdentityCredentialSpec {
   dev.planton.shared.foreignkey.v1.StringValueOrRef issuer = 3 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureAksCluster,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.oidc_issuer_url"
   ];
 

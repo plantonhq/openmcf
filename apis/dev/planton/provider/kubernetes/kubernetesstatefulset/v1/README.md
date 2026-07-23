@@ -110,3 +110,7 @@ Use **KubernetesStatefulSet** when replicas need stable identity, stable per-rep
 - [StatefulSet Basics Tutorial](https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/)
 - [PersistentVolumeClaim Retention](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#persistentvolumeclaim-retention)
 - [StatefulSet API Reference](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/stateful-set-v1/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

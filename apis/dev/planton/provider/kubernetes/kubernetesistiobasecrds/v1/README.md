@@ -70,3 +70,7 @@ CustomResourceDefinitions.
   (server-side apply).
 
 Outputs: `installed_release`, `installed_manifest_url`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

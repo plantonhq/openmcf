@@ -2244,9 +2244,9 @@ const file_dev_planton_provider_aws_awsecsservice_v1_spec_proto_rawDesc = "" +
 	"\x11capacity_provider\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10capacityProvider\x12\x1f\n" +
 	"\x04base\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xa0\x8d\x06(\x00R\x04base\x12\"\n" +
 	"\x06weight\x18\x03 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xe8\a(\x00R\x06weight\"\xc0\x02\n" +
-	"\x14AwsEcsServiceNetwork\x12u\n" +
-	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12\x86\x01\n" +
+	"\xbaH\a\x1a\x05\x18\xe8\a(\x00R\x06weight\"\xc4\x02\n" +
+	"\x14AwsEcsServiceNetwork\x12y\n" +
+	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\asubnets\x12\x86\x01\n" +
 	"\x0fsecurity_groups\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\x12(\n" +
 	"\x10assign_public_ip\x18\x03 \x01(\bR\x0eassignPublicIp\"\xa0\x03\n" +
 	"\x19AwsEcsServiceLoadBalancer\x12\x8c\x01\n" +

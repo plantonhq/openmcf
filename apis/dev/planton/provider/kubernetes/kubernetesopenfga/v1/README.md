@@ -74,3 +74,7 @@ The OpenFGA Kubernetes API resource provides flexible namespace management throu
 - **Data Store Flexibility**: Supports both MySQL and PostgreSQL as data store engines, providing flexibility in database management.
 - **Secure Access**: Configures ingress rules for secure and controlled access to the OpenFGA instance.
 - **Flexible Namespace Management**: Control whether namespaces are created or managed externally, supporting various organizational policies.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

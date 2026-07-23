@@ -585,6 +585,7 @@ message GcpCloudRunVolumeCloudSql {
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef instances = 1 [
     (buf.validate.field).repeated.min_items = 1,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudSql,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.connection_name"
   ];
 }
@@ -852,6 +853,7 @@ message GcpCloudRunNetworkInterface {
   // network is inferred).
   dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_name"
   ];
 
@@ -860,6 +862,7 @@ message GcpCloudRunNetworkInterface {
   // service's region.
   dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_name"
   ];
 

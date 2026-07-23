@@ -131,3 +131,7 @@ The foundation is deliberately workload-free. What composes on top of it:
   NAT gateway bills per-hour plus per-GiB processed; flow logs bill by
   Logging ingest, which follows traffic volume — tune `flow_sampling` down
   on busy subnets.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

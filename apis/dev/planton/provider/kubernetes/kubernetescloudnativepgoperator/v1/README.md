@@ -212,3 +212,7 @@ spec:
     grafana_dashboard: true
   priority_class_name: system-cluster-critical
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

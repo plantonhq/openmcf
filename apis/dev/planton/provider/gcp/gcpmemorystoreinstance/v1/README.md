@@ -141,3 +141,7 @@ spec:
 - [Memorystore Documentation](https://cloud.google.com/memorystore/docs/overview)
 - [Valkey Project](https://valkey.io/)
 - [Service connectivity automation](https://cloud.google.com/vpc/docs/about-service-connectivity-automation)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

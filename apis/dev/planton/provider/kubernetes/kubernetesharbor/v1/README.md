@@ -365,3 +365,7 @@ Geo-distributed deployment:
 - **CDN Integration**: Use CloudFront, Cloud CDN for global image distribution
 
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

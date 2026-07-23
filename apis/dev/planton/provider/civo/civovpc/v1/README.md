@@ -295,3 +295,7 @@ For teams building cloud-native applications on Kubernetes, Civo's model is refr
 
 **Bottom Line**: CivoVpc provides simple, regional, /24-limited networks with true isolation for cloud-native workloads. Manage them with IaC (never manually), plan your CIDR scheme upfront, and embrace the "many small networks" pattern. Planton abstracts Civo's networking into a protobuf API that works consistently across clouds while respecting Civo's deliberate simplicity.
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -245,3 +245,7 @@ spec:
 
 - **Webhooks (`aws_codepipeline_webhook`)** — the legacy V1 trigger mechanism; V2 native `triggers` supersede it with richer filtering and no shared-secret management.
 - **Custom action types** — account-level action-type definitions with independent lifecycles, referenced by any pipeline via `category`/`owner: Custom`/`provider`/`version`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

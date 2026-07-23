@@ -90,3 +90,7 @@ After deployment, the following outputs are available:
 - **Vault Compatible**: API-compatible with HashiCorp Vault, enabling migration from existing deployments
 - **Production Ready**: Enterprise-grade features including HA, audit logging, and encryption
 - **Kubernetes Native**: Deep integration with Kubernetes authentication and service accounts
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

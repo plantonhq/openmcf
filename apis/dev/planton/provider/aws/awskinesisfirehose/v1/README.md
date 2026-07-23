@@ -389,3 +389,7 @@ The following fields require replacing the entire delivery stream if changed:
 - **AwsLambda** — Transformation function for record processing
 - **AwsOpenSearchDomain** — Target domain for the OpenSearch destination
 - **AwsCloudwatchAlarm** — Monitor delivery metrics (DeliveryToS3.Success, IncomingBytes)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

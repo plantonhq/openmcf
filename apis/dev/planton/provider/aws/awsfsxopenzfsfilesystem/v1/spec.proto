@@ -158,6 +158,7 @@ message AwsFsxOpenzfsFileSystemSpec {
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef route_table_ids = 11 [
     (buf.validate.field).repeated.max_items = 50,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.route_table_id"
   ];
 

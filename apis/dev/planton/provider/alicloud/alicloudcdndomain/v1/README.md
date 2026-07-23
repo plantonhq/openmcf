@@ -68,3 +68,7 @@ A CDN domain maps a user-facing domain name to one or more origin servers. Aliba
 
 - **AliCloudDnsRecord** -- create a CNAME record pointing to this domain's `cname` output
 - **AliCloudStorageBucket** -- use as an OSS origin source for static content
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

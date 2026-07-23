@@ -110,3 +110,7 @@ transform keeps its position in the pipeline without being applied.
 - [GcpProject](../gcpproject/v1/) -- Parent GCP project
 - [GcpGcsBucket](../gcpgcsbucket/v1/) -- Source bucket for Cloud Storage ingestion
 - [GcpServiceAccount](../gcpserviceaccount/v1/) -- Federated identity for cross-cloud ingestion
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

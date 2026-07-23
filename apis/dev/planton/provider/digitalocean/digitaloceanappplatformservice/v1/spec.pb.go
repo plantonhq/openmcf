@@ -488,7 +488,7 @@ var File_dev_planton_provider_digitalocean_digitaloceanappplatformservice_v1_spe
 
 const file_dev_planton_provider_digitalocean_digitaloceanappplatformservice_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ndev/planton/provider/digitalocean/digitaloceanappplatformservice/v1/spec.proto\x12Cdev.planton.provider.digitalocean.digitaloceanappplatformservice.v1\x1a\x1bbuf/validate/validate.proto\x1a.dev/planton/provider/digitalocean/region.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x99\n" +
+	"Ndev/planton/provider/digitalocean/digitaloceanappplatformservice/v1/spec.proto\x12Cdev.planton.provider.digitalocean.digitaloceanappplatformservice.v1\x1a\x1bbuf/validate/validate.proto\x1a.dev/planton/provider/digitalocean/region.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9d\n" +
 	"\n" +
 	"\"DigitalOceanAppPlatformServiceSpec\x12N\n" +
 	"\fservice_name\x18\x01 \x01(\tB+\xbaH(\xc8\x01\x01r#\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\vserviceName\x12U\n" +
@@ -503,8 +503,8 @@ const file_dev_planton_provider_digitalocean_digitaloceanappplatformservice_v1_s
 	"\x12min_instance_count\x18\t \x01(\rR\x10minInstanceCount\x12,\n" +
 	"\x12max_instance_count\x18\n" +
 	" \x01(\rR\x10maxInstanceCount\x12\x82\x01\n" +
-	"\x03env\x18\v \x03(\v2p.dev.planton.provider.digitalocean.digitaloceanappplatformservice.v1.DigitalOceanAppPlatformServiceSpec.EnvEntryR\x03env\x12r\n" +
-	"\rcustom_domain\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x19\x88\xd4a\xb4\t\x92\xd4a\x10spec.domain_nameR\fcustomDomain\x1a6\n" +
+	"\x03env\x18\v \x03(\v2p.dev.planton.provider.digitalocean.digitaloceanappplatformservice.v1.DigitalOceanAppPlatformServiceSpec.EnvEntryR\x03env\x12v\n" +
+	"\rcustom_domain\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xb4\t\x92\xd4a\x10spec.domain_name\x98\xd4a\x01R\fcustomDomain\x1a6\n" +
 	"\bEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\b\n" +

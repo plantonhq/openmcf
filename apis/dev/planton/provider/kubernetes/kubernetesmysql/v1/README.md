@@ -270,3 +270,7 @@ spec:
       storage:
         size: 2Gi # ProxySQL is stateful
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

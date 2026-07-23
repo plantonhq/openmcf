@@ -140,3 +140,7 @@ helm uninstall planton-operator -n planton-operator-system
 # To also remove the CRD (destroys all PlantonPlatform resources):
 kubectl delete crd plantonplatforms.planton.ai
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -70,3 +70,7 @@ The component provides flexible namespace management through the `create_namespa
 - **Data Persistence**: Provides options for data persistence to ensure data is retained across pod restarts and failures.
 - **Resource Optimization**: Enables precise control over resource allocation for containers, optimizing performance and cost.
 - **Flexibility**: Customize Elasticsearch and Kibana configurations to meet specific application requirements without compromising best practices.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

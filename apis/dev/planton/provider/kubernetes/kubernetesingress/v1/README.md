@@ -143,3 +143,7 @@ Use **KubernetesIngress** when you need:
 - [IngressClass](https://kubernetes.io/docs/concepts/services-networking/ingress/#ingress-class)
 - [Ingress API Reference](https://kubernetes.io/docs/reference/kubernetes-api/service-resources/ingress-v1/)
 - [cert-manager: Securing Ingress Resources](https://cert-manager.io/docs/usage/ingress/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

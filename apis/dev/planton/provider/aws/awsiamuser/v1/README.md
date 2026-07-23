@@ -53,3 +53,7 @@ Access keys are created by default (since programmatic access is the primary use
 - Research documentation: [docs/README.md](docs/README.md)
 - Examples: [examples.md](examples.md)
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

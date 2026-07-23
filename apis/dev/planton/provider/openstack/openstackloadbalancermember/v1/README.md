@@ -78,3 +78,7 @@ planton apply --manifest member.yaml -p openstack-creds.yaml
 - **Subnet**: Required for cross-subnet routing. Octavia uses it for L3 routing when the member is on a different subnet than the VIP.
 - **Admin state**: Set admin_state_up false to remove the member from rotation without deleting it.
 - **Tags**: Must be unique within the resource.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

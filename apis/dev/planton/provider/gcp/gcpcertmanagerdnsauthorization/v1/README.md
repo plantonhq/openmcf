@@ -78,3 +78,7 @@ spec:
 
 - **GcpCertManagerCert** — references this authorization by ID
 - **GcpDnsRecord** / **GcpDnsZone** — serve the validation record
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

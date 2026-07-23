@@ -156,3 +156,7 @@ Raw CloudWatch metric definition within a metric query.
 - **Dashboard integration** — CloudWatch Dashboards are a distinct resource type. Alarm widgets on dashboards reference the alarm ARN from `status.outputs.alarm_arn`.
 - **Extended statistic regex validation** — The `extendedStatistic` field accepts freeform strings (`p95`, `TM(10%:90%)`, etc.). The full pattern grammar (trimmed means, winsorized ranges) is validated by the AWS API at deploy time.
 - **Tags** — Tags are automatically derived from `metadata` fields (org, env, resource kind, resource ID); custom user tags are a platform-wide concern, not per-component scope.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

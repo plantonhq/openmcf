@@ -139,3 +139,7 @@ Image cleanup (deleting old tags, removing untagged images) is managed through t
 - [Container Registry Overview](https://www.scaleway.com/en/docs/containers/container-registry/quickstart/)
 - [Registry Authentication](https://www.scaleway.com/en/docs/containers/container-registry/how-to/connect-docker-cli/)
 - [Terraform Resource: scaleway_registry_namespace](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/registry_namespace)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

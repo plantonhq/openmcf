@@ -54,3 +54,7 @@ ready-to-use as-is).
 - [Design research](docs/README.md) -- the one-kind-two-types verdict
 - [Presets](presets/) -- remixable starting points
 - [Terraform module](iac/tf/README.md) / [Pulumi module](iac/pulumi/README.md)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

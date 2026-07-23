@@ -282,3 +282,7 @@ For detailed implementation guidance, refer to:
 ## License
 
 This implementation is part of the Planton monorepo and follows the same license.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

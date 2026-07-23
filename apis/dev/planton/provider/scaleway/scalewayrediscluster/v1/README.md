@@ -178,3 +178,7 @@ These changes **destroy and recreate** the cluster (data loss unless backed up e
 - [Node Types & Pricing](https://www.scaleway.com/en/pricing/?tags=databases)
 - [Private Network Integration](https://www.scaleway.com/en/docs/managed-databases/redis/how-to/connect-to-redis-cluster-private-network/)
 - [Redis Settings](https://www.scaleway.com/en/docs/managed-databases/redis/reference-content/configuration/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

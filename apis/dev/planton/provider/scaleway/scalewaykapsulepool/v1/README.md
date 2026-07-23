@@ -96,3 +96,7 @@ spec:
 - [Instance Types](https://www.scaleway.com/en/pricing/?tags=available,compute)
 - [CCM Tag Convention](https://github.com/scaleway/scaleway-cloud-controller-manager/blob/master/docs/tags.md)
 - [Placement Groups](https://www.scaleway.com/en/docs/compute/instances/how-to/use-placement-groups/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

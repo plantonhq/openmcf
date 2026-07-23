@@ -223,3 +223,7 @@ spec:
   server:
     restoreOnlyMode: true # backups, schedules and GC are blocked
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

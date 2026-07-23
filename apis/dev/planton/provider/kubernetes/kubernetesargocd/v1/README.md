@@ -52,3 +52,7 @@ As this resource is currently in a partial implementation phase, future updates 
 - **Monitoring and Logging**: Improved support for logging, tracing, and monitoring using Kubernetes-native tools.
 - **Automation and CI/CD Integration**: Streamlined processes for integrating with continuous integration and deployment pipelines.
 - **Comprehensive Documentation**: Expanded usage examples, best practices, and troubleshooting guides.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

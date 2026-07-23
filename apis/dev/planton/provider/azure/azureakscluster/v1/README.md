@@ -56,3 +56,7 @@ composable `AzureAksNodePool` resource referencing this cluster's
 - **`AzureSubnet`** — optional BYO-network placement for the default pool
 - **`AzureFederatedIdentityCredential`** — binds workload identity to the
   cluster's OIDC issuer
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

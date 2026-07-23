@@ -38,3 +38,7 @@ each live as their own resource with an independent lifecycle.
 
 - **`AzureAksCluster`** — parent cluster (carries only the mandatory default pool)
 - **`AzureSubnet`** — optional dedicated subnet for this pool's nodes
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

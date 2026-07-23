@@ -51,3 +51,7 @@ Issuer readiness depends on external reachability (the ACME server, Vault, DNS) 
 ## Composing in Infra Charts
 
 `KubernetesCertManager → KubernetesClusterIssuer → KubernetesCertificate` deploys in one chart run: the issuer references the installation's cluster-resource namespace, certificates reference `status.outputs.cluster_issuer_name`. The cross-cloud pattern (cluster in EKS, DNS in Cloudflare) is one solver block with a Cloudflare token — no cloud identity required.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

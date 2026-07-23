@@ -278,3 +278,7 @@ The following FSx for Windows features are not exposed in this API version:
 - **Cross-account access** — VPC peering or Transit Gateway-based access from other accounts.
 
 See [docs/README.md](docs/README.md) for architecture details and integration patterns.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -99,3 +99,7 @@ spec:
   and clients resolve identically
 - An **empty group** (no collections) is legal -- a placeholder that
   reserves a priority slot
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -25,3 +25,7 @@ Planton provisions via the Pulumi or Terraform module in `iac/`, both implementi
 - Redshift Serverless overview: https://docs.aws.amazon.com/redshift/latest/mgmt/serverless-whatis.html
 - Namespaces and workgroups: https://docs.aws.amazon.com/redshift/latest/mgmt/serverless-workgroups-and-namespaces.html
 - Managed admin passwords: https://docs.aws.amazon.com/redshift/latest/mgmt/redshift-secrets-manager-integration.html
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

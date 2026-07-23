@@ -85,3 +85,7 @@ spec:
 ```
 
 See [docs/README.md](docs/README.md) and [AwsWafWebAcl](../awswafwebacl/v1/README.md).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

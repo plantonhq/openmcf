@@ -46,3 +46,7 @@ spec:
 
 - `CloudflareCustomHostname` — per-customer hostnames that route to this origin.
 - `CloudflareDnsZone` — the SaaS zone.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

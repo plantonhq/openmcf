@@ -49,3 +49,7 @@ access keys, and every consumer connects under one of these grants.
 - [Design research](docs/README.md) -- field mapping, the grant-class verdict
 - [Presets](presets/) -- identity reader, custom-policy grant, human operator
 - [Terraform module](iac/tf/README.md) / [Pulumi module](iac/pulumi/README.md)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

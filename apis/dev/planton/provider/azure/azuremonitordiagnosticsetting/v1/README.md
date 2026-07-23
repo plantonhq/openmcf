@@ -76,3 +76,7 @@ logAnalyticsWorkspaceId:
 
 See `presets/` for workspace-routing, storage-archival, and SIEM-streaming
 starting points.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

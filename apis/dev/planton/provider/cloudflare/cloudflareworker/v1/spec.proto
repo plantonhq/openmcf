@@ -330,6 +330,7 @@ message CloudflareWorkerCustomDomain {
   // CloudflareDnsZone. Optional — Cloudflare can infer the zone from the hostname.
   dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
   ];
 }
@@ -340,6 +341,7 @@ message CloudflareWorkerRoute {
   dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
   ];
 

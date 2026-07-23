@@ -57,3 +57,7 @@ spec:
 - ACR Enterprise Edition instances do not support tags (provider limitation for BSS-provisioned resources)
 - The `instance_type` and `payment_type` fields are immutable after creation
 - The `public_endpoint` and `vpc_endpoint` outputs are extracted from the computed `instance_endpoints` attribute
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

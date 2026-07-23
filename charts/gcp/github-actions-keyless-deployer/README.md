@@ -186,3 +186,7 @@ unchanged:
 - **Cost**: federation (pool, provider, IAM) is free. Artifact Registry
   bills for storage and cross-location egress — add cleanup policies to
   the repository as image volume grows.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

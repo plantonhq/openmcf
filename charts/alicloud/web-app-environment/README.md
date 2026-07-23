@@ -76,3 +76,7 @@ Traditional web application stack with Application Load Balancer, ECS compute, R
 | Redis (if enabled) | ~5-8 minutes |
 | OSS + CDN (if enabled) | ~2 minutes |
 | **Total (core)** | **~15 minutes** |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

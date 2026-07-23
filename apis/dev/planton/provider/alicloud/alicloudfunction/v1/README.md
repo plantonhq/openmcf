@@ -84,3 +84,7 @@ This component wraps a single `alicloud_fcv3_function` resource. Triggers, alias
 - **AliCloudVpc** / **AliCloudVswitch** / **AliCloudSecurityGroup** -- VPC networking for private resource access
 - **AliCloudNasFileSystem** -- NAS mount target for shared file storage
 - **AliCloudStorageBucket** -- OSS bucket for function code packages
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

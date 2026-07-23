@@ -30,3 +30,7 @@ Both the Terraform/OpenTofu and Pulumi modules implement the same contract: one 
 - [Container Insights](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContainerInsights.html)
 - [ECS Exec](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html)
 - [Service Connect](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-connect.html)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

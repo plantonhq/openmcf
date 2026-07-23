@@ -105,3 +105,7 @@ planton tofu apply --manifest project.yaml
 - **GcpProjectIamMember** — additive IAM grants on the project
 - **GcpVpcNetwork** — explicit networks (instead of the default network)
 - **GcpServiceAccount** — workload identities inside the project
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

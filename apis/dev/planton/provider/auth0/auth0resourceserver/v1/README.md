@@ -141,3 +141,7 @@ After deployment, the following outputs are available:
 - [Access Token Profiles](https://auth0.com/docs/secure/tokens/access-tokens/access-token-profiles)
 - [RBAC Documentation](https://auth0.com/docs/manage-users/access-control/rbac)
 - [API Scopes](https://auth0.com/docs/get-started/apis/api-settings#scopes)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

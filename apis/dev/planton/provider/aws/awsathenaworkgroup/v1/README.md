@@ -105,3 +105,7 @@ Use an Athena workgroup to:
 - **AwsKmsKey** — Customer-managed encryption for results, logs, and Spark content
 - **AwsIamRole** — Execution role for Spark workgroups
 - **AwsGlueCatalogDatabase** — Data catalog namespace Athena queries against
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

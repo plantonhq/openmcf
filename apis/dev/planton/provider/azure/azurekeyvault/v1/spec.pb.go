@@ -1090,12 +1090,12 @@ const file_dev_planton_provider_azure_azurekeyvault_v1_spec_proto_rawDesc = "" +
 	"\x13storage_permissions\x18\a \x03(\x0e2K.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultStoragePermissionB\x0f\xbaH\f\x92\x01\t\"\a\x82\x01\x04\x10\x01 \x00R\x12storagePermissionsB\f\n" +
 	"\n" +
 	"_tenant_idB\x11\n" +
-	"\x0f_application_id\"\xc6\x03\n" +
+	"\x0f_application_id\"\xca\x03\n" +
 	"\x18AzureKeyVaultNetworkAcls\x12\x81\x01\n" +
 	"\x0edefault_action\x18\x01 \x01(\x0e2R.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsDefaultActionB\x06\xbaH\x03\xc8\x01\x01R\rdefaultAction\x12c\n" +
 	"\x06bypass\x18\x02 \x01(\x0e2K.dev.planton.provider.azure.azurekeyvault.v1.AzureKeyVaultNetworkAclsBypassR\x06bypass\x12$\n" +
-	"\bip_rules\x18\x03 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\xc8\x01R\aipRules\x12\x9a\x01\n" +
-	"\x1avirtual_network_subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\x10d\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x17virtualNetworkSubnetIds*R\n" +
+	"\bip_rules\x18\x03 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\xc8\x01R\aipRules\x12\x9e\x01\n" +
+	"\x1avirtual_network_subnet_ids\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x05\x92\x01\x02\x10d\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\x17virtualNetworkSubnetIds*R\n" +
 	"\x10AzureKeyVaultSku\x12#\n" +
 	"\x1fazure_key_vault_sku_unspecified\x10\x00\x12\f\n" +
 	"\bSTANDARD\x10\x01\x12\v\n" +

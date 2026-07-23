@@ -134,3 +134,7 @@ spec:
 - **01-nfs-unix** — Basic NFS-only SVM (most common)
 - **02-smb-windows** — Windows SMB with Active Directory
 - **03-multiprotocol** — Dual NFS+SMB with MIXED security style
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

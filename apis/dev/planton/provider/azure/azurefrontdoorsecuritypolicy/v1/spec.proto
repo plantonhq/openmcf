@@ -86,6 +86,7 @@ message AzureFrontDoorSecurityPolicySpec {
       max_items: 500
     },
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureFrontDoorEndpoint,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.endpoint_id"
   ];
 }

@@ -115,3 +115,7 @@ Use **KubernetesSecret** when you need:
 - [Immutable Secrets](https://kubernetes.io/docs/concepts/configuration/secret/#secret-immutable)
 - [Managing Secrets with kubectl](https://kubernetes.io/docs/tasks/configmap-secret/managing-secret-using-kubectl/)
 - [Good Practices for Kubernetes Secrets](https://kubernetes.io/docs/concepts/security/secrets-good-practices/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

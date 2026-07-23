@@ -142,3 +142,7 @@ your OWN lists clean.
   a dedicated IP pool and set `deliveryOptions.sendingPoolName` on the
   configuration set; below that volume, SES's shared pools with VDM
   deliver better than a cold dedicated IP.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

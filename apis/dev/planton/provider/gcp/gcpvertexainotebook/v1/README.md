@@ -81,3 +81,7 @@ Two mutually exclusive options:
 - **GcpKmsKey** -- encryption keys for CMEK-encrypted disks
 - **GcpGcsBucket** -- storage for notebooks and datasets
 - **GcpBigQueryDataset** -- data warehouse for ML pipelines
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

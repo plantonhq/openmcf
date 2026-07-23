@@ -38,6 +38,7 @@ message OpenStackRouterSpec {
   // Can reference an OpenStackNetwork resource's output or be a literal network UUID.
   dev.planton.shared.foreignkey.v1.StringValueOrRef external_network_id = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = OpenStackNetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_id"
   ];
 

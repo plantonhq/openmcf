@@ -268,3 +268,7 @@ Planton provisions the MSK cluster via Pulumi or Terraform modules defined in th
 - [MSK Best Practices](https://docs.aws.amazon.com/msk/latest/developerguide/bestpractices.html)
 - [MSK Pricing](https://aws.amazon.com/msk/pricing/)
 - [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

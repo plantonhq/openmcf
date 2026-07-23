@@ -61,3 +61,7 @@ profile is an independent object with its own lifecycle:
 - `fargate_profile_arn`: the profile's ARN
 - `fargate_profile_name`: the profile's name
 - `status`: the profile's state after provisioning ("ACTIVE")
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

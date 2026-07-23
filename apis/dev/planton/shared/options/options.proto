@@ -32,6 +32,19 @@ extend google.protobuf.FieldOptions {
   // plaintext. Setting both `sensitive` and `sensitive_exempt_reason` on the same
   // field is a contradiction the coverage gate rejects.
   string sensitive_exempt_reason = 60005;
+
+  // Human-authored label for the dependency edge this reference field creates in
+  // architecture/deployment diagrams. Authored on the CONSUMER's reference field
+  // (a StringValueOrRef/ValueFromRef-typed field, beside `default_kind`), because
+  // only the consumer knows what the relationship MEANS: an AwsNatGateway's
+  // subnet_id reads "in public subnet", not "subnet_id".
+  //
+  // Downstream platforms surface this on the rendered edge. When absent, clients
+  // fall back to automatic humanization of the referenced field path, so coverage
+  // is never required — author a label only where the automatic text is
+  // inadequate. Keep labels short (2-4 words), lowercase, human: they are read on
+  // a diagram at a glance, not in a form.
+  string diagram_label = 60006;
 }
 
 extend google.protobuf.EnumValueOptions {

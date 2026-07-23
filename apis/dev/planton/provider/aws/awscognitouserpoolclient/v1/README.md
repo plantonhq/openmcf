@@ -127,3 +127,7 @@ audiences:
 
 - **`aws_cognito_managed_user_pool_client`**: adopts clients CREATED BY other AWS services (ELB, AppSync) by name pattern, with a no-op delete -- not a graph-owned resource.
 - **Per-kind tags**: app clients are not taggable in AWS.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

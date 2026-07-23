@@ -178,3 +178,7 @@ spec:
 - [OpenFGA Concepts: Relationship Tuples](https://openfga.dev/docs/concepts#what-is-a-relationship-tuple)
 - [OpenFGA Conditions](https://openfga.dev/docs/modeling/conditions)
 - [OpenFGA Modeling Guide](https://openfga.dev/docs/modeling)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

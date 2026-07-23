@@ -1525,9 +1525,9 @@ const file_dev_planton_provider_gcp_gcpgcsbucket_v1_spec_proto_rawDesc = "" +
 	"\x1eallow_all_service_agent_access\x18\x05 \x01(\bR\x1aallowAllServiceAgentAccess:\xe9\x01\xbaH\xe5\x01\x1a\xe2\x01\n" +
 	"\x17enabled_requires_source\x12ean Enabled ip_filter needs public_network_source and/or vpc_network_sources to define allowed origins\x1a`this.mode != 'Enabled' || has(this.public_network_source) || this.vpc_network_sources.size() > 0\"h\n" +
 	"'GcpGcsBucketIpFilterPublicNetworkSource\x12=\n" +
-	"\x16allowed_ip_cidr_ranges\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x13allowedIpCidrRanges\"\xdd\x01\n" +
-	"$GcpGcsBucketIpFilterVpcNetworkSource\x12v\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_idR\anetwork\x12=\n" +
+	"\x16allowed_ip_cidr_ranges\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x13allowedIpCidrRanges\"\xe1\x01\n" +
+	"$GcpGcsBucketIpFilterVpcNetworkSource\x12z\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\anetwork\x12=\n" +
 	"\x16allowed_ip_cidr_ranges\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x13allowedIpCidrRanges\"\x87\x02\n" +
 	"\x15GcpGcsBucketIamMember\x12\x1a\n" +
 	"\x04role\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04role\x12p\n" +

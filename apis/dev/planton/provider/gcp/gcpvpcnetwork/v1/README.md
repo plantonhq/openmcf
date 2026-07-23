@@ -281,3 +281,7 @@ gcloud services enable compute.googleapis.com --project=<your-project-id>
 
 For issues, questions, or contributions, please refer to the Planton documentation or open an issue in the repository.
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

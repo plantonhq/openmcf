@@ -290,3 +290,7 @@ spec:
       role_arn:
         value: arn:aws:iam::111111111111:role/orders-db-backups
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

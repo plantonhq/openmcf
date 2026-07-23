@@ -78,3 +78,7 @@ Two file system types are supported:
 - **AliCloudStorageBucket** -- object storage (S3-compatible), for unstructured data at scale
 - **AliCloudAckManagedCluster** -- Kubernetes clusters that can mount NAS for shared persistent storage
 - **AliCloudEcsInstance** -- compute instances that mount NAS via NFS/SMB
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

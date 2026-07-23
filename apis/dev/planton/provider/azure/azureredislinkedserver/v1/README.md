@@ -49,3 +49,7 @@ linkedRedisCacheLocation:
 - [Design research](docs/README.md) -- field mapping, the split verdict, failover semantics
 - [Presets](presets/) -- DR link, re-link after failover, cross-manifest link
 - [Terraform module](iac/tf/README.md) / [Pulumi module](iac/pulumi/README.md)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

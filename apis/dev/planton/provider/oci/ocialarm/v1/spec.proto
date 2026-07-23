@@ -60,6 +60,7 @@ message OciAlarmSpec {
   dev.planton.shared.foreignkey.v1.StringValueOrRef metric_compartment_id = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = OciCompartment,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.compartment_id"
   ];
 

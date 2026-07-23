@@ -51,3 +51,7 @@ This ensures that the Neo4j container can handle load efficiently while preventi
 - **Consistency**: Ensures all Neo4j deployments follow a consistent configuration across different environments.
 - **Resource Optimization**: Allows for fine-tuning of container resource allocations, ensuring Neo4j performs optimally while avoiding overuse of cluster resources.
 - **Secure Access**: Supports the configuration of ingress rules, enabling secure and controlled access to Neo4j instances deployed on Kubernetes.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -72,3 +72,7 @@ This resource provides complete support for production-grade Private Network dep
 - **Automatic Labeling**: Standard Planton labels applied as Scaleway tags for resource management and cost allocation.
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations.
 - **Infra-Chart Composability**: Designed as a Layer 1 connector that downstream resources reference via `StringValueOrRef`, and that itself references the Layer 0 VPC.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -42,3 +42,7 @@ KMS keys are the actual cryptographic material used by OCI services for data-at-
 - **Freeform tags** — automatically populated from `metadata.labels`, including `resource_kind`, `resource_id`, `organization`, and `environment`.
 - **HSM isolation** — FIPS 140-2 Level 3 hardware security module for production cryptographic operations.
 - **Auto-rotation** — scheduled key version rotation to meet compliance rotation requirements without manual intervention.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

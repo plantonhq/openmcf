@@ -263,3 +263,7 @@ spec:
 ## Version History
 
 - **v1**: Initial release with compute instance provisioning, networking, security, and storage support
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

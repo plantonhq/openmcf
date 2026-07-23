@@ -439,3 +439,7 @@ Planton provisions the SageMaker Domain via Pulumi or Terraform modules defined 
 - [SageMaker Docker Access](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-updated-local.html)
 - [RStudio on SageMaker](https://docs.aws.amazon.com/sagemaker/latest/dg/rstudio.html)
 - [SageMaker Canvas](https://docs.aws.amazon.com/sagemaker/latest/dg/canvas.html)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

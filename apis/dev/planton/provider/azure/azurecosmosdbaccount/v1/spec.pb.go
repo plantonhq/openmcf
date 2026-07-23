@@ -2162,9 +2162,9 @@ const file_dev_planton_provider_azure_azurecosmosdbaccount_v1_spec_proto_rawDesc
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\blocation\x124\n" +
 	"\x11failover_priority\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x10failoverPriority\x125\n" +
 	"\x0ezone_redundant\x18\x03 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\rzoneRedundant\x88\x01\x01B\x11\n" +
-	"\x0f_zone_redundant\"\xab\x02\n" +
-	"&AzureCosmosdbAccountVirtualNetworkRule\x12x\n" +
-	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12^\n" +
+	"\x0f_zone_redundant\"\xaf\x02\n" +
+	"&AzureCosmosdbAccountVirtualNetworkRule\x12|\n" +
+	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\bsubnetId\x12^\n" +
 	"$ignore_missing_vnet_service_endpoint\x18\x02 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R ignoreMissingVnetServiceEndpoint\x88\x01\x01B'\n" +
 	"%_ignore_missing_vnet_service_endpoint\"\xbf\a\n" +
 	"\x1aAzureCosmosdbAccountBackup\x12s\n" +

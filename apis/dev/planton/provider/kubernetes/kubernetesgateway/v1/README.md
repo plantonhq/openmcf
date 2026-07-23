@@ -104,3 +104,7 @@ planton pulumi up --manifest gateway.yaml
 - [`KubernetesCertificate`](../kubernetescertificate/) -- provisions the TLS Secret HTTPS listeners reference.
 - [`KubernetesListenerSet`](../kuberneteslistenerset/) -- merges additional listeners into this Gateway (requires `allowed_listeners` opt-in).
 - [`KubernetesNamespace`](../kubernetesnamespace/) -- the namespace the Gateway is created in.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

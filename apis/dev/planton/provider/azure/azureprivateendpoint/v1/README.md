@@ -110,3 +110,7 @@ spec:
   in place
 - A manual connection stays in `Pending` until the target owner approves it;
   the endpoint provisions but does not carry traffic until then
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

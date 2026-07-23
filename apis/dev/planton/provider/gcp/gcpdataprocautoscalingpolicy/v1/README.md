@@ -101,3 +101,7 @@ The factors express how much of the metric-suggested change the autoscaler appli
 
 - [Autoscaling clusters](https://cloud.google.com/dataproc/docs/concepts/configuring-clusters/autoscaling)
 - [AutoscalingPolicies REST API](https://cloud.google.com/dataproc/docs/reference/rest/v1/projects.locations.autoscalingPolicies)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

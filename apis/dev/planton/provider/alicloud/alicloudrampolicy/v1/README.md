@@ -73,3 +73,7 @@ Alibaba Cloud RAM policy documents follow this structure:
 - **AliCloudRamRole** -- attach this policy to a role via `policyAttachments`
 - **AliCloudStorageBucket** -- common target for fine-grained OSS access policies
 - **AliCloudRdsInstance** -- common target for database access policies
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

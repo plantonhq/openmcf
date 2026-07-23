@@ -142,3 +142,7 @@ planton apply -f function.yaml
 - [GcpServerlessVpcConnector](/docs/catalog/gcp/gcpserverlessvpcconnector) — private VPC egress
 - [GcpRegionNetworkEndpointGroup](/docs/catalog/gcp/gcpregionnetworkendpointgroup) — put the function behind an external Application Load Balancer
 - [GcpCloudRun](/docs/catalog/gcp/gcpcloudrun) / [GcpCloudRunJob](/docs/catalog/gcp/gcpcloudrunjob) — container-image serving and batch siblings
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

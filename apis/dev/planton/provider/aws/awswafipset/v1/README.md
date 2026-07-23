@@ -86,3 +86,7 @@ spec:
 ```
 
 See [docs/README.md](docs/README.md) for composition patterns and [AwsWafWebAcl](../awswafwebacl/v1/README.md) for the rule tree.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

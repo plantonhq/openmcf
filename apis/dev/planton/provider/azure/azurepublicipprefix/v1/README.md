@@ -101,3 +101,7 @@ spec:
   public IPs or NAT gateway associations
 - Bill for every address in the reserved range whether used or not; smaller
   `prefix_length` values reserve bigger (more expensive) ranges
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

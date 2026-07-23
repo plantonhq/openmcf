@@ -89,3 +89,7 @@ projectId:
 | `policy_name` | Name as it exists in GCP |
 | `policy_self_link` | Self-link URI (used when attaching to backend services) |
 | `fingerprint` | Server-computed fingerprint for concurrency control |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

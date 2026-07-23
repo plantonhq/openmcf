@@ -94,3 +94,7 @@ CI/CD systems authenticate using `aws ecr get-login-password` and push images wi
 - **Image Scanning**: Enable scan-on-push and configure EventBridge to alert on critical vulnerabilities.
 - **Encryption**: Use KMS encryption when compliance requires demonstrable key lifecycle control and rotation policies.
 - **Network Access**: For private subnet workloads, use VPC endpoints for ECR to avoid NAT Gateway costs and improve security.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

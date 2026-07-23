@@ -78,3 +78,7 @@ Logic: a user matches if they satisfy **any** `include` rule, are not caught by
 
 - `CloudflareZeroTrustAccessPolicy` — references groups in its rules.
 - `CloudflareZeroTrustAccessApplication` — binds policies to a protected resource.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -46,3 +46,7 @@ DNS is foundational infrastructure. When DNS works, nobody notices; when it brea
 - **Health checks** — first-class `AwsRoute53HealthCheck` resources referenced by records
 - **Cross-account VPC associations** — require an authorization handshake between accounts (a separate surface)
 - **Traffic policies, CIDR collections, reusable delegation-set management, domain registration** — separate Route 53 surfaces that compose by ID where records need them
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

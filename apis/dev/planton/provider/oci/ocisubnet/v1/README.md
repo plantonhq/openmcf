@@ -57,3 +57,7 @@ This resource provides complete support for production-grade subnet deployments,
 - **Freeform Tagging**: Standard Planton labels applied as OCI freeform tags for resource management, cost tracking, and compliance.
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations producing identical outputs.
 - **Infra-Chart Composability**: Designed as a Layer 1 building block that downstream resources reference via `StringValueOrRef` for the subnet ID and virtual router metadata.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -61,3 +61,7 @@ own component lets you:
 
 - `rule_arn`: ARN of the rule (the handle audit tooling and imports reference)
 - `priority`: the priority AWS assigned -- meaningful when the spec left it unset
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

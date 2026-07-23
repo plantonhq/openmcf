@@ -186,3 +186,7 @@ spec:
 - [Node Types](https://www.scaleway.com/en/pricing/?tags=databases)
 - [Engine Versions](https://www.scaleway.com/en/docs/managed-databases/postgresql-and-mysql/reference-content/database-engine-version-policy/)
 - [Private Network Integration](https://www.scaleway.com/en/docs/managed-databases/postgresql-and-mysql/how-to/connect-database-private-network/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

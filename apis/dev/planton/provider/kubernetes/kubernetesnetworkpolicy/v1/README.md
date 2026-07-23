@@ -135,3 +135,7 @@ Use **KubernetesNetworkPolicy** when you need:
 - [Declare Network Policy Walkthrough](https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/)
 - [NetworkPolicy API Reference](https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/network-policy-v1/)
 - [Automatic namespace labelling (`kubernetes.io/metadata.name`)](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#automatic-labelling)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

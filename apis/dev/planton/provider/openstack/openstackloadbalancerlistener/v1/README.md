@@ -112,3 +112,7 @@ This component is implemented with both Pulumi (Go) and Terraform (HCL) with ful
 - **Connection limit**: Set to -1 for unlimited connections. The default (unset) uses the Octavia default for the load balancer's flavor.
 - **Admin state**: Set `admin_state_up: false` to temporarily stop accepting traffic without deleting the listener.
 - **Tags**: Must be unique within the resource. Used for filtering and organization in OpenStack.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

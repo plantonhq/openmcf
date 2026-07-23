@@ -115,3 +115,7 @@ Launch a containerized job per matched event with `ecs_target` — for example, 
 - [Schedule Expressions](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-schedule-expressions.html)
 - [EventBridge Targets](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html)
 - [Retry Policy and DLQ](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

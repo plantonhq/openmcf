@@ -128,3 +128,7 @@ deploy. Plain configuration belongs in `vars`.
 - `CloudflareWorker` (with Static Assets) — the build-and-upload hosting model.
 - `CloudflareKvNamespace`, `CloudflareD1Database`, `CloudflareR2Bucket`,
   `CloudflareQueue`, `CloudflareHyperdriveConfig`, `CloudflareDnsZone`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

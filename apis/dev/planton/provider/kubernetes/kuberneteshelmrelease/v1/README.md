@@ -160,3 +160,7 @@ Use **KubernetesHelmRelease** when — and only when — the catalog has no firs
 - [Helm Chart Hooks](https://helm.sh/docs/topics/charts_hooks/)
 - [Terraform helm_release Resource](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release)
 - [Pulumi Kubernetes helm.v3.Release](https://www.pulumi.com/registry/packages/kubernetes/api-docs/helm/v3/release/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

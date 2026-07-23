@@ -137,3 +137,7 @@ Then visit [http://localhost:8080](http://localhost:8080).
 The `TemporalKubernetes` component simplifies the deployment and management of Temporal within Kubernetes environments,
 seamlessly integrating with your existing infrastructure and observability tools. Its standardized, flexible design
 ensures efficiency and reliability for your workflow orchestration needs within the Planton ecosystem.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

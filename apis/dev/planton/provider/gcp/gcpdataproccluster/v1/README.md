@@ -147,3 +147,7 @@ This creates a cluster with 1 master, 2 workers, Spark 3.5, Component Gateway en
 - [Dataproc image versions](https://cloud.google.com/dataproc/docs/concepts/versioning/dataproc-versions)
 - [Dataproc on GKE](https://cloud.google.com/dataproc/docs/guides/dpgke/dataproc-gke-overview)
 - [Autoscaling clusters](https://cloud.google.com/dataproc/docs/concepts/configuring-clusters/autoscaling)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

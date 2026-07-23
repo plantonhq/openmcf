@@ -60,3 +60,7 @@ When using an existing namespace (`create_namespace: false`), ensure the namespa
 - **Data Persistence**: Persistent storage options guarantee that Solr data is securely backed up, reducing the risk of data loss during restarts or failures.
 - **Customizable**: Fine-tune resource allocations, JVM settings, and garbage collection configurations to match your performance requirements.
 - **Integrated Zookeeper**: Manage Zookeeper instances alongside Solr with similar configuration options for ease of use.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

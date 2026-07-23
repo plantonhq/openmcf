@@ -73,3 +73,7 @@ None. OSS buckets are standalone resources with no upstream dependencies.
 - **AliCloudKmsKey** -- for customer-managed encryption keys (KMS SSE)
 - **AliCloudFcFunction** -- uses OSS for function code storage
 - **AliCloudCdnDomain** -- uses OSS as an origin for CDN acceleration
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

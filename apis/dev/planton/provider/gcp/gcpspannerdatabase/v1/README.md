@@ -73,3 +73,7 @@ planton apply -f spanner-database.yaml
 ```
 
 For copy-paste ready manifests, see the [presets](presets/).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

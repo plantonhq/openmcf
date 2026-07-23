@@ -104,3 +104,7 @@ the metrics API anonymously, no reference needed. For a verified serving
 chain, deploy KubernetesCertManager and a KubernetesClusterIssuer in the same
 chart and point `tls.cert_manager_issuer.name` at the issuer's
 `status.outputs.cluster_issuer_name`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

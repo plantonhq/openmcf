@@ -82,3 +82,7 @@ Best for **variable or unpredictable workloads**. You pay per GB of data written
 - **AwsKinesisFirehose** (R17) — Delivery stream that reads from this stream
 - **AwsLambda** — Can be configured with Kinesis as an event source
 - **AwsCloudwatchAlarm** — Monitor IteratorAgeMilliseconds for consumer lag alerts
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

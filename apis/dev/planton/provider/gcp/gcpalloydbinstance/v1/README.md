@@ -88,3 +88,7 @@ planton apply -f instance.yaml
 ## Additional Resources
 
 - [AlloyDB read pool instances](https://cloud.google.com/alloydb/docs/read-pool-overview)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

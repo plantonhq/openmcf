@@ -66,3 +66,7 @@ per-application credentials deserve a first-class, composable node:
 - **Separate `user_name` spec field**: in MemoryDB the user name IS the
   user's single identity (there is no ElastiCache-style user-id/user-name
   split), so it derives from `metadata.name` per the naming convention.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

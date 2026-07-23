@@ -244,3 +244,7 @@ Use external managed ClickHouse service:
 - **Right-size Allocations**: Adjust requests and limits based on observed patterns
 - **Scaling**: Independently scale SigNoz, OpenTelemetry Collector, and ClickHouse based on workload
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

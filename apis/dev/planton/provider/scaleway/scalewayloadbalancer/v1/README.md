@@ -110,3 +110,7 @@ These can be added as new optional fields in future spec versions without breaki
 - [Scaleway Load Balancer Concepts](https://www.scaleway.com/en/docs/network/load-balancer/concepts/)
 - [Terraform scaleway_lb Resource](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/lb)
 - [Scaleway LB Types and Pricing](https://www.scaleway.com/en/pricing/?tags=network)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

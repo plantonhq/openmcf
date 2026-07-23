@@ -483,10 +483,10 @@ const file_dev_planton_provider_aws_awsalb_v1_spec_proto_rawDesc = "" +
 	"\x0e_http2_enabled\"\xa0\x01\n" +
 	"\x11AwsAlbLogDelivery\x12s\n" +
 	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xd5\x01\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x16\n" +
-	"\x06prefix\x18\x02 \x01(\tR\x06prefix\"\xca\x01\n" +
+	"\x06prefix\x18\x02 \x01(\tR\x06prefix\"\xce\x01\n" +
 	"\tAwsAlbDns\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12{\n" +
-	"\x0froute53_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\rroute53ZoneId\x12&\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x7f\n" +
+	"\x0froute53_zone_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rroute53ZoneId\x12&\n" +
 	"\thostnames\x18\x03 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\thostnamesB\xb1\x02\n" +
 	"&com.dev.planton.provider.aws.awsalb.v1B\tSpecProtoP\x01ZMgithub.com/plantonhq/planton/apis/dev/planton/provider/aws/awsalb/v1;awsalbv1\xa2\x02\x05DPPAA\xaa\x02\"Dev.Planton.Provider.Aws.Awsalb.V1\xca\x02\"Dev\\Planton\\Provider\\Aws\\Awsalb\\V1\xe2\x02.Dev\\Planton\\Provider\\Aws\\Awsalb\\V1\\GPBMetadata\xea\x02'Dev::Planton::Provider::Aws::Awsalb::V1b\x06proto3"
 

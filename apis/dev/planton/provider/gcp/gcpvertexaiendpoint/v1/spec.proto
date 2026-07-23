@@ -137,6 +137,7 @@ message GcpVertexAiEndpointSpec {
   // Immutable after creation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef network = 5 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
   ];
 

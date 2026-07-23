@@ -206,6 +206,14 @@ var file_dev_planton_shared_foreignkey_v1_foreign_key_proto_extTypes = []protoim
 		Tag:           "bytes,200002,opt,name=default_kind_field_path",
 		Filename:      "dev/planton/shared/foreignkey/v1/foreign_key.proto",
 	},
+	{
+		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
+		ExtensionType: (*bool)(nil),
+		Field:         200003,
+		Name:          "dev.planton.shared.foreignkey.v1.containment_exempt",
+		Tag:           "varint,200003,opt,name=containment_exempt",
+		Filename:      "dev/planton/shared/foreignkey/v1/foreign_key.proto",
+	},
 }
 
 // Extension fields to descriptorpb.FieldOptions.
@@ -214,6 +222,27 @@ var (
 	E_DefaultKind = &file_dev_planton_shared_foreignkey_v1_foreign_key_proto_extTypes[0]
 	// optional string default_kind_field_path = 200002;
 	E_DefaultKindFieldPath = &file_dev_planton_shared_foreignkey_v1_foreign_key_proto_extTypes[1]
+	// Declares that this reference expresses ACCESS, not PLACEMENT, for diagram
+	// containment purposes.
+	//
+	// References into a kind marked `container_kind: true` (see
+	// dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.container_kind)
+	// normally mean "this resource lives INSIDE that container" — a NAT gateway
+	// referencing a subnet is deployed into it, so diagrams nest the gateway
+	// inside the subnet's boundary. But some references into container kinds mean
+	// only "let me talk to it" or "admit traffic from it": a storage account's
+	// firewall rule referencing a subnet admits that subnet's traffic — the
+	// account does NOT sit inside the subnet, and drawing it there would be a
+	// false diagram.
+	//
+	// Set this on exactly those access-style reference fields. The dependency
+	// edge still exists and still renders as a relationship line; the exemption
+	// only prevents the referencing resource from being NESTED inside the
+	// referenced container. It has no effect on references to non-container
+	// kinds (harmless, but don't author it there — it would only mislead).
+	//
+	// optional bool containment_exempt = 200003;
+	E_ContainmentExempt = &file_dev_planton_shared_foreignkey_v1_foreign_key_proto_extTypes[2]
 )
 
 var File_dev_planton_shared_foreignkey_v1_foreign_key_proto protoreflect.FileDescriptor
@@ -234,7 +263,8 @@ const file_dev_planton_shared_foreignkey_v1_foreign_key_proto_rawDesc = "" +
 	"\x1dstring_value_or_ref.non_empty\x12:a non-empty value or a resource reference must be provided\x1a=(has(this.value) && this.value != '') || has(this.value_from)B\x10\n" +
 	"\x0eliteral_or_ref:{\n" +
 	"\fdefault_kind\x12\x1d.google.protobuf.FieldOptions\x18\xc1\x9a\f \x01(\x0e27.dev.planton.shared.cloudresourcekind.CloudResourceKindR\vdefaultKind:V\n" +
-	"\x17default_kind_field_path\x12\x1d.google.protobuf.FieldOptions\x18\u009a\f \x01(\tR\x14defaultKindFieldPathB\xad\x02\n" +
+	"\x17default_kind_field_path\x12\x1d.google.protobuf.FieldOptions\x18\u009a\f \x01(\tR\x14defaultKindFieldPath:N\n" +
+	"\x12containment_exempt\x12\x1d.google.protobuf.FieldOptions\x18Ú\f \x01(\bR\x11containmentExemptB\xad\x02\n" +
 	"$com.dev.planton.shared.foreignkey.v1B\x0fForeignKeyProtoP\x01ZOgithub.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1;foreignkeyv1\xa2\x02\x04DPSF\xaa\x02 Dev.Planton.Shared.Foreignkey.V1\xca\x02 Dev\\Planton\\Shared\\Foreignkey\\V1\xe2\x02,Dev\\Planton\\Shared\\Foreignkey\\V1\\GPBMetadata\xea\x02$Dev::Planton::Shared::Foreignkey::V1b\x06proto3"
 
 var (
@@ -261,11 +291,12 @@ var file_dev_planton_shared_foreignkey_v1_foreign_key_proto_depIdxs = []int32{
 	0, // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef.value_from:type_name -> dev.planton.shared.foreignkey.v1.ValueFromRef
 	3, // 2: dev.planton.shared.foreignkey.v1.default_kind:extendee -> google.protobuf.FieldOptions
 	3, // 3: dev.planton.shared.foreignkey.v1.default_kind_field_path:extendee -> google.protobuf.FieldOptions
-	2, // 4: dev.planton.shared.foreignkey.v1.default_kind:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceKind
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	4, // [4:5] is the sub-list for extension type_name
-	2, // [2:4] is the sub-list for extension extendee
+	3, // 4: dev.planton.shared.foreignkey.v1.containment_exempt:extendee -> google.protobuf.FieldOptions
+	2, // 5: dev.planton.shared.foreignkey.v1.default_kind:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceKind
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	5, // [5:6] is the sub-list for extension type_name
+	2, // [2:5] is the sub-list for extension extendee
 	0, // [0:2] is the sub-list for field type_name
 }
 
@@ -285,7 +316,7 @@ func file_dev_planton_shared_foreignkey_v1_foreign_key_proto_init() {
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_shared_foreignkey_v1_foreign_key_proto_rawDesc), len(file_dev_planton_shared_foreignkey_v1_foreign_key_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
-			NumExtensions: 2,
+			NumExtensions: 3,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_shared_foreignkey_v1_foreign_key_proto_goTypes,

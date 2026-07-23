@@ -72,3 +72,7 @@ The mesh is the substrate; everything else composes against its outputs:
 - **North-south exposure** (Gateway API seam): a KubernetesGateway with `gateway_class_name: istio` (or a `valueFrom` reference to this component's `status.outputs.gateway_class_name`) makes istiod auto-provision the gateway deployment; KubernetesHttpRoute resources attach to that Gateway. No gateway release ships with this component by design.
 - **Mesh traffic policy** (typed Istio kinds): KubernetesDestinationRule, KubernetesPeerAuthentication, KubernetesAuthorizationPolicy, KubernetesRequestAuthentication, KubernetesServiceEntry, KubernetesTelemetry, KubernetesEnvoyFilter. These need only the CRDs this component installs.
 - **Identity**: `status.outputs.trust_domain` prefixes the SPIFFE principals (`<trust_domain>/ns/<ns>/sa/<sa>`) that AuthorizationPolicy rules match on.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

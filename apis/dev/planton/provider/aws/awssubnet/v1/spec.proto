@@ -4,6 +4,7 @@ package dev.planton.provider.aws.awssubnet.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
 
 // AwsSubnetSpec defines a single subnet within an AWS Virtual Private Cloud (VPC).
 //
@@ -34,6 +35,7 @@ message AwsSubnetSpec {
   dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.options.diagram_label) = "in vpc",
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
   ];
 

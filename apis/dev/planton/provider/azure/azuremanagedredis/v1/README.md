@@ -61,3 +61,7 @@ kinds reference; `database_id` is the data-plane scope; `hostname` +
 
 - [Design research](docs/README.md) -- field mapping, fold verdict, recorded skips
 - [Presets](presets/) -- keyless balanced, search+JSON store, geo-replicated member
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

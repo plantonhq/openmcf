@@ -219,3 +219,7 @@ The Terraform module wraps the `scaleway_object_bucket` resource with dynamic bl
 - [Scaleway S3 API Compatibility](https://www.scaleway.com/en/docs/object-storage/api-cli/using-api-call-list/)
 - [Terraform: scaleway_object_bucket](https://registry.terraform.io/providers/scaleway/scaleway/latest/docs/resources/object)
 - [Pulumi: scaleway.object.Bucket](https://www.pulumi.com/registry/packages/scaleway/api-docs/objectbucket/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

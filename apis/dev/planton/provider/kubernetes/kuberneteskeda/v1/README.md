@@ -204,3 +204,7 @@ spec:
     enabled: true
     serviceMonitor: true # requires the Prometheus operator CRDs
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -124,3 +124,7 @@ Use **KubernetesRbac** when you need:
 - [Aggregated ClusterRoles](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#aggregated-clusterroles)
 - [Privilege Escalation Prevention](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#privilege-escalation-prevention-and-bootstrapping)
 - [RBAC Good Practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

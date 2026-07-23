@@ -121,3 +121,7 @@ This component is implemented with both Pulumi (Go) and Terraform (HCL) with ful
 - **Allocation pools**: If omitted, the entire CIDR (minus gateway and network/broadcast) is allocatable. Use pools to reserve ranges for static assignments or network appliances.
 - **DNS nameservers**: Pushed to instances via DHCP option 6. Common values: `8.8.8.8` (Google), `1.1.1.1` (Cloudflare), or internal DNS servers.
 - **IPv6**: Set `ip_version: 6` and use an IPv6 CIDR (e.g., `2001:db8::/64`). IPv6-specific options (`ipv6_address_mode`, `ipv6_ra_mode`) can be added later.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

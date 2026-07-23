@@ -1110,9 +1110,9 @@ var File_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto protorefl
 
 const file_dev_planton_provider_gcp_gcpmemorystoreinstance_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=dev/planton/provider/gcp/gcpmemorystoreinstance/v1/spec.proto\x122dev.planton.provider.gcp.gcpmemorystoreinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x98\x02\n" +
-	"'GcpMemorystoreInstancePscAutoConnection\x12v\n" +
-	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_idR\anetwork\x12u\n" +
+	"=dev/planton/provider/gcp/gcpmemorystoreinstance/v1/spec.proto\x122dev.planton.provider.gcp.gcpmemorystoreinstance.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x9c\x02\n" +
+	"'GcpMemorystoreInstancePscAutoConnection\x12z\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe2\x04\x92\xd4a\x19status.outputs.network_id\x98\xd4a\x01R\anetwork\x12u\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\"\xc8\x01\n" +
 	"\x1fGcpMemorystoreInstanceRdbConfig\x12n\n" +

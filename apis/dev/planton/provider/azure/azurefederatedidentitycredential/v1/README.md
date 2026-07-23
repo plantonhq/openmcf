@@ -114,3 +114,7 @@ or Owner on the identity's scope.
 
 No wildcards -- one credential trusts one subject. Create one credential per
 branch, environment, or service account.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

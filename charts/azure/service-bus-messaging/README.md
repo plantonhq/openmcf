@@ -69,3 +69,7 @@ Two messaging shapes, deliberately separate:
 - **New event consumer**: add an `AzureServiceBusSubscription` with its own SQL rule; publishers change nothing.
 - **Keyless workloads**: workloads running on Azure compute with managed identities should prefer Entra data-plane roles (Azure Service Bus Data Sender / Data Receiver) over these SAS rules — the SAS credentials exist for the external and legacy producers that cannot.
 - **Premium posture**: with `premium_enabled`, the namespace also models CMK and VNet network rules — configure them on the namespace resource directly when compliance requires.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

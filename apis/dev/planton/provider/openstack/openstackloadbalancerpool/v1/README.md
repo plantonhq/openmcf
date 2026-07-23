@@ -79,3 +79,7 @@ planton apply --manifest pool.yaml -p openstack-creds.yaml
 - **Session persistence**: SOURCE_IP, HTTP_COOKIE, APP_COOKIE (requires cookie_name).
 - **Admin state**: Set admin_state_up false to stop the pool from receiving traffic.
 - **Tags**: Must be unique within the resource.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

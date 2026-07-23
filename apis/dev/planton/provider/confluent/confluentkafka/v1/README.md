@@ -132,3 +132,7 @@ Deploy ENTERPRISE or DEDICATED clusters in multiple regions with Cluster Linking
 - Terraform Provider: https://registry.terraform.io/providers/confluentinc/confluent/latest
 - Pulumi Provider: https://www.pulumi.com/registry/packages/confluentcloud/
 - Cluster Linking (DR): https://docs.confluent.io/cloud/current/multi-cloud/cluster-linking/index.html
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

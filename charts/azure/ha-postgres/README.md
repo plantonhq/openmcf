@@ -83,3 +83,7 @@ Design decisions worth knowing:
 - **Rotate the CMK** — create a new key version in the vault; the versionless reference picks it up automatically. Add a vault rotation policy to make it scheduled.
 - **Promote the replica** — set `replication_role: NONE` on the replica resource to break replication and make it a standalone server (region migrations, blue/green cutovers).
 - **Tune deliberately** — `server_parameters` carries the two observability defaults (`log_min_duration_statement`, `log_lock_waits`); add workload tuning (`shared_buffers`, `work_mem`) there so it is code, not portal drift.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

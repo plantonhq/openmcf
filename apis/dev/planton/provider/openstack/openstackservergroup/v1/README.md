@@ -96,3 +96,7 @@ spec:
 ## Related Components
 
 - **OpenStackInstance** (2508) -- References this server group via `server_group_id` FK
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

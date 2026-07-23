@@ -93,3 +93,7 @@ it.
   afterwards
 - Deleting a zone requires its links to be gone first -- composed destroy
   ordering handles this through the dependency graph
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

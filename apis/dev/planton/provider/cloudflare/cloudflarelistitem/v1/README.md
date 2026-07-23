@@ -69,3 +69,7 @@ be omitted. Item values are immutable — changing one replaces the entry.
 
 - `CloudflareList` — the container this entry belongs to.
 - `CloudflareRuleset` — references the list (by name) from rule expressions.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

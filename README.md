@@ -105,6 +105,8 @@ Planton the app is **free**, including for commercial use. The building blocks
 that power it — the infrastructure components, the charts, and the CLI — are
 **open source under [Apache-2.0](LICENSE)**: audit them, fork them, or take
 your configuration and run it yourself. No lock-in.
+The Planton name and logo are trademarks of Planton Cloud, Inc. — the code is
+yours to fork, the identity is not; see [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Contributing
 

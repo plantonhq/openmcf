@@ -116,6 +116,14 @@ var file_dev_planton_shared_options_options_proto_extTypes = []protoimpl.Extensi
 		Filename:      "dev/planton/shared/options/options.proto",
 	},
 	{
+		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
+		ExtensionType: (*string)(nil),
+		Field:         60006,
+		Name:          "dev.planton.shared.options.diagram_label",
+		Tag:           "bytes,60006,opt,name=diagram_label",
+		Filename:      "dev/planton/shared/options/options.proto",
+	},
+	{
 		ExtendedType:  (*descriptorpb.EnumValueOptions)(nil),
 		ExtensionType: (*string)(nil),
 		Field:         60050,
@@ -155,12 +163,26 @@ var (
 	//
 	// optional string sensitive_exempt_reason = 60005;
 	E_SensitiveExemptReason = &file_dev_planton_shared_options_options_proto_extTypes[4]
+	// Human-authored label for the dependency edge this reference field creates in
+	// architecture/deployment diagrams. Authored on the CONSUMER's reference field
+	// (a StringValueOrRef/ValueFromRef-typed field, beside `default_kind`), because
+	// only the consumer knows what the relationship MEANS: an AwsNatGateway's
+	// subnet_id reads "in public subnet", not "subnet_id".
+	//
+	// Downstream platforms surface this on the rendered edge. When absent, clients
+	// fall back to automatic humanization of the referenced field path, so coverage
+	// is never required — author a label only where the automatic text is
+	// inadequate. Keep labels short (2-4 words), lowercase, human: they are read on
+	// a diagram at a glance, not in a form.
+	//
+	// optional string diagram_label = 60006;
+	E_DiagramLabel = &file_dev_planton_shared_options_options_proto_extTypes[5]
 )
 
 // Extension fields to descriptorpb.EnumValueOptions.
 var (
 	// optional string display_label = 60050;
-	E_DisplayLabel = &file_dev_planton_shared_options_options_proto_extTypes[5]
+	E_DisplayLabel = &file_dev_planton_shared_options_options_proto_extTypes[6]
 )
 
 var File_dev_planton_shared_options_options_proto protoreflect.FileDescriptor
@@ -175,7 +197,8 @@ const file_dev_planton_shared_options_options_proto_rawDesc = "" +
 	"\x13recommended_default\x12\x1d.google.protobuf.FieldOptions\x18\xe2\xd4\x03 \x01(\tR\x12recommendedDefault:\x81\x01\n" +
 	"\x17recommended_default_map\x12\x1d.google.protobuf.FieldOptions\x18\xe3\xd4\x03 \x03(\v2(.dev.planton.shared.options.KeyValuePairR\x15recommendedDefaultMap:=\n" +
 	"\tsensitive\x12\x1d.google.protobuf.FieldOptions\x18\xe4\xd4\x03 \x01(\bR\tsensitive:W\n" +
-	"\x17sensitive_exempt_reason\x12\x1d.google.protobuf.FieldOptions\x18\xe5\xd4\x03 \x01(\tR\x15sensitiveExemptReason:H\n" +
+	"\x17sensitive_exempt_reason\x12\x1d.google.protobuf.FieldOptions\x18\xe5\xd4\x03 \x01(\tR\x15sensitiveExemptReason:D\n" +
+	"\rdiagram_label\x12\x1d.google.protobuf.FieldOptions\x18\xe6\xd4\x03 \x01(\tR\fdiagramLabel:H\n" +
 	"\rdisplay_label\x12!.google.protobuf.EnumValueOptions\x18\x92\xd5\x03 \x01(\tR\fdisplayLabelB\xf8\x01\n" +
 	"\x1ecom.dev.planton.shared.optionsB\fOptionsProtoP\x01Z<github.com/plantonhq/planton/apis/dev/planton/shared/options\xa2\x02\x04DPSO\xaa\x02\x1aDev.Planton.Shared.Options\xca\x02\x1aDev\\Planton\\Shared\\Options\xe2\x02&Dev\\Planton\\Shared\\Options\\GPBMetadata\xea\x02\x1dDev::Planton::Shared::Optionsb\x06proto3"
 
@@ -203,12 +226,13 @@ var file_dev_planton_shared_options_options_proto_depIdxs = []int32{
 	1, // 2: dev.planton.shared.options.recommended_default_map:extendee -> google.protobuf.FieldOptions
 	1, // 3: dev.planton.shared.options.sensitive:extendee -> google.protobuf.FieldOptions
 	1, // 4: dev.planton.shared.options.sensitive_exempt_reason:extendee -> google.protobuf.FieldOptions
-	2, // 5: dev.planton.shared.options.display_label:extendee -> google.protobuf.EnumValueOptions
-	0, // 6: dev.planton.shared.options.recommended_default_map:type_name -> dev.planton.shared.options.KeyValuePair
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	6, // [6:7] is the sub-list for extension type_name
-	0, // [0:6] is the sub-list for extension extendee
+	1, // 5: dev.planton.shared.options.diagram_label:extendee -> google.protobuf.FieldOptions
+	2, // 6: dev.planton.shared.options.display_label:extendee -> google.protobuf.EnumValueOptions
+	0, // 7: dev.planton.shared.options.recommended_default_map:type_name -> dev.planton.shared.options.KeyValuePair
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	7, // [7:8] is the sub-list for extension type_name
+	0, // [0:7] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
 }
 
@@ -224,7 +248,7 @@ func file_dev_planton_shared_options_options_proto_init() {
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_shared_options_options_proto_rawDesc), len(file_dev_planton_shared_options_options_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
-			NumExtensions: 6,
+			NumExtensions: 7,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_shared_options_options_proto_goTypes,

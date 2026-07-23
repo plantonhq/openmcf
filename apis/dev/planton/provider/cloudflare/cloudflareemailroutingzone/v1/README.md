@@ -60,3 +60,7 @@ spec:
 - `CloudflareDnsZone` — the zone this enables Email Routing on.
 - `CloudflareEmailRoutingRule` — per-address routing rules.
 - `CloudflareEmailRoutingAddress` — verified destination addresses.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

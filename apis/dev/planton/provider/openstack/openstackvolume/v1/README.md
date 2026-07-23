@@ -47,3 +47,7 @@ An OpenStack Cinder block storage volume managed through Planton.
 
 - `size` must be greater than 0
 - At most one of `snapshot_id`, `source_vol_id`, or `image_id` may be set (mutual exclusion)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

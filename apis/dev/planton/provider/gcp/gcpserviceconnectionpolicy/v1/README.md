@@ -110,3 +110,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 ## Support
 
 For issues, questions, or contributions, please refer to the Planton documentation or open an issue in the repository.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -57,3 +57,7 @@ This resource provides complete support for production-grade IAM policy manageme
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations producing identical resource topology and outputs.
 - **Proto Validation**: Required fields, minimum statement count, and description constraints are validated at the schema level before deployment.
 - **Foreign Key Composability**: Designed to reference OciCompartment resources via `valueFrom` for declarative compartment-to-policy bindings.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

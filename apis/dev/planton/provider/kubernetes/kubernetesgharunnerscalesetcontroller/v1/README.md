@@ -255,3 +255,7 @@ For issues, questions, or contributions:
 - **Actions Runner Controller**: [actions/actions-runner-controller](https://github.com/actions/actions-runner-controller)
 - **Documentation**: [ARC Documentation](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/about-actions-runner-controller)
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -35,11 +35,27 @@ message CloudResourceKindMeta {
   //flag indicating whether the cloud-resource kind can be used to launch a service.
   bool is_service_kind = 5;
 
-  //flag indicating whether the cloud-resource kind is a container kind.
-  //container kinds are resources that logically contain other resources
-  //(e.g., a Kubernetes namespace contains deployments, a VPC contains subnets).
-  //used by the organization graph to render hierarchical architecture diagrams
-  //where container resources visually enclose their child resources.
+  // Flag indicating whether the cloud-resource kind is a container kind.
+  // Container kinds are drawn as BOUNDARIES on architecture diagrams — other
+  // resources that reference them nest visually inside them (a VPC encloses
+  // its subnets, a Kubernetes namespace encloses its deployments, a database
+  // server encloses its databases).
+  //
+  // The doctrine — rooms vs. furniture: mark a kind ONLY if (a) it is a
+  // place/scope in the provider's own model, and (b) an engineer whiteboarding
+  // the system would draw it as a box AROUND other resources. Compute capacity
+  // (node pools/groups, autoscaling groups, VM scale sets, elastic pools) is
+  // never a container — those are servers that belong INSIDE a room, and no
+  // other catalog resource is ever placed "inside" one. Flow-through hubs
+  // (load balancers, gateways, routers) are nodes with arrows, not boxes.
+  //
+  // Containment is data-driven: marking a kind has no effect until another
+  // resource actually references it. A reference into a container kind implies
+  // nesting only when it expresses PLACEMENT ("deploy me into this"); a
+  // reference that expresses ACCESS ("admit traffic from / let me talk to")
+  // must carry the field-level
+  // dev.planton.shared.foreignkey.v1.containment_exempt option so the diagram
+  // never nests a resource inside something it merely connects to.
   bool container_kind = 6;
 
   //components that must be deployed before this component can function.
@@ -196,6 +212,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "r53z"
+    container_kind: true
   }];
   AwsS3Bucket = 213 [(kind_meta) = {
     provider: aws
@@ -300,6 +317,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awseb"
+    container_kind: true
   }];
   AwsEventBridgeRule = 228 [(kind_meta) = {
     provider: aws
@@ -473,6 +491,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "rsns"
+    container_kind: true
   }];
   // The namespace is a genuine prerequisite: a workgroup attaches to
   // exactly one namespace by name at create time, so its composed E2E
@@ -543,6 +562,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awssn"
     prerequisites: [AwsVpc]
+    container_kind: true
   }];
   AwsInternetGateway = 285 [(kind_meta) = {
     provider: aws
@@ -584,6 +604,7 @@ enum CloudResourceKind {
       AwsSubnet,
       AwsSecurityGroup
     ]
+    container_kind: true
   }];
 
   // AwsElasticFileSystem is a prerequisite because an access point is created
@@ -601,6 +622,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awsfxl"
     prerequisites: [AwsSubnet]
+    container_kind: true
   }];
 
   AwsFsxOpenzfsFileSystem = 292 [(kind_meta) = {
@@ -626,6 +648,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awsfxo"
     prerequisites: [AwsSubnet]
+    container_kind: true
   }];
 
   AwsFsxOntapStorageVirtualMachine = 295 [(kind_meta) = {
@@ -633,6 +656,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "awsfxosvm"
     prerequisites: [AwsFsxOntapFileSystem]
+    container_kind: true
   }];
 
   AwsFsxOntapVolume = 296 [(kind_meta) = {
@@ -655,6 +679,7 @@ enum CloudResourceKind {
     provider: aws
     version: v1
     id_prefix: "awscog"
+    container_kind: true
   }];
 
   // AwsCognitoUserPool is a prerequisite because an identity provider is
@@ -1069,6 +1094,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azdns"
     prerequisites: [AzureResourceGroup]
+    container_kind: true
   }];
   // AzureResourceGroup is a prerequisite because a key vault is created
   // inside a referenced resource group in composed environments.
@@ -1077,6 +1103,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azkv"
     prerequisites: [AzureResourceGroup]
+    container_kind: true
   }];
   // AzureResourceGroup is a prerequisite because a virtual network is created
   // inside a referenced resource group in composed environments.
@@ -1111,6 +1138,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azsa"
     prerequisites: [AzureResourceGroup]
+    container_kind: true
   }];
   // AzureDnsZone is a prerequisite because a record set is created inside
   // a referenced zone (the resource group chains transitively through the
@@ -1131,6 +1159,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azsub"
     prerequisites: [AzureVirtualNetwork]
+    container_kind: true
   }];
   // AzureResourceGroup is a prerequisite because a network security group is
   // created inside a referenced resource group in composed environments.
@@ -1166,6 +1195,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azpdns"
     prerequisites: [AzureResourceGroup]
+    container_kind: true
   }];
   // AzureSubnet is a prerequisite because a gateway cannot exist without
   // its dedicated gateway_ip_configuration subnet (the network and
@@ -1333,6 +1363,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azcdb"
     prerequisites: [AzureResourceGroup]
+    container_kind: true
   }];
   // AzureResourceGroup is a prerequisite because the logical server is
   // created inside a referenced resource group.
@@ -1341,6 +1372,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azmsql"
     prerequisites: [AzureResourceGroup]
+    container_kind: true
   }];
   // AzureResourceGroup is a prerequisite because a server is created inside
   // a referenced resource group (VNet injection additionally references a
@@ -1617,6 +1649,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azsb"
     prerequisites: [AzureResourceGroup]
+    container_kind: true
   }];
   // AzureResourceGroup is a prerequisite because an Event Hub namespace is
   // created inside a referenced resource group in composed environments.
@@ -1632,6 +1665,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azeh"
     prerequisites: [AzureResourceGroup]
+    container_kind: true
   }];
   AzureServiceBusQueue = 472 [(kind_meta) = {
     provider: azure
@@ -1642,6 +1676,7 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azsbtop"
+    container_kind: true
   }];
   AzureServiceBusSubscription = 474 [(kind_meta) = {
     provider: azure
@@ -1662,6 +1697,7 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azehub"
+    container_kind: true
   }];
   AzureEventHubConsumerGroup = 478 [(kind_meta) = {
     provider: azure
@@ -1696,6 +1732,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azfde"
     prerequisites: [AzureFrontDoorProfile]
+    container_kind: true
   }];
   // AzureFrontDoorProfile is a prerequisite because an origin group is an
   // ARM child of a referenced profile.
@@ -1844,6 +1881,7 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azcsqldb"
+    container_kind: true
   }];
   AzureCosmosdbSqlContainer = 501 [(kind_meta) = {
     provider: azure
@@ -1854,6 +1892,7 @@ enum CloudResourceKind {
     provider: azure
     version: v1
     id_prefix: "azcmgodb"
+    container_kind: true
   }];
   AzureCosmosdbMongoCollection = 503 [(kind_meta) = {
     provider: azure
@@ -1922,6 +1961,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "azehclu"
     prerequisites: [AzureResourceGroup]
+    container_kind: true
   }];
   AzureEventHubNamespaceCustomerManagedKey = 523 [(kind_meta) = {
     provider: azure
@@ -2029,12 +2069,14 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpsql"
     prerequisites: [GcpServiceNetworkingConnection]
+    container_kind: true
   }];
   GcpDnsZone = 605 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpdns"
     prerequisites: [GcpVpcNetwork]
+    container_kind: true
   }];
   GcpGcsBucket = 606 [(kind_meta) = {
     provider: gcp
@@ -2074,6 +2116,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpsnw"
     prerequisites: [GcpVpcNetwork]
+    container_kind: true
   }];
   GcpRouterNat = 612 [(kind_meta) = {
     provider: gcp
@@ -2195,6 +2238,7 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "gcpadb"
     prerequisites: [GcpServiceNetworkingConnection]
+    container_kind: true
   }];
   GcpRedisInstance = 631 [(kind_meta) = {
     provider: gcp
@@ -2206,22 +2250,26 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpfst"
+    container_kind: true
   }];
   GcpSpannerInstance = 633 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpspn"
+    container_kind: true
   }];
   GcpSpannerDatabase = 634 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpspdb"
     prerequisites: [GcpSpannerInstance]
+    container_kind: true
   }];
   GcpBigtableInstance = 635 [(kind_meta) = {
     provider: gcp
     version: v1
     id_prefix: "gcpbt"
+    container_kind: true
   }];
   GcpMemorystoreInstance = 636 [(kind_meta) = {
     provider: gcp
@@ -2284,6 +2332,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpbqds"
+    container_kind: true
   }];
   GcpDataprocCluster = 651 [(kind_meta) = {
     provider: gcp
@@ -2381,6 +2430,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpvaiep"
+    container_kind: true
   }];
   GcpVertexAiDeployedIndex = 674 [(kind_meta) = {
     provider: gcp
@@ -2405,6 +2455,7 @@ enum CloudResourceKind {
       GcpSubnetwork,
       GcpServiceAccount
     ]
+    container_kind: true
   }];
   GcpCloudComposerUserWorkloadsSecret = 681 [(kind_meta) = {
     provider: gcp
@@ -2422,6 +2473,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpkr"
+    container_kind: true
   }];
   GcpKmsKey = 691 [(kind_meta) = {
     provider: gcp
@@ -2451,6 +2503,7 @@ enum CloudResourceKind {
     provider: gcp
     version: v1
     id_prefix: "gcpwip"
+    container_kind: true
   }];
   GcpWorkloadIdentityPoolProvider = 702 [(kind_meta) = {
     provider: gcp
@@ -3171,6 +3224,7 @@ enum CloudResourceKind {
     provider: digital_ocean
     version: v1
     id_prefix: "dodns"
+    container_kind: true
   }];
   DigitalOceanDroplet = 1205 [(kind_meta) = {
     provider: digital_ocean
@@ -3250,6 +3304,7 @@ enum CloudResourceKind {
     provider: civo
     version: v1
     id_prefix: "cidns"
+    container_kind: true
   }];
   CivoFirewall = 1505 [(kind_meta) = {
     provider: civo
@@ -3294,6 +3349,7 @@ enum CloudResourceKind {
     provider: cloudflare
     version: v1
     id_prefix: "cfdns"
+    container_kind: true
   }];
   CloudflareKvNamespace = 1801 [(kind_meta) = {
     provider: cloudflare
@@ -3384,6 +3440,7 @@ enum CloudResourceKind {
     provider: cloudflare
     version: v1
     id_prefix: "cfztvn"
+    container_kind: true
   }];
   CloudflareZeroTrustTunnelRoute = 1819 [(kind_meta) = {
     provider: cloudflare
@@ -3480,6 +3537,7 @@ enum CloudResourceKind {
     provider: openfga
     version: v1
     id_prefix: "fgastore"
+    container_kind: true
   }];
   OpenFgaAuthorizationModel = 2301 [(kind_meta) = {
     provider: openfga
@@ -3508,6 +3566,7 @@ enum CloudResourceKind {
     provider: openstack
     version: v1
     id_prefix: "ossub"
+    container_kind: true
   }];
   OpenStackRouter = 2503 [(kind_meta) = {
     provider: openstack
@@ -3614,6 +3673,7 @@ enum CloudResourceKind {
     provider: openstack
     version: v1
     id_prefix: "osdz"
+    container_kind: true
   }];
   OpenStackDnsRecord = 2522 [(kind_meta) = {
     provider: openstack
@@ -3637,6 +3697,7 @@ enum CloudResourceKind {
     provider: scaleway
     version: v1
     id_prefix: "scwpn"
+    container_kind: true
   }];
   ScalewayPublicGateway = 2802 [(kind_meta) = {
     provider: scaleway
@@ -3721,6 +3782,7 @@ enum CloudResourceKind {
     provider: scaleway
     version: v1
     id_prefix: "scwdns"
+    container_kind: true
   }];
   ScalewayDnsRecord = 2861 [(kind_meta) = {
     provider: scaleway
@@ -3778,6 +3840,7 @@ enum CloudResourceKind {
     provider: alicloud
     version: v1
     id_prefix: "acvsw"
+    container_kind: true
   }];
 
   AliCloudSecurityGroup = 3022 [(kind_meta) = {
@@ -3822,6 +3885,7 @@ enum CloudResourceKind {
     provider: alicloud
     version: v1
     id_prefix: "acdz"
+    container_kind: true
   }];
 
   AliCloudDnsRecord = 3041 [(kind_meta) = {
@@ -3834,6 +3898,7 @@ enum CloudResourceKind {
     provider: alicloud
     version: v1
     id_prefix: "acdpz"
+    container_kind: true
   }];
 
   // --- Storage ---
@@ -3966,6 +4031,7 @@ enum CloudResourceKind {
     provider: oci
     version: v1
     id_prefix: "ocisub"
+    container_kind: true
   }];
 
   OciSecurityGroup = 3302 [(kind_meta) = {
@@ -4112,6 +4178,7 @@ enum CloudResourceKind {
     provider: oci
     version: v1
     id_prefix: "ocivlt"
+    container_kind: true
   }];
 
   OciKmsKey = 3351 [(kind_meta) = {
@@ -4180,6 +4247,7 @@ enum CloudResourceKind {
     provider: oci
     version: v1
     id_prefix: "ocidns"
+    container_kind: true
   }];
 
   OciDnsRecord = 3391 [(kind_meta) = {
@@ -4287,5 +4355,6 @@ enum CloudResourceKind {
     provider: hetzner_cloud
     version: v1
     id_prefix: "hcdns"
+    container_kind: true
   }];
 }

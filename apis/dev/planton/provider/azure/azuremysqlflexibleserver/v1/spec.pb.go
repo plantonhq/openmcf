@@ -1173,7 +1173,7 @@ var File_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto proto
 
 const file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/azure/azuremysqlflexibleserver/v1/spec.proto\x126dev.planton.provider.azure.azuremysqlflexibleserver.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe42\n" +
+	"Adev/planton/provider/azure/azuremysqlflexibleserver/v1/spec.proto\x126dev.planton.provider.azure.azuremysqlflexibleserver.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe82\n" +
 	"\x1cAzureMysqlFlexibleServerSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -1202,8 +1202,8 @@ const file_dev_planton_provider_azure_azuremysqlflexibleserver_v1_spec_proto_raw
 	"\x15backup_retention_days\x18\x10 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18#(\x01\x8a\xa6\x1d\x017H\x01R\x13backupRetentionDays\x88\x01\x01\x12?\n" +
 	"\x1cgeo_redundant_backup_enabled\x18\x11 \x01(\bR\x19geoRedundantBackupEnabled\x12\x97\x01\n" +
 	"\x15public_network_access\x18\x12 \x01(\x0e2c.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerPublicNetworkAccessR\x13publicNetworkAccess\x12\x85\x01\n" +
-	"\x13delegated_subnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x11delegatedSubnetId\x12\x82\x01\n" +
-	"\x13private_dns_zone_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_idR\x10privateDnsZoneId\x12\x94\x01\n" +
+	"\x13delegated_subnet_id\x18\x13 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x9b\x03\x92\xd4a\x18status.outputs.subnet_idR\x11delegatedSubnetId\x12\x86\x01\n" +
+	"\x13private_dns_zone_id\x18\x14 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9f\x03\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\x10privateDnsZoneId\x12\x94\x01\n" +
 	"\x1auser_assigned_identity_ids\x18\x15 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xcc\x03\x92\xd4a\x1astatus.outputs.identity_idR\x17userAssignedIdentityIds\x12\x94\x01\n" +
 	"\x14customer_managed_key\x18\x16 \x01(\v2b.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerCustomerManagedKeyR\x12customerManagedKey\x12\x8d\x01\n" +
 	"\x11aad_administrator\x18\x17 \x01(\v2`.dev.planton.provider.azure.azuremysqlflexibleserver.v1.AzureMysqlFlexibleServerAadAdministratorR\x10aadAdministrator\x12v\n" +

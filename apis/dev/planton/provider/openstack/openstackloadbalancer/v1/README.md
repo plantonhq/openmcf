@@ -103,3 +103,7 @@ This component is implemented with both Pulumi (Go) and Terraform (HCL) with ful
 - **Flavors**: Octavia flavors control resource limits (bandwidth, connections). If your cloud provides multiple flavors, specify one via `flavor_id`.
 - **Admin state**: Set `admin_state_up: false` to create a load balancer in disabled state (useful for maintenance windows).
 - **Tags**: Must be unique within the resource. Used for filtering and organization in OpenStack.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

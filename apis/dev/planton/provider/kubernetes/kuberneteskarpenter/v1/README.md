@@ -230,3 +230,7 @@ spec:
   scheduling:
     preferencePolicy: Ignore # only hard requirements shape the node
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

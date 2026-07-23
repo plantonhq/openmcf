@@ -89,3 +89,7 @@ spec:
   the replacement is re-attached
 - An empty `routes` list is valid and common: attach the empty table
   first, add routes as the topology grows
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

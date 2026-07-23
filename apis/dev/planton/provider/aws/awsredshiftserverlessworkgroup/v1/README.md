@@ -25,3 +25,7 @@ Planton provisions via the Pulumi or Terraform module in `iac/`, both implementi
 - Redshift Serverless overview: https://docs.aws.amazon.com/redshift/latest/mgmt/serverless-whatis.html
 - RPU capacity: https://docs.aws.amazon.com/redshift/latest/mgmt/serverless-capacity.html
 - Serverless networking requirements: https://docs.aws.amazon.com/redshift/latest/mgmt/serverless-known-issues.html
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

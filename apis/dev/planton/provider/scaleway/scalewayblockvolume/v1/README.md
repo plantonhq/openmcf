@@ -75,3 +75,7 @@ A block volume can **only** be attached to an Instance in the **same Availabilit
 ### What's Not Included (Deferred)
 - **Block snapshots** (`scaleway_block_snapshot`) -- separate lifecycle; can be a future kind.
 - **Legacy volume migration** (`instance_volume_id`) -- one-time operational migration from the Instance API's `b_ssd` volumes. Use Terraform directly for this.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

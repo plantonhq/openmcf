@@ -473,3 +473,7 @@ Civo doesn't document a hard limit, but 50+ rules per firewall may cause perform
 - `CivoComputeInstance` - Instances protected by firewalls
 - `CivoKubernetesCluster` - Kubernetes clusters with firewall protection
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

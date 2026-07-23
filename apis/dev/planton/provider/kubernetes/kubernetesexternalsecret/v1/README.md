@@ -47,3 +47,7 @@ The materialized Secret appears when the operator reaches the backend — not as
 ## Composing in Infra Charts
 
 `KubernetesExternalSecretsOperator → store kind → KubernetesExternalSecret → workload` deploys in one chart run: the ExternalSecret references the store's `store_name` output, and workloads (e.g. KubernetesDeployment) reference `status.outputs.secret_name` in env/volume Secret references. The external backend stays the single source of truth; the cluster never stores the value anywhere else.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

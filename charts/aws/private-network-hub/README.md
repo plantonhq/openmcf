@@ -118,3 +118,7 @@ table's `associations` and adding it to another's in the same change.
 - **Cross-region**: peer two hubs with a transit gateway peering
   attachment (static routes only across the peering; literal attachment
   ids work in the `routes` arm today).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

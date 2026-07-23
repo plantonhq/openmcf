@@ -46,3 +46,7 @@ OCI Network Firewall is a managed next-generation firewall service that inspects
 - **IPv4 address output** — the firewall's IP is exported for configuring VCN route table entries.
 - **Policy ID output** — enables advanced scenarios where the policy is referenced externally.
 - **NSG binding** — optional network security groups for additional network access control on the firewall appliance.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

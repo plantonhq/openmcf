@@ -64,3 +64,7 @@ so adding, re-scoping, or removing one diffs in place.
 - `access_entry_arn`: the entry's ARN
 - `principal_arn`: the IAM principal granted access, as resolved at
   provisioning time
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

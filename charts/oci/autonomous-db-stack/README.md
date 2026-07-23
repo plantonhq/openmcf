@@ -39,3 +39,7 @@ This chart provisions a **managed Oracle Autonomous Database with private networ
 
 * **oltp** -- Autonomous Transaction Processing (ATP): designed for OLTP, mixed workloads, and JSON document storage
 * **dw** -- Autonomous Data Warehouse (ADW): designed for analytics, data warehousing, and data lake queries
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

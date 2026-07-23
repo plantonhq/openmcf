@@ -93,3 +93,7 @@ Use **KubernetesDaemonSet** when the unit of deployment is "per node": log and m
 - [DaemonSet Rolling Updates](https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/)
 - [Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 - [DaemonSet API Reference](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/daemon-set-v1/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

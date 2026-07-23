@@ -36,3 +36,7 @@ Future updates will include:
 - **Cost Optimization**: Automatic configuration of Private Link bypass patterns
 - **Multi-IP Management**: Dynamic scaling of public IP count based on load
 - **Comprehensive Documentation**: Expanded troubleshooting guides and performance tuning recommendations
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -126,3 +126,7 @@ Use **KubernetesService** when you need:
 - [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
 - [Dual-stack Services](https://kubernetes.io/docs/concepts/services-networking/dual-stack/)
 - [Traffic Distribution](https://kubernetes.io/docs/concepts/services-networking/service/#traffic-distribution)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

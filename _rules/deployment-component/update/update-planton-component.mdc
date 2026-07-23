@@ -24,6 +24,13 @@ local Terraform provider clone; for Kubernetes: the pinned upstream Helm chart /
 core API types — never web memory), and judge every choice by the experience a user of this
 one component will come to expect.
 
+Read those references for FACTS only — field sets, defaults, validation bounds, ForceNew
+behavior. Never copy or adapt code text from the Terraform provider repos (MPL-2.0 —
+file-level copyleft incompatible with this Apache-2.0 work) or any BUSL HashiCorp repo into
+catalog modules; write original implementations informed by the facts. Consuming the
+Apache-2.0 Pulumi SDKs from go.mod and calling their APIs is normal dependency usage and is
+not restricted.
+
 ## Improve this workflow as you use it (NON-NEGOTIABLE)
 
 If updating a component required knowledge this rule or its flow rules did not give you — an undocumented mechanism you had to reverse-engineer, a wrong or misleading implication, a missing step, or a stale path — amend this rule, the relevant flow rule, or `architecture/deployment-component.md` in the same session, as timeless guidance (never naming a project or a task), so the next agent never has to re-learn it. The workflow is expected to get sharper with every use.

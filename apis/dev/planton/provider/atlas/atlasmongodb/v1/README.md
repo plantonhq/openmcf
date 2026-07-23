@@ -94,3 +94,7 @@ Geo-sharded deployment with location-aware reads/writes for globally distributed
 - Terraform Provider: https://registry.terraform.io/providers/mongodb/atlasmongodb/latest
 - Pulumi Provider: https://www.pulumi.com/registry/packages/atlasmongodb/
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

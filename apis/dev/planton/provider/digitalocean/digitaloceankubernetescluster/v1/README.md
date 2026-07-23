@@ -39,3 +39,7 @@ This resource provides complete support for production-grade DOKS clusters, incl
 - **Security**: Control plane firewall, VPC isolation, and container registry integration.
 - **Monitoring**: Integration with DigitalOcean monitoring and third-party observability tools.
 - **Upgrade Management**: Automatic patch upgrades with surge upgrade support for zero-downtime deployments.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

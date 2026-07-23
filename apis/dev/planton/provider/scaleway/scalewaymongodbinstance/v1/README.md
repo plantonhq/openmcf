@@ -226,3 +226,7 @@ When `privateNetworkId` is set and `enablePublicNetwork` is false (the default),
 - [Node Types and Pricing](https://www.scaleway.com/en/pricing/?tags=databases)
 - [Private Network Integration](https://www.scaleway.com/en/docs/managed-databases/mongodb/how-to/connect-mongodb-private-network/)
 - [MongoDB Connection Guide](https://www.scaleway.com/en/docs/managed-databases/mongodb/how-to/connect-mongodb-instance/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

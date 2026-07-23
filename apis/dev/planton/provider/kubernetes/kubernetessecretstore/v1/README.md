@@ -69,3 +69,7 @@ Store readiness depends on external reachability (the cloud secrets API, Vault) 
 ## Composing in Infra Charts
 
 `KubernetesExternalSecretsOperator → KubernetesSecretStore → KubernetesExternalSecret` deploys in one chart run: the store lives in the team's namespace, ExternalSecrets in that namespace reference `status.outputs.store_name`, and workloads reference the ExternalSecret's `secret_name` output in env/volume Secret references. The cross-cloud pattern (cluster in EKS, secrets in GCP Secret Manager) is one store with a declared GCP service-account key — no cloud identity federation required.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

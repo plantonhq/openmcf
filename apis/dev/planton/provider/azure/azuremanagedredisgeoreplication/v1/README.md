@@ -50,3 +50,7 @@ the data and becomes an independent instance again.
 
 - [Design research](docs/README.md) -- field mapping, the split verdict
 - [Presets](presets/) -- two-region pair, global mesh
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -54,3 +54,7 @@ This resource provides complete support for production-grade dynamic group manag
 - **Infrastructure as Code**: Full Pulumi (Go) and Terraform (HCL) implementations producing identical resource topology and outputs.
 - **Proto Validation**: Required fields (compartmentId, description, matchingRule) are validated at the schema level with minimum-length constraints before deployment.
 - **Foreign Key Composability**: Designed to reference OciCompartment resources via `valueFrom` for the tenancy OCID, and to be referenced by name in OciIdentityPolicy statements for the two-resource identity pattern.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -179,3 +179,7 @@ cert-manager prefix is optional; it applies when the Gateway terminates TLS.)
 - [Kubernetes TCP Route](kubernetestcproute)
 - [Kubernetes Gateway API CRDs](kubernetesgatewayapicrds)
 - [Kubernetes Namespace](kubernetesnamespace)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

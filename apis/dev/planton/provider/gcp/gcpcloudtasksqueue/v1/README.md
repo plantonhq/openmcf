@@ -80,3 +80,7 @@ Note: `max_burst_size` is computed by GCP from `max_dispatches_per_second` and c
 | `queue_id` | Fully qualified queue path: `projects/{project}/locations/{location}/queues/{name}` |
 | `queue_name` | Short queue name |
 | `max_burst_size` | Effective max burst size computed by GCP from the dispatch rate |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

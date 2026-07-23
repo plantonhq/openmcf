@@ -144,3 +144,7 @@ For manual backups, use DigitalOcean's control panel to export a BIND-style zone
    - **Terraform**: See `iac/tf/README.md`
 4. Deploy a test domain and verify delegation at your registrar
 5. Configure monitoring for production domains
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

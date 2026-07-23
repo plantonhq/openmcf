@@ -61,3 +61,7 @@ The pool inherits its project and location from the parent cluster (both resolve
 
 - [Node Pools Documentation](https://cloud.google.com/kubernetes-engine/docs/concepts/node-pools)
 - [NodePools REST API](https://cloud.google.com/kubernetes-engine/docs/reference/rest/v1/projects.locations.clusters.nodePools)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

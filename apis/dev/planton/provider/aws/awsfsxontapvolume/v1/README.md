@@ -134,3 +134,7 @@ spec:
 
 - [AwsFsxOntapStorageVirtualMachine](../awsfsxontapstoragevirtualmachine/v1/) — Parent SVM
 - [AwsFsxOntapFileSystem](../awsfsxontapfilesystem/v1/) — Grandparent file system
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -387,3 +387,7 @@ spec:
 
 - **v1**: Initial release with Let's Encrypt and custom certificate support
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

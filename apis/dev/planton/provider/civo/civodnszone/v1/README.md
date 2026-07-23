@@ -304,3 +304,7 @@ spec:
 - Civo Support: [support@civo.com](mailto:support@civo.com)
 - Community: [Planton Discord](#)
 
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

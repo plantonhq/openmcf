@@ -36,3 +36,7 @@ Future updates will include:
 - **Snapshot Lifecycle**: First-class snapshot resources and scheduled snapshot policies
 - **Monitoring Integration**: Built-in Azure Monitor metrics and alerts for IOPS, throughput, and burst-credit consumption
 - **Comprehensive Documentation**: Expanded capacity-planning and performance-tuning guides
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

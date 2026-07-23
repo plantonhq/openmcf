@@ -56,3 +56,7 @@ Destroying an object removes all of its versions on versioned buckets. For objec
 - **Consistency**: Ensure objects are always in sync with infrastructure deployments.
 - **Simplicity**: Single resource manages multiple objects with shared tag inheritance.
 - **Flexibility**: Text and binary content, the full per-object HTTP/storage/encryption surface, and honest composition with the bucket's own posture.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

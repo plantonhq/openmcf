@@ -82,3 +82,7 @@ spec:
     - destinationCidrBlock: 10.200.0.0/16
       blackhole: true
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -39,3 +39,7 @@ Future updates will include:
 - **Referenceable Application Gateway Pools**: Application Gateway pool memberships currently take plain ARM IDs; they become referenceable once the Application Gateway exports per-pool IDs
 - **Monitoring Integration**: Built-in Azure Monitor metrics for NIC throughput and packet drops
 - **Comprehensive Documentation**: Expanded troubleshooting guides for accelerated-networking eligibility and appliance routing
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

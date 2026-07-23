@@ -91,3 +91,7 @@ Front Door custom-domain validation dominate).
 - **Confirm the availability probe** is green in Application Insights.
 - **Natural next steps**: enable `custom_domain_enabled`, add Entra-only
   database auth, or peer this VNet into a hub-spoke foundation.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

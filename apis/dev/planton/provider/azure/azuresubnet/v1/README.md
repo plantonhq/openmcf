@@ -112,3 +112,7 @@ spec:
 - A prefix in use by deployed resources cannot shrink; toggling
   `default_outbound_access_enabled` requires the subnet to be empty of VMs
 - Azure reserves 5 IPs per subnet (the first four and the last)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

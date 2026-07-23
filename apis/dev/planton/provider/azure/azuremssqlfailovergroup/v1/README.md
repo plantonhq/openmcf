@@ -84,3 +84,7 @@ spec:
 - Databases must live on the **primary** server
 - `AUTOMATIC` requires `grace_minutes` ≥ 60; `MANUAL` must omit it
 - Partner servers must each be in a **different region** than the primary
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

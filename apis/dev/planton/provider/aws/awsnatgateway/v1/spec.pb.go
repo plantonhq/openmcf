@@ -190,16 +190,17 @@ var File_dev_planton_provider_aws_awsnatgateway_v1_spec_proto protoreflect.FileD
 
 const file_dev_planton_provider_aws_awsnatgateway_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4dev/planton/provider/aws/awsnatgateway/v1/spec.proto\x12)dev.planton.provider.aws.awsnatgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x85\x0e\n" +
+	"4dev/planton/provider/aws/awsnatgateway/v1/spec.proto\x12)dev.planton.provider.aws.awsnatgateway.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xbb\x0e\n" +
 	"\x11AwsNatGatewaySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\xa8\x01\n" +
 	"\x11connectivity_type\x18\x02 \x01(\tB{\xbaHn\xba\x01k\n" +
-	"\x17connectivity_type_valid\x121connectivity_type must be one of: public, private\x1a\x1dthis in ['public', 'private']\x92\xa6\x1d\x06publicR\x10connectivityType\x12x\n" +
-	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12~\n" +
-	"\rallocation_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x99\x02\x92\xd4a\x1cstatus.outputs.allocation_idR\fallocationId\x12\x1d\n" +
+	"\x17connectivity_type_valid\x121connectivity_type must be one of: public, private\x1a\x1dthis in ['public', 'private']\x92\xa6\x1d\x06publicR\x10connectivityType\x12\x85\x01\n" +
+	"\tsubnet_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tin subnet\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12\x8c\x01\n" +
+	"\rallocation_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xb2\xa6\x1d\n" +
+	"elastic ip\x88\xd4a\x99\x02\x92\xd4a\x1cstatus.outputs.allocation_idR\fallocationId\x12\x1d\n" +
 	"\n" +
-	"private_ip\x18\x05 \x01(\tR\tprivateIp\x12\x93\x01\n" +
-	"\x18secondary_allocation_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\x99\x02\x92\xd4a\x1cstatus.outputs.allocation_idR\x16secondaryAllocationIds\x12C\n" +
+	"private_ip\x18\x05 \x01(\tR\tprivateIp\x12\xac\x01\n" +
+	"\x18secondary_allocation_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB>\xb2\xa6\x1d\x15secondary elastic ips\x88\xd4a\x99\x02\x92\xd4a\x1cstatus.outputs.allocation_idR\x16secondaryAllocationIds\x12C\n" +
 	"\x1esecondary_private_ip_addresses\x18\a \x03(\tR\x1bsecondaryPrivateIpAddresses\x12J\n" +
 	"\"secondary_private_ip_address_count\x18\b \x01(\x05R\x1esecondaryPrivateIpAddressCount:\xe3\a\xbaH\xdf\a\x1a\xc5\x01\n" +
 	"\x1dpublic_requires_allocation_id\x12eallocation_id is required when connectivity_type is public (a public NAT gateway needs an Elastic IP)\x1a=this.connectivity_type != 'public' || has(this.allocation_id)\x1a\xe3\x01\n" +

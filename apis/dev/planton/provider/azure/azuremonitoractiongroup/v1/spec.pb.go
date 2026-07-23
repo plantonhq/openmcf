@@ -1233,12 +1233,12 @@ const file_dev_planton_provider_azure_azuremonitoractiongroup_v1_spec_proto_rawD
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x7f\n" +
 	"\arole_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\xce\x03\x92\xd4a#status.outputs.role_definition_guidR\x06roleId\x125\n" +
-	"\x17use_common_alert_schema\x18\x03 \x01(\bR\x14useCommonAlertSchema\"\xfe\x06\n" +
+	"\x17use_common_alert_schema\x18\x03 \x01(\bR\x14useCommonAlertSchema\"\x86\a\n" +
 	"'AzureMonitorActionGroupEventHubReceiver\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x86\x01\n" +
-	"\x0eevent_hub_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x03\x92\xd4a\x1dstatus.outputs.event_hub_nameR\feventHubName\x12\x90\x01\n" +
-	"\x13event_hub_namespace\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\x03\x92\xd4a\x1dstatus.outputs.namespace_nameR\x11eventHubNamespace\x12\xf3\x01\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x8a\x01\n" +
+	"\x0eevent_hub_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xdd\x03\x92\xd4a\x1dstatus.outputs.event_hub_name\x98\xd4a\x01R\feventHubName\x12\x94\x01\n" +
+	"\x13event_hub_namespace\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd7\x03\x92\xd4a\x1dstatus.outputs.namespace_name\x98\xd4a\x01R\x11eventHubNamespace\x12\xf3\x01\n" +
 	"\ttenant_id\x18\x04 \x01(\tB\xd5\x01\xbaH\xd1\x01\xba\x01\xcd\x01\n" +
 	"\"action_group_event_hub_tenant_uuid\x12:tenant_id must be a UUID (the Entra tenant's directory ID)\x1akthis == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')R\btenantId\x12\xe9\x01\n" +
 	"\x0fsubscription_id\x18\x05 \x01(\tB\xbf\x01\xbaH\xbb\x01\xba\x01\xb7\x01\n" +

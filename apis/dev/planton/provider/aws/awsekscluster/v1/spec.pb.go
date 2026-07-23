@@ -9,6 +9,7 @@ package awseksclusterv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -472,12 +473,12 @@ var File_dev_planton_provider_aws_awsekscluster_v1_spec_proto protoreflect.FileD
 
 const file_dev_planton_provider_aws_awsekscluster_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4dev/planton/provider/aws/awsekscluster/v1/spec.proto\x12)dev.planton.provider.aws.awsekscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xbc\x17\n" +
+	"4dev/planton/provider/aws/awsekscluster/v1/spec.proto\x12)dev.planton.provider.aws.awsekscluster.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x81\x18\n" +
 	"\x11AwsEksClusterSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x7f\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x90\x01\n" +
 	"\n" +
-	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x02\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x84\x01\n" +
-	"\x10cluster_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x0eclusterRoleArn\x12\x18\n" +
+	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x02\xb2\xa6\x1d\rspans subnets\x88\xd4a\x9c\x02\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x9c\x01\n" +
+	"\x10cluster_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB>\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x14assumes cluster role\x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\x0eclusterRoleArn\x12\x18\n" +
 	"\aversion\x18\x04 \x01(\tR\aversion\x12\x8b\x01\n" +
 	"\x12security_group_ids\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xd7\x01\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x129\n" +
 	"\x16endpoint_public_access\x18\x06 \x01(\bH\x00R\x14endpointPublicAccess\x88\x01\x01\x126\n" +
@@ -487,8 +488,8 @@ const file_dev_planton_provider_aws_awsekscluster_v1_spec_proto_rawDesc = "" +
 	"\tip_family\x18\n" +
 	" \x01(\tR\bipFamily\x12*\n" +
 	"\x11service_ipv4_cidr\x18\v \x01(\tR\x0fserviceIpv4Cidr\x12C\n" +
-	"\x19enabled_cluster_log_types\x18\f \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x16enabledClusterLogTypes\x12s\n" +
-	"\vkms_key_arn\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12i\n" +
+	"\x19enabled_cluster_log_types\x18\f \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x16enabledClusterLogTypes\x12\x8d\x01\n" +
+	"\vkms_key_arn\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x16secrets encrypted with\x88\xd4a\xdb\x01\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12i\n" +
 	"\raccess_config\x18\x0e \x01(\v2D.dev.planton.provider.aws.awsekscluster.v1.AwsEksClusterAccessConfigR\faccessConfig\x12]\n" +
 	"\tauto_mode\x18\x0f \x01(\v2@.dev.planton.provider.aws.awsekscluster.v1.AwsEksClusterAutoModeR\bautoMode\x120\n" +
 	"\x14upgrade_support_type\x18\x10 \x01(\tR\x12upgradeSupportType\x12.\n" +

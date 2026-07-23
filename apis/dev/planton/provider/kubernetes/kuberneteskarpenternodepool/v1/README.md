@@ -207,3 +207,7 @@ spec:
         schedule: 0 9 * * 1-5
         duration: 8h
 ```
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

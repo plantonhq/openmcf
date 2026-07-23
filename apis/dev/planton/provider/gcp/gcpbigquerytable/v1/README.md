@@ -81,3 +81,7 @@ and external GCS tables.
 
 - [GcpBigQueryDataset](../gcpbigquerydataset/v1/) — parent container (location, ACL, defaults)
 - [GcpKmsKey](../gcpkmskey/v1/) — CMEK encryption key reference
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

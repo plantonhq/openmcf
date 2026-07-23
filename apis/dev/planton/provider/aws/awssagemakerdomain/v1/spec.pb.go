@@ -2640,9 +2640,9 @@ const file_dev_planton_provider_aws_awssagemakerdomain_v1_spec_proto_rawDesc = "
 	"\x1dmaximum_ebs_volume_size_in_gb\x18\x02 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\x18maximumEbsVolumeSizeInGb:\xae\x01\xbaH\xaa\x01\x1a\xa7\x01\n" +
 	"\x13max_ebs_gte_default\x12Fmaximum_ebs_volume_size_in_gb must be >= default_ebs_volume_size_in_gb\x1aHthis.maximum_ebs_volume_size_in_gb >= this.default_ebs_volume_size_in_gb\"\xbf\x01\n" +
 	"(AwsSagemakerDomainCustomFileSystemConfig\x12\x92\x01\n" +
-	"\x16efs_file_system_config\x18\x01 \x01(\v2U.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainEfsFileSystemConfigB\x06\xbaH\x03\xc8\x01\x01R\x13efsFileSystemConfig\"\xe2\x01\n" +
-	"%AwsSagemakerDomainEfsFileSystemConfig\x12\x86\x01\n" +
-	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_idR\ffileSystemId\x120\n" +
+	"\x16efs_file_system_config\x18\x01 \x01(\v2U.dev.planton.provider.aws.awssagemakerdomain.v1.AwsSagemakerDomainEfsFileSystemConfigB\x06\xbaH\x03\xc8\x01\x01R\x13efsFileSystemConfig\"\xe6\x01\n" +
+	"%AwsSagemakerDomainEfsFileSystemConfig\x12\x8a\x01\n" +
+	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xa2\x02\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\ffileSystemId\x120\n" +
 	"\x10file_system_path\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0efileSystemPath\"g\n" +
 	"'AwsSagemakerDomainCustomPosixUserConfig\x12\x1d\n" +
 	"\x03uid\x18\x01 \x01(\x03B\v\xbaH\b\xc8\x01\x01\"\x03(\x90NR\x03uid\x12\x1d\n" +

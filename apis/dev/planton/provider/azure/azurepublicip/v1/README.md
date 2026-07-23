@@ -147,3 +147,7 @@ spec:
   plans are shared, rarely-created governance resources
 - **Attachment to consumers** -- load balancers, application gateways, and NAT
   gateways reference the address by ID from their own specs
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

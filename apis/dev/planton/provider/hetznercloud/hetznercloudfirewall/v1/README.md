@@ -60,3 +60,7 @@ None. `HetznerCloudFirewall` is a foundation resource with no foreign key depend
 - [Hetzner Cloud Firewalls Documentation](https://docs.hetzner.cloud/#firewalls)
 - [Terraform hcloud_firewall Resource](https://registry.terraform.io/providers/hetznercloud/hcloud/latest/docs/resources/firewall)
 - [Pulumi hcloud.Firewall Resource](https://www.pulumi.com/registry/packages/hcloud/api-docs/firewall/)
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

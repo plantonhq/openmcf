@@ -57,3 +57,7 @@ Three condition families cover the real alerting space:
 
 See `presets/` for static-threshold, dynamic-anomaly, and web-test
 availability starting points.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

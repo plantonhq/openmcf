@@ -82,6 +82,7 @@ message AliCloudCenAttachment {
   dev.planton.shared.foreignkey.v1.StringValueOrRef child_instance_id = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AliCloudVpc,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
   ];
 
