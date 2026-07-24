@@ -32,7 +32,7 @@ func init() {
 	Discover.Flags().String("provider", "", "cloud provider to discover (required)")
 	Discover.MarkFlagRequired("provider")
 	Discover.Flags().String("output", "", "output format: interactive, table, github-matrix (auto-detected if omitted)")
-	Discover.Flags().String("status", "", "filter by status: green, deferred, skip, stub")
+	Discover.Flags().String("status", "", "filter by status: green, deferred, skip, stub, real_cluster, pending_proof")
 	Discover.Flags().Int32("tier", 0, "filter by tier (1-4)")
 	Discover.Flags().String("provisioner", "", "filter by validated provisioner: pulumi, terraform")
 }
@@ -63,8 +63,12 @@ func runDiscover(cmd *cobra.Command, args []string) error {
 			opts.Status = componentv1.ComponentE2EProfileSpec_skip
 		case "stub":
 			opts.Status = componentv1.ComponentE2EProfileSpec_stub
+		case "real_cluster":
+			opts.Status = componentv1.ComponentE2EProfileSpec_real_cluster
+		case "pending_proof":
+			opts.Status = componentv1.ComponentE2EProfileSpec_pending_proof
 		default:
-			return fmt.Errorf("unknown status %q: must be green, deferred, skip, or stub", statusFilter)
+			return fmt.Errorf("unknown status %q: must be green, deferred, skip, stub, real_cluster, or pending_proof", statusFilter)
 		}
 	}
 

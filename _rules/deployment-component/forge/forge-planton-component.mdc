@@ -428,16 +428,29 @@ Only the CI runner can read them.)
 **Profile honesty is non-negotiable.** `e2e/profile.yaml` may claim
 `status: green` with `validated_provisioners` entries ONLY after a live
 deploy → verify → destroy run has actually passed on those provisioners.
-Until then, author the profile as `status: deferred` with an empty
-`validated_provisioners` list and a `deferred_reason` stating what remains
-(the field is `deferred_reason` — protojson silently drops unknown keys, so a
-misspelled key vanishes without an error). A profile that overclaims is a
-lie in the release ledger; flip it to green in the same session the lanes
-pass, never before. Note the mechanics for a NEW kind: the test entrypoints
-SKIP components whose profile is deferred, so a deferred profile can never
-run its own lanes — flip the profile to green immediately before executing
-the lanes, and if they do not pass by session end, flip it back to deferred
-in the same commit. Honesty is judged on the COMMITTED state, not the
+Until then, author the profile as `status: pending_proof` with an empty
+`validated_provisioners` list — the status that says "fully authored and
+offline-validated, live lanes not yet run." Reserve `status: deferred` (with
+a `deferred_reason` stating what blocks it — the field is `deferred_reason`;
+protojson silently drops unknown keys, so a misspelled key vanishes without
+an error) for kinds with a KNOWN blocker or failure. A profile that
+overclaims is a lie in the release ledger; flip it to green in the same
+session the lanes pass, never before.
+
+**The authoring and proving phases may be executed by different sessions.**
+Everything up to and including the offline gates (specs, both engine modules,
+spec tests, presets, docs, import maps, scenarios/fixtures/verifiers compiled
+via `e2e-build`/`e2e-vet`, static proofs) is the authoring phase and ends
+with the profile at `pending_proof`. The live-E2E phase below is the proving
+phase: whichever session executes it owns the kinds completely while proving
+— including spec/preset/docs changes when live evidence demands them — and
+finishes by flipping the profile, filling `validated_provisioners`, landing
+live-caught lessons on the surfaces their readers use, and regenerating the
+CI matrix. Note the mechanics either way: the test entrypoints SKIP
+components whose profile is `pending_proof` or `deferred`, so such a profile
+can never run its own lanes — flip the profile to green immediately before
+executing the lanes, and if they do not pass by session end, flip it back in
+the same commit. Honesty is judged on the COMMITTED state, not the
 mid-session working tree.
 
 ### Wire the kind into the provider E2E first (required for either tier)
@@ -768,6 +781,32 @@ sweeping kept CRDs manually, enumerate by the `meta.helm.sh/release-name`
 annotation, never by an API-group name grep — CRD bundles routinely span
 groups (Karpenter's fleet CRDs live in karpenter.sh, karpenter.k8s.aws AND
 autoscaling.x-k8s.io), and one missed CRD reproduces the collision.
+
+**A THIRD keep-CRD class: chart-TEMPLATED CRDs with NO keep knob at all.**
+When a chart templates its CRDs release-owned and offers neither a
+`crds/` directory nor a keep-annotation passthrough, uninstalling the
+release cascade-deletes every CR (and its data) — the module must OWN
+the CRD lifecycle instead: disable the chart's CRD install, apply the
+staged CRD files itself keyed by each CRD's own name, and carry keep
+semantics module-side (`apply_only = true` on `kubectl_manifest`;
+classic-yaml ConfigGroup + a retainOnDelete TRANSFORMATION on Pulumi —
+yaml/v2 children are provider-side and unreachable by SDK options).
+Re-pin the chart's CRD-install flag AFTER the helm_values merge — a
+user override would re-arm the cascade the design exists to prevent.
+
+**Two chart-audit probes that only fail LIVE — run them at the pin,
+before any design lands.** (1) HEAD every DEFAULT image reference's
+registry manifest: chart defaults can point at registries that no longer
+exist (verified live — an entire upstream registry namespace deleted),
+and the failure is a pod stuck in ImagePullBackOff behind a green
+offline gate. A dead default gets re-pointed at the maintainer's live
+repository at the same tag, loudly commented and overridable. (2)
+Compute the chart's LONGEST child-name suffix: charts truncate their
+fullname at 63 characters but not the names derived from it, so an
+ordinary release name can push a child Service past the Kubernetes name
+cap and fail mid-install; when the budget breaks realistic names, pin
+`fullnameOverride` to metadata.name and record the resulting name-length
+budget on the spec.
 
 **Behavioral drivers against PERSISTENT external stores need run-unique
 names.** A verifier-owned driver CR whose name doubles as a key in an

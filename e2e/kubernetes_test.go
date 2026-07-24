@@ -84,7 +84,7 @@ var kubernetesTier1Components = []string{
 // (see e2e/framework/runner/dependencies.go -- ResolveDependencies).
 var kubernetesTier3Components = []string{
 	"kuberneteskafka",
-	"kuberneteselasticsearch",
+	"kubernetesopensearch",
 	"kubernetesmongodb",
 	"kubernetesmysql",
 	"kubernetessolr",
@@ -96,7 +96,7 @@ var kubernetesTier3Components = []string{
 // fixtures.
 var kubernetesTier4Components = []string{
 	"kubernetesstrimzikafkaoperator",
-	"kuberneteselasticoperator",
+	"kubernetesopensearchoperator",
 	"kubernetesaltinityoperator",
 	"kubernetesgharunnerscalesetcontroller",
 	"kubernetesrookcephoperator",
@@ -401,6 +401,9 @@ func TestKubernetesNats_Pulumi(t *testing.T) {
 func TestKubernetesNeo4j_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesneo4j", "pulumi")
 }
+func TestKubernetesNeo4j_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesneo4j", "terraform")
+}
 func TestKubernetesJenkins_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesjenkins", "pulumi")
 }
@@ -497,8 +500,8 @@ func TestKubernetesKarapace_Pulumi(t *testing.T) {
 func TestKubernetesKafkaUi_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskafkaui", "pulumi")
 }
-func TestKubernetesElasticsearch_Pulumi(t *testing.T) {
-	runAllScenariosForComponent(t, "kuberneteselasticsearch", "pulumi")
+func TestKubernetesOpenSearch_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesopensearch", "pulumi")
 }
 func TestKubernetesMongodb_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesmongodb", "pulumi")
@@ -539,8 +542,8 @@ func TestKubernetesKarapace_Terraform(t *testing.T) {
 func TestKubernetesKafkaUi_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskafkaui", "terraform")
 }
-func TestKubernetesElasticsearch_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "kuberneteselasticsearch", "terraform")
+func TestKubernetesOpenSearch_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesopensearch", "terraform")
 }
 func TestKubernetesMongodb_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesmongodb", "terraform")
@@ -560,8 +563,8 @@ func TestKubernetesClickHouse_Terraform(t *testing.T) {
 func TestKubernetesStrimziKafkaOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesstrimzikafkaoperator", "pulumi")
 }
-func TestKubernetesElasticOperator_Pulumi(t *testing.T) {
-	runAllScenariosForComponent(t, "kuberneteselasticoperator", "pulumi")
+func TestKubernetesOpenSearchOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesopensearchoperator", "pulumi")
 }
 func TestKubernetesAltinityOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesaltinityoperator", "pulumi")
@@ -593,8 +596,8 @@ func TestKubernetesIstioBaseCrds_Pulumi(t *testing.T) {
 func TestKubernetesStrimziKafkaOperator_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesstrimzikafkaoperator", "terraform")
 }
-func TestKubernetesElasticOperator_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "kuberneteselasticoperator", "terraform")
+func TestKubernetesOpenSearchOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesopensearchoperator", "terraform")
 }
 func TestKubernetesAltinityOperator_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesaltinityoperator", "terraform")
@@ -762,7 +765,12 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 		switch cp.Spec.Status {
 		case componentv1.ComponentE2EProfileSpec_deferred,
 			componentv1.ComponentE2EProfileSpec_skip,
-			componentv1.ComponentE2EProfileSpec_stub:
+			componentv1.ComponentE2EProfileSpec_stub,
+			// pending_proof: fully authored, offline-validated, awaiting its
+			// first live proof. The proving session flips the profile to green
+			// immediately before executing the lanes; until then a sweep must
+			// never run it.
+			componentv1.ComponentE2EProfileSpec_pending_proof:
 			reason := cp.Spec.DeferredReason
 			if reason == "" {
 				reason = cp.Spec.Status.String()

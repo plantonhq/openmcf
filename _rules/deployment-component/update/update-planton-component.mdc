@@ -532,6 +532,51 @@ Based on scenario:
   families and add a `tofu_resource_name`-scoped declaration per singleton
   — deterministic satellite names are metadata.name plus a fixed suffix, so
   `from_metadata_name_suffix` derives each one blind.
+- **Operator-owned CRs delete with BACKGROUND propagation, declared
+  explicitly on both engines**: the operator's finalizer IS the CR's
+  cascade — foreground propagation (the Pulumi provider's DEFAULT for
+  every resource, and `kubectl_manifest`'s default whenever `wait` is
+  set) deadlocks teardown when any involved operator keeps reconciling a
+  deleting child back to life (verified live: a foregroundDeletion
+  finalizer waiting on a child CR whose own operator recreates its
+  children — and the fixture uninstall then wedges on that operator's
+  pre-delete hook). Declare `delete_cascade = "Background"` on the TF
+  resource and the `pulumi.com/deletionPropagationPolicy: background`
+  annotation on the Pulumi CR, with twin comments.
+- **Module-owned keep-on-uninstall on Pulumi needs the CLASSIC `yaml`
+  package plus a transformation — `yaml/v2` cannot do it**: yaml/v2
+  components register remotely and their children are created
+  PROVIDER-side, beyond the reach of any SDK-side resource option or
+  transformation; the classic package's `GetChildOptions` forwards only
+  parent/version/pluginDownloadURL, so a plain `RetainOnDelete` on the
+  ConfigGroup silently retains only the component wrapper. Deliver the
+  option through a resource TRANSFORMATION on a classic-yaml ConfigGroup
+  (transformations propagate down the in-process parent chain) — the
+  semantic twin of `kubectl_manifest`'s `apply_only = true` ("Delete is
+  a no-op" in the provider source).
+- **Split multi-document YAML bundles on separator LINES, never the bare
+  `---` substring**: CRD schema description strings embed `---` (unix
+  permission strings, TODO markers), and a substring split corrupts the
+  documents — match `(?m)^---[ \t]*$` (or HCL `split("\n---", ...)`)
+  and parse-filter comment-only documents.
+- **A chart's default image reference can point at a DELETED registry —
+  probe pullability at the pin, never trust the default**: verified
+  live with a sidecar image whose entire upstream registry namespace
+  was removed (the manifest endpoint returns not-found); every install
+  with the chart default then times out on a forever-unpullable pod.
+  At every chart pin/audit, HEAD each default image's registry manifest;
+  when a default is dead, the module re-points it at the maintainer's
+  live repository at the same tag (loudly commented, spec-noted,
+  helm_values-overridable).
+- **Charts truncate their FULLNAME but not the names built from it —
+  audit the longest child-name suffix**: Kubernetes caps object names at
+  63 characters; a chart whose fullname rule truncates at 63 can still
+  render a child Service/Deployment name (fullname + a 30-40 char
+  suffix) past the cap, failing the install at the API server for
+  ordinary release names (verified live). Compute the chart's longest
+  suffix; when the budget breaks realistic names, pin `fullnameOverride`
+  to metadata.name (the catalog's Helm-kind identity convention) and
+  record the resulting name-length budget on the spec.
 - **Helm cannot adopt CRDs that already exist without its ownership
   metadata**: a chart that templates CRDs fails to install onto a cluster
   where another tool (or a CRDs-only installer kind) already applied them
@@ -815,6 +860,18 @@ Update validates after each major change:
 3. Verify presets are consistent with current spec.proto (if presets exist)
 
 **Critical:** Component-specific tests must pass before proceeding. These tests validate that buf.validate rules work correctly.
+
+**Live-E2E phase and profile honesty.** An update that changes deployable
+behavior is complete only when the live lanes re-prove it — but the authoring
+and proving phases may be executed by different sessions (the forge rule's
+"Profile honesty" section carries the full mechanics). When the update session
+does not run the lanes itself, set `e2e/profile.yaml` to
+`status: pending_proof` (never leave a green profile claiming a surface the
+lanes have not re-proven) and hand the kind to a proving session; that session
+owns the kind completely while proving — including spec/preset/docs changes
+live evidence demands — and finishes by flipping the profile back to green,
+landing live-caught lessons on the surfaces their readers use, and
+regenerating the CI matrix.
 
 ## Progress Tracking
 
