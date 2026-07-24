@@ -1,0 +1,190 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskafkaconnector.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesKafkaConnectorSpec** declares one data pipe — a
+ * connector instance — on the Strimzi `KafkaConnector` custom
+ * resource. The target Connect cluster's operator-managed workers run
+ * it: a SOURCE connector streams an external system into Kafka
+ * (Debezium CDC from Postgres/MySQL, file tails, SaaS APIs); a SINK
+ * connector streams Kafka topics out (object stores, search indexes,
+ * warehouses).
+ *
+ * PLACEMENT CONTRACT (verified against the Strimzi operator): the
+ * KafkaConnector must live in the SAME NAMESPACE as its Connect
+ * cluster, and it binds to the cluster through the strimzi.io/cluster
+ * label (rendered from `connect_cluster`). A connector in another
+ * namespace, or naming a Connect cluster that does not exist there,
+ * is accepted by the API server and then silently never reconciled —
+ * set `namespace` to the Connect cluster's namespace.
+ *
+ * The connector's CLASS must be available on the Connect cluster's
+ * workers — via the stock image, a prebuilt `image`, OCI `plugins`,
+ * or a `build` on the KubernetesKafkaConnect resource. A class the
+ * workers do not carry fails at reconcile with a "class not found"
+ * condition on the resource.
+ */
+message KubernetesKafkaConnectorSpec {
+  /**
+   * Namespace of the KafkaConnector — MUST be the Connect cluster's
+   * own namespace (see the placement contract above). Accepts a
+   * literal namespace name or a reference to a KubernetesNamespace
+   * resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * The Connect cluster this connector runs on. Accepts a literal
+   * name (the KubernetesKafkaConnect resource's metadata.name) or a
+   * reference to a KubernetesKafkaConnect resource. Rendered as the
+   * strimzi.io/cluster label.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef connect_cluster = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafkaConnect,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.connect_name"
+  ];
+
+  /**
+   * Fully-qualified connector class, e.g.
+   * "io.debezium.connector.postgresql.PostgresConnector". The class
+   * decides whether this is a source or sink connector. The class
+   * must be ON the Connect cluster's workers: the stock image carries
+   * ONLY the MirrorMaker 2 connectors (verified live against the
+   * workers' own plugin listing — Kafka's FileStream examples are not
+   * on the classpath); anything else arrives via the Connect
+   * cluster's image, plugins, or build arms.
+   */
+  string connector_class = 3 [(buf.validate.field).required = true];
+
+  /**
+   * Maximum number of parallel tasks the connector may run.
+   * Empty = the Connect default (1). Tasks spread across the Connect
+   * cluster's workers; a connector's real parallelism is also
+   * bounded by its own semantics (e.g. one task per table set for
+   * many CDC connectors).
+   */
+  optional int32 tasks_max = 4 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Desired connector plugin version when the workers carry several
+   * versions of the class (e.g. "3.1.0" or a Maven-style range).
+   * Empty = the newest available. This field replaces the retired
+   * connector.plugin.version config entry.
+   */
+  string version = 5;
+
+  /**
+   * The connector's own configuration — the exact key set its
+   * documentation defines (connection URLs, table filters, topics,
+   * converters). Values are configuration strings — write numbers
+   * and booleans as strings ("5432", "false").
+   *
+   * SECRETS in connector config (database passwords, API keys)
+   * should not be written as literals: Connect supports configuration
+   * providers — reference values as
+   * ${secrets:<namespace>/<secret>:<key>} after enabling the
+   * KubernetesSecretConfigProvider through the Connect cluster's
+   * `config` (config.providers entries).
+   */
+  map<string, string> config = 6 [(buf.validate.field).cel = {
+    id: "spec.config.no_connector_plugin_version"
+    message: "connector.plugin.version in config is deprecated upstream with removal announced — set the connector version on the version field instead"
+    expression: "!('connector.plugin.version' in this)"
+  }];
+
+  /**
+   * Desired connector state: "running" (default), "paused" (retains
+   * tasks, stops moving data), or "stopped" (deallocates tasks).
+   */
+  optional string state = 7 [
+    (dev.planton.shared.options.default) = "running",
+    (buf.validate.field).cel = {
+      id: "spec.state_enum"
+      message: "state must be running, paused, or stopped"
+      expression: "this == '' || this in ['running', 'paused', 'stopped']"
+    }
+  ];
+
+  /**
+   * Automatic restart of failed connectors/tasks with incremental
+   * back-off. Strongly recommended for production pipes — transient
+   * source-system outages otherwise leave the connector FAILED until
+   * a human intervenes.
+   */
+  KubernetesKafkaConnectorAutoRestart auto_restart = 8;
+
+  /**
+   * Offset inspection: write the connector's current offsets to the
+   * named ConfigMap when the resource carries the
+   * strimzi.io/connector-offsets: list annotation (an operational
+   * verb — the ConfigMap target is declared here, the action is
+   * triggered by annotation).
+   */
+  KubernetesKafkaConnectorListOffsets list_offsets = 9;
+
+  /**
+   * Offset override: apply offsets from the named ConfigMap when the
+   * resource carries the strimzi.io/connector-offsets: alter
+   * annotation while the connector is stopped — the replay /
+   * skip-poison-record / migration-cutover mechanism.
+   */
+  KubernetesKafkaConnectorAlterOffsets alter_offsets = 10;
+}
+
+/**
+ * Automatic restart policy.
+ */
+message KubernetesKafkaConnectorAutoRestart {
+  /**
+   * Enable automatic restarts of failed connectors and tasks.
+   */
+  bool enabled = 1;
+
+  /**
+   * Give up after this many consecutive restarts. Empty = the
+   * operator default (7 attempts, back-off capped at ~30 minutes).
+   */
+  optional int32 max_restarts = 2 [(buf.validate.field).int32.gte = 1];
+}
+
+/**
+ * Offset listing target.
+ */
+message KubernetesKafkaConnectorListOffsets {
+  /**
+   * ConfigMap the offsets are written TO. Accepts a literal name or
+   * a reference to a KubernetesConfigMap resource in the same
+   * namespace (created if absent when the list action runs).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef to_config_map = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesConfigMap,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.configmap_name"
+  ];
+}
+
+/**
+ * Offset override source.
+ */
+message KubernetesKafkaConnectorAlterOffsets {
+  /**
+   * ConfigMap the new offsets are read FROM. Accepts a literal name
+   * or a reference to a KubernetesConfigMap resource in the same
+   * namespace.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef from_config_map = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesConfigMap,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.configmap_name"
+  ];
+}

@@ -954,18 +954,20 @@ const (
 	CloudResourceKind_KubernetesKafka                 CloudResourceKind = 908
 	CloudResourceKind_KubernetesKafkaTopic            CloudResourceKind = 909
 	CloudResourceKind_KubernetesKafkaUser             CloudResourceKind = 910
-	// 911-915: reserved for the Kafka ecosystem family (Connect and its
-	// connectors, MirrorMaker 2, schema registry, console) so the whole
-	// family reads as one contiguous teaching block.
-	CloudResourceKind_KubernetesElasticOperator  CloudResourceKind = 916
-	CloudResourceKind_KubernetesElasticsearch    CloudResourceKind = 917
-	CloudResourceKind_KubernetesAltinityOperator CloudResourceKind = 918
-	CloudResourceKind_KubernetesClickHouse       CloudResourceKind = 919
-	CloudResourceKind_KubernetesSolrOperator     CloudResourceKind = 920
-	CloudResourceKind_KubernetesSolr             CloudResourceKind = 921
-	CloudResourceKind_KubernetesNeo4j            CloudResourceKind = 922
-	CloudResourceKind_KubernetesRookCephOperator CloudResourceKind = 923
-	CloudResourceKind_KubernetesRookCephCluster  CloudResourceKind = 924
+	CloudResourceKind_KubernetesKafkaConnect          CloudResourceKind = 911
+	CloudResourceKind_KubernetesKafkaConnector        CloudResourceKind = 912
+	CloudResourceKind_KubernetesKafkaMirrorMaker2     CloudResourceKind = 913
+	CloudResourceKind_KubernetesKarapace              CloudResourceKind = 914
+	CloudResourceKind_KubernetesKafkaUi               CloudResourceKind = 915
+	CloudResourceKind_KubernetesElasticOperator       CloudResourceKind = 916
+	CloudResourceKind_KubernetesElasticsearch         CloudResourceKind = 917
+	CloudResourceKind_KubernetesAltinityOperator      CloudResourceKind = 918
+	CloudResourceKind_KubernetesClickHouse            CloudResourceKind = 919
+	CloudResourceKind_KubernetesSolrOperator          CloudResourceKind = 920
+	CloudResourceKind_KubernetesSolr                  CloudResourceKind = 921
+	CloudResourceKind_KubernetesNeo4j                 CloudResourceKind = 922
+	CloudResourceKind_KubernetesRookCephOperator      CloudResourceKind = 923
+	CloudResourceKind_KubernetesRookCephCluster       CloudResourceKind = 924
 	// 950–969: Kubernetes GitOps and CI/CD
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 950
 	CloudResourceKind_KubernetesTektonOperator              CloudResourceKind = 951
@@ -1561,6 +1563,11 @@ var (
 		908:  "KubernetesKafka",
 		909:  "KubernetesKafkaTopic",
 		910:  "KubernetesKafkaUser",
+		911:  "KubernetesKafkaConnect",
+		912:  "KubernetesKafkaConnector",
+		913:  "KubernetesKafkaMirrorMaker2",
+		914:  "KubernetesKarapace",
+		915:  "KubernetesKafkaUi",
 		916:  "KubernetesElasticOperator",
 		917:  "KubernetesElasticsearch",
 		918:  "KubernetesAltinityOperator",
@@ -2152,6 +2159,11 @@ var (
 		"KubernetesKafka":                                908,
 		"KubernetesKafkaTopic":                           909,
 		"KubernetesKafkaUser":                            910,
+		"KubernetesKafkaConnect":                         911,
+		"KubernetesKafkaConnector":                       912,
+		"KubernetesKafkaMirrorMaker2":                    913,
+		"KubernetesKarapace":                             914,
+		"KubernetesKafkaUi":                              915,
 		"KubernetesElasticOperator":                      916,
 		"KubernetesElasticsearch":                        917,
 		"KubernetesAltinityOperator":                     918,
@@ -2628,7 +2640,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x89\xe0\x01\n" +
+	"\x02v1\x10\x01*\x8e\xe2\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3056,7 +3068,12 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x1eKubernetesStrimziKafkaOperator\x10\x8b\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sstzop\x12*\n" +
 	"\x0fKubernetesKafka\x10\x8c\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8skaf:\x02\x8b\a\x122\n" +
 	"\x14KubernetesKafkaTopic\x10\x8d\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skaftop:\x02\x8c\a\x121\n" +
-	"\x13KubernetesKafkaUser\x10\x8e\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafusr:\x02\x8c\a\x122\n" +
+	"\x13KubernetesKafkaUser\x10\x8e\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafusr:\x02\x8c\a\x124\n" +
+	"\x16KubernetesKafkaConnect\x10\x8f\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafcon:\x02\x8c\a\x126\n" +
+	"\x18KubernetesKafkaConnector\x10\x90\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafcnr:\x02\x8f\a\x129\n" +
+	"\x1bKubernetesKafkaMirrorMaker2\x10\x91\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafmm2:\x02\x8c\a\x12.\n" +
+	"\x12KubernetesKarapace\x10\x92\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8skrpc:\x02\x8c\a\x12*\n" +
+	"\x11KubernetesKafkaUi\x10\x93\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8skafui\x122\n" +
 	"\x19KubernetesElasticOperator\x10\x94\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8selaop\x121\n" +
 	"\x17KubernetesElasticsearch\x10\x95\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\x94\a\x123\n" +
 	"\x1aKubernetesAltinityOperator\x10\x96\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8saltop\x121\n" +

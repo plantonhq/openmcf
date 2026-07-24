@@ -37,6 +37,7 @@ go_library(
         "pvcdatasource.go",
         "rbac.go",
         "resource_existence.go",
+        "strimzikafka.go",
         "valkey.go",
         "velero.go",
         "verifier.go",

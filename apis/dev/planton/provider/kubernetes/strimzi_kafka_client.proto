@@ -1,0 +1,212 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes;
+
+import "buf/validate/validate.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * Shared client-connection building blocks for Strimzi-managed Kafka
+ * CLIENT workloads (Kafka Connect, MirrorMaker 2's target and source
+ * clusters). These describe how a client connects TO a Kafka cluster —
+ * a different surface from a Kafka LISTENER's server-side
+ * authentication: the client side supports the full SASL family
+ * (scram-sha-256, scram-sha-512, plain) plus mutual TLS and custom
+ * mechanisms, while listeners accept a narrower set.
+ *
+ * One shared shape keeps every consumer's connection block identical
+ * by construction — a Connect cluster, a MirrorMaker 2 target and a
+ * MirrorMaker 2 source all read the same way and drift is
+ * structurally impossible.
+ */
+
+/**
+ * TLS trust configuration for a client connection to Kafka. Presence
+ * of this message enables TLS on the connection; the certificates
+ * listed here are what the client TRUSTS when verifying the brokers.
+ */
+message StrimziKafkaClientTls {
+  /**
+   * Certificates to trust. For a Strimzi-managed cluster, reference
+   * the cluster's CA certificate Secret (the KubernetesKafka
+   * resource's `cluster_ca_cert_secret_name` output — the default
+   * wiring below); for external clusters, name any Secret in the
+   * consumer's namespace holding the PEM certificate(s).
+   */
+  repeated StrimziKafkaClientTrustedCertificate trusted_certificates = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+/**
+ * One trusted certificate entry.
+ */
+message StrimziKafkaClientTrustedCertificate {
+  /**
+   * Name of the Secret (in the consuming resource's namespace)
+   * holding the certificate. Accepts a literal Secret name or a
+   * reference to a KubernetesKafka resource, which resolves to that
+   * cluster's CA certificate Secret — the common wiring when the
+   * target is a Strimzi-managed cluster in the same namespace.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_ca_cert_secret_name"
+  ];
+
+  /**
+   * The certificate file name within the Secret. Strimzi cluster CA
+   * Secrets carry "ca.crt". Exactly one of certificate or pattern
+   * must be set.
+   */
+  string certificate = 2;
+
+  /**
+   * Glob pattern selecting certificate files within the Secret (e.g.
+   * "*.crt") — the multi-certificate alternative to naming one file.
+   * Exactly one of certificate or pattern must be set.
+   */
+  string pattern = 3;
+
+  option (buf.validate.message).cel = {
+    id: "strimzi.client.trusted_cert.certificate_xor_pattern"
+    message: "set exactly one of certificate (a single file name in the Secret, e.g. \"ca.crt\") or pattern (a glob over the Secret's files, e.g. \"*.crt\")"
+    expression: "(this.certificate != '') != (this.pattern != '')"
+  };
+}
+
+/**
+ * Client authentication for a connection to Kafka. The type must
+ * match what the target listener accepts: a scram-sha-512 listener
+ * authenticates scram-sha-512 clients, a tls (mutual TLS) listener
+ * authenticates certificate-bearing clients.
+ */
+message StrimziKafkaClientAuthentication {
+  /**
+   * Authentication type:
+   * "tls" (mutual TLS — the client presents the certificate in
+   * `certificate_and_key`; pairs with tls-auth listeners),
+   * "scram-sha-512" / "scram-sha-256" (SASL username/password from
+   * `username` + `password_secret`; Strimzi-managed clusters use
+   * scram-sha-512),
+   * "plain" (SASL PLAIN — username/password in the clear inside the
+   * TLS session; for external clusters that only offer PLAIN), or
+   * "custom" (bring-your-own SASL mechanism via `sasl` + `config`).
+   */
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "strimzi.client.auth.type_enum"
+      message: "authentication type must be one of tls, scram-sha-512, scram-sha-256, plain, custom"
+      expression: "this in ['tls', 'scram-sha-512', 'scram-sha-256', 'plain', 'custom']"
+    }
+  ];
+
+  /**
+   * tls type only: the client certificate and key the workload
+   * presents. Reference a KubernetesKafkaUser resource (tls
+   * authentication) to use its operator-generated credential Secret
+   * — the default wiring below.
+   */
+  StrimziKafkaClientCertificateAndKey certificate_and_key = 2;
+
+  /**
+   * SASL username (scram-sha-512, scram-sha-256, plain).
+   */
+  string username = 3;
+
+  /**
+   * SASL password source (scram-sha-512, scram-sha-256, plain) — a
+   * key within a Secret. Reference a KubernetesKafkaUser resource
+   * (scram-sha-512 authentication) to use its operator-generated
+   * Secret, whose password lives under the "password" key.
+   */
+  StrimziKafkaClientPasswordSecret password_secret = 4;
+
+  /**
+   * custom type only: enable SASL for the custom mechanism.
+   */
+  bool sasl = 5;
+
+  /**
+   * custom type only: the mechanism's client configuration entries
+   * (sasl.mechanism, sasl.jaas.config references, callback handlers).
+   * Values are Kafka configuration strings — write numbers and
+   * booleans as strings.
+   */
+  map<string, string> config = 6;
+
+  option (buf.validate.message).cel = {
+    id: "strimzi.client.auth.tls_requires_cert"
+    message: "tls authentication requires certificate_and_key (the client certificate the workload presents — reference a KubernetesKafkaUser with tls authentication)"
+    expression: "this.type != 'tls' || has(this.certificate_and_key)"
+  };
+  option (buf.validate.message).cel = {
+    id: "strimzi.client.auth.sasl_requires_credentials"
+    message: "scram-sha-512, scram-sha-256 and plain authentication require username and password_secret (reference a KubernetesKafkaUser with scram-sha-512 authentication for Strimzi-managed clusters)"
+    expression: "!(this.type in ['scram-sha-512', 'scram-sha-256', 'plain']) || (this.username != '' && has(this.password_secret))"
+  };
+  option (buf.validate.message).cel = {
+    id: "strimzi.client.auth.cert_only_for_tls"
+    message: "certificate_and_key is only used with tls authentication"
+    expression: "this.type == 'tls' || !has(this.certificate_and_key)"
+  };
+}
+
+/**
+ * A client certificate/key pair within a Secret.
+ */
+message StrimziKafkaClientCertificateAndKey {
+  /**
+   * Name of the Secret (in the consuming resource's namespace)
+   * holding the client certificate and key. Accepts a literal Secret
+   * name or a reference to a KubernetesKafkaUser resource, which
+   * resolves to that user's operator-generated credential Secret.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafkaUser,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name"
+  ];
+
+  /**
+   * Certificate file name within the Secret. KubernetesKafkaUser
+   * credential Secrets carry "user.crt"; cert-manager Secrets carry
+   * "tls.crt".
+   */
+  optional string certificate = 2 [(dev.planton.shared.options.default) = "user.crt"];
+
+  /**
+   * Private-key file name within the Secret. KubernetesKafkaUser
+   * credential Secrets carry "user.key"; cert-manager Secrets carry
+   * "tls.key".
+   */
+  optional string key = 3 [(dev.planton.shared.options.default) = "user.key"];
+}
+
+/**
+ * A SASL password source — one key within a Secret.
+ */
+message StrimziKafkaClientPasswordSecret {
+  /**
+   * Name of the Secret (in the consuming resource's namespace)
+   * holding the password. Accepts a literal Secret name or a
+   * reference to a KubernetesKafkaUser resource, which resolves to
+   * that user's operator-generated credential Secret.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafkaUser,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name"
+  ];
+
+  /**
+   * The key within the Secret whose value is the password.
+   * KubernetesKafkaUser credential Secrets carry it under
+   * "password".
+   */
+  optional string password = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "The KEY NAME within an existing Secret (a reference), not secret material"
+  ];
+}

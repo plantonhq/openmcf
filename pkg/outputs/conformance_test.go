@@ -186,6 +186,80 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"namespace", "username", "secret_name"},
 		},
 		{
+			// KubernetesKafkaConnect: the cluster-binding name (what
+			// KubernetesKafkaConnector resources bind to) and the Connect
+			// REST API handles.
+			name: "KubernetesKafkaConnect",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaConnect,
+			rawOutputs: map[string]interface{}{
+				"namespace":             "team-alpha",
+				"connect_name":          "orders-pipes",
+				"rest_api_service_name": "orders-pipes-connect-api",
+				"rest_api_endpoint":     "http://orders-pipes-connect-api.team-alpha.svc.cluster.local:8083",
+			},
+			mustPopulate: []string{
+				"namespace", "connect_name", "rest_api_service_name",
+				"rest_api_endpoint",
+			},
+		},
+		{
+			// KubernetesKafkaConnector: the connector's name inside its
+			// Connect cluster.
+			name: "KubernetesKafkaConnector",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaConnector,
+			rawOutputs: map[string]interface{}{
+				"namespace":      "team-alpha",
+				"connector_name": "orders-cdc",
+			},
+			mustPopulate: []string{"namespace", "connector_name"},
+		},
+		{
+			// KubernetesKafkaMirrorMaker2: the deployment identity and the
+			// engine's read-only REST endpoint.
+			name: "KubernetesKafkaMirrorMaker2",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaMirrorMaker2,
+			rawOutputs: map[string]interface{}{
+				"namespace":         "team-alpha",
+				"mirrormaker_name":  "msk-migration",
+				"rest_api_endpoint": "http://msk-migration-mirrormaker2-api.team-alpha.svc.cluster.local:8083",
+			},
+			mustPopulate: []string{"namespace", "mirrormaker_name", "rest_api_endpoint"},
+		},
+		{
+			// KubernetesKarapace: the registry endpoint (the
+			// schema.registry.url composition handle), the optional
+			// REST-proxy endpoint, and the schemas topic.
+			name: "KubernetesKarapace",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKarapace,
+			rawOutputs: map[string]interface{}{
+				"namespace":           "team-alpha",
+				"service_name":        "schemas",
+				"endpoint":            "http://schemas.team-alpha.svc.cluster.local:8081",
+				"rest_proxy_endpoint": "http://schemas-rest.team-alpha.svc.cluster.local:8082",
+				"schemas_topic":       "_schemas",
+			},
+			mustPopulate: []string{
+				"namespace", "service_name", "endpoint",
+				"rest_proxy_endpoint", "schemas_topic",
+			},
+		},
+		{
+			// KubernetesKafkaUi: the console Service handles exposure kinds
+			// attach to, plus the workstation port-forward convenience.
+			name: "KubernetesKafkaUi",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaUi,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"service_name":         "console",
+				"endpoint":             "http://console.team-alpha.svc.cluster.local:80",
+				"port_forward_command": "kubectl port-forward -n team-alpha svc/console 8080:80",
+			},
+			mustPopulate: []string{
+				"namespace", "service_name", "endpoint",
+				"port_forward_command",
+			},
+		},
+		{
 			// KubernetesPostgres: the CloudNativePG naming contract — the
 			// three traffic services, the rw endpoint, and the credential
 			// Secret handles (nested objects that flatten to

@@ -1,0 +1,47 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarapace
+metadata:
+  name: schema-registry
+spec:
+  namespace:
+    value: kafka
+  # Two replicas: leader election through the registry's consumer
+  # group, followers forward writes — an AVAILABILITY measure, not
+  # write scaling. The production norm.
+  replicas: 2
+  kafka:
+    bootstrap_servers:
+      value: events-kafka-bootstrap.kafka.svc.cluster.local:9094
+    # SASL over TLS. The protocol must be EXPLICIT — the sasl block
+    # with the default (PLAINTEXT) protocol would silently ignore the
+    # credentials (spec-enforced).
+    security_protocol: SASL_SSL
+    tls:
+      # The Strimzi cluster CA (a KubernetesKafka reference in an
+      # infra chart — <cluster>-cluster-ca-cert, key ca.crt).
+      ca_secret_name:
+        value: events-cluster-ca-cert
+    sasl:
+      mechanism: SCRAM-SHA-512
+      username: karapace
+      # A KubernetesKafkaUser's operator-generated Secret (key
+      # "password") — the credential rides the Secret, never the
+      # manifest.
+      password_secret:
+        secret_name:
+          value: karapace
+  registry:
+    # AT-CREATION replication for the schemas topic. The upstream
+    # default of 1 is a data-loss risk — the topic is the registry's
+    # entire state. Changing it later is a Kafka topic reassignment,
+    # not a field edit.
+    replication_factor: 3
+    compatibility: BACKWARD
+  resources:
+    # Karapace is deliberately lightweight — modest requests go far.
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi

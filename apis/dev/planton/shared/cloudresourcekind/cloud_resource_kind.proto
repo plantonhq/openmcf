@@ -3110,9 +3110,35 @@ enum CloudResourceKind {
     id_prefix: "k8skafusr"
     prerequisites: [KubernetesKafka]
   }];
-  // 911-915: reserved for the Kafka ecosystem family (Connect and its
-  // connectors, MirrorMaker 2, schema registry, console) so the whole
-  // family reads as one contiguous teaching block.
+  KubernetesKafkaConnect = 911 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skafcon"
+    prerequisites: [KubernetesKafka]
+  }];
+  KubernetesKafkaConnector = 912 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skafcnr"
+    prerequisites: [KubernetesKafkaConnect]
+  }];
+  KubernetesKafkaMirrorMaker2 = 913 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skafmm2"
+    prerequisites: [KubernetesKafka]
+  }];
+  KubernetesKarapace = 914 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skrpc"
+    prerequisites: [KubernetesKafka]
+  }];
+  KubernetesKafkaUi = 915 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skafui"
+  }];
   KubernetesElasticOperator = 916 [(kind_meta) = {
     provider: kubernetes
     version: v1

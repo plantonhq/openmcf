@@ -500,6 +500,75 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			AclGroup:    aclGroup,
 		}, nil
 
+	// A Strimzi-operator-managed Kafka Connect cluster: the KafkaConnect
+	// resource Ready + the Connect REST API Service.
+	case "kuberneteskafkaconnect":
+		return &KafkaConnectVerifier{
+			Namespace:   info.Namespace,
+			ConnectName: info.Name,
+		}, nil
+
+	// A declared connector on a Connect cluster: the KafkaConnector
+	// resource Ready. The behavioral-dataflow scenario (recognized by
+	// name) additionally consumes the connector's output topic on the
+	// Kafka fixture cluster and asserts real source content arrived —
+	// the pipe proven end-to-end.
+	case "kuberneteskafkaconnector":
+		return &KafkaConnectorVerifier{
+			Namespace:        info.Namespace,
+			ConnectorName:    info.Name,
+			DataFlow:         strings.Contains(manifestPath, "behavioral-dataflow"),
+			KafkaClusterName: kafkaEcosystemFixtureCluster,
+			SourceTopic:      connectorDataFlowSourceTopic,
+			MirroredTopic:    connectorDataFlowMirroredTopic,
+		}, nil
+
+	// A MirrorMaker 2 deployment: the KafkaMirrorMaker2 resource Ready.
+	// The behavioral-migration scenario (recognized by name) produces on
+	// the SOURCE fixture cluster and consumes from the TARGET fixture
+	// cluster — records crossing clusters is the migration proof.
+	case "kuberneteskafkamirrormaker2":
+		spec := manifestSpecMap(manifestPath)
+		return &KafkaMirrorMaker2Verifier{
+			Namespace:       info.Namespace,
+			MirrorMakerName: info.Name,
+			Migration:       strings.Contains(manifestPath, "behavioral-migration"),
+			SourceCluster:   kafkaEcosystemSourceCluster,
+			TargetCluster:   kafkaEcosystemFixtureCluster,
+			SourceAlias:     mirrorMaker2FirstSourceAlias(spec),
+		}, nil
+
+	// A Karapace schema registry: registry Deployment Available + Service
+	// + a LIVE register/fetch round-trip through the Confluent-compatible
+	// API on every lane (a registry that cannot persist schemas is not a
+	// registry).
+	case "kuberneteskarapace":
+		spec := manifestSpecMap(manifestPath)
+		return &KarapaceVerifier{
+			Namespace:    info.Namespace,
+			RegistryName: info.Name,
+			Port:         int(manifestSpecInt(manifestPath, "port", 8081)),
+			RestProxy:    karapaceRestProxyEnabled(spec),
+		}, nil
+
+	// A kafbat UI console: Deployment Available + Service + the console's
+	// own API answering. The behavioral-observe scenario additionally
+	// asserts the declared cluster is reported ONLINE; with-auth
+	// scenarios assert anonymous access is refused.
+	case "kuberneteskafkaui":
+		spec := manifestSpecMap(manifestPath)
+		clusterOnline := ""
+		if strings.Contains(manifestPath, "behavioral-observe") {
+			clusterOnline = kafkaUiFirstClusterName(spec)
+		}
+		return &KafkaUiVerifier{
+			Namespace:     info.Namespace,
+			ServiceName:   info.Name,
+			Port:          int(manifestSpecInt(manifestPath, "servicePort", 80)),
+			ClusterOnline: clusterOnline,
+			Authenticated: strings.Contains(manifestPath, "with-auth"),
+		}, nil
+
 	// A Percona-operator-managed MySQL (XtraDB) cluster: the resource in
 	// state ready + the proxy's write Service. The behavioral-durability
 	// scenario proves Galera's synchronous replication through a live

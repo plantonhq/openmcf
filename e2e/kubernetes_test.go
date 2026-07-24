@@ -482,6 +482,21 @@ func TestKubernetesKafkaTopic_Pulumi(t *testing.T) {
 func TestKubernetesKafkaUser_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskafkauser", "pulumi")
 }
+func TestKubernetesKafkaConnect_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkaconnect", "pulumi")
+}
+func TestKubernetesKafkaConnector_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkaconnector", "pulumi")
+}
+func TestKubernetesKafkaMirrorMaker2_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkamirrormaker2", "pulumi")
+}
+func TestKubernetesKarapace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarapace", "pulumi")
+}
+func TestKubernetesKafkaUi_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkaui", "pulumi")
+}
 func TestKubernetesElasticsearch_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteselasticsearch", "pulumi")
 }
@@ -508,6 +523,21 @@ func TestKubernetesKafkaTopic_Terraform(t *testing.T) {
 }
 func TestKubernetesKafkaUser_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskafkauser", "terraform")
+}
+func TestKubernetesKafkaConnect_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkaconnect", "terraform")
+}
+func TestKubernetesKafkaConnector_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkaconnector", "terraform")
+}
+func TestKubernetesKafkaMirrorMaker2_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkamirrormaker2", "terraform")
+}
+func TestKubernetesKarapace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskarapace", "terraform")
+}
+func TestKubernetesKafkaUi_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskafkaui", "terraform")
 }
 func TestKubernetesElasticsearch_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteselasticsearch", "terraform")

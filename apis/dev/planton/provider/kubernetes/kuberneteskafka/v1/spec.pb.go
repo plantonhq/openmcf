@@ -339,7 +339,10 @@ type KubernetesKafkaNodePool struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
 	// Pool name (e.g. "controller", "broker", "dual-role"). Becomes
-	// part of pod and PVC names.
+	// part of pod and PVC names — and the pool resource's OWN name, so
+	// two Kafka clusters sharing a namespace must use DISTINCT pool
+	// names (a same-named pool collides with the other cluster's,
+	// verified live; prefer one namespace per cluster).
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// *
 	// KRaft roles this pool's nodes carry: "controller" (metadata

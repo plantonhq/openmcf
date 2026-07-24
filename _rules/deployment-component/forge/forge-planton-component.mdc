@@ -706,6 +706,20 @@ scenario omits permissions so it needs no pre-existing resource server). Add a
 richer scenario (seeding the dependency) when you need live coverage of dependent
 fields.
 
+**An upstream doc's example class is not evidence it ships in the
+image.** Docs and in-repo examples routinely reference plugins/classes
+that the SHIPPED image no longer carries (distributions trim default
+classpaths; examples go stale against their own images). Before
+designing a proof, preset, or documented example on "class X runs on
+the stock image", verify against the RUNNING image itself — the
+service's own plugin/capability listing (e.g. a Connect worker's
+connector-plugins endpoint) or the image's directory contents. Every
+offline gate passes on the stale claim; only a live lane exposes it,
+as a resource that sits NotReady with "class not found". When the live
+check contradicts the upstream example, the live truth is what goes on
+the reader surfaces (spec comments, presets, docs), marked as verified
+live.
+
 **Model the upstream's built-in sandbox arm when one exists.** Cloud-talking
 addons (DNS publishers, secret-store operators, ...) cannot prove their
 provider hop on a kind cluster — but many upstreams ship a first-class

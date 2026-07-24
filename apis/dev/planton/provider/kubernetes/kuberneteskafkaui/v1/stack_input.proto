@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskafkaui.v1;
+
+import "dev/planton/provider/kubernetes/kuberneteskafkaui/v1/api.proto";
+import "dev/planton/provider/kubernetes/provider.proto";
+
+//kubernetes-kafka-ui stack-input
+message KubernetesKafkaUiStackInput {
+  //target cloud-resource
+  KubernetesKafkaUi target = 1;
+  //provider-config
+  dev.planton.provider.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

@@ -1,0 +1,52 @@
+# The auth-gate + full-surface scenario: login_form users declared (the
+# verifier asserts anonymous API access is REFUSED — the auth proof),
+# two cluster entries (the second exercises schema-registry and Connect
+# wiring shapes against literal endpoints — rendering-grade; the live
+# observe proof rides the behavioral-observe scenario), sizing, NodePort
+# service, and a helm_values override.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafkaUi
+metadata:
+  name: e2e-kafkaui-auth
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesKafka"
+spec:
+  namespace:
+    value: e2e-kui-auth
+  create_namespace: true
+  clusters:
+    - name: fixture
+      bootstrap_servers:
+        valueFrom:
+          name: e2e-kaf-fix
+    - name: wired-shapes
+      bootstrap_servers:
+        value: external-kafka.example.internal:9092
+      read_only: true
+      schema_registry:
+        url:
+          value: http://karapace.example.internal:8081
+      kafka_connect:
+        - name: pipes
+          address:
+            value: http://connect.example.internal:8083
+      properties:
+        request.timeout.ms: "30000"
+  auth:
+    type: login_form
+    user:
+      username: e2e-admin
+      password: e2e-password-1
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      cpu: 500m
+      memory: 768Mi
+  service_type: NodePort
+  service_port: 8080
+  helm_values: |
+    podLabels:
+      e2e-override: applied

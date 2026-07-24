@@ -1,0 +1,48 @@
+# The SOURCE Kafka cluster for the MirrorMaker 2 lanes — the cluster
+# being "migrated away from". Deployed as a manifest-path EXTRA INSTANCE
+# of KubernetesKafka (the registry chain already provides the TARGET
+# fixture). It shares the target fixture's namespace so one broker-pod
+# lookup serves both proofs; create_namespace is false because the
+# target fixture (deployed earlier in the chain) owns the namespace.
+# The name is PAIRED with the verifier's kafkaEcosystemSourceCluster
+# constant — change them together.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafka
+metadata:
+  name: e2e-kaf-src
+spec:
+  namespace:
+    value: e2e-kaf-fix
+  create_namespace: false
+  node_pools:
+    # "src", not "dual": pool CRs are named by the POOL name, so two
+    # clusters sharing a namespace need distinct pool names (the
+    # target fixture already owns KafkaNodePool/dual here).
+    - name: src
+      roles:
+        - controller
+        - broker
+      replicas: 1
+      storage:
+        size: 2Gi
+        delete_claim: true
+      resources:
+        requests:
+          cpu: 250m
+          memory: 1Gi
+        limits:
+          cpu: "1"
+          memory: 1536Mi
+  listeners:
+    - name: plain
+      port: 9092
+      tls: false
+  config:
+    default.replication.factor: "1"
+    min.insync.replicas: "1"
+    offsets.topic.replication.factor: "1"
+    transaction.state.log.replication.factor: "1"
+    transaction.state.log.min.isr: "1"
+  jvm:
+    xms: 512m
+    xmx: 512m
