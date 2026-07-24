@@ -1,0 +1,43 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesOpenSearch
+metadata:
+  name: dev-opensearch
+spec:
+  namespace:
+    value: dev-opensearch
+  create_namespace: true
+  version: 2.19.4
+  node_pools:
+    # One node carrying every role — the dev shape. Production splits
+    # cluster_manager from data (see the production preset). Roles are
+    # the UNDERSCORE forms; a dashed "cluster-manager" fails only at
+    # node startup, never at apply.
+    - name: all
+      replicas: 1
+      roles:
+        - cluster_manager
+        - data
+        - ingest
+      # Heap at roughly half the container memory — the OpenSearch
+      # sizing rule; the rest is OS page cache the engine relies on.
+      jvm: -Xmx1G -Xms1G
+      disk_size: 10Gi
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          cpu: "1"
+          memory: 2Gi
+  # Generated TLS on both layers: the operator issues a CA and real
+  # certificates for node-to-node and client traffic. KNOW THIS: the
+  # operator does NOT generate a random admin password — the
+  # <name>-admin-password Secret holds the image's well-known DEMO
+  # admin credentials. Acceptable only inside a private dev cluster;
+  # anything real brings a custom security.config or rotates the
+  # password through the security API immediately after install.
+  security:
+    transport_tls:
+      generate: true
+    http_tls:
+      generate: true

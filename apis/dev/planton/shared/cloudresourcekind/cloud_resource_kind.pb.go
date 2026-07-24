@@ -959,8 +959,8 @@ const (
 	CloudResourceKind_KubernetesKafkaMirrorMaker2     CloudResourceKind = 913
 	CloudResourceKind_KubernetesKarapace              CloudResourceKind = 914
 	CloudResourceKind_KubernetesKafkaUi               CloudResourceKind = 915
-	CloudResourceKind_KubernetesElasticOperator       CloudResourceKind = 916
-	CloudResourceKind_KubernetesElasticsearch         CloudResourceKind = 917
+	CloudResourceKind_KubernetesOpenSearchOperator    CloudResourceKind = 916
+	CloudResourceKind_KubernetesOpenSearch            CloudResourceKind = 917
 	CloudResourceKind_KubernetesAltinityOperator      CloudResourceKind = 918
 	CloudResourceKind_KubernetesClickHouse            CloudResourceKind = 919
 	CloudResourceKind_KubernetesSolrOperator          CloudResourceKind = 920
@@ -1568,8 +1568,8 @@ var (
 		913:  "KubernetesKafkaMirrorMaker2",
 		914:  "KubernetesKarapace",
 		915:  "KubernetesKafkaUi",
-		916:  "KubernetesElasticOperator",
-		917:  "KubernetesElasticsearch",
+		916:  "KubernetesOpenSearchOperator",
+		917:  "KubernetesOpenSearch",
 		918:  "KubernetesAltinityOperator",
 		919:  "KubernetesClickHouse",
 		920:  "KubernetesSolrOperator",
@@ -2164,8 +2164,8 @@ var (
 		"KubernetesKafkaMirrorMaker2":                    913,
 		"KubernetesKarapace":                             914,
 		"KubernetesKafkaUi":                              915,
-		"KubernetesElasticOperator":                      916,
-		"KubernetesElasticsearch":                        917,
+		"KubernetesOpenSearchOperator":                   916,
+		"KubernetesOpenSearch":                           917,
 		"KubernetesAltinityOperator":                     918,
 		"KubernetesClickHouse":                           919,
 		"KubernetesSolrOperator":                         920,
@@ -2640,7 +2640,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x8e\xe2\x01\n" +
+	"\x02v1\x10\x01*\x8d\xe2\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3073,9 +3073,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x18KubernetesKafkaConnector\x10\x90\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafcnr:\x02\x8f\a\x129\n" +
 	"\x1bKubernetesKafkaMirrorMaker2\x10\x91\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafmm2:\x02\x8c\a\x12.\n" +
 	"\x12KubernetesKarapace\x10\x92\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8skrpc:\x02\x8c\a\x12*\n" +
-	"\x11KubernetesKafkaUi\x10\x93\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8skafui\x122\n" +
-	"\x19KubernetesElasticOperator\x10\x94\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8selaop\x121\n" +
-	"\x17KubernetesElasticsearch\x10\x95\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\x94\a\x123\n" +
+	"\x11KubernetesKafkaUi\x10\x93\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8skafui\x124\n" +
+	"\x1cKubernetesOpenSearchOperator\x10\x94\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sosop\x12.\n" +
+	"\x14KubernetesOpenSearch\x10\x95\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8sos:\x02\x94\a\x123\n" +
 	"\x1aKubernetesAltinityOperator\x10\x96\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8saltop\x121\n" +
 	"\x14KubernetesClickHouse\x10\x97\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sclkhs:\x02\x96\a\x12/\n" +
 	"\x16KubernetesSolrOperator\x10\x98\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sslrop\x12*\n" +

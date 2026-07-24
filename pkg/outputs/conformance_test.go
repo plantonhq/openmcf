@@ -163,6 +163,89 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesOpenSearchOperator: the install handles (release +
+			// controller Deployment).
+			name: "KubernetesOpenSearchOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesOpenSearchOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":       "opensearch-operator-system",
+				"release_name":    "os-op",
+				"deployment_name": "os-op-controller-manager",
+			},
+			mustPopulate: []string{"namespace", "release_name", "deployment_name"},
+		},
+		{
+			// KubernetesOpenSearch: the operator naming contract — the
+			// cluster Service (= the resource name), the https API
+			// endpoint (TLS in every posture), the bootstrapped admin
+			// Secret, and the Dashboards handles when enabled.
+			name: "KubernetesOpenSearch",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesOpenSearch,
+			rawOutputs: map[string]interface{}{
+				"namespace":                     "search",
+				"cluster_name":                  "product-search",
+				"service_name":                  "product-search",
+				"http_endpoint":                 "https://product-search.search.svc.cluster.local:9200",
+				"admin_credentials_secret_name": "product-search-admin-password",
+				"dashboards_service_name":       "product-search-dashboards",
+				"dashboards_endpoint":           "http://product-search-dashboards.search.svc.cluster.local:5601",
+				"port_forward_command":          "kubectl port-forward svc/product-search -n search 9200:9200",
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "service_name", "http_endpoint",
+			},
+		},
+		{
+			// KubernetesSolrOperator: the install handles.
+			name: "KubernetesSolrOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSolrOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":       "solr-operator-system",
+				"release_name":    "solr-op",
+				"deployment_name": "solr-op-solr-operator",
+			},
+			mustPopulate: []string{"namespace", "release_name", "deployment_name"},
+		},
+		{
+			// KubernetesSolr: the operator naming contract — the common
+			// Service, the in-cluster endpoint, the bootstrapped basic-auth
+			// Secret, and the ZooKeeper connection string.
+			name: "KubernetesSolr",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSolr,
+			rawOutputs: map[string]interface{}{
+				"namespace":                   "search",
+				"cluster_name":                "product-solr",
+				"common_service_name":         "product-solr-solrcloud-common",
+				"internal_endpoint":           "http://product-solr-solrcloud-common.search.svc.cluster.local",
+				"basic_auth_secret_name":      "product-solr-solrcloud-basic-auth",
+				"zookeeper_connection_string": "product-solr-solrcloud-zookeeper-client:2181/",
+				"port_forward_command":        "kubectl port-forward svc/product-solr-solrcloud-common -n search 8983:80",
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "common_service_name",
+				"internal_endpoint", "zookeeper_connection_string",
+			},
+		},
+		{
+			// KubernetesNeo4j: the server handles — the main Service (= the
+			// resource name), bolt/http endpoints, and the auth Secret.
+			name: "KubernetesNeo4j",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesNeo4j,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "graph",
+				"release_name":         "knowledge-graph",
+				"service_name":         "knowledge-graph",
+				"bolt_endpoint":        "neo4j://knowledge-graph.graph.svc.cluster.local:7687",
+				"http_endpoint":        "http://knowledge-graph.graph.svc.cluster.local:7474",
+				"auth_secret_name":     "knowledge-graph-auth",
+				"port_forward_command": "kubectl port-forward svc/knowledge-graph -n graph 7687:7687",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_name", "bolt_endpoint",
+				"http_endpoint",
+			},
+		},
+		{
 			// KubernetesKafkaTopic: the topic handle (the KAFKA name, which
 			// may differ from the resource name via spec.topic_name).
 			name: "KubernetesKafkaTopic",

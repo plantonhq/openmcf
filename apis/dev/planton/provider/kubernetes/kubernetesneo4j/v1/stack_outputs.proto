@@ -2,20 +2,31 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesneo4j.v1;
 
-// Neo4jKubernetes Stack Outputs
+//kubernetes-neo4j stack outputs
 message KubernetesNeo4jStackOutputs {
-  // The Kubernetes namespace where the Neo4j instance is deployed.
+  //namespace the server runs in.
   string namespace = 1;
 
-  // The in-cluster Service name for connecting via Bolt/HTTP.
-  // Example: "my-graph-db.default.svc.cluster.local"
-  string service = 2;
+  //Helm release name (= metadata.name).
+  string release_name = 2;
 
-  // Bolt URI (internal). For example: "bolt://my-graph-db:7687".
-  // If connecting externally, you might port-forward or set up an Ingress outside this spec.
-  string bolt_uri_kube_endpoint = 3;
+  //name of the main Neo4j Service (bolt/http/https ports).
+  string service_name = 3;
 
-  // HTTP URL for the Neo4j browser if enabled. Ex: "http://my-graph-db:7474".
-  // Also typically internal unless you manually expose it.
-  string http_uri_kube_endpoint = 4;
+  //in-cluster bolt endpoint drivers connect to,
+  //e.g. neo4j://main.graph.svc.cluster.local:7687
+  string bolt_endpoint = 4;
+
+  //in-cluster HTTP API endpoint,
+  //e.g. http://main.graph.svc.cluster.local:7474
+  string http_endpoint = 5;
+
+  //name of the Secret holding the admin credentials (the
+  //module-materialized `<name>-auth`, or the referenced existing
+  //secret). Empty when the chart generated a random password.
+  string auth_secret_name = 6;
+
+  //command to port-forward bolt to a developer laptop, e.g.
+  //kubectl port-forward svc/main -n graph 7687:7687
+  string port_forward_command = 7;
 }

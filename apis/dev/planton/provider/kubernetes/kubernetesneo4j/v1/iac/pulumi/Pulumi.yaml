@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-prod
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-neo4j
+runtime: go
+description: Neo4j graph database installation from the official Helm chart with a module-materialized NEO4J_AUTH credentials Secret, typed memory/config tuning, and a deliberate ClusterIP service default

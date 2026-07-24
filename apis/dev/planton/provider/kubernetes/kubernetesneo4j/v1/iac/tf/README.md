@@ -1,304 +1,123 @@
-# Terraform Module: KubernetesNeo4j
+# KubernetesNeo4j Terraform Module
 
-This Terraform module deploys **Neo4j Community Edition** on Kubernetes using the official Neo4j Helm chart. It provides a simple, production-ready graph database deployment with persistent storage, optional external access, and configurable memory settings.
+Terraform/OpenTofu module for the KubernetesNeo4j component: installs
+Neo4j — the graph database behind knowledge graphs, GraphRAG and
+agent-memory architectures — from the official Neo4j Helm chart (`neo4j`
+at https://helm.neo4j.com/neo4j).
 
-## Overview
+## Module Behavior
 
-Neo4j is a leading graph database that excels at storing and querying highly connected data. This module deploys Neo4j Community Edition (single-node) on Kubernetes with the following features:
+- **One Helm release named after `metadata.name`** — several Neo4j servers
+  coexist in one cluster, and Enterprise cluster members are each their own
+  release. The chart names its always-created ClusterIP Service after the
+  release (`neo4j.fullname` = the release name when no name overrides are
+  set), so the exported `service_name` is deterministic.
+- **`neo4j.name` always renders** — the chart REQUIRES it (its `neo4j.name`
+  helper fails the install when empty; nothing defaults it to the release
+  name): `cluster_name` when set (Enterprise members sharing it form one
+  cluster), else `metadata.name`.
+- **The typed spec renders into chart values** (`locals.helm_values`), and
+  the spec's `helm_values` escape hatch is passed as a SECOND values
+  document that the provider merges over the first with Helm `-f`
+  semantics — the exact semantic twin of the Pulumi module.
 
-- **Persistent Storage**: Automatic persistent volume provisioning for database files
-- **Resource Management**: Configurable CPU and memory limits
-- **External Access**: Optional LoadBalancer with external-DNS integration
-- **Memory Tuning**: Configurable heap and page cache sizes
-- **Secure by Default**: Auto-generated admin password stored in Kubernetes secret
+### The auth Secret contract (created BEFORE the release)
 
-## Prerequisites
+The chart's credential interface is `neo4j.passwordFromSecret`: a Secret
+carrying key `NEO4J_AUTH` with value `neo4j/<password>`, which the chart
+LOOKS UP AT TEMPLATE TIME — the install fails if the Secret is missing or
+lacks the key. The module therefore wires an explicit dependency so the
+Secret always exists first:
 
-- Kubernetes cluster (1.19+)
-- Helm provider configured
-- kubectl access to the cluster
-- (Optional) external-dns for automatic DNS configuration
+- `auth.password` arm → the module materializes
+  `kubernetes_secret_v1.auth` named `<metadata.name>-auth` (key
+  `NEO4J_AUTH` = `neo4j/<password>`, value wrapped in `sensitive()`)
+  before `helm_release.neo4j`, and renders `passwordFromSecret` = that
+  name. The password itself NEVER appears in rendered chart values.
+- `auth.existing_secret` arm → `passwordFromSecret` = the given name; no
+  Secret is created (it must already exist and carry the contract).
+- auth absent → neither renders; the chart generates a random password and
+  logs it once at first startup.
 
-## Usage
+### The ClusterIP override (deliberate)
 
-### Basic Deployment
+The chart ships `services.neo4j.spec.type: LoadBalancer`, which would
+provision a cloud load balancer (or hang Pending) on every install. This
+module pins it to **ClusterIP** unless `spec.service.type` says otherwise —
+exposure composes from first-class kinds (KubernetesIngress, Gateway API
+kinds) over the exported service handle instead. Note the chart names this
+extra service `<neo4j.name>-lb-neo4j`; the always-created default ClusterIP
+Service (= the release name) is the composition handle.
 
-```hcl
-module "neo4j_basic" {
-  source = "./path/to/kubernetesneo4j/v1/iac/tf"
+### The SSL key-name bridge (cert-manager Secrets)
 
-  metadata = {
-    name = "my-graph-db"
-  }
+The chart mounts `private.key` and `public.crt` from each `ssl.<scope>`
+Secret (its `subPath` defaults). cert-manager Certificates store their
+material as `tls.key`/`tls.crt` — the module does NOT silently rewrite key
+names, so a cert-manager Secret needs a key bridge before use: either copy
+the Secret with renamed keys, or set the chart's
+`ssl.<scope>.privateKey.subPath: tls.key` and
+`ssl.<scope>.publicCertificate.subPath: tls.crt` via `helm_values`.
 
-  spec = {
-    container = {
-      resources = {
-        limits = {
-          cpu    = "1000m"
-          memory = "1Gi"
-        }
-        requests = {
-          cpu    = "50m"
-          memory = "100Mi"
-        }
-      }
-      persistence_enabled = true
-      disk_size          = "10Gi"
-    }
+## Values Mapping
 
-    ingress = {
-      enabled  = false
-      hostname = ""
-    }
-  }
-}
-```
+| Spec field | Chart value |
+|---|---|
+| `cluster_name` (else `metadata.name`) | `neo4j.name` |
+| `edition` | `neo4j.edition` |
+| `accept_license_agreement` | `neo4j.acceptLicenseAgreement: "yes"` (the chart's string shape; rendered only when true) |
+| `auth.*` | `neo4j.passwordFromSecret` (see the contract above) |
+| `resources.requests` | `neo4j.resources.{cpu,memory}` (the chart's flat shape, applied to requests) |
+| `resources.limits` | `neo4j.resources.limits.{cpu,memory}` (the chart's full-format limits) |
+| `data_volume.storage_class` set | `volumes.data.mode: dynamic` + `volumes.data.dynamic.{storageClassName, accessModes [ReadWriteOnce], requests.storage}` |
+| `data_volume.storage_class` empty | `volumes.data.mode: defaultStorageClass` + `volumes.data.defaultStorageClass.{accessModes, requests.storage}` |
+| `memory.heap_initial/heap_max/page_cache` | `config."server.memory.heap.initial_size"/"server.memory.heap.max_size"/"server.memory.pagecache.size"` — merged over `spec.config`, TYPED KEYS WIN on collision |
+| `config` | `config` (free-form neo4j.conf entries) |
+| `apoc_config` | `apoc_config` |
+| `additional_jvm_arguments` | `jvm.additionalJvmArguments` |
+| `use_default_jvm_arguments` | `jvm.useNeo4jDefaultJvmArguments` (rendered only when explicitly declared) |
+| `service.type` (default ClusterIP) | `services.neo4j.spec.type` |
+| `service.annotations` | `services.neo4j.annotations` |
+| `ssl.bolt/https.secret` | `ssl.<scope>.privateKey.secretName` AND `ssl.<scope>.publicCertificate.secretName` (one Secret, both roles) |
+| `scheduling.node_selector` | `nodeSelector` (top-level chart key) |
+| `scheduling.tolerations` | `podSpec.tolerations` |
+| `scheduling.pod_anti_affinity` | `podSpec.podAntiAffinity` (rendered only when explicitly declared) |
+| `scheduling.priority_class_name` | `podSpec.priorityClassName` |
+| `service_monitor_enabled` | `serviceMonitor.enabled` |
+| `image.registry/repository/tag` | `image.{registry,repository,tag}` — repository resolves to `neo4j` when empty (the chart fails on separated fields without a repository) |
+| `helm_values` | merged LAST over everything above |
 
-### Production Deployment with External Access
+The chart REJECTS resources below its floor (500m CPU / 2Gi memory); the
+module never defaults below it — when `spec.resources` is empty nothing
+renders and the chart's own defaults (1000m/2Gi) apply. The install waits
+for the workload to become Ready (`wait`/`atomic`/`cleanup_on_fail`, 600s
+budget — Neo4j recovers/upgrades store files on startup).
 
-```hcl
-module "neo4j_production" {
-  source = "./path/to/kubernetesneo4j/v1/iac/tf"
+## Resources
 
-  metadata = {
-    name = "production-neo4j"
-    org  = "my-organization"
-    env  = "production"
-  }
-
-  spec = {
-    container = {
-      resources = {
-        limits = {
-          cpu    = "4000m"
-          memory = "8Gi"
-        }
-        requests = {
-          cpu    = "2000m"
-          memory = "4Gi"
-        }
-      }
-      persistence_enabled = true
-      disk_size          = "100Gi"
-    }
-
-    memory_config = {
-      heap_max   = "4Gi"
-      page_cache = "2Gi"
-    }
-
-    ingress = {
-      enabled  = true
-      hostname = "neo4j.example.com"
-    }
-  }
-}
-```
-
-## Variables
-
-### metadata (required)
-
-Resource metadata for identification and labeling.
-
-| Field   | Type   | Required | Description                                    |
-|---------|--------|----------|------------------------------------------------|
-| name    | string | yes      | Name of the Neo4j instance                     |
-| id      | string | no       | Custom resource ID (defaults to name)          |
-| org     | string | no       | Organization label                             |
-| env     | string | no       | Environment label (e.g., "production", "dev")  |
-| labels  | map    | no       | Additional labels to apply                     |
-| tags    | list   | no       | Tags for categorization                        |
-| version | object | no       | Version information                            |
-
-### spec (required)
-
-Neo4j deployment specifications.
-
-#### spec.container (required)
-
-Container resource configuration.
-
-| Field               | Type   | Required | Description                                    |
-|---------------------|--------|----------|------------------------------------------------|
-| resources.limits    | object | yes      | Maximum CPU and memory                         |
-| resources.requests  | object | yes      | Requested CPU and memory                       |
-| persistence_enabled | bool   | no       | Enable persistent storage (default: false)     |
-| disk_size           | string | no       | Size of persistent volume (e.g., "10Gi")       |
-
-#### spec.memory_config (optional)
-
-Neo4j memory tuning parameters.
-
-| Field      | Type   | Required | Description                                      |
-|------------|--------|----------|--------------------------------------------------|
-| heap_max   | string | no       | Maximum Java heap size (e.g., "1Gi", "512m")     |
-| page_cache | string | no       | Page cache size for on-disk data (e.g., "512m") |
-
-#### spec.ingress (required)
-
-External access configuration.
-
-| Field    | Type   | Required | Description                                           |
-|----------|--------|----------|-------------------------------------------------------|
-| enabled  | bool   | yes      | Enable external LoadBalancer service                  |
-| hostname | string | no       | External hostname (required if enabled is true)       |
+| Resource | Condition |
+|---|---|
+| `kubernetes_namespace_v1.neo4j` | `spec.create_namespace` |
+| `kubernetes_secret_v1.auth` | `spec.auth.password` declared |
+| `helm_release.neo4j` | always |
 
 ## Outputs
 
-| Output                  | Description                                                  |
-|-------------------------|--------------------------------------------------------------|
-| namespace               | Kubernetes namespace where Neo4j is deployed                 |
-| service                 | Service name for in-cluster connections                     |
-| bolt_uri_kube_endpoint  | Bolt URI for database connections (internal)                |
-| http_uri_kube_endpoint  | HTTP URL for Neo4j Browser (internal)                       |
-| port_forward_command    | kubectl command to port-forward for local development       |
-| username                | Default Neo4j username (always "neo4j")                      |
-| password_secret_name    | Kubernetes secret name containing the password               |
-| password_secret_key     | Key within the secret for the password                       |
-| external_hostname       | External hostname if ingress is enabled                      |
+| Output | Meaning |
+|---|---|
+| `namespace` | Namespace the server runs in |
+| `release_name` | Helm release name (= `metadata.name`) |
+| `service_name` | The main Neo4j Service (= the release name) |
+| `bolt_endpoint` | `neo4j://<svc>.<ns>.svc.cluster.local:7687` |
+| `http_endpoint` | `http://<svc>.<ns>.svc.cluster.local:7474` |
+| `auth_secret_name` | `<name>-auth`, the existing Secret name, or empty (random password) |
+| `port_forward_command` | kubectl one-liner for reaching bolt from a workstation |
 
-## Connecting to Neo4j
+## Parity
 
-### Retrieve the Password
-
-The Neo4j admin password is auto-generated and stored in a Kubernetes secret:
-
-```bash
-kubectl get secret <password_secret_name> -n <namespace> \
-  -o jsonpath='{.data.neo4j-password}' | base64 -d
-```
-
-Or using Terraform output:
-
-```bash
-kubectl get secret $(terraform output -raw password_secret_name) \
-  -n $(terraform output -raw namespace) \
-  -o jsonpath='{.data.neo4j-password}' | base64 -d
-```
-
-### From Within the Cluster
-
-Use the Bolt URI output for database connections:
-
-```bash
-bolt://<service_fqdn>:7687
-```
-
-Username: `neo4j`  
-Password: Retrieved from secret
-
-### Using kubectl port-forward
-
-For local development, use the port-forward command:
-
-```bash
-# Copy the command from Terraform output
-terraform output -raw port_forward_command
-
-# Then access Neo4j Browser at: http://localhost:7474
-```
-
-### External Access (if ingress enabled)
-
-Access Neo4j Browser at:
-
-```
-http://<external_hostname>:7474
-```
-
-Connect via Bolt:
-
-```
-bolt://<external_hostname>:7687
-```
-
-## Memory Configuration Best Practices
-
-Neo4j performance heavily depends on proper memory configuration:
-
-- **Heap Memory**: Used for query execution and transactions
-  - Recommended: 25-50% of available memory (up to 31GB)
-  - Example: For 8GB pod, set `heap_max = "2Gi"`
-
-- **Page Cache**: Used for caching graph data from disk
-  - Recommended: 50-70% of available memory
-  - Example: For 8GB pod, set `page_cache = "4Gi"`
-
-- **OS Memory**: Reserve ~1-2GB for OS and Neo4j processes
-
-### Example Memory Allocation for 8GB Pod:
-
-```hcl
-spec = {
-  container = {
-    resources = {
-      limits = {
-        memory = "8Gi"
-      }
-    }
-  }
-  memory_config = {
-    heap_max   = "2Gi"   # 25% for heap
-    page_cache = "4Gi"   # 50% for page cache
-  }                      # ~2Gi reserved for OS
-}
-```
-
-## Persistence
-
-- Persistent storage is **highly recommended** for production deployments
-- Data is stored in `/data` directory within the container
-- Uses `defaultStorageClass` from your Kubernetes cluster
-- Volume size is configurable via `disk_size`
-
-**Note**: The disk size cannot be reduced after initial creation due to Kubernetes StatefulSet limitations.
-
-## Troubleshooting
-
-### Check Pod Status
-
-```bash
-kubectl get pods -n <namespace>
-kubectl logs -n <namespace> <pod-name>
-```
-
-### Verify Helm Release
-
-```bash
-helm list -n <namespace>
-helm status <release-name> -n <namespace>
-```
-
-### Common Issues
-
-1. **Pod fails to start**: Check resource limits and availability
-2. **Connection refused**: Verify service is running and port-forward is active
-3. **Out of memory**: Increase memory limits or tune heap/page cache settings
-4. **Persistent volume issues**: Check StorageClass availability
-
-## Version Compatibility
-
-- **Neo4j Version**: Community Edition (chart version 2025.03.0)
-- **Kubernetes**: 1.19+
-- **Helm Chart**: Official Neo4j Helm chart
-- **Terraform**: 1.0+
-
-## Security Considerations
-
-- Default password is auto-generated and stored in Kubernetes secret
-- Change the default password after first login
-- For production, consider using Neo4j Enterprise with authentication/authorization
-- Enable network policies to restrict access
-- Use TLS for external connections
-
-## License
-
-Neo4j Community Edition is licensed under GPLv3. For commercial use, consider Neo4j Enterprise Edition.
-
-## Support
-
-For issues specific to this Terraform module, refer to the Planton documentation.  
-For Neo4j-specific questions, consult the [Neo4j Documentation](https://neo4j.com/docs/).
-
+Kept in lockstep with the Pulumi module (`iac/pulumi/module/`): same chart
+identity, same values rendering (resolved defaults, the always-rendered
+`neo4j.name` and data volume, the ClusterIP override), same auth Secret
+name, key, and contents, same outputs. Conditional objects use the
+null-prune idiom throughout so numbers and booleans keep their types in
+the rendered values.

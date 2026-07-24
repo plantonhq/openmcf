@@ -336,5 +336,5 @@ After deployment, the following outputs are available in `status.outputs`:
 
 - [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace via `valueFrom` reference
 - [KubernetesPostgres](/docs/catalog/kubernetes/postgres) — deploy an in-cluster PostgreSQL instance as the Temporal database backend
-- [KubernetesElasticsearch](/docs/catalog/kubernetes/elasticsearch) — deploy an in-cluster Elasticsearch instance for Temporal advanced visibility
+- [KubernetesOpenSearch](/docs/catalog/kubernetes/opensearch) — deploy an in-cluster OpenSearch cluster (Elasticsearch-compatible) for Temporal advanced visibility
 - [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — application deployments that use Temporal as a workflow orchestration backend

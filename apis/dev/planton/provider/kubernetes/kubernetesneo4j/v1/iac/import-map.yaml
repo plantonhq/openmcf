@@ -1,0 +1,49 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesneo4j
+spec:
+  # The module renders one Helm release NAMED AFTER metadata.name, the
+  # module-materialized auth Secret (count-indexed — present only for the
+  # declared-password arm), and the optional anchor namespace.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    # ── the module-materialized auth Secret (count-indexed singleton) ────
+    # Deterministic name "<metadata.name>-auth"; count-indexed, so
+    # from_address_key cannot serve it — the scoped suffix derivation
+    # does. Present only when auth.password is declared (the
+    # existing-secret arm references a Secret the module never owns).
+    - name: secret_name
+      tofu_resource_name: auth
+      derivations:
+        - from_metadata_name_suffix: "-auth"
+      where_to_find: >-
+        Always "<resource-name>-auth" when the password arm is declared —
+        `kubectl get secrets -n <namespace>` (carries the NEO4J_AUTH key).
+    - name: secret_namespace
+      tofu_resource_name: auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

@@ -380,8 +380,8 @@ contained dev.planton.provider.kubernetes.kubernetescronjob.v1.KubernetesCronJob
 contained dev.planton.provider.kubernetes.kubernetesdaemonset.v1.KubernetesDaemonSetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesdeployment.v1.KubernetesDeploymentSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesdestinationrule.v1.KubernetesDestinationRuleSpec.namespace -> KubernetesNamespace
-contained dev.planton.provider.kubernetes.kuberneteselasticoperator.v1.KubernetesElasticOperatorSpec.namespace -> KubernetesNamespace
-contained dev.planton.provider.kubernetes.kuberneteselasticsearch.v1.KubernetesElasticsearchSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesopensearchoperator.v1.KubernetesOpenSearchOperatorSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesopensearch.v1.KubernetesOpenSearchSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnvoyFilterSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsAksConfig.dns_zone_id -> AzureDnsZone
 contained dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsCloudflareConfig.dns_zone_id -> CloudflareDnsZone

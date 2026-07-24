@@ -1,423 +1,121 @@
-# Pulumi Module for KubernetesSolrOperator
+# KubernetesSolrOperator Pulumi Module
 
-This Pulumi module deploys the Apache Solr Operator to a Kubernetes cluster, enabling declarative management of SolrCloud instances through Kubernetes Custom Resource Definitions.
+Installs the Apache Solr Operator from the official `solr-operator` Helm
+chart (`https://solr.apache.org/charts`) as a single Helm release named
+after `metadata.name`. The typed spec renders into chart values in
+`module/values.go`; the `helm_values` escape hatch merges LAST over them
+with Helm `-f` semantics (maps deep-merge, later document wins, lists
+replace) — the exact semantic twin of the Terraform module's
+`helm_release` with `values = [typed, helm_values]`.
 
-## Overview
+## What the Module Creates
 
-The Apache Solr Operator is the official Kubernetes operator for managing Apache SolrCloud deployments. This Pulumi module handles:
+1. **Namespace** (optional) — created with the standard governance
+   labels when `create_namespace` is true; otherwise the namespace must
+   already exist
+2. **The four operator CRDs** — see CRD ownership below
+3. **Helm Release `<metadata.name>`** — the `solr-operator` chart
+   (pinned default 0.9.1; chart versions carry NO `v` prefix while the
+   operator image/CRD artifacts do — chart 0.9.1 ships operator v0.9.1)
 
-- Installing Solr Operator Custom Resource Definitions (CRDs)
-- Deploying the operator via Helm chart
-- Configuring operator namespace and resources
-- Exporting relevant stack outputs
+## CRD Ownership and the Keep-on-Uninstall Mechanism
 
-## Prerequisites
+Unlike most operator charts, the `solr-operator` chart ships NO CRDs —
+upstream publishes them as separate release artifacts. The module OWNS
+them: the four files staged at `../crds` are applied before the release,
+one `yaml.ConfigGroup` per CRD keyed by the CRD's own `metadata.name`:
 
-- **Pulumi CLI**: Version 3.0 or later
-- **Kubernetes Cluster**: Access to a cluster with kubectl configured
-- **Kubernetes Provider Config**: Valid Planton Kubernetes credential
+- `solrclouds.solr.apache.org`
+- `solrbackups.solr.apache.org`
+- `solrprometheusexporters.solr.apache.org`
+- `zookeeperclusters.zookeeper.pravega.io` (the bundled
+  zookeeper-operator dependency's CRD)
 
-## Project Structure
+**Keep mechanism (Pulumi):** every applied CRD carries `retainOnDelete`,
+so `pulumi destroy` removes the operator but NEVER the CRDs — SolrCloud
+/ SolrBackup / ZookeeperCluster resources are never cascade-deleted
+cluster-wide. Because the yaml SDK forwards only version/pluginDownloadURL
+to a ConfigGroup's children, the option is delivered through a resource
+TRANSFORMATION (inherited parent→child) — see `module/crds.go`. The
+Terraform twin is `apply_only = true` on `kubectl_manifest` (the
+provider's Delete is a no-op).
 
+Because the module owns the ZookeeperCluster CRD, the bundled subchart's
+own CRD switch is pinned off — `zookeeper-operator.crd.create: false` is
+the ONE value rendered unconditionally (it must never fall under Helm's
+delete-on-uninstall lifecycle).
+
+**Version note:** the staged CRD files match the pinned default chart
+version (0.9.1). The operator is pre-1.0 — when upgrading
+`chart_version` across a minor version, restage the matching CRD files
+(the module applies with server-side apply semantics, so a restage is an
+in-place update).
+
+## Values Mapping
+
+| Spec field | Chart value | Notes |
+|---|---|---|
+| `replicas` | `replicaCount` | on presence |
+| `watch_namespaces` | `watchNamespaces` | COMMA-JOINED string (the chart's format); empty = watch ALL namespaces |
+| `zookeeper_operator.install` | `zookeeper-operator.install` | on presence (chart default true) |
+| `zookeeper_operator.use_existing` | `zookeeper-operator.use` | only when true (chart default false; ignored when install=true) |
+| — | `zookeeper-operator.crd.create` | ALWAYS `false` — the module owns the ZookeeperCluster CRD |
+| `leader_election_enabled` | `leaderElection.enable` | on presence |
+| `metrics_enabled` | `metrics.enable` | on presence |
+| `mtls.client_cert_secret` | `mTLS.clientCertSecret` | value-or-ref resolved to the secret name |
+| `mtls.ca_cert_secret` | `mTLS.caCertSecret` | value-or-ref resolved to the secret name |
+| `mtls.ca_cert_secret_key` | `mTLS.caCertSecretKey` | on presence (chart default `ca-cert.pem`) |
+| `mtls.insecure_skip_verify` | `mTLS.insecureSkipVerify` | on presence (chart default true) |
+| `mtls.watch_for_updates` | `mTLS.watchForUpdates` | on presence (chart default true) |
+| `resources` | `resources` | on presence (chart ships none — the operator is lightweight) |
+| `node_selector` | `nodeSelector` | when non-empty |
+| `tolerations` | `tolerations` | when non-empty |
+| `image_pull_secret` | `image.imagePullSecret` | SINGULAR string — the chart accepts exactly one |
+| `image.repository` | `image.repository` | when non-empty |
+| `image.tag` | `image.tag` | when non-empty |
+| `helm_values` | (merged LAST) | Helm `-f` semantics, identical on both engines |
+
+## Wait / Atomic Posture
+
+The release installs with `Atomic` + `CleanupOnFail` and a 600s
+timeout, waiting for readiness. An operator that never becomes ready
+(an unpullable image from a private mirror is the classic case) fails
+THIS deploy with a readiness timeout instead of surfacing later as
+SolrCloud resources that mysteriously never reconcile.
+
+## Usage
+
+```shell
+planton pulumi up --manifest hack/manifest.yaml --module-dir <path-to-this-module>
 ```
-iac/pulumi/
-├── main.go              # Entry point for Pulumi program
-├── Pulumi.yaml          # Pulumi project configuration
-├── Makefile            # Common commands (install, preview, deploy)
-├── README.md           # This file
-├── overview.md         # Architecture and design decisions
-├── debug.sh            # Debug script for local testing
-└── module/
-    ├── main.go         # Core resource creation logic
-    ├── locals.go       # Computed values and derived config
-    ├── vars.go         # Constants and version defaults
-    └── outputs.go      # Output constant definitions
-```
-
-## Quick Start
-
-### 1. Configure Stack
-
-Create a Pulumi stack configuration file (e.g., `Pulumi.dev.yaml`):
-
-```yaml
-config:
-  provider-config: k8s-cluster-credential-id
-```
-
-Or set via CLI:
-
-```bash
-pulumi config set provider-config k8s-cluster-credential-id
-```
-
-### 2. Preview Changes
-
-```bash
-pulumi preview
-```
-
-### 3. Deploy
-
-```bash
-pulumi up
-```
-
-### 4. View Outputs
-
-```bash
-pulumi stack output namespace
-```
-
-## Configuration
-
-### Required
-
-- **`provider-config`**: Kubernetes cluster credential ID (string)
-
-### Optional
-
-No additional configuration is currently required. The operator uses default resource limits and chart versions.
-
-## Namespace Management
-
-The module supports two namespace management modes controlled by the `create_namespace` flag in the spec:
-
-### Create Namespace (create_namespace: true)
-
-The module creates the namespace if it doesn't exist:
-
-```yaml
-spec:
-  namespace:
-    value: "solr-operator"
-  create_namespace: true
-```
-
-**Use when:**
-- Deploying to a new namespace
-- Component owns the namespace lifecycle
-- Simplifying deployment (one resource creates everything)
-
-### Use Existing Namespace (create_namespace: false)
-
-The module uses an existing namespace without creating it:
-
-```yaml
-spec:
-  namespace:
-    value: "solr-operator"
-  create_namespace: false
-```
-
-**Use when:**
-- Namespace is managed separately (e.g., via KubernetesNamespace resource)
-- Platform team controls namespace lifecycle
-- Multiple components share the same namespace
-- Namespace has pre-configured RBAC, quotas, or network policies
-
-**Important:** The namespace must exist before running `pulumi up` when `create_namespace: false`.
-
-## Helm Chart Details
-
-The module deploys the official Apache Solr Operator Helm chart:
-
-- **Chart Repository**: https://solr.apache.org/charts
-- **Chart Name**: `solr-operator`
-- **Default Version**: `0.7.0` (configurable in `module/vars.go`)
-- **CRD Version**: `v0.7.0`
-
-### Installed CRDs
-
-The module installs these Custom Resource Definitions:
-
-1. **SolrCloud**: Defines a SolrCloud cluster
-2. **SolrBackup**: Manages backup operations
-3. **SolrPrometheusExporter**: Deploys Prometheus metrics exporters
-
-## Deployment Process
-
-1. **Setup Kubernetes Provider**: Connects to target cluster using provided credentials
-2. **Create Namespace**: Creates `solr-operator` namespace
-3. **Install CRDs**: Applies CRDs from upstream manifest
-4. **Deploy Helm Chart**: Installs operator with dependency on CRDs
-5. **Export Outputs**: Makes namespace available as stack output
 
 ## Outputs
 
-After deployment, the stack exports:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | string | Kubernetes namespace containing the operator |
-
-Access outputs:
-
-```bash
-# All outputs
-pulumi stack output
-
-# Specific output
-pulumi stack output namespace
-```
-
-## Managing the Operator
-
-### Checking Operator Status
-
-```bash
-# Get operator pod
-kubectl get pods -n solr-operator
-
-# View logs
-kubectl logs -n solr-operator <pod-name>
-
-# Check CRDs
-kubectl get crds | grep solr
-```
-
-### Creating SolrCloud Clusters
-
-After the operator is deployed, create SolrCloud clusters:
-
-```yaml
-apiVersion: solr.apache.org/v1beta1
-kind: SolrCloud
-metadata:
-  name: example
-  namespace: solr-production
-spec:
-  replicas: 3
-  solrImage:
-    repository: solr
-    tag: 8.11.3
-  zookeeperRef:
-    provided:
-      replicas: 3
-```
-
-Apply with:
-
-```bash
-kubectl apply -f solrcloud.yaml
-```
-
-## Upgrading
-
-### Operator Version
-
-Update the chart version in `module/vars.go`:
-
-```go
-DefaultStableVersion: "0.8.0",  // Update this
-```
-
-Then redeploy:
-
-```bash
-pulumi up
-```
-
-### CRDs
-
-CRD upgrades require updating the `CrdManifestDownloadURL` in `module/vars.go`:
-
-```go
-CrdManifestDownloadURL: "https://solr.apache.org/operator/downloads/crds/v0.8.0/all-with-dependencies.yaml",
-```
-
-**Note**: CRD upgrades may require destroying and recreating SolrCloud resources depending on API changes.
-
-## Troubleshooting
-
-### CRDs Not Installing
-
-If CRDs fail to install:
-
-```bash
-# Check CRD manifest URL is accessible
-curl https://solr.apache.org/operator/downloads/crds/v0.7.0/all-with-dependencies.yaml
-
-# Manually apply CRDs
-kubectl apply -f https://solr.apache.org/operator/downloads/crds/v0.7.0/all-with-dependencies.yaml
-```
-
-### Helm Chart Fails to Deploy
-
-```bash
-# Check Helm repository
-helm repo add solr https://solr.apache.org/charts
-helm repo update
-
-# Verify chart exists
-helm search repo solr/solr-operator
-```
-
-### Pulumi State Issues
-
-```bash
-# Refresh state
-pulumi refresh
-
-# View detailed logs
-pulumi up --logtostderr --logflow -v=9
-```
-
-## Development
-
-### Local Testing
-
-Use the `debug.sh` script:
-
-```bash
-./debug.sh
-```
-
-This runs Pulumi in debug mode with verbose logging.
-
-### Module Development
-
-When modifying `module/` files:
-
-1. Update Go code
-2. Test with `pulumi preview`
-3. Verify with `pulumi up`
-4. Check operator deployment in cluster
-
-### Adding Custom Values
-
-To pass custom Helm values, modify `module/main.go`:
-
-```go
-Values: pulumi.Map{
-	"resources": pulumi.Map{
-		"limits": pulumi.Map{
-			"cpu":    pulumi.String("500m"),
-			"memory": pulumi.String("512Mi"),
-		},
-	},
-},
-```
-
-## Resource Requirements
-
-The operator pod uses these default limits (from Helm chart):
-
-- **CPU**: 100m (request), 500m (limit)
-- **Memory**: 64Mi (request), 256Mi (limit)
-
-These are separate from the KubernetesSolrOperatorSpec resource limits which are not currently used (operator deployment uses Helm chart defaults).
-
-## Best Practices
-
-1. **Pin Versions**: Specify exact chart versions in `vars.go`
-2. **Namespace Isolation**: Keep operator in dedicated namespace
-3. **Monitor Deployments**: Use `pulumi watch` for continuous monitoring
-4. **Stack Per Environment**: Use separate Pulumi stacks for dev/staging/prod
-5. **State Backend**: Use remote state backend (S3, GCS, etc.) for team collaboration
-
-## CI/CD Integration
-
-### GitHub Actions Example
-
-```yaml
-name: Deploy Solr Operator
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: pulumi/actions@v4
-        with:
-          command: up
-          stack-name: production
-        env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-```
-
-## Deletion Behavior
-
-### Background Deletion Propagation
-
-This module uses **background deletion propagation** for both the namespace and CRD resources. This is configured via the `pulumi.com/deletionPropagationPolicy: "background"` annotation and is critical for reliable `pulumi destroy` operations.
-
-### Why This Matters
-
-The Solr Operator module creates several interdependent resources:
-1. **Namespace** - Contains the operator deployment and all its resources
-2. **CRDs** - CustomResourceDefinitions for SolrCloud, SolrBackup, SolrPrometheusExporter
-3. **Helm Release** - The operator deployment itself
-
-During deletion with the default "foreground" propagation policy, several race conditions can occur:
-
-**Namespace Deletion Issue:**
-1. Pulumi issues DELETE with `propagationPolicy: Foreground`
-2. Kubernetes adds `foregroundDeletion` finalizer to namespace
-3. Kubernetes waits for all resources inside to be deleted
-4. If child resources have their own finalizers (e.g., operator-managed CRs), deletion stalls
-5. 10-minute timeout occurs
-
-**CRD Deletion Issue:**
-1. CRDs cannot be deleted while CustomResources of that type exist
-2. If SolrCloud instances exist in other namespaces (not managed by this stack), CRD deletion blocks
-3. The operator may recreate CRs during the deletion window, causing a loop
-
-### Solution
-
-With **background deletion**:
-
-1. Pulumi issues DELETE with `propagationPolicy: Background`
-2. Namespace and CRDs are removed from the API server immediately
-3. Kubernetes garbage collector cleans up child resources asynchronously
-4. Destroy completes in seconds instead of timing out
-
-### Resources with Background Deletion
-
-| Resource | Why Background Deletion |
-|----------|------------------------|
-| Namespace | Prevents blocking on child resource finalizers; operator stops running, allowing CRs to be garbage collected |
-
-**Note on CRDs:** CRDs use default deletion behavior. Once the namespace (and operator) are deleted via background propagation, the operator stops reconciling, allowing CustomResources to be garbage collected. This unblocks CRD deletion naturally.
-
-### Testing Destroy Operations
-
-When testing this module, always verify the full lifecycle:
-
-```bash
-# Create
-planton pulumi up --stack-input solr-operator.yaml
-
-# Destroy (should complete in < 1 minute, not 10 minutes)
-planton pulumi destroy --stack-input solr-operator.yaml
-
-# Recreate (should succeed without conflicts)
-planton pulumi up --stack-input solr-operator.yaml
-```
-
-If destroy operations timeout, check for:
-- SolrCloud resources in other namespaces using this operator's CRDs
-- Finalizers on resources that prevent cleanup
-- Operator logs for repeated reconciliation activity
-
-## Additional Resources
-
-- **Architecture Overview**: [overview.md](overview.md)
-- **Component Documentation**: [../../README.md](../../README.md)
-- **Apache Solr Operator Docs**: https://apache.github.io/solr-operator/
-- **Pulumi Kubernetes Provider**: https://www.pulumi.com/docs/reference/pkg/kubernetes/
-
-## Support
-
-For issues related to:
-- **Module bugs**: File issue on Planton repository
-- **Operator behavior**: Check Apache Solr Operator documentation
-- **Pulumi questions**: Consult Pulumi documentation
-
-## License
-
-This Pulumi module is part of Planton. The Apache Solr Operator is licensed under Apache License 2.0.
-
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the operator runs in |
+| `release_name` | Helm release name of the operator (`metadata.name`) |
+| `deployment_name` | Name of the operator Deployment — the chart's fullname template replayed: the release name itself when it contains "solr-operator", otherwise `<release>-solr-operator`, truncated to 63 chars |
+
+The `deployment_name` derivation assumes the chart's default
+`nameOverride`/`fullnameOverride` (the typed spec sets neither); a
+`helm_values` override of either changes the real name without being
+reflected in the output.
+
+## Module Structure
+
+- `main.go`: entrypoint that calls the module
+- `module/main.go`: namespace → CRDs → operator release → output exports
+- `module/crds.go`: staged-CRD application keyed by CRD name, with the
+  retain-on-delete transformation and the comment-header/document-
+  separator handling
+- `module/values.go`: typed-spec → chart values rendering and the
+  escape-hatch merge
+- `module/locals.go`: resolved namespace, release name
+  (`metadata.name`), chart version, deployment name (the chart fullname
+  replay) — kept in lockstep with the Terraform module's `locals.tf`
+- `module/vars.go`: chart identity (repository, `solr-operator`), the
+  pinned default version (0.9.1), the 600s timeout, the staged CRDs
+  directory
+- `module/helpers.go`: shared shape renderers (resources, tolerations,
+  the Helm `-f` merge)

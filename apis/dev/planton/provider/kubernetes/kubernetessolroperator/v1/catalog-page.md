@@ -1,182 +1,102 @@
 # Kubernetes Solr Operator
 
-Deploys the Apache Solr Operator on a Kubernetes cluster using its official Helm chart and CRD manifests. The operator manages the lifecycle of SolrCloud clusters, SolrBackup resources, and SolrPrometheusExporter instances through Kubernetes custom resources, enabling declarative management of Solr infrastructure.
+Installs the Apache Solr Operator — the Apache Solr project's own
+operator for running SolrCloud on Kubernetes — from the official
+`solr-operator` Helm chart. The operator reconciles `SolrCloud` custom
+resources (declared with KubernetesSolr) into running Solr clusters
+with shard-aware rolling updates, replica-moving scale operations, and
+backup repositories. This component installs and configures the
+engine, including the bundled zookeeper-operator dependency that
+provisions ZooKeeper ensembles for Solr clusters; the clusters
+themselves are declared separately, one KubernetesSolr resource per
+cluster.
 
 ## What Gets Created
 
-When you deploy a KubernetesSolrOperator resource, Planton provisions:
-
-- **Namespace** — created only when `createNamespace` is `true`
-- **Solr CRDs** — the full set of Solr Operator Custom Resource Definitions (SolrCloud, SolrBackup, SolrPrometheusExporter) downloaded from the official Apache Solr release artifacts for the specified operator version
-- **Helm Release** — the `solr-operator` chart from `https://solr.apache.org/charts`, deployed with atomic install, cleanup-on-fail, and wait-for-jobs semantics to ensure a reliable rollout
-
-The CRDs are applied before the Helm release to guarantee that the operator controller starts with all required resource definitions already registered in the cluster API server.
+- **Namespace** (optional) — created and owned when `create_namespace`
+  is set
+- **Four CRDs** — SolrCloud, SolrBackup, SolrPrometheusExporter
+  (`solr.apache.org`) and ZookeeperCluster (`zookeeper.pravega.io`),
+  applied as MODULE-OWNED resources with a keep-on-uninstall posture:
+  destroying the operator never deletes the CRDs, so SolrCloud
+  resources are never cascade-deleted (the chart ships no CRDs; the
+  bundled subchart's own CRD switch is pinned off)
+- **Helm release** (official `solr-operator` chart, pinned 0.9.1,
+  named `metadata.name`) — the operator Deployment and, by default,
+  the bundled zookeeper-operator
 
 ## Prerequisites
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, or set `createNamespace` to `true`
-- **Network access** from the cluster to `https://solr.apache.org` for downloading CRD manifests and pulling the Helm chart
+- A Kubernetes namespace that already exists, or set
+  `create_namespace`
+- If a zookeeper-operator ALREADY runs on the cluster: set
+  `zookeeper_operator.install: false` with `use_existing: true` — its
+  fixed-name cluster-scoped RBAC conflicts on a second install
+- For mutual-TLS Solr clusters: an existing client-certificate Secret
+  for the `mtls` block
 
 ## Quick Start
 
-Create a file `solr-operator.yaml`:
-
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolrOperator
 metadata:
-  name: main
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesSolrOperator.main
-spec:
-  namespace: solr-system
-  createNamespace: true
-  container:
-    resources:
-      requests:
-        cpu: "50m"
-        memory: "100Mi"
-      limits:
-        cpu: "1000m"
-        memory: "1Gi"
-```
-
-Deploy:
-
-```shell
-planton apply -f solr-operator.yaml
-```
-
-This installs the Solr Operator v0.9.1 into the `solr-system` namespace with default resource limits. Once the operator is running, you can create SolrCloud clusters using the [KubernetesSolr](/docs/catalog/kubernetes/kubernetessolr) component.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `string` | Kubernetes namespace for the Solr Operator deployment. Can reference a KubernetesNamespace resource via `valueFrom`. | Required |
-| `container` | `object` | Container specification for the operator pod, including resource requests and limits. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
-| `operatorVersion` | `string` | `v0.9.1` | Version of the Apache Solr Operator to deploy. Must match a tag from the [solr-operator releases](https://github.com/apache/solr-operator/releases). |
-| `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the operator pod. |
-| `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the operator pod. |
-| `container.resources.requests.cpu` | `string` | `50m` | Minimum guaranteed CPU for the operator pod. |
-| `container.resources.requests.memory` | `string` | `100Mi` | Minimum guaranteed memory for the operator pod. |
-
-> **Note on `namespace`:** This field supports `valueFrom` for referencing outputs of other Planton resources. When using `valueFrom`, specify the `kind`, `name`, and `field` of the source resource instead of a literal string value.
-
-## Examples
-
-### Development Operator with Default Settings
-
-A minimal deployment suitable for development clusters where a single Solr Operator instance manages all SolrCloud resources:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesSolrOperator
-metadata:
-  name: dev-operator
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesSolrOperator.dev-operator
-spec:
-  namespace: solr-system
-  createNamespace: true
-  operatorVersion: "v0.9.1"
-  container:
-    resources:
-      requests:
-        cpu: "50m"
-        memory: "100Mi"
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
-```
-
-### Production Operator with Increased Resources
-
-A production-grade deployment with higher resource limits to handle reconciliation of multiple SolrCloud clusters and frequent status updates:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesSolrOperator
-metadata:
-  name: prod-operator
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesSolrOperator.prod-operator
-spec:
-  namespace: solr-system
-  operatorVersion: "v0.9.1"
-  container:
-    resources:
-      requests:
-        cpu: "200m"
-        memory: "256Mi"
-      limits:
-        cpu: "2000m"
-        memory: "2Gi"
-```
-
-### Operator with Foreign Key Namespace Reference
-
-Reference an Planton-managed namespace instead of hardcoding the namespace name:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesSolrOperator
-metadata:
-  name: search-operator
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesSolrOperator.search-operator
+  name: solr-operator
 spec:
   namespace:
-    valueFrom:
-      kind: KubernetesNamespace
-      name: solr-system-namespace
-      field: spec.name
-  operatorVersion: "v0.9.1"
-  container:
-    resources:
-      requests:
-        cpu: "100m"
-        memory: "128Mi"
-      limits:
-        cpu: "1000m"
-        memory: "1Gi"
+    value: solr-operator
+  create_namespace: true
 ```
+
+The install waits for the operator to become Available. From that
+point, KubernetesSolr resources in any namespace reconcile into
+running SolrCloud clusters — including operator-provisioned ZooKeeper
+ensembles, courtesy of the bundled zookeeper-operator.
+
+## Configuration
+
+### ZooKeeper posture
+
+The bundled zookeeper-operator installs by default — the path that
+makes provided ensembles work out of the box. Disable it only when one
+already runs in the cluster (pair with `use_existing: true`) or every
+Solr cluster connects to an external ensemble.
+
+### Version pairing
+
+Chart and operator versions move together (chart 0.9.1 ships operator
+v0.9.1), and the operator is pre-1.0: minor versions can change the
+CRD API, so a chart bump means restaging the matching CRDs — the
+modules apply them with server-side apply, so a restage lands as an
+in-place update.
+
+### Watch scope
+
+Empty `watch_namespaces` watches all namespaces; a list fences the
+operator to exactly those.
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where the Solr Operator is deployed |
-| `service` | `string` | Kubernetes Service name for the Solr Operator (format: `{name}-kubernetes-solr-operator`) |
-| `portForwardCommand` | `string` | kubectl port-forward command for local access to the operator |
-| `kubeEndpoint` | `string` | Cluster-internal FQDN for the operator service (e.g., `main-kubernetes-solr-operator.solr-system.svc.cluster.local`) |
-| `ingressEndpoint` | `string` | Public endpoint for external access, when configured |
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the operator is installed into |
+| `release_name` | Helm release name (= `metadata.name`) |
+| `deployment_name` | The Solr operator Deployment |
 
 ## Related Components
 
-- [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — provides the target namespace via `valueFrom` reference
-- [KubernetesSolr](/docs/catalog/kubernetes/kubernetessolr) — deploys SolrCloud clusters that depend on the operator installed by this component
-- [KubernetesCertManager](/docs/catalog/kubernetes/kubernetescertmanager) — manages TLS certificates for SolrCloud ingress when external access is configured
+- [KubernetesSolr](/docs/catalog/kubernetes/kubernetessolr) — declares
+  the SolrCloud clusters this operator reconciles
+- [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) —
+  provides the installation namespace via reference
+- [KubernetesCertificate](/docs/catalog/kubernetes/kubernetescertificate)
+  — issues the client certificate the `mtls` block references
+
+## Next Steps
+
+Declare a search cluster with KubernetesSolr — replicas, ZooKeeper
+wiring, persistent storage, basic-auth security, backup repositories —
+and the operator reconciles it. If clusters will enforce client
+certificates (`client_auth: Need`), give the operator its own mTLS
+identity here first; its probes and reconciliation calls fail without
+one.

@@ -1,119 +1,88 @@
-# Solr Kubernetes Pulumi Module
+# KubernetesSolr Pulumi Module
 
-## Key Features
+Deploys one Apache Solr Operator-managed SolrCloud cluster: the optional
+namespace and the `solr.apache.org/v1beta1` SolrCloud resource. The custom
+resource renders through typed crd2pulumi SDK bindings pinned to the Solr
+Operator CRDs — field or structure drift against the pinned CRD fails at
+COMPILE time, not at apply time.
 
-### 1. **Kubernetes Provider Integration**
+Prerequisites at deploy time: the Apache Solr Operator
+(`KubernetesSolrOperator`) on the cluster — with its bundled
+zookeeper-operator when the ZooKeeper block is empty or `provided` (the
+default posture).
 
-The module automatically creates a Kubernetes provider using the Kubernetes cluster credentials specified in the stack input. This ensures secure and authenticated communication with the target Kubernetes cluster.
+## What the Module Creates
 
-### 2. **Namespace Creation**
+1. **Namespace** (optional) — created with the standard governance labels
+   when `create_namespace` is true
+2. **SolrCloud** — the cluster itself; the operator creates everything
+   else (node StatefulSet, provided ZooKeeper ensemble, services, PVCs,
+   the basic-auth bootstrap Secret, Ingress exposure) from this one
+   resource. Unset optionals are omitted entirely so the apiserver
+   applies the CRD's own defaults.
 
-A new namespace is automatically created within the Kubernetes cluster, isolating the Solr instance and its associated components. This ensures that the resources deployed for Solr are logically separated from other workloads running in the cluster.
+## The Operator's Naming Contract
 
-### 3. **Solr Cluster Deployment**
+Every object the operator creates derives from `metadata.name` — the
+module computes these in `locals.go` and exports them (never read back
+from the cluster):
 
-The module deploys a Solr cluster based on the configuration provided in the API resource spec. Key settings, such as the number of replicas, container image, and resource limits (CPU and memory), can be customized. These configurations ensure that the Solr cluster is both scalable and tuned for performance.
+| Object | Name |
+|---|---|
+| Node StatefulSet | `<name>-solrcloud` |
+| Common Service (all nodes) | `<name>-solrcloud-common` |
+| Headless Service | `<name>-solrcloud-headless` |
+| Generated basic-auth Secret | `<name>-solrcloud-basic-auth` |
+| Provided ZooKeeper client service | `<name>-solrcloud-zookeeper-client:2181` |
 
-### 4. **Zookeeper Integration**
+## CR Mapping (spec → SolrCloud)
 
-The Zookeeper instance required by the Solr cluster is automatically provisioned. Zookeeper pods are configured with appropriate resource limits and persistent volumes, ensuring the reliable operation of the Solr cluster.
-
-### 5. **Persistent Storage Configuration**
-
-Each Solr and Zookeeper pod is provisioned with persistent storage volumes. This ensures that data is retained across pod restarts and is available for high-availability configurations.
-
-### 6. **Ingress Management**
-
-If ingress is enabled in the API resource spec, the module provisions ingress resources, including Istio-based ingress for routing external traffic to the Solr service. This makes it easier to expose Solr services to clients both inside and outside the Kubernetes cluster.
-
-### 7. **Resource Customization**
-
-The module allows fine-grained control over the deployment by enabling developers to specify resource configurations, such as CPU and memory limits for Solr and Zookeeper pods. This ensures optimal resource usage and performance tuning for both services.
-
-### 8. **Pulumi Stack Outputs**
-
-Upon successful deployment, the module generates several useful outputs, including:
-
-- **Namespace**: The Kubernetes namespace in which Solr is deployed.
-- **Service Name**: The service name for the Solr dashboard, which allows easy access to the Solr management UI.
-- **Port Forward Command**: A command to set up port forwarding for local access to Solr if ingress is disabled.
-- **Internal and External Endpoints**: URLs for accessing Solr within and outside the Kubernetes cluster.
-
-These outputs provide essential information for developers to monitor, manage, and interact with their deployed Solr clusters.
+| Spec field | SolrCloud field |
+|---|---|
+| `replicas` (default 3) | `spec.replicas` |
+| `version` / `image_repository` (default `solr`) | `spec.solrImage{tag, repository}` (pull policy omitted) |
+| `java_mem` / `solr_opts` / `log_level` (default INFO) / `gc_tune` | `spec.solrJavaMem` / `solrOpts` / `solrLogLevel` / `solrGCTune` |
+| `zookeeper.provided{replicas, chroot, persistence, resources}` | `spec.zookeeperRef.provided{replicas, chroot, persistence.spec{resources.requests.storage, storageClassName}, zookeeperPodPolicy.resources}` |
+| `zookeeper.external{connection_string, chroot}` | `spec.zookeeperRef.connectionInfo{internalConnectionString, chroot}` |
+| `zookeeper` empty | NOTHING rendered — the operator defaults to a provided 3-node ensemble |
+| `storage.persistent{size, storage_class, reclaim_policy}` | `spec.dataStorage.persistent{reclaimPolicy, pvcTemplate.spec{resources.requests.storage, storageClassName}}` |
+| `storage.ephemeral{size_limit}` | `spec.dataStorage.ephemeral.emptyDir{sizeLimit}` (`emptyDir: {}` when no limit) |
+| `resources` / `node_selector` / `tolerations` | `spec.customSolrKubeOptions.podOptions{resources, nodeSelector, tolerations}` — only when any is set |
+| `pod_port` (default 8983) / `external{...}` | `spec.solrAddressability{podPort, external{method, domainName, useExternalAddress, hideCommon, hideNodes}}` |
+| `update_strategy{method, max_pods_unavailable, max_shard_replicas_unavailable, restart_schedule}` | `spec.updateStrategy{method, managed{maxPodsUnavailable, maxShardReplicasUnavailable}, restartSchedule}` — the managed budgets keep the CRD's int-or-string semantics (`"2"` renders as the number 2, `"25%"` stays a string) |
+| `availability.pdb_enabled` | `spec.availability.podDisruptionBudget.enabled` — rendered only when EXPLICITLY set (absence already means enabled upstream) |
+| `scaling{vacate_pods_on_scale_down, populate_pods_on_scale_up}` | `spec.scaling{vacatePodsOnScaleDown, populatePodsOnScaleUp}` — rendered only when explicitly set |
+| `tls{pkcs12_secret, keystore_password_secret, truststore_secret, truststore_password_secret, client_auth (default None), verify_client_hostname}` | `spec.solrTLS{pkcs12Secret, keyStorePasswordSecret, trustStoreSecret, trustStorePasswordSecret, clientAuth, verifyClientHostname}` |
+| `security.authentication_type: basic` | `spec.solrSecurity{authenticationType: "Basic"` (CRD value is capitalized)`, basicAuthSecret, probesRequireAuth, bootstrapSecurityJson}` — nothing renders when basic auth is not enabled |
+| `backup_repositories[]` | `spec.backupRepositories[]{name}` + one arm: `s3{region, bucket, baseLocation, endpoint, credentials{accessKeyIdSecret, secretAccessKeySecret}}` \| `gcs{bucket, gcsCredentialSecret, baseLocation}` \| `volume{source.persistentVolumeClaim.claimName, directory}` |
+| `solr_modules` / `additional_libs` | `spec.solrModules` / `additionalLibs` |
 
 ## Usage
 
-Refer to the example section for usage instructions.
-
-## Benefits
-
-1. **Standardized API Resource Structure**: The module leverages a standardized YAML specification to configure and deploy Solr clusters, making it easy for developers to replicate configurations across different environments.
-2. **Seamless Kubernetes Integration**: Designed to work natively with Kubernetes, this module automates the creation and management of critical Kubernetes resources such as namespaces, deployments, and services.
-3. **Infrastructure-as-Code**: By utilizing Pulumi, this module brings the benefits of infrastructure-as-code, such as version control, repeatable deployments, and rollback capabilities, to Solr deployments.
-4. **Customizable Resource Definitions**: The module supports the customization of key Solr configurations, such as the number of pods, memory settings, and persistent storage allocations, allowing for flexibility based on specific use cases.
-5. **Scalability and High Availability**: With support for replica configurations and resource tuning, this module ensures that Solr clusters can scale to meet performance demands while maintaining high availability and data durability.
-
-## Prerequisites
-
-- **Pulumi Setup**: Ensure that Pulumi is installed and configured for the cloud provider being used.
-- **Kubernetes Cluster**: A Kubernetes cluster must be available, with the appropriate credentials provided in the stack input.
-- **Planton CLI**: The Planton CLI should be set up to run the `planton pulumi up --stack-input <api-resource.yaml>` command.
-
-## Pulumi Outputs
-
-Once the module is deployed, several outputs are generated to provide critical information for managing the Solr cluster:
-
-1. **Namespace**: The Kubernetes namespace where Solr and Zookeeper resources are deployed.
-2. **Service Name**: The name of the service for accessing the Solr dashboard.
-3. **Port Forward Command**: A command to enable local port forwarding to access Solr when ingress is disabled.
-4. **Kube Endpoint**: The internal endpoint for accessing Solr from within the Kubernetes cluster.
-5. **External Hostname**: The public endpoint for accessing Solr from outside the cluster.
-6. **Internal Hostname**: The internal hostname for accessing Solr within the cluster.
-
-These outputs ensure easy access and management of the Solr cluster post-deployment.
-
-## Deletion Behavior
-
-### Background Deletion Propagation
-
-This module uses **background deletion propagation** for the SolrCloud custom resource. This is configured via the `pulumi.com/deletionPropagationPolicy: "background"` annotation and is critical for reliable `pulumi destroy` operations.
-
-### Why This Matters
-
-The Apache Solr Operator creates multiple child resources (ZookeeperCluster, StatefulSets, Services, ConfigMaps, PVCs) with owner references pointing to the SolrCloud CR. By default, Pulumi uses "foreground" cascading deletion, which causes a race condition:
-
-1. Pulumi issues DELETE with `propagationPolicy: Foreground`
-2. Kubernetes adds `foregroundDeletion` finalizer to SolrCloud CR
-3. Garbage Collector starts deleting child resources
-4. **Solr Operator sees SolrCloud still exists and recreates deleted children**
-5. GC deletes them again, operator recreates them again
-6. This loop continues until the 10-minute timeout
-
-With **background deletion**:
-
-1. Pulumi issues DELETE with `propagationPolicy: Background`
-2. SolrCloud CR is removed immediately
-3. Solr Operator stops reconciling (CR is gone)
-4. Kubernetes GC cleans up child resources asynchronously
-5. Destroy completes in seconds
-
-### Testing Destroy Operations
-
-When testing this module, always verify the full lifecycle:
-
-```bash
-# Create
-planton pulumi up --stack-input solr.yaml
-
-# Destroy (should complete in < 1 minute, not 10 minutes)
-planton pulumi destroy --stack-input solr.yaml
-
-# Recreate (should succeed without conflicts)
-planton pulumi up --stack-input solr.yaml
+```shell
+planton pulumi up --manifest ../hack/manifest.yaml --module-dir <path-to-this-module>
 ```
 
-If destroy operations timeout, check the operator logs for repeated "Creating..." messages, which indicate the race condition is occurring.
+## Outputs
 
-## Conclusion
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the cluster runs in |
+| `cluster_name` | Name of the SolrCloud resource (equals `metadata.name`) |
+| `common_service_name` | Common Service fronting all nodes (`<name>-solrcloud-common`) |
+| `internal_endpoint` | In-cluster base URL through the common service — `http://…` (port 80) without TLS, `https://…` (port 443) with TLS |
+| `basic_auth_secret_name` | Operator-generated credential Secret (`<name>-solrcloud-basic-auth`) — empty when security is disabled or a user-provided `basic_auth_secret` is in play |
+| `zookeeper_connection_string` | What the cluster uses: the external connection string, or `<name>-solrcloud-zookeeper-client:2181`, plus the chroot when it diverges from `/` |
+| `port_forward_command` | Port-forward command for workstation access (8983 → 80, or 443 with TLS) |
 
-The Solr Kubernetes Pulumi module provides a powerful and flexible solution for automating the deployment of Solr clusters on Kubernetes. With features like customizable resource configurations, seamless Kubernetes integration, and robust infrastructure management via Pulumi, this module greatly simplifies the operational overhead of managing Solr in cloud-native environments. By following a standardized YAML-based API resource approach, it empowers developers to deploy complex infrastructure with minimal effort, making Solr deployment more accessible and scalable.
+## Module Structure
+
+- `main.go`: entrypoint that calls the module
+- `module/main.go`: namespace → SolrCloud → output exports
+- `module/locals.go`: the operator's naming contract (common service,
+  basic-auth secret, provided-ZooKeeper client service) — kept in
+  lockstep with the Terraform module's `locals.tf`
+- `module/solr_cloud.go`: the SolrCloud resource (image, ZooKeeper
+  wiring, storage, pod options, addressability, update strategy,
+  availability, scaling, TLS, security, backup repositories)
+- `module/namespace.go`: the optional namespace

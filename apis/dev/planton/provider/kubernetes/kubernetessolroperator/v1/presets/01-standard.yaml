@@ -1,16 +1,21 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolrOperator
 metadata:
-  name: my-solr-operator
+  name: solr-operator
 spec:
   namespace:
-    value: solr-system
-  createNamespace: true
-  container:
-    resources:
-      requests:
-        cpu: 50m
-        memory: 100Mi
-      limits:
-        cpu: 1000m
-        memory: 1Gi
+    value: solr-operator
+  create_namespace: true
+  # Everything else rides the defaults, and the defaults are the point:
+  #
+  # - chart_version 0.9.1 — chart and operator versions move together;
+  #   the operator is pre-1.0, so a version bump is a CRD re-check.
+  # - The bundled zookeeper-operator INSTALLS (chart default) — this is
+  #   what makes a KubernetesSolr resource's provided ZooKeeper
+  #   ensemble work out of the box. Disable it only when one already
+  #   runs in the cluster (see the existing-zookeeper-operator preset).
+  # - Cluster-wide watch: this one install reconciles KubernetesSolr
+  #   resources in EVERY namespace.
+  # - CRD lifecycle is module-owned (the chart does not ship CRDs), so
+  #   uninstalling the operator never cascade-deletes SolrCloud
+  #   resources and their data.

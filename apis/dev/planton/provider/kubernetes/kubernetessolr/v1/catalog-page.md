@@ -1,267 +1,131 @@
 # Kubernetes Solr
 
-Deploys an Apache Solr cluster on Kubernetes using the Solr Operator's SolrCloud custom resource, with a co-located ZooKeeper ensemble for cluster coordination, persistent storage for both Solr and ZooKeeper data, and optional external access through Istio Gateway API ingress with automatic TLS via cert-manager.
+Declares an Apache SolrCloud cluster reconciled by the Apache Solr
+Operator — node count and JVM sizing, ZooKeeper wiring (an
+operator-provisioned ensemble or an external one), persistent or
+ephemeral storage, basic-auth security bootstrap, keystore-based TLS,
+registered backup repositories (S3, GCS, or a shared volume), and
+shard-aware managed rolling updates. One resource per cluster;
+workloads connect through the exported common service endpoint.
 
 ## What Gets Created
 
-When you deploy a KubernetesSolr resource, Planton provisions:
+- **Namespace** (optional) — created and owned when `create_namespace`
+  is set
+- **SolrCloud** (`solr.apache.org/v1beta1`, named `metadata.name`) —
+  the ONLY custom resource
 
-- **Namespace** — created only when `createNamespace` is `true`
-- **SolrCloud Custom Resource** — a Solr Operator SolrCloud object that manages a StatefulSet of Solr pods with configurable replicas, container image, JVM tuning, resource limits, and persistent data volumes
-- **ZooKeeper Ensemble** — a co-located ZooKeeper cluster (via the Solr Operator's provided ZooKeeper reference) with configurable replicas, resource limits, and persistent storage
-- **Solr Modules** — `jaegertracer-configurator` and `ltr` (Learning to Rank) modules enabled by default
-- **TLS Certificate** — a cert-manager Certificate for the ingress hostnames, created only when ingress is enabled
-- **Istio Gateway** — an external Gateway resource with HTTPS (port 443) and HTTP (port 80) listeners, created only when ingress is enabled
-- **HTTP-to-HTTPS Redirect Route** — an HTTPRoute that redirects HTTP traffic to HTTPS with a 301 status code, created only when ingress is enabled
-- **HTTPS Route** — an HTTPRoute that forwards HTTPS traffic to the Solr common service, created only when ingress is enabled
+The operator reconciles it into the node StatefulSet
+(`<name>-solrcloud`), the common Service (`<name>-solrcloud-common`),
+per-node PVCs (persistent storage), the provided ZooKeeper ensemble
+(via the bundled zookeeper-operator), and — with basic auth — the
+security bootstrap Secrets.
 
 ## Prerequisites
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, or set `createNamespace` to `true`
-- **Solr Operator** installed on the target cluster (manages the SolrCloud custom resource lifecycle)
-- **A StorageClass** available in the cluster for Solr and ZooKeeper persistent volumes (most managed Kubernetes clusters provide a default)
-- **Istio** with Gateway API support installed if enabling ingress
-- **cert-manager** with a ClusterIssuer matching the ingress domain if enabling ingress with TLS
+- The Apache Solr Operator on the cluster (KubernetesSolrOperator) —
+  with its bundled zookeeper-operator installed when clusters use
+  provided ensembles
+- A StorageClass for persistent storage (most managed clusters provide
+  a default; or reference a KubernetesStorageClass)
+- For TLS: a PKCS#12 keystore Secret and a keystore-password Secret
+  (e.g. a KubernetesCertificate with a pkcs12 keystore output)
+- For `volume` backup repositories: an existing ReadWriteMany PVC
 
 ## Quick Start
 
-Create a file `solr.yaml`:
-
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSolr
 metadata:
-  name: my-solr
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesSolr.my-solr
-spec:
-  namespace: search
-  createNamespace: true
-```
-
-Deploy:
-
-```shell
-planton apply -f solr.yaml
-```
-
-This creates a single-replica Solr 9.10.0 instance backed by a single-replica ZooKeeper ensemble, each with 1Gi persistent volumes and default resource limits (1000m CPU, 1Gi memory).
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `string` | Kubernetes namespace for the Solr deployment. Can reference a KubernetesNamespace resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
-| `solrContainer.replicas` | `int32` | `1` | Number of Solr pods in the SolrCloud cluster. |
-| `solrContainer.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each Solr pod. |
-| `solrContainer.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for each Solr pod. |
-| `solrContainer.resources.requests.cpu` | `string` | `50m` | Minimum guaranteed CPU for each Solr pod. |
-| `solrContainer.resources.requests.memory` | `string` | `100Mi` | Minimum guaranteed memory for each Solr pod. |
-| `solrContainer.diskSize` | `string` | `1Gi` | Size of the PersistentVolumeClaim attached to each Solr pod. Must be a valid Kubernetes quantity (e.g., `1Gi`, `10Gi`). |
-| `solrContainer.image.repo` | `string` | `solr` | Container image repository for Solr. |
-| `solrContainer.image.tag` | `string` | `9.10.0` | Container image tag for Solr. |
-| `config.javaMem` | `string` | — | JVM memory settings for Solr (e.g., `-Xms512m -Xmx512m`). |
-| `config.opts` | `string` | — | Custom Solr options (e.g., `-Dsolr.autoSoftCommit.maxTime=10000`). |
-| `config.garbageCollectionTuning` | `string` | — | Solr GC tuning parameters (e.g., `-XX:SurvivorRatio=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=8`). |
-| `zookeeperContainer.replicas` | `int32` | `1` | Number of ZooKeeper pods in the ensemble. |
-| `zookeeperContainer.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for each ZooKeeper pod. |
-| `zookeeperContainer.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for each ZooKeeper pod. |
-| `zookeeperContainer.resources.requests.cpu` | `string` | `50m` | Minimum guaranteed CPU for each ZooKeeper pod. |
-| `zookeeperContainer.resources.requests.memory` | `string` | `100Mi` | Minimum guaranteed memory for each ZooKeeper pod. |
-| `zookeeperContainer.diskSize` | `string` | `1Gi` | Size of the PersistentVolumeClaim attached to each ZooKeeper pod. Must be a valid Kubernetes quantity (e.g., `1Gi`, `10Gi`). |
-| `ingress.enabled` | `bool` | `false` | Enables external access through Istio Gateway API with TLS termination and HTTP-to-HTTPS redirect. |
-| `ingress.hostname` | `string` | — | Full hostname for external access (e.g., `solr.example.com`). Required when `ingress.enabled` is `true`. |
-
-## Examples
-
-### Development Solr with Minimal Resources
-
-A lightweight single-node Solr instance for development and testing:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesSolr
-metadata:
-  name: dev-solr
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesSolr.dev-solr
-spec:
-  namespace: dev
-  createNamespace: true
-  solrContainer:
-    replicas: 1
-    resources:
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
-      requests:
-        cpu: "100m"
-        memory: "256Mi"
-    diskSize: "1Gi"
-    image:
-      repo: solr
-      tag: "9.10.0"
-  zookeeperContainer:
-    replicas: 1
-    resources:
-      limits:
-        cpu: "250m"
-        memory: "256Mi"
-      requests:
-        cpu: "50m"
-        memory: "128Mi"
-    diskSize: "1Gi"
-```
-
-### Production Solr Cluster with JVM Tuning
-
-A multi-replica Solr cluster with increased resources, larger storage, and JVM tuning for production workloads:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesSolr
-metadata:
-  name: prod-solr
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesSolr.prod-solr
-spec:
-  namespace: search
-  solrContainer:
-    replicas: 3
-    resources:
-      limits:
-        cpu: "4000m"
-        memory: "8Gi"
-      requests:
-        cpu: "1000m"
-        memory: "4Gi"
-    diskSize: "50Gi"
-    image:
-      repo: solr
-      tag: "9.10.0"
-  config:
-    javaMem: "-Xms4g -Xmx4g"
-    opts: "-Dsolr.autoSoftCommit.maxTime=10000"
-    garbageCollectionTuning: "-XX:SurvivorRatio=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=8"
-  zookeeperContainer:
-    replicas: 3
-    resources:
-      limits:
-        cpu: "1000m"
-        memory: "2Gi"
-      requests:
-        cpu: "250m"
-        memory: "512Mi"
-    diskSize: "10Gi"
-```
-
-### Solr with External Ingress
-
-Solr exposed outside the cluster via Istio Gateway with TLS termination and automatic certificate management:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesSolr
-metadata:
-  name: shared-solr
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesSolr.shared-solr
-spec:
-  namespace: search
-  solrContainer:
-    replicas: 3
-    resources:
-      limits:
-        cpu: "4000m"
-        memory: "8Gi"
-      requests:
-        cpu: "1000m"
-        memory: "4Gi"
-    diskSize: "100Gi"
-    image:
-      repo: solr
-      tag: "9.10.0"
-  config:
-    javaMem: "-Xms4g -Xmx4g"
-  zookeeperContainer:
-    replicas: 3
-    resources:
-      limits:
-        cpu: "1000m"
-        memory: "2Gi"
-      requests:
-        cpu: "250m"
-        memory: "512Mi"
-    diskSize: "10Gi"
-  ingress:
-    enabled: true
-    hostname: solr.example.com
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed namespace instead of hardcoding the name:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesSolr
-metadata:
-  name: search
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesSolr.search
+  name: main
 spec:
   namespace:
-    valueFrom:
-      kind: KubernetesNamespace
-      name: search-namespace
-      field: spec.name
-  solrContainer:
-    replicas: 3
-    diskSize: "50Gi"
-  zookeeperContainer:
-    replicas: 3
-    diskSize: "10Gi"
+    value: search
+  create_namespace: true
+  version: "9.10.0"
+  replicas: 3
+  storage:
+    persistent:
+      size: 50Gi
+  security:
+    authentication_type: basic
 ```
+
+The operator provisions a 3-node ZooKeeper ensemble, brings up three
+Solr nodes on persistent volumes, and bootstraps basic-auth security.
+Workloads connect at the exported `internal_endpoint`
+(`http://main-solrcloud-common.search.svc.cluster.local`).
+
+## Configuration
+
+### Storage
+
+The operator default is EPHEMERAL — data is lost when a pod leaves its
+node. Declare `storage.persistent` (size, StorageClass, reclaim policy
+defaulting to Retain) for real workloads; keep ephemeral for throwaway
+experiments only.
+
+### Security
+
+`authentication_type: basic` bootstraps security.json with `admin`,
+`solr`, and `k8s-oper` users carrying random passwords. The admin and
+solr credentials land in `<name>-solrcloud-security-bootstrap`; the
+operator's own credentials land in `<name>-solrcloud-basic-auth` (the
+exported handle). If you rotate a password through Solr's security API
+later, update the Secret too — the operator locks itself out
+otherwise. Empty security means an open cluster: development only.
+
+### Backups
+
+`backup_repositories` registers named targets: S3 (declared keys, or
+keyless via IRSA on EKS), GCS (a service-account key, or keyless via
+GKE Workload Identity), or a shared ReadWriteMany volume. Backup runs
+are operational verbs — SolrBackup resources or Solr API calls —
+against these names.
+
+### Updates and scaling
+
+The Managed strategy (default) restarts pods shard-aware, bounding
+unavailable pods (25%) and unavailable shard replicas (1); scale
+operations move replicas off departing pods and onto new ones by
+default.
+
+### Exposure
+
+The `external` block models the operator's own Ingress/ExternalDNS
+exposure with per-node addressability (what CloudSolrClient needs from
+outside the cluster); for simple HTTP access, compose a
+KubernetesIngress over the common service instead.
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where Solr is deployed |
-| `service` | `string` | Kubernetes Service name for the SolrCloud common service (format: `{name}-solrcloud-common`) |
-| `port_forward_command` | `string` | kubectl port-forward command for local access to the Solr UI on port 8080 |
-| `kube_endpoint` | `string` | Cluster-internal FQDN (e.g., `my-solr-solrcloud-common.search.svc.cluster.local`) |
-| `external_hostname` | `string` | Public hostname for external access, only set when ingress is enabled |
-| `internal_hostname` | `string` | Internal hostname for private access (format: `internal-{ingress.hostname}`), only set when ingress is enabled |
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the cluster runs in |
+| `cluster_name` | SolrCloud resource name (= `metadata.name`) |
+| `common_service_name` | Common Service fronting all nodes (`<name>-solrcloud-common`) |
+| `internal_endpoint` | In-cluster base URL (http on 80, https on 443 with TLS) |
+| `basic_auth_secret_name` | Operator-generated basic-auth Secret (`<name>-solrcloud-basic-auth`); empty when security is off or user-provided |
+| `zookeeper_connection_string` | The ensemble the cluster uses (host:port, plus chroot) |
+| `port_forward_command` | Workstation access when no exposure is composed |
 
 ## Related Components
 
-- [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — provides the target namespace via `valueFrom` reference
-- [KubernetesDeployment](/docs/catalog/kubernetes/kubernetesdeployment) — application deployments that consume Solr as a search backend
-- [KubernetesValkey](/docs/catalog/kubernetes/kubernetesvalkey) — complementary Redis-compatible caching layer often paired with Solr for search applications
+- [KubernetesSolrOperator](/docs/catalog/kubernetes/kubernetessolroperator)
+  — the engine; must be installed first
+- [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) —
+  provides the target namespace via reference
+- [KubernetesCertificate](/docs/catalog/kubernetes/kubernetescertificate)
+  — produces the PKCS#12 keystore Secret the TLS block references
+- [KubernetesIngress](/docs/catalog/kubernetes/kubernetesingress) —
+  composes external exposure over the common service
+
+## Next Steps
+
+Turn on basic auth before anything real touches the cluster, move to
+persistent storage, and size `java_mem` together with container
+resources (heap at roughly half the container memory). Register a
+backup repository and schedule backup runs against it. When external
+clients need to address individual nodes, declare the `external` block
+— otherwise compose exposure over the common service.

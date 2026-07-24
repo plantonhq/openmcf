@@ -15,9 +15,12 @@ istio_release=1.30.3
 #https://github.com/cert-manager/cert-manager/tree/release-1.15
 cert_manager_release=v1.20.3
 
-#https://github.com/apache/solr-operator/tree/v0.8.1/helm/solr-operator/crds
-#https://github.com/apache/solr-operator/releases/tag/v0.8.1
-solr_operator_release=v0.8.1
+#https://github.com/apache/solr-operator/tree/v0.9.1/helm/solr-operator/crds
+#https://github.com/apache/solr-operator/releases/tag/v0.9.1
+#Note: the served chart index (https://solr.apache.org/charts) pairs chart
+#0.9.1 with app v0.9.1 — chart versions carry no `v` prefix, the operator/CRD
+#artifacts do.
+solr_operator_release=v0.9.1
 
 #https://github.com/strimzi/strimzi-kafka-operator/tree/1.1.0/install/cluster-operator
 #Strimzi 1.1.0 (KRaft-only; CRD API v1). No generated types: the Kafka and
@@ -46,8 +49,16 @@ barman_cloud_plugin_release=v0.13.0
 #unserved v1beta1 blocks and the generators.external-secrets.io v1alpha1 CRDs.
 external_secrets_release=v2.8.0
 
-#https://raw.githubusercontent.com/elastic/cloud-on-k8s/v2.14.0/deploy/eck-operator/charts/eck-operator-crds/templates/all-crds.yaml
-elastic_operator_release=v2.14.0
+#https://github.com/opensearch-project/opensearch-k8s-operator/tree/v2.8.0/opensearch-operator/config/crd/bases
+#The stable operator app release. The served chart pairing is 2.8.0 = app
+#2.8.0 (later served charts default to a PRERELEASE manager image and bundle
+#next-generation opensearch.org CRDs the stable operator does not serve —
+#verified against the served charts; the chart index governs, never a
+#vendored Chart.yaml). Only the OpenSearchCluster CRD is generated: it is
+#the one CR the catalog declares (KubernetesOpenSearch); the operator's
+#declarative satellite CRs (users, roles, ISM policies, templates) are not
+#admitted kinds.
+opensearch_operator_release=v2.8.0
 
 #https://github.com/keycloak/keycloak-k8s-resources/tree/25.0.4/kubernetes
 keycloak_release=25.0.4
@@ -130,9 +141,9 @@ gen-cloudnative-pg:
 gen-external-secrets:
 	crd2pulumi --force --goPath=externalsecrets https://raw.githubusercontent.com/external-secrets/external-secrets/${external_secrets_release}/deploy/crds/bundle.yaml
 
-.PHONY: gen-elastic-operator
-gen-elastic-operator:
-	crd2pulumi --force --goPath=elasticsearch https://raw.githubusercontent.com/elastic/cloud-on-k8s/${elastic_operator_release}/deploy/eck-operator/charts/eck-operator-crds/templates/all-crds.yaml
+.PHONY: gen-opensearch-operator
+gen-opensearch-operator:
+	crd2pulumi --force --goPath=opensearchoperator https://raw.githubusercontent.com/opensearch-project/opensearch-k8s-operator/${opensearch_operator_release}/opensearch-operator/config/crd/bases/opensearch.opster.io_opensearchclusters.yaml
 
 .PHONY: gen-keycloak
 gen-keycloak:
@@ -162,7 +173,7 @@ gen-nack:
 	crd2pulumi --force --goPath=nack https://raw.githubusercontent.com/nats-io/nack/${nack_release}/deploy/crds.yml
 
 .PHONY: gen
-gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-external-secrets gen-elastic-operator gen-keycloak gen-altinity-operator gen-nack
+gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-external-secrets gen-opensearch-operator gen-keycloak gen-altinity-operator gen-nack
 
 .PHONY: build
 build: clean gen

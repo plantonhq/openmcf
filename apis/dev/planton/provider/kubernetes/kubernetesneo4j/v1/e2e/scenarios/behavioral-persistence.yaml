@@ -1,0 +1,42 @@
+# THE persistence proof: write a marker node, DELETE the pod, read the
+# marker back once the pod returns — graph data surviving pod loss
+# through the PVC. Also exercises the tuned surface: explicit memory
+# split, extra neo4j.conf and APOC entries, JVM arguments, service
+# annotations, scheduling knobs.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesNeo4j
+metadata:
+  name: e2e-neo-pers
+spec:
+  namespace:
+    value: e2e-neo-pers
+  create_namespace: true
+  edition: community
+  auth:
+    password: E2ePassword-2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "1"
+      memory: 2560Mi
+  data_volume:
+    size: 4Gi
+  memory:
+    heap_initial: 512M
+    heap_max: 512M
+    page_cache: 256M
+  config:
+    db.transaction.timeout: 30s
+  apoc_config:
+    apoc.export.file.enabled: "false"
+  additional_jvm_arguments:
+    - -XX:+UseG1GC
+  service:
+    type: ClusterIP
+    annotations:
+      e2e.planton.dev/lane: behavioral-persistence
+  scheduling:
+    pod_anti_affinity: false
+  service_monitor_enabled: false

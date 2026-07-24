@@ -17,9 +17,7 @@ type ResourceVerifier interface {
 // pods only (no service requirement).
 var operatorKinds = map[string]bool{
 	// Tier 2/3 fixture operators (tested since sessions 3-9)
-	"kubernetessolroperator":         true,
 	"kubernetesaltinityoperator":     true,
-	"kuberneteselasticoperator":      true,
 	"kubernetesstrimzikafkaoperator": true,
 	// Tier 4 operators with configurable namespace
 	"kubernetesgharunnerscalesetcontroller": true,
@@ -27,14 +25,11 @@ var operatorKinds = map[string]bool{
 }
 
 // crdWorkloadKinds lists manifest kind values (lowercased) for Tier 3
-// operator-dependent components. These create Custom Resources (e.g.,
-// Zalando Postgresql, Strimzi Kafka, ECK Elasticsearch) that are
+// operator-dependent components. These create Custom Resources that are
 // reconciled by their prerequisite operator into pods and services.
 // Verification checks namespace + running pods + at least one service.
 var crdWorkloadKinds = map[string]bool{
-	"kuberneteselasticsearch": true,
-	"kubernetessolr":          true,
-	"kubernetesclickhouse":    true,
+	"kubernetesclickhouse": true,
 }
 
 // helmTier2Kinds lists manifest kind values (lowercased) for Helm-based
@@ -45,7 +40,6 @@ var helmTier2Kinds = map[string]bool{
 	// Tier 2 Helm applications
 	"kubernetesnats":     true,
 	"kubernetesgrafana":  true,
-	"kubernetesneo4j":    true,
 	"kubernetesopenbao":  true,
 	"kubernetesopenfga":  true,
 	"kubernetesjenkins":  true,
@@ -567,6 +561,69 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Port:          int(manifestSpecInt(manifestPath, "servicePort", 80)),
 			ClusterOnline: clusterOnline,
 			Authenticated: strings.Contains(manifestPath, "with-auth"),
+		}, nil
+
+	// The OpenSearch Kubernetes Operator: controller-manager Available +
+	// the module-owned CRDs Established (kept on destroy by design).
+	case "kubernetesopensearchoperator":
+		return &OpenSearchOperatorInstallVerifier{
+			Namespace:   info.Namespace,
+			ReleaseName: info.Name,
+		}, nil
+
+	// An operator-managed OpenSearch cluster: phase RUNNING with every
+	// declared node available, plus a LIVE index/search round-trip on
+	// every lane. The behavioral-durability scenario (recognized by
+	// name) proves replicated data survives a live node loss.
+	case "kubernetesopensearch":
+		spec := manifestSpecMap(manifestPath)
+		firstPool, totalNodes := opensearchFirstPool(spec)
+		return &OpenSearchClusterVerifier{
+			Namespace:     info.Namespace,
+			ClusterName:   info.Name,
+			TotalNodes:    totalNodes,
+			FirstPoolName: firstPool,
+			HttpPort:      int(manifestSpecInt(manifestPath, "http_port", 9200)),
+			Durability:    strings.Contains(manifestPath, "behavioral-durability"),
+			Dashboards:    opensearchDashboardsEnabled(spec),
+		}, nil
+
+	// The Apache Solr Operator: operator Available + the module-owned
+	// CRDs (incl. the bundled zookeeper-operator's ZookeeperCluster)
+	// Established; kept on destroy by design.
+	case "kubernetessolroperator":
+		spec := manifestSpecMap(manifestPath)
+		return &SolrOperatorInstallVerifier{
+			Namespace:         info.Namespace,
+			ReleaseName:       info.Name,
+			ZookeeperOperator: solrZookeeperOperatorInstalled(spec),
+		}, nil
+
+	// An operator-managed SolrCloud: every node ready + the common
+	// Service. The behavioral-collection scenario (recognized by name)
+	// creates a collection, indexes a document and queries it back —
+	// the cluster proven working, not just running.
+	case "kubernetessolr":
+		spec := manifestSpecMap(manifestPath)
+		return &SolrCloudVerifier{
+			Namespace:   info.Namespace,
+			ClusterName: info.Name,
+			Replicas:    int(manifestSpecInt(manifestPath, "replicas", 3)),
+			Security:    solrSecurityEnabled(spec),
+			Behavioral:  strings.Contains(manifestPath, "behavioral-collection"),
+		}, nil
+
+	// A Neo4j server: the StatefulSet ready + the main Service, plus a
+	// LIVE Cypher write/read round-trip whenever credentials are
+	// declared. The behavioral-persistence scenario (recognized by
+	// name) proves the data survives pod loss through the PVC.
+	case "kubernetesneo4j":
+		spec := manifestSpecMap(manifestPath)
+		return &Neo4jVerifier{
+			Namespace:      info.Namespace,
+			Name:           info.Name,
+			AuthSecretName: neo4jAuthSecretName(spec, info.Name),
+			Persistence:    strings.Contains(manifestPath, "behavioral-persistence"),
 		}, nil
 
 	// A Percona-operator-managed MySQL (XtraDB) cluster: the resource in

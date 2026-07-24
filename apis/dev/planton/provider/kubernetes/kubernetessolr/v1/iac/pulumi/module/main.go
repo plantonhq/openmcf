@@ -7,17 +7,25 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Resources deploys one Apache Solr Operator-managed SolrCloud cluster:
+//
+//  1. the namespace (optional),
+//  2. the SolrCloud resource itself (the typed SDK catches field/structure
+//     drift against the pinned CRD at compile time).
+//
+// Everything else — the node StatefulSet, the provided ZooKeeper ensemble,
+// services, PVCs, the basic-auth bootstrap Secret, Ingress exposure — is
+// the operator's to create from the SolrCloud spec; the module renders the
+// CR and exports the operator's deterministic names.
 func Resources(ctx *pulumi.Context, stackInput *kubernetessolrv1.KubernetesSolrStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	//create kubernetes-provider from the credential in the stack-input
 	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
 		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to create kubernetes provider")
+		return errors.Wrap(err, "failed to set up kubernetes provider")
 	}
 
-	// Conditionally create namespace based on create_namespace flag
 	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
@@ -28,17 +36,23 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetessolrv1.KubernetesSolrS
 		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
 	}
 
-	//create solr-cloud custom resource
-	if err := solrCloud(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create helm-chart resources")
+	if _, err := createSolrCloud(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
+		return errors.Wrap(err, "failed to create solrcloud resource")
 	}
 
-	//create istio-ingress resources if ingress is enabled.
-	if locals.KubernetesSolr.Spec.Ingress != nil && locals.KubernetesSolr.Spec.Ingress.Enabled {
-		if err := ingress(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-			return errors.Wrap(err, "failed to create istio ingress resources")
-		}
-	}
-
+	exportOutputs(ctx, locals)
 	return nil
+}
+
+// exportOutputs publishes the composition handles — all derived from the
+// operator's naming contract (see locals.go), never read back from the
+// cluster.
+func exportOutputs(ctx *pulumi.Context, locals *Locals) {
+	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	ctx.Export(OpClusterName, pulumi.String(locals.ClusterName))
+	ctx.Export(OpCommonServiceName, pulumi.String(locals.CommonServiceName))
+	ctx.Export(OpInternalEndpoint, pulumi.String(locals.InternalEndpoint))
+	ctx.Export(OpBasicAuthSecretName, pulumi.String(locals.BasicAuthSecretName))
+	ctx.Export(OpZookeeperConnectionString, pulumi.String(locals.ZookeeperConnectionString))
+	ctx.Export(OpPortForwardCommand, pulumi.String(locals.PortForwardCommand))
 }

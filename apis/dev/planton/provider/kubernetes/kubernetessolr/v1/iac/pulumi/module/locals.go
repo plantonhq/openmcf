@@ -10,131 +10,138 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	IngressCertClusterIssuerName string
-	IngressCertSecretName        string
-	IngressExternalHostname      string
-	IngressHostnames             []string
-	IngressInternalHostname      string
-	KubePortForwardCommand       string
-	KubeServiceFqdn              string
-	KubeServiceName              string
-	Namespace                    string
-	KubernetesSolr               *kubernetessolrv1.KubernetesSolr
-	Labels                       map[string]string
+	KubernetesSolr *kubernetessolrv1.KubernetesSolr
+	Spec           *kubernetessolrv1.KubernetesSolrSpec
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	CertificateName               string
-	ExternalGatewayName           string
-	HttpExternalRedirectRouteName string
-	HttpsExternalRouteName        string
+	// Resource-identity labels stamped on the module-created objects
+	// (namespace, SolrCloud). The Solr operator derives ITS objects'
+	// identity from the SolrCloud name; these labels tie the family back
+	// to the Planton resource.
+	Labels map[string]string
+
+	// Namespace the cluster lives in (resolved literal from the spec's
+	// value-or-ref).
+	Namespace string
+
+	// ClusterName is metadata.name — the naming root the operator derives
+	// every object from: StatefulSet `<name>-solrcloud`, common Service
+	// `<name>-solrcloud-common`, basic-auth Secret
+	// `<name>-solrcloud-basic-auth`, provided ZooKeeper client service
+	// `<name>-solrcloud-zookeeper-client`.
+	ClusterName string
+
+	// CommonServiceName is the operator-created Service fronting all Solr
+	// nodes (`<name>-solrcloud-common`).
+	CommonServiceName string
+
+	// TlsEnabled drives the endpoint scheme/port: the common service
+	// listens on 80 without TLS and 443 with TLS.
+	TlsEnabled bool
+
+	// InternalEndpoint is the in-cluster base URL of the cluster through
+	// the common service (scheme per TlsEnabled; 80/443 are the scheme
+	// defaults so no port suffix is rendered).
+	InternalEndpoint string
+
+	// BasicAuthSecretName is the operator-generated credential Secret
+	// (`<name>-solrcloud-basic-auth`) — populated only when basic auth is
+	// enabled AND no user-provided basic_auth_secret is in play (the
+	// operator only generates credentials in that case).
+	BasicAuthSecretName string
+
+	// ZookeeperConnectionString is what the cluster actually uses:
+	// the external ensemble's connection string, or the provided
+	// ensemble's operator-named client service
+	// (`<name>-solrcloud-zookeeper-client:2181`) — plus the chroot when
+	// it diverges from "/".
+	ZookeeperConnectionString string
+
+	// PortForwardCommand reaches the common service from a workstation.
+	PortForwardCommand string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetessolrv1.KubernetesSolrStackInput) *Locals {
-	locals := &Locals{}
-	//assign value for the locals variable to make it available across the project
-	locals.KubernetesSolr = stackInput.Target
-
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetessolrv1.KubernetesSolrStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	locals.Labels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesSolr.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// Get namespace from spec (required field)
-	locals.Namespace = target.Spec.Namespace.GetValue()
+	namespace := spec.Namespace.GetValue()
+	clusterName := target.Metadata.Name
+	commonServiceName := clusterName + "-solrcloud-common"
 
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	locals.KubeServiceName = fmt.Sprintf("%s-solrcloud-common", target.Metadata.Name)
-
-	//export kubernetes service name
-	ctx.Export(OpService, pulumi.String(locals.KubeServiceName))
-
-	locals.KubeServiceFqdn = fmt.Sprintf(
-		"%s.%s.svc.cluster.local", locals.KubeServiceName, locals.Namespace)
-
-	//export kubernetes endpoint
-	ctx.Export(OpKubeEndpoint, pulumi.String(locals.KubeServiceFqdn))
-
-	locals.KubePortForwardCommand = fmt.Sprintf("kubectl port-forward -n %s service/%s 8080:8080",
-		locals.Namespace, target.Metadata.Name)
-
-	//export kube-port-forward command
-	ctx.Export(OpPortForwardCommand, pulumi.String(locals.KubePortForwardCommand))
-
-	if target.Spec.Ingress == nil ||
-		!target.Spec.Ingress.Enabled ||
-		target.Spec.Ingress.Hostname == "" {
-		return locals
+	tlsEnabled := spec.GetTls() != nil
+	scheme := "http"
+	commonServicePort := 80
+	if tlsEnabled {
+		scheme = "https"
+		commonServicePort = 443
 	}
 
-	// Use the hostname directly from spec
-	locals.IngressExternalHostname = target.Spec.Ingress.Hostname
-
-	// Internal hostname (private ingress) - prepend internal-
-	locals.IngressInternalHostname = fmt.Sprintf("internal-%s", target.Spec.Ingress.Hostname)
-
-	locals.IngressHostnames = []string{
-		locals.IngressExternalHostname,
-		locals.IngressInternalHostname,
+	// Basic auth is the only operator-managed authentication type; the
+	// operator generates `<name>-solrcloud-basic-auth` only when the user
+	// did not bring their own credential Secret.
+	basicAuthSecretName := ""
+	if spec.GetSecurity().GetAuthenticationType() == "basic" &&
+		spec.GetSecurity().GetBasicAuthSecret().GetValue() == "" {
+		basicAuthSecretName = clusterName + "-solrcloud-basic-auth"
 	}
 
-	//export ingress hostnames
-	ctx.Export(OpExternalHostname, pulumi.String(locals.IngressExternalHostname))
-	ctx.Export(OpInternalHostname, pulumi.String(locals.IngressInternalHostname))
+	// The connection string the cluster uses. The provided arm (and the
+	// empty default, which the operator treats as provided-with-defaults)
+	// lands on the operator-named client service.
+	zkConnection := clusterName + "-solrcloud-zookeeper-client:2181"
+	zkChroot := zookeeperChroot(spec.GetZookeeper())
+	if external := spec.GetZookeeper().GetExternal(); external != nil {
+		zkConnection = external.GetConnectionString()
+	}
+	if zkChroot != "" && zkChroot != "/" {
+		zkConnection = zkConnection + zkChroot
+	}
 
-	//note: a ClusterIssuer resource should have already exist on the kubernetes-cluster.
-	//this is typically taken care of by the kubernetes cluster administrator.
-	//if the kubernetes-cluster is created using Planton, then the cluster-issuer name will be
-	//same as the ingress-domain-name as long as the same ingress-domain-name is added to the list of
-	//ingress-domain-names for the GkeCluster/EksCluster/AksCluster spec.
-	// Extract the domain from hostname for certificate issuer name
-	dnsDomain := extractDomainFromHostname(target.Spec.Ingress.Hostname)
-	locals.IngressCertClusterIssuerName = dnsDomain
-
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	locals.IngressCertSecretName = fmt.Sprintf("%s-cert-tls", target.Metadata.Name)
-	locals.CertificateName = fmt.Sprintf("%s-cert", target.Metadata.Name)
-	locals.ExternalGatewayName = fmt.Sprintf("%s-external", target.Metadata.Name)
-	locals.HttpExternalRedirectRouteName = fmt.Sprintf("%s-http-external-redirect", target.Metadata.Name)
-	locals.HttpsExternalRouteName = fmt.Sprintf("%s-https-external", target.Metadata.Name)
-
-	return locals
+	return &Locals{
+		KubernetesSolr:      target,
+		Spec:                spec,
+		Labels:              labels,
+		Namespace:           namespace,
+		ClusterName:         clusterName,
+		CommonServiceName:   commonServiceName,
+		TlsEnabled:          tlsEnabled,
+		BasicAuthSecretName: basicAuthSecretName,
+		InternalEndpoint: fmt.Sprintf("%s://%s.%s.svc.cluster.local",
+			scheme, commonServiceName, namespace),
+		ZookeeperConnectionString: zkConnection,
+		PortForwardCommand: fmt.Sprintf("kubectl port-forward svc/%s -n %s 8983:%d",
+			commonServiceName, namespace, commonServicePort),
+	}
 }
 
-// extractDomainFromHostname extracts the domain from a hostname
-// Example: "solr.example.com" -> "example.com"
-func extractDomainFromHostname(hostname string) string {
-	// Split by dots and take everything after the first part
-	// This is a simple implementation - assumes standard domain structure
-	parts := []rune(hostname)
-	firstDotIndex := -1
-	for i, char := range parts {
-		if char == '.' {
-			firstDotIndex = i
-			break
-		}
+// zookeeperChroot resolves the chroot across the zookeeper oneof — "/" is
+// the shared default of both arms (and of the operator).
+func zookeeperChroot(zookeeper *kubernetessolrv1.KubernetesSolrZookeeper) string {
+	chroot := "/"
+	if external := zookeeper.GetExternal(); external != nil && external.GetChroot() != "" {
+		chroot = external.GetChroot()
 	}
-	if firstDotIndex > 0 && firstDotIndex < len(hostname)-1 {
-		return hostname[firstDotIndex+1:]
+	if provided := zookeeper.GetProvided(); provided != nil && provided.GetChroot() != "" {
+		chroot = provided.GetChroot()
 	}
-	// If no dot found or dot is at the end, return the hostname as-is
-	return hostname
+	return chroot
 }

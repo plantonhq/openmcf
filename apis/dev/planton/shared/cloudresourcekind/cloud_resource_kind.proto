@@ -3139,16 +3139,16 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8skafui"
   }];
-  KubernetesElasticOperator = 916 [(kind_meta) = {
+  KubernetesOpenSearchOperator = 916 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8selaop"
+    id_prefix: "k8sosop"
   }];
-  KubernetesElasticsearch = 917 [(kind_meta) = {
+  KubernetesOpenSearch = 917 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8ses"
-    prerequisites: [KubernetesElasticOperator]
+    id_prefix: "k8sos"
+    prerequisites: [KubernetesOpenSearchOperator]
   }];
   KubernetesAltinityOperator = 918 [(kind_meta) = {
     provider: kubernetes

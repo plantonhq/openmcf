@@ -24,26 +24,14 @@ const (
 // kubernetes-solr-operator stack outputs
 type KubernetesSolrOperatorStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which kubernetes-solr-operator is created.
+	// namespace the operator is installed into.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for kubernetes-solr-operator.
-	// ex: main-kubernetes-solr-operator
-	// in the above example, "main" is the name of the kubernetes-solr-operator
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open kubernetes-solr-operator from developers laptop.
-	// this might come handy when kubernetes-solr-operator ingress is disabled for security reasons.
-	// this is rendered by combining kubernetes_solr_operator_kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/kubernetes_solr_operator_kubernetes_service -n kubernetes_namespace 6379:6379
-	// running the command from this attribute makes it possible to access kubernetes-solr-operator using http://localhost:8080
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to kubernetes-solr-operator from the web browser.
-	// ex: main-kubernetes-solr-operator.namespace.svc.cluster.local:6379
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open kubernetes-solr-operator from clients outside kubernetes.
-	// ex: https://gls-planton-pcs-dev-main.data.dev.planton.live:6379
-	IngressEndpoint string `protobuf:"bytes,5,opt,name=ingress_endpoint,json=ingressEndpoint,proto3" json:"ingress_endpoint,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Helm release name of the operator install (= metadata.name).
+	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
+	// name of the Solr operator Deployment.
+	DeploymentName string `protobuf:"bytes,3,opt,name=deployment_name,json=deploymentName,proto3" json:"deployment_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *KubernetesSolrOperatorStackOutputs) Reset() {
@@ -83,30 +71,16 @@ func (x *KubernetesSolrOperatorStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesSolrOperatorStackOutputs) GetService() string {
+func (x *KubernetesSolrOperatorStackOutputs) GetReleaseName() string {
 	if x != nil {
-		return x.Service
+		return x.ReleaseName
 	}
 	return ""
 }
 
-func (x *KubernetesSolrOperatorStackOutputs) GetPortForwardCommand() string {
+func (x *KubernetesSolrOperatorStackOutputs) GetDeploymentName() string {
 	if x != nil {
-		return x.PortForwardCommand
-	}
-	return ""
-}
-
-func (x *KubernetesSolrOperatorStackOutputs) GetKubeEndpoint() string {
-	if x != nil {
-		return x.KubeEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesSolrOperatorStackOutputs) GetIngressEndpoint() string {
-	if x != nil {
-		return x.IngressEndpoint
+		return x.DeploymentName
 	}
 	return ""
 }
@@ -115,13 +89,11 @@ var File_dev_planton_provider_kubernetes_kubernetessolroperator_v1_stack_outputs
 
 const file_dev_planton_provider_kubernetes_kubernetessolroperator_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Mdev/planton/provider/kubernetes/kubernetessolroperator/v1/stack_outputs.proto\x129dev.planton.provider.kubernetes.kubernetessolroperator.v1\"\xde\x01\n" +
+	"Mdev/planton/provider/kubernetes/kubernetessolroperator/v1/stack_outputs.proto\x129dev.planton.provider.kubernetes.kubernetessolroperator.v1\"\x8e\x01\n" +
 	"\"KubernetesSolrOperatorStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12)\n" +
-	"\x10ingress_endpoint\x18\x05 \x01(\tR\x0fingressEndpointB\xd3\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12'\n" +
+	"\x0fdeployment_name\x18\x03 \x01(\tR\x0edeploymentNameB\xd3\x03\n" +
 	"=com.dev.planton.provider.kubernetes.kubernetessolroperator.v1B\x11StackOutputsProtoP\x01Ztgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessolroperator/v1;kubernetessolroperatorv1\xa2\x02\x05DPPKK\xaa\x029Dev.Planton.Provider.Kubernetes.Kubernetessolroperator.V1\xca\x029Dev\\Planton\\Provider\\Kubernetes\\Kubernetessolroperator\\V1\xe2\x02EDev\\Planton\\Provider\\Kubernetes\\Kubernetessolroperator\\V1\\GPBMetadata\xea\x02>Dev::Planton::Provider::Kubernetes::Kubernetessolroperator::V1b\x06proto3"
 
 var (

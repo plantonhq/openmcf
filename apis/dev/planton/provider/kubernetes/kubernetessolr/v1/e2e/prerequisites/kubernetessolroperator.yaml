@@ -1,0 +1,14 @@
+# Consumer-scoped operator fixture for the KubernetesSolr lanes: the
+# chart-default cluster-wide watch with the bundled zookeeper-operator
+# (provided ensembles need it), so clouds reconcile wherever the lane
+# puts them.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSolrOperator
+metadata:
+  name: e2e-slrop-fix
+spec:
+  namespace:
+    value: solr-operator-system
+  create_namespace: true
+  zookeeper_operator:
+    install: true

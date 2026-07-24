@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-aws-module-test
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-solr
+runtime: go
+description: Apache SolrCloud cluster reconciled by the Apache Solr Operator — managed ZooKeeper wiring, shard-aware rolling updates, TLS, basic-auth bootstrap, and registered backup repositories

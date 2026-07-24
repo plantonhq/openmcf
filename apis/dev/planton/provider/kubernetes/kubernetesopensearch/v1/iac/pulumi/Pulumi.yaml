@@ -1,0 +1,3 @@
+name: kubernetes-open-search
+runtime: go
+description: OpenSearch cluster reconciled by the OpenSearch Kubernetes Operator — per-pool StatefulSets, TLS and security-plugin bootstrap, snapshot repositories, Prometheus monitoring, and optional Dashboards

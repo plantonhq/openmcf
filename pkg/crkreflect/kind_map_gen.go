@@ -435,8 +435,6 @@ import (
 	kubernetesdaemonsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdaemonset/v1"
 	kubernetesdeploymentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdeployment/v1"
 	kubernetesdestinationrulev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesdestinationrule/v1"
-	kuberneteselasticoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteselasticoperator/v1"
-	kuberneteselasticsearchv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteselasticsearch/v1"
 	kubernetesenvoyfilterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesenvoyfilter/v1"
 	kubernetesexternaldnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternaldns/v1"
 	kubernetesexternalsecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternalsecret/v1"
@@ -484,6 +482,8 @@ import (
 	kubernetesnetworkpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnetworkpolicy/v1"
 	kubernetesopenbaov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesopenbao/v1"
 	kubernetesopenfgav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesopenfga/v1"
+	kubernetesopensearchv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesopensearch/v1"
+	kubernetesopensearchoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesopensearchoperator/v1"
 	kubernetespeerauthenticationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespeerauthentication/v1"
 	kubernetesperconamongooperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconamongooperator/v1"
 	kubernetesperconamysqloperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesperconamysqloperator/v1"
@@ -1079,8 +1079,6 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesDaemonSet:                   &kubernetesdaemonsetv1.KubernetesDaemonSet{},
 	cloudresourcekind.CloudResourceKind_KubernetesDeployment:                  &kubernetesdeploymentv1.KubernetesDeployment{},
 	cloudresourcekind.CloudResourceKind_KubernetesDestinationRule:             &kubernetesdestinationrulev1.KubernetesDestinationRule{},
-	cloudresourcekind.CloudResourceKind_KubernetesElasticOperator:             &kuberneteselasticoperatorv1.KubernetesElasticOperator{},
-	cloudresourcekind.CloudResourceKind_KubernetesElasticsearch:               &kuberneteselasticsearchv1.KubernetesElasticsearch{},
 	cloudresourcekind.CloudResourceKind_KubernetesEnvoyFilter:                 &kubernetesenvoyfilterv1.KubernetesEnvoyFilter{},
 	cloudresourcekind.CloudResourceKind_KubernetesExternalDns:                 &kubernetesexternaldnsv1.KubernetesExternalDns{},
 	cloudresourcekind.CloudResourceKind_KubernetesExternalSecret:              &kubernetesexternalsecretv1.KubernetesExternalSecret{},
@@ -1128,6 +1126,8 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesNetworkPolicy:               &kubernetesnetworkpolicyv1.KubernetesNetworkPolicy{},
 	cloudresourcekind.CloudResourceKind_KubernetesOpenBao:                     &kubernetesopenbaov1.KubernetesOpenBao{},
 	cloudresourcekind.CloudResourceKind_KubernetesOpenFga:                     &kubernetesopenfgav1.KubernetesOpenFga{},
+	cloudresourcekind.CloudResourceKind_KubernetesOpenSearch:                  &kubernetesopensearchv1.KubernetesOpenSearch{},
+	cloudresourcekind.CloudResourceKind_KubernetesOpenSearchOperator:          &kubernetesopensearchoperatorv1.KubernetesOpenSearchOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPeerAuthentication:          &kubernetespeerauthenticationv1.KubernetesPeerAuthentication{},
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator:        &kubernetesperconamongooperatorv1.KubernetesPerconaMongoOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMysqlOperator:        &kubernetesperconamysqloperatorv1.KubernetesPerconaMysqlOperator{},
