@@ -109,6 +109,20 @@ func resolveDerivation(d *componentv1.ImportValueDerivation, rctx ResolveContext
 		}
 	case *componentv1.ImportValueDerivation_Literal:
 		return source.Literal
+	case *componentv1.ImportValueDerivation_FromAddressKeySegment:
+		// The delimiter is fixed to "//" — the kubectl composed-ID form
+		// this arm exists for (see the proto comment). An out-of-range
+		// index resolves to "" so an optional trailing segment (the
+		// cluster-scoped 3-part key) drops out of the ID's bracketed group.
+		if rctx.AddressKey == "" {
+			return ""
+		}
+		segments := strings.Split(rctx.AddressKey, "//")
+		index := int(source.FromAddressKeySegment)
+		if index < 0 || index >= len(segments) {
+			return ""
+		}
+		return segments[index]
 	}
 	return ""
 }

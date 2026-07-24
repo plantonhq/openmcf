@@ -3187,6 +3187,21 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8sqdrt"
   }];
+  // The RabbitMQ Cluster Operator's release manifest ships admission
+  // webhooks whose serving certificate is a cert-manager Certificate —
+  // cert-manager must be running before the operator installs.
+  KubernetesRabbitMqOperator = 925 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srmqop"
+    prerequisites: [KubernetesCertManager]
+  }];
+  KubernetesRabbitMq = 926 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srmq"
+    prerequisites: [KubernetesRabbitMqOperator]
+  }];
   // 950–969: Kubernetes GitOps and CI/CD
   KubernetesArgocd = 950 [(kind_meta) = {
     provider: kubernetes

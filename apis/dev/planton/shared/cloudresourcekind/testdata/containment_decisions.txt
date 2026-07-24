@@ -444,6 +444,7 @@ contained dev.planton.provider.kubernetes.kubernetespoddisruptionbudget.v1.Kuber
 contained dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesprometheus.v1.KubernetesPrometheusSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesqdrant.v1.KubernetesQdrantSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesrabbitmq.v1.KubernetesRabbitMqSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesrbac.v1.KubernetesRbacNamespaceScope.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesrbac.v1.KubernetesRbacServiceAccountSubject.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec.namespace -> KubernetesNamespace

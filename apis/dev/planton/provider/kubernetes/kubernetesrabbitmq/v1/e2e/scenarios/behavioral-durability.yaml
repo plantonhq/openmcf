@@ -1,0 +1,27 @@
+# THE durability proof: a 3-node cluster with kind-honest sizing and
+# 2Gi data volumes; the verifier declares a QUORUM queue (Raft-replicated
+# across the nodes), publishes a marker, DELETES broker pod
+# e2e-rmq-durable-server-0, proves the marker is served DURING the
+# outage by the surviving quorum members, and re-reads it after the pod
+# returns. spread_across_nodes stays OFF — the shared kind cluster is
+# single-node, and quorum-queue durability is about replication, not
+# placement (node-spread arms belong to the real-cluster batches).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesRabbitMq
+metadata:
+  name: e2e-rmq-durable
+spec:
+  namespace:
+    value: e2e-rmq-durable
+  create_namespace: true
+  replicas: 3
+  disk_size: 2Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 700Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  termination_grace_period_seconds: 60
+  delay_start_seconds: 5

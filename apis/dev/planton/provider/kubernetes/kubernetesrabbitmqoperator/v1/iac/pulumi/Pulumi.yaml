@@ -1,0 +1,3 @@
+name: kubernetes-rabbitmq-operator
+runtime: go
+description: RabbitMQ Cluster Operator installation from the released official manifest — CRD, RBAC, admission webhooks with cert-manager-issued serving certificates, and typed overrides for watch scope, images, sizing and placement

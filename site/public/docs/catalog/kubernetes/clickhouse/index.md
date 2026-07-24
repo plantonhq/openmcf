@@ -8,289 +8,156 @@ componentName: "kubernetesclickhouse"
 
 # Kubernetes ClickHouse
 
-Deploys a ClickHouse database on Kubernetes using the Altinity ClickHouse Operator, with automatic password generation, optional clustering with sharding and replication, configurable coordination via ClickHouse Keeper or ZooKeeper, persistent storage, and optional external access through a LoadBalancer Service with external-dns integration.
+Declares a ClickHouse cluster — the columnar OLAP database built for
+analytical queries over billions of rows — as a
+`ClickHouseInstallation` reconciled by the Altinity ClickHouse
+operator. One resource carries the shard×replica topology, per-host
+persistent storage, users with Secret-delivered passwords, settings
+profiles and quotas, and the operational verbs (stop, disruption
+budget, replica anti-affinity). Coordination takes care of itself: a
+managed ClickHouse Keeper is deployed automatically whenever the
+topology needs one. Workloads connect at the exported native (9000)
+and HTTP (8123) endpoints; exposure composes from ingress and gateway
+kinds over the exported service handle.
+
+> **Replication is enforced honestly**: `replicas > 1` without a
+> coordination service is rejected at validation — ReplicatedMergeTree
+> cannot sync without ClickHouse Keeper or ZooKeeper, so the spec
+> refuses to let that cluster exist half-broken.
 
 ## What Gets Created
 
-When you deploy a KubernetesClickHouse resource, Planton provisions:
+- **Namespace** (optional) — created and owned when `create_namespace`
+  is set
+- **ClickHouseInstallation** (`clickhouse.altinity.com/v1`, named
+  `metadata.name`) — topology, storage, users, settings, placement
+- **ClickHouseKeeperInstallation** (`<name>-keeper`) — the managed
+  coordination ensemble, created exactly when the topology needs one
+  (or as configured)
+- **Auth Secret** (`<name>-clickhouse-auth`) — one key per declared
+  user; passwords never appear in the custom resource
 
-- **Namespace** — created only when `createNamespace` is `true`
-- **Random Password** — a 20-character password with mixed case, numbers, and URL-safe special characters, generated automatically
-- **Password Secret** — a Kubernetes Secret storing the password for ClickHouse authentication (key: `admin-password`)
-- **ClickHouseKeeperInstallation** — auto-managed ClickHouse Keeper for cluster coordination, created only when clustering is enabled with keeper coordination type (default)
-- **ClickHouseInstallation** — the primary ClickHouse deployment managed by the Altinity operator, with configurable resource limits, persistence, cluster layout, logging, and version
-- **LoadBalancer Service** — created only when ingress is enabled, exposes ClickHouse on HTTP port 8123 and native protocol port 9000 with an `external-dns.alpha.kubernetes.io/hostname` annotation for automatic DNS record creation
+The operator reconciles these into one single-pod StatefulSet per
+host (`chi-<name>-<cluster>-<shard>-<replica>`), the cluster-wide
+client Service (`clickhouse-<name>`, ClusterIP), generated
+configuration ConfigMaps, and a PodDisruptionBudget.
 
 ## Prerequisites
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **Altinity ClickHouse Operator** installed in the `clickhouse-operator` namespace on the target cluster
-- **A Kubernetes namespace** that already exists, or set `createNamespace` to `true`
-- **A StorageClass** available in the cluster if enabling persistence (most managed Kubernetes clusters provide a default)
-- **external-dns** running in the cluster if enabling ingress with a hostname
+- The Altinity ClickHouse operator on the cluster
+  (KubernetesAltinityOperator) — its chart default watches ONLY its
+  own namespace, so set `watch_namespaces` to cover this cluster's
+  namespace
+- A StorageClass for the data volumes (most managed clusters provide
+  a default; or reference a KubernetesStorageClass)
+- Keep `metadata.name` within 48 characters (generated child names
+  embed it against the Kubernetes 63-character Service cap)
 
 ## Quick Start
 
-Create a file `clickhouse.yaml`:
-
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
-  name: my-clickhouse
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesClickHouse.my-clickhouse
-spec:
-  namespace: analytics
-  createNamespace: true
-  logging:
-    level: information
-```
-
-Deploy:
-
-```shell
-planton apply -f clickhouse.yaml
-```
-
-This creates a single-replica ClickHouse instance with version 24.8, persistence enabled, a 50Gi PersistentVolumeClaim, default resource limits (2000m CPU / 4Gi memory), requests (500m CPU / 1Gi memory), and a randomly generated password stored in a Kubernetes Secret.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `string` | Kubernetes namespace for the ClickHouse deployment. Can reference a KubernetesNamespace resource via `valueFrom`. | Required |
-| `logging.level` | `enum` | Log level for the ClickHouse server. Valid values: `information`, `debug`, `trace`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
-| `clusterName` | `string` | `metadata.name` | Identifier for the ClickHouseInstallation custom resource. Must be a valid DNS subdomain name (lowercase alphanumeric with hyphens). |
-| `container.replicas` | `int32` | `1` | Number of ClickHouse replica pods. Ignored when clustering is enabled (use `cluster.shardCount` and `cluster.replicaCount` instead). Must be at least 1. |
-| `container.resources.limits.cpu` | `string` | `2000m` | Maximum CPU allocation for each ClickHouse pod. |
-| `container.resources.limits.memory` | `string` | `4Gi` | Maximum memory allocation for each ClickHouse pod. |
-| `container.resources.requests.cpu` | `string` | `500m` | Minimum guaranteed CPU for each ClickHouse pod. |
-| `container.resources.requests.memory` | `string` | `1Gi` | Minimum guaranteed memory for each ClickHouse pod. |
-| `container.persistenceEnabled` | `bool` | `true` | Enables persistent storage for ClickHouse data. Strongly recommended for production use. |
-| `container.diskSize` | `string` | `50Gi` | Size of the PersistentVolumeClaim attached to each ClickHouse pod. Required when `persistenceEnabled` is `true`. Must be a valid Kubernetes quantity (e.g., `50Gi`, `100Gi`). Cannot be easily modified after creation. |
-| `version` | `string` | `24.8` | ClickHouse server version to deploy (e.g., `24.3`, `23.8`). Recommended to pin for production. |
-| `ingress.enabled` | `bool` | `false` | Creates a LoadBalancer Service with external-dns annotations exposing ClickHouse on HTTP port 8123 and native port 9000. |
-| `ingress.hostname` | `string` | — | Hostname for external access (e.g., `clickhouse.example.com`). Configured automatically via external-dns. Required when `ingress.enabled` is `true`. |
-| `cluster.isEnabled` | `bool` | `false` | Enables distributed cluster mode with sharding and replication. When disabled, a single standalone instance is deployed. |
-| `cluster.shardCount` | `int32` | — | Number of shards in the cluster. Each shard processes queries in parallel. Must be at least 1 when clustering is enabled. |
-| `cluster.replicaCount` | `int32` | — | Number of replicas per shard. Provides data redundancy and high availability. Must be at least 1 when clustering is enabled. Typical values: 2-3. |
-| `coordination.type` | `enum` | `keeper` | Coordination service type. Valid values: `keeper` (auto-managed ClickHouse Keeper, recommended), `external_keeper` (existing Keeper cluster), `external_zookeeper` (existing ZooKeeper cluster). Only relevant when clustering is enabled. |
-| `coordination.keeperConfig.replicas` | `int32` | `1` | Number of ClickHouse Keeper replicas. Must be an odd number: 1, 3, or 5. Use 3 for production. Only used when `coordination.type` is `keeper`. |
-| `coordination.keeperConfig.resources.limits.cpu` | `string` | `500m` | Maximum CPU for each Keeper pod. |
-| `coordination.keeperConfig.resources.limits.memory` | `string` | `1Gi` | Maximum memory for each Keeper pod. |
-| `coordination.keeperConfig.resources.requests.cpu` | `string` | `100m` | Minimum guaranteed CPU for each Keeper pod. |
-| `coordination.keeperConfig.resources.requests.memory` | `string` | `256Mi` | Minimum guaranteed memory for each Keeper pod. |
-| `coordination.keeperConfig.diskSize` | `string` | `10Gi` | Persistent volume size for each Keeper pod. Stores coordination metadata only. |
-| `coordination.externalConfig.nodes` | `string[]` | — | List of external coordination nodes in `host:port` format. Required when `coordination.type` is `external_keeper` or `external_zookeeper`. |
-
-## Examples
-
-### Development ClickHouse with Reduced Resources
-
-A lightweight ClickHouse instance for development with smaller resource allocations:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesClickHouse
-metadata:
-  name: dev-clickhouse
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesClickHouse.dev-clickhouse
-spec:
-  namespace: dev
-  createNamespace: true
-  version: "24.8"
-  container:
-    replicas: 1
-    resources:
-      limits:
-        cpu: "1000m"
-        memory: "2Gi"
-      requests:
-        cpu: "250m"
-        memory: "512Mi"
-    persistenceEnabled: true
-    diskSize: "10Gi"
-  logging:
-    level: information
-```
-
-### Production Clustered ClickHouse
-
-A distributed ClickHouse cluster with 2 shards and 2 replicas per shard for high availability and horizontal scaling, using auto-managed ClickHouse Keeper with 3 replicas:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesClickHouse
-metadata:
-  name: prod-clickhouse
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesClickHouse.prod-clickhouse
-spec:
-  namespace: analytics
-  version: "24.8"
-  container:
-    resources:
-      limits:
-        cpu: "4000m"
-        memory: "16Gi"
-      requests:
-        cpu: "2000m"
-        memory: "8Gi"
-    persistenceEnabled: true
-    diskSize: "200Gi"
-  cluster:
-    isEnabled: true
-    shardCount: 2
-    replicaCount: 2
-  coordination:
-    type: keeper
-    keeperConfig:
-      replicas: 3
-      diskSize: "10Gi"
-  logging:
-    level: information
-```
-
-### ClickHouse with External Access
-
-ClickHouse exposed outside the cluster via a LoadBalancer with automatic DNS management:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesClickHouse
-metadata:
-  name: shared-clickhouse
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesClickHouse.shared-clickhouse
-spec:
-  namespace: shared-services
-  container:
-    replicas: 1
-    resources:
-      limits:
-        cpu: "2000m"
-        memory: "8Gi"
-      requests:
-        cpu: "500m"
-        memory: "2Gi"
-    persistenceEnabled: true
-    diskSize: "100Gi"
-  ingress:
-    enabled: true
-    hostname: clickhouse.example.com
-  logging:
-    level: information
-```
-
-### Clustered ClickHouse with External ZooKeeper
-
-A clustered deployment using an existing ZooKeeper ensemble shared with other services:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesClickHouse
-metadata:
-  name: analytics-clickhouse
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesClickHouse.analytics-clickhouse
-spec:
-  namespace: analytics
-  version: "24.8"
-  container:
-    resources:
-      limits:
-        cpu: "4000m"
-        memory: "16Gi"
-      requests:
-        cpu: "1000m"
-        memory: "4Gi"
-    persistenceEnabled: true
-    diskSize: "500Gi"
-  cluster:
-    isEnabled: true
-    shardCount: 4
-    replicaCount: 2
-  coordination:
-    type: external_zookeeper
-    externalConfig:
-      nodes:
-        - "zk-0.zk.shared-infra.svc.cluster.local:2181"
-        - "zk-1.zk.shared-infra.svc.cluster.local:2181"
-        - "zk-2.zk.shared-infra.svc.cluster.local:2181"
-  logging:
-    level: information
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed namespace instead of hardcoding the name:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesClickHouse
-metadata:
-  name: events-clickhouse
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesClickHouse.events-clickhouse
+  name: analytics
 spec:
   namespace:
-    valueFrom:
-      kind: KubernetesNamespace
-      name: analytics-namespace
-      field: spec.name
-  container:
-    persistenceEnabled: true
-    diskSize: "50Gi"
-  logging:
-    level: information
+    value: data
+  create_namespace: true
+  version: "25.3"
+  replicas: 3
+  disk_size: 100Gi
+  users:
+    - name: app
+      password:
+        value: change-me
+      grants:
+        - GRANT SELECT, INSERT ON analytics.*
 ```
+
+Because `replicas` is 3 and `coordination` is unset, a three-node
+managed Keeper deploys alongside the cluster automatically. Workloads
+connect at `clickhouse-analytics.data.svc.cluster.local:9000` (native
+protocol) or `:8123` (HTTP) with the password from the
+`analytics-clickhouse-auth` Secret.
+
+## Data Safety: Read This Before Production
+
+Two switches deserve conscious ownership. **`retain_volumes_on_delete`**
+defaults off — the operator's own reclaim policy DELETES every data
+volume with the resource; turn it on in production so a re-created
+cluster with the same name re-attaches its data (retained volumes are
+never garbage-collected). And **password rotation is two steps**:
+secret-sourced passwords reach ClickHouse through pod environment
+variables, so after rotating the Secret, any spec change triggers the
+re-reconcile that rolls the rotation out.
+
+## Configuration
+
+### Topology
+
+`shards` × `replicas` is the cluster's shape: replicas are full
+copies kept in sync through ReplicatedMergeTree (durability — turn on
+`spread_replicas_across_nodes` in production), shards are disjoint
+slices Distributed tables query in parallel (capacity). 1×1 is a dev
+cluster; 1×3 is the production durability posture; scale shards only
+when one shard cannot carry the dataset or the write rate.
+
+### Coordination
+
+Leave `coordination` unset and the managed Keeper appears exactly
+when the topology needs it. Size it explicitly with `managed_keeper`
+(quorum of 1, 3, or 5), point at existing ensembles with
+`external_keeper` / `external_zookeeper`, or opt out with `none`
+(single-replica only).
+
+### Users and Access
+
+Named users carry Secret-delivered passwords, profile and quota
+references, network allowlists, and declarative SQL grants. The
+built-in `default` user stays operator-managed: passwordless but
+restricted to the cluster's own pods — every real client gets a named
+user.
+
+### Server Settings
+
+ClickHouse's full configuration vocabulary passes through the CHI's
+own path-keyed maps: `settings` (server config, e.g.
+`max_concurrent_queries`), `profiles` and `quotas` (named bundles
+users reference), and `files` (raw config-file drop-ins) — keys are
+`/`-separated XML paths exactly as the upstream defines them.
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where ClickHouse is deployed |
-| `service` | `string` | Kubernetes Service name for the ClickHouse instance (format: `{name}`) |
-| `port_forward_command` | `string` | kubectl port-forward command for local access on port 8123 |
-| `kube_endpoint` | `string` | Cluster-internal FQDN (e.g., `my-clickhouse.analytics.svc.cluster.local:8123`) |
-| `external_hostname` | `string` | Public hostname for external access, only set when ingress is enabled |
-| `internal_hostname` | `string` | Internal hostname for VPC-internal access |
-| `username` | `string` | ClickHouse username (always `default`) |
-| `password_secret.name` | `string` | Name of the Kubernetes Secret containing the ClickHouse password (format: `{name}-password`) |
-| `password_secret.key` | `string` | Key within the password Secret (always `admin-password`) |
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the cluster runs in |
+| `chi_name` | ClickHouseInstallation resource name (= `metadata.name`) |
+| `cluster_name` | Logical cluster name — the `ON CLUSTER` target |
+| `service_name` | Cluster-wide client Service (`clickhouse-<name>`) |
+| `tcp_endpoint` | In-cluster native-protocol endpoint (port 9000) |
+| `http_endpoint` | In-cluster HTTP endpoint (port 8123) |
+| `auth_secret_name` | `<name>-clickhouse-auth` (one key per user); empty when no users |
+| `keeper_name` | Managed Keeper resource (`<name>-keeper`); empty when external or none |
+| `keeper_service_name` | Managed Keeper client Service (`keeper-<name>-keeper`); empty when external or none |
+| `port_forward_command` | Workstation access when no exposure is composed |
 
 ## Related Components
 
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace via `valueFrom` reference
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — application deployments that query ClickHouse for analytics
-- [KubernetesExternalDns](/docs/catalog/kubernetes/kubernetesexternaldns) — manages DNS records for the LoadBalancer ingress hostname
+- [KubernetesAltinityOperator](/docs/catalog/kubernetes/altinity-operator)
+  — the engine; must be installed and watching this namespace
+- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) —
+  provides the target namespace via reference
+- [KubernetesStorageClass](/docs/catalog/kubernetes/storage-class)
+  — referenced by the data and Keeper volume storage classes
+- [KubernetesIngress](/docs/catalog/kubernetes/ingress) —
+  composes external exposure over the exported service handle
+
+## Next Steps
+
+Turn on `retain_volumes_on_delete` and `spread_replicas_across_nodes`
+before real data arrives. Replace placeholder passwords — user
+passwords accept references to other resources' outputs, so generated
+credentials flow in without being written down. Compose exposure from
+KubernetesIngress or Gateway API kinds over `service_name` — this
+component never embeds it.

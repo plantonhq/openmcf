@@ -8,10 +8,10 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-dev-single-node"
+  - slug: "01-dev-minimal"
     rank: "01"
-    title: "Dev single node preset"
-    excerpt: "The smallest declarable OpenSearch that actually serves: one pool, one node carrying every role, a small PVC, and operator-generated TLS on both the transport and HTTP layers. For developers and CI..."
+    title: "Dev minimal preset"
+    excerpt: "The smallest declarable OpenSearch that actually serves: one pool, two all-roles nodes (the manager floor — a single manager-eligible replica cannot survive the operator's bootstrap handoff; the spec..."
   - slug: "02-production-cluster"
     rank: "02"
     title: "Production cluster preset"

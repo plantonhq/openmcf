@@ -85,6 +85,8 @@ The following KUBERNETES resources can be deployed using Planton:
 - [Priority Class](/docs/catalog/kubernetes/priority-class)
 - [Prometheus](/docs/catalog/kubernetes/prometheus)
 - [Qdrant](/docs/catalog/kubernetes/qdrant)
+- [RabbitMQ](/docs/catalog/kubernetes/rabbitmq)
+- [RabbitMQ Operator](/docs/catalog/kubernetes/rabbitmq-operator)
 - [RBAC](/docs/catalog/kubernetes/rbac)
 - [Reference Grant](/docs/catalog/kubernetes/reference-grant)
 - [Request Authentication](/docs/catalog/kubernetes/request-authentication)

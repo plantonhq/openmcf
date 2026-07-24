@@ -493,6 +493,8 @@ import (
 	kubernetespriorityclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespriorityclass/v1"
 	kubernetesprometheusv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesprometheus/v1"
 	kubernetesqdrantv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesqdrant/v1"
+	kubernetesrabbitmqv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrabbitmq/v1"
+	kubernetesrabbitmqoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrabbitmqoperator/v1"
 	kubernetesrbacv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrbac/v1"
 	kubernetesreferencegrantv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesreferencegrant/v1"
 	kubernetesrequestauthenticationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrequestauthentication/v1"
@@ -1137,6 +1139,8 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesPriorityClass:               &kubernetespriorityclassv1.KubernetesPriorityClass{},
 	cloudresourcekind.CloudResourceKind_KubernetesPrometheus:                  &kubernetesprometheusv1.KubernetesPrometheus{},
 	cloudresourcekind.CloudResourceKind_KubernetesQdrant:                      &kubernetesqdrantv1.KubernetesQdrant{},
+	cloudresourcekind.CloudResourceKind_KubernetesRabbitMq:                    &kubernetesrabbitmqv1.KubernetesRabbitMq{},
+	cloudresourcekind.CloudResourceKind_KubernetesRabbitMqOperator:            &kubernetesrabbitmqoperatorv1.KubernetesRabbitMqOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesRbac:                        &kubernetesrbacv1.KubernetesRbac{},
 	cloudresourcekind.CloudResourceKind_KubernetesReferenceGrant:              &kubernetesreferencegrantv1.KubernetesReferenceGrant{},
 	cloudresourcekind.CloudResourceKind_KubernetesRequestAuthentication:       &kubernetesrequestauthenticationv1.KubernetesRequestAuthentication{},

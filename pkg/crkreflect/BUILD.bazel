@@ -509,6 +509,8 @@ go_library(
         "//apis/dev/planton/provider/kubernetes/kubernetespriorityclass/v1:kubernetespriorityclass",
         "//apis/dev/planton/provider/kubernetes/kubernetesprometheus/v1:kubernetesprometheus",
         "//apis/dev/planton/provider/kubernetes/kubernetesqdrant/v1:kubernetesqdrant",
+        "//apis/dev/planton/provider/kubernetes/kubernetesrabbitmq/v1:kubernetesrabbitmq",
+        "//apis/dev/planton/provider/kubernetes/kubernetesrabbitmqoperator/v1:kubernetesrabbitmqoperator",
         "//apis/dev/planton/provider/kubernetes/kubernetesrbac/v1:kubernetesrbac",
         "//apis/dev/planton/provider/kubernetes/kubernetesreferencegrant/v1:kubernetesreferencegrant",
         "//apis/dev/planton/provider/kubernetes/kubernetesrequestauthentication/v1:kubernetesrequestauthentication",

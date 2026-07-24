@@ -82,6 +82,16 @@ nack_release=v0.21.1
 #registry API, never the vendored chart version.
 karpenter_release=v1.14.0
 
+#https://github.com/rabbitmq/cluster-operator/tree/v2.22.3/config/crd/bases
+#The operator has NO Helm chart; the official distribution is the released
+#single-file manifest (releases/download/<tag>/cluster-operator.yml), which
+#the KubernetesRabbitMqOperator module renders per document. The CRD pin
+#below is the source the KubernetesRabbitMq spec and generated types are
+#designed against. The released manifest requires cert-manager: it ships
+#Mutating/Validating webhooks (failurePolicy: Fail) whose serving
+#certificate is a cert-manager.io Certificate with CA injection.
+rabbitmq_cluster_operator_release=v2.22.3
+
 .PHONY: clean
 clean:
 	rm -rf ${go_build_dir}
@@ -175,8 +185,12 @@ gen-altinity-operator:
 gen-nack:
 	crd2pulumi --force --goPath=nack https://raw.githubusercontent.com/nats-io/nack/${nack_release}/deploy/crds.yml
 
+.PHONY: gen-rabbitmq-cluster-operator
+gen-rabbitmq-cluster-operator:
+	crd2pulumi --force --goPath=rabbitmqoperator https://raw.githubusercontent.com/rabbitmq/cluster-operator/${rabbitmq_cluster_operator_release}/config/crd/bases/rabbitmq.com_rabbitmqclusters.yaml
+
 .PHONY: gen
-gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-external-secrets gen-opensearch-operator gen-keycloak gen-altinity-operator gen-nack
+gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-external-secrets gen-opensearch-operator gen-keycloak gen-altinity-operator gen-nack gen-rabbitmq-cluster-operator
 
 .PHONY: build
 build: clean gen

@@ -559,6 +559,34 @@ Based on scenario:
   permission strings, TODO markers), and a substring split corrupts the
   documents — match `(?m)^---[ \t]*$` (or HCL `split("\n---", ...)`)
   and parse-filter comment-only documents.
+- **Operators with NO Helm chart whose official distribution is a released
+  MANIFEST install from that manifest, fetched tag-pinned and applied per
+  document — never a community chart, never a hand-maintained copy.** The
+  module class: Terraform fetches via `data "http"` and applies one
+  `kubectl_manifest` `for_each` keyed by each document's own COMPOSED
+  IDENTITY (`apiVersion//kind//name[//namespace]`) — name-only keys
+  collide when a bundle reuses one name across kinds (a ServiceAccount
+  and a Deployment sharing the operator's name is the norm), and the
+  composed key doubles as the import ID: the map derives every
+  composed-ID placeholder via `from_address_key_segment` (0-based `//`
+  segments; the namespace segment resolves empty for cluster-scoped
+  documents and its bracketed group drops). Pulumi applies via the
+  CLASSIC `yaml` ConfigFile with the manifest URL plus a TRANSFORMATION
+  that patches the typed overrides onto the operator Deployment (env
+  appends, image/resources/placement) — the Terraform twin patches
+  through locals merges, and swapping the patched document into the
+  applied set uses `merge(all_docs, { (key) = patched })`, never a
+  per-element ternary (differently-shaped objects fail plan-time type
+  unification). Two more contracts: apply with SERVER-SIDE APPLY on both
+  engines when any document is large (a CRD past ~256 KB exceeds the
+  client-side last-applied-configuration annotation cap — verified at a
+  342 KB CRD), and give such kinds NO user-facing version field when a
+  typed SDK is generated from the bundle's CRD (the module pins the
+  release; a selectable version would drift the CRD schema away from the
+  typed resources built on it). Fixed names/namespaces baked into the
+  manifest's own cross-references (webhook client configs, certificate
+  DNS names, CA-injection annotations) are NOT configurable — document
+  them as the upstream contract instead of rewriting the reference graph.
 - **A chart's default image reference can point at a DELETED registry —
   probe pullability at the pin, never trust the default**: verified
   live with a sidecar image whose entire upstream registry namespace

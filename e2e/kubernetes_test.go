@@ -411,6 +411,18 @@ func TestKubernetesQdrant_Pulumi(t *testing.T) {
 func TestKubernetesQdrant_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesqdrant", "terraform")
 }
+func TestKubernetesRabbitMqOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesrabbitmqoperator", "pulumi")
+}
+func TestKubernetesRabbitMqOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesrabbitmqoperator", "terraform")
+}
+func TestKubernetesRabbitMq_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesrabbitmq", "pulumi")
+}
+func TestKubernetesRabbitMq_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesrabbitmq", "terraform")
+}
 func TestKubernetesNeo4j_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesneo4j", "pulumi")
 }

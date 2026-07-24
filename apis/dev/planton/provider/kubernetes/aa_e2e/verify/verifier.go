@@ -564,6 +564,35 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			ReleaseName: info.Name,
 		}, nil
 
+	// The RabbitMQ Cluster Operator: Deployment Available + the
+	// RabbitmqCluster CRD Established + both admission webhook
+	// configurations present (their serving cert is cert-manager-issued
+	// — the operator's registry prerequisite). Every name is fixed by
+	// the release manifest, including the rabbitmq-system namespace; on
+	// destroy the CRD is asserted GONE (it is a document of the applied
+	// manifest, not a kept CRD).
+	case "kubernetesrabbitmqoperator":
+		return &RabbitMqOperatorInstallVerifier{}, nil
+
+	// An operator-managed RabbitMQ cluster: ClusterAvailable +
+	// AllReplicasReady conditions, the naming contract's Services and
+	// default-user Secret, plus a LIVE message round-trip through the
+	// management API on every lane. The behavioral-durability scenario
+	// (recognized by name) proves a quorum queue's marker survives a
+	// live broker loss.
+	case "kubernetesrabbitmq":
+		spec := manifestSpecMap(manifestPath)
+		replicas := 1
+		if n, ok := specInt(spec["replicas"]); ok && n > 0 {
+			replicas = n
+		}
+		return &RabbitMqClusterVerifier{
+			Namespace:   info.Namespace,
+			ClusterName: info.Name,
+			Replicas:    replicas,
+			Durability:  strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
 	// An operator-managed ClickHouse cluster: status Completed with
 	// every declared host reconciled, the managed Keeper when the
 	// coordination calls for one, plus a LIVE SQL round-trip on every

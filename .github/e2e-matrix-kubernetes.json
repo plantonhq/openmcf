@@ -52,17 +52,17 @@
       "name": "Tier 4 Pulumi",
       "tier": 4,
       "engine": "pulumi",
-      "timeout": 165,
-      "run_regex": "Test(KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesRookCephOperator|KubernetesServiceEntry|KubernetesTelemetry)_Pulumi",
-      "component_count": 10
+      "timeout": 150,
+      "run_regex": "Test(KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTelemetry)_Pulumi",
+      "component_count": 9
     },
     {
       "name": "Tier 4 Terraform",
       "tier": 4,
       "engine": "terraform",
-      "timeout": 165,
-      "run_regex": "Test(KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesRookCephOperator|KubernetesServiceEntry|KubernetesTelemetry)_Terraform",
-      "component_count": 10
+      "timeout": 150,
+      "run_regex": "Test(KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTelemetry)_Terraform",
+      "component_count": 9
     }
   ]
 }

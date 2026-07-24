@@ -1,3 +1,16 @@
+---
+title: "Artifact store preset"
+description: "A bucket-centric store for build and release artifacts: three typed buckets created at install — CI artifacts that expire themselves after 30 days (SeaweedFS TTL, no cleanup job), release artifacts..."
+type: "preset"
+rank: "03"
+presetSlug: "03-artifact-store"
+componentSlug: "seaweedfs"
+componentTitle: "SeaweedFS"
+provider: "kubernetes"
+icon: "package"
+order: 3
+---
+
 # Artifact store preset
 
 A bucket-centric store for build and release artifacts: three typed

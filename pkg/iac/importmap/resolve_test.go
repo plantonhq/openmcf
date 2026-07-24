@@ -250,3 +250,80 @@ func TestResolveValues_TofuResourceNameScoping(t *testing.T) {
 		t.Errorf("fallback: resolved = %v, unresolved = %v; want release_name=istio-base", resolved, unresolved)
 	}
 }
+
+func TestResolveValues_FromAddressKeySegment(t *testing.T) {
+	// A module that applies a MULTI-GVK manifest bundle through one for_each
+	// resource keyed by each document's own composed identity
+	// (apiVersion//kind//name[//namespace]): every composed-ID placeholder is
+	// one "//"-delimited segment of the key itself. An index past the key's
+	// segment count resolves to "" so the optional namespace segment drops
+	// for cluster-scoped documents.
+	m := &componentv1.ComponentImportMap{
+		Spec: &componentv1.ComponentImportMapSpec{
+			Values: []*componentv1.ImportValue{
+				{
+					Name: "api_version",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromAddressKeySegment{FromAddressKeySegment: 0}},
+					},
+				},
+				{
+					Name: "kind",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromAddressKeySegment{FromAddressKeySegment: 1}},
+					},
+				},
+				{
+					Name: "name",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromAddressKeySegment{FromAddressKeySegment: 2}},
+					},
+				},
+				{
+					Name: "namespace",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromAddressKeySegment{FromAddressKeySegment: 3}},
+					},
+				},
+			},
+		},
+	}
+
+	names := []string{"api_version", "kind", "name", "namespace"}
+
+	// A namespaced document: all four segments resolve — apiVersion keeps
+	// its own single slash intact.
+	resolved, unresolved := ResolveValues(m, names,
+		ResolveContext{AddressKey: "apps/v1//Deployment//rabbitmq-cluster-operator//rabbitmq-system"})
+	want := map[string]string{
+		"api_version": "apps/v1",
+		"kind":        "Deployment",
+		"name":        "rabbitmq-cluster-operator",
+		"namespace":   "rabbitmq-system",
+	}
+	if len(unresolved) != 0 {
+		t.Errorf("namespaced: unresolved = %v; want none", unresolved)
+	}
+	for k, v := range want {
+		if resolved[k] != v {
+			t.Errorf("namespaced: resolved[%q] = %q; want %q", k, resolved[k], v)
+		}
+	}
+
+	// A cluster-scoped document: the namespace segment is past the key's
+	// count and stays unresolved (the ID's bracketed group drops it).
+	resolved, unresolved = ResolveValues(m, names,
+		ResolveContext{AddressKey: "apiextensions.k8s.io/v1//CustomResourceDefinition//rabbitmqclusters.rabbitmq.com"})
+	if resolved["kind"] != "CustomResourceDefinition" || resolved["name"] != "rabbitmqclusters.rabbitmq.com" {
+		t.Errorf("cluster-scoped: resolved = %v", resolved)
+	}
+	if len(unresolved) != 1 || unresolved[0] != "namespace" {
+		t.Errorf("cluster-scoped: unresolved = %v; want [namespace]", unresolved)
+	}
+
+	// An empty address key (a non-repeated resource) resolves nothing.
+	_, unresolved = ResolveValues(m, names, ResolveContext{})
+	if len(unresolved) != len(names) {
+		t.Errorf("empty key: unresolved = %v; want all %d names", unresolved, len(names))
+	}
+}

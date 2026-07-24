@@ -8,12 +8,15 @@ spec:
   create_namespace: true
   version: 2.19.4
   node_pools:
-    # One node carrying every role — the dev shape. Production splits
+    # TWO nodes carrying every role — the smallest shape that survives
+    # the operator's bootstrap handoff (a single manager-eligible
+    # replica strands the quorum; verified live, and the spec rejects
+    # it). Production splits
     # cluster_manager from data (see the production preset). Roles are
     # the UNDERSCORE forms; a dashed "cluster-manager" fails only at
     # node startup, never at apply.
     - name: all
-      replicas: 1
+      replicas: 2
       roles:
         - cluster_manager
         - data

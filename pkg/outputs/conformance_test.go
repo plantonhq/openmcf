@@ -1205,6 +1205,45 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesRabbitMqOperator: the release manifest's fixed
+			// handles (namespace, Deployment, metrics endpoint, the CRD the
+			// manifest installs and deletes with the resource).
+			name: "KubernetesRabbitMqOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesRabbitMqOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":        "rabbitmq-system",
+				"deployment_name":  "rabbitmq-cluster-operator",
+				"metrics_endpoint": "http://rabbitmq-cluster-operator-metrics-service.rabbitmq-system.svc.cluster.local:8080/metrics",
+				"crd_name":         "rabbitmqclusters.rabbitmq.com",
+			},
+			mustPopulate: []string{
+				"namespace", "deployment_name", "metrics_endpoint", "crd_name",
+			},
+		},
+		{
+			// KubernetesRabbitMq: the operator naming contract — the client
+			// and headless Services, both client endpoints, and the
+			// operator-generated default-user Secret handle.
+			name: "KubernetesRabbitMq",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesRabbitMq,
+			rawOutputs: map[string]interface{}{
+				"namespace":                "messaging",
+				"cluster_name":             "orders-mq",
+				"service_name":             "orders-mq",
+				"headless_service_name":    "orders-mq-nodes",
+				"amqp_endpoint":            "orders-mq.messaging.svc.cluster.local:5672",
+				"management_endpoint":      "http://orders-mq.messaging.svc.cluster.local:15672",
+				"default_user_secret_name": "orders-mq-default-user",
+				"port_forward_command":     "kubectl port-forward svc/orders-mq -n messaging 15672:15672",
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "service_name",
+				"headless_service_name", "amqp_endpoint",
+				"management_endpoint", "default_user_secret_name",
+				"port_forward_command",
+			},
+		},
+		{
 			// AwsSubnet: flat scalar outputs from both engines (subnet id/arn, AZ,
 			// CIDR, route table id, region) must each land on the StackOutputs proto.
 			name: "AwsSubnet",

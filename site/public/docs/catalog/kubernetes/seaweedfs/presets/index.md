@@ -15,7 +15,7 @@ presets:
   - slug: "02-production-ha"
     rank: "02"
     title: "Production HA preset"
-    excerpt: "A highly available store: a 3-master Raft quorum, 3 volume servers on explicit fast storage with the replication code that keeps one extra copy of every object on another server, a dedicated..."
+    excerpt: "A highly available store: a 3-master Raft quorum, 3 volume servers on explicit fast storage with the `\"001\"` replication code (one extra copy of every object on another server — the store survives..."
   - slug: "03-artifact-store"
     rank: "03"
     title: "Artifact store preset"

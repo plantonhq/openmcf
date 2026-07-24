@@ -43,6 +43,7 @@ go_library(
         "preemption.go",
         "pvcdatasource.go",
         "qdrant.go",
+        "rabbitmq.go",
         "rbac.go",
         "resource_existence.go",
         "searchhelpers.go",

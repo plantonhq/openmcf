@@ -1,3 +1,16 @@
+---
+title: "Dev single node preset"
+description: "The smallest useful SeaweedFS: one master, one volume server and one filer on small PersistentVolumeClaims, the S3 gateway embedded on the filer with authentication on (the default — the chart..."
+type: "preset"
+rank: "01"
+presetSlug: "01-dev-single-node"
+componentSlug: "seaweedfs"
+componentTitle: "SeaweedFS"
+provider: "kubernetes"
+icon: "package"
+order: 1
+---
+
 # Dev single node preset
 
 The smallest useful SeaweedFS: one master, one volume server and one

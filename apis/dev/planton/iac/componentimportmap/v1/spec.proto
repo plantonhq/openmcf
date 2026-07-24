@@ -78,5 +78,17 @@ message ImportValueDerivation {
     // them as literals. Never use a literal for anything a user could vary
     // per resource -- that is what the other derivations are for.
     string literal = 7;
+    // One "//"-delimited segment (0-based) of the enumerated address's
+    // instance key -- for modules that apply a MULTI-GVK manifest bundle
+    // through one for_each resource keyed by each document's own composed
+    // identity ("apiVersion//kind//name[//namespace]"): every placeholder
+    // of the composed import ID is then a segment of the key itself, and
+    // per-document values (a bundle spans many apiVersion/kind pairs)
+    // cannot be literals. An index past the key's segment count resolves
+    // to "" so an optional trailing segment (the cluster-scoped 3-part
+    // form) drops out of the ID's bracketed group. The delimiter is fixed
+    // to "//" -- the kubectl composed-ID delimiter this arm exists for
+    // (an apiVersion can itself contain a single slash).
+    int32 from_address_key_segment = 8;
   }
 }

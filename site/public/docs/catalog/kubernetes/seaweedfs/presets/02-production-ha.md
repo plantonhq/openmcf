@@ -1,3 +1,16 @@
+---
+title: "Production HA preset"
+description: "A highly available store: a 3-master Raft quorum, 3 volume servers on explicit fast storage with the `\"001\"` replication code (one extra copy of every object on another server — the store survives..."
+type: "preset"
+rank: "02"
+presetSlug: "02-production-ha"
+componentSlug: "seaweedfs"
+componentTitle: "SeaweedFS"
+provider: "kubernetes"
+icon: "package"
+order: 2
+---
+
 # Production HA preset
 
 A highly available store: a 3-master Raft quorum, 3 volume servers on

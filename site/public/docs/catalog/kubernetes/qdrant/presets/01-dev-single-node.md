@@ -1,6 +1,6 @@
 ---
 title: "Dev single node preset"
-description: "The smallest declarable Qdrant: one node, no authentication (the upstream default), a 5Gi data volume on the cluster's default StorageClass, and the chart's own resource defaults. For developers..."
+description: "The smallest declarable Qdrant: one node, no authentication (the upstream default), a 5Gi data volume on the cluster's default StorageClass, and the chart's own resource defaults. For developers who..."
 type: "preset"
 rank: "01"
 presetSlug: "01-dev-single-node"

@@ -33,6 +33,16 @@ unscoped declaration of the same placeholder. The offline conformance guard
 rejects a scope that names no real module resource (a typo'd scope would
 otherwise silently fall back and import the wrong resource).
 
+A module that applies a MULTI-GVK manifest bundle through one `for_each`
+resource (a release-manifest operator install) keys its instances by each
+document's own composed identity — `apiVersion//kind//name[//namespace]` —
+and derives every composed-ID placeholder from a segment of the key itself
+via `from_address_key_segment` (0-based, `//`-delimited; an index past the
+key's segment count resolves empty, so the namespace group drops for
+cluster-scoped documents). Per-document literals cannot serve there: the
+bundle spans many apiVersion/kind pairs. Single-GVK typed-CR modules keep
+their literal declarations — the segment arm exists for the bundle class.
+
 Both are proto-backed KRM documents (`iac.planton.dev/v1`, protos under
 `apis/dev/planton/iac/`), parsed through `pkg/protobufyaml` like the E2E
 profiles.

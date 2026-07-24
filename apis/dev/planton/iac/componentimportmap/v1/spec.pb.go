@@ -175,6 +175,7 @@ type ImportValueDerivation struct {
 	//	*ImportValueDerivation_FromAddressKey
 	//	*ImportValueDerivation_FromMetadataNameSuffix
 	//	*ImportValueDerivation_Literal
+	//	*ImportValueDerivation_FromAddressKeySegment
 	Source        isImportValueDerivation_Source `protobuf_oneof:"source"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -280,6 +281,15 @@ func (x *ImportValueDerivation) GetLiteral() string {
 	return ""
 }
 
+func (x *ImportValueDerivation) GetFromAddressKeySegment() int32 {
+	if x != nil {
+		if x, ok := x.Source.(*ImportValueDerivation_FromAddressKeySegment); ok {
+			return x.FromAddressKeySegment
+		}
+	}
+	return 0
+}
+
 type isImportValueDerivation_Source interface {
 	isImportValueDerivation_Source()
 }
@@ -337,6 +347,21 @@ type ImportValueDerivation_Literal struct {
 	Literal string `protobuf:"bytes,7,opt,name=literal,proto3,oneof"`
 }
 
+type ImportValueDerivation_FromAddressKeySegment struct {
+	// One "//"-delimited segment (0-based) of the enumerated address's
+	// instance key -- for modules that apply a MULTI-GVK manifest bundle
+	// through one for_each resource keyed by each document's own composed
+	// identity ("apiVersion//kind//name[//namespace]"): every placeholder
+	// of the composed import ID is then a segment of the key itself, and
+	// per-document values (a bundle spans many apiVersion/kind pairs)
+	// cannot be literals. An index past the key's segment count resolves
+	// to "" so an optional trailing segment (the cluster-scoped 3-part
+	// form) drops out of the ID's bracketed group. The delimiter is fixed
+	// to "//" -- the kubectl composed-ID delimiter this arm exists for
+	// (an apiVersion can itself contain a single slash).
+	FromAddressKeySegment int32 `protobuf:"varint,8,opt,name=from_address_key_segment,json=fromAddressKeySegment,proto3,oneof"`
+}
+
 func (*ImportValueDerivation_FromMetadataName) isImportValueDerivation_Source() {}
 
 func (*ImportValueDerivation_FromSpecField) isImportValueDerivation_Source() {}
@@ -351,6 +376,8 @@ func (*ImportValueDerivation_FromMetadataNameSuffix) isImportValueDerivation_Sou
 
 func (*ImportValueDerivation_Literal) isImportValueDerivation_Source() {}
 
+func (*ImportValueDerivation_FromAddressKeySegment) isImportValueDerivation_Source() {}
+
 var File_dev_planton_iac_componentimportmap_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
@@ -362,7 +389,7 @@ const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12^\n" +
 	"\vderivations\x18\x02 \x03(\v2<.dev.planton.iac.componentimportmap.v1.ImportValueDerivationR\vderivations\x12\"\n" +
 	"\rwhere_to_find\x18\x03 \x01(\tR\vwhereToFind\x12,\n" +
-	"\x12tofu_resource_name\x18\x04 \x01(\tR\x10tofuResourceName\"\xd4\x02\n" +
+	"\x12tofu_resource_name\x18\x04 \x01(\tR\x10tofuResourceName\"\x8f\x03\n" +
 	"\x15ImportValueDerivation\x12.\n" +
 	"\x12from_metadata_name\x18\x01 \x01(\bH\x00R\x10fromMetadataName\x12(\n" +
 	"\x0ffrom_spec_field\x18\x02 \x01(\tH\x00R\rfromSpecField\x12,\n" +
@@ -370,7 +397,8 @@ const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\rfrom_arn_part\x18\x04 \x01(\tH\x00R\vfromArnPart\x12*\n" +
 	"\x10from_address_key\x18\x05 \x01(\bH\x00R\x0efromAddressKey\x12;\n" +
 	"\x19from_metadata_name_suffix\x18\x06 \x01(\tH\x00R\x16fromMetadataNameSuffix\x12\x1a\n" +
-	"\aliteral\x18\a \x01(\tH\x00R\aliteralB\b\n" +
+	"\aliteral\x18\a \x01(\tH\x00R\aliteral\x129\n" +
+	"\x18from_address_key_segment\x18\b \x01(\x05H\x00R\x15fromAddressKeySegmentB\b\n" +
 	"\x06sourceB\xcd\x02\n" +
 	")com.dev.planton.iac.componentimportmap.v1B\tSpecProtoP\x01Z\\github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1;componentimportmapv1\xa2\x02\x04DPIC\xaa\x02%Dev.Planton.Iac.Componentimportmap.V1\xca\x02%Dev\\Planton\\Iac\\Componentimportmap\\V1\xe2\x021Dev\\Planton\\Iac\\Componentimportmap\\V1\\GPBMetadata\xea\x02)Dev::Planton::Iac::Componentimportmap::V1b\x06proto3"
 
@@ -415,6 +443,7 @@ func file_dev_planton_iac_componentimportmap_v1_spec_proto_init() {
 		(*ImportValueDerivation_FromAddressKey)(nil),
 		(*ImportValueDerivation_FromMetadataNameSuffix)(nil),
 		(*ImportValueDerivation_Literal)(nil),
+		(*ImportValueDerivation_FromAddressKeySegment)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
