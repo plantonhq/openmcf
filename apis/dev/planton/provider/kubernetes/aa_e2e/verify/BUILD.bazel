@@ -3,14 +3,15 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "verify",
     srcs = [
+        "altinityoperatorinstall.go",
         "authzbehavior.go",
         "certmanager.go",
         "cilium.go",
+        "clickhouseinstallation.go",
         "cloudnativepg.go",
         "clusterautoscaler.go",
         "config_group.go",
         "crd_install.go",
-        "crd_workload.go",
         "ednsroute53.go",
         "externaldns.go",
         "externalsecrets.go",

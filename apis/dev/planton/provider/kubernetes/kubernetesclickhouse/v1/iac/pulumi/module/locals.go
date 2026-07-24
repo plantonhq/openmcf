@@ -10,103 +10,159 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	IngressExternalHostname     string
-	KubePortForwardCommand      string
-	KubeServiceFqdn             string
-	KubeServiceName             string
-	KubernetesClickHouse        *kubernetesclickhousev1.KubernetesClickHouse
-	Namespace                   string
-	ClickhousePodSelectorLabels map[string]string
-	KubernetesLabels            map[string]string
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	PasswordSecretName     string
-	ExternalLbServiceName  string
-	KeeperInstallationName string
-	KeeperServiceName      string
+	KubernetesClickHouse *kubernetesclickhousev1.KubernetesClickHouse
+	Spec                 *kubernetesclickhousev1.KubernetesClickHouseSpec
+
+	// Resource-identity labels stamped on the module-created objects
+	// (namespace, auth Secret, CHI, CHK). The operator derives ITS
+	// objects' identity from the CHI/CHK names; these labels tie the
+	// family back to the Planton resource.
+	Labels map[string]string
+
+	// Namespace the cluster lives in (resolved literal from the spec's
+	// value-or-ref).
+	Namespace string
+
+	// ChiName is metadata.name — the naming root the operator derives
+	// every object from: the cluster-wide client Service
+	// `clickhouse-<name>`, the per-cluster Service
+	// `cluster-<name>-<cluster>`, and per-host StatefulSets/Services
+	// `chi-<name>-<cluster>-<shard>-<replica>`.
+	ChiName string
+
+	// ClusterName is the logical ClickHouse cluster (remote_servers
+	// entry, `ON CLUSTER` target). Spec default: "main".
+	ClusterName string
+
+	// Shards / Replicas are the resolved topology (spec defaults: 1/1).
+	Shards   int
+	Replicas int
+
+	// Image is the resolved server image reference `repo:tag`
+	// (spec.image.repo default clickhouse/clickhouse-server, tag default
+	// spec.version).
+	Image string
+
+	// AuthSecretName is the module-managed Secret holding one key per
+	// provisioned user — empty when spec.users is empty (nothing to
+	// hold, output contract exports empty).
+	AuthSecretName string
+
+	// DeployKeeper resolves the coordination contract: an explicit
+	// managed_keeper always deploys; UNSET coordination deploys exactly
+	// when the topology needs coordination (replicas > 1 or shards > 1);
+	// external/none never deploy.
+	DeployKeeper bool
+
+	// KeeperName / KeeperServiceName are the managed CHK handles
+	// (`<name>-keeper`, operator Service naming contract
+	// `keeper-<chk-name>`) — empty when no managed Keeper is deployed.
+	KeeperName        string
+	KeeperServiceName string
+
+	// ServiceName is the operator's cluster-wide client Service
+	// `clickhouse-<name>` covering all hosts.
+	ServiceName string
+
+	// TcpEndpoint / HttpEndpoint are the in-cluster endpoints on the
+	// fixed native (9000) and HTTP (8123) interface ports.
+	TcpEndpoint  string
+	HttpEndpoint string
+
+	PortForwardCommand string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesclickhousev1.KubernetesClickHouseStackInput) *Locals {
-	locals := &Locals{}
-
-	locals.KubernetesClickHouse = stackInput.Target
-
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesclickhousev1.KubernetesClickHouseStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	locals.KubernetesLabels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesClickHouse.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.KubernetesLabels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.KubernetesLabels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.KubernetesLabels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// Get namespace from spec (required field)
-	locals.Namespace = target.Spec.Namespace.GetValue()
+	namespace := spec.Namespace.GetValue()
+	chiName := target.Metadata.Name
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	// Users can prefix metadata.name with component type if needed (e.g., "clickhouse-my-db")
-	locals.PasswordSecretName = fmt.Sprintf("%s-password", target.Metadata.Name)
-	locals.ExternalLbServiceName = fmt.Sprintf("%s-external-lb", target.Metadata.Name)
-	locals.KeeperInstallationName = fmt.Sprintf("%s-keeper", target.Metadata.Name)
-	// Altinity operator creates keeper service with pattern: keeper-<chk-name>
-	locals.KeeperServiceName = fmt.Sprintf("keeper-%s", locals.KeeperInstallationName)
-
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-	ctx.Export(OpUsername, pulumi.String(vars.DefaultUsername))
-	ctx.Export(OpPasswordSecretName, pulumi.String(locals.PasswordSecretName))
-	ctx.Export(OpPasswordSecretKey, pulumi.String(vars.ClickhousePasswordKey))
-
-	locals.KubeServiceName = target.Metadata.Name
-
-	// Determine cluster name - use spec.cluster_name if provided, otherwise use metadata.name
-	clusterName := target.Spec.ClusterName
+	clusterName := spec.GetClusterName()
 	if clusterName == "" {
-		clusterName = target.Metadata.Name
+		clusterName = vars.DefaultClusterName
 	}
 
-	// Altinity operator uses these labels for pod selection
-	// These labels are automatically applied by the operator to ClickHouse pods
-	locals.ClickhousePodSelectorLabels = map[string]string{
-		"clickhouse.altinity.com/chi":     clusterName,
-		"clickhouse.altinity.com/cluster": clusterName,
+	shards := 1
+	if spec.Shards != nil && spec.GetShards() > 0 {
+		shards = int(spec.GetShards())
+	}
+	replicas := 1
+	if spec.Replicas != nil && spec.GetReplicas() > 0 {
+		replicas = int(spec.GetReplicas())
 	}
 
-	//export kubernetes service name
-	ctx.Export(OpService, pulumi.String(locals.KubeServiceName))
-
-	locals.KubeServiceFqdn = fmt.Sprintf("%s.%s.svc.cluster.local:%d", locals.KubeServiceName, locals.Namespace, vars.ClickhouseHttpPort)
-
-	//export kubernetes endpoint
-	ctx.Export(OpKubeEndpoint, pulumi.String(locals.KubeServiceFqdn))
-
-	locals.KubePortForwardCommand = fmt.Sprintf("kubectl port-forward -n %s service/%s %d:%d",
-		locals.Namespace, target.Metadata.Name, vars.ClickhouseHttpPort, vars.ClickhouseHttpPort)
-
-	//export kube-port-forward command
-	ctx.Export(OpPortForwardCommand, pulumi.String(locals.KubePortForwardCommand))
-
-	if target.Spec.Ingress == nil ||
-		!target.Spec.Ingress.Enabled ||
-		target.Spec.Ingress.Hostname == "" {
-		return locals
+	imageRepo := spec.GetImage().GetRepo()
+	if imageRepo == "" {
+		imageRepo = vars.DefaultImageRepo
+	}
+	imageTag := spec.GetImage().GetTag()
+	if imageTag == "" {
+		imageTag = spec.GetVersion()
 	}
 
-	locals.IngressExternalHostname = target.Spec.Ingress.Hostname
+	authSecretName := ""
+	if len(spec.GetUsers()) > 0 {
+		authSecretName = chiName + vars.AuthSecretSuffix
+	}
 
-	//export ingress-external-hostname
-	ctx.Export(OpExternalHostname, pulumi.String(locals.IngressExternalHostname))
+	coordinationType := kubernetesclickhousev1.KubernetesClickHouseCoordination_unspecified
+	if spec.GetCoordination() != nil {
+		coordinationType = spec.GetCoordination().GetType()
+	}
+	deployKeeper := coordinationType == kubernetesclickhousev1.KubernetesClickHouseCoordination_managed_keeper ||
+		(coordinationType == kubernetesclickhousev1.KubernetesClickHouseCoordination_unspecified &&
+			(shards > 1 || replicas > 1))
 
-	return locals
+	keeperName := ""
+	keeperServiceName := ""
+	if deployKeeper {
+		keeperName = chiName + "-keeper"
+		keeperServiceName = "keeper-" + keeperName
+	}
+
+	serviceName := "clickhouse-" + chiName
+
+	return &Locals{
+		KubernetesClickHouse: target,
+		Spec:                 spec,
+		Labels:               labels,
+		Namespace:            namespace,
+		ChiName:              chiName,
+		ClusterName:          clusterName,
+		Shards:               shards,
+		Replicas:             replicas,
+		Image:                imageRepo + ":" + imageTag,
+		AuthSecretName:       authSecretName,
+		DeployKeeper:         deployKeeper,
+		KeeperName:           keeperName,
+		KeeperServiceName:    keeperServiceName,
+		ServiceName:          serviceName,
+		TcpEndpoint: fmt.Sprintf("%s.%s.svc.cluster.local:%d",
+			serviceName, namespace, vars.TcpPort),
+		HttpEndpoint: fmt.Sprintf("http://%s.%s.svc.cluster.local:%d",
+			serviceName, namespace, vars.HttpPort),
+		PortForwardCommand: fmt.Sprintf("kubectl port-forward svc/%s -n %s %d:%d",
+			serviceName, namespace, vars.HttpPort, vars.HttpPort),
+	}
 }

@@ -16,20 +16,10 @@ type ResourceVerifier interface {
 // do not expose a Kubernetes Service. Verification checks namespace + running
 // pods only (no service requirement).
 var operatorKinds = map[string]bool{
-	// Tier 2/3 fixture operators (tested since sessions 3-9)
-	"kubernetesaltinityoperator":     true,
 	"kubernetesstrimzikafkaoperator": true,
 	// Tier 4 operators with configurable namespace
 	"kubernetesgharunnerscalesetcontroller": true,
 	"kubernetesrookcephoperator":            true,
-}
-
-// crdWorkloadKinds lists manifest kind values (lowercased) for Tier 3
-// operator-dependent components. These create Custom Resources that are
-// reconciled by their prerequisite operator into pods and services.
-// Verification checks namespace + running pods + at least one service.
-var crdWorkloadKinds = map[string]bool{
-	"kubernetesclickhouse": true,
 }
 
 // helmTier2Kinds lists manifest kind values (lowercased) for Helm-based
@@ -563,6 +553,34 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Authenticated: strings.Contains(manifestPath, "with-auth"),
 		}, nil
 
+	// The Altinity ClickHouse operator: the operator Deployment
+	// Available + the four chart-owned CRDs Established (kept on
+	// destroy by Helm's crds/ semantics).
+	case "kubernetesaltinityoperator":
+		return &AltinityOperatorInstallVerifier{
+			Namespace:   info.Namespace,
+			ReleaseName: info.Name,
+		}, nil
+
+	// An operator-managed ClickHouse cluster: status Completed with
+	// every declared host reconciled, the managed Keeper when the
+	// coordination calls for one, plus a LIVE SQL round-trip on every
+	// lane. The behavioral-durability scenario (recognized by name)
+	// proves replica-synced rows survive a live replica loss.
+	case "kubernetesclickhouse":
+		spec := manifestSpecMap(manifestPath)
+		clusterName, totalHosts, username, password, managedKeeper := clickhouseScenarioShape(spec)
+		return &ClickHouseInstallationVerifier{
+			Namespace:     info.Namespace,
+			ChiName:       info.Name,
+			ClusterName:   clusterName,
+			TotalHosts:    totalHosts,
+			Username:      username,
+			Password:      password,
+			ManagedKeeper: managedKeeper,
+			Durability:    strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
 	// The OpenSearch Kubernetes Operator: controller-manager Available +
 	// the module-owned CRDs Established (kept on destroy by design).
 	case "kubernetesopensearchoperator":
@@ -909,12 +927,6 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 		}
 		if operatorKinds[component] {
 			return &OperatorComponentVerifier{
-				Namespace:     info.Namespace,
-				ComponentName: info.Name,
-			}, nil
-		}
-		if crdWorkloadKinds[component] {
-			return &CRDWorkloadVerifier{
 				Namespace:     info.Namespace,
 				ComponentName: info.Name,
 			}, nil

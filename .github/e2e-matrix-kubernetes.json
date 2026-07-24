@@ -36,33 +36,33 @@
       "name": "Tier 3 Pulumi",
       "tier": 3,
       "engine": "pulumi",
-      "timeout": 190,
-      "run_regex": "Test(KubernetesClickHouse|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesSolr|KubernetesSolrOperator)_Pulumi",
-      "component_count": 5
+      "timeout": 155,
+      "run_regex": "Test(KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesSolr|KubernetesSolrOperator)_Pulumi",
+      "component_count": 4
     },
     {
       "name": "Tier 3 Terraform",
       "tier": 3,
       "engine": "terraform",
-      "timeout": 190,
-      "run_regex": "Test(KubernetesClickHouse|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesSolr|KubernetesSolrOperator)_Terraform",
-      "component_count": 5
+      "timeout": 155,
+      "run_regex": "Test(KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesSolr|KubernetesSolrOperator)_Terraform",
+      "component_count": 4
     },
     {
       "name": "Tier 4 Pulumi",
       "tier": 4,
       "engine": "pulumi",
-      "timeout": 180,
-      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesRookCephOperator|KubernetesServiceEntry|KubernetesTelemetry)_Pulumi",
-      "component_count": 11
+      "timeout": 165,
+      "run_regex": "Test(KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesRookCephOperator|KubernetesServiceEntry|KubernetesTelemetry)_Pulumi",
+      "component_count": 10
     },
     {
       "name": "Tier 4 Terraform",
       "tier": 4,
       "engine": "terraform",
-      "timeout": 180,
-      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesRookCephOperator|KubernetesServiceEntry|KubernetesTelemetry)_Terraform",
-      "component_count": 11
+      "timeout": 165,
+      "run_regex": "Test(KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesRookCephOperator|KubernetesServiceEntry|KubernetesTelemetry)_Terraform",
+      "component_count": 10
     }
   ]
 }

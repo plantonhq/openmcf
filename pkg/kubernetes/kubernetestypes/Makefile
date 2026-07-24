@@ -64,8 +64,11 @@ opensearch_operator_release=v2.8.0
 keycloak_release=25.0.4
 
 #https://github.com/Altinity/clickhouse-operator/tree/master/deploy/operator
-#https://github.com/Altinity/clickhouse-operator/tree/0.25.4
-altinity_operator_release=0.25.4
+#https://github.com/Altinity/clickhouse-operator/tree/release-0.27.2
+#Note: upstream tags are `release-X.Y.Z` — the plain `X.Y.Z` tag form no
+#longer exists, and a wrong ref fails SILENTLY through the curl pipeline
+#(empty CRD file, stale generated types). Keep the full tag name here.
+altinity_operator_release=release-0.27.2
 
 #https://github.com/nats-io/nack/releases
 #https://github.com/nats-io/nack/tree/main/deploy

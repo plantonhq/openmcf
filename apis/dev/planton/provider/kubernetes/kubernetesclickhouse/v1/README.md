@@ -1,208 +1,296 @@
-# Overview
+# Kubernetes ClickHouse
 
-The **ClickHouse Kubernetes API Resource** provides a production-grade, operator-based way to deploy and manage ClickHouse clusters on Kubernetes. This API resource uses the **Altinity ClickHouse Operator** to deliver enterprise-level features including automated upgrades, scaling, backup, and recovery.
+## When NOT to Use This
 
-## Purpose
+**The operator must already be on the cluster — and watching this
+namespace.** This component declares a ClickHouse cluster;
+KubernetesAltinityOperator installs the ENGINE that reconciles it. The
+Altinity chart's default posture watches ONLY the operator's own
+namespace — a cluster declared anywhere else is silently ignored: no
+error, no pods, nothing. Deploy the operator first with
+`watch_namespaces` covering this namespace (or `[".*"]`), clusters
+after.
 
-Deploying ClickHouse on Kubernetes requires managing complex distributed systems with sharding, replication, and coordination. The ClickHouse Kubernetes API Resource aims to:
+Also not the right component when:
 
-- **Simplify Operations**: Leverage the Altinity operator to handle lifecycle management, rolling upgrades, and failure recovery automatically.
-- **Standardize Deployments**: Offer an intuitive, deployment-agnostic interface following the 80/20 Pareto principle - focus on what 80% of users need.
-- **Enable Production-Grade Clusters**: Support both standalone and distributed deployments with configurable sharding and replication.
-- **Provide Type Safety**: Use strongly-typed Kubernetes custom resources for compile-time validation and better developer experience.
+- **You want the operator itself** — installing and configuring the
+  Altinity ClickHouse operator is KubernetesAltinityOperator; this
+  component is one cluster it manages.
+- **You want a managed cloud service** — ClickHouse Cloud and the
+  cloud providers' managed offerings run the database for you; this
+  component is for running ClickHouse ON the Kubernetes cluster
+  itself.
+- **You need an OLTP database** — ClickHouse is a columnar OLAP
+  engine: brilliant at scanning billions of rows, wrong for
+  row-by-row transactional workloads. Use the PostgreSQL or MySQL
+  kinds for those.
+- **You want HTTP exposure baked in** — every generated Service is
+  ClusterIP (the operator's own default). External reachability
+  composes from first-class kinds (KubernetesIngress, Gateway API
+  kinds) over the exported `service_name`, with
+  `service_annotations` for LB/mesh recipes — never embedded here.
 
-## Key Features
+## Overview
 
-### Environment Configuration
+**KubernetesClickHouse** declares a ClickHouse cluster — the columnar
+OLAP database built for analytical queries over billions of rows — as
+a `ClickHouseInstallation` (CHI) custom resource reconciled by the
+Altinity ClickHouse operator. The operator renders every host as its
+own single-pod StatefulSet with generated ClickHouse configuration
+mounted from ConfigMaps, and manages rolling restarts, PDBs, and
+Services around them.
 
-- **Environment Info**: Tailor ClickHouse deployments to specific environments (development, staging, production) using environment-specific information.
-- **Stack Job Settings**: Integrate with infrastructure-as-code (IaC) tools through stack-update settings for automated and repeatable deployments.
+**Topology**: `shards` × `replicas` hosts. Shards split the data for
+parallel query processing (Distributed-engine tables fan queries out
+across all shards); replicas within a shard hold copies of the same
+data, kept in sync through ReplicatedMergeTree. Replication REQUIRES
+a coordination service — the spec enforces it: `replicas > 1` with
+coordination type `none` is rejected at validation, never discovered
+at runtime.
 
-### Credential Management
+**The coordination design** (the decision most deployments never have
+to make): leave `coordination` unset and the module deploys a managed
+ClickHouse Keeper — a `ClickHouseKeeperInstallation` reconciled by
+the same operator — automatically whenever the topology needs one
+(`replicas > 1` or `shards > 1`), and none otherwise. Set it
+explicitly to size the managed Keeper (quorum of 1, 3, or 5), point
+at an existing Keeper or ZooKeeper ensemble, or opt out with `none`
+(single-replica only; a multi-shard cluster without coordination
+loses `ON CLUSTER` DDL but Distributed queries keep working). The CHI
+references the managed Keeper through the CRD's native keeper
+reference — the operator resolves the endpoints itself.
 
-- **Kubernetes Credential ID**: Specify credentials required to access and configure the target Kubernetes cluster securely.
+**The users truth**: passwords never land in the CHI. The module
+writes them into a Kubernetes Secret (`<name>-clickhouse-auth`, one
+key per user) and the operator injects them via
+`valueFrom.secretKeyRef`. KNOW THIS (upstream-documented):
+secret-sourced passwords reach ClickHouse through pod environment
+variables, so rotating the Secret alone does not re-render config — a
+spec change triggers the re-reconcile that rolls the rotation out.
+The built-in `default` user stays operator-managed: passwordless but
+network-restricted to the cluster's own pods — create named users for
+every real client.
 
-### Namespace Management
+**Key design points:**
 
-The ClickHouse component provides flexible namespace management to accommodate different deployment scenarios:
+- **Server configuration is layered, not escape-hatched** — typed
+  fields cover topology, storage, users, and placement; ClickHouse's
+  own configuration vocabulary rides the CHI's path-keyed maps
+  (`settings`, `files`, per-user `settings`, `profiles`, `quotas` —
+  `/`-separated XML paths exactly as the upstream CRD defines them).
+  Those maps ARE the upstream's native model at this layer.
+- **Storage is per host** — a data PVC (`disk_size`, optional
+  `storage_class` reference) mounted at /var/lib/clickhouse, plus an
+  optional separate log volume (`log_disk_size`).
+  `retain_volumes_on_delete` maps to the operator's PVC reclaim
+  policy: the upstream default DELETES volumes with the resource;
+  retain makes a re-created same-name cluster re-attach its data.
+- **Operational verbs are spec fields** — `stopped` (the CHI stop
+  verb: hosts scale to zero, PVCs stay), `pdb_max_unavailable`
+  (operator-managed PDB), `spread_replicas_across_nodes` (the
+  operator's ShardAntiAffinity: replicas of the same shard never
+  co-locate on a node), `auto_inter_node_secret` (operator-generated
+  shared secret securing distributed queries, rendered only for
+  multi-host topologies).
+- **Always pin `version`** — the operator's own fallback is the
+  `latest` tag, which turns pod restarts into implicit upgrades; the
+  spec makes the pin required (e.g. "25.3", an LTS line). `image`
+  overrides the repository for mirrors.
 
-- **Automatic Namespace Creation**: Set `create_namespace: true` to have the component create and manage the namespace with appropriate labels and metadata. This is ideal when the component should own the namespace lifecycle.
+## Essential Configuration Fields
 
-- **Existing Namespace**: Set `create_namespace: false` to deploy into an existing namespace. This is useful when:
-  - The namespace is managed by a separate process or tool
-  - Multiple components share the same namespace
-  - Namespace configuration (labels, annotations, quotas) is managed externally
+### Required
 
-**Prerequisites when using existing namespace** (`create_namespace: false`):
-- The namespace must exist before deployment
-- You must have permissions to create resources in that namespace
-- Namespace labels and metadata are not managed by this component
+- **`spec.namespace`**: namespace for the cluster — literal or a
+  KubernetesNamespace reference; the operator must watch it
+- **`spec.version`**: the ClickHouse server version to run (a
+  `clickhouse/clickhouse-server` tag, e.g. "25.3") — always pinned,
+  never `latest`
+- **`spec.disk_size`**: the data volume for EACH host (e.g. "100Gi")
+  — PVCs cannot shrink, plan for growth
 
-### Cluster Configuration
+### Common
 
-- **Cluster Name**: Configurable cluster identifier used for the ClickHouseInstallation resource.
-- **Version**: Pin specific ClickHouse versions (e.g., "24.8") for consistency and stability.
-- **Replicas**: Define the number of ClickHouse pod instances for standalone deployments.
-- **Resources**: Allocate CPU and memory resources for optimal performance.
-  - Production defaults: 500m CPU (requests), 2000m (limits), 1Gi memory (requests), 4Gi (limits)
-- **Persistence**:
-  - **Enable Persistence**: Toggle data persistence (strongly recommended for production).
-  - **Disk Size**: Specify persistent volume size (e.g., `50Gi`, `100Gi`). Plan for growth.
+- **`spec.shards` / `spec.replicas`**: the topology (defaults 1×1) —
+  replicas buy durability, shards buy capacity; production runs 2–3
+  replicas
+- **`spec.coordination`**: unset = managed Keeper appears exactly
+  when the topology needs it; `managed_keeper` sizes it (1/3/5
+  quorum, resources, disk); `external_keeper` / `external_zookeeper`
+  point at existing ensembles (`external.nodes`, optional `root` and
+  `identity`); `none` opts out (single-replica only)
+- **`spec.users`**: named users with Secret-delivered passwords
+  (literal or a reference to another resource's output), optional
+  `profile`, `quota`, `networks`, SQL `grants`, `access_management`,
+  and per-user `settings`
+- **`spec.profiles` / `spec.quotas`**: named settings bundles users
+  reference by name (path-keyed, e.g. `readonly: "1"` or
+  `interval/duration: "3600"`)
+- **`spec.settings` / `spec.files`**: server-level settings
+  (`/`-separated XML paths, e.g. `max_concurrent_queries: "200"`) and
+  raw config-file drop-ins (name → content; `{common}` / `{users}` /
+  `{hosts}` prefixes choose the target directory)
+- **`spec.cluster_name`**: the `remote_servers` entry that
+  `ON CLUSTER` DDL targets (default "main") — capped at 15 characters
+  by the upstream CRD because it becomes a segment of every generated
+  child name; keep `metadata.name` within 48 characters with the
+  default
+- **`spec.resources`**: CPU/memory per host — ClickHouse is
+  memory-hungry under analytical load; give production hosts at
+  least 4Gi
+- **`spec.storage_class` / `spec.log_disk_size`**: the data volumes'
+  StorageClass (literal or KubernetesStorageClass reference) and an
+  optional separate log volume
+- **`spec.retain_volumes_on_delete`**: keep PVCs when the resource is
+  deleted — the production data-safety switch; retained PVCs are
+  never garbage-collected
+- **`spec.spread_replicas_across_nodes`**: replicas of the same shard
+  never share a Kubernetes node — off by default so single-node dev
+  clusters schedule; turn on in production
+- **`spec.stopped`**: scale every host to zero keeping all data — the
+  declarative pause switch for expensive dev/staging clusters
+- **`spec.pdb_max_unavailable` / `spec.node_selector` /
+  `spec.tolerations`**: disruption budget and pod placement
+- **`spec.service_annotations`**: annotations for the cluster-wide
+  client Service (internal LB / service-mesh recipes) — the Service
+  stays ClusterIP
+- **`spec.image` / `spec.image_pull_secrets`**: the air-gap /
+  private-mirror path
+- **`spec.auto_inter_node_secret`**: operator-generated shared secret
+  for distributed queries (default true; disable only below
+  ClickHouse 20.10)
 
-### Distributed Clustering
+## Environment Injection
 
-- **Cluster Mode**: Enable distributed ClickHouse deployments with sharding and replication.
-- **Shard Count**: Define the number of shards for horizontal data distribution and parallel query processing.
-- **Replica Count**: Specify the number of replicas per shard for high availability and data redundancy.
+This component calls no cloud APIs; managed-Kubernetes integration
+rides the Service annotations and ClickHouse's own storage
+configuration.
 
-### Coordination Configuration
+| Cloud / posture | Where | Mechanism |
+|---|---|---|
+| Internal / external LB recipes | `service_annotations` | Cloud-controller annotations on the cluster-wide client Service |
+| S3 disks / tiered storage, declared keys | `settings` / `files` | ClickHouse-native storage configuration (XML drop-ins) carrying the access keys |
+| S3, keyless (EKS) | `settings` / `files` only | `use_environment_credentials` with IRSA-bound identity on the nodes |
+| GCS, keyless (GKE) | `settings` / `files` only | Workload Identity on the nodes |
 
-ClickHouse clusters require coordination services for distributed operations (DDL execution, replication management). The API supports multiple coordination options following the 80/20 principle:
+## Stack Outputs
 
-- **Auto-Managed ClickHouse Keeper** (Recommended - 80% use case):
-  - Default option when coordination is not explicitly configured
-  - 75% more resource-efficient than ZooKeeper (no JVM overhead)
-  - Managed by the same Altinity operator
-  - Creates a ClickHouseKeeperInstallation resource automatically
-  - Configurable replicas: 1 (dev), 3 (production), 5 (large production)
-  
-- **External ClickHouse Keeper** (Advanced scenarios):
-  - Connect to existing ClickHouse Keeper infrastructure
-  - Useful for shared coordination across multiple clusters
-  - Supports multi-node ensembles for high availability
+| Output | Purpose |
+|---|---|
+| `namespace` | Namespace the cluster runs in |
+| `chi_name` | Name of the ClickHouseInstallation resource (= `metadata.name`) |
+| `cluster_name` | Logical cluster name — the `ON CLUSTER` / `remote_servers` target |
+| `service_name` | The cluster-wide client Service covering all hosts (`clickhouse-<name>`, ClusterIP) |
+| `tcp_endpoint` | In-cluster native-protocol endpoint, port 9000 (clickhouse-client, drivers) |
+| `http_endpoint` | In-cluster HTTP interface endpoint, port 8123 (curl, JDBC/ODBC over HTTP) |
+| `auth_secret_name` | The module-managed `<name>-clickhouse-auth` Secret (one key per user); empty when no users are declared |
+| `keeper_name` | The managed ClickHouseKeeperInstallation (`<name>-keeper`); empty when coordination is external or none |
+| `keeper_service_name` | The managed Keeper's client Service (`keeper-<name>-keeper`); empty when coordination is external or none |
+| `port_forward_command` | Port-forward command for workstation access when no exposure is composed |
 
-- **External ZooKeeper** (Legacy/Integration):
-  - Connect to existing ZooKeeper infrastructure
-  - Required when sharing ZooKeeper with other services (Kafka, Solr)
-  - Supports traditional ZooKeeper ensembles
+## Composing in Infra Charts
 
-### Networking and Ingress
+- **`spec.namespace`** is a foreign key (default kind
+  KubernetesNamespace, field path `spec.name`); **`storage_class`**
+  (data and Keeper volumes) references a KubernetesStorageClass; a
+  user's **`password`** accepts a reference to another resource's
+  output — generated credentials flow in without ever being written
+  down.
+- **Applications consume the outputs**: `tcp_endpoint` for
+  clickhouse-client and native drivers, `http_endpoint` for
+  HTTP-speaking clients, `auth_secret_name` as env-from references —
+  credentials ride the Secret, never the manifest.
+- **Exposure composes, never embeds**: a KubernetesIngress or Gateway
+  API route targets `service_name`; `service_annotations` carries the
+  internal-LB recipes.
+- **The operator is a cluster prerequisite**, not a reference: deploy
+  KubernetesAltinityOperator first, watching this namespace.
 
-- **Ingress Configuration**: Enable external access to ClickHouse via LoadBalancer service with automatic DNS configuration.
-  - **Enable/Disable**: Toggle ingress on or off.
-  - **Hostname**: Specify the full hostname for external access (e.g., `clickhouse.example.com`).
-  - Exposes both HTTP (8123) and native protocol (9000) ports.
-  - Uses `external-dns` annotations for automatic DNS record creation.
+## Examples
 
-## Benefits
+### Development (single host, no Keeper)
 
-- **Production-Ready**: Leverage the battle-tested Altinity operator used by enterprises worldwide for operational excellence.
-- **Self-Healing**: Automatic recovery from failures, rolling upgrades, and continuous reconciliation to maintain desired state.
-- **Simplified Operations**: The operator handles complex lifecycle operations - you focus on your data, not Kubernetes complexity.
-- **Resource Efficient**: Default ClickHouse Keeper coordination uses 75% less CPU and memory compared to ZooKeeper.
-- **Scalability and Flexibility**: Easily scale from single nodes to distributed clusters with hundreds of nodes.
-- **Data Persistence**: Production-grade persistent storage with automatic volume provisioning and management.
-- **High Availability**: Native support for clustering with sharding, replication, and efficient coordination services.
-- **Type Safety**: Strongly-typed configuration with compile-time validation and IDE support.
-- **Smart Defaults**: 80/20 principle applied - most common configurations work with minimal specification.
-
-## Use Cases
-
-- **Real-time Analytics**: Deploy ClickHouse as a high-performance analytics database for real-time data processing.
-- **Observability Platforms**: Backend for SigNoz, Grafana, and other observability tools requiring fast OLAP queries.
-- **Data Warehousing**: Use ClickHouse for OLAP workloads and complex analytical queries on large datasets.
-- **Log Analytics**: Process and analyze large volumes of log data with ClickHouse's columnar storage engine.
-- **Time-Series Data**: Handle time-series data efficiently with ClickHouse's optimized storage and query capabilities.
-- **Microservices Architecture**: Deploy ClickHouse instances for services requiring fast analytical queries.
-- **Development and Testing Environments**: Quickly spin up ClickHouse instances for development or testing purposes with environment-specific configurations.
-
-## Configuration Examples
-
-### Simple Cluster (80% Use Case)
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
-kind: ClickHouseKubernetes
+kind: KubernetesClickHouse
 metadata:
-  name: my-clickhouse
+  name: dev-clickhouse
 spec:
   namespace:
-    value: my-clickhouse
-  clusterName: my-cluster
-  cluster:
-    isEnabled: true
-    shardCount: 2
-    replicaCount: 2
-  # coordination: not specified = auto-managed ClickHouse Keeper with defaults
+    value: dev-clickhouse
+  create_namespace: true
+  version: "25.3"
+  disk_size: 20Gi
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits: { cpu: "2", memory: 4Gi }
+  users:
+    - name: dev
+      password:
+        value: change-me-dev-password
+      grants:
+        - GRANT SELECT, INSERT, CREATE, DROP ON *.*
 ```
 
-### Production with Custom Keeper Configuration
+One shard, one replica: no Keeper is deployed and there is no
+replication — a lost volume loses the data. That trade-off is the
+point of a dev cluster.
+
+### Production (replicated, managed Keeper, retained volumes)
+
 ```yaml
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesClickHouse
+metadata:
+  name: prod-clickhouse
 spec:
   namespace:
-    value: my-clickhouse
-  cluster:
-    isEnabled: true
-    shardCount: 2
-    replicaCount: 2
+    value: clickhouse
+  create_namespace: true
+  version: "25.3"
+  replicas: 3
+  disk_size: 200Gi
+  resources:
+    requests: { cpu: "2", memory: 8Gi }
+    limits: { cpu: "4", memory: 16Gi }
   coordination:
-    type: keeper
-    keeperConfig:
-      replicas: 3  # Production HA
-      diskSize: "20Gi"
-      resources:
-        requests:
-          cpu: "200m"
-          memory: "512Mi"
+    type: managed_keeper
+    keeper:
+      replicas: 3
+      disk_size: 10Gi
+  spread_replicas_across_nodes: true
+  retain_volumes_on_delete: true
+  pdb_max_unavailable: 1
+  users:
+    - name: analyst
+      password:
+        value: change-me-analyst-password
+      profile: readonly
+      quota: default
+    - name: ingest
+      password:
+        value: change-me-ingest-password
+      grants:
+        - GRANT SELECT, INSERT ON analytics.*
+  profiles:
+    - name: readonly
+      settings:
+        readonly: "2"
+        max_memory_usage: "8000000000"
+  quotas:
+    - name: default
+      settings:
+        interval/duration: "3600"
+        interval/queries: "50000"
+  settings:
+    max_concurrent_queries: "200"
 ```
 
-### External Keeper (Shared Infrastructure)
-```yaml
-spec:
-  namespace:
-    value: my-clickhouse
-  cluster:
-    isEnabled: true
-  coordination:
-    type: external_keeper
-    externalConfig:
-      nodes:
-        - "keeper-shared:2181"
-```
-
-### External ZooKeeper (Legacy Integration)
-```yaml
-spec:
-  namespace:
-    value: my-clickhouse
-  cluster:
-    isEnabled: true
-  coordination:
-    type: external_zookeeper
-    externalConfig:
-      nodes:
-        - "zk-0.zk.svc:2181"
-        - "zk-1.zk.svc:2181"
-        - "zk-2.zk.svc:2181"
-```
-
-## Migration from ZooKeeper Field (Deprecated)
-
-The original `zookeeper` field is deprecated in favor of the more flexible `coordination` field:
-
-**Old (Deprecated):**
-```yaml
-spec:
-  namespace:
-    value: my-clickhouse
-  zookeeper:
-    useExternal: true
-    nodes:
-      - "zk-0:2181"
-```
-
-**New (Recommended):**
-```yaml
-spec:
-  namespace:
-    value: my-clickhouse
-  coordination:
-    type: external_zookeeper
-    externalConfig:
-      nodes:
-        - "zk-0:2181"
-```
-
-The deprecated field will continue to work for backward compatibility but will be removed in v2.
+Three full copies of the data in ReplicatedMergeTree lockstep,
+coordinated by a three-node Keeper, replicas forced onto different
+nodes, volumes that outlive the resource. Scale `shards` only when a
+single shard can no longer carry the dataset or the write rate —
+replicas buy durability, shards buy capacity.
 
 ---
 

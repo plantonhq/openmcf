@@ -356,13 +356,11 @@ message KubernetesSolrSecurity {
    * Authentication plugin: "basic" is the one the operator manages.
    * Empty = security disabled (open cluster — development only).
    */
-  optional string authentication_type = 1 [
-    (buf.validate.field).cel = {
-      id: "spec.security.authentication_type_enum"
-      message: "authentication_type must be basic"
-      expression: "this == '' || this == 'basic'"
-    }
-  ];
+  optional string authentication_type = 1 [(buf.validate.field).cel = {
+    id: "spec.security.authentication_type_enum"
+    message: "authentication_type must be basic"
+    expression: "this == '' || this == 'basic'"
+  }];
 
   /**
    * Existing kubernetes.io/basic-auth Secret with the credentials

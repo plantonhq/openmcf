@@ -7,7 +7,6 @@
 package kubernetesclickhousev1
 
 import (
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -22,36 +21,41 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesClickHouseStackOutputs captures observable outputs from a ClickHouse deployment on Kubernetes.
+// kubernetes-click-house stack outputs
 type KubernetesClickHouseStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// namespace specifies the Kubernetes namespace in which the ClickHouse cluster is created.
+	// namespace the cluster runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for click-house-kubernetes.
-	// ex: main-click-house-kubernetes
-	// in the above example, "main" is the name of the click-house-kubernetes
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open click-house-kubernetes from developers laptop.
-	// this might come handy when click-house-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining click-house-kubernetes kubernetes service and namespace.
-	// ex: kubectl port-forward svc/click-house-kubernetes -n kubernetes_namespace 8123:8123
-	// running the command from this attribute makes it possible to access click-house-kubernetes using http://localhost:8123
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to click-house-kubernetes from within the cluster.
-	// ex: main-click-house-kubernetes.namespace.svc.cluster.local:8123
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to access click-house-kubernetes from clients outside kubernetes.
-	// ex: https://chk8s-planton-pcs-dev-main.data.dev.planton.live:8123
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// internal endpoint to access click-house-kubernetes from clients inside kubernetes.
-	// ex: https://chk8s-planton-pcs-dev-main.data-internal.dev.planton.live:8123
-	InternalHostname string `protobuf:"bytes,6,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	// clickhouse username
-	Username string `protobuf:"bytes,7,opt,name=username,proto3" json:"username,omitempty"`
-	// kubernetes secret key for the password.
-	PasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,8,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// name of the ClickHouseInstallation resource (= metadata.name).
+	ChiName string `protobuf:"bytes,2,opt,name=chi_name,json=chiName,proto3" json:"chi_name,omitempty"`
+	// logical ClickHouse cluster name (the `ON CLUSTER` / remote_servers
+	// target), e.g. main.
+	ClusterName string `protobuf:"bytes,3,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	// name of the cluster-wide client Service covering all hosts
+	// (operator naming contract: clickhouse-<name>).
+	ServiceName string `protobuf:"bytes,4,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	// in-cluster native-protocol endpoint (clickhouse-client, drivers),
+	// e.g. clickhouse-analytics.data.svc.cluster.local:9000
+	TcpEndpoint string `protobuf:"bytes,5,opt,name=tcp_endpoint,json=tcpEndpoint,proto3" json:"tcp_endpoint,omitempty"`
+	// in-cluster HTTP interface endpoint (curl, JDBC/ODBC over HTTP),
+	// e.g. http://clickhouse-analytics.data.svc.cluster.local:8123
+	HttpEndpoint string `protobuf:"bytes,6,opt,name=http_endpoint,json=httpEndpoint,proto3" json:"http_endpoint,omitempty"`
+	// name of the module-managed Secret holding the provisioned users'
+	// passwords (one key per user name), e.g. <name>-clickhouse-auth.
+	// Empty when no users are declared.
+	AuthSecretName string `protobuf:"bytes,7,opt,name=auth_secret_name,json=authSecretName,proto3" json:"auth_secret_name,omitempty"`
+	// name of the managed ClickHouseKeeperInstallation resource,
+	// e.g. <name>-keeper. Empty when coordination is external or none.
+	KeeperName string `protobuf:"bytes,8,opt,name=keeper_name,json=keeperName,proto3" json:"keeper_name,omitempty"`
+	// name of the managed Keeper's client Service (operator naming
+	// contract: keeper-<keeper_name>). Empty when coordination is
+	// external or none.
+	KeeperServiceName string `protobuf:"bytes,9,opt,name=keeper_service_name,json=keeperServiceName,proto3" json:"keeper_service_name,omitempty"`
+	// command to port-forward the HTTP interface to a developer laptop,
+	// e.g. kubectl port-forward svc/clickhouse-analytics -n data 8123:8123
+	PortForwardCommand string `protobuf:"bytes,10,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesClickHouseStackOutputs) Reset() {
@@ -91,9 +95,58 @@ func (x *KubernetesClickHouseStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesClickHouseStackOutputs) GetService() string {
+func (x *KubernetesClickHouseStackOutputs) GetChiName() string {
 	if x != nil {
-		return x.Service
+		return x.ChiName
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseStackOutputs) GetClusterName() string {
+	if x != nil {
+		return x.ClusterName
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseStackOutputs) GetServiceName() string {
+	if x != nil {
+		return x.ServiceName
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseStackOutputs) GetTcpEndpoint() string {
+	if x != nil {
+		return x.TcpEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseStackOutputs) GetHttpEndpoint() string {
+	if x != nil {
+		return x.HttpEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseStackOutputs) GetAuthSecretName() string {
+	if x != nil {
+		return x.AuthSecretName
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseStackOutputs) GetKeeperName() string {
+	if x != nil {
+		return x.KeeperName
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseStackOutputs) GetKeeperServiceName() string {
+	if x != nil {
+		return x.KeeperServiceName
 	}
 	return ""
 }
@@ -105,55 +158,24 @@ func (x *KubernetesClickHouseStackOutputs) GetPortForwardCommand() string {
 	return ""
 }
 
-func (x *KubernetesClickHouseStackOutputs) GetKubeEndpoint() string {
-	if x != nil {
-		return x.KubeEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesClickHouseStackOutputs) GetExternalHostname() string {
-	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesClickHouseStackOutputs) GetInternalHostname() string {
-	if x != nil {
-		return x.InternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesClickHouseStackOutputs) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *KubernetesClickHouseStackOutputs) GetPasswordSecret() *kubernetes.KubernetesSecretKey {
-	if x != nil {
-		return x.PasswordSecret
-	}
-	return nil
-}
-
 var File_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Kdev/planton/provider/kubernetes/kubernetesclickhouse/v1/stack_outputs.proto\x127dev.planton.provider.kubernetes.kubernetesclickhouse.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\x86\x03\n" +
+	"Kdev/planton/provider/kubernetes/kubernetesclickhouse/v1/stack_outputs.proto\x127dev.planton.provider.kubernetes.kubernetesclickhouse.v1\"\x96\x03\n" +
 	" KubernetesClickHouseStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\x06 \x01(\tR\x10internalHostname\x12\x1a\n" +
-	"\busername\x18\a \x01(\tR\busername\x12]\n" +
-	"\x0fpassword_secret\x18\b \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x0epasswordSecretB\xc5\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x19\n" +
+	"\bchi_name\x18\x02 \x01(\tR\achiName\x12!\n" +
+	"\fcluster_name\x18\x03 \x01(\tR\vclusterName\x12!\n" +
+	"\fservice_name\x18\x04 \x01(\tR\vserviceName\x12!\n" +
+	"\ftcp_endpoint\x18\x05 \x01(\tR\vtcpEndpoint\x12#\n" +
+	"\rhttp_endpoint\x18\x06 \x01(\tR\fhttpEndpoint\x12(\n" +
+	"\x10auth_secret_name\x18\a \x01(\tR\x0eauthSecretName\x12\x1f\n" +
+	"\vkeeper_name\x18\b \x01(\tR\n" +
+	"keeperName\x12.\n" +
+	"\x13keeper_service_name\x18\t \x01(\tR\x11keeperServiceName\x120\n" +
+	"\x14port_forward_command\x18\n" +
+	" \x01(\tR\x12portForwardCommandB\xc5\x03\n" +
 	";com.dev.planton.provider.kubernetes.kubernetesclickhouse.v1B\x11StackOutputsProtoP\x01Zpgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclickhouse/v1;kubernetesclickhousev1\xa2\x02\x05DPPKK\xaa\x027Dev.Planton.Provider.Kubernetes.Kubernetesclickhouse.V1\xca\x027Dev\\Planton\\Provider\\Kubernetes\\Kubernetesclickhouse\\V1\xe2\x02CDev\\Planton\\Provider\\Kubernetes\\Kubernetesclickhouse\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Kubernetes::Kubernetesclickhouse::V1b\x06proto3"
 
 var (
@@ -171,15 +193,13 @@ func file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_stack_outputs_
 var file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_stack_outputs_proto_goTypes = []any{
 	(*KubernetesClickHouseStackOutputs)(nil), // 0: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseStackOutputs
-	(*kubernetes.KubernetesSecretKey)(nil),   // 1: dev.planton.provider.kubernetes.KubernetesSecretKey
 }
 var file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseStackOutputs.password_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_stack_outputs_proto_init() }
