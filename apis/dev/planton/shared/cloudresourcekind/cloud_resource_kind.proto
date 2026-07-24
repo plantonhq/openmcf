@@ -3177,15 +3177,15 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8sneo"
   }];
-  KubernetesRookCephOperator = 923 [(kind_meta) = {
+  KubernetesSeaweedFs = 923 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8srookop"
+    id_prefix: "k8sswfs"
   }];
-  KubernetesRookCephCluster = 924 [(kind_meta) = {
+  KubernetesQdrant = 924 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8srookcl"
+    id_prefix: "k8sqdrt"
   }];
   // 950–969: Kubernetes GitOps and CI/CD
   KubernetesArgocd = 950 [(kind_meta) = {

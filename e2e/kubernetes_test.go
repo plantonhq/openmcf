@@ -99,7 +99,6 @@ var kubernetesTier4Components = []string{
 	"kubernetesopensearchoperator",
 	"kubernetesaltinityoperator",
 	"kubernetesgharunnerscalesetcontroller",
-	"kubernetesrookcephoperator",
 	"kubernetestekton",
 	"kubernetestektonoperator",
 }
@@ -119,6 +118,8 @@ var kubernetesTier2Components = []string{
 	"kubernetesperconamysqloperator",
 	"kubernetestemporal",
 	"kubernetessignoz",
+	"kubernetesseaweedfs",
+	"kubernetesqdrant",
 }
 
 // ─── Tier 1 Pulumi ──────────────────────────────────────────────────────────
@@ -398,6 +399,18 @@ func TestKubernetesLocust_Pulumi(t *testing.T) {
 func TestKubernetesNats_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesnats", "pulumi")
 }
+func TestKubernetesSeaweedFs_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesseaweedfs", "pulumi")
+}
+func TestKubernetesSeaweedFs_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesseaweedfs", "terraform")
+}
+func TestKubernetesQdrant_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesqdrant", "pulumi")
+}
+func TestKubernetesQdrant_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesqdrant", "terraform")
+}
 func TestKubernetesNeo4j_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesneo4j", "pulumi")
 }
@@ -575,9 +588,6 @@ func TestKubernetesGatewayApiCrds_Pulumi(t *testing.T) {
 func TestKubernetesGhaRunnerScaleSetController_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscalesetcontroller", "pulumi")
 }
-func TestKubernetesRookCephOperator_Pulumi(t *testing.T) {
-	runAllScenariosForComponent(t, "kubernetesrookcephoperator", "pulumi")
-}
 func TestKubernetesTekton_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestekton", "pulumi")
 }
@@ -607,9 +617,6 @@ func TestKubernetesGatewayApiCrds_Terraform(t *testing.T) {
 }
 func TestKubernetesGhaRunnerScaleSetController_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscalesetcontroller", "terraform")
-}
-func TestKubernetesRookCephOperator_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "kubernetesrookcephoperator", "terraform")
 }
 func TestKubernetesTekton_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestekton", "terraform")

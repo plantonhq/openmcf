@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesseaweedfs.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetesseaweedfs/v1/spec.proto";
+import "dev/planton/provider/kubernetes/kubernetesseaweedfs/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+//seaweedfs-kubernetes
+message KubernetesSeaweedFs {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesSeaweedFs'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  KubernetesSeaweedFsSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  KubernetesSeaweedFsStatus status = 5;
+}
+
+//seaweedfs-kubernetes status.
+message KubernetesSeaweedFsStatus {
+  //stack-outputs
+  KubernetesSeaweedFsStackOutputs outputs = 1;
+}

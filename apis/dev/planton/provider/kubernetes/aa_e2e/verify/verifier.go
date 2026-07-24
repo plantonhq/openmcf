@@ -19,7 +19,6 @@ var operatorKinds = map[string]bool{
 	"kubernetesstrimzikafkaoperator": true,
 	// Tier 4 operators with configurable namespace
 	"kubernetesgharunnerscalesetcontroller": true,
-	"kubernetesrookcephoperator":            true,
 }
 
 // helmTier2Kinds lists manifest kind values (lowercased) for Helm-based
@@ -39,6 +38,9 @@ var helmTier2Kinds = map[string]bool{
 	"kuberneteslocust":   true,
 	"kubernetessignoz":   true,
 	"kuberneteskeycloak": true,
+	// Data-tier Helm applications with dedicated behavioral verifiers
+	"kubernetesseaweedfs": true,
+	"kubernetesqdrant":    true,
 }
 
 // crdInstallKinds maps manifest kind values (lowercased) to their expected CRD
@@ -633,6 +635,41 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 
 	// A Neo4j server: the StatefulSet ready + the main Service, plus a
 	// LIVE Cypher write/read round-trip whenever credentials are
+	// A SeaweedFS object store: master + filer StatefulSets ready (the
+	// dedicated S3 gateway Deployment too when deployed), the `-s3`
+	// Service present, declared buckets created by the install hook, and
+	// a live S3 put/get round-trip with the chart-materialized
+	// credentials. The behavioral-durability scenario (recognized by
+	// name) proves object bytes survive a volume-server pod loss through
+	// the PVC.
+	case "kubernetesseaweedfs":
+		spec := manifestSpecMap(manifestPath)
+		return &SeaweedFsVerifier{
+			Namespace:             info.Namespace,
+			Name:                  info.Name,
+			DedicatedS3:           seaweedfsS3Dedicated(spec),
+			CredentialsSecretName: seaweedfsCredentialsSecret(spec, info.Name),
+			Buckets:               seaweedfsBuckets(spec),
+			AdminEnabled:          seaweedfsAdminEnabled(spec),
+			Durability:            strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// A Qdrant vector database: replicas ready, the main Service
+	// present, and a live vector round-trip (collection create → upsert
+	// → similarity search asserting the nearest neighbour), carrying the
+	// declared API key when auth is on. The behavioral-persistence
+	// scenario (recognized by name) proves vectors survive pod loss
+	// through the PVC.
+	case "kubernetesqdrant":
+		spec := manifestSpecMap(manifestPath)
+		return &QdrantVerifier{
+			Namespace:        info.Namespace,
+			Name:             info.Name,
+			Replicas:         int(manifestSpecInt(manifestPath, "replicas", 1)),
+			ApiKeySecretName: qdrantApiKeySecretName(spec, info.Name),
+			Persistence:      strings.Contains(manifestPath, "behavioral-persistence"),
+		}, nil
+
 	// declared. The behavioral-persistence scenario (recognized by
 	// name) proves the data survives pod loss through the PVC.
 	case "kubernetesneo4j":

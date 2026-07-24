@@ -492,12 +492,12 @@ import (
 	kubernetespostgresv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespostgres/v1"
 	kubernetespriorityclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetespriorityclass/v1"
 	kubernetesprometheusv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesprometheus/v1"
+	kubernetesqdrantv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesqdrant/v1"
 	kubernetesrbacv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrbac/v1"
 	kubernetesreferencegrantv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesreferencegrant/v1"
 	kubernetesrequestauthenticationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrequestauthentication/v1"
 	kubernetesresourcequotav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesresourcequota/v1"
-	kubernetesrookcephclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrookcephcluster/v1"
-	kubernetesrookcephoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrookcephoperator/v1"
+	kubernetesseaweedfsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesseaweedfs/v1"
 	kubernetessecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessecret/v1"
 	kubernetessecretstorev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessecretstore/v1"
 	kubernetesservicev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesservice/v1"
@@ -1136,12 +1136,12 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesPostgres:                    &kubernetespostgresv1.KubernetesPostgres{},
 	cloudresourcekind.CloudResourceKind_KubernetesPriorityClass:               &kubernetespriorityclassv1.KubernetesPriorityClass{},
 	cloudresourcekind.CloudResourceKind_KubernetesPrometheus:                  &kubernetesprometheusv1.KubernetesPrometheus{},
+	cloudresourcekind.CloudResourceKind_KubernetesQdrant:                      &kubernetesqdrantv1.KubernetesQdrant{},
 	cloudresourcekind.CloudResourceKind_KubernetesRbac:                        &kubernetesrbacv1.KubernetesRbac{},
 	cloudresourcekind.CloudResourceKind_KubernetesReferenceGrant:              &kubernetesreferencegrantv1.KubernetesReferenceGrant{},
 	cloudresourcekind.CloudResourceKind_KubernetesRequestAuthentication:       &kubernetesrequestauthenticationv1.KubernetesRequestAuthentication{},
 	cloudresourcekind.CloudResourceKind_KubernetesResourceQuota:               &kubernetesresourcequotav1.KubernetesResourceQuota{},
-	cloudresourcekind.CloudResourceKind_KubernetesRookCephCluster:             &kubernetesrookcephclusterv1.KubernetesRookCephCluster{},
-	cloudresourcekind.CloudResourceKind_KubernetesRookCephOperator:            &kubernetesrookcephoperatorv1.KubernetesRookCephOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesSeaweedFs:                   &kubernetesseaweedfsv1.KubernetesSeaweedFs{},
 	cloudresourcekind.CloudResourceKind_KubernetesSecret:                      &kubernetessecretv1.KubernetesSecret{},
 	cloudresourcekind.CloudResourceKind_KubernetesSecretStore:                 &kubernetessecretstorev1.KubernetesSecretStore{},
 	cloudresourcekind.CloudResourceKind_KubernetesService:                     &kubernetesservicev1.KubernetesService{},

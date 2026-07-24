@@ -239,7 +239,7 @@ e2e-test-kubernetes-tier1:  ## Run Kubernetes Tier 1 (native K8s) E2E tests only
 
 .PHONY: e2e-test-kubernetes-tier2
 e2e-test-kubernetes-tier2:  ## Run Kubernetes Tier 2 (Helm-based) E2E tests only
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesOpenBao|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesJenkins|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator)_" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesOpenBao|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesJenkins|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesSeaweedFs|KubernetesQdrant)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier3
 e2e-test-kubernetes-tier3:  ## Run Kubernetes Tier 3 (operator-dependent) E2E tests -- fixtures deployed automatically
@@ -247,7 +247,7 @@ e2e-test-kubernetes-tier3:  ## Run Kubernetes Tier 3 (operator-dependent) E2E te
 
 .PHONY: e2e-test-kubernetes-tier4
 e2e-test-kubernetes-tier4:  ## Run Kubernetes Tier 4 (operators, addons, cluster infra) E2E tests
-	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesStrimziKafkaOperator|KubernetesOpenSearchOperator|KubernetesAltinityOperator|KubernetesGhaRunnerScaleSetController|KubernetesRookCephOperator|KubernetesTekton|KubernetesTektonOperator)_" ./e2e/
+	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesStrimziKafkaOperator|KubernetesOpenSearchOperator|KubernetesAltinityOperator|KubernetesGhaRunnerScaleSetController|KubernetesTekton|KubernetesTektonOperator)_" ./e2e/
 
 # ── Terraform-only E2E targets (requires kind, tofu/terraform, kubectl, Docker) ──
 
@@ -257,7 +257,7 @@ e2e-test-kubernetes-terraform-tier1:  ## Run Kubernetes Tier 1 Terraform E2E tes
 
 .PHONY: e2e-test-kubernetes-terraform-tier2
 e2e-test-kubernetes-terraform-tier2:  ## Run Kubernetes Tier 2 Terraform (Helm-based) E2E tests only
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator)_Terraform" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesArgoCD|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesSeaweedFs|KubernetesQdrant)_Terraform" ./e2e/
 
 .PHONY: e2e-test-kubernetes-terraform-tier3
 e2e-test-kubernetes-terraform-tier3:  ## Run Kubernetes Tier 3 Terraform (operator-dependent) E2E tests
@@ -265,7 +265,7 @@ e2e-test-kubernetes-terraform-tier3:  ## Run Kubernetes Tier 3 Terraform (operat
 
 .PHONY: e2e-test-kubernetes-terraform-tier4
 e2e-test-kubernetes-terraform-tier4:  ## Run Kubernetes Tier 4 Terraform (operators, addons) E2E tests
-	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesStrimziKafkaOperator|KubernetesOpenSearchOperator|KubernetesAltinityOperator|KubernetesGhaRunnerScaleSetController|KubernetesRookCephOperator|KubernetesTekton)_Terraform" ./e2e/
+	go test -tags=e2e -timeout=150m -v -count=1 -run "Test(KubernetesStrimziKafkaOperator|KubernetesOpenSearchOperator|KubernetesAltinityOperator|KubernetesGhaRunnerScaleSetController|KubernetesTekton)_Terraform" ./e2e/
 
 # ── Auth0 E2E targets ────────────────────────────────────────────────────────
 

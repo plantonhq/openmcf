@@ -1,0 +1,67 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesseaweedfs
+spec:
+  # SeaweedFS installs as one Helm release NAMED AFTER metadata.name
+  # (fullnameOverride pins every componentName child — `<name>-master`,
+  # `-filer`, `-s3`, `-admin` — the same way), plus the optional anchor
+  # namespace and, when the admin console is enabled without an existing
+  # Secret, the module-materialized `<name>-admin-auth` credentials Secret
+  # (count-indexed) with its random_password companion (imported by VALUE —
+  # the random provider keeps no cloud state). The chart-generated
+  # `<name>-s3-secret` is Helm-owned and travels with the release import.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    # ── the module-materialized admin credentials Secret ─────────────────
+    # Deterministic name "<metadata.name>-admin-auth"; count-indexed, so
+    # from_address_key cannot serve it — the scoped suffix derivation
+    # does. Present only when the console is enabled WITHOUT an existing
+    # Secret (the existing arm references a Secret the module never owns).
+    - name: secret_name
+      tofu_resource_name: admin_auth
+      derivations:
+        - from_metadata_name_suffix: "-admin-auth"
+      where_to_find: >-
+        Always "<resource-name>-admin-auth" when the console generated its
+        credentials — `kubectl get secrets -n <namespace>` (keys
+        user/password).
+    - name: secret_namespace
+      tofu_resource_name: admin_auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the console password's random_password companion ─────────────────
+    # The random provider keeps no cloud state; the import ID is the
+    # password VALUE itself. Nothing derives it — it is read from the
+    # Secret the module materialized it into. Count-indexed alongside
+    # admin_auth (present only when the console generated its own
+    # credentials).
+    - name: admin_password_value
+      tofu_resource_name: admin
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-admin-auth -n <namespace>
+        -o jsonpath='{.data.password}' | base64 -d
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

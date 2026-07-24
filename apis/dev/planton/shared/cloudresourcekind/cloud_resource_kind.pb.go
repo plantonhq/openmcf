@@ -966,8 +966,8 @@ const (
 	CloudResourceKind_KubernetesSolrOperator          CloudResourceKind = 920
 	CloudResourceKind_KubernetesSolr                  CloudResourceKind = 921
 	CloudResourceKind_KubernetesNeo4j                 CloudResourceKind = 922
-	CloudResourceKind_KubernetesRookCephOperator      CloudResourceKind = 923
-	CloudResourceKind_KubernetesRookCephCluster       CloudResourceKind = 924
+	CloudResourceKind_KubernetesSeaweedFs             CloudResourceKind = 923
+	CloudResourceKind_KubernetesQdrant                CloudResourceKind = 924
 	// 950–969: Kubernetes GitOps and CI/CD
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 950
 	CloudResourceKind_KubernetesTektonOperator              CloudResourceKind = 951
@@ -1575,8 +1575,8 @@ var (
 		920:  "KubernetesSolrOperator",
 		921:  "KubernetesSolr",
 		922:  "KubernetesNeo4j",
-		923:  "KubernetesRookCephOperator",
-		924:  "KubernetesRookCephCluster",
+		923:  "KubernetesSeaweedFs",
+		924:  "KubernetesQdrant",
 		950:  "KubernetesArgocd",
 		951:  "KubernetesTektonOperator",
 		952:  "KubernetesTekton",
@@ -2171,8 +2171,8 @@ var (
 		"KubernetesSolrOperator":                         920,
 		"KubernetesSolr":                                 921,
 		"KubernetesNeo4j":                                922,
-		"KubernetesRookCephOperator":                     923,
-		"KubernetesRookCephCluster":                      924,
+		"KubernetesSeaweedFs":                            923,
+		"KubernetesQdrant":                               924,
 		"KubernetesArgocd":                               950,
 		"KubernetesTektonOperator":                       951,
 		"KubernetesTekton":                               952,
@@ -2640,7 +2640,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x8d\xe2\x01\n" +
+	"\x02v1\x10\x01*\xf9\xe1\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3080,9 +3080,9 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x14KubernetesClickHouse\x10\x97\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sclkhs:\x02\x96\a\x12/\n" +
 	"\x16KubernetesSolrOperator\x10\x98\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sslrop\x12*\n" +
 	"\x0eKubernetesSolr\x10\x99\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8ssolr:\x02\x98\a\x12&\n" +
-	"\x0fKubernetesNeo4j\x10\x9a\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sneo\x124\n" +
-	"\x1aKubernetesRookCephOperator\x10\x9b\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookop\x123\n" +
-	"\x19KubernetesRookCephCluster\x10\x9c\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookcl\x12(\n" +
+	"\x0fKubernetesNeo4j\x10\x9a\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sneo\x12+\n" +
+	"\x13KubernetesSeaweedFs\x10\x9b\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sswfs\x12(\n" +
+	"\x10KubernetesQdrant\x10\x9c\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sqdrt\x12(\n" +
 	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x122\n" +
 	"\x18KubernetesTektonOperator\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12(\n" +
 	"\x10KubernetesTekton\x10\xb8\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stktn\x12?\n" +
