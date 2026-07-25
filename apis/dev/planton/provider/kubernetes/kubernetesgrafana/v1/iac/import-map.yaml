@@ -1,0 +1,33 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesgrafana
+spec:
+  # Grafana installs as one Helm release NAMED AFTER metadata.name
+  # (fullnameOverride pins the Service, the ConfigMap and the
+  # chart-generated `<name>` admin Secret the same way), plus the optional
+  # anchor namespace. The admin Secret is CHART-owned (generated once via
+  # the chart's lookup, or the user's own existing Secret) and travels
+  # with the release import — no Secret rows.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

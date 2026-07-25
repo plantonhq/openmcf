@@ -1,111 +1,59 @@
-resource "kubernetes_namespace_v1" "grafana_namespace" {
-  count = try(var.spec.create_namespace, false) ? 1 : 0
+# KubernetesGrafana Terraform module.
+#
+# Installs Grafana from the official Helm chart as a real Helm release. The
+# typed spec renders into chart values (locals.helm_values); admin
+# credentials stay chart-owned (generated once via the chart's lookup, or
+# read from an existing Secret); database and datasource credentials ride
+# environment variables sourced from Secrets so no credential ever lands in
+# the chart's rendered configuration; the helm_values escape hatch is
+# passed as a SECOND values document, which the provider merges over the
+# first with Helm -f semantics — the exact semantic twin of the Pulumi
+# module's buildHelmValues + mergeMaps.
+
+# The optional installation namespace. Created before the release; deleted
+# with the resource.
+resource "kubernetes_namespace_v1" "grafana" {
+  count = var.spec.create_namespace ? 1 : 0
 
   metadata {
     name   = local.namespace
-    labels = local.final_labels
+    labels = local.labels
   }
 }
 
 resource "helm_release" "grafana" {
-  name       = var.metadata.name
-  namespace  = local.namespace_name
-  repository = "https://grafana.github.io/helm-charts"
-  chart      = "grafana"
-  version    = "8.7.0"
+  name       = local.release_name
+  repository = local.helm_chart_repo
+  chart      = local.helm_chart_name
+  version    = local.chart_version
+  namespace  = local.namespace
 
-  # helm provider v3 replaced `set {}` blocks with list attributes; use the house
-  # values=[yamlencode(...)] idiom. Mirrors the Pulumi module's helm values.
-  values = [
-    yamlencode({
-      fullnameOverride = var.metadata.name
-      resources = {
-        requests = {
-          cpu    = var.spec.container.resources.requests.cpu
-          memory = var.spec.container.resources.requests.memory
-        }
-        limits = {
-          cpu    = var.spec.container.resources.limits.cpu
-          memory = var.spec.container.resources.limits.memory
-        }
-      }
-      service = {
-        type = "ClusterIP"
-      }
-      adminUser     = "admin"
-      adminPassword = "admin"
-      persistence = {
-        enabled = false
-      }
-    })
+  # The module owns namespace creation (create_namespace flag).
+  create_namespace = false
+
+  # Wait for Grafana to become Ready — a UI that never starts (bad plugin
+  # ID, unreachable database, unbindable volume) should fail THIS apply,
+  # not the first login attempt. Plugin downloads at startup are what the
+  # generous budget covers.
+  wait            = true
+  atomic          = true
+  cleanup_on_fail = true
+  timeout         = 600
+
+  # Documents merged in order by the provider (helm -f semantics): the
+  # typed rendering first, the user's escape hatch second — and
+  # fullnameOverride re-pinned LAST, the one deliberate exception to the
+  # escape hatch's last-word contract (twin of the Pulumi module). The
+  # Service and the chart-generated admin Secret — and the exported
+  # outputs built from them — derive from the fullname; letting an
+  # override move it would break every output.
+  values = concat(
+    [yamlencode(local.helm_values)],
+    try(var.spec.helm_values, "") != "" ? [var.spec.helm_values] : [],
+    [yamlencode({ fullnameOverride = local.release_name })]
+  )
+
+  depends_on = [
+    kubernetes_namespace_v1.grafana,
   ]
 }
-
-resource "kubernetes_ingress_v1" "grafana_external" {
-  count = local.ingress_is_enabled && local.ingress_external_hostname != "" ? 1 : 0
-
-  metadata {
-    name      = local.external_ingress_name
-    namespace = local.namespace_name
-    annotations = {
-      "kubernetes.io/ingress.class" = "nginx"
-    }
-  }
-
-  spec {
-    rule {
-      host = "grafana-${var.metadata.name}.${var.spec.ingress.dns_domain}"
-      http {
-        path {
-          path      = "/"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = local.kube_service_name
-              port {
-                number = 80
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  depends_on = [helm_release.grafana]
-}
-
-resource "kubernetes_ingress_v1" "grafana_internal" {
-  count = local.ingress_is_enabled && local.ingress_internal_hostname != "" ? 1 : 0
-
-  metadata {
-    name      = local.internal_ingress_name
-    namespace = local.namespace_name
-    annotations = {
-      "kubernetes.io/ingress.class" = "nginx-internal"
-    }
-  }
-
-  spec {
-    rule {
-      host = "grafana-${var.metadata.name}-internal.${var.spec.ingress.dns_domain}"
-      http {
-        path {
-          path      = "/"
-          path_type = "Prefix"
-          backend {
-            service {
-              name = local.kube_service_name
-              port {
-                number = 80
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  depends_on = [helm_release.grafana]
-}
-

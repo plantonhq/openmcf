@@ -42,6 +42,12 @@ spec:
   # deliberate manual act.
   retain_volumes_on_delete: true
   pdb_max_unavailable: 1
+  # Neither user below can create tables — schema DDL belongs to a
+  # migration identity. A user intended to run schema DDL on a
+  # replicated cluster needs CREATE on the database AND
+  # "GRANT CLUSTER ON *.*" (ON CLUSTER statements are rejected with
+  # ACCESS_DENIED otherwise). A user declared with NO grants gets
+  # ClickHouse's unrestricted default access — always declare grants.
   users:
     - name: analyst
       password:

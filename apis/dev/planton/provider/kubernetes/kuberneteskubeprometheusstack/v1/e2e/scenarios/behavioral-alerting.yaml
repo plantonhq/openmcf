@@ -1,0 +1,19 @@
+# THE alerting-pipeline proof: the stack's own dead-man's-switch. The
+# verifier must show the always-firing Watchdog alert FIRING in
+# Prometheus' alerts API and PRESENT in Alertmanager's API — rule
+# evaluation and alert delivery proven end to end without waiting for
+# anything to break, on top of the standard metric-flow proof.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKubePrometheusStack
+metadata:
+  name: e2e-kps-alert
+spec:
+  namespace:
+    value: e2e-kps-alert
+  create_namespace: true
+  prometheus:
+    disk_size: 5Gi
+  alertmanager:
+    disk_size: 1Gi
+  grafana:
+    enabled: false

@@ -421,6 +421,7 @@ contained dev.planton.provider.kubernetes.kuberneteskarapace.v1.KubernetesKarapa
 contained dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskeda.v1.KubernetesKedaSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kuberneteskubeprometheusstack.v1.KubernetesKubePrometheusStackSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteslistenerset.v1.KubernetesListenerSetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesmanifest.v1.KubernetesManifestSpec.namespace -> KubernetesNamespace
@@ -442,7 +443,6 @@ contained dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.Kube
 contained dev.planton.provider.kubernetes.kubernetespersistentvolumeclaim.v1.KubernetesPersistentVolumeClaimSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetespoddisruptionbudget.v1.KubernetesPodDisruptionBudgetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.namespace -> KubernetesNamespace
-contained dev.planton.provider.kubernetes.kubernetesprometheus.v1.KubernetesPrometheusSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesqdrant.v1.KubernetesQdrantSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesrabbitmq.v1.KubernetesRabbitMqSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesrbac.v1.KubernetesRbacNamespaceScope.namespace -> KubernetesNamespace

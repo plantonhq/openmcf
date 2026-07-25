@@ -28,7 +28,6 @@ var operatorKinds = map[string]bool{
 var helmTier2Kinds = map[string]bool{
 	// Tier 2 Helm applications
 	"kubernetesnats":     true,
-	"kubernetesgrafana":  true,
 	"kubernetesopenbao":  true,
 	"kubernetesopenfga":  true,
 	"kubernetesjenkins":  true,
@@ -681,6 +680,44 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Buckets:               seaweedfsBuckets(spec),
 			AdminEnabled:          seaweedfsAdminEnabled(spec),
 			Durability:            strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// A kube-prometheus-stack: operator Deployment available, the
+	// operator-reconciled Prometheus StatefulSet at its declared count,
+	// Alertmanager/bundled-Grafana when enabled, and a LIVE metric-flow
+	// proof (a healthy kube-state-metrics target + a PromQL answer). The
+	// behavioral-alerting scenario (recognized by name) proves the
+	// pipeline end to end via the always-firing Watchdog alert in BOTH
+	// Prometheus and Alertmanager. Destroy asserts the crds-subchart
+	// keep posture (the monitoring CRDs must SURVIVE uninstall).
+	case "kuberneteskubeprometheusstack":
+		spec := manifestSpecMap(manifestPath)
+		return &KubePrometheusStackVerifier{
+			Namespace:            info.Namespace,
+			Name:                 info.Name,
+			PrometheusReplicas:   kpsReplicas(spec, "prometheus"),
+			AlertmanagerEnabled:  kpsHalfEnabled(spec, "alertmanager"),
+			AlertmanagerReplicas: kpsReplicas(spec, "alertmanager"),
+			GrafanaEnabled:       kpsHalfEnabled(spec, "grafana"),
+			Alerting:             strings.Contains(manifestPath, "behavioral-alerting"),
+		}, nil
+
+	// A standalone Grafana: Deployment available, /api/health reporting
+	// a working database, an AUTHENTICATED API round-trip as the admin
+	// credentials (read from the Secret — the credential-wiring proof),
+	// and every declared datasource provisioned. The
+	// behavioral-persistence scenario (recognized by name) proves a
+	// UI-authored dashboard survives a pod REPLACEMENT through the PVC.
+	case "kubernetesgrafana":
+		spec := manifestSpecMap(manifestPath)
+		return &GrafanaVerifier{
+			Namespace:        info.Namespace,
+			Name:             info.Name,
+			AdminSecretName:  grafanaAdminSecretName(spec, info.Name),
+			AdminUserKey:     grafanaAdminSecretKey(spec, "user_key"),
+			AdminPasswordKey: grafanaAdminSecretKey(spec, "password_key"),
+			Datasources:      grafanaDatasourceNames(spec),
+			Persistence:      strings.Contains(manifestPath, "behavioral-persistence"),
 		}, nil
 
 	// A Qdrant vector database: replicas ready, the main Service

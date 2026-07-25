@@ -387,6 +387,9 @@ func TestKubernetesValkey_Pulumi(t *testing.T) {
 func TestKubernetesGrafana_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgrafana", "pulumi")
 }
+func TestKubernetesKubePrometheusStack_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskubeprometheusstack", "pulumi")
+}
 func TestKubernetesOpenBao_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesopenbao", "pulumi")
 }
@@ -455,6 +458,9 @@ func TestKubernetesValkey_Terraform(t *testing.T) {
 }
 func TestKubernetesGrafana_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgrafana", "terraform")
+}
+func TestKubernetesKubePrometheusStack_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskubeprometheusstack", "terraform")
 }
 func TestKubernetesArgoCD_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesargocd", "terraform")

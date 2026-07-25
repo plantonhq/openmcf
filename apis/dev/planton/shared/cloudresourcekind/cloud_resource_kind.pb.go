@@ -935,9 +935,9 @@ const (
 	CloudResourceKind_KubernetesClusterAutoscaler     CloudResourceKind = 866
 	CloudResourceKind_KubernetesVelero                CloudResourceKind = 867
 	// 870–889: Kubernetes observability
-	CloudResourceKind_KubernetesPrometheus CloudResourceKind = 870
-	CloudResourceKind_KubernetesGrafana    CloudResourceKind = 871
-	CloudResourceKind_KubernetesSignoz     CloudResourceKind = 872
+	CloudResourceKind_KubernetesKubePrometheusStack CloudResourceKind = 870
+	CloudResourceKind_KubernetesGrafana             CloudResourceKind = 871
+	CloudResourceKind_KubernetesSignoz              CloudResourceKind = 872
 	// 890–899: Kubernetes security, policy, and identity
 	CloudResourceKind_KubernetesKeycloak CloudResourceKind = 890
 	CloudResourceKind_KubernetesOpenBao  CloudResourceKind = 891
@@ -1551,7 +1551,7 @@ var (
 		865:  "KubernetesKarpenterEc2NodeClass",
 		866:  "KubernetesClusterAutoscaler",
 		867:  "KubernetesVelero",
-		870:  "KubernetesPrometheus",
+		870:  "KubernetesKubePrometheusStack",
 		871:  "KubernetesGrafana",
 		872:  "KubernetesSignoz",
 		890:  "KubernetesKeycloak",
@@ -2149,7 +2149,7 @@ var (
 		"KubernetesKarpenterEc2NodeClass":                865,
 		"KubernetesClusterAutoscaler":                    866,
 		"KubernetesVelero":                               867,
-		"KubernetesPrometheus":                           870,
+		"KubernetesKubePrometheusStack":                  870,
 		"KubernetesGrafana":                              871,
 		"KubernetesSignoz":                               872,
 		"KubernetesKeycloak":                             890,
@@ -2649,7 +2649,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xe1\xe2\x01\n" +
+	"\x02v1\x10\x01*\xe9\xe2\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3060,8 +3060,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"k8skarpenc:\x02\xdf\x06B$\n" +
 	"\x14karpenter.k8s.aws/v1\x12\fEC2NodeClass\x122\n" +
 	"\x1bKubernetesClusterAutoscaler\x10\xe2\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scas\x12'\n" +
-	"\x10KubernetesVelero\x10\xe3\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svel\x12,\n" +
-	"\x14KubernetesPrometheus\x10\xe6\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sprom\x12(\n" +
+	"\x10KubernetesVelero\x10\xe3\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svel\x124\n" +
+	"\x1dKubernetesKubePrometheusStack\x10\xe6\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8skps\x12(\n" +
 	"\x11KubernetesGrafana\x10\xe7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sgfn\x12'\n" +
 	"\x10KubernetesSignoz\x10\xe8\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssgz\x12(\n" +
 	"\x12KubernetesKeycloak\x10\xfa\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8skc\x12(\n" +

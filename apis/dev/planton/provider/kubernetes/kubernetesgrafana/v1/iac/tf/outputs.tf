@@ -1,30 +1,37 @@
+# Stack outputs — identical names and derivations in the Pulumi module's
+# outputs.go / main.go exports.
+#
+# The service name is the chart's ClusterIP Service — grafana.fullname,
+# pinned to the resource name via fullnameOverride. The admin Secret name
+# follows the credential arm: the chart-owned `<name>` Secret for the
+# generate arm, the referenced Secret's own name for the existing arm.
+
 output "namespace" {
-  description = "The namespace where Grafana and related resources are created."
+  description = "Kubernetes namespace Grafana runs in"
   value       = local.namespace
 }
 
+output "release_name" {
+  description = "Helm release name (= metadata.name)"
+  value       = local.release_name
+}
+
 output "service" {
-  description = "The Kubernetes service name for Grafana."
-  value       = local.kube_service_name
+  description = "Name of the Grafana Service (port 80 → container 3000; = the release name)"
+  value       = local.service_name
+}
+
+output "endpoint" {
+  description = "In-cluster endpoint (plain HTTP on the Service; TLS composes at the exposure layer)"
+  value       = "http://${local.service_name}.${local.namespace}.svc.cluster.local"
+}
+
+output "admin_secret_name" {
+  description = "Secret holding the admin credentials (keys admin-user / admin-password for the chart-generated arm)"
+  value       = local.admin_secret_name
 }
 
 output "port_forward_command" {
-  description = "A handy command to port-forward local 8080 to the Grafana service port 80."
-  value       = local.kube_port_forward_command
+  description = "kubectl one-liner for reaching the UI from a workstation"
+  value       = "kubectl port-forward svc/${local.service_name} -n ${local.namespace} 3000:80"
 }
-
-output "kube_endpoint" {
-  description = "The internal service FQDN for Grafana."
-  value       = local.kube_service_fqdn
-}
-
-output "external_hostname" {
-  description = "The external hostname for Grafana, if ingress is enabled."
-  value       = local.ingress_external_hostname
-}
-
-output "internal_hostname" {
-  description = "The internal hostname for Grafana, if ingress is enabled."
-  value       = local.ingress_internal_hostname
-}
-

@@ -1,0 +1,15 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kuberneteskubeprometheusstack
+spec:
+  tier: 2
+  # Rebuilt from the retired standalone-Prometheus slot against chart
+  # 87.19.1 and offline-validated (spec tests, both engines' plan/preview
+  # proofs across full and minimal shapes); the live lanes have not run
+  # yet. The stack is the heaviest tier-2 kind (operator + Prometheus +
+  # Alertmanager + Grafana + two exporters in one release) — the timeout
+  # is sized for the operator reconciling the StatefulSets after the
+  # release's own resources are up.
+  status: pending_proof
+  timeout_minutes: 30

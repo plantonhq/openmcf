@@ -1,0 +1,54 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGrafana
+metadata:
+  name: grafana
+spec:
+  namespace:
+    value: observability
+  create_namespace: true
+  # HA: two replicas behind one Service. This REQUIRES the database
+  # block — each pod's embedded SQLite is private, so scaled replicas
+  # without a shared database split sessions and dashboards across
+  # pods (the spec refuses the combination). No `storage`: state
+  # lives in the database, not on a volume.
+  replicas: 2
+  # External Postgres carries all of Grafana's state. The database
+  # itself must exist (Grafana creates its tables, never the
+  # database); the host is shown literal — a value_from reference to
+  # a KubernetesPostgres resource resolves its read-write endpoint
+  # instead. The password rides an existing Secret through
+  # environment expansion and never appears in rendered config.
+  database:
+    engine: postgres
+    host:
+      value: <postgres-host>:5432
+    name: grafana
+    user: grafana
+    password_secret:
+      name: <postgres-credentials-secret>
+      key: password
+    ssl_mode: require
+  # Admin credentials from a Secret the team owns (rotated by the
+  # team's own machinery). Drop this block to let the chart generate
+  # them instead.
+  admin_secret:
+    name: grafana-admin
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  datasources:
+    - name: Prometheus
+      url:
+        value_from:
+          name: <stack-name>
+      is_default: true
+  server:
+    root_url: https://grafana.<your-domain>
+  # Scrape Grafana's own /metrics into the cluster's Prometheus —
+  # the dashboard for the dashboards. Requires the Prometheus
+  # Operator CRDs (the metrics stack provides them).
+  service_monitor_enabled: true

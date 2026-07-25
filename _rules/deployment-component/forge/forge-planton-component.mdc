@@ -808,6 +808,19 @@ cap and fail mid-install; when the budget breaks realistic names, pin
 `fullnameOverride` to metadata.name and record the resulting name-length
 budget on the spec.
 
+**Map the chart's image-value SHAPE, not the spec's.** Charts take the
+image reference either as one combined `image.repository` or SPLIT
+across `image.registry` + `image.repository` with the registry
+defaulting to docker.io — read the pod template at the pin to know
+which. When the spec's air-gap field carries a full reference
+("my.registry.com/org/app") and the chart wants the split shape, the
+module must split it (the first path segment is a registry exactly when
+it contains a dot, a port colon, or is `localhost` — the container
+runtimes' own rule); mapped verbatim, the chart re-prefixes its default
+registry and every mirror override dies in ImagePullBackOff. This class
+is identically wrong in BOTH engines, so cross-engine parity review
+never catches it — only the chart template read does.
+
 **Behavioral drivers against PERSISTENT external stores need run-unique
 names.** A verifier-owned driver CR whose name doubles as a key in an
 external store (a Velero Backup's name keys its object-store records) must

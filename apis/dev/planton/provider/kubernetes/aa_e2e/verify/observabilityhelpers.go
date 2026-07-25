@@ -1,0 +1,94 @@
+package verify
+
+// Spec-map helpers for the observability kinds' verifier dispatch. Like
+// every manifest helper here, each reader tolerates both the proto
+// snake_case and the JSON camelCase key forms — scenario manifests are
+// authored in either.
+
+// kpsReplicas resolves a stack half's declared replica count (default 1
+// — the proto default on both the prometheus and alertmanager blocks).
+func kpsReplicas(spec map[string]interface{}, half string) int {
+	block, _ := spec[half].(map[string]interface{})
+	if block == nil {
+		return 1
+	}
+	if replicas, ok := block["replicas"].(float64); ok && replicas >= 1 {
+		return int(replicas)
+	}
+	if replicas, ok := block["replicas"].(int); ok && replicas >= 1 {
+		return replicas
+	}
+	return 1
+}
+
+// kpsHalfEnabled reports whether the alertmanager / grafana half deploys:
+// the proto optional-bool defaults TRUE, so only an explicit false
+// disables it.
+func kpsHalfEnabled(spec map[string]interface{}, half string) bool {
+	block, _ := spec[half].(map[string]interface{})
+	if block == nil {
+		return true
+	}
+	if enabled, ok := block["enabled"].(bool); ok {
+		return enabled
+	}
+	return true
+}
+
+// grafanaAdminSecretName resolves the Secret carrying the admin
+// credentials: the referenced existing Secret when declared, else the
+// chart-owned Secret named after the release (= the resource name, via
+// the pinned fullname).
+func grafanaAdminSecretName(spec map[string]interface{}, resourceName string) string {
+	admin := grafanaAdminSecretMap(spec)
+	if admin == nil {
+		return resourceName
+	}
+	if name, _ := admin["name"].(string); name != "" {
+		return name
+	}
+	return resourceName
+}
+
+// grafanaAdminSecretKey resolves one key-name override of the admin
+// Secret ("" = the chart's admin-user / admin-password defaults, applied
+// by the verifier).
+func grafanaAdminSecretKey(spec map[string]interface{}, snakeKey string) string {
+	admin := grafanaAdminSecretMap(spec)
+	if admin == nil {
+		return ""
+	}
+	if v, _ := admin[snakeKey].(string); v != "" {
+		return v
+	}
+	camel := map[string]string{
+		"user_key":     "userKey",
+		"password_key": "passwordKey",
+	}[snakeKey]
+	if v, _ := admin[camel].(string); v != "" {
+		return v
+	}
+	return ""
+}
+
+func grafanaAdminSecretMap(spec map[string]interface{}) map[string]interface{} {
+	admin, _ := spec["admin_secret"].(map[string]interface{})
+	if admin == nil {
+		admin, _ = spec["adminSecret"].(map[string]interface{})
+	}
+	return admin
+}
+
+// grafanaDatasourceNames lists the declared datasource names the verifier
+// must find provisioned.
+func grafanaDatasourceNames(spec map[string]interface{}) []string {
+	raw, _ := spec["datasources"].([]interface{})
+	names := make([]string, 0, len(raw))
+	for _, entry := range raw {
+		ds, _ := entry.(map[string]interface{})
+		if name, _ := ds["name"].(string); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}

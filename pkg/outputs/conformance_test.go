@@ -1333,6 +1333,54 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesKubePrometheusStack: the pinned-fullname naming contract —
+			// every child service derives from the resource name
+			// (`-prometheus`/`-alertmanager`/`-grafana`), the endpoints downstream
+			// datasources compose against, and the bundled Grafana's admin-Secret
+			// handle.
+			name: "KubernetesKubePrometheusStack",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKubePrometheusStack,
+			rawOutputs: map[string]interface{}{
+				"namespace":                       "observability",
+				"release_name":                    "monitoring",
+				"prometheus_service":              "monitoring-prometheus",
+				"prometheus_endpoint":             "http://monitoring-prometheus.observability.svc.cluster.local:9090",
+				"alertmanager_service":            "monitoring-alertmanager",
+				"alertmanager_endpoint":           "http://monitoring-alertmanager.observability.svc.cluster.local:9093",
+				"grafana_service":                 "monitoring-grafana",
+				"grafana_endpoint":                "http://monitoring-grafana.observability.svc.cluster.local",
+				"grafana_admin_secret_name":       "monitoring-grafana",
+				"prometheus_port_forward_command": "kubectl port-forward svc/monitoring-prometheus -n observability 9090:9090",
+				"grafana_port_forward_command":    "kubectl port-forward svc/monitoring-grafana -n observability 3000:80",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "prometheus_service",
+				"prometheus_endpoint", "alertmanager_service",
+				"alertmanager_endpoint", "grafana_service", "grafana_endpoint",
+				"grafana_admin_secret_name", "prometheus_port_forward_command",
+				"grafana_port_forward_command",
+			},
+		},
+		{
+			// KubernetesGrafana: the pinned-fullname naming contract — the Service
+			// and the chart-generated admin Secret share the resource name — plus
+			// the endpoint and port-forward composition handles.
+			name: "KubernetesGrafana",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGrafana,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "observability",
+				"release_name":         "dashboards",
+				"service":              "dashboards",
+				"endpoint":             "http://dashboards.observability.svc.cluster.local",
+				"admin_secret_name":    "dashboards",
+				"port_forward_command": "kubectl port-forward svc/dashboards -n observability 3000:80",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service", "endpoint",
+				"admin_secret_name", "port_forward_command",
+			},
+		},
+		{
 			// AwsSubnet: flat scalar outputs from both engines (subnet id/arn, AZ,
 			// CIDR, route table id, region) must each land on the StackOutputs proto.
 			name: "AwsSubnet",

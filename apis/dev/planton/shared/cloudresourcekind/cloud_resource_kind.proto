@@ -3017,10 +3017,10 @@ enum CloudResourceKind {
     id_prefix: "k8svel"
   }];
   // 870–889: Kubernetes observability
-  KubernetesPrometheus = 870 [(kind_meta) = {
+  KubernetesKubePrometheusStack = 870 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8sprom"
+    id_prefix: "k8skps"
   }];
   KubernetesGrafana = 871 [(kind_meta) = {
     provider: kubernetes
