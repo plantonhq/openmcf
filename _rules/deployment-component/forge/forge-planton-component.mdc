@@ -585,7 +585,16 @@ profile table and mechanics). Rules when designing lanes around a profile:
 the profile cluster is typically single-node, so chart defaults sized for HA
 (a 2-replica anti-affine operator) can never fully schedule — scenario
 manifests must size those knobs to the topology or the atomic install waits
-forever; a CNI-less cluster's nodes are NotReady BY DESIGN until the CNI
+forever. The same class hides in RESOURCE REQUESTS, not just topology: read
+every companion workload's default requests at the pin — including computed
+factors (memcached charts request memory at 1.2× the allocated size, so an
+"8192MB cache" default renders a ~9.8Gi request that no small node can ever
+schedule; the pod stays Pending and the atomic install rolls the whole
+release back, reading as "the component won't install"). A default request
+that exceeds a small node's allocatable is a product caveat, not just a lane
+problem: teach it on the sizing field's spec comment and in the dev preset,
+and size it in every kind-lane scenario (the disk_size class). A CNI-less
+cluster's nodes are NotReady BY DESIGN until the CNI
 component installs, so never gate the profile's creation on node readiness —
 assert the NotReady→Ready transition in the component's install verifier
 instead, where it becomes part of the proof; and behavioral scenarios that
@@ -609,6 +618,26 @@ interrupted Helm install orphans its release in `pending-install` state, which
 blocks every later install of the same name with a misleading name-in-use
 error. Sweep with `helm uninstall <release> -n <namespace>` (plus the fixture
 namespaces) before re-running.
+
+**Verifier assertions against OTLP/protojson APIs match BASE64 IDs, not
+hex.** An API that returns protojson-encoded protobuf (Tempo's trace query,
+any OTLP surface) renders `bytes` fields — trace and span IDs above all — as
+BASE64. A verifier that greps the response for the hex ID it pushed will
+hold the successful response and still report failure, and every retry
+budget then expires "unable to retrieve" what was retrieved on the first
+try (caught live). Convert the pushed ID's bytes to base64 for the success
+check; keep hex only for human-facing log lines.
+
+**One-way-hash credentials in E2E artifacts must be VERIFIED pairings.** When
+a scenario or fixture carries a one-way hash (a bcrypt htpasswd tenant
+password, a pre-hashed basic-auth entry) whose PLAINTEXT a verifier must use
+live, the pairing is unprovable by reading and silently breaks: the hash
+validates as a manifest, every offline gate passes, and only the live 401
+exposes a hash that never matched its claimed plaintext. At authoring time,
+generate AND mechanically verify the pair (`htpasswd -nbBC 10 <user> <pass>`
+then `htpasswd -vbB <file> <user> <pass>`), record both commands in the
+artifact's comment, and keep the plaintext as a named constant beside the
+verifier that uses it — the two sides change only together.
 
 **Isolate the run from OTHER suites on the same machine.** Serial-within-your-
 provider is not enough when a different provider's E2E suite runs concurrently

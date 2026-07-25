@@ -2,6 +2,8 @@ package verify
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strings"
@@ -112,11 +114,24 @@ func (v *TempoVerifier) proveRoundTrip(ctx context.Context, kubeconfig string) e
 
 	// Retrieve the trace by ID. Tempo flushes through the ingester before
 	// the trace is queryable, so the retry budget is generous.
+	//
+	// The query API returns OTLP JSON, where trace/span IDs are protobuf
+	// BYTES fields — protojson renders them BASE64, never hex. The success
+	// check must therefore match the base64 form of the span ID: a hex
+	// substring check holds the successful response and still reports
+	// failure (caught live — every lane's "failure" body carried the
+	// retrieved trace).
+	spanIdBytes, err := hex.DecodeString(spanId)
+	if err != nil {
+		return errors.Wrap(err, "decoding the proof span id")
+	}
+	spanIdB64 := base64.StdEncoding.EncodeToString(spanIdBytes)
+
 	deadline := time.Now().Add(6 * time.Minute)
 	var lastBody string
 	for time.Now().Before(deadline) {
 		body, err := httpRoundTrip(ctx, http.MethodGet, queryBase+"/api/traces/"+traceId, "", "", 1*time.Minute)
-		if err == nil && strings.Contains(body, spanId) {
+		if err == nil && strings.Contains(body, spanIdB64) {
 			verb := "QUERY"
 			if v.Persistence {
 				verb = "PERSISTENCE"

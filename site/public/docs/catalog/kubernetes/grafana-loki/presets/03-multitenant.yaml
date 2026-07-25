@@ -1,0 +1,39 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesLoki
+metadata:
+  name: shared-loki
+spec:
+  namespace:
+    value: logging
+  create_namespace: true
+  simple_scalable:
+    write_replicas: 3
+    read_replicas: 3
+    backend_replicas: 3
+  storage:
+    s3:
+      bucket: loki-chunks
+      endpoint: http://seaweedfs-s3.storage.svc.cluster.local:8333
+      force_path_style: true
+      insecure: true
+      credentials:
+        access_key_id_secret:
+          name: loki-object-store
+          key: access-key-id
+        secret_access_key_secret:
+          name: loki-object-store
+          key: secret-access-key
+  retention_period: 744h
+  # Tenant isolation: every push and query must carry an X-Scope-OrgID
+  # header, and the gateway enforces basic auth for each tenant. The
+  # password_hash values are bcrypt htpasswd hashes (one-way — safe in a
+  # manifest; generate with `htpasswd -nbBC10 <name> <password>`), so no
+  # Secret is needed. Point each team's Grafana loki datasource and
+  # collector pipeline at the gateway with its own tenant credentials.
+  multi_tenancy:
+    enabled: true
+    tenants:
+      - name: team-payments
+        password_hash: "$2y$10$7O40CaY1yz7fu9O24k2/u.ct/wELYHRBsn25v/7AyuQ8E8hrLqpva"
+      - name: team-platform
+        password_hash: "$2y$10$7O40CaY1yz7fu9O24k2/u.ct/wELYHRBsn25v/7AyuQ8E8hrLqpva"

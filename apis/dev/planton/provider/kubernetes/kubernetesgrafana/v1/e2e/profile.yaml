@@ -5,9 +5,9 @@ metadata:
 spec:
   tier: 2
   # Rebuilt from the pre-program shell (raw container + embedded ingress)
-  # onto the official grafana chart 12.8.0 and offline-validated (spec
-  # tests, both engines' plan/preview proofs across full and minimal
-  # shapes); the live lanes for the REBUILT surface have not run yet —
-  # the shell's old green predates this surface and does not carry over.
-  status: pending_proof
+  # onto the official grafana chart 12.8.0.
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 25

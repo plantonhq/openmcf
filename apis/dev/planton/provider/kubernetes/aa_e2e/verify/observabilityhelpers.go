@@ -106,3 +106,36 @@ func lokiGatewayEnabled(spec map[string]interface{}) bool {
 	}
 	return true
 }
+
+// lokiE2eTenantPassword is the plaintext half of the multi-tenant
+// scenarios' credential pairing: tenant passwords in the spec are one-way
+// bcrypt hashes (that is the product's security posture — no plaintext in
+// manifests), so a scenario that declares a tenant commits to hashing
+// EXACTLY this constant (`htpasswd -nbBC10 <tenant> e2e-password`) and the
+// verifier authenticates with it. Change either side only with the other.
+const lokiE2eTenantPassword = "e2e-password"
+
+// lokiFirstTenantUser returns the first declared tenant name when
+// multi-tenancy is enabled with an inline tenant list, else "". With
+// tenants declared, the chart guards the WHOLE gateway server with
+// auth_basic and injects X-Scope-OrgID from the authenticated username —
+// there is no unauthenticated path — so the proof must run AS a tenant.
+func lokiFirstTenantUser(spec map[string]interface{}) string {
+	mt, _ := spec["multi_tenancy"].(map[string]interface{})
+	if mt == nil {
+		mt, _ = spec["multiTenancy"].(map[string]interface{})
+	}
+	if mt == nil {
+		return ""
+	}
+	if enabled, ok := mt["enabled"].(bool); !ok || !enabled {
+		return ""
+	}
+	tenants, _ := mt["tenants"].([]interface{})
+	if len(tenants) == 0 {
+		return ""
+	}
+	first, _ := tenants[0].(map[string]interface{})
+	name, _ := first["name"].(string)
+	return name
+}

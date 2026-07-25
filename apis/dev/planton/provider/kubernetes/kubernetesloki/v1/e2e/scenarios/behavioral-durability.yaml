@@ -15,3 +15,9 @@ spec:
   monolithic:
     replicas: 1
     disk_size: 2Gi
+  # Kind-honest cache sizing: the chart's default 8192MB chunks cache
+  # requests 9830Mi (1.2×) — unschedulable on a small node, and the
+  # atomic install rolls back the whole release (verified live).
+  caching:
+    chunks_cache_memory_mb: 128
+    results_cache_memory_mb: 128

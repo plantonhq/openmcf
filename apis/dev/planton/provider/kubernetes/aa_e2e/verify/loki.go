@@ -29,6 +29,16 @@ type LokiVerifier struct {
 	// GatewayEnabled marks whether the nginx gateway front door is
 	// deployed (the exported endpoints and this proof route through it).
 	GatewayEnabled bool
+	// TenantUser / TenantPassword carry the gateway basic-auth identity
+	// for multi-tenant installs. With tenants declared the chart guards
+	// the WHOLE gateway server with auth_basic (only the bare health
+	// route is exempt) and injects X-Scope-OrgID from the authenticated
+	// username, so the push→query proof MUST authenticate — and doing so
+	// proves the full tenant path: htpasswd materialized from the
+	// declared bcrypt hash, nginx auth, OrgID injection, tenant-scoped
+	// storage and query. Empty = single-tenant posture (no auth).
+	TenantUser     string
+	TenantPassword string
 	// Durability switches on the log-survives-pod-loss proof.
 	Durability bool
 }
@@ -77,11 +87,15 @@ func (v *LokiVerifier) proveRoundTrip(ctx context.Context, kubeconfig, gatewaySv
 
 	// Loki's distributor can 5xx briefly during warm-up — the retry loop
 	// covers the window; a 204 is success.
-	if _, err := httpRoundTrip(ctx, http.MethodPost, base+"/loki/api/v1/push",
-		"application/json", pushBody, 5*time.Minute); err != nil {
+	if _, err := httpRoundTripAuth(ctx, http.MethodPost, base+"/loki/api/v1/push",
+		"application/json", pushBody, 5*time.Minute, v.TenantUser, v.TenantPassword); err != nil {
 		return errors.Wrap(err, "pushing the proof log line to loki")
 	}
-	fmt.Printf("  [verify] PUSH: proof log line %q accepted by the gateway\n", marker)
+	as := ""
+	if v.TenantUser != "" {
+		as = fmt.Sprintf(" as tenant %q", v.TenantUser)
+	}
+	fmt.Printf("  [verify] PUSH: proof log line %q accepted by the gateway%s\n", marker, as)
 
 	if v.Durability {
 		if err := deletePodAwaitReplacement(ctx, kubeconfig, v.Namespace,
@@ -106,13 +120,13 @@ func (v *LokiVerifier) proveRoundTrip(ctx context.Context, kubeconfig, gatewaySv
 	for time.Now().Before(deadline) {
 		url := fmt.Sprintf("%s/loki/api/v1/query_range?query=%s&start=%s&end=%s&limit=100",
 			base, urlQueryEscape(query), start, end)
-		body, err := httpRoundTrip(ctx, http.MethodGet, url, "", "", 1*time.Minute)
+		body, err := httpRoundTripAuth(ctx, http.MethodGet, url, "", "", 1*time.Minute, v.TenantUser, v.TenantPassword)
 		if err == nil && strings.Contains(body, marker) {
 			verb := "QUERY"
 			if v.Durability {
 				verb = "DURABILITY"
 			}
-			fmt.Printf("  [verify] %s: proof log line returned by LogQL%s\n", verb,
+			fmt.Printf("  [verify] %s: proof log line returned by LogQL%s%s\n", verb, as,
 				map[bool]string{true: " AFTER pod replacement — logs survived on the PVC", false: ""}[v.Durability])
 			return nil
 		}
@@ -126,6 +140,12 @@ func (v *LokiVerifier) proveRoundTrip(ctx context.Context, kubeconfig, gatewaySv
 // non-2xx is an error, and the body is read inside the loop so a response
 // dying mid-stream retries rather than escaping.
 func httpRoundTrip(ctx context.Context, method, url, contentType, body string, budget time.Duration) (string, error) {
+	return httpRoundTripAuth(ctx, method, url, contentType, body, budget, "", "")
+}
+
+// httpRoundTripAuth is httpRoundTrip with optional basic-auth credentials
+// (empty user = anonymous) — the front door for auth-gated gateways.
+func httpRoundTripAuth(ctx context.Context, method, url, contentType, body string, budget time.Duration, user, password string) (string, error) {
 	deadline := time.Now().Add(budget)
 	var lastOut string
 	var lastErr error
@@ -142,6 +162,9 @@ func httpRoundTrip(ctx context.Context, method, url, contentType, body string, b
 		}
 		if contentType != "" {
 			req.Header.Set("Content-Type", contentType)
+		}
+		if user != "" {
+			req.SetBasicAuth(user, password)
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err == nil {

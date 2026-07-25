@@ -175,6 +175,10 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kuberneteskafka` | 2026-07-23, all three scenarios (two tofu_resource_name-scoped kubectl_manifest families — the Kafka CR singleton and the pool-name-keyed KafkaNodePool for_each — plus the count-indexed metrics ConfigMap via scoped from_metadata_name_suffix and the created namespace; the durability lane re-imports a live 3-node cluster) | `kubectl_manifest` provider-side knobs (config-only, see the catalog row) |
 | `kuberneteskafkatopic` | 2026-07-23, both scenarios (4-part namespaced composed ID; the scenarios resolve the kafka_cluster FK against a live fixture cluster) | same `kubectl_manifest` tolerances |
 | `kuberneteskafkauser` | 2026-07-23, both scenarios (4-part namespaced composed ID; behavioral-auth re-imports alongside the operator-generated credentials Secret, which is deliberately outside the module's state) | same `kubectl_manifest` tolerances |
+| `kuberneteskubeprometheusstack` | 2026-07-25, all three scenarios (Helm release + created namespace; the alerting lane re-imports with the operator-reconciled StatefulSets live) | `helm_release` install-time attributes (config-only, see the catalog row); the count-indexed `<name>-remote-write-auth` Secret is not composed by any scenario (none declares remote-write basic auth), offline-validated only |
+| `kubernetesgrafana` | 2026-07-25, all three scenarios (Helm release + created namespace; behavioral-persistence re-imports alongside the live PVC-backed dashboard) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetesloki` | 2026-07-25, all three scenarios (Helm release + created namespace; full-surface re-imports with the gateway auth-guarded in multi-tenant mode) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetestempo` | 2026-07-25, all three scenarios (Helm release + created namespace) | `helm_release` install-time attributes (config-only, see the catalog row) |
 
 Kinds where an import map is **deliberately not applicable** (recorded so
 absence is never mistaken for an oversight):

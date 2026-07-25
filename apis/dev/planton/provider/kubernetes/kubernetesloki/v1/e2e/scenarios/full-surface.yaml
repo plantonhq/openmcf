@@ -5,7 +5,10 @@
 # limits, tuned caches, and the gateway's multi-tenant basic-auth path
 # (bcrypt password hashes are one-way, so no Secret fixture is needed). The
 # canary stays on (the chart default) and the push→LogQL round-trip runs
-# through the tenant header.
+# AS the declared tenant: with tenants present the gateway auth-guards
+# every push/query route and derives X-Scope-OrgID from the authenticated
+# user, so the verifier signs in as the first tenant with the plaintext
+# twin of the hash below — the paired-credential contract both sides keep.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesLoki
 metadata:
@@ -29,7 +32,13 @@ spec:
   multi_tenancy:
     enabled: true
     tenants:
-      # bcrypt htpasswd hash of "e2e-password" (a one-way hash, safe in a
-      # manifest — generated with `htpasswd -nbBC10 team-a e2e-password`).
+      # bcrypt htpasswd hash of "e2e-password" — the plaintext twin the
+      # verifier signs in with (the paired-credential contract). Generated
+      # AND verified with:
+      #   htpasswd -nbBC 10 team-a e2e-password
+      #   htpasswd -vbB <file> team-a e2e-password
+      # Always run the -v verification after regenerating: a hash that was
+      # never verified against its claimed plaintext is how this pairing
+      # silently breaks (caught live — the previous hash did not match).
       - name: team-a
-        password_hash: "$2y$10$7O40CaY1yz7fu9O24k2/u.ct/wELYHRBsn25v/7AyuQ8E8hrLqpva"
+        password_hash: "$2y$10$V4/HMXjwxjNpt2Hv5UL09uDawiR455lVelnXDiM1n/ijQMFB5owiS"

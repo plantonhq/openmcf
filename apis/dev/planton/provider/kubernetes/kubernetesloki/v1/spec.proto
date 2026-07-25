@@ -179,8 +179,11 @@ message KubernetesLokiSpec {
   /**
    * The memcached-based caches the chart deploys alongside Loki. Both
    * on by default (the chart's grain — queries without the results
-   * cache re-scan object storage on every dashboard refresh). Tune the
-   * memory down for small clusters.
+   * cache re-scan object storage on every dashboard refresh). The
+   * DEFAULT SIZES ARE PRODUCTION-SCALE: unset, the chunks cache alone
+   * requests 9830Mi of memory (verified live) — on a small cluster the
+   * pod never schedules and the atomic install rolls the whole release
+   * back, so small clusters must size chunks_cache_memory_mb down.
    */
   KubernetesLokiCaching caching = 12;
 
@@ -678,8 +681,14 @@ message KubernetesLokiCaching {
 
   /**
    * Memory allocated to the chunks-cache memcached in MB. Empty = the
-   * chart default (8192). Tune DOWN for small clusters — this is the
-   * biggest memory consumer after Loki itself.
+   * chart default (8192), sized for production log volume: the chart
+   * requests container memory at 1.2× this value, so the default
+   * renders a 9830Mi request that NEVER SCHEDULES on a node with less
+   * than ~10Gi allocatable — the pod stays Pending and the atomic
+   * install rolls the whole release back after its timeout (verified
+   * live). Set this explicitly on any small or dev cluster (128–1024
+   * is plenty for light query loads); the biggest memory consumer
+   * after Loki itself.
    */
   optional int32 chunks_cache_memory_mb = 2 [(buf.validate.field).int32.gte = 64];
 

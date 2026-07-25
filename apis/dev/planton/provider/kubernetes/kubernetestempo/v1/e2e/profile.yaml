@@ -4,10 +4,11 @@ metadata:
   name: kubernetestempo
 spec:
   tier: 2
-  # Forged onto the official monolithic tempo chart 2.2.3 and
-  # offline-validated (spec tests, both engines' plan/preview proofs across
-  # full and minimal shapes); the live lanes have not run yet — they run
+  # Forged onto the official monolithic tempo chart 2.2.3. The lanes prove
   # the OTLP-ingest→trace-by-ID round-trip and the trace-survives-pod-loss
   # durability proof.
-  status: pending_proof
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 25

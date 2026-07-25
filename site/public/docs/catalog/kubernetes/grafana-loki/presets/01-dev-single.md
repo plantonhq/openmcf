@@ -1,3 +1,16 @@
+---
+title: "Dev single-node Loki"
+description: "The smallest honest Loki: one monolithic replica on a filesystem volume with the nginx gateway. No object store, no tenancy — a dev loop or a single-node cluster where logs are convenient but not yet..."
+type: "preset"
+rank: "01"
+presetSlug: "01-dev-single"
+componentSlug: "grafana-loki"
+componentTitle: "Grafana Loki"
+provider: "kubernetes"
+icon: "package"
+order: 1
+---
+
 # Dev single-node Loki
 
 The smallest honest Loki: one monolithic replica on a filesystem volume
