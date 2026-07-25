@@ -10,7 +10,7 @@ terraform {
     }
     random = {
       source  = "hashicorp/random"
-      version = "~> 3.5"
+      version = "~> 3.6"
     }
   }
 }
@@ -21,3 +21,5 @@ provider "kubernetes" {
 provider "helm" {
 }
 
+provider "random" {
+}

@@ -1,41 +1,99 @@
+# Full-surface offline-proof manifest: the bundled ClickHouse arm at a
+# replicated 2x2 layout with a 3-node ZooKeeper quorum, keyless IRSA cold
+# storage, a fully tuned server (SMTP with a Secret-referenced password,
+# external URL, an advanced env entry), the collector with autoscaling and
+# every receiver toggle exercised (zipkin ON — the non-default), a
+# private-mirror image registry with a pull secret, scheduling, and an
+# escape-hatch entry — so the offline tofu plan and pulumi preview proofs
+# cover the full typed surface. Placeholder values; never applied to a
+# real cluster.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
-  name: signozkubernetes-demo
+  name: signoz-hack
 spec:
-  signozContainer:
-    replicas: 1
-    resources:
-      requests:
-        cpu: 200m
-        memory: 512Mi
-      limits:
-        cpu: 1000m
-        memory: 2Gi
-  otelCollectorContainer:
+  namespace:
+    value: signoz-hack
+  createNamespace: true
+  chartVersion: 0.133.0
+  managedClickhouse:
+    shards: 2
     replicas: 2
+    diskSize: 100Gi
+    storageClass:
+      value: gp3
     resources:
       requests:
         cpu: 500m
         memory: 1Gi
       limits:
-        cpu: 2000m
+        cpu: "2"
         memory: 4Gi
-  database:
-    isExternal: false
-    managedDatabase:
-      container:
-        replicas: 1
-        isPersistenceEnabled: true
-        diskSize: 20Gi
-        resources:
-          requests:
-            cpu: 500m
-            memory: 1Gi
-          limits:
-            cpu: 2000m
-            memory: 4Gi
-      cluster:
-        isEnabled: false
-      zookeeper:
-        isEnabled: false
+    allowedNetworkIps:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+    zookeeper:
+      replicas: 3
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+    coldStorage:
+      s3:
+        endpoint: https://telemetry-cold.s3-us-east-1.amazonaws.com/data/
+        irsaRoleArn: arn:aws:iam::123456789012:role/signoz-cold-storage
+  server:
+    diskSize: 2Gi
+    storageClass:
+      value: gp3
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    externalUrl: https://signoz.example.com
+    smtp:
+      address: smtp.example.com:587
+      from: signoz@example.com
+      username: smtp-user
+      passwordSecret:
+        name: smtp-auth
+        key: password
+    env:
+      signoz_prometheus_active__query__tracker_enabled: "true"
+  otelCollector:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCpuUtilizationPercent: 60
+      targetMemoryUtilizationPercent: 70
+    zipkinReceiverEnabled: true
+    lowCardinalityExceptionGrouping: true
+  clusterName: hack-cluster
+  imageRegistry: mirror.example.com
+  imagePullSecrets:
+    - mirror-pull
+  scheduling:
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+    priorityClassName: system-cluster-critical
+  helmValues: |
+    signoz:
+      podAnnotations:
+        team: observability

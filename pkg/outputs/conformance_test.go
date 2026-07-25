@@ -1381,6 +1381,36 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesSignoz: the pinned-fullname naming contract — the server
+			// Service (= the release name), the `<name>-otel-collector` ingestion
+			// handles, the bundled `<name>-clickhouse` endpoint, and the
+			// module-materialized clickhouse-auth Secret handle (nested
+			// name/key — the flat-vs-nested drift class this guard exists for).
+			name: "KubernetesSignoz",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSignoz,
+			rawOutputs: map[string]interface{}{
+				"namespace":              "observability",
+				"service":                "observe",
+				"kube_endpoint":          "http://observe.observability.svc.cluster.local:8080",
+				"port_forward_command":   "kubectl port-forward svc/observe -n observability 8080:8080",
+				"otel_collector_service": "observe-otel-collector",
+				"otlp_grpc_endpoint":     "observe-otel-collector.observability.svc.cluster.local:4317",
+				"otlp_http_endpoint":     "http://observe-otel-collector.observability.svc.cluster.local:4318",
+				"clickhouse_endpoint":    "observe-clickhouse.observability.svc.cluster.local:9000",
+				"clickhouse_username":    "admin",
+				"clickhouse_password_secret": map[string]interface{}{
+					"name": "observe-clickhouse-auth",
+					"key":  "password",
+				},
+			},
+			mustPopulate: []string{
+				"namespace", "service", "kube_endpoint", "port_forward_command",
+				"otel_collector_service", "otlp_grpc_endpoint", "otlp_http_endpoint",
+				"clickhouse_endpoint", "clickhouse_username",
+				"clickhouse_password_secret",
+			},
+		},
+		{
 			// AwsSubnet: flat scalar outputs from both engines (subnet id/arn, AZ,
 			// CIDR, route table id, region) must each land on the StackOutputs proto.
 			name: "AwsSubnet",

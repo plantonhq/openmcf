@@ -52,6 +52,7 @@ go_library(
         "resource_existence.go",
         "searchhelpers.go",
         "seaweedfs.go",
+        "signoz.go",
         "solrcloud.go",
         "solroperatorinstall.go",
         "strimzikafka.go",

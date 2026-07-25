@@ -1,65 +1,59 @@
+# Stack outputs — identical names and derivations in the Pulumi module's
+# outputs.go / main.go exports. Every child name derives from the two
+# fullnames pinned via fullnameOverride (the release name and
+# `<name>-clickhouse`).
+
 output "namespace" {
-  description = "The namespace in which SigNoz is deployed."
+  description = "Kubernetes namespace SigNoz runs in"
   value       = local.namespace
 }
 
-output "signoz_service" {
-  description = "The name of the SigNoz UI and API service."
-  value       = local.signoz_service_name
-}
-
-output "otel_collector_service" {
-  description = "The name of the OpenTelemetry Collector service."
-  value       = local.otel_collector_service_name
+output "service" {
+  description = "Name of the SigNoz server Service (UI + API, port 8080)"
+  value       = local.release_name
 }
 
 output "kube_endpoint" {
-  description = "Internal DNS name of the SigNoz UI service within the cluster."
-  value       = local.signoz_kube_endpoint
-}
-
-output "otel_collector_grpc_endpoint" {
-  description = "Internal DNS name of the OpenTelemetry Collector gRPC endpoint."
-  value       = local.otel_collector_grpc_endpoint
-}
-
-output "otel_collector_http_endpoint" {
-  description = "Internal DNS name of the OpenTelemetry Collector HTTP endpoint."
-  value       = local.otel_collector_http_endpoint
+  description = "In-cluster endpoint of the SigNoz UI/API"
+  value       = "http://${local.release_name}.${local.namespace}.svc.cluster.local:8080"
 }
 
 output "port_forward_command" {
-  description = "Handy command to port-forward traffic to the SigNoz UI on localhost:8080."
-  value       = "kubectl port-forward -n ${local.namespace} service/${local.signoz_service_name} ${local.signoz_ui_port}:${local.signoz_ui_port}"
+  description = "kubectl one-liner for opening the SigNoz UI from a workstation (then http://localhost:8080)"
+  value       = "kubectl port-forward svc/${local.release_name} -n ${local.namespace} 8080:8080"
 }
 
-output "external_hostname" {
-  description = "The external hostname for SigNoz UI if ingress is enabled."
-  value       = local.signoz_ingress_external_hostname
+output "otel_collector_service" {
+  description = "Name of the ingestion collector Service (<name>-otel-collector)"
+  value       = "${local.release_name}-otel-collector"
 }
 
-output "otel_collector_external_http_hostname" {
-  description = "The external HTTP hostname for OpenTelemetry Collector if ingress is enabled."
-  value       = local.otel_collector_external_http_hostname
+output "otlp_grpc_endpoint" {
+  description = "In-cluster OTLP gRPC ingestion endpoint — point OTLP/gRPC exporters here"
+  value       = "${local.release_name}-otel-collector.${local.namespace}.svc.cluster.local:4317"
+}
+
+output "otlp_http_endpoint" {
+  description = "In-cluster OTLP HTTP ingestion endpoint — point OTLP/HTTP exporters here"
+  value       = "http://${local.release_name}-otel-collector.${local.namespace}.svc.cluster.local:4318"
 }
 
 output "clickhouse_endpoint" {
-  description = "The internal ClickHouse endpoint (only for self-managed mode)."
-  value       = local.clickhouse_endpoint
+  description = "ClickHouse native-protocol endpoint SigNoz stores telemetry in (bundled arm: the bundled installation's client Service; external arm: mirrors the declared host and port)"
+  value = local.is_external ? "${local.external.host}:${local.external_tcp_port}" : (
+    "${local.clickhouse_fullname}.${local.namespace}.svc.cluster.local:9000"
+  )
 }
 
 output "clickhouse_username" {
-  description = "The ClickHouse username (only for self-managed mode)."
-  value       = !local.is_external_database ? "admin" : null
+  description = "ClickHouse username SigNoz connects as"
+  value       = local.is_external ? local.external.username : "admin"
 }
 
-output "clickhouse_password_secret_name" {
-  description = "Name of the Secret holding the ClickHouse password (only for self-managed mode)."
-  value       = !local.is_external_database ? "${var.metadata.name}-clickhouse" : null
+output "clickhouse_password_secret" {
+  description = "Secret key holding the ClickHouse password (bundled arm: the module-owned <name>-clickhouse-auth Secret, key \"password\"; external arm: the declared Secret reference)"
+  value = {
+    name = local.is_external ? local.external.password_secret.secret_name : local.clickhouse_auth_secret_name
+    key  = local.is_external ? local.external.password_secret.secret_key : "password"
+  }
 }
-
-output "clickhouse_password_secret_key" {
-  description = "Key within the Secret that contains the ClickHouse password (only for self-managed mode)."
-  value       = !local.is_external_database ? "admin-password" : null
-}
-

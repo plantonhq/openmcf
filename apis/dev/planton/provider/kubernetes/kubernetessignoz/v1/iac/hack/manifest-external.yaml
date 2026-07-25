@@ -1,0 +1,25 @@
+# External-arm offline-proof manifest: bring-your-own ClickHouse over
+# verified TLS with a Secret-referenced password — the composition shape
+# against a KubernetesClickHouse (literal values here; the FK defaults
+# reference that kind's outputs). Nothing ClickHouse-related renders.
+# Placeholder values; never applied.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSignoz
+metadata:
+  name: signoz-hack-ext
+spec:
+  namespace:
+    value: signoz-hack-ext
+  createNamespace: true
+  externalClickhouse:
+    host:
+      value: clickhouse-analytics.data.svc.cluster.local
+    clusterName:
+      value: analytics
+    username: signoz
+    passwordSecret:
+      secretName:
+        value: analytics-clickhouse-auth
+      secretKey: signoz
+    secure: true
+    verify: true

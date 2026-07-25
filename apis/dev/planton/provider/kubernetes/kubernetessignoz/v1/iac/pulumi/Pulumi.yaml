@@ -1,7 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
-
+name: kubernetes-signoz
+runtime: go
+description: SigNoz all-in-one observability platform installation from the official Helm chart with bundled or external ClickHouse arms, a module-generated database credential, OTLP/Jaeger/Zipkin ingestion toggles, collector autoscaling, and SMTP alerting on secret-safe wiring

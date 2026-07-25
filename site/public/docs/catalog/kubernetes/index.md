@@ -29,6 +29,8 @@ The following KUBERNETES resources can be deployed using Planton:
 - [GHA Runner Scale Set](/docs/catalog/kubernetes/gha-runner-scale-set)
 - [GHA Runner Scale Set Controller](/docs/catalog/kubernetes/gha-runner-scale-set-controller)
 - [Grafana](/docs/catalog/kubernetes/grafana)
+- [Grafana Loki](/docs/catalog/kubernetes/grafana-loki)
+- [Grafana Tempo](/docs/catalog/kubernetes/grafana-tempo)
 - [gRPC Route](/docs/catalog/kubernetes/grpc-route)
 - [Harbor](/docs/catalog/kubernetes/harbor)
 - [Helm Release](/docs/catalog/kubernetes/helm-release)

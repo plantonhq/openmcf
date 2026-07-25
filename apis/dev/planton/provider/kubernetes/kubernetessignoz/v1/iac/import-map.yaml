@@ -1,0 +1,71 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetessignoz
+spec:
+  # SigNoz installs as one Helm release NAMED AFTER metadata.name
+  # (fullnameOverride pins the server Service, `<name>-otel-collector` and
+  # the bundled `<name>-clickhouse` installation the same way), plus the
+  # optional anchor namespace and, on the bundled arm, the
+  # module-materialized `<name>-clickhouse-auth` credentials Secret
+  # (count-indexed) with its random_password companion (imported by VALUE —
+  # the random provider keeps no cloud state). The external arm's password
+  # Secret is a REFERENCE the module never owns — it travels with the
+  # referenced Secret.
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    # ── the module-materialized clickhouse credentials Secret ────────────
+    # Deterministic name "<metadata.name>-clickhouse-auth"; count-indexed,
+    # so from_address_key cannot serve it — the scoped suffix derivation
+    # does. Present only on the bundled arm (the external arm references a
+    # Secret the module never owns).
+    - name: secret_name
+      tofu_resource_name: clickhouse_auth
+      derivations:
+        - from_metadata_name_suffix: "-clickhouse-auth"
+      where_to_find: >-
+        Always "<resource-name>-clickhouse-auth" on the bundled arm —
+        `kubectl get secrets -n <namespace>` (keys username/password).
+    - name: secret_namespace
+      tofu_resource_name: clickhouse_auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the bundled password's random_password companion ─────────────────
+    # The random provider keeps no cloud state; the import ID is the
+    # password VALUE itself — read from the Secret the module materialized
+    # it into (the from_cluster_secret_key arm executes exactly the human
+    # recipe below when the resolving context holds cluster credentials).
+    # Count-indexed alongside clickhouse_auth (bundled arm only). The
+    # value name matches the catalog row's id_format placeholder.
+    - name: admin_password_value
+      tofu_resource_name: clickhouse
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-clickhouse-auth"
+            key: password
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-clickhouse-auth -n <namespace>
+        -o jsonpath='{.data.password}' | base64 -d
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

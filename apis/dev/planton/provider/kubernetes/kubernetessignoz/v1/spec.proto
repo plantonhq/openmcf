@@ -4,363 +4,718 @@ package dev.planton.provider.kubernetes.kubernetessignoz.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
-import "dev/planton/provider/kubernetes/kubernetes_secret.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
-import "google/protobuf/descriptor.proto";
-
-extend google.protobuf.FieldOptions {
-  KubernetesSignozContainer default_signoz_container = 560001;
-  KubernetesSignozContainer default_otel_collector_container = 560002;
-  KubernetesSignozClickhouseContainer default_clickhouse_container = 560003;
-  KubernetesSignozZookeeperContainer default_zookeeper_container = 560004;
-}
 
 /**
- * **KubernetesSignozSpec** defines the configuration for deploying SigNoz observability platform on Kubernetes.
- * SigNoz is an OpenTelemetry-native platform that unifies logs, metrics, and traces into a single application.
- * This spec supports both self-managed and external ClickHouse database configurations, enabling flexible
- * deployment patterns from simple single-node installations to production-grade distributed clusters.
+ * **KubernetesSignozSpec** deploys SigNoz — the all-in-one open-source
+ * observability platform (traces, metrics and logs in ONE UI, stored in
+ * ClickHouse) — from the official `signoz` Helm chart
+ * (https://charts.signoz.io).
+ *
+ * WHAT GETS INSTALLED: one consolidated SigNoz server (UI, API, rule
+ * evaluation and alerting in a single binary), one SigNoz OpenTelemetry
+ * Collector (the ingestion gateway every application sends OTLP data
+ * to), a schema migrator, and — unless you point it at an external
+ * ClickHouse — a bundled ClickHouse stack (its own namespace-fenced
+ * Altinity operator, a ClickHouse installation and a ZooKeeper).
+ *
+ * SIGNOZ OR THE COMPOSED STACK? SigNoz is the "one component instead of
+ * four" path: where KubernetesKubePrometheusStack + KubernetesGrafana +
+ * KubernetesLoki + KubernetesTempo compose a best-of-breed stack, SigNoz
+ * gives a single OpenTelemetry-native product with one UI. Both are
+ * first-class; pick per team taste.
+ *
+ * HOW DATA GETS IN: point any OTLP client at the exported
+ * `otlp_grpc_endpoint` (4317) or `otlp_http_endpoint` (4318). For
+ * cluster-wide telemetry shipping (node logs, kubelet metrics, k8s
+ * events), deploy a KubernetesOtelCollector pointed at the same
+ * endpoints.
+ *
+ * SINGLE-INSTANCE TRUTH: the community SigNoz server keeps its own
+ * state (users, dashboards, alert rules) in SQLite on a persistent
+ * volume — a single-writer store, so the server runs exactly one
+ * replica. This is upstream's community-edition posture (the
+ * Postgres-backed HA store is enterprise-only); telemetry data itself
+ * lives in ClickHouse, which scales independently. The ingestion
+ * collector DOES scale horizontally (`otel_collector.replicas` and the
+ * autoscaling arm).
+ *
+ * DATABASE ARMS: leaving `database` empty deploys the bundled
+ * ClickHouse with sane defaults — the appliance posture, zero wiring.
+ * Deep ClickHouse control (users, profiles, quotas, cold tiers, keeper
+ * topology) is deliberately NOT re-modeled inside this component: for
+ * that, run a KubernetesClickHouse (with its KubernetesAltinityOperator)
+ * and compose it through the `external_clickhouse` arm — its fields
+ * default-reference that kind's outputs, so the wiring is one
+ * `valueFrom` per field.
+ *
+ * CO-EXISTENCE WARNING (bundled arm): the chart installs ITS OWN
+ * Altinity clickhouse-operator (namespace-fenced: namespaced RBAC,
+ * own-namespace watch) and ships the clickhouse.altinity.com CRDs the
+ * Helm-native way (installed only when absent, KEPT on uninstall). On a
+ * cluster that already runs KubernetesAltinityOperator, keep this
+ * component in its own namespace and keep that operator's watch fenced
+ * away from it — two operators reconciling the same installation would
+ * fight. The bundled operator's version follows the chart, not this
+ * catalog's ClickHouse pins.
+ *
+ * EXPOSURE: everything stays ClusterIP. Expose the UI and the collector
+ * through first-class kinds (KubernetesIngress, Gateway API kinds) over
+ * the exported service handles — this component never creates ingress
+ * objects.
+ *
+ * The typed fields cover the chart's meaningful surface; `helm_values`
+ * remains the escape hatch (merged last, Helm `-f` semantics, identical
+ * on both engines) for the long tail — collector pipeline overrides,
+ * migrator tuning, ClickHouse pod-distribution topologies — a safety
+ * valve, never the primary interface.
  */
 message KubernetesSignozSpec {
-  // Kubernetes Namespace
-  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
   ];
 
-  // flag to indicate if the namespace should be created
-  bool create_namespace = 3;
-
-  // The container specifications for the main SigNoz binary (UI, API server, Ruler, Alertmanager).
-  KubernetesSignozContainer signoz_container = 4 [(default_signoz_container) = {
-    replicas: 1
-    resources: {
-      limits: {
-        cpu: "1000m"
-        memory: "2Gi"
-      }
-      requests: {
-        cpu: "200m"
-        memory: "512Mi"
-      }
-    }
-  }];
-
-  // The container specifications for the OpenTelemetry Collector (data ingestion gateway).
-  KubernetesSignozContainer otel_collector_container = 5 [(default_otel_collector_container) = {
-    replicas: 2
-    resources: {
-      limits: {
-        cpu: "2000m"
-        memory: "4Gi"
-      }
-      requests: {
-        cpu: "500m"
-        memory: "1Gi"
-      }
-    }
-  }];
-
-  // The database configuration for SigNoz, supporting both self-managed and external ClickHouse.
-  KubernetesSignozDatabaseConfig database = 6 [(buf.validate.field).required = true];
-
-  // The ingress configuration for SigNoz UI and OpenTelemetry Collector endpoints.
-  KubernetesSignozIngress ingress = 7;
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
 
   /**
-   * A map of key-value pairs that provide additional customization options for the SigNoz Helm chart.
-   * These values allow for further refinement of the deployment, such as setting environment variables,
-   * configuring alerting integrations, or customizing retention policies.
-   * For detailed information on available options, refer to the Helm chart documentation at:
-   * https://github.com/SigNoz/charts
+   * Helm chart version to install (e.g. "0.133.0" — the chart version
+   * tracks the SigNoz application version in lockstep). Versions must
+   * exist as SERVED charts in the repository index
+   * (https://charts.signoz.io).
    */
-  map<string, string> helm_values = 8;
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "0.133.0"];
+
+  /**
+   * Where SigNoz stores telemetry data. Empty = the bundled ClickHouse
+   * with defaults (single shard, single replica, 20Gi volume).
+   */
+  oneof database {
+    /**
+     * The bundled ClickHouse stack — the chart deploys and owns it
+     * (operator + installation + ZooKeeper). The appliance posture:
+     * capacity and topology knobs only; SigNoz owns the databases,
+     * users and schema inside it.
+     */
+    KubernetesSignozManagedClickHouse managed_clickhouse = 4;
+
+    /**
+     * Bring your own ClickHouse — nothing ClickHouse-related is
+     * installed. Fields default-reference a KubernetesClickHouse
+     * resource's outputs for one-line composition; any reachable
+     * ClickHouse ≥ the version the chart ships works.
+     */
+    KubernetesSignozExternalClickHouse external_clickhouse = 5;
+  }
+
+  /**
+   * The SigNoz server — UI, API, rule evaluation and alerting in one
+   * binary. Empty = a 1Gi state volume and the chart's default sizing.
+   */
+  KubernetesSignozServer server = 6;
+
+  /**
+   * The SigNoz OpenTelemetry Collector — the ingestion gateway. Empty =
+   * one replica with the chart's default receivers (OTLP gRPC + HTTP,
+   * Jaeger, HTTP log endpoints).
+   */
+  KubernetesSignozOtelCollector otel_collector = 7;
+
+  /**
+   * Kubernetes cluster name attached to telemetry as a resource
+   * attribute (the chart's `global.clusterName`). Set it when multiple
+   * clusters report into shared dashboards — it is how you tell their
+   * data apart.
+   */
+  string cluster_name = 8;
+
+  /**
+   * Registry that replaces the registry part of EVERY image this
+   * component pulls (SigNoz server, collector, ClickHouse, the bundled
+   * Altinity operator and its metrics exporter, ZooKeeper) — the
+   * air-gap/private-mirror path (the chart's `global.imageRegistry`).
+   * Empty = each image's upstream registry (docker.io). The bundled
+   * arm's UDF init container image follows its own chart key — override
+   * it via `helm_values` when mirroring.
+   */
+  string image_registry = 9;
+
+  /**
+   * Names of existing image-pull Secrets applied to every workload
+   * (chart `global.imagePullSecrets`). The Secrets must already exist
+   * in the namespace.
+   */
+  repeated string image_pull_secrets = 10 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing image-pull Secrets (references), not secret material"];
+
+  /**
+   * Scheduling applied to the SigNoz server, the collector and the
+   * schema migrator. The bundled ClickHouse stack keeps the chart's own
+   * scheduling; steer it via `helm_values`.
+   */
+  KubernetesSignozScheduling scheduling = 11;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (collector pipeline config, migrator tuning, ClickHouse
+   * profiles/settings/pod distribution, ZooKeeper sizing) — never the
+   * substitute for them. Do not put secrets here; passwords belong in
+   * the typed secret-reference fields, which keep them out of the
+   * rendered config.
+   */
+  string helm_values = 12;
 }
 
 /**
- * **KubernetesSignozContainer** specifies the container configuration for various SigNoz components.
- * It includes settings such as the number of replicas, container image, and resource allocations.
+ * The bundled ClickHouse stack (capacity and topology; SigNoz owns
+ * everything inside it).
+ *
+ * The admin password is NEVER declared here: the modules generate a
+ * random credential per install, hand it to the chart, and export it
+ * through a module-owned Secret (see the `clickhouse_password_secret`
+ * output) — the chart's publicly-documented default password never
+ * ships.
  */
-message KubernetesSignozContainer {
-  // The number of pods to deploy for this component.
-  int32 replicas = 1 [(buf.validate.field).int32.gte = 1];
+message KubernetesSignozManagedClickHouse {
+  /**
+   * Number of shards. 1 for almost everyone — shard only when a single
+   * node's disk/CPU ceiling is truly reached. The chart marks layout
+   * changes on a live install experimental; treat this as a day-0
+   * choice.
+   */
+  optional int32 shards = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
 
-  // The CPU and memory resources allocated to the container.
+  /**
+   * Replicas per shard. 2+ gives HA reads and durability (replication
+   * rides the bundled ZooKeeper). Multi-replica layouts cannot schedule
+   * on a single-node cluster.
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Size of the persistent volume PER ClickHouse pod (e.g. "20Gi").
+   * This holds ALL telemetry data — size it for your ingest volume and
+   * retention (retention itself is managed inside SigNoz: UI →
+   * Settings → General).
+   */
+  optional string disk_size = 3 [
+    (dev.planton.shared.options.default) = "20Gi",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"
+  ];
+
+  /**
+   * Storage class for the ClickHouse volumes. Accepts a literal name or
+   * a reference to a KubernetesStorageClass resource. Empty = the
+   * cluster's default class. Pick an expandable class — telemetry
+   * volumes grow.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * CPU and memory for each ClickHouse container. Empty = the chart's
+   * defaults (requests only). ClickHouse is the component that does
+   * the heavy lifting — size it first when queries feel slow.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 5;
+
+  /**
+   * IP ranges the SigNoz database user may connect from (ClickHouse
+   * network allow-list). Empty = the chart's default private-network
+   * ranges — correct for in-cluster access on virtually every CNI.
+   * Override only when pod IPs fall outside RFC-1918 space.
+   */
+  repeated string allowed_network_ips = 6;
+
+  /**
+   * The bundled ZooKeeper (replication coordination). Always installed
+   * with the bundled arm — the chart's grain.
+   */
+  KubernetesSignozZookeeper zookeeper = 7;
+
+  /**
+   * Tier old telemetry onto S3/GCS object storage (ClickHouse cold
+   * storage). Empty = everything stays on the volume.
+   */
+  KubernetesSignozColdStorage cold_storage = 8;
+}
+
+/**
+ * The bundled ZooKeeper.
+ */
+message KubernetesSignozZookeeper {
+  /**
+   * Number of ZooKeeper replicas. 1 for single-node installs; 3 for an
+   * HA quorum (always an odd number — even counts reduce availability).
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).cel = {
+      id: "spec.managed_clickhouse.zookeeper.replicas.odd"
+      message: "zookeeper replicas must be an odd number (1, 3, 5) — quorum systems gain nothing and lose availability on even counts"
+      expression: "this % 2 == 1"
+    }
+  ];
+
+  /**
+   * CPU and memory for each ZooKeeper container. Empty = the chart's
+   * defaults.
+   */
   dev.planton.provider.kubernetes.ContainerResources resources = 2;
-
-  // The container image configuration (repository and tag).
-  dev.planton.provider.kubernetes.ContainerImage image = 3;
 }
 
 /**
- * **KubernetesSignozDatabaseConfig** defines the ClickHouse database configuration for SigNoz.
- * It supports two deployment modes:
- * 1. Self-managed: Deploy ClickHouse and Zookeeper within the Kubernetes cluster (default).
- * 2. External: Connect to an existing external ClickHouse instance.
+ * ClickHouse cold storage — old telemetry tiered to object storage.
  */
-message KubernetesSignozDatabaseConfig {
+message KubernetesSignozColdStorage {
+  oneof backend {
+    /**
+     * Amazon S3 or any S3-compatible store.
+     */
+    KubernetesSignozColdStorageS3 s3 = 1;
+
+    /**
+     * Google Cloud Storage (HMAC interoperability keys).
+     */
+    KubernetesSignozColdStorageGcs gcs = 2;
+  }
+}
+
+/**
+ * S3 cold-storage backend.
+ */
+message KubernetesSignozColdStorageS3 {
   /**
-   * Flag to enable using an external ClickHouse database.
-   * When false (default), SigNoz will deploy and manage its own ClickHouse instance.
-   * When true, the external_database field must be configured.
+   * Bucket data endpoint, e.g.
+   * "https://<bucket>.s3-<region>.amazonaws.com/data/". The bucket must
+   * exist; ClickHouse writes under this prefix.
    */
-  bool is_external = 1;
+  string endpoint = 1 [(buf.validate.field).required = true];
 
   /**
-   * External ClickHouse database connection details.
-   * This field is required when is_external is true and ignored when false.
+   * IAM role ARN for keyless access on EKS (IRSA) — the recommended
+   * posture. The modules annotate the ClickHouse service account with
+   * it. Mutually exclusive with declared keys.
    */
-  KubernetesSignozExternalClickhouse external_database = 2;
+  string irsa_role_arn = 2;
 
   /**
-   * Self-managed ClickHouse configuration.
-   * This field is used when is_external is false and configures the in-cluster ClickHouse deployment.
+   * Static access key ID. KNOW THIS: the chart renders declared keys
+   * into ClickHouse's storage configuration (upstream's grain — they
+   * are visible in the rendered installation object). Prefer
+   * `irsa_role_arn` on EKS; declare keys only where no ambient
+   * identity exists.
    */
-  KubernetesSignozManagedClickhouse managed_database = 3;
+  string access_key = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  /**
+   * Static secret access key. Same rendering caveat as `access_key`.
+   */
+  string secret_key = 4 [(dev.planton.shared.options.sensitive) = true];
 
   option (buf.validate.message).cel = {
-    id: "spec.database.external_required"
-    expression: "!this.is_external || has(this.external_database)"
-    message: "External database configuration is required when is_external is true"
+    id: "spec.cold_storage.s3.auth"
+    message: "declare exactly one auth posture: irsa_role_arn (keyless, recommended on EKS) OR both access_key and secret_key"
+    expression: "(this.irsa_role_arn != '' && this.access_key == '' && this.secret_key == '') || (this.irsa_role_arn == '' && this.access_key != '' && this.secret_key != '')"
   };
 }
 
 /**
- * **KubernetesSignozExternalClickhouse** defines connection parameters for an external ClickHouse instance.
- * This allows SigNoz to use a pre-existing ClickHouse database instead of deploying one within the cluster.
+ * GCS cold-storage backend (HMAC interoperability keys — the mechanism
+ * ClickHouse's S3-protocol disk uses against GCS).
  */
-message KubernetesSignozExternalClickhouse {
-  // The hostname or endpoint of the external ClickHouse instance.
-  string host = 1 [(buf.validate.field).required = true];
+message KubernetesSignozColdStorageGcs {
+  /**
+   * Bucket data endpoint, e.g.
+   * "https://storage.googleapis.com/<bucket>/data/".
+   */
+  string endpoint = 1 [(buf.validate.field).required = true];
 
-  // The HTTP port for ClickHouse (default is 8123).
-  optional int32 http_port = 2 [
-    (dev.planton.shared.options.default) = "8123",
-    (buf.validate.field).int32.gt = 0,
-    (buf.validate.field).int32.lte = 65535
+  /**
+   * HMAC access key. Rendered into ClickHouse's storage configuration
+   * (upstream's grain).
+   */
+  string access_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
   ];
 
-  // The TCP port for ClickHouse native protocol (default is 9000).
+  /**
+   * HMAC secret. Same rendering caveat as `access_key`.
+   */
+  string secret_key = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+/**
+ * Bring-your-own ClickHouse. Defaults compose a KubernetesClickHouse
+ * resource; any reachable ClickHouse works with literal values.
+ */
+message KubernetesSignozExternalClickHouse {
+  /**
+   * ClickHouse host — a Service name (same namespace) or a full FQDN
+   * (cross-namespace, e.g.
+   * "clickhouse-analytics.data.svc.cluster.local"). Accepts a literal
+   * or a reference to a KubernetesClickHouse resource (its client
+   * Service name). Ports are declared separately — do not include one
+   * here.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesClickHouse,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.service_name"
+  ];
+
+  /**
+   * Logical ClickHouse cluster name — SigNoz runs its distributed DDL
+   * `ON CLUSTER` against this. Accepts a literal or a reference to a
+   * KubernetesClickHouse resource (its cluster name). Empty =
+   * "cluster" (the chart default; correct only if your cluster is
+   * actually named that).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_name = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesClickHouse,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_name"
+  ];
+
+  /**
+   * Native-protocol (TCP) port. Empty = 9000.
+   */
   optional int32 tcp_port = 3 [
     (dev.planton.shared.options.default) = "9000",
     (buf.validate.field).int32.gt = 0,
     (buf.validate.field).int32.lte = 65535
   ];
 
-  // The name of the distributed cluster in ClickHouse configuration.
-  optional string cluster_name = 4 [(dev.planton.shared.options.default) = "cluster"];
-
-  // Whether to use secure (TLS) connection to ClickHouse.
-  bool is_secure = 5;
-
-  // The username for authenticating to ClickHouse.
-  string username = 6 [(buf.validate.field).required = true];
+  /**
+   * HTTP interface port. Empty = 8123.
+   */
+  optional int32 http_port = 4 [
+    (dev.planton.shared.options.default) = "8123",
+    (buf.validate.field).int32.gt = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
 
   /**
-   * The password for authenticating to ClickHouse.
-   * Can be provided either as a plain string value or as a reference to an existing Kubernetes Secret.
-   *
-   * Using a secret reference is recommended for production deployments:
-   * ```yaml
-   * password:
-   *   secretRef:
-   *     name: clickhouse-credentials
-   *     key: password
-   * ```
-   *
-   * For development/testing, a plain string value can be used:
-   * ```yaml
-   * password:
-   *   stringValue: my-password
-   * ```
+   * ClickHouse username. SigNoz creates and migrates its own databases
+   * (signoz_traces, signoz_metrics, signoz_logs, signoz_meter,
+   * signoz_metadata) — on a KubernetesClickHouse, declare this user
+   * with `access_management` and cluster-wide DDL grants (its spec
+   * documents the exact grant set for operator-style users).
    */
-  dev.planton.provider.kubernetes.KubernetesSensitiveValue password = 7 [(buf.validate.field).required = true];
-}
-
-/**
- * **KubernetesSignozManagedClickhouse** defines configuration for a self-managed ClickHouse deployment.
- * This supports both simple single-node deployments and production-grade distributed clusters with high availability.
- */
-message KubernetesSignozManagedClickhouse {
-  // The container specifications for ClickHouse.
-  KubernetesSignozClickhouseContainer container = 1 [(default_clickhouse_container) = {
-    replicas: 1
-    resources: {
-      limits: {
-        cpu: "2000m"
-        memory: "4Gi"
-      }
-      requests: {
-        cpu: "500m"
-        memory: "1Gi"
-      }
-    }
-    persistence_enabled: true
-    disk_size: "20Gi"
-  }];
-
-  // The cluster configuration for ClickHouse (sharding and replication).
-  KubernetesSignozClickhouseCluster cluster = 2;
-
-  // The Zookeeper configuration (required for distributed ClickHouse clusters).
-  KubernetesSignozZookeeperConfig zookeeper = 3;
-}
-
-/**
- * **KubernetesSignozClickhouseContainer** specifies the container configuration for ClickHouse.
- * It includes replica count, resource allocations, and persistence settings.
- */
-message KubernetesSignozClickhouseContainer {
-  // The number of ClickHouse pods to deploy.
-  int32 replicas = 1 [(buf.validate.field).int32.gte = 1];
-
-  // The CPU and memory resources allocated to the ClickHouse container.
-  dev.planton.provider.kubernetes.ContainerResources resources = 2;
-
-  // The container image configuration for ClickHouse.
-  dev.planton.provider.kubernetes.ContainerImage image = 3;
+  string username = 5 [(buf.validate.field).required = true];
 
   /**
-   * Flag to enable or disable data persistence for ClickHouse.
-   * When enabled, data is persisted to a storage volume, allowing data to survive pod restarts.
-   * Defaults to true.
+   * The user's password, read from an existing Secret (the chart wires
+   * it as a secretKeyRef — it never lands in rendered values).
    */
-  bool persistence_enabled = 4;
+  KubernetesSignozExternalClickHousePassword password_secret = 6 [(buf.validate.field).required = true];
 
   /**
-   * The size of the persistent volume attached to each ClickHouse pod (e.g., "20Gi").
-   * This attribute is ignored when persistence is not enabled.
-   * Note: This value cannot be modified after creation due to Kubernetes StatefulSet limitations.
+   * Use a TLS connection to ClickHouse.
    */
-  string disk_size = 5;
+  bool secure = 7;
+
+  /**
+   * Verify the TLS certificate. Only meaningful with `secure: true`.
+   */
+  bool verify = 8;
 
   option (buf.validate.message).cel = {
-    id: "spec.clickhouse.container.disk_size.required"
-    expression: "((!this.persistence_enabled && (size(this.disk_size) == 0 || this.disk_size == '')) || (this.persistence_enabled && size(this.disk_size) > 0 && this.disk_size.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')))"
-    message: "Disk size is required and must match the format if persistence is enabled"
+    id: "spec.external_clickhouse.verify.requires_secure"
+    message: "verify: true is meaningless without secure: true — certificate verification only applies to a TLS connection"
+    expression: "!this.verify || this.secure"
   };
 }
 
 /**
- * **KubernetesSignozClickhouseCluster** defines the clustering configuration for ClickHouse.
- * Clustering enables distributed data storage and high availability through sharding and replication.
- * Note: Clustering requires Zookeeper to be configured.
+ * The external ClickHouse user's password Secret reference.
  */
-message KubernetesSignozClickhouseCluster {
+message KubernetesSignozExternalClickHousePassword {
   /**
-   * Flag to enable or disable clustering mode for ClickHouse.
-   * When enabled, ClickHouse will be deployed in a distributed cluster configuration.
-   * Defaults to false.
+   * Secret name. Accepts a literal or a reference to a
+   * KubernetesClickHouse resource (its module-owned auth Secret, which
+   * carries one key per declared username).
    */
-  bool is_enabled = 1;
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesClickHouse,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.auth_secret_name"
+  ];
 
   /**
-   * The number of shards in the ClickHouse cluster.
-   * Sharding distributes data across multiple nodes for horizontal scaling.
-   * Recommended: 2 or more for production.
-   * This value is ignored if clustering is not enabled.
+   * Key within the Secret holding the password. On a
+   * KubernetesClickHouse auth Secret this is the username.
    */
-  int32 shard_count = 2;
+  string secret_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * The SigNoz server (single instance — see the spec's single-instance
+ * truth; there is deliberately no replica knob here).
+ */
+message KubernetesSignozServer {
+  /**
+   * Size of the persistent volume holding the server's own state —
+   * users, dashboards, alert rules (SQLite). 1Gi is plenty; telemetry
+   * data lives in ClickHouse, not here.
+   */
+  optional string disk_size = 1 [
+    (dev.planton.shared.options.default) = "1Gi",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"
+  ];
 
   /**
-   * The number of replicas for each shard.
-   * Replication provides data redundancy and high availability.
-   * Recommended: 2 for production.
-   * This value is ignored if clustering is not enabled.
+   * Storage class for the state volume. Empty = the cluster's default
+   * class.
    */
-  int32 replica_count = 3;
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * CPU and memory for the server container. Empty = the chart's
+   * defaults (requests only).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 3;
+
+  /**
+   * The URL under which the SigNoz UI is externally reachable (e.g.
+   * "https://signoz.example.com"). Used to build the links inside
+   * alert notifications and invitation emails — without it they point
+   * at localhost. Set it to whatever hostname you expose the UI on.
+   */
+  string external_url = 4;
+
+  /**
+   * SMTP for alert emails and user invitations. Empty = emailing off.
+   */
+  KubernetesSignozSmtp smtp = 5;
+
+  /**
+   * Advanced SigNoz configuration as environment variables. Keys
+   * follow SigNoz's own derivation: `signoz_<section>_<key>` with
+   * embedded underscores doubled (e.g.
+   * `signoz_alertmanager_signoz_external__url`) — the full catalog is
+   * upstream's conf/example.yaml. The typed fields above win on
+   * conflict. Never put secret values here — this map renders as
+   * plain environment variables; secret material belongs in the typed
+   * secret-reference fields.
+   */
+  map<string, string> env = 6;
+}
+
+/**
+ * SMTP for alert emails and user invitations.
+ */
+message KubernetesSignozSmtp {
+  /**
+   * SMTP server address as host:port (e.g. "smtp.example.com:587").
+   */
+  string address = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.server.smtp.address"
+      message: "address must be host:port, e.g. 'smtp.example.com:587'"
+      expression: "this.matches('^[^:]+:[0-9]+$')"
+    }
+  ];
+
+  /**
+   * The From address for outgoing mail (e.g. "signoz@example.com").
+   */
+  string from = 2 [(buf.validate.field).required = true];
+
+  /**
+   * SMTP auth username. Empty = unauthenticated SMTP (an internal
+   * relay).
+   */
+  string username = 3;
+
+  /**
+   * SMTP auth password, read from an existing Secret (wired as a
+   * secretKeyRef — never rendered into values or config).
+   */
+  KubernetesSignozSecretKeyRef password_secret = 4;
+
+  /**
+   * Use implicit TLS for the SMTP connection. Leave false for
+   * STARTTLS-upgraded ports (587) — the common posture; set true only
+   * for implicit-TLS ports (465).
+   */
+  bool tls_enabled = 5;
 
   option (buf.validate.message).cel = {
-    id: "spec.clickhouse.cluster.counts_when_enabled"
-    expression: "!this.is_enabled || (this.shard_count >= 1 && this.replica_count >= 1)"
-    message: "Shard count and replica count must be at least 1 when clustering is enabled"
+    id: "spec.server.smtp.password.requires_username"
+    message: "an SMTP password requires a username — declare both or neither"
+    expression: "!has(this.password_secret) || this.username != ''"
   };
 }
 
 /**
- * **KubernetesSignozZookeeperConfig** defines the Zookeeper configuration for ClickHouse coordination.
- * Zookeeper is required for distributed ClickHouse deployments to manage replica metadata and leader election.
+ * A reference to one key of an existing Secret in the install
+ * namespace (a reference, never secret material).
  */
-message KubernetesSignozZookeeperConfig {
+message KubernetesSignozSecretKeyRef {
   /**
-   * Flag to enable or disable Zookeeper deployment.
-   * This must be true if ClickHouse clustering is enabled.
-   * Defaults to false.
+   * Secret name.
    */
-  bool is_enabled = 1;
+  string name = 1 [(buf.validate.field).required = true];
 
-  // The container specifications for Zookeeper.
-  KubernetesSignozZookeeperContainer container = 2 [(default_zookeeper_container) = {
-    replicas: 1
-    resources: {
-      limits: {
-        cpu: "500m"
-        memory: "512Mi"
-      }
-      requests: {
-        cpu: "100m"
-        memory: "256Mi"
-      }
-    }
-    disk_size: "8Gi"
-  }];
+  /**
+   * Key within the Secret.
+   */
+  string key = 2 [(buf.validate.field).required = true];
 }
 
 /**
- * **KubernetesSignozZookeeperContainer** specifies the container configuration for Zookeeper.
+ * The SigNoz OpenTelemetry Collector — the ingestion gateway.
  */
-message KubernetesSignozZookeeperContainer {
+message KubernetesSignozOtelCollector {
   /**
-   * The number of Zookeeper pods to deploy.
-   * For production, this should be an odd number (3 or 5) to maintain quorum.
+   * Number of collector replicas. Scale this (or enable autoscaling)
+   * as ingest volume grows — the collector is stateless.
    */
-  int32 replicas = 1 [(buf.validate.field).int32.gte = 1];
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
 
-  // The CPU and memory resources allocated to the Zookeeper container.
+  /**
+   * CPU and memory for each collector container. Empty = the chart's
+   * defaults. The collector's memory limiter derives from the limit —
+   * set limits in production.
+   */
   dev.planton.provider.kubernetes.ContainerResources resources = 2;
 
-  // The container image configuration for Zookeeper.
-  dev.planton.provider.kubernetes.ContainerImage image = 3;
+  /**
+   * Horizontal autoscaling for the collector (a standard HPA on
+   * CPU/memory utilization). When enabled, `replicas` is ignored — the
+   * HPA owns the count.
+   */
+  KubernetesSignozOtelCollectorAutoscaling autoscaling = 3;
 
   /**
-   * The size of the persistent volume attached to each Zookeeper pod (e.g., "8Gi").
+   * Accept spans in Jaeger's legacy protocols (thrift-HTTP 14268 +
+   * gRPC 14250) alongside OTLP. On by default (the chart's grain);
+   * disable when everything speaks OTLP.
    */
-  string disk_size = 4 [(buf.validate.field).cel = {
-    id: "spec.zookeeper.disk_size.required"
-    message: "Disk size is required and must match the format"
-    expression: "size(this) > 0 && this.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')"
-  }];
+  optional bool jaeger_receiver_enabled = 4 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Accept spans in the Zipkin protocol (9411). Off by default.
+   */
+  bool zipkin_receiver_enabled = 5;
+
+  /**
+   * Accept logs over plain HTTP (the JSON endpoint 8082 and the
+   * Heroku-drain endpoint 8081). On by default (the chart's grain);
+   * disable to make OTLP the only way in.
+   */
+  optional bool http_logs_receivers_enabled = 6 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Group exceptions by name only, dropping per-stack-trace
+   * cardinality. A cardinality-vs-fidelity trade for very
+   * exception-noisy estates; leave false until the exceptions page
+   * itself becomes the cost.
+   */
+  bool low_cardinality_exception_grouping = 7;
 }
 
 /**
- * **KubernetesSignozIngress** defines the ingress configuration for SigNoz components.
- * It provides separate ingress settings for the UI and OpenTelemetry Collector endpoints.
+ * Collector autoscaling (HPA).
  */
-message KubernetesSignozIngress {
-  // Ingress configuration for SigNoz UI and API.
-  KubernetesSignozIngressEndpoint ui = 1;
-
-  // Ingress configuration for OpenTelemetry Collector data ingestion endpoint.
-  KubernetesSignozIngressEndpoint otel_collector = 2;
-}
-
-/**
- * **KubernetesSignozIngressEndpoint** defines ingress configuration for a specific SigNoz endpoint.
- */
-message KubernetesSignozIngressEndpoint {
-  // Flag to enable or disable ingress for this endpoint.
+message KubernetesSignozOtelCollectorAutoscaling {
+  /**
+   * Enable the HPA.
+   */
   bool enabled = 1;
 
-  // The full hostname for external access (e.g., "signoz.example.com").
-  // This hostname will be configured via Gateway API resources.
-  // Required when enabled is true.
-  string hostname = 2;
+  /**
+   * Minimum replicas.
+   */
+  optional int32 min_replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Maximum replicas.
+   */
+  optional int32 max_replicas = 3 [
+    (dev.planton.shared.options.default) = "11",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Target CPU utilization percentage. Empty = 50 (the chart default).
+   */
+  optional int32 target_cpu_utilization_percent = 4 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 100
+  ];
+
+  /**
+   * Target memory utilization percentage. Empty = 50 (the chart
+   * default).
+   */
+  optional int32 target_memory_utilization_percent = 5 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 100
+  ];
 
   option (buf.validate.message).cel = {
-    id: "spec.ingress.hostname.required"
-    expression: "!this.enabled || size(this.hostname) > 0"
-    message: "hostname is required when ingress is enabled"
+    id: "spec.otel_collector.autoscaling.bounds"
+    message: "max_replicas must be greater than or equal to min_replicas"
+    expression: "!this.enabled || !has(this.max_replicas) || !has(this.min_replicas) || this.max_replicas >= this.min_replicas"
   };
+}
+
+/**
+ * Pod scheduling for the SigNoz server, collector and schema migrator.
+ */
+message KubernetesSignozScheduling {
+  /**
+   * Node selector for the pods.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for the pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+
+  /**
+   * Priority class name for the pods.
+   */
+  string priority_class_name = 3;
 }

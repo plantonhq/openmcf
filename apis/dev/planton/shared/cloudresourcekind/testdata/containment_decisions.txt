@@ -424,6 +424,7 @@ contained dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeyclo
 contained dev.planton.provider.kubernetes.kuberneteskubeprometheusstack.v1.KubernetesKubePrometheusStackSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteslistenerset.v1.KubernetesListenerSetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesloki.v1.KubernetesLokiSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesmanifest.v1.KubernetesManifestSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesmetricsserver.v1.KubernetesMetricsServerSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesmongodb.v1.KubernetesMongodbSpec.namespace -> KubernetesNamespace
@@ -437,6 +438,8 @@ contained dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBao
 contained dev.planton.provider.kubernetes.kubernetesopenfga.v1.KubernetesOpenFgaSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesopensearch.v1.KubernetesOpenSearchSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesopensearchoperator.v1.KubernetesOpenSearchOperatorSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetespeerauthentication.v1.KubernetesPeerAuthenticationSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesperconamongooperator.v1.KubernetesPerconaMongoOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesperconamysqloperator.v1.KubernetesPerconaMysqlOperatorSpec.namespace -> KubernetesNamespace
@@ -463,6 +466,7 @@ contained dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesSta
 contained dev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1.KubernetesStrimziKafkaOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetestcproute.v1.KubernetesTcpRouteSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetestelemetry.v1.KubernetesTelemetrySpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetestempo.v1.KubernetesTempoSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetestlsroute.v1.KubernetesTlsRouteSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesudproute.v1.KubernetesUdpRouteSpec.namespace -> KubernetesNamespace

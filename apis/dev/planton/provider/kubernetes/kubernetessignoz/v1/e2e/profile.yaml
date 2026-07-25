@@ -4,11 +4,14 @@ metadata:
   name: kubernetessignoz
 spec:
   tier: 2
-  status: deferred
-  deferred_reason: "too heavy for default kind -- ClickHouse operator + StatefulSet + SigNoz + OTel collector (41 resources) exceed 20m deployment window"
-  validated_provisioners:
-    - pulumi
-  timeout_minutes: 15
-  limitations:
-    - "Managed ClickHouse works (not external-only as previously documented)"
-    - "Fixed bitnamilegacy/clickhouse image bug -- chart default clickhouse/clickhouse-server is correct"
+  # Rebuilt onto the official signoz chart 0.133.0 and offline-validated
+  # (spec tests, both engines' plan/preview proofs across full, minimal
+  # and external-clickhouse shapes); the live lanes have not run yet —
+  # they run the product-grade register→session→OTLP-push→trace-by-ID
+  # proof and the server-pod-replacement state proof.
+  status: pending_proof
+  # The heaviest tier-2 release after the metrics stack: the bundled
+  # ClickHouse operator must reconcile the installation and the schema
+  # migrator must complete after Helm returns; the budget covers that
+  # cold start on the shared cluster.
+  timeout_minutes: 30

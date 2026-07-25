@@ -1,0 +1,46 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSignoz
+metadata:
+  name: observability
+spec:
+  namespace:
+    value: observability
+  create_namespace: true
+  managed_clickhouse:
+    # One shard, two replicas: HA reads and replicated durability without
+    # sharding complexity — the right first production shape. Replication
+    # rides the bundled ZooKeeper; a 3-node quorum keeps coordination
+    # available through a node loss. Needs a multi-node cluster.
+    shards: 1
+    replicas: 2
+    # This volume holds ALL telemetry — size it for ingest volume times
+    # the retention you set inside SigNoz (UI → Settings → General).
+    disk_size: 200Gi
+    resources:
+      requests:
+        cpu: "1"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 16Gi
+    zookeeper:
+      replicas: 3
+  server:
+    # The URL alert notifications and invitation emails link back to —
+    # whatever hostname the UI is exposed on (compose a KubernetesIngress
+    # or an HTTPRoute over the exported service).
+    external_url: https://signoz.example.com
+    smtp:
+      address: smtp.example.com:587
+      from: signoz-alerts@example.com
+      username: signoz-smtp
+      password_secret:
+        name: signoz-smtp-auth
+        key: password
+  otel_collector:
+    # The collector is stateless — let the HPA follow ingest volume.
+    autoscaling:
+      enabled: true
+      min_replicas: 2
+      max_replicas: 8
+  cluster_name: production-primary

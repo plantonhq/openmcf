@@ -35,7 +35,6 @@ var helmTier2Kinds = map[string]bool{
 	"kubernetesargocd":   true,
 	"kubernetesharbor":   true,
 	"kuberneteslocust":   true,
-	"kubernetessignoz":   true,
 	"kuberneteskeycloak": true,
 	// Data-tier Helm applications with dedicated behavioral verifiers
 	"kubernetesseaweedfs": true,
@@ -722,17 +721,26 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 
 	// A Grafana Loki log store: the monolithic StatefulSet ready, the
 	// gateway Service present, and a LIVE push→LogQL round-trip (a line
-	// pushed through the gateway and returned by a LogQL query). The
-	// behavioral-durability scenario (recognized by name) proves logs
-	// survive a pod loss through the PVC.
+	// pushed through the gateway and returned by a LogQL query). With
+	// tenants declared the proof authenticates AS the first tenant —
+	// the gateway guards every push/query route and derives the tenant
+	// from the authenticated user, so the round-trip then proves the
+	// whole multi-tenant path. The behavioral-durability scenario
+	// (recognized by name) proves logs survive a pod loss through the
+	// PVC.
 	case "kubernetesloki":
 		spec := manifestSpecMap(manifestPath)
-		return &LokiVerifier{
+		v := &LokiVerifier{
 			Namespace:      info.Namespace,
 			Name:           info.Name,
 			GatewayEnabled: lokiGatewayEnabled(spec),
 			Durability:     strings.Contains(manifestPath, "behavioral-durability"),
-		}, nil
+		}
+		if tenant := lokiFirstTenantUser(spec); tenant != "" {
+			v.TenantUser = tenant
+			v.TenantPassword = lokiE2eTenantPassword
+		}
+		return v, nil
 
 	// A Grafana Tempo trace store: the StatefulSet ready, the Service
 	// present, and a LIVE OTLP-push→trace-by-ID round-trip. The
@@ -743,6 +751,23 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Namespace:   info.Namespace,
 			Name:        info.Name,
 			Persistence: strings.Contains(manifestPath, "behavioral-persistence"),
+		}, nil
+
+	// A SigNoz observability platform: server StatefulSet + collector
+	// rolled out, the bundled ClickHouseInstallation reconciled (bundled
+	// arm), health OK, and the product-grade round-trip — first-admin
+	// REGISTRATION through the product API, a session, an OTLP span
+	// push, and the trace retrieved by ID through the authenticated
+	// query API. The behavioral-state scenario (recognized by name)
+	// re-authenticates and re-queries AFTER a server pod replacement —
+	// users survive on the SQLite PVC, telemetry in ClickHouse.
+	case "kubernetessignoz":
+		spec := manifestSpecMap(manifestPath)
+		return &SignozVerifier{
+			Namespace:         info.Namespace,
+			Name:              info.Name,
+			BundledClickHouse: signozBundledClickHouse(spec),
+			StateProof:        strings.Contains(manifestPath, "behavioral-state"),
 		}, nil
 
 	// A Qdrant vector database: replicas ready, the main Service

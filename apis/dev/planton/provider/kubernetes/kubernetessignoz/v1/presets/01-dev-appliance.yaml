@@ -1,0 +1,16 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSignoz
+metadata:
+  name: dev-signoz
+spec:
+  namespace:
+    value: dev-signoz
+  create_namespace: true
+  # Everything is the component's defaults: the bundled ClickHouse
+  # appliance (single shard, single replica, 20Gi, a module-generated
+  # credential — the chart's public default password never ships), one
+  # ingestion collector, the server's SQLite state on a 1Gi volume.
+  # Point any OTLP exporter at the exported otlp_grpc_endpoint (4317) or
+  # otlp_http_endpoint (4318) and open the UI with the exported
+  # port_forward_command — the first browser visit registers the admin
+  # user. Telemetry retention is managed inside SigNoz (UI → Settings).

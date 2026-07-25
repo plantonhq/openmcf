@@ -1,17 +1,15 @@
 package module
 
 const (
-	OpNamespace                         = "namespace"
-	OpSignozService                     = "signoz_service"
-	OpOtelCollectorService              = "otel_collector_service"
-	OpPortForwardCommand                = "port_forward_command"
-	OpKubeEndpoint                      = "kube_endpoint"
-	OpExternalHostname                  = "external_hostname"
-	OpOtelCollectorGrpcEndpoint         = "otel_collector_grpc_endpoint"
-	OpOtelCollectorHttpEndpoint         = "otel_collector_http_endpoint"
-	OpOtelCollectorExternalHttpHostname = "otel_collector_external_http_hostname"
-	OpClickhouseEndpoint                = "clickhouse_endpoint"
-	OpClickhouseUsername                = "clickhouse_username"
-	OpClickhousePasswordSecretName      = "clickhouse_password_secret.name"
-	OpClickhousePasswordSecretKey       = "clickhouse_password_secret.key"
+	OpNamespace                    = "namespace"
+	OpService                      = "service"
+	OpKubeEndpoint                 = "kube_endpoint"
+	OpPortForwardCommand           = "port_forward_command"
+	OpOtelCollectorService         = "otel_collector_service"
+	OpOtlpGrpcEndpoint             = "otlp_grpc_endpoint"
+	OpOtlpHttpEndpoint             = "otlp_http_endpoint"
+	OpClickHouseEndpoint           = "clickhouse_endpoint"
+	OpClickHouseUsername           = "clickhouse_username"
+	OpClickHousePasswordSecretName = "clickhouse_password_secret.name"
+	OpClickHousePasswordSecretKey  = "clickhouse_password_secret.key"
 )

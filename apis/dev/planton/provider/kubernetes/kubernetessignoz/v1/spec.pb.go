@@ -13,7 +13,6 @@ import (
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -27,31 +26,138 @@ const (
 )
 
 // *
-// **KubernetesSignozSpec** defines the configuration for deploying SigNoz observability platform on Kubernetes.
-// SigNoz is an OpenTelemetry-native platform that unifies logs, metrics, and traces into a single application.
-// This spec supports both self-managed and external ClickHouse database configurations, enabling flexible
-// deployment patterns from simple single-node installations to production-grade distributed clusters.
+// **KubernetesSignozSpec** deploys SigNoz — the all-in-one open-source
+// observability platform (traces, metrics and logs in ONE UI, stored in
+// ClickHouse) — from the official `signoz` Helm chart
+// (https://charts.signoz.io).
+//
+// WHAT GETS INSTALLED: one consolidated SigNoz server (UI, API, rule
+// evaluation and alerting in a single binary), one SigNoz OpenTelemetry
+// Collector (the ingestion gateway every application sends OTLP data
+// to), a schema migrator, and — unless you point it at an external
+// ClickHouse — a bundled ClickHouse stack (its own namespace-fenced
+// Altinity operator, a ClickHouse installation and a ZooKeeper).
+//
+// SIGNOZ OR THE COMPOSED STACK? SigNoz is the "one component instead of
+// four" path: where KubernetesKubePrometheusStack + KubernetesGrafana +
+// KubernetesLoki + KubernetesTempo compose a best-of-breed stack, SigNoz
+// gives a single OpenTelemetry-native product with one UI. Both are
+// first-class; pick per team taste.
+//
+// HOW DATA GETS IN: point any OTLP client at the exported
+// `otlp_grpc_endpoint` (4317) or `otlp_http_endpoint` (4318). For
+// cluster-wide telemetry shipping (node logs, kubelet metrics, k8s
+// events), deploy a KubernetesOtelCollector pointed at the same
+// endpoints.
+//
+// SINGLE-INSTANCE TRUTH: the community SigNoz server keeps its own
+// state (users, dashboards, alert rules) in SQLite on a persistent
+// volume — a single-writer store, so the server runs exactly one
+// replica. This is upstream's community-edition posture (the
+// Postgres-backed HA store is enterprise-only); telemetry data itself
+// lives in ClickHouse, which scales independently. The ingestion
+// collector DOES scale horizontally (`otel_collector.replicas` and the
+// autoscaling arm).
+//
+// DATABASE ARMS: leaving `database` empty deploys the bundled
+// ClickHouse with sane defaults — the appliance posture, zero wiring.
+// Deep ClickHouse control (users, profiles, quotas, cold tiers, keeper
+// topology) is deliberately NOT re-modeled inside this component: for
+// that, run a KubernetesClickHouse (with its KubernetesAltinityOperator)
+// and compose it through the `external_clickhouse` arm — its fields
+// default-reference that kind's outputs, so the wiring is one
+// `valueFrom` per field.
+//
+// CO-EXISTENCE WARNING (bundled arm): the chart installs ITS OWN
+// Altinity clickhouse-operator (namespace-fenced: namespaced RBAC,
+// own-namespace watch) and ships the clickhouse.altinity.com CRDs the
+// Helm-native way (installed only when absent, KEPT on uninstall). On a
+// cluster that already runs KubernetesAltinityOperator, keep this
+// component in its own namespace and keep that operator's watch fenced
+// away from it — two operators reconciling the same installation would
+// fight. The bundled operator's version follows the chart, not this
+// catalog's ClickHouse pins.
+//
+// EXPOSURE: everything stays ClusterIP. Expose the UI and the collector
+// through first-class kinds (KubernetesIngress, Gateway API kinds) over
+// the exported service handles — this component never creates ingress
+// objects.
+//
+// The typed fields cover the chart's meaningful surface; `helm_values`
+// remains the escape hatch (merged last, Helm `-f` semantics, identical
+// on both engines) for the long tail — collector pipeline overrides,
+// migrator tuning, ClickHouse pod-distribution topologies — a safety
+// valve, never the primary interface.
 type KubernetesSignozSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// The container specifications for the main SigNoz binary (UI, API server, Ruler, Alertmanager).
-	SignozContainer *KubernetesSignozContainer `protobuf:"bytes,4,opt,name=signoz_container,json=signozContainer,proto3" json:"signoz_container,omitempty"`
-	// The container specifications for the OpenTelemetry Collector (data ingestion gateway).
-	OtelCollectorContainer *KubernetesSignozContainer `protobuf:"bytes,5,opt,name=otel_collector_container,json=otelCollectorContainer,proto3" json:"otel_collector_container,omitempty"`
-	// The database configuration for SigNoz, supporting both self-managed and external ClickHouse.
-	Database *KubernetesSignozDatabaseConfig `protobuf:"bytes,6,opt,name=database,proto3" json:"database,omitempty"`
-	// The ingress configuration for SigNoz UI and OpenTelemetry Collector endpoints.
-	Ingress *KubernetesSignozIngress `protobuf:"bytes,7,opt,name=ingress,proto3" json:"ingress,omitempty"`
 	// *
-	// A map of key-value pairs that provide additional customization options for the SigNoz Helm chart.
-	// These values allow for further refinement of the deployment, such as setting environment variables,
-	// configuring alerting integrations, or customizing retention policies.
-	// For detailed information on available options, refer to the Helm chart documentation at:
-	// https://github.com/SigNoz/charts
-	HelmValues    map[string]string `protobuf:"bytes,8,rep,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Namespace to install into. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the resource.
+	// When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (e.g. "0.133.0" — the chart version
+	// tracks the SigNoz application version in lockstep). Versions must
+	// exist as SERVED charts in the repository index
+	// (https://charts.signoz.io).
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// Where SigNoz stores telemetry data. Empty = the bundled ClickHouse
+	// with defaults (single shard, single replica, 20Gi volume).
+	//
+	// Types that are valid to be assigned to Database:
+	//
+	//	*KubernetesSignozSpec_ManagedClickhouse
+	//	*KubernetesSignozSpec_ExternalClickhouse
+	Database isKubernetesSignozSpec_Database `protobuf_oneof:"database"`
+	// *
+	// The SigNoz server — UI, API, rule evaluation and alerting in one
+	// binary. Empty = a 1Gi state volume and the chart's default sizing.
+	Server *KubernetesSignozServer `protobuf:"bytes,6,opt,name=server,proto3" json:"server,omitempty"`
+	// *
+	// The SigNoz OpenTelemetry Collector — the ingestion gateway. Empty =
+	// one replica with the chart's default receivers (OTLP gRPC + HTTP,
+	// Jaeger, HTTP log endpoints).
+	OtelCollector *KubernetesSignozOtelCollector `protobuf:"bytes,7,opt,name=otel_collector,json=otelCollector,proto3" json:"otel_collector,omitempty"`
+	// *
+	// Kubernetes cluster name attached to telemetry as a resource
+	// attribute (the chart's `global.clusterName`). Set it when multiple
+	// clusters report into shared dashboards — it is how you tell their
+	// data apart.
+	ClusterName string `protobuf:"bytes,8,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	// *
+	// Registry that replaces the registry part of EVERY image this
+	// component pulls (SigNoz server, collector, ClickHouse, the bundled
+	// Altinity operator and its metrics exporter, ZooKeeper) — the
+	// air-gap/private-mirror path (the chart's `global.imageRegistry`).
+	// Empty = each image's upstream registry (docker.io). The bundled
+	// arm's UDF init container image follows its own chart key — override
+	// it via `helm_values` when mirroring.
+	ImageRegistry string `protobuf:"bytes,9,opt,name=image_registry,json=imageRegistry,proto3" json:"image_registry,omitempty"`
+	// *
+	// Names of existing image-pull Secrets applied to every workload
+	// (chart `global.imagePullSecrets`). The Secrets must already exist
+	// in the namespace.
+	ImagePullSecrets []string `protobuf:"bytes,10,rep,name=image_pull_secrets,json=imagePullSecrets,proto3" json:"image_pull_secrets,omitempty"`
+	// *
+	// Scheduling applied to the SigNoz server, the collector and the
+	// schema migrator. The bundled ClickHouse stack keeps the chart's own
+	// scheduling; steer it via `helm_values`.
+	Scheduling *KubernetesSignozScheduling `protobuf:"bytes,11,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
+	// *
+	// Escape hatch: additional chart values as a YAML document, merged
+	// LAST over everything the typed fields render (Helm `-f` semantics,
+	// identical on both engines). For the chart surface beyond the typed
+	// fields (collector pipeline config, migrator tuning, ClickHouse
+	// profiles/settings/pod distribution, ZooKeeper sizing) — never the
+	// substitute for them. Do not put secrets here; passwords belong in
+	// the typed secret-reference fields, which keep them out of the
+	// rendered config.
+	HelmValues    string `protobuf:"bytes,12,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -100,760 +206,989 @@ func (x *KubernetesSignozSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesSignozSpec) GetSignozContainer() *KubernetesSignozContainer {
-	if x != nil {
-		return x.SignozContainer
+func (x *KubernetesSignozSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
 	}
-	return nil
+	return ""
 }
 
-func (x *KubernetesSignozSpec) GetOtelCollectorContainer() *KubernetesSignozContainer {
-	if x != nil {
-		return x.OtelCollectorContainer
-	}
-	return nil
-}
-
-func (x *KubernetesSignozSpec) GetDatabase() *KubernetesSignozDatabaseConfig {
+func (x *KubernetesSignozSpec) GetDatabase() isKubernetesSignozSpec_Database {
 	if x != nil {
 		return x.Database
 	}
 	return nil
 }
 
-func (x *KubernetesSignozSpec) GetIngress() *KubernetesSignozIngress {
+func (x *KubernetesSignozSpec) GetManagedClickhouse() *KubernetesSignozManagedClickHouse {
 	if x != nil {
-		return x.Ingress
-	}
-	return nil
-}
-
-func (x *KubernetesSignozSpec) GetHelmValues() map[string]string {
-	if x != nil {
-		return x.HelmValues
-	}
-	return nil
-}
-
-// *
-// **KubernetesSignozContainer** specifies the container configuration for various SigNoz components.
-// It includes settings such as the number of replicas, container image, and resource allocations.
-type KubernetesSignozContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The number of pods to deploy for this component.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to the container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// The container image configuration (repository and tag).
-	Image         *kubernetes.ContainerImage `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesSignozContainer) Reset() {
-	*x = KubernetesSignozContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesSignozContainer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesSignozContainer) ProtoMessage() {}
-
-func (x *KubernetesSignozContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
+		if x, ok := x.Database.(*KubernetesSignozSpec_ManagedClickhouse); ok {
+			return x.ManagedClickhouse
 		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesSignozContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesSignozContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *KubernetesSignozContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesSignozContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
 	}
 	return nil
 }
 
-func (x *KubernetesSignozContainer) GetImage() *kubernetes.ContainerImage {
+func (x *KubernetesSignozSpec) GetExternalClickhouse() *KubernetesSignozExternalClickHouse {
 	if x != nil {
-		return x.Image
-	}
-	return nil
-}
-
-// *
-// **KubernetesSignozDatabaseConfig** defines the ClickHouse database configuration for SigNoz.
-// It supports two deployment modes:
-// 1. Self-managed: Deploy ClickHouse and Zookeeper within the Kubernetes cluster (default).
-// 2. External: Connect to an existing external ClickHouse instance.
-type KubernetesSignozDatabaseConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// Flag to enable using an external ClickHouse database.
-	// When false (default), SigNoz will deploy and manage its own ClickHouse instance.
-	// When true, the external_database field must be configured.
-	IsExternal bool `protobuf:"varint,1,opt,name=is_external,json=isExternal,proto3" json:"is_external,omitempty"`
-	// *
-	// External ClickHouse database connection details.
-	// This field is required when is_external is true and ignored when false.
-	ExternalDatabase *KubernetesSignozExternalClickhouse `protobuf:"bytes,2,opt,name=external_database,json=externalDatabase,proto3" json:"external_database,omitempty"`
-	// *
-	// Self-managed ClickHouse configuration.
-	// This field is used when is_external is false and configures the in-cluster ClickHouse deployment.
-	ManagedDatabase *KubernetesSignozManagedClickhouse `protobuf:"bytes,3,opt,name=managed_database,json=managedDatabase,proto3" json:"managed_database,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *KubernetesSignozDatabaseConfig) Reset() {
-	*x = KubernetesSignozDatabaseConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesSignozDatabaseConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesSignozDatabaseConfig) ProtoMessage() {}
-
-func (x *KubernetesSignozDatabaseConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
+		if x, ok := x.Database.(*KubernetesSignozSpec_ExternalClickhouse); ok {
+			return x.ExternalClickhouse
 		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesSignozDatabaseConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesSignozDatabaseConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesSignozDatabaseConfig) GetIsExternal() bool {
-	if x != nil {
-		return x.IsExternal
-	}
-	return false
-}
-
-func (x *KubernetesSignozDatabaseConfig) GetExternalDatabase() *KubernetesSignozExternalClickhouse {
-	if x != nil {
-		return x.ExternalDatabase
 	}
 	return nil
 }
 
-func (x *KubernetesSignozDatabaseConfig) GetManagedDatabase() *KubernetesSignozManagedClickhouse {
+func (x *KubernetesSignozSpec) GetServer() *KubernetesSignozServer {
 	if x != nil {
-		return x.ManagedDatabase
+		return x.Server
 	}
 	return nil
 }
 
-// *
-// **KubernetesSignozExternalClickhouse** defines connection parameters for an external ClickHouse instance.
-// This allows SigNoz to use a pre-existing ClickHouse database instead of deploying one within the cluster.
-type KubernetesSignozExternalClickhouse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The hostname or endpoint of the external ClickHouse instance.
-	Host string `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
-	// The HTTP port for ClickHouse (default is 8123).
-	HttpPort *int32 `protobuf:"varint,2,opt,name=http_port,json=httpPort,proto3,oneof" json:"http_port,omitempty"`
-	// The TCP port for ClickHouse native protocol (default is 9000).
-	TcpPort *int32 `protobuf:"varint,3,opt,name=tcp_port,json=tcpPort,proto3,oneof" json:"tcp_port,omitempty"`
-	// The name of the distributed cluster in ClickHouse configuration.
-	ClusterName *string `protobuf:"bytes,4,opt,name=cluster_name,json=clusterName,proto3,oneof" json:"cluster_name,omitempty"`
-	// Whether to use secure (TLS) connection to ClickHouse.
-	IsSecure bool `protobuf:"varint,5,opt,name=is_secure,json=isSecure,proto3" json:"is_secure,omitempty"`
-	// The username for authenticating to ClickHouse.
-	Username string `protobuf:"bytes,6,opt,name=username,proto3" json:"username,omitempty"`
-	// *
-	// The password for authenticating to ClickHouse.
-	// Can be provided either as a plain string value or as a reference to an existing Kubernetes Secret.
-	//
-	// Using a secret reference is recommended for production deployments:
-	// ```yaml
-	// password:
-	//
-	//	secretRef:
-	//	  name: clickhouse-credentials
-	//	  key: password
-	//
-	// ```
-	//
-	// For development/testing, a plain string value can be used:
-	// ```yaml
-	// password:
-	//
-	//	stringValue: my-password
-	//
-	// ```
-	Password      *kubernetes.KubernetesSensitiveValue `protobuf:"bytes,7,opt,name=password,proto3" json:"password,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesSignozExternalClickhouse) Reset() {
-	*x = KubernetesSignozExternalClickhouse{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesSignozExternalClickhouse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesSignozExternalClickhouse) ProtoMessage() {}
-
-func (x *KubernetesSignozExternalClickhouse) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesSignozExternalClickhouse.ProtoReflect.Descriptor instead.
-func (*KubernetesSignozExternalClickhouse) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *KubernetesSignozExternalClickhouse) GetHost() string {
-	if x != nil {
-		return x.Host
-	}
-	return ""
-}
-
-func (x *KubernetesSignozExternalClickhouse) GetHttpPort() int32 {
-	if x != nil && x.HttpPort != nil {
-		return *x.HttpPort
-	}
-	return 0
-}
-
-func (x *KubernetesSignozExternalClickhouse) GetTcpPort() int32 {
-	if x != nil && x.TcpPort != nil {
-		return *x.TcpPort
-	}
-	return 0
-}
-
-func (x *KubernetesSignozExternalClickhouse) GetClusterName() string {
-	if x != nil && x.ClusterName != nil {
-		return *x.ClusterName
-	}
-	return ""
-}
-
-func (x *KubernetesSignozExternalClickhouse) GetIsSecure() bool {
-	if x != nil {
-		return x.IsSecure
-	}
-	return false
-}
-
-func (x *KubernetesSignozExternalClickhouse) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *KubernetesSignozExternalClickhouse) GetPassword() *kubernetes.KubernetesSensitiveValue {
-	if x != nil {
-		return x.Password
-	}
-	return nil
-}
-
-// *
-// **KubernetesSignozManagedClickhouse** defines configuration for a self-managed ClickHouse deployment.
-// This supports both simple single-node deployments and production-grade distributed clusters with high availability.
-type KubernetesSignozManagedClickhouse struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The container specifications for ClickHouse.
-	Container *KubernetesSignozClickhouseContainer `protobuf:"bytes,1,opt,name=container,proto3" json:"container,omitempty"`
-	// The cluster configuration for ClickHouse (sharding and replication).
-	Cluster *KubernetesSignozClickhouseCluster `protobuf:"bytes,2,opt,name=cluster,proto3" json:"cluster,omitempty"`
-	// The Zookeeper configuration (required for distributed ClickHouse clusters).
-	Zookeeper     *KubernetesSignozZookeeperConfig `protobuf:"bytes,3,opt,name=zookeeper,proto3" json:"zookeeper,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesSignozManagedClickhouse) Reset() {
-	*x = KubernetesSignozManagedClickhouse{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesSignozManagedClickhouse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesSignozManagedClickhouse) ProtoMessage() {}
-
-func (x *KubernetesSignozManagedClickhouse) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesSignozManagedClickhouse.ProtoReflect.Descriptor instead.
-func (*KubernetesSignozManagedClickhouse) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *KubernetesSignozManagedClickhouse) GetContainer() *KubernetesSignozClickhouseContainer {
-	if x != nil {
-		return x.Container
-	}
-	return nil
-}
-
-func (x *KubernetesSignozManagedClickhouse) GetCluster() *KubernetesSignozClickhouseCluster {
-	if x != nil {
-		return x.Cluster
-	}
-	return nil
-}
-
-func (x *KubernetesSignozManagedClickhouse) GetZookeeper() *KubernetesSignozZookeeperConfig {
-	if x != nil {
-		return x.Zookeeper
-	}
-	return nil
-}
-
-// *
-// **KubernetesSignozClickhouseContainer** specifies the container configuration for ClickHouse.
-// It includes replica count, resource allocations, and persistence settings.
-type KubernetesSignozClickhouseContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The number of ClickHouse pods to deploy.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to the ClickHouse container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// The container image configuration for ClickHouse.
-	Image *kubernetes.ContainerImage `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
-	// *
-	// Flag to enable or disable data persistence for ClickHouse.
-	// When enabled, data is persisted to a storage volume, allowing data to survive pod restarts.
-	// Defaults to true.
-	PersistenceEnabled bool `protobuf:"varint,4,opt,name=persistence_enabled,json=persistenceEnabled,proto3" json:"persistence_enabled,omitempty"`
-	// *
-	// The size of the persistent volume attached to each ClickHouse pod (e.g., "20Gi").
-	// This attribute is ignored when persistence is not enabled.
-	// Note: This value cannot be modified after creation due to Kubernetes StatefulSet limitations.
-	DiskSize      string `protobuf:"bytes,5,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesSignozClickhouseContainer) Reset() {
-	*x = KubernetesSignozClickhouseContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[5]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesSignozClickhouseContainer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesSignozClickhouseContainer) ProtoMessage() {}
-
-func (x *KubernetesSignozClickhouseContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[5]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesSignozClickhouseContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesSignozClickhouseContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *KubernetesSignozClickhouseContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesSignozClickhouseContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-func (x *KubernetesSignozClickhouseContainer) GetImage() *kubernetes.ContainerImage {
-	if x != nil {
-		return x.Image
-	}
-	return nil
-}
-
-func (x *KubernetesSignozClickhouseContainer) GetPersistenceEnabled() bool {
-	if x != nil {
-		return x.PersistenceEnabled
-	}
-	return false
-}
-
-func (x *KubernetesSignozClickhouseContainer) GetDiskSize() string {
-	if x != nil {
-		return x.DiskSize
-	}
-	return ""
-}
-
-// *
-// **KubernetesSignozClickhouseCluster** defines the clustering configuration for ClickHouse.
-// Clustering enables distributed data storage and high availability through sharding and replication.
-// Note: Clustering requires Zookeeper to be configured.
-type KubernetesSignozClickhouseCluster struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// Flag to enable or disable clustering mode for ClickHouse.
-	// When enabled, ClickHouse will be deployed in a distributed cluster configuration.
-	// Defaults to false.
-	IsEnabled bool `protobuf:"varint,1,opt,name=is_enabled,json=isEnabled,proto3" json:"is_enabled,omitempty"`
-	// *
-	// The number of shards in the ClickHouse cluster.
-	// Sharding distributes data across multiple nodes for horizontal scaling.
-	// Recommended: 2 or more for production.
-	// This value is ignored if clustering is not enabled.
-	ShardCount int32 `protobuf:"varint,2,opt,name=shard_count,json=shardCount,proto3" json:"shard_count,omitempty"`
-	// *
-	// The number of replicas for each shard.
-	// Replication provides data redundancy and high availability.
-	// Recommended: 2 for production.
-	// This value is ignored if clustering is not enabled.
-	ReplicaCount  int32 `protobuf:"varint,3,opt,name=replica_count,json=replicaCount,proto3" json:"replica_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesSignozClickhouseCluster) Reset() {
-	*x = KubernetesSignozClickhouseCluster{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesSignozClickhouseCluster) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesSignozClickhouseCluster) ProtoMessage() {}
-
-func (x *KubernetesSignozClickhouseCluster) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesSignozClickhouseCluster.ProtoReflect.Descriptor instead.
-func (*KubernetesSignozClickhouseCluster) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *KubernetesSignozClickhouseCluster) GetIsEnabled() bool {
-	if x != nil {
-		return x.IsEnabled
-	}
-	return false
-}
-
-func (x *KubernetesSignozClickhouseCluster) GetShardCount() int32 {
-	if x != nil {
-		return x.ShardCount
-	}
-	return 0
-}
-
-func (x *KubernetesSignozClickhouseCluster) GetReplicaCount() int32 {
-	if x != nil {
-		return x.ReplicaCount
-	}
-	return 0
-}
-
-// *
-// **KubernetesSignozZookeeperConfig** defines the Zookeeper configuration for ClickHouse coordination.
-// Zookeeper is required for distributed ClickHouse deployments to manage replica metadata and leader election.
-type KubernetesSignozZookeeperConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// Flag to enable or disable Zookeeper deployment.
-	// This must be true if ClickHouse clustering is enabled.
-	// Defaults to false.
-	IsEnabled bool `protobuf:"varint,1,opt,name=is_enabled,json=isEnabled,proto3" json:"is_enabled,omitempty"`
-	// The container specifications for Zookeeper.
-	Container     *KubernetesSignozZookeeperContainer `protobuf:"bytes,2,opt,name=container,proto3" json:"container,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesSignozZookeeperConfig) Reset() {
-	*x = KubernetesSignozZookeeperConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesSignozZookeeperConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesSignozZookeeperConfig) ProtoMessage() {}
-
-func (x *KubernetesSignozZookeeperConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesSignozZookeeperConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesSignozZookeeperConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *KubernetesSignozZookeeperConfig) GetIsEnabled() bool {
-	if x != nil {
-		return x.IsEnabled
-	}
-	return false
-}
-
-func (x *KubernetesSignozZookeeperConfig) GetContainer() *KubernetesSignozZookeeperContainer {
-	if x != nil {
-		return x.Container
-	}
-	return nil
-}
-
-// *
-// **KubernetesSignozZookeeperContainer** specifies the container configuration for Zookeeper.
-type KubernetesSignozZookeeperContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// The number of Zookeeper pods to deploy.
-	// For production, this should be an odd number (3 or 5) to maintain quorum.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to the Zookeeper container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// The container image configuration for Zookeeper.
-	Image *kubernetes.ContainerImage `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
-	// *
-	// The size of the persistent volume attached to each Zookeeper pod (e.g., "8Gi").
-	DiskSize      string `protobuf:"bytes,4,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesSignozZookeeperContainer) Reset() {
-	*x = KubernetesSignozZookeeperContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesSignozZookeeperContainer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesSignozZookeeperContainer) ProtoMessage() {}
-
-func (x *KubernetesSignozZookeeperContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesSignozZookeeperContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesSignozZookeeperContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *KubernetesSignozZookeeperContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesSignozZookeeperContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-func (x *KubernetesSignozZookeeperContainer) GetImage() *kubernetes.ContainerImage {
-	if x != nil {
-		return x.Image
-	}
-	return nil
-}
-
-func (x *KubernetesSignozZookeeperContainer) GetDiskSize() string {
-	if x != nil {
-		return x.DiskSize
-	}
-	return ""
-}
-
-// *
-// **KubernetesSignozIngress** defines the ingress configuration for SigNoz components.
-// It provides separate ingress settings for the UI and OpenTelemetry Collector endpoints.
-type KubernetesSignozIngress struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Ingress configuration for SigNoz UI and API.
-	Ui *KubernetesSignozIngressEndpoint `protobuf:"bytes,1,opt,name=ui,proto3" json:"ui,omitempty"`
-	// Ingress configuration for OpenTelemetry Collector data ingestion endpoint.
-	OtelCollector *KubernetesSignozIngressEndpoint `protobuf:"bytes,2,opt,name=otel_collector,json=otelCollector,proto3" json:"otel_collector,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesSignozIngress) Reset() {
-	*x = KubernetesSignozIngress{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesSignozIngress) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesSignozIngress) ProtoMessage() {}
-
-func (x *KubernetesSignozIngress) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesSignozIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesSignozIngress) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *KubernetesSignozIngress) GetUi() *KubernetesSignozIngressEndpoint {
-	if x != nil {
-		return x.Ui
-	}
-	return nil
-}
-
-func (x *KubernetesSignozIngress) GetOtelCollector() *KubernetesSignozIngressEndpoint {
+func (x *KubernetesSignozSpec) GetOtelCollector() *KubernetesSignozOtelCollector {
 	if x != nil {
 		return x.OtelCollector
 	}
 	return nil
 }
 
+func (x *KubernetesSignozSpec) GetClusterName() string {
+	if x != nil {
+		return x.ClusterName
+	}
+	return ""
+}
+
+func (x *KubernetesSignozSpec) GetImageRegistry() string {
+	if x != nil {
+		return x.ImageRegistry
+	}
+	return ""
+}
+
+func (x *KubernetesSignozSpec) GetImagePullSecrets() []string {
+	if x != nil {
+		return x.ImagePullSecrets
+	}
+	return nil
+}
+
+func (x *KubernetesSignozSpec) GetScheduling() *KubernetesSignozScheduling {
+	if x != nil {
+		return x.Scheduling
+	}
+	return nil
+}
+
+func (x *KubernetesSignozSpec) GetHelmValues() string {
+	if x != nil {
+		return x.HelmValues
+	}
+	return ""
+}
+
+type isKubernetesSignozSpec_Database interface {
+	isKubernetesSignozSpec_Database()
+}
+
+type KubernetesSignozSpec_ManagedClickhouse struct {
+	// *
+	// The bundled ClickHouse stack — the chart deploys and owns it
+	// (operator + installation + ZooKeeper). The appliance posture:
+	// capacity and topology knobs only; SigNoz owns the databases,
+	// users and schema inside it.
+	ManagedClickhouse *KubernetesSignozManagedClickHouse `protobuf:"bytes,4,opt,name=managed_clickhouse,json=managedClickhouse,proto3,oneof"`
+}
+
+type KubernetesSignozSpec_ExternalClickhouse struct {
+	// *
+	// Bring your own ClickHouse — nothing ClickHouse-related is
+	// installed. Fields default-reference a KubernetesClickHouse
+	// resource's outputs for one-line composition; any reachable
+	// ClickHouse ≥ the version the chart ships works.
+	ExternalClickhouse *KubernetesSignozExternalClickHouse `protobuf:"bytes,5,opt,name=external_clickhouse,json=externalClickhouse,proto3,oneof"`
+}
+
+func (*KubernetesSignozSpec_ManagedClickhouse) isKubernetesSignozSpec_Database() {}
+
+func (*KubernetesSignozSpec_ExternalClickhouse) isKubernetesSignozSpec_Database() {}
+
 // *
-// **KubernetesSignozIngressEndpoint** defines ingress configuration for a specific SigNoz endpoint.
-type KubernetesSignozIngressEndpoint struct {
+// The bundled ClickHouse stack (capacity and topology; SigNoz owns
+// everything inside it).
+//
+// The admin password is NEVER declared here: the modules generate a
+// random credential per install, hand it to the chart, and export it
+// through a module-owned Secret (see the `clickhouse_password_secret`
+// output) — the chart's publicly-documented default password never
+// ships.
+type KubernetesSignozManagedClickHouse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Flag to enable or disable ingress for this endpoint.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// The full hostname for external access (e.g., "signoz.example.com").
-	// This hostname will be configured via Gateway API resources.
-	// Required when enabled is true.
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	// *
+	// Number of shards. 1 for almost everyone — shard only when a single
+	// node's disk/CPU ceiling is truly reached. The chart marks layout
+	// changes on a live install experimental; treat this as a day-0
+	// choice.
+	Shards *int32 `protobuf:"varint,1,opt,name=shards,proto3,oneof" json:"shards,omitempty"`
+	// *
+	// Replicas per shard. 2+ gives HA reads and durability (replication
+	// rides the bundled ZooKeeper). Multi-replica layouts cannot schedule
+	// on a single-node cluster.
+	Replicas *int32 `protobuf:"varint,2,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// Size of the persistent volume PER ClickHouse pod (e.g. "20Gi").
+	// This holds ALL telemetry data — size it for your ingest volume and
+	// retention (retention itself is managed inside SigNoz: UI →
+	// Settings → General).
+	DiskSize *string `protobuf:"bytes,3,opt,name=disk_size,json=diskSize,proto3,oneof" json:"disk_size,omitempty"`
+	// *
+	// Storage class for the ClickHouse volumes. Accepts a literal name or
+	// a reference to a KubernetesStorageClass resource. Empty = the
+	// cluster's default class. Pick an expandable class — telemetry
+	// volumes grow.
+	StorageClass *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// *
+	// CPU and memory for each ClickHouse container. Empty = the chart's
+	// defaults (requests only). ClickHouse is the component that does
+	// the heavy lifting — size it first when queries feel slow.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,5,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// IP ranges the SigNoz database user may connect from (ClickHouse
+	// network allow-list). Empty = the chart's default private-network
+	// ranges — correct for in-cluster access on virtually every CNI.
+	// Override only when pod IPs fall outside RFC-1918 space.
+	AllowedNetworkIps []string `protobuf:"bytes,6,rep,name=allowed_network_ips,json=allowedNetworkIps,proto3" json:"allowed_network_ips,omitempty"`
+	// *
+	// The bundled ZooKeeper (replication coordination). Always installed
+	// with the bundled arm — the chart's grain.
+	Zookeeper *KubernetesSignozZookeeper `protobuf:"bytes,7,opt,name=zookeeper,proto3" json:"zookeeper,omitempty"`
+	// *
+	// Tier old telemetry onto S3/GCS object storage (ClickHouse cold
+	// storage). Empty = everything stays on the volume.
+	ColdStorage   *KubernetesSignozColdStorage `protobuf:"bytes,8,opt,name=cold_storage,json=coldStorage,proto3" json:"cold_storage,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesSignozIngressEndpoint) Reset() {
-	*x = KubernetesSignozIngressEndpoint{}
+func (x *KubernetesSignozManagedClickHouse) Reset() {
+	*x = KubernetesSignozManagedClickHouse{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozManagedClickHouse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozManagedClickHouse) ProtoMessage() {}
+
+func (x *KubernetesSignozManagedClickHouse) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozManagedClickHouse.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozManagedClickHouse) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesSignozManagedClickHouse) GetShards() int32 {
+	if x != nil && x.Shards != nil {
+		return *x.Shards
+	}
+	return 0
+}
+
+func (x *KubernetesSignozManagedClickHouse) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesSignozManagedClickHouse) GetDiskSize() string {
+	if x != nil && x.DiskSize != nil {
+		return *x.DiskSize
+	}
+	return ""
+}
+
+func (x *KubernetesSignozManagedClickHouse) GetStorageClass() *v1.StringValueOrRef {
+	if x != nil {
+		return x.StorageClass
+	}
+	return nil
+}
+
+func (x *KubernetesSignozManagedClickHouse) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesSignozManagedClickHouse) GetAllowedNetworkIps() []string {
+	if x != nil {
+		return x.AllowedNetworkIps
+	}
+	return nil
+}
+
+func (x *KubernetesSignozManagedClickHouse) GetZookeeper() *KubernetesSignozZookeeper {
+	if x != nil {
+		return x.Zookeeper
+	}
+	return nil
+}
+
+func (x *KubernetesSignozManagedClickHouse) GetColdStorage() *KubernetesSignozColdStorage {
+	if x != nil {
+		return x.ColdStorage
+	}
+	return nil
+}
+
+// *
+// The bundled ZooKeeper.
+type KubernetesSignozZookeeper struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Number of ZooKeeper replicas. 1 for single-node installs; 3 for an
+	// HA quorum (always an odd number — even counts reduce availability).
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// CPU and memory for each ZooKeeper container. Empty = the chart's
+	// defaults.
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozZookeeper) Reset() {
+	*x = KubernetesSignozZookeeper{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozZookeeper) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozZookeeper) ProtoMessage() {}
+
+func (x *KubernetesSignozZookeeper) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozZookeeper.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozZookeeper) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesSignozZookeeper) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesSignozZookeeper) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+// *
+// ClickHouse cold storage — old telemetry tiered to object storage.
+type KubernetesSignozColdStorage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Backend:
+	//
+	//	*KubernetesSignozColdStorage_S3
+	//	*KubernetesSignozColdStorage_Gcs
+	Backend       isKubernetesSignozColdStorage_Backend `protobuf_oneof:"backend"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozColdStorage) Reset() {
+	*x = KubernetesSignozColdStorage{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozColdStorage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozColdStorage) ProtoMessage() {}
+
+func (x *KubernetesSignozColdStorage) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozColdStorage.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozColdStorage) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesSignozColdStorage) GetBackend() isKubernetesSignozColdStorage_Backend {
+	if x != nil {
+		return x.Backend
+	}
+	return nil
+}
+
+func (x *KubernetesSignozColdStorage) GetS3() *KubernetesSignozColdStorageS3 {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesSignozColdStorage_S3); ok {
+			return x.S3
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesSignozColdStorage) GetGcs() *KubernetesSignozColdStorageGcs {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesSignozColdStorage_Gcs); ok {
+			return x.Gcs
+		}
+	}
+	return nil
+}
+
+type isKubernetesSignozColdStorage_Backend interface {
+	isKubernetesSignozColdStorage_Backend()
+}
+
+type KubernetesSignozColdStorage_S3 struct {
+	// *
+	// Amazon S3 or any S3-compatible store.
+	S3 *KubernetesSignozColdStorageS3 `protobuf:"bytes,1,opt,name=s3,proto3,oneof"`
+}
+
+type KubernetesSignozColdStorage_Gcs struct {
+	// *
+	// Google Cloud Storage (HMAC interoperability keys).
+	Gcs *KubernetesSignozColdStorageGcs `protobuf:"bytes,2,opt,name=gcs,proto3,oneof"`
+}
+
+func (*KubernetesSignozColdStorage_S3) isKubernetesSignozColdStorage_Backend() {}
+
+func (*KubernetesSignozColdStorage_Gcs) isKubernetesSignozColdStorage_Backend() {}
+
+// *
+// S3 cold-storage backend.
+type KubernetesSignozColdStorageS3 struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Bucket data endpoint, e.g.
+	// "https://<bucket>.s3-<region>.amazonaws.com/data/". The bucket must
+	// exist; ClickHouse writes under this prefix.
+	Endpoint string `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// *
+	// IAM role ARN for keyless access on EKS (IRSA) — the recommended
+	// posture. The modules annotate the ClickHouse service account with
+	// it. Mutually exclusive with declared keys.
+	IrsaRoleArn string `protobuf:"bytes,2,opt,name=irsa_role_arn,json=irsaRoleArn,proto3" json:"irsa_role_arn,omitempty"`
+	// *
+	// Static access key ID. KNOW THIS: the chart renders declared keys
+	// into ClickHouse's storage configuration (upstream's grain — they
+	// are visible in the rendered installation object). Prefer
+	// `irsa_role_arn` on EKS; declare keys only where no ambient
+	// identity exists.
+	AccessKey string `protobuf:"bytes,3,opt,name=access_key,json=accessKey,proto3" json:"access_key,omitempty"`
+	// *
+	// Static secret access key. Same rendering caveat as `access_key`.
+	SecretKey     string `protobuf:"bytes,4,opt,name=secret_key,json=secretKey,proto3" json:"secret_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozColdStorageS3) Reset() {
+	*x = KubernetesSignozColdStorageS3{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozColdStorageS3) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozColdStorageS3) ProtoMessage() {}
+
+func (x *KubernetesSignozColdStorageS3) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozColdStorageS3.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozColdStorageS3) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesSignozColdStorageS3) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *KubernetesSignozColdStorageS3) GetIrsaRoleArn() string {
+	if x != nil {
+		return x.IrsaRoleArn
+	}
+	return ""
+}
+
+func (x *KubernetesSignozColdStorageS3) GetAccessKey() string {
+	if x != nil {
+		return x.AccessKey
+	}
+	return ""
+}
+
+func (x *KubernetesSignozColdStorageS3) GetSecretKey() string {
+	if x != nil {
+		return x.SecretKey
+	}
+	return ""
+}
+
+// *
+// GCS cold-storage backend (HMAC interoperability keys — the mechanism
+// ClickHouse's S3-protocol disk uses against GCS).
+type KubernetesSignozColdStorageGcs struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Bucket data endpoint, e.g.
+	// "https://storage.googleapis.com/<bucket>/data/".
+	Endpoint string `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// *
+	// HMAC access key. Rendered into ClickHouse's storage configuration
+	// (upstream's grain).
+	AccessKey string `protobuf:"bytes,2,opt,name=access_key,json=accessKey,proto3" json:"access_key,omitempty"`
+	// *
+	// HMAC secret. Same rendering caveat as `access_key`.
+	SecretKey     string `protobuf:"bytes,3,opt,name=secret_key,json=secretKey,proto3" json:"secret_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozColdStorageGcs) Reset() {
+	*x = KubernetesSignozColdStorageGcs{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozColdStorageGcs) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozColdStorageGcs) ProtoMessage() {}
+
+func (x *KubernetesSignozColdStorageGcs) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozColdStorageGcs.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozColdStorageGcs) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesSignozColdStorageGcs) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *KubernetesSignozColdStorageGcs) GetAccessKey() string {
+	if x != nil {
+		return x.AccessKey
+	}
+	return ""
+}
+
+func (x *KubernetesSignozColdStorageGcs) GetSecretKey() string {
+	if x != nil {
+		return x.SecretKey
+	}
+	return ""
+}
+
+// *
+// Bring-your-own ClickHouse. Defaults compose a KubernetesClickHouse
+// resource; any reachable ClickHouse works with literal values.
+type KubernetesSignozExternalClickHouse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// ClickHouse host — a Service name (same namespace) or a full FQDN
+	// (cross-namespace, e.g.
+	// "clickhouse-analytics.data.svc.cluster.local"). Accepts a literal
+	// or a reference to a KubernetesClickHouse resource (its client
+	// Service name). Ports are declared separately — do not include one
+	// here.
+	Host *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	// *
+	// Logical ClickHouse cluster name — SigNoz runs its distributed DDL
+	// `ON CLUSTER` against this. Accepts a literal or a reference to a
+	// KubernetesClickHouse resource (its cluster name). Empty =
+	// "cluster" (the chart default; correct only if your cluster is
+	// actually named that).
+	ClusterName *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	// *
+	// Native-protocol (TCP) port. Empty = 9000.
+	TcpPort *int32 `protobuf:"varint,3,opt,name=tcp_port,json=tcpPort,proto3,oneof" json:"tcp_port,omitempty"`
+	// *
+	// HTTP interface port. Empty = 8123.
+	HttpPort *int32 `protobuf:"varint,4,opt,name=http_port,json=httpPort,proto3,oneof" json:"http_port,omitempty"`
+	// *
+	// ClickHouse username. SigNoz creates and migrates its own databases
+	// (signoz_traces, signoz_metrics, signoz_logs, signoz_meter,
+	// signoz_metadata) — on a KubernetesClickHouse, declare this user
+	// with `access_management` and cluster-wide DDL grants (its spec
+	// documents the exact grant set for operator-style users).
+	Username string `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	// *
+	// The user's password, read from an existing Secret (the chart wires
+	// it as a secretKeyRef — it never lands in rendered values).
+	PasswordSecret *KubernetesSignozExternalClickHousePassword `protobuf:"bytes,6,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
+	// *
+	// Use a TLS connection to ClickHouse.
+	Secure bool `protobuf:"varint,7,opt,name=secure,proto3" json:"secure,omitempty"`
+	// *
+	// Verify the TLS certificate. Only meaningful with `secure: true`.
+	Verify        bool `protobuf:"varint,8,opt,name=verify,proto3" json:"verify,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozExternalClickHouse) Reset() {
+	*x = KubernetesSignozExternalClickHouse{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozExternalClickHouse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozExternalClickHouse) ProtoMessage() {}
+
+func (x *KubernetesSignozExternalClickHouse) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozExternalClickHouse.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozExternalClickHouse) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesSignozExternalClickHouse) GetHost() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Host
+	}
+	return nil
+}
+
+func (x *KubernetesSignozExternalClickHouse) GetClusterName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ClusterName
+	}
+	return nil
+}
+
+func (x *KubernetesSignozExternalClickHouse) GetTcpPort() int32 {
+	if x != nil && x.TcpPort != nil {
+		return *x.TcpPort
+	}
+	return 0
+}
+
+func (x *KubernetesSignozExternalClickHouse) GetHttpPort() int32 {
+	if x != nil && x.HttpPort != nil {
+		return *x.HttpPort
+	}
+	return 0
+}
+
+func (x *KubernetesSignozExternalClickHouse) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *KubernetesSignozExternalClickHouse) GetPasswordSecret() *KubernetesSignozExternalClickHousePassword {
+	if x != nil {
+		return x.PasswordSecret
+	}
+	return nil
+}
+
+func (x *KubernetesSignozExternalClickHouse) GetSecure() bool {
+	if x != nil {
+		return x.Secure
+	}
+	return false
+}
+
+func (x *KubernetesSignozExternalClickHouse) GetVerify() bool {
+	if x != nil {
+		return x.Verify
+	}
+	return false
+}
+
+// *
+// The external ClickHouse user's password Secret reference.
+type KubernetesSignozExternalClickHousePassword struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Secret name. Accepts a literal or a reference to a
+	// KubernetesClickHouse resource (its module-owned auth Secret, which
+	// carries one key per declared username).
+	SecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// *
+	// Key within the Secret holding the password. On a
+	// KubernetesClickHouse auth Secret this is the username.
+	SecretKey     string `protobuf:"bytes,2,opt,name=secret_key,json=secretKey,proto3" json:"secret_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozExternalClickHousePassword) Reset() {
+	*x = KubernetesSignozExternalClickHousePassword{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozExternalClickHousePassword) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozExternalClickHousePassword) ProtoMessage() {}
+
+func (x *KubernetesSignozExternalClickHousePassword) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozExternalClickHousePassword.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozExternalClickHousePassword) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesSignozExternalClickHousePassword) GetSecretName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SecretName
+	}
+	return nil
+}
+
+func (x *KubernetesSignozExternalClickHousePassword) GetSecretKey() string {
+	if x != nil {
+		return x.SecretKey
+	}
+	return ""
+}
+
+// *
+// The SigNoz server (single instance — see the spec's single-instance
+// truth; there is deliberately no replica knob here).
+type KubernetesSignozServer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Size of the persistent volume holding the server's own state —
+	// users, dashboards, alert rules (SQLite). 1Gi is plenty; telemetry
+	// data lives in ClickHouse, not here.
+	DiskSize *string `protobuf:"bytes,1,opt,name=disk_size,json=diskSize,proto3,oneof" json:"disk_size,omitempty"`
+	// *
+	// Storage class for the state volume. Empty = the cluster's default
+	// class.
+	StorageClass *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// *
+	// CPU and memory for the server container. Empty = the chart's
+	// defaults (requests only).
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,3,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// The URL under which the SigNoz UI is externally reachable (e.g.
+	// "https://signoz.example.com"). Used to build the links inside
+	// alert notifications and invitation emails — without it they point
+	// at localhost. Set it to whatever hostname you expose the UI on.
+	ExternalUrl string `protobuf:"bytes,4,opt,name=external_url,json=externalUrl,proto3" json:"external_url,omitempty"`
+	// *
+	// SMTP for alert emails and user invitations. Empty = emailing off.
+	Smtp *KubernetesSignozSmtp `protobuf:"bytes,5,opt,name=smtp,proto3" json:"smtp,omitempty"`
+	// *
+	// Advanced SigNoz configuration as environment variables. Keys
+	// follow SigNoz's own derivation: `signoz_<section>_<key>` with
+	// embedded underscores doubled (e.g.
+	// `signoz_alertmanager_signoz_external__url`) — the full catalog is
+	// upstream's conf/example.yaml. The typed fields above win on
+	// conflict. Never put secret values here — this map renders as
+	// plain environment variables; secret material belongs in the typed
+	// secret-reference fields.
+	Env           map[string]string `protobuf:"bytes,6,rep,name=env,proto3" json:"env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozServer) Reset() {
+	*x = KubernetesSignozServer{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozServer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozServer) ProtoMessage() {}
+
+func (x *KubernetesSignozServer) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozServer.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozServer) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *KubernetesSignozServer) GetDiskSize() string {
+	if x != nil && x.DiskSize != nil {
+		return *x.DiskSize
+	}
+	return ""
+}
+
+func (x *KubernetesSignozServer) GetStorageClass() *v1.StringValueOrRef {
+	if x != nil {
+		return x.StorageClass
+	}
+	return nil
+}
+
+func (x *KubernetesSignozServer) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesSignozServer) GetExternalUrl() string {
+	if x != nil {
+		return x.ExternalUrl
+	}
+	return ""
+}
+
+func (x *KubernetesSignozServer) GetSmtp() *KubernetesSignozSmtp {
+	if x != nil {
+		return x.Smtp
+	}
+	return nil
+}
+
+func (x *KubernetesSignozServer) GetEnv() map[string]string {
+	if x != nil {
+		return x.Env
+	}
+	return nil
+}
+
+// *
+// SMTP for alert emails and user invitations.
+type KubernetesSignozSmtp struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// SMTP server address as host:port (e.g. "smtp.example.com:587").
+	Address string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	// *
+	// The From address for outgoing mail (e.g. "signoz@example.com").
+	From string `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
+	// *
+	// SMTP auth username. Empty = unauthenticated SMTP (an internal
+	// relay).
+	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	// *
+	// SMTP auth password, read from an existing Secret (wired as a
+	// secretKeyRef — never rendered into values or config).
+	PasswordSecret *KubernetesSignozSecretKeyRef `protobuf:"bytes,4,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
+	// *
+	// Use implicit TLS for the SMTP connection. Leave false for
+	// STARTTLS-upgraded ports (587) — the common posture; set true only
+	// for implicit-TLS ports (465).
+	TlsEnabled    bool `protobuf:"varint,5,opt,name=tls_enabled,json=tlsEnabled,proto3" json:"tls_enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozSmtp) Reset() {
+	*x = KubernetesSignozSmtp{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozSmtp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozSmtp) ProtoMessage() {}
+
+func (x *KubernetesSignozSmtp) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozSmtp.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozSmtp) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *KubernetesSignozSmtp) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *KubernetesSignozSmtp) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *KubernetesSignozSmtp) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *KubernetesSignozSmtp) GetPasswordSecret() *KubernetesSignozSecretKeyRef {
+	if x != nil {
+		return x.PasswordSecret
+	}
+	return nil
+}
+
+func (x *KubernetesSignozSmtp) GetTlsEnabled() bool {
+	if x != nil {
+		return x.TlsEnabled
+	}
+	return false
+}
+
+// *
+// A reference to one key of an existing Secret in the install
+// namespace (a reference, never secret material).
+type KubernetesSignozSecretKeyRef struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Secret name.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// *
+	// Key within the Secret.
+	Key           string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozSecretKeyRef) Reset() {
+	*x = KubernetesSignozSecretKeyRef{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesSignozIngressEndpoint) String() string {
+func (x *KubernetesSignozSecretKeyRef) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesSignozIngressEndpoint) ProtoMessage() {}
+func (*KubernetesSignozSecretKeyRef) ProtoMessage() {}
 
-func (x *KubernetesSignozIngressEndpoint) ProtoReflect() protoreflect.Message {
+func (x *KubernetesSignozSecretKeyRef) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -865,162 +1200,436 @@ func (x *KubernetesSignozIngressEndpoint) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesSignozIngressEndpoint.ProtoReflect.Descriptor instead.
-func (*KubernetesSignozIngressEndpoint) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesSignozSecretKeyRef.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozSecretKeyRef) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *KubernetesSignozIngressEndpoint) GetEnabled() bool {
+func (x *KubernetesSignozSecretKeyRef) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KubernetesSignozSecretKeyRef) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+// *
+// The SigNoz OpenTelemetry Collector — the ingestion gateway.
+type KubernetesSignozOtelCollector struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Number of collector replicas. Scale this (or enable autoscaling)
+	// as ingest volume grows — the collector is stateless.
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// CPU and memory for each collector container. Empty = the chart's
+	// defaults. The collector's memory limiter derives from the limit —
+	// set limits in production.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Horizontal autoscaling for the collector (a standard HPA on
+	// CPU/memory utilization). When enabled, `replicas` is ignored — the
+	// HPA owns the count.
+	Autoscaling *KubernetesSignozOtelCollectorAutoscaling `protobuf:"bytes,3,opt,name=autoscaling,proto3" json:"autoscaling,omitempty"`
+	// *
+	// Accept spans in Jaeger's legacy protocols (thrift-HTTP 14268 +
+	// gRPC 14250) alongside OTLP. On by default (the chart's grain);
+	// disable when everything speaks OTLP.
+	JaegerReceiverEnabled *bool `protobuf:"varint,4,opt,name=jaeger_receiver_enabled,json=jaegerReceiverEnabled,proto3,oneof" json:"jaeger_receiver_enabled,omitempty"`
+	// *
+	// Accept spans in the Zipkin protocol (9411). Off by default.
+	ZipkinReceiverEnabled bool `protobuf:"varint,5,opt,name=zipkin_receiver_enabled,json=zipkinReceiverEnabled,proto3" json:"zipkin_receiver_enabled,omitempty"`
+	// *
+	// Accept logs over plain HTTP (the JSON endpoint 8082 and the
+	// Heroku-drain endpoint 8081). On by default (the chart's grain);
+	// disable to make OTLP the only way in.
+	HttpLogsReceiversEnabled *bool `protobuf:"varint,6,opt,name=http_logs_receivers_enabled,json=httpLogsReceiversEnabled,proto3,oneof" json:"http_logs_receivers_enabled,omitempty"`
+	// *
+	// Group exceptions by name only, dropping per-stack-trace
+	// cardinality. A cardinality-vs-fidelity trade for very
+	// exception-noisy estates; leave false until the exceptions page
+	// itself becomes the cost.
+	LowCardinalityExceptionGrouping bool `protobuf:"varint,7,opt,name=low_cardinality_exception_grouping,json=lowCardinalityExceptionGrouping,proto3" json:"low_cardinality_exception_grouping,omitempty"`
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozOtelCollector) Reset() {
+	*x = KubernetesSignozOtelCollector{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozOtelCollector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozOtelCollector) ProtoMessage() {}
+
+func (x *KubernetesSignozOtelCollector) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozOtelCollector.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozOtelCollector) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *KubernetesSignozOtelCollector) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesSignozOtelCollector) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesSignozOtelCollector) GetAutoscaling() *KubernetesSignozOtelCollectorAutoscaling {
+	if x != nil {
+		return x.Autoscaling
+	}
+	return nil
+}
+
+func (x *KubernetesSignozOtelCollector) GetJaegerReceiverEnabled() bool {
+	if x != nil && x.JaegerReceiverEnabled != nil {
+		return *x.JaegerReceiverEnabled
+	}
+	return false
+}
+
+func (x *KubernetesSignozOtelCollector) GetZipkinReceiverEnabled() bool {
+	if x != nil {
+		return x.ZipkinReceiverEnabled
+	}
+	return false
+}
+
+func (x *KubernetesSignozOtelCollector) GetHttpLogsReceiversEnabled() bool {
+	if x != nil && x.HttpLogsReceiversEnabled != nil {
+		return *x.HttpLogsReceiversEnabled
+	}
+	return false
+}
+
+func (x *KubernetesSignozOtelCollector) GetLowCardinalityExceptionGrouping() bool {
+	if x != nil {
+		return x.LowCardinalityExceptionGrouping
+	}
+	return false
+}
+
+// *
+// Collector autoscaling (HPA).
+type KubernetesSignozOtelCollectorAutoscaling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Enable the HPA.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Minimum replicas.
+	MinReplicas *int32 `protobuf:"varint,2,opt,name=min_replicas,json=minReplicas,proto3,oneof" json:"min_replicas,omitempty"`
+	// *
+	// Maximum replicas.
+	MaxReplicas *int32 `protobuf:"varint,3,opt,name=max_replicas,json=maxReplicas,proto3,oneof" json:"max_replicas,omitempty"`
+	// *
+	// Target CPU utilization percentage. Empty = 50 (the chart default).
+	TargetCpuUtilizationPercent *int32 `protobuf:"varint,4,opt,name=target_cpu_utilization_percent,json=targetCpuUtilizationPercent,proto3,oneof" json:"target_cpu_utilization_percent,omitempty"`
+	// *
+	// Target memory utilization percentage. Empty = 50 (the chart
+	// default).
+	TargetMemoryUtilizationPercent *int32 `protobuf:"varint,5,opt,name=target_memory_utilization_percent,json=targetMemoryUtilizationPercent,proto3,oneof" json:"target_memory_utilization_percent,omitempty"`
+	unknownFields                  protoimpl.UnknownFields
+	sizeCache                      protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozOtelCollectorAutoscaling) Reset() {
+	*x = KubernetesSignozOtelCollectorAutoscaling{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozOtelCollectorAutoscaling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozOtelCollectorAutoscaling) ProtoMessage() {}
+
+func (x *KubernetesSignozOtelCollectorAutoscaling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozOtelCollectorAutoscaling.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozOtelCollectorAutoscaling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *KubernetesSignozOtelCollectorAutoscaling) GetEnabled() bool {
 	if x != nil {
 		return x.Enabled
 	}
 	return false
 }
 
-func (x *KubernetesSignozIngressEndpoint) GetHostname() string {
+func (x *KubernetesSignozOtelCollectorAutoscaling) GetMinReplicas() int32 {
+	if x != nil && x.MinReplicas != nil {
+		return *x.MinReplicas
+	}
+	return 0
+}
+
+func (x *KubernetesSignozOtelCollectorAutoscaling) GetMaxReplicas() int32 {
+	if x != nil && x.MaxReplicas != nil {
+		return *x.MaxReplicas
+	}
+	return 0
+}
+
+func (x *KubernetesSignozOtelCollectorAutoscaling) GetTargetCpuUtilizationPercent() int32 {
+	if x != nil && x.TargetCpuUtilizationPercent != nil {
+		return *x.TargetCpuUtilizationPercent
+	}
+	return 0
+}
+
+func (x *KubernetesSignozOtelCollectorAutoscaling) GetTargetMemoryUtilizationPercent() int32 {
+	if x != nil && x.TargetMemoryUtilizationPercent != nil {
+		return *x.TargetMemoryUtilizationPercent
+	}
+	return 0
+}
+
+// *
+// Pod scheduling for the SigNoz server, collector and schema migrator.
+type KubernetesSignozScheduling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Node selector for the pods.
+	NodeSelector map[string]string `protobuf:"bytes,1,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for the pods.
+	Tolerations []*kubernetes.WorkloadToleration `protobuf:"bytes,2,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	// *
+	// Priority class name for the pods.
+	PriorityClassName string `protobuf:"bytes,3,opt,name=priority_class_name,json=priorityClassName,proto3" json:"priority_class_name,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *KubernetesSignozScheduling) Reset() {
+	*x = KubernetesSignozScheduling{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSignozScheduling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSignozScheduling) ProtoMessage() {}
+
+func (x *KubernetesSignozScheduling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[13]
 	if x != nil {
-		return x.Hostname
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSignozScheduling.ProtoReflect.Descriptor instead.
+func (*KubernetesSignozScheduling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *KubernetesSignozScheduling) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesSignozScheduling) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
+func (x *KubernetesSignozScheduling) GetPriorityClassName() string {
+	if x != nil {
+		return x.PriorityClassName
 	}
 	return ""
 }
-
-var file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_extTypes = []protoimpl.ExtensionInfo{
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesSignozContainer)(nil),
-		Field:         560001,
-		Name:          "dev.planton.provider.kubernetes.kubernetessignoz.v1.default_signoz_container",
-		Tag:           "bytes,560001,opt,name=default_signoz_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetessignoz/v1/spec.proto",
-	},
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesSignozContainer)(nil),
-		Field:         560002,
-		Name:          "dev.planton.provider.kubernetes.kubernetessignoz.v1.default_otel_collector_container",
-		Tag:           "bytes,560002,opt,name=default_otel_collector_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetessignoz/v1/spec.proto",
-	},
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesSignozClickhouseContainer)(nil),
-		Field:         560003,
-		Name:          "dev.planton.provider.kubernetes.kubernetessignoz.v1.default_clickhouse_container",
-		Tag:           "bytes,560003,opt,name=default_clickhouse_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetessignoz/v1/spec.proto",
-	},
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesSignozZookeeperContainer)(nil),
-		Field:         560004,
-		Name:          "dev.planton.provider.kubernetes.kubernetessignoz.v1.default_zookeeper_container",
-		Tag:           "bytes,560004,opt,name=default_zookeeper_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetessignoz/v1/spec.proto",
-	},
-}
-
-// Extension fields to descriptorpb.FieldOptions.
-var (
-	// optional dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer default_signoz_container = 560001;
-	E_DefaultSignozContainer = &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_extTypes[0]
-	// optional dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer default_otel_collector_container = 560002;
-	E_DefaultOtelCollectorContainer = &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_extTypes[1]
-	// optional dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer default_clickhouse_container = 560003;
-	E_DefaultClickhouseContainer = &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_extTypes[2]
-	// optional dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer default_zookeeper_container = 560004;
-	E_DefaultZookeeperContainer = &file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_extTypes[3]
-)
 
 var File_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetessignoz/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessignoz.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/kubernetes_secret.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\x9e\a\n" +
+	">dev/planton/provider/kubernetes/kubernetessignoz/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetessignoz.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xcf\b\n" +
 	"\x14KubernetesSignozSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\xa1\x01\n" +
-	"\x10signoz_container\x18\x04 \x01(\v2N.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainerB&\x8a\xb8\x91\x02!\b\x01\x12\x1d\n" +
-	"\f\n" +
-	"\x051000m\x12\x032Gi\x12\r\n" +
-	"\x04200m\x12\x05512MiR\x0fsignozContainer\x12\xae\x01\n" +
-	"\x18otel_collector_container\x18\x05 \x01(\v2N.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainerB$\x92\xb8\x91\x02\x1f\b\x02\x12\x1b\n" +
-	"\f\n" +
-	"\x052000m\x12\x034Gi\x12\v\n" +
-	"\x04500m\x12\x031GiR\x16otelCollectorContainer\x12w\n" +
-	"\bdatabase\x18\x06 \x01(\v2S.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfigB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12f\n" +
-	"\aingress\x18\a \x01(\v2L.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressR\aingress\x12z\n" +
-	"\vhelm_values\x18\b \x03(\v2Y.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.HelmValuesEntryR\n" +
-	"helmValues\x1a=\n" +
-	"\x0fHelmValuesEntry\x12\x10\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x125\n" +
+	"\rchart_version\x18\x03 \x01(\tB\v\x8a\xa6\x1d\a0.133.0H\x01R\fchartVersion\x88\x01\x01\x12\x87\x01\n" +
+	"\x12managed_clickhouse\x18\x04 \x01(\v2V.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickHouseH\x00R\x11managedClickhouse\x12\x8a\x01\n" +
+	"\x13external_clickhouse\x18\x05 \x01(\v2W.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickHouseH\x00R\x12externalClickhouse\x12c\n" +
+	"\x06server\x18\x06 \x01(\v2K.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozServerR\x06server\x12y\n" +
+	"\x0eotel_collector\x18\a \x01(\v2R.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozOtelCollectorR\rotelCollector\x12!\n" +
+	"\fcluster_name\x18\b \x01(\tR\vclusterName\x12%\n" +
+	"\x0eimage_registry\x18\t \x01(\tR\rimageRegistry\x12x\n" +
+	"\x12image_pull_secrets\x18\n" +
+	" \x03(\tBJ\xaa\xa6\x1dFNames of existing image-pull Secrets (references), not secret materialR\x10imagePullSecrets\x12o\n" +
+	"\n" +
+	"scheduling\x18\v \x01(\v2O.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSchedulingR\n" +
+	"scheduling\x12\x1f\n" +
+	"\vhelm_values\x18\f \x01(\tR\n" +
+	"helmValuesB\n" +
+	"\n" +
+	"\bdatabaseB\x10\n" +
+	"\x0e_chart_version\"\xdc\x05\n" +
+	"!KubernetesSignozManagedClickHouse\x12)\n" +
+	"\x06shards\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\x06shards\x88\x01\x01\x12-\n" +
+	"\breplicas\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12`\n" +
+	"\tdisk_size\x18\x03 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0420GiH\x02R\bdiskSize\x88\x01\x01\x12o\n" +
+	"\rstorage_class\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12Q\n" +
+	"\tresources\x18\x05 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12.\n" +
+	"\x13allowed_network_ips\x18\x06 \x03(\tR\x11allowedNetworkIps\x12l\n" +
+	"\tzookeeper\x18\a \x01(\v2N.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperR\tzookeeper\x12s\n" +
+	"\fcold_storage\x18\b \x01(\v2P.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorageR\vcoldStorageB\t\n" +
+	"\a_shardsB\v\n" +
+	"\t_replicasB\f\n" +
+	"\n" +
+	"_disk_size\"\xe9\x02\n" +
+	"\x19KubernetesSignozZookeeper\x12\xeb\x01\n" +
+	"\breplicas\x18\x01 \x01(\x05B\xc9\x01\xbaH\xc0\x01\xba\x01\xb8\x01\n" +
+	".spec.managed_clickhouse.zookeeper.replicas.odd\x12wzookeeper replicas must be an odd number (1, 3, 5) — quorum systems gain nothing and lose availability on even counts\x1a\rthis % 2 == 1\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\v\n" +
+	"\t_replicas\"\xf7\x01\n" +
+	"\x1bKubernetesSignozColdStorage\x12d\n" +
+	"\x02s3\x18\x01 \x01(\v2R.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorageS3H\x00R\x02s3\x12g\n" +
+	"\x03gcs\x18\x02 \x01(\v2S.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorageGcsH\x00R\x03gcsB\t\n" +
+	"\abackend\"\xe6\x03\n" +
+	"\x1dKubernetesSignozColdStorageS3\x12\"\n" +
+	"\bendpoint\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bendpoint\x12\"\n" +
+	"\rirsa_role_arn\x18\x02 \x01(\tR\virsaRoleArn\x12#\n" +
+	"\n" +
+	"access_key\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\taccessKey\x12#\n" +
+	"\n" +
+	"secret_key\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\tsecretKey:\xb2\x02\xbaH\xae\x02\x1a\xab\x02\n" +
+	"\x19spec.cold_storage.s3.auth\x12odeclare exactly one auth posture: irsa_role_arn (keyless, recommended on EKS) OR both access_key and secret_key\x1a\x9c\x01(this.irsa_role_arn != '' && this.access_key == '' && this.secret_key == '') || (this.irsa_role_arn == '' && this.access_key != '' && this.secret_key != '')\"\x9a\x01\n" +
+	"\x1eKubernetesSignozColdStorageGcs\x12\"\n" +
+	"\bendpoint\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bendpoint\x12)\n" +
+	"\n" +
+	"access_key\x18\x02 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\taccessKey\x12)\n" +
+	"\n" +
+	"secret_key\x18\x03 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\tsecretKey\"\xcb\x06\n" +
+	"\"KubernetesSignozExternalClickHouse\x12r\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\a\x92\xd4a\x1bstatus.outputs.service_nameR\x04host\x12{\n" +
+	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x97\a\x92\xd4a\x1bstatus.outputs.cluster_nameR\vclusterName\x123\n" +
+	"\btcp_port\x18\x03 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x049000H\x00R\atcpPort\x88\x01\x01\x125\n" +
+	"\thttp_port\x18\x04 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x048123H\x01R\bhttpPort\x88\x01\x01\x12\"\n" +
+	"\busername\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12\x90\x01\n" +
+	"\x0fpassword_secret\x18\x06 \x01(\v2_.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickHousePasswordB\x06\xbaH\x03\xc8\x01\x01R\x0epasswordSecret\x12\x16\n" +
+	"\x06secure\x18\a \x01(\bR\x06secure\x12\x16\n" +
+	"\x06verify\x18\b \x01(\bR\x06verify:\xc5\x01\xbaH\xc1\x01\x1a\xbe\x01\n" +
+	"/spec.external_clickhouse.verify.requires_secure\x12nverify: true is meaningless without secure: true — certificate verification only applies to a TLS connection\x1a\x1b!this.verify || this.secureB\v\n" +
+	"\t_tcp_portB\f\n" +
+	"\n" +
+	"_http_port\"\xa2\x02\n" +
+	"*KubernetesSignozExternalClickHousePassword\x12\x83\x01\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\xbaH\x03\xc8\x01\x01\x88\xd4a\x97\a\x92\xd4a\x1fstatus.outputs.auth_secret_nameR\n" +
+	"secretName\x12n\n" +
+	"\n" +
+	"secret_key\x18\x02 \x01(\tBO\xbaH\x03\xc8\x01\x01\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialR\tsecretKey\"\xed\x04\n" +
+	"\x16KubernetesSignozServer\x12_\n" +
+	"\tdisk_size\x18\x01 \x01(\tB=\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x031GiH\x00R\bdiskSize\x88\x01\x01\x12o\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12Q\n" +
+	"\tresources\x18\x03 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12!\n" +
+	"\fexternal_url\x18\x04 \x01(\tR\vexternalUrl\x12]\n" +
+	"\x04smtp\x18\x05 \x01(\v2I.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSmtpR\x04smtp\x12f\n" +
+	"\x03env\x18\x06 \x03(\v2T.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozServer.EnvEntryR\x03env\x1a6\n" +
+	"\bEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xda\x01\n" +
-	"\x19KubernetesSignozContainer\x12#\n" +
-	"\breplicas\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12E\n" +
-	"\x05image\x18\x03 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\"\xef\x03\n" +
-	"\x1eKubernetesSignozDatabaseConfig\x12\x1f\n" +
-	"\vis_external\x18\x01 \x01(\bR\n" +
-	"isExternal\x12\x84\x01\n" +
-	"\x11external_database\x18\x02 \x01(\v2W.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickhouseR\x10externalDatabase\x12\x81\x01\n" +
-	"\x10managed_database\x18\x03 \x01(\v2V.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouseR\x0fmanagedDatabase:\xa0\x01\xbaH\x9c\x01\x1a\x99\x01\n" +
-	"\x1fspec.database.external_required\x12DExternal database configuration is required when is_external is true\x1a0!this.is_external || has(this.external_database)\"\xad\x03\n" +
-	"\"KubernetesSignozExternalClickhouse\x12\x1a\n" +
-	"\x04host\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04host\x125\n" +
-	"\thttp_port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x048123H\x00R\bhttpPort\x88\x01\x01\x123\n" +
-	"\btcp_port\x18\x03 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x049000H\x01R\atcpPort\x88\x01\x01\x123\n" +
-	"\fcluster_name\x18\x04 \x01(\tB\v\x8a\xa6\x1d\aclusterH\x02R\vclusterName\x88\x01\x01\x12\x1b\n" +
-	"\tis_secure\x18\x05 \x01(\bR\bisSecure\x12\"\n" +
-	"\busername\x18\x06 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12]\n" +
-	"\bpassword\x18\a \x01(\v29.dev.planton.provider.kubernetes.KubernetesSensitiveValueB\x06\xbaH\x03\xc8\x01\x01R\bpasswordB\f\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\f\n" +
 	"\n" +
-	"_http_portB\v\n" +
-	"\t_tcp_portB\x0f\n" +
-	"\r_cluster_name\"\xb0\x03\n" +
-	"!KubernetesSignozManagedClickhouse\x12\xa4\x01\n" +
-	"\tcontainer\x18\x01 \x01(\v2X.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainerB,\x9a\xb8\x91\x02'\b\x01\x12\x1b\n" +
-	"\f\n" +
-	"\x052000m\x12\x034Gi\x12\v\n" +
-	"\x04500m\x12\x031Gi \x01*\x0420GiR\tcontainer\x12p\n" +
-	"\acluster\x18\x02 \x01(\v2V.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseClusterR\acluster\x12r\n" +
-	"\tzookeeper\x18\x03 \x01(\v2T.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperConfigR\tzookeeper\"\x97\x05\n" +
-	"#KubernetesSignozClickhouseContainer\x12#\n" +
-	"\breplicas\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12E\n" +
-	"\x05image\x18\x03 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12/\n" +
-	"\x13persistence_enabled\x18\x04 \x01(\bR\x12persistenceEnabled\x12\x1b\n" +
-	"\tdisk_size\x18\x05 \x01(\tR\bdiskSize:\xe2\x02\xbaH\xde\x02\x1a\xdb\x02\n" +
-	",spec.clickhouse.container.disk_size.required\x12IDisk size is required and must match the format if persistence is enabled\x1a\xdf\x01((!this.persistence_enabled && (size(this.disk_size) == 0 || this.disk_size == '')) || (this.persistence_enabled && size(this.disk_size) > 0 && this.disk_size.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')))\"\xd4\x02\n" +
-	"!KubernetesSignozClickhouseCluster\x12\x1d\n" +
-	"\n" +
-	"is_enabled\x18\x01 \x01(\bR\tisEnabled\x12\x1f\n" +
-	"\vshard_count\x18\x02 \x01(\x05R\n" +
-	"shardCount\x12#\n" +
-	"\rreplica_count\x18\x03 \x01(\x05R\freplicaCount:\xc9\x01\xbaH\xc5\x01\x1a\xc2\x01\n" +
-	"+spec.clickhouse.cluster.counts_when_enabled\x12KShard count and replica count must be at least 1 when clustering is enabled\x1aF!this.is_enabled || (this.shard_count >= 1 && this.replica_count >= 1)\"\xe6\x01\n" +
-	"\x1fKubernetesSignozZookeeperConfig\x12\x1d\n" +
-	"\n" +
-	"is_enabled\x18\x01 \x01(\bR\tisEnabled\x12\xa3\x01\n" +
-	"\tcontainer\x18\x02 \x01(\v2W.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainerB,\xa2\xb8\x91\x02'\b\x01\x12\x1e\n" +
-	"\r\n" +
-	"\x04500m\x12\x05512Mi\x12\r\n" +
-	"\x04100m\x12\x05256Mi\"\x038GiR\tcontainer\"\xb7\x03\n" +
-	"\"KubernetesSignozZookeeperContainer\x12#\n" +
-	"\breplicas\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12E\n" +
-	"\x05image\x18\x03 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12\xd1\x01\n" +
-	"\tdisk_size\x18\x04 \x01(\tB\xb3\x01\xbaH\xaf\x01\xba\x01\xab\x01\n" +
-	"!spec.zookeeper.disk_size.required\x12/Disk size is required and must match the format\x1aUsize(this) > 0 && this.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')R\bdiskSize\"\xfc\x01\n" +
-	"\x17KubernetesSignozIngress\x12d\n" +
-	"\x02ui\x18\x01 \x01(\v2T.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpointR\x02ui\x12{\n" +
-	"\x0eotel_collector\x18\x02 \x01(\v2T.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpointR\rotelCollector\"\xd6\x01\n" +
-	"\x1fKubernetesSignozIngressEndpoint\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
-	"\x1espec.ingress.hostname.required\x12,hostname is required when ingress is enabled\x1a(!this.enabled || size(this.hostname) > 0:\xa9\x01\n" +
-	"\x18default_signoz_container\x12\x1d.google.protobuf.FieldOptions\x18\x81\x97\" \x01(\v2N.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainerR\x16defaultSignozContainer:\xb8\x01\n" +
-	" default_otel_collector_container\x12\x1d.google.protobuf.FieldOptions\x18\x82\x97\" \x01(\v2N.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainerR\x1ddefaultOtelCollectorContainer:\xbb\x01\n" +
-	"\x1cdefault_clickhouse_container\x12\x1d.google.protobuf.FieldOptions\x18\x83\x97\" \x01(\v2X.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainerR\x1adefaultClickhouseContainer:\xb8\x01\n" +
-	"\x1bdefault_zookeeper_container\x12\x1d.google.protobuf.FieldOptions\x18\x84\x97\" \x01(\v2W.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainerR\x19defaultZookeeperContainerB\xa1\x03\n" +
+	"_disk_size\"\xaf\x04\n" +
+	"\x14KubernetesSignozSmtp\x12\x95\x01\n" +
+	"\aaddress\x18\x01 \x01(\tB{\xbaHx\xba\x01r\n" +
+	"\x18spec.server.smtp.address\x126address must be host:port, e.g. 'smtp.example.com:587'\x1a\x1ethis.matches('^[^:]+:[0-9]+$')\xc8\x01\x01R\aaddress\x12\x1a\n" +
+	"\x04from\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04from\x12\x1a\n" +
+	"\busername\x18\x03 \x01(\tR\busername\x12z\n" +
+	"\x0fpassword_secret\x18\x04 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSecretKeyRefR\x0epasswordSecret\x12\x1f\n" +
+	"\vtls_enabled\x18\x05 \x01(\bR\n" +
+	"tlsEnabled:\xa9\x01\xbaH\xa5\x01\x1a\xa2\x01\n" +
+	"+spec.server.smtp.password.requires_username\x12@an SMTP password requires a username — declare both or neither\x1a1!has(this.password_secret) || this.username != ''\"T\n" +
+	"\x1cKubernetesSignozSecretKeyRef\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x18\n" +
+	"\x03key\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\"\x85\x05\n" +
+	"\x1dKubernetesSignozOtelCollector\x12-\n" +
+	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\x7f\n" +
+	"\vautoscaling\x18\x03 \x01(\v2].dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozOtelCollectorAutoscalingR\vautoscaling\x12E\n" +
+	"\x17jaeger_receiver_enabled\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x15jaegerReceiverEnabled\x88\x01\x01\x126\n" +
+	"\x17zipkin_receiver_enabled\x18\x05 \x01(\bR\x15zipkinReceiverEnabled\x12L\n" +
+	"\x1bhttp_logs_receivers_enabled\x18\x06 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x18httpLogsReceiversEnabled\x88\x01\x01\x12K\n" +
+	"\"low_cardinality_exception_grouping\x18\a \x01(\bR\x1flowCardinalityExceptionGroupingB\v\n" +
+	"\t_replicasB\x1a\n" +
+	"\x18_jaeger_receiver_enabledB\x1e\n" +
+	"\x1c_http_logs_receivers_enabled\"\xa9\x05\n" +
+	"(KubernetesSignozOtelCollectorAutoscaling\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x124\n" +
+	"\fmin_replicas\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\vminReplicas\x88\x01\x01\x125\n" +
+	"\fmax_replicas\x18\x03 \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0211H\x01R\vmaxReplicas\x88\x01\x01\x12S\n" +
+	"\x1etarget_cpu_utilization_percent\x18\x04 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x01H\x02R\x1btargetCpuUtilizationPercent\x88\x01\x01\x12Y\n" +
+	"!target_memory_utilization_percent\x18\x05 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x01H\x03R\x1etargetMemoryUtilizationPercent\x88\x01\x01:\xda\x01\xbaH\xd6\x01\x1a\xd3\x01\n" +
+	"&spec.otel_collector.autoscaling.bounds\x12:max_replicas must be greater than or equal to min_replicas\x1am!this.enabled || !has(this.max_replicas) || !has(this.min_replicas) || this.max_replicas >= this.min_replicasB\x0f\n" +
+	"\r_min_replicasB\x0f\n" +
+	"\r_max_replicasB!\n" +
+	"\x1f_target_cpu_utilization_percentB$\n" +
+	"\"_target_memory_utilization_percent\"\xed\x02\n" +
+	"\x1aKubernetesSignozScheduling\x12\x86\x01\n" +
+	"\rnode_selector\x18\x01 \x03(\v2a.dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x12.\n" +
+	"\x13priority_class_name\x18\x03 \x01(\tR\x11priorityClassName\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xa1\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetessignoz.v1B\tSpecProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessignoz/v1;kubernetessignozv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetessignoz.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetessignoz\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetessignoz\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetessignoz::V1b\x06proto3"
 
 var (
@@ -1035,61 +1644,60 @@ func file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDesc
 	return file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_goTypes = []any{
-	(*KubernetesSignozSpec)(nil),                // 0: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec
-	(*KubernetesSignozContainer)(nil),           // 1: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
-	(*KubernetesSignozDatabaseConfig)(nil),      // 2: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig
-	(*KubernetesSignozExternalClickhouse)(nil),  // 3: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickhouse
-	(*KubernetesSignozManagedClickhouse)(nil),   // 4: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse
-	(*KubernetesSignozClickhouseContainer)(nil), // 5: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer
-	(*KubernetesSignozClickhouseCluster)(nil),   // 6: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseCluster
-	(*KubernetesSignozZookeeperConfig)(nil),     // 7: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperConfig
-	(*KubernetesSignozZookeeperContainer)(nil),  // 8: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer
-	(*KubernetesSignozIngress)(nil),             // 9: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress
-	(*KubernetesSignozIngressEndpoint)(nil),     // 10: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpoint
-	nil,                                         // 11: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.HelmValuesEntry
-	(*v1.StringValueOrRef)(nil),                 // 12: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),       // 13: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerImage)(nil),           // 14: dev.planton.provider.kubernetes.ContainerImage
-	(*kubernetes.KubernetesSensitiveValue)(nil), // 15: dev.planton.provider.kubernetes.KubernetesSensitiveValue
-	(*descriptorpb.FieldOptions)(nil),           // 16: google.protobuf.FieldOptions
+	(*KubernetesSignozSpec)(nil),                       // 0: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec
+	(*KubernetesSignozManagedClickHouse)(nil),          // 1: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickHouse
+	(*KubernetesSignozZookeeper)(nil),                  // 2: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeper
+	(*KubernetesSignozColdStorage)(nil),                // 3: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorage
+	(*KubernetesSignozColdStorageS3)(nil),              // 4: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorageS3
+	(*KubernetesSignozColdStorageGcs)(nil),             // 5: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorageGcs
+	(*KubernetesSignozExternalClickHouse)(nil),         // 6: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickHouse
+	(*KubernetesSignozExternalClickHousePassword)(nil), // 7: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickHousePassword
+	(*KubernetesSignozServer)(nil),                     // 8: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozServer
+	(*KubernetesSignozSmtp)(nil),                       // 9: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSmtp
+	(*KubernetesSignozSecretKeyRef)(nil),               // 10: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSecretKeyRef
+	(*KubernetesSignozOtelCollector)(nil),              // 11: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozOtelCollector
+	(*KubernetesSignozOtelCollectorAutoscaling)(nil),   // 12: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozOtelCollectorAutoscaling
+	(*KubernetesSignozScheduling)(nil),                 // 13: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozScheduling
+	nil,                                                // 14: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozServer.EnvEntry
+	nil,                                                // 15: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),                        // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),              // 17: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),              // 18: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_depIdxs = []int32{
-	12, // 0: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 1: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.signoz_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
-	1,  // 2: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.otel_collector_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
-	2,  // 3: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.database:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig
-	9,  // 4: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress
-	11, // 5: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.helm_values:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.HelmValuesEntry
-	13, // 6: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	14, // 7: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	3,  // 8: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig.external_database:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickhouse
-	4,  // 9: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozDatabaseConfig.managed_database:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse
-	15, // 10: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickhouse.password:type_name -> dev.planton.provider.kubernetes.KubernetesSensitiveValue
-	5,  // 11: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse.container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer
-	6,  // 12: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse.cluster:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseCluster
-	7,  // 13: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickhouse.zookeeper:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperConfig
-	13, // 14: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	14, // 15: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	8,  // 16: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperConfig.container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer
-	13, // 17: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	14, // 18: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	10, // 19: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress.ui:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpoint
-	10, // 20: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngress.otel_collector:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozIngressEndpoint
-	16, // 21: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_signoz_container:extendee -> google.protobuf.FieldOptions
-	16, // 22: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_otel_collector_container:extendee -> google.protobuf.FieldOptions
-	16, // 23: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_clickhouse_container:extendee -> google.protobuf.FieldOptions
-	16, // 24: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_zookeeper_container:extendee -> google.protobuf.FieldOptions
-	1,  // 25: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_signoz_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
-	1,  // 26: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_otel_collector_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozContainer
-	5,  // 27: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_clickhouse_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozClickhouseContainer
-	8,  // 28: dev.planton.provider.kubernetes.kubernetessignoz.v1.default_zookeeper_container:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeperContainer
-	29, // [29:29] is the sub-list for method output_type
-	29, // [29:29] is the sub-list for method input_type
-	25, // [25:29] is the sub-list for extension type_name
-	21, // [21:25] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	16, // 0: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.managed_clickhouse:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickHouse
+	6,  // 2: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.external_clickhouse:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickHouse
+	8,  // 3: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.server:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozServer
+	11, // 4: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.otel_collector:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozOtelCollector
+	13, // 5: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozScheduling
+	16, // 6: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickHouse.storage_class:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 7: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickHouse.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	2,  // 8: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickHouse.zookeeper:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeper
+	3,  // 9: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozManagedClickHouse.cold_storage:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorage
+	17, // 10: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozZookeeper.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	4,  // 11: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorage.s3:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorageS3
+	5,  // 12: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorage.gcs:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozColdStorageGcs
+	16, // 13: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickHouse.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 14: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickHouse.cluster_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 15: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickHouse.password_secret:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickHousePassword
+	16, // 16: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozExternalClickHousePassword.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 17: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozServer.storage_class:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 18: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozServer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	9,  // 19: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozServer.smtp:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSmtp
+	14, // 20: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozServer.env:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozServer.EnvEntry
+	10, // 21: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSmtp.password_secret:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSecretKeyRef
+	17, // 22: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozOtelCollector.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	12, // 23: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozOtelCollector.autoscaling:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozOtelCollectorAutoscaling
+	15, // 24: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozScheduling.NodeSelectorEntry
+	18, // 25: dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	26, // [26:26] is the sub-list for method output_type
+	26, // [26:26] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_init() }
@@ -1097,21 +1705,33 @@ func file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_init() 
 	if File_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[0].OneofWrappers = []any{
+		(*KubernetesSignozSpec_ManagedClickhouse)(nil),
+		(*KubernetesSignozSpec_ExternalClickhouse)(nil),
+	}
+	file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[3].OneofWrappers = []any{
+		(*KubernetesSignozColdStorage_S3)(nil),
+		(*KubernetesSignozColdStorage_Gcs)(nil),
+	}
+	file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[11].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
-			NumExtensions: 4,
+			NumMessages:   16,
+			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_depIdxs,
 		MessageInfos:      file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_msgTypes,
-		ExtensionInfos:    file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_extTypes,
 	}.Build()
 	File_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto = out.File
 	file_dev_planton_provider_kubernetes_kubernetessignoz_v1_spec_proto_goTypes = nil

@@ -1,0 +1,13 @@
+# Minimal offline-proof manifest: the component's defaults — the bundled
+# ClickHouse appliance (1x1, 20Gi), a single collector, SQLite server
+# state. Proves the minimal render path (the shape most likely to expose a
+# nil-deref on an absent optional block). Placeholder values; never
+# applied.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSignoz
+metadata:
+  name: signoz-hack-min
+spec:
+  namespace:
+    value: signoz-hack-min
+  createNamespace: true
