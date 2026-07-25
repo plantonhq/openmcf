@@ -204,7 +204,12 @@ spec:
       # provider derives length from the imported value; generation-shape
       # arguments (special/upper/lower/numeric and the min_* counts) are
       # config-only — they describe how a NEW value would be generated and
-      # cannot be recovered from the imported one.
+      # cannot be recovered from the imported one. Because every one of
+      # them FORCES REPLACEMENT, modules declaring a random_password must
+      # carry lifecycle ignore_changes on all generation-shape arguments
+      # (both engines) — the importer assumes the provider defaults
+      # (special=true, verified live), so without the guard the first
+      # plan after an import proposes rotating the live credential.
       config_only_attributes:
         - special
         - upper

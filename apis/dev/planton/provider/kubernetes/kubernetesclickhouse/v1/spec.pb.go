@@ -169,6 +169,14 @@ type KubernetesClickHouseSpec struct {
 	// target. Also a segment of every generated child name (see the
 	// naming contract above), which is why the operator's CRD caps it at
 	// 15 characters. Default: "main".
+	//
+	// Verified live: the in-server cluster definition propagates through
+	// mounted config and can LAG the installation reaching Completed —
+	// `ON CLUSTER` DDL initiated in that window silently executes on the
+	// subset of hosts the initiator can see (and still returns success).
+	// Before running distributed DDL right after a deploy or topology
+	// change, confirm `SELECT count() FROM system.clusters WHERE cluster
+	// = '<name>'` reports every declared host.
 	ClusterName *string `protobuf:"bytes,5,opt,name=cluster_name,json=clusterName,proto3,oneof" json:"cluster_name,omitempty"`
 	// *
 	// Number of shards. Each shard holds a disjoint slice of the data;
@@ -843,6 +851,14 @@ type KubernetesClickHouseUser struct {
 	// "GRANT SELECT ON analytics.*". The declarative alternative to
 	// running GRANTs by hand; requires `access_management` on an admin
 	// user only for runtime-managed grants, not for these.
+	//
+	// Two access behaviors verified live (ClickHouse 25.3): a user
+	// declared with NO grants receives ClickHouse's default,
+	// UNRESTRICTED access (config-file user semantics) — declare grants
+	// to constrain a user, never to widen one. And once grants are
+	// declared, distributed DDL (`... ON CLUSTER`) additionally requires
+	// "GRANT CLUSTER ON *.*" — CREATE on the target database alone is
+	// rejected with ACCESS_DENIED for ON CLUSTER statements.
 	Grants []string `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty"`
 	// *
 	// Allow this user to manage users and grants at runtime via SQL

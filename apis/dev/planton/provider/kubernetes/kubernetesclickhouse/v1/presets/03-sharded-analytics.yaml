@@ -38,8 +38,12 @@ spec:
     - name: etl
       password:
         value: change-me-etl-password
+      # ON CLUSTER DDL (how schema reaches every shard) requires the
+      # CLUSTER grant on top of the database-scoped rights — without it
+      # ClickHouse rejects distributed statements with ACCESS_DENIED.
       grants:
         - GRANT SELECT, INSERT, CREATE, ALTER ON warehouse.*
+        - GRANT CLUSTER ON *.*
   settings:
     max_concurrent_queries: "300"
     # Keep merges from starving queries on write-heavy shards.

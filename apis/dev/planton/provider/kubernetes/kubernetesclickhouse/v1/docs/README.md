@@ -114,6 +114,14 @@ Declared users carry the full upstream vocabulary: `profile` and
 config render, `access_management` for administrative users, and
 per-user path-keyed `settings`.
 
+Two grant behaviors to know (verified against a live cluster): a user
+declared **without** `grants` receives ClickHouse's unrestricted
+default access — declare grants to constrain every real user. And a
+grants-constrained user running distributed DDL (`... ON CLUSTER`,
+how schema reaches replicated and sharded topologies) additionally
+needs `GRANT CLUSTER ON *.*` — database-scoped `CREATE` alone is
+rejected with `ACCESS_DENIED`.
+
 ### Server configuration layers
 
 Typed fields cover what every deployment decides: topology, storage,
@@ -155,6 +163,25 @@ deleting them becomes a deliberate manual act.
   authenticates distributed queries between the cluster's own hosts.
   Default true, rendered only for multi-host topologies; only
   ClickHouse versions below 20.10 predate it.
+
+### Distributed DDL after deploys and topology changes
+
+The in-server cluster definition (`remote_servers`) reaches each host
+through mounted configuration and can lag the installation reaching
+its `Completed` state. `ON CLUSTER` DDL initiated in that window
+silently executes on only the hosts the initiating server can see —
+and still returns success (verified against a live cluster: the
+distributed-DDL queue task listed one of two replicas). Before running
+migrations or any distributed DDL immediately after a deploy or a
+shard/replica change, confirm the initiator's view has converged:
+
+```sql
+SELECT count() FROM system.clusters WHERE cluster = '<cluster_name>'
+```
+
+must report every declared host (`shards × replicas`). Note that a
+grants-constrained user needs `GRANT SELECT ON system.clusters` to
+run this check — declared grants fence the system tables too.
 
 ## Design Decisions
 

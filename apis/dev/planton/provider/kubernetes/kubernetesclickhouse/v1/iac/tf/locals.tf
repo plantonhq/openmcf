@@ -317,12 +317,23 @@ locals {
   # generateName pins the operator's own default ("clickhouse-{chi}") so
   # annotating the Service never renames it — the service_name output and
   # every client depend on that name. Type stays ClusterIP by design.
+  # The template's spec is copied VERBATIM by the operator — no port
+  # defaulting — so the standard interface ports must be declared
+  # explicitly: a ClusterIP Service with zero ports is rejected by the
+  # API server and the client Service simply never appears (verified
+  # live).
   service_templates = [
     {
       name         = "client"
       generateName = "clickhouse-{chi}"
       metadata     = { annotations = var.spec.service_annotations }
-      spec         = { type = "ClusterIP" }
+      spec = {
+        type = "ClusterIP"
+        ports = [
+          { name = "http", port = 8123 },
+          { name = "tcp", port = 9000 },
+        ]
+      }
     }
   ]
 
@@ -356,43 +367,48 @@ locals {
   }
 
   # ---- the ClickHouseKeeperInstallation CR -------------------------------------
-  # Same operator, sibling CRD. The pod template exists only when the spec
-  # sizes Keeper resources (the operator's defaults carry otherwise); the
-  # data volumeClaimTemplate always renders — coordination logs and
-  # snapshots must survive pod restarts or the ensemble loses state.
-  keeper_pod_template_enabled = local.keeper_resources != null
-
-  keeper_templates_body = merge(
+  # Same operator, sibling CRD. The pod template ALWAYS renders, and its
+  # container ALWAYS carries an explicit image: the Keeper container is
+  # declared explicitly so the image pins to the resource's own version
+  # line instead of the operator's fallback (`latest`) — Keeper images
+  # are published in lockstep with server releases and the protocol is
+  # compatible across them. An explicit container entry SUPPRESSES the
+  # operator's default-image injection entirely — verified live: a pod
+  # template carrying only `resources` produced a StatefulSet the API
+  # server rejected with `containers[0].image: Required value`, and the
+  # keeper never came up. The data volumeClaimTemplate always renders —
+  # coordination logs and snapshots must survive pod restarts or the
+  # ensemble loses state.
+  keeper_container = merge(
     {
-      volumeClaimTemplates = [
-        {
-          name = "data"
-          spec = merge(
-            {
-              accessModes = ["ReadWriteOnce"]
-              resources   = { requests = { storage = local.keeper_disk_size } }
-            },
-            local.keeper_storage_class != "" ? { storageClassName = local.keeper_storage_class } : {}
-          )
-        }
-      ]
+      name  = "clickhouse-keeper"
+      image = "clickhouse/clickhouse-keeper:${var.spec.version}"
     },
-    local.keeper_pod_template_enabled ? {
-      podTemplates = [
-        {
-          name = "server"
-          spec = {
-            containers = [
-              {
-                name      = "clickhouse-keeper"
-                resources = local.keeper_resources
-              }
-            ]
-          }
-        }
-      ]
-    } : {}
+    local.keeper_resources != null ? { resources = local.keeper_resources } : {}
   )
+
+  keeper_templates_body = {
+    volumeClaimTemplates = [
+      {
+        name = "data"
+        spec = merge(
+          {
+            accessModes = ["ReadWriteOnce"]
+            resources   = { requests = { storage = local.keeper_disk_size } }
+          },
+          local.keeper_storage_class != "" ? { storageClassName = local.keeper_storage_class } : {}
+        )
+      }
+    ]
+    podTemplates = [
+      {
+        name = "keeper"
+        spec = {
+          containers = [local.keeper_container]
+        }
+      }
+    ]
+  }
 
   keeper_manifest = {
     apiVersion = "clickhouse-keeper.altinity.com/v1"
@@ -414,10 +430,10 @@ locals {
         ]
       }
       defaults = {
-        templates = merge(
-          { dataVolumeClaimTemplate = "data" },
-          local.keeper_pod_template_enabled ? { podTemplate = "server" } : {}
-        )
+        templates = {
+          dataVolumeClaimTemplate = "data"
+          podTemplate             = "keeper"
+        }
       }
       templates = local.keeper_templates_body
     }

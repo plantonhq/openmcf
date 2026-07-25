@@ -4,8 +4,8 @@ metadata:
   name: kubernetesqdrant
 spec:
   tier: 2
-  # Forged as the catalog's vector database against chart 1.18.2 and
-  # offline-validated (spec tests, both engines' plan/preview proofs across
-  # full and minimal shapes); the live lanes have not run yet.
-  status: pending_proof
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 25

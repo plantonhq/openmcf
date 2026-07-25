@@ -176,6 +176,7 @@ type ImportValueDerivation struct {
 	//	*ImportValueDerivation_FromMetadataNameSuffix
 	//	*ImportValueDerivation_Literal
 	//	*ImportValueDerivation_FromAddressKeySegment
+	//	*ImportValueDerivation_FromClusterSecretKey
 	Source        isImportValueDerivation_Source `protobuf_oneof:"source"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -290,6 +291,15 @@ func (x *ImportValueDerivation) GetFromAddressKeySegment() int32 {
 	return 0
 }
 
+func (x *ImportValueDerivation) GetFromClusterSecretKey() *FromClusterSecretKey {
+	if x != nil {
+		if x, ok := x.Source.(*ImportValueDerivation_FromClusterSecretKey); ok {
+			return x.FromClusterSecretKey
+		}
+	}
+	return nil
+}
+
 type isImportValueDerivation_Source interface {
 	isImportValueDerivation_Source()
 }
@@ -362,6 +372,21 @@ type ImportValueDerivation_FromAddressKeySegment struct {
 	FromAddressKeySegment int32 `protobuf:"varint,8,opt,name=from_address_key_segment,json=fromAddressKeySegment,proto3,oneof"`
 }
 
+type ImportValueDerivation_FromClusterSecretKey struct {
+	// One key of a convention-named Kubernetes Secret in the deployed
+	// resource's own namespace -- for import IDs that ARE secret
+	// material the module materialized into a Secret: the canonical
+	// case is a random_password resource, whose import ID is the
+	// password value itself (the random provider keeps no cloud state).
+	// Only cluster-connected resolution contexts can serve this arm
+	// (the E2E round-trip reads through the cluster credentials it
+	// already holds; a disconnected context leaves the value unresolved
+	// and falls back to asking with where_to_find). The resolved value
+	// is SECRET MATERIAL: it exists to feed the import command and must
+	// never be logged or persisted by the resolving context.
+	FromClusterSecretKey *FromClusterSecretKey `protobuf:"bytes,9,opt,name=from_cluster_secret_key,json=fromClusterSecretKey,proto3,oneof"`
+}
+
 func (*ImportValueDerivation_FromMetadataName) isImportValueDerivation_Source() {}
 
 func (*ImportValueDerivation_FromSpecField) isImportValueDerivation_Source() {}
@@ -378,6 +403,67 @@ func (*ImportValueDerivation_Literal) isImportValueDerivation_Source() {}
 
 func (*ImportValueDerivation_FromAddressKeySegment) isImportValueDerivation_Source() {}
 
+func (*ImportValueDerivation_FromClusterSecretKey) isImportValueDerivation_Source() {}
+
+// FromClusterSecretKey locates one data key of a convention-named
+// Kubernetes Secret -- "<metadata.name><name_suffix>", the same naming
+// convention from_metadata_name_suffix serves -- in the deployed
+// resource's namespace (bound by the resolving context, which knows the
+// deployment it is importing).
+type FromClusterSecretKey struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Appended to metadata.name to form the Secret's name.
+	NameSuffix string `protobuf:"bytes,1,opt,name=name_suffix,json=nameSuffix,proto3" json:"name_suffix,omitempty"`
+	// The Secret .data key holding the value.
+	Key           string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FromClusterSecretKey) Reset() {
+	*x = FromClusterSecretKey{}
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FromClusterSecretKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FromClusterSecretKey) ProtoMessage() {}
+
+func (x *FromClusterSecretKey) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FromClusterSecretKey.ProtoReflect.Descriptor instead.
+func (*FromClusterSecretKey) Descriptor() ([]byte, []int) {
+	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *FromClusterSecretKey) GetNameSuffix() string {
+	if x != nil {
+		return x.NameSuffix
+	}
+	return ""
+}
+
+func (x *FromClusterSecretKey) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
 var File_dev_planton_iac_componentimportmap_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
@@ -389,7 +475,7 @@ const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12^\n" +
 	"\vderivations\x18\x02 \x03(\v2<.dev.planton.iac.componentimportmap.v1.ImportValueDerivationR\vderivations\x12\"\n" +
 	"\rwhere_to_find\x18\x03 \x01(\tR\vwhereToFind\x12,\n" +
-	"\x12tofu_resource_name\x18\x04 \x01(\tR\x10tofuResourceName\"\x8f\x03\n" +
+	"\x12tofu_resource_name\x18\x04 \x01(\tR\x10tofuResourceName\"\x85\x04\n" +
 	"\x15ImportValueDerivation\x12.\n" +
 	"\x12from_metadata_name\x18\x01 \x01(\bH\x00R\x10fromMetadataName\x12(\n" +
 	"\x0ffrom_spec_field\x18\x02 \x01(\tH\x00R\rfromSpecField\x12,\n" +
@@ -398,8 +484,13 @@ const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\x10from_address_key\x18\x05 \x01(\bH\x00R\x0efromAddressKey\x12;\n" +
 	"\x19from_metadata_name_suffix\x18\x06 \x01(\tH\x00R\x16fromMetadataNameSuffix\x12\x1a\n" +
 	"\aliteral\x18\a \x01(\tH\x00R\aliteral\x129\n" +
-	"\x18from_address_key_segment\x18\b \x01(\x05H\x00R\x15fromAddressKeySegmentB\b\n" +
-	"\x06sourceB\xcd\x02\n" +
+	"\x18from_address_key_segment\x18\b \x01(\x05H\x00R\x15fromAddressKeySegment\x12t\n" +
+	"\x17from_cluster_secret_key\x18\t \x01(\v2;.dev.planton.iac.componentimportmap.v1.FromClusterSecretKeyH\x00R\x14fromClusterSecretKeyB\b\n" +
+	"\x06source\"I\n" +
+	"\x14FromClusterSecretKey\x12\x1f\n" +
+	"\vname_suffix\x18\x01 \x01(\tR\n" +
+	"nameSuffix\x12\x10\n" +
+	"\x03key\x18\x02 \x01(\tR\x03keyB\xcd\x02\n" +
 	")com.dev.planton.iac.componentimportmap.v1B\tSpecProtoP\x01Z\\github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1;componentimportmapv1\xa2\x02\x04DPIC\xaa\x02%Dev.Planton.Iac.Componentimportmap.V1\xca\x02%Dev\\Planton\\Iac\\Componentimportmap\\V1\xe2\x021Dev\\Planton\\Iac\\Componentimportmap\\V1\\GPBMetadata\xea\x02)Dev::Planton::Iac::Componentimportmap::V1b\x06proto3"
 
 var (
@@ -414,20 +505,22 @@ func file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP() []byte 
 	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_dev_planton_iac_componentimportmap_v1_spec_proto_goTypes = []any{
 	(*ComponentImportMapSpec)(nil), // 0: dev.planton.iac.componentimportmap.v1.ComponentImportMapSpec
 	(*ImportValue)(nil),            // 1: dev.planton.iac.componentimportmap.v1.ImportValue
 	(*ImportValueDerivation)(nil),  // 2: dev.planton.iac.componentimportmap.v1.ImportValueDerivation
+	(*FromClusterSecretKey)(nil),   // 3: dev.planton.iac.componentimportmap.v1.FromClusterSecretKey
 }
 var file_dev_planton_iac_componentimportmap_v1_spec_proto_depIdxs = []int32{
 	1, // 0: dev.planton.iac.componentimportmap.v1.ComponentImportMapSpec.values:type_name -> dev.planton.iac.componentimportmap.v1.ImportValue
 	2, // 1: dev.planton.iac.componentimportmap.v1.ImportValue.derivations:type_name -> dev.planton.iac.componentimportmap.v1.ImportValueDerivation
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: dev.planton.iac.componentimportmap.v1.ImportValueDerivation.from_cluster_secret_key:type_name -> dev.planton.iac.componentimportmap.v1.FromClusterSecretKey
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_iac_componentimportmap_v1_spec_proto_init() }
@@ -444,6 +537,7 @@ func file_dev_planton_iac_componentimportmap_v1_spec_proto_init() {
 		(*ImportValueDerivation_FromMetadataNameSuffix)(nil),
 		(*ImportValueDerivation_Literal)(nil),
 		(*ImportValueDerivation_FromAddressKeySegment)(nil),
+		(*ImportValueDerivation_FromClusterSecretKey)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -451,7 +545,7 @@ func file_dev_planton_iac_componentimportmap_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc), len(file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

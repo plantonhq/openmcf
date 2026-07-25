@@ -43,6 +43,17 @@ cluster-scoped documents). Per-document literals cannot serve there: the
 bundle spans many apiVersion/kind pairs. Single-GVK typed-CR modules keep
 their literal declarations — the segment arm exists for the bundle class.
 
+An import ID that IS secret material — the canonical case is a
+`random_password` resource, whose provider import ID is the password value
+itself — derives through `from_cluster_secret_key`: the module materialized
+the value into a convention-named Kubernetes Secret
+(`<metadata.name><name_suffix>`, the `from_metadata_name_suffix` naming
+convention), and a cluster-connected resolving context reads the declared
+key from it — exactly the recipe the row's `where_to_find` gives a human.
+Contexts without cluster credentials leave the value unresolved and fall
+back to asking. The resolved value feeds the import operation and is never
+logged or persisted.
+
 Both are proto-backed KRM documents (`iac.planton.dev/v1`, protos under
 `apis/dev/planton/iac/`), parsed through `pkg/protobufyaml` like the E2E
 profiles.

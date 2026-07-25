@@ -1205,6 +1205,95 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesAltinityOperator: the served-chart naming contract —
+			// release, Deployment (= chart fullname), the chart-managed
+			// operator-credentials Secret, and the metrics-exporter endpoint.
+			name: "KubernetesAltinityOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesAltinityOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":               "clickhouse-operator-system",
+				"release_name":            "altinity-op",
+				"deployment_name":         "altinity-op",
+				"credentials_secret_name": "altinity-op",
+				"metrics_endpoint":        "http://altinity-op-metrics.clickhouse-operator-system.svc.cluster.local:8888/metrics",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "deployment_name",
+				"credentials_secret_name", "metrics_endpoint",
+			},
+		},
+		{
+			// KubernetesClickHouse: the operator naming contract — CHI and
+			// cluster identity, the cluster-wide client Service with both
+			// protocol endpoints, the module-managed auth Secret, and the
+			// managed Keeper handles.
+			name: "KubernetesClickHouse",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesClickHouse,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "analytics",
+				"chi_name":             "events-ch",
+				"cluster_name":         "analytics",
+				"service_name":         "clickhouse-events-ch",
+				"tcp_endpoint":         "clickhouse-events-ch.analytics.svc.cluster.local:9000",
+				"http_endpoint":        "http://clickhouse-events-ch.analytics.svc.cluster.local:8123",
+				"auth_secret_name":     "events-ch-clickhouse-auth",
+				"keeper_name":          "events-ch-keeper",
+				"keeper_service_name":  "keeper-events-ch-keeper",
+				"port_forward_command": "kubectl port-forward svc/clickhouse-events-ch -n analytics 8123:8123",
+			},
+			mustPopulate: []string{
+				"namespace", "chi_name", "cluster_name", "service_name",
+				"tcp_endpoint", "http_endpoint", "auth_secret_name",
+				"keeper_name", "keeper_service_name", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesSeaweedFs: the chart naming contract — release, the
+			// S3/filer/master Service handles, both credential Secrets
+			// (chart-owned S3, module-generated admin), and the endpoints.
+			name: "KubernetesSeaweedFs",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSeaweedFs,
+			rawOutputs: map[string]interface{}{
+				"namespace":                  "object-store",
+				"release_name":               "artifacts",
+				"s3_endpoint":                "http://artifacts-s3.object-store.svc.cluster.local:8333",
+				"s3_credentials_secret_name": "artifacts-s3-secret",
+				"filer_service_name":         "artifacts-filer",
+				"master_service_name":        "artifacts-master",
+				"admin_endpoint":             "http://artifacts-admin.object-store.svc.cluster.local:23646",
+				"admin_auth_secret_name":     "artifacts-admin-auth",
+				"port_forward_command":       "kubectl port-forward svc/artifacts-s3 -n object-store 8333:8333",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "s3_endpoint",
+				"s3_credentials_secret_name", "filer_service_name",
+				"master_service_name", "admin_endpoint",
+				"admin_auth_secret_name", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesQdrant: the chart naming contract — release, the
+			// main Service with REST and gRPC endpoints, and the chart-owned
+			// API-key Secret handles (read-write + read-only).
+			name: "KubernetesQdrant",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesQdrant,
+			rawOutputs: map[string]interface{}{
+				"namespace":                     "vector-search",
+				"release_name":                  "embeddings",
+				"service_name":                  "embeddings",
+				"http_endpoint":                 "http://embeddings.vector-search.svc.cluster.local:6333",
+				"grpc_endpoint":                 "embeddings.vector-search.svc.cluster.local:6334",
+				"api_key_secret_name":           "embeddings-apikey",
+				"read_only_api_key_secret_name": "embeddings-apikey",
+				"port_forward_command":          "kubectl port-forward svc/embeddings -n vector-search 6333:6333",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_name", "http_endpoint",
+				"grpc_endpoint", "api_key_secret_name",
+				"read_only_api_key_secret_name", "port_forward_command",
+			},
+		},
+		{
 			// KubernetesRabbitMqOperator: the release manifest's fixed
 			// handles (namespace, Deployment, metrics endpoint, the CRD the
 			// manifest installs and deletes with the resource).

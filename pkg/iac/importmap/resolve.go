@@ -37,6 +37,15 @@ type ResolveContext struct {
 	// because those are properties of the connected account, not of any one
 	// resource -- but never the per-resource parts.
 	ArnParts map[string]string
+	// Reads one data key of a named Kubernetes Secret in the deployed
+	// resource's namespace (from_cluster_secret_key). Bound ONLY by
+	// cluster-connected contexts -- the E2E round-trip binds it through
+	// the cluster credentials it already holds; disconnected contexts
+	// leave it nil, so the arm resolves empty and the value falls back
+	// to being asked with where_to_find. The returned value is secret
+	// material: callers use it for the import operation and never log
+	// or persist it. May be nil.
+	ReadClusterSecret func(secretName, key string) (string, error)
 }
 
 // ResolveValues resolves the named placeholders through the component map's
@@ -87,6 +96,23 @@ func ResolveValues(
 	return resolved, unresolved
 }
 
+// SecretDerivedNames returns the placeholder names whose declared
+// derivations include a cluster-Secret read — values that are secret
+// material when resolved. Callers use this to redact import IDs from
+// logs and command traces (the values exist to feed the import
+// operation, never to be displayed).
+func SecretDerivedNames(m *componentv1.ComponentImportMap) map[string]bool {
+	names := make(map[string]bool)
+	for _, v := range m.GetSpec().GetValues() {
+		for _, d := range v.GetDerivations() {
+			if _, ok := d.GetSource().(*componentv1.ImportValueDerivation_FromClusterSecretKey); ok {
+				names[v.GetName()] = true
+			}
+		}
+	}
+	return names
+}
+
 func resolveDerivation(d *componentv1.ImportValueDerivation, rctx ResolveContext) string {
 	switch source := d.GetSource().(type) {
 	case *componentv1.ImportValueDerivation_FromMetadataName:
@@ -109,6 +135,24 @@ func resolveDerivation(d *componentv1.ImportValueDerivation, rctx ResolveContext
 		}
 	case *componentv1.ImportValueDerivation_Literal:
 		return source.Literal
+	case *componentv1.ImportValueDerivation_FromClusterSecretKey:
+		// Only cluster-connected contexts bind the reader; anywhere else
+		// the arm resolves empty and the caller's ask-the-user fallback
+		// (where_to_find) carries the recipe. A read failure is treated
+		// the same as absence -- the Secret may legitimately not exist
+		// for variants that reference user-provided credentials.
+		if rctx.ReadClusterSecret == nil || rctx.MetadataName == "" {
+			return ""
+		}
+		ref := source.FromClusterSecretKey
+		if ref.GetKey() == "" {
+			return ""
+		}
+		value, err := rctx.ReadClusterSecret(rctx.MetadataName+ref.GetNameSuffix(), ref.GetKey())
+		if err != nil {
+			return ""
+		}
+		return value
 	case *componentv1.ImportValueDerivation_FromAddressKeySegment:
 		// The delimiter is fixed to "//" — the kubectl composed-ID form
 		// this arm exists for (see the proto comment). An out-of-range

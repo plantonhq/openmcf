@@ -122,7 +122,9 @@ every real client.
 - **`spec.users`**: named users with Secret-delivered passwords
   (literal or a reference to another resource's output), optional
   `profile`, `quota`, `networks`, SQL `grants`, `access_management`,
-  and per-user `settings`
+  and per-user `settings`. A user without `grants` gets ClickHouse's
+  unrestricted default access; `ON CLUSTER` DDL additionally requires
+  `GRANT CLUSTER ON *.*` (both verified live)
 - **`spec.profiles` / `spec.quotas`**: named settings bundles users
   reference by name (path-keyed, e.g. `readonly: "1"` or
   `interval/duration: "3600"`)

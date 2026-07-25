@@ -4,8 +4,8 @@ metadata:
   name: kubernetesclickhouse
 spec:
   tier: 3
-  # Rebuilt to full configuration depth against operator 0.27.2 and
-  # offline-validated (spec tests, both engines' plan/preview proofs);
-  # the live lanes have not run against the rebuilt spec yet.
-  status: pending_proof
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 35

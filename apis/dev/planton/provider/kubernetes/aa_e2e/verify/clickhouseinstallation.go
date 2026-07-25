@@ -141,6 +141,17 @@ func (v *ClickHouseInstallationVerifier) proveSqlRoundTrip(ctx context.Context, 
 	if v.Durability {
 		onCluster = fmt.Sprintf(" ON CLUSTER '%s'", v.ClusterName)
 		engine = "ReplicatedMergeTree"
+		// remote_servers propagation LAGS the CHI reaching Completed:
+		// the operator publishes the cluster definition through mounted
+		// config, and ON CLUSTER DDL initiated before the initiator
+		// sees the full definition silently executes on the visible
+		// subset only (verified live: the DDL-queue task listed one of
+		// two replicas and returned success). The tunnel binds one
+		// backing pod, so this gate checks the view of exactly the
+		// host that will initiate the DDL below.
+		if err := v.awaitClusterView(ctx, client, base, 4*time.Minute); err != nil {
+			return errors.Wrap(err, "the initiator's cluster view never converged to every declared host")
+		}
 	}
 	statements := []string{
 		fmt.Sprintf("CREATE DATABASE IF NOT EXISTS e2e%s", onCluster),
@@ -220,6 +231,44 @@ func (v *ClickHouseInstallationVerifier) query(ctx context.Context, client *http
 			return nil
 		}
 		lastErr = errors.Errorf("HTTP %d: %s", resp.StatusCode, firstLines(string(body), 2))
+		time.Sleep(5 * time.Second)
+	}
+	return lastErr
+}
+
+// awaitClusterView retries until the connected host's own view of the
+// declared cluster (system.clusters) carries every declared host —
+// the precondition for distributed DDL to reach all of them.
+func (v *ClickHouseInstallationVerifier) awaitClusterView(ctx context.Context, client *http.Client, base string, budget time.Duration) error {
+	sql := fmt.Sprintf("SELECT count() FROM system.clusters WHERE cluster = '%s'", v.ClusterName)
+	deadline := time.Now().Add(budget)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+			base+"/?query="+url.QueryEscape(sql), nil)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("X-ClickHouse-User", v.Username)
+		req.Header.Set("X-ClickHouse-Key", v.Password)
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			if got := strings.TrimSpace(string(body)); got == fmt.Sprintf("%d", v.TotalHosts) {
+				fmt.Printf("  [verify] cluster view converged: %s/%d hosts visible to the DDL initiator\n", got, v.TotalHosts)
+				return nil
+			} else {
+				lastErr = errors.Errorf("cluster %q shows %s of %d declared hosts", v.ClusterName, got, v.TotalHosts)
+			}
+		} else {
+			lastErr = errors.Errorf("HTTP %d: %s", resp.StatusCode, firstLines(string(body), 2))
+		}
 		time.Sleep(5 * time.Second)
 	}
 	return lastErr

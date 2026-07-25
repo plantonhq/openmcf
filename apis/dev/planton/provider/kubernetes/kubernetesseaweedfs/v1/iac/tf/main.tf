@@ -28,6 +28,17 @@ resource "random_password" "admin" {
 
   length  = 24
   special = false
+
+  # The generation-shape arguments are ignored after creation so an
+  # IMPORTED credential never silently regenerates: random_password's
+  # import carries only the VALUE, the importer assumes the provider's
+  # own generation defaults (special=true — verified live), and every
+  # argument is ForceNew — without this, the first plan after an import
+  # proposes replacing (rotating) the live credential. Rotation stays
+  # an explicit verb (taint / destroy-recreate), never plan fallout.
+  lifecycle {
+    ignore_changes = [length, special, upper, lower, numeric, min_lower, min_numeric, min_special, min_upper, override_special]
+  }
 }
 
 # The console credentials Secret (keys user/password, user "admin"). The

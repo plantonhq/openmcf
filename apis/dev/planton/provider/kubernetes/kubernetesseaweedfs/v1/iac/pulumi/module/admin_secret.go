@@ -26,11 +26,22 @@ func adminAuthSecret(ctx *pulumi.Context,
 		return nil, nil
 	}
 
+	// The generation-shape arguments are ignored after creation so an
+	// IMPORTED credential never silently regenerates: random_password's
+	// import carries only the VALUE, the importer assumes the provider's
+	// own generation defaults (special=true — verified live), and every
+	// argument forces replacement — without this, the first update after
+	// an import proposes replacing (rotating) the live credential.
+	// Rotation stays an explicit verb, never plan fallout.
 	createdPassword, err := random.NewRandomPassword(ctx, "admin-auth-password",
 		&random.RandomPasswordArgs{
 			Length:  pulumi.Int(24),
 			Special: pulumi.Bool(false),
-		})
+		},
+		pulumi.IgnoreChanges([]string{
+			"length", "special", "upper", "lower", "numeric",
+			"minLower", "minNumeric", "minSpecial", "minUpper", "overrideSpecial",
+		}))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate admin console password")
 	}

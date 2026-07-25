@@ -32,7 +32,12 @@ func keeper(ctx *pulumi.Context, locals *Locals,
 	// The Keeper container is declared explicitly so the image pins to
 	// the resource's own version line instead of the operator's fallback
 	// (`latest`) — Keeper images are published in lockstep with server
-	// releases and the protocol is compatible across them.
+	// releases and the protocol is compatible across them. The image
+	// must NEVER be dropped from this container: an explicit container
+	// entry suppresses the operator's default-image injection entirely —
+	// verified live: a pod template carrying only resources produced a
+	// StatefulSet the API server rejected with `containers[0].image:
+	// Required value`, and the keeper never came up.
 	container := pulumi.Map{
 		"name":  pulumi.String("clickhouse-keeper"),
 		"image": pulumi.String(vars.KeeperImageRepo + ":" + locals.Spec.GetVersion()),

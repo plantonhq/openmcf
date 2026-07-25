@@ -39,6 +39,15 @@ spec:
           cpu: 500m
           memory: 512Mi
   users:
+    # The verifier authenticates as the FIRST declared user — it must
+    # be one that can run the SQL round-trip's DDL. The readonly
+    # analyst below exercises the profile/quota binding and would be
+    # (correctly) rejected for writes.
+    - name: writer
+      password:
+        value: e2e-writer-pass
+      grants:
+        - GRANT SELECT, INSERT, CREATE ON e2e.*
     - name: analyst
       password:
         value: e2e-analyst-pass
@@ -46,11 +55,6 @@ spec:
       quota: default
       networks:
         - "0.0.0.0/0"
-    - name: writer
-      password:
-        value: e2e-writer-pass
-      grants:
-        - GRANT SELECT, INSERT, CREATE ON e2e.*
   profiles:
     - name: readonly
       settings:

@@ -4,6 +4,7 @@
 package importmap
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -325,5 +326,68 @@ func TestResolveValues_FromAddressKeySegment(t *testing.T) {
 	_, unresolved = ResolveValues(m, names, ResolveContext{})
 	if len(unresolved) != len(names) {
 		t.Errorf("empty key: unresolved = %v; want all %d names", unresolved, len(names))
+	}
+}
+
+func TestResolveValues_FromClusterSecretKey(t *testing.T) {
+	// An import ID that IS secret material (a random_password's value): the
+	// arm reads the module-materialized Secret through the context's
+	// cluster reader. Contexts without a reader (a disconnected wizard)
+	// leave the value unresolved so the ask-the-user fallback carries it.
+	m := &componentv1.ComponentImportMap{
+		Spec: &componentv1.ComponentImportMapSpec{
+			Values: []*componentv1.ImportValue{
+				{
+					Name: "admin_password_value",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromClusterSecretKey{
+							FromClusterSecretKey: &componentv1.FromClusterSecretKey{
+								NameSuffix: "-admin-auth",
+								Key:        "password",
+							},
+						}},
+					},
+				},
+			},
+		},
+	}
+	names := []string{"admin_password_value"}
+
+	// A cluster-connected context: the reader is consulted with the
+	// convention-composed Secret name and the declared key.
+	var gotSecret, gotKey string
+	resolved, unresolved := ResolveValues(m, names, ResolveContext{
+		MetadataName: "artifacts",
+		ReadClusterSecret: func(secretName, key string) (string, error) {
+			gotSecret, gotKey = secretName, key
+			return "s3cr3t-value", nil
+		},
+	})
+	if len(unresolved) != 0 {
+		t.Errorf("connected: unresolved = %v; want none", unresolved)
+	}
+	if resolved["admin_password_value"] != "s3cr3t-value" {
+		t.Errorf("connected: resolved = %q; want the reader's value", resolved["admin_password_value"])
+	}
+	if gotSecret != "artifacts-admin-auth" || gotKey != "password" {
+		t.Errorf("connected: reader called with (%q, %q); want (artifacts-admin-auth, password)", gotSecret, gotKey)
+	}
+
+	// No reader bound (a disconnected context): unresolved, never an error.
+	_, unresolved = ResolveValues(m, names, ResolveContext{MetadataName: "artifacts"})
+	if len(unresolved) != 1 {
+		t.Errorf("disconnected: unresolved = %v; want the one name", unresolved)
+	}
+
+	// A failing read resolves empty -- the Secret may legitimately not
+	// exist for variants referencing user-provided credentials.
+	_, unresolved = ResolveValues(m, names, ResolveContext{
+		MetadataName: "artifacts",
+		ReadClusterSecret: func(string, string) (string, error) {
+			return "", errors.New("not found")
+		},
+	})
+	if len(unresolved) != 1 {
+		t.Errorf("read failure: unresolved = %v; want the one name", unresolved)
 	}
 }
