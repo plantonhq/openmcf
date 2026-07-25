@@ -720,6 +720,31 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Persistence:      strings.Contains(manifestPath, "behavioral-persistence"),
 		}, nil
 
+	// A Grafana Loki log store: the monolithic StatefulSet ready, the
+	// gateway Service present, and a LIVE push→LogQL round-trip (a line
+	// pushed through the gateway and returned by a LogQL query). The
+	// behavioral-durability scenario (recognized by name) proves logs
+	// survive a pod loss through the PVC.
+	case "kubernetesloki":
+		spec := manifestSpecMap(manifestPath)
+		return &LokiVerifier{
+			Namespace:      info.Namespace,
+			Name:           info.Name,
+			GatewayEnabled: lokiGatewayEnabled(spec),
+			Durability:     strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// A Grafana Tempo trace store: the StatefulSet ready, the Service
+	// present, and a LIVE OTLP-push→trace-by-ID round-trip. The
+	// behavioral-persistence scenario (recognized by name) proves traces
+	// survive a pod loss through the PVC.
+	case "kubernetestempo":
+		return &TempoVerifier{
+			Namespace:   info.Namespace,
+			Name:        info.Name,
+			Persistence: strings.Contains(manifestPath, "behavioral-persistence"),
+		}, nil
+
 	// A Qdrant vector database: replicas ready, the main Service
 	// present, and a live vector round-trip (collection create → upsert
 	// → similarity search asserting the nearest neighbour), carrying the

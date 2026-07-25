@@ -1,0 +1,12 @@
+# The component defaults on their own: a single-replica monolithic Loki on
+# filesystem storage with the nginx gateway front door. The verifier proves
+# the full pipeline live — push a log line through the gateway's OTLP/push
+# route, then query it back through LogQL.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesLoki
+metadata:
+  name: e2e-loki-min
+spec:
+  namespace:
+    value: e2e-loki-min
+  create_namespace: true

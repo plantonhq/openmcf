@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesotelcollector.v1;
+
+//otel-collector-kubernetes stack outputs
+message KubernetesOtelCollectorStackOutputs {
+  //namespace the collector runs in.
+  string namespace = 1;
+
+  //name of the OpenTelemetryCollector custom resource
+  //(= metadata.name). The operator derives every child name from it.
+  string collector_name = 2;
+
+  //name of the collector Service (`<name>-collector`) the operator
+  //creates, carrying the ports derived from the declared receivers.
+  //Empty in sidecar mode (no standalone workload exists).
+  string service = 3;
+
+  //in-cluster OTLP gRPC ingest endpoint (`<service>:4317`) —
+  //where applications send telemetry. Valid when the config declares
+  //the standard `otlp` receiver (every preset does). Empty in sidecar
+  //mode.
+  string otlp_grpc_endpoint = 4;
+
+  //in-cluster OTLP HTTP ingest endpoint (`http://<service>:4318`).
+  //Valid when the config declares the standard `otlp` receiver. Empty
+  //in sidecar mode.
+  string otlp_http_endpoint = 5;
+
+  //name of the headless Service (`<name>-collector-headless`) —
+  //per-pod addressing for load-balancing-aware gRPC clients. Empty in
+  //sidecar mode.
+  string headless_service = 6;
+
+  //name of the monitoring Service (`<name>-collector-monitoring`,
+  //port 8888) — the collector's own metrics. Empty in sidecar mode.
+  string monitoring_service = 7;
+}

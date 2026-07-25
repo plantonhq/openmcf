@@ -92,3 +92,17 @@ func grafanaDatasourceNames(spec map[string]interface{}) []string {
 	}
 	return names
 }
+
+// lokiGatewayEnabled reports whether the nginx gateway deploys: the proto
+// optional-bool defaults TRUE, so only an explicit false disables it. The
+// exported endpoints and the push→query proof route through the gateway.
+func lokiGatewayEnabled(spec map[string]interface{}) bool {
+	gw, _ := spec["gateway"].(map[string]interface{})
+	if gw == nil {
+		return true
+	}
+	if enabled, ok := gw["enabled"].(bool); ok {
+		return enabled
+	}
+	return true
+}

@@ -1,0 +1,258 @@
+package verify
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"net/http"
+	"os/exec"
+	"strings"
+	"time"
+
+	"github.com/pkg/errors"
+)
+
+// LokiVerifier checks a Grafana Loki install to the point a customer could
+// ship logs to it and read them back: the Loki workload ready, the gateway
+// Service present, and a LIVE push→query round-trip — a log line pushed
+// through the gateway's Loki push API and then returned by a LogQL query
+// (a log store that cannot store and return a line is not a log store).
+//
+// The behavioral-durability scenario (recognized by name) additionally
+// DELETES the Loki pod after the push, waits for a REPLACEMENT pod (a new
+// UID — status flapping Ready on the dying pod is not recovery), and
+// re-queries the line: logs surviving pod loss through the PersistentVolume
+// is the proof.
+type LokiVerifier struct {
+	Namespace string
+	Name      string
+	// GatewayEnabled marks whether the nginx gateway front door is
+	// deployed (the exported endpoints and this proof route through it).
+	GatewayEnabled bool
+	// Durability switches on the log-survives-pod-loss proof.
+	Durability bool
+}
+
+func (v *LokiVerifier) VerifyExists(ctx context.Context, kubeconfig string) error {
+	fmt.Printf("  [verify] loki %q in namespace %q\n", v.Name, v.Namespace)
+
+	// Monolithic mode runs a single StatefulSet named after the release
+	// (fullnameOverride). Wait for it before touching the gateway.
+	if err := waitStatefulSetReady(ctx, kubeconfig, v.Name, v.Namespace, 10*time.Minute); err != nil {
+		return errors.Wrap(err, "the loki statefulset never became ready")
+	}
+	if !v.GatewayEnabled {
+		return errors.New("the log round-trip requires the gateway (disabled in this scenario) — enable it or address the internal services directly")
+	}
+	gatewaySvc := v.Name + "-gateway"
+	if err := KubectlResourceExists(ctx, kubeconfig, "service", gatewaySvc, v.Namespace); err != nil {
+		return errors.Wrap(err, "loki gateway service not found")
+	}
+	return v.proveRoundTrip(ctx, kubeconfig, gatewaySvc)
+}
+
+func (v *LokiVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) error {
+	return KubectlResourceAbsent(ctx, kubeconfig, "statefulset", v.Name, v.Namespace)
+}
+
+// proveRoundTrip pushes a uniquely-labelled log line through the gateway's
+// Loki push API and queries it back through LogQL. On the durability lane
+// it kills the Loki pod between push and query.
+func (v *LokiVerifier) proveRoundTrip(ctx context.Context, kubeconfig, gatewaySvc string) error {
+	const localPort = "13100"
+
+	pfCancel, err := startPortForward(ctx, kubeconfig, "svc/"+gatewaySvc, v.Namespace, localPort+":80")
+	if err != nil {
+		return errors.Wrap(err, "starting port-forward to the loki gateway")
+	}
+	defer pfCancel()
+
+	base := "http://127.0.0.1:" + localPort
+	marker := fmt.Sprintf("e2e-loki-proof-%d", time.Now().UnixNano())
+	nowNs := fmt.Sprintf("%d", time.Now().UnixNano())
+
+	pushBody := fmt.Sprintf(
+		`{"streams":[{"stream":{"job":"e2e-proof"},"values":[["%s","%s"]]}]}`,
+		nowNs, marker)
+
+	// Loki's distributor can 5xx briefly during warm-up — the retry loop
+	// covers the window; a 204 is success.
+	if _, err := httpRoundTrip(ctx, http.MethodPost, base+"/loki/api/v1/push",
+		"application/json", pushBody, 5*time.Minute); err != nil {
+		return errors.Wrap(err, "pushing the proof log line to loki")
+	}
+	fmt.Printf("  [verify] PUSH: proof log line %q accepted by the gateway\n", marker)
+
+	if v.Durability {
+		if err := deletePodAwaitReplacement(ctx, kubeconfig, v.Namespace,
+			"app.kubernetes.io/instance="+v.Name, 8*time.Minute); err != nil {
+			return errors.Wrap(err, "loki pod did not recover after deletion")
+		}
+		// The old tunnel died with the gateway pod's peer; re-establish.
+		pfCancel()
+		pfCancel2, err := startPortForward(ctx, kubeconfig, "svc/"+gatewaySvc, v.Namespace, localPort+":80")
+		if err != nil {
+			return errors.Wrap(err, "re-establishing the port-forward after the pod kill")
+		}
+		defer pfCancel2()
+	}
+
+	// LogQL query over the last hour; the marker must come back.
+	query := `{job="e2e-proof"}`
+	start := fmt.Sprintf("%d", time.Now().Add(-1*time.Hour).UnixNano())
+	end := fmt.Sprintf("%d", time.Now().Add(1*time.Minute).UnixNano())
+	deadline := time.Now().Add(6 * time.Minute)
+	var lastBody string
+	for time.Now().Before(deadline) {
+		url := fmt.Sprintf("%s/loki/api/v1/query_range?query=%s&start=%s&end=%s&limit=100",
+			base, urlQueryEscape(query), start, end)
+		body, err := httpRoundTrip(ctx, http.MethodGet, url, "", "", 1*time.Minute)
+		if err == nil && strings.Contains(body, marker) {
+			verb := "QUERY"
+			if v.Durability {
+				verb = "DURABILITY"
+			}
+			fmt.Printf("  [verify] %s: proof log line returned by LogQL%s\n", verb,
+				map[bool]string{true: " AFTER pod replacement — logs survived on the PVC", false: ""}[v.Durability])
+			return nil
+		}
+		lastBody = body
+		time.Sleep(10 * time.Second)
+	}
+	return errors.Errorf("the proof log line was never returned by LogQL: %s", firstLines(lastBody, 3))
+}
+
+// httpRoundTrip performs one JSON request retrying across a warm-up window;
+// non-2xx is an error, and the body is read inside the loop so a response
+// dying mid-stream retries rather than escaping.
+func httpRoundTrip(ctx context.Context, method, url, contentType, body string, budget time.Duration) (string, error) {
+	deadline := time.Now().Add(budget)
+	var lastOut string
+	var lastErr error
+	for time.Now().Before(deadline) {
+		var reader *bytes.Reader
+		if body != "" {
+			reader = bytes.NewReader([]byte(body))
+		} else {
+			reader = bytes.NewReader(nil)
+		}
+		req, err := http.NewRequestWithContext(ctx, method, url, reader)
+		if err != nil {
+			return "", err
+		}
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			buf := new(bytes.Buffer)
+			_, readErr := buf.ReadFrom(resp.Body)
+			resp.Body.Close()
+			lastOut = buf.String()
+			if readErr == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				return lastOut, nil
+			}
+			if readErr != nil {
+				lastErr = readErr
+			} else {
+				lastErr = errors.Errorf("HTTP %d: %s", resp.StatusCode, firstLines(lastOut, 1))
+			}
+		} else {
+			lastErr = err
+		}
+		time.Sleep(10 * time.Second)
+	}
+	return lastOut, lastErr
+}
+
+// startPortForward launches a kubectl port-forward and returns a cancel
+// func that tears it down (cancel FIRST, then Wait — Wait blocks forever on
+// a port-forward never told to exit).
+func startPortForward(ctx context.Context, kubeconfig, target, namespace, ports string) (func(), error) {
+	pfCtx, cancel := context.WithCancel(ctx)
+	pf := exec.CommandContext(pfCtx, "kubectl", "--kubeconfig", kubeconfig,
+		"port-forward", target, ports, "-n", namespace)
+	var out strings.Builder
+	pf.Stdout = &out
+	pf.Stderr = &out
+	if err := pf.Start(); err != nil {
+		cancel()
+		return nil, err
+	}
+	// Give the tunnel a moment to bind before the first request.
+	time.Sleep(3 * time.Second)
+	return func() {
+		cancel()
+		_ = pf.Wait()
+	}, nil
+}
+
+// deletePodAwaitReplacement deletes the workload's pod(s) by selector and
+// waits until a pod with a NEW UID is Ready — a new UID is the only honest
+// recovery signal (status can flap Ready against the dying pod).
+func deletePodAwaitReplacement(ctx context.Context, kubeconfig, namespace, selector string, budget time.Duration) error {
+	uidOut, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+		"get", "pods", "-n", namespace, "-l", selector, "-o", "jsonpath={.items[0].metadata.uid}").CombinedOutput()
+	if err != nil {
+		return errors.Wrapf(err, "reading the pod uid: %s", string(uidOut))
+	}
+	oldUid := strings.TrimSpace(string(uidOut))
+
+	fmt.Printf("  [verify] DURABILITY: deleting the pod (uid %s)\n", oldUid)
+	if out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+		"delete", "pod", "-n", namespace, "-l", selector, "--wait=false").CombinedOutput(); err != nil {
+		return errors.Wrapf(err, "deleting the pod: %s", string(out))
+	}
+
+	deadline := time.Now().Add(budget)
+	for time.Now().Before(deadline) {
+		uidNow, _ := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+			"get", "pods", "-n", namespace, "-l", selector,
+			"--field-selector", "status.phase=Running",
+			"-o", "jsonpath={.items[0].metadata.uid}").CombinedOutput()
+		newUid := strings.TrimSpace(string(uidNow))
+		if newUid != "" && newUid != oldUid {
+			ready, _ := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+				"get", "pods", "-n", namespace, "-l", selector,
+				"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Ready')].status}").CombinedOutput()
+			if strings.TrimSpace(string(ready)) == "True" {
+				fmt.Printf("  [verify] DURABILITY: replacement pod (uid %s) is Ready\n", newUid)
+				return nil
+			}
+		}
+		time.Sleep(10 * time.Second)
+	}
+	return errors.New("no replacement pod became Ready after the deletion")
+}
+
+// urlQueryEscape percent-escapes a LogQL/TraceQL query for a URL query
+// parameter.
+func urlQueryEscape(q string) string {
+	var b strings.Builder
+	for _, r := range q {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_', r == '.', r == '~':
+			b.WriteRune(r)
+		default:
+			b.WriteString(fmt.Sprintf("%%%02X", r))
+		}
+	}
+	return b.String()
+}
+
+// waitStatefulSetReady blocks until the named StatefulSet reports at least
+// one ready replica matching its desired count.
+func waitStatefulSetReady(ctx context.Context, kubeconfig, name, namespace string, budget time.Duration) error {
+	deadline := time.Now().Add(budget)
+	var last string
+	for time.Now().Before(deadline) {
+		desired, _ := kubectlGetJSONPath(ctx, kubeconfig, "statefulset", name, namespace, "{.status.replicas}")
+		ready, _ := kubectlGetJSONPath(ctx, kubeconfig, "statefulset", name, namespace, "{.status.readyReplicas}")
+		last = fmt.Sprintf("ready=%q desired=%q", ready, desired)
+		if ready != "" && ready != "0" && ready == desired {
+			return nil
+		}
+		time.Sleep(10 * time.Second)
+	}
+	return errors.Errorf("statefulset %q never reached its ready replica count (last %s)", name, last)
+}

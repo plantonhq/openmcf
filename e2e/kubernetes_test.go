@@ -408,6 +408,18 @@ func TestKubernetesSeaweedFs_Pulumi(t *testing.T) {
 func TestKubernetesSeaweedFs_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesseaweedfs", "terraform")
 }
+func TestKubernetesLoki_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesloki", "pulumi")
+}
+func TestKubernetesLoki_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesloki", "terraform")
+}
+func TestKubernetesTempo_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestempo", "pulumi")
+}
+func TestKubernetesTempo_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestempo", "terraform")
+}
 func TestKubernetesQdrant_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesqdrant", "pulumi")
 }

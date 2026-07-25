@@ -1,0 +1,15 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetesloki
+spec:
+  tier: 2
+  # Forged onto the official loki chart 18.5.4 and offline-validated (spec
+  # tests, both engines' plan/preview proofs across full and minimal
+  # shapes); the live lanes have not run yet — they run the monolithic
+  # push→LogQL round-trip and the volume-loss durability proof.
+  status: pending_proof
+  # The chart is the heaviest tier-2 release (Loki + gateway + two
+  # memcached caches + canary); the operator/StatefulSet reconciliation
+  # after Helm returns needs headroom on the shared cluster.
+  timeout_minutes: 30

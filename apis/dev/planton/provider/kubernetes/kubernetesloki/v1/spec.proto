@@ -1,0 +1,740 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesloki.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesLokiSpec** deploys Grafana Loki — the log-aggregation
+ * system that indexes log LABELS (not content) and stores compressed log
+ * chunks in object storage — from the official `loki` Helm chart
+ * (https://grafana-community.github.io/helm-charts).
+ *
+ * HOW LOGS GET IN: Loki stores logs; something must ship them. Deploy a
+ * KubernetesOtelCollector in daemonset mode with the cluster-logs
+ * pipeline (its presets carry it) pointed at this component's
+ * `gateway_endpoint` — or push from any OTLP/Loki-HTTP client. Grafana
+ * reads them back: point a KubernetesGrafana datasource of type `loki`
+ * at the same endpoint.
+ *
+ * MODES: `monolithic` (default) runs every Loki target in one
+ * StatefulSet — right for single-node clusters, dev environments and
+ * small production volumes. `simple_scalable` splits into write/read/
+ * backend tiers that scale independently and REQUIRES object storage.
+ * The chart's microservices ("Distributed") mode and its transitional
+ * migration modes are deliberately not modeled — by the time a
+ * deployment needs per-component microservices, it deserves a dedicated
+ * operations posture, and mode migrations are operational verbs.
+ *
+ * STORAGE DOCTRINE (mirrors the chart's own validation): `filesystem`
+ * keeps chunks on a PersistentVolume — honest ONLY for a single
+ * monolithic replica; more than one replica, or any simple_scalable
+ * tier, REQUIRES an object-storage backend (s3/gcs/azure). The
+ * s3-compatible arm (endpoint + path-style) composes with an in-cluster
+ * KubernetesSeaweedFs. The chart's bundled MinIO subchart is deprecated
+ * by the chart itself and is never enabled by this component.
+ *
+ * SCHEMA: Loki requires a `schema_config` naming the index schema and
+ * its start date — upstream makes every user hand-author it. This
+ * component derives it (TSDB, schema v13, the object store matching
+ * your storage backend) so a new install never writes one. The
+ * `schema_from_date` override exists solely for IMPORTING clusters
+ * whose existing schema started on a real date.
+ *
+ * TENANCY: single-tenant by default — pushes and queries need no
+ * X-Scope-OrgID header, so the composed Grafana datasource and
+ * collector pipelines work with one line of wiring. This deliberately
+ * diverges from the chart's multi-tenant-on default, where every
+ * client must send a tenant header. Enable `multi_tenancy` for tenant
+ * isolation: every client then sends its X-Scope-OrgID header, and the
+ * gateway gates access with HTTP basic auth (it authenticates —
+ * clients still declare their own tenant header).
+ *
+ * NAMING: keep the resource name at 40 characters or fewer. The chart
+ * builds child names like `<name>-backend-headless` and truncates the
+ * COMPOSED name at 63 characters — a longer resource name would corrupt
+ * the naming contract the outputs promise. The modules pin the chart's
+ * fullname to the resource name and fail loudly over the budget.
+ *
+ * EXPOSURE: everything stays ClusterIP; the nginx gateway is the one
+ * front door (push + query). Expose it via first-class kinds
+ * (KubernetesIngress, Gateway API kinds) over the exported handles.
+ *
+ * The typed fields cover the chart's meaningful surface; `helm_values`
+ * remains the escape hatch (merged last, Helm `-f` semantics, identical
+ * on both engines) for the long tail — per-component overrides, bloom
+ * filters, ruler storage tuning, zone-aware rollouts — a safety valve,
+ * never the primary interface.
+ */
+message KubernetesLokiSpec {
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "18.5.4" — chart 18.5.4 pairs
+   * with Loki 3.7.4). Versions must exist as SERVED charts in the
+   * repository index (https://grafana-community.github.io/helm-charts).
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "18.5.4"];
+
+  /**
+   * Deployment topology. Empty = a single-replica monolithic Loki on a
+   * persistent volume. Exactly one mode is rendered — the modules zero
+   * out every other mode's workloads so two modes can never half-run
+   * (the chart itself leaves that zeroing to the operator's care).
+   */
+  oneof mode {
+    /**
+     * Every Loki target in one StatefulSet. The default (a
+     * single-replica instance on filesystem storage when nothing is
+     * declared).
+     */
+    KubernetesLokiMonolithic monolithic = 4;
+
+    /**
+     * Write/read/backend tiers scaling independently. REQUIRES an
+     * object-storage backend (the chart refuses filesystem here — reads
+     * and writes rendezvous in the object store, not on a shared disk).
+     */
+    KubernetesLokiSimpleScalable simple_scalable = 5;
+  }
+
+  /**
+   * Where chunks and indexes live. Empty = filesystem (a
+   * PersistentVolume) — honest only for a single monolithic replica;
+   * declare an object-storage backend for anything bigger.
+   */
+  KubernetesLokiStorage storage = 6;
+
+  /**
+   * Override the derived schema start date (RFC3339 date, e.g.
+   * "2020-10-24"). ONLY for importing an existing Loki whose schema
+   * began on a real date — the date must be on or before the first
+   * ingested log's day, and CHANGING it on a running install corrupts
+   * queries over old data. New installs never set this.
+   */
+  string schema_from_date = 7 [(buf.validate.field).cel = {
+    id: "spec.schema_from_date"
+    message: "schema_from_date must be a date like '2024-04-01'"
+    expression: "this == '' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')"
+  }];
+
+  /**
+   * How long logs are kept before the compactor deletes them, as a
+   * Prometheus common-model duration in hours or days (e.g. "744h" or
+   * "31d"). Empty = keep everything forever (Loki's own default) —
+   * object-storage costs grow unbounded; production installs should
+   * set this. Deletion is asynchronous: the compactor marks and later
+   * sweeps, so objects outlive the period by the delete delay — any
+   * bucket lifecycle policy must expire LATER than this period, never
+   * earlier.
+   */
+  string retention_period = 8 [(buf.validate.field).cel = {
+    id: "spec.retention_period"
+    message: "retention_period must be a duration in hours or days like '744h' or '31d'"
+    expression: "this == '' || this.matches('^[0-9]+(h|d)$')"
+  }];
+
+  /**
+   * Ingestion and query limits — the knobs that stop one noisy tenant
+   * or one bad query from taking the install down.
+   */
+  KubernetesLokiLimits limits = 9;
+
+  /**
+   * Tenant isolation. Empty = single-tenant (see the TENANCY note
+   * above). When enabled, every push/query must carry an X-Scope-OrgID
+   * header and the gateway enforces basic auth for the declared
+   * tenants.
+   */
+  KubernetesLokiMultiTenancy multi_tenancy = 10;
+
+  /**
+   * The nginx gateway — the single front door that routes pushes and
+   * queries to the right internal target in every mode. On by default;
+   * disable only when clients address the internal services directly
+   * (single-tenant monolithic only — the exported endpoints assume the
+   * gateway).
+   */
+  KubernetesLokiGateway gateway = 11;
+
+  /**
+   * The memcached-based caches the chart deploys alongside Loki. Both
+   * on by default (the chart's grain — queries without the results
+   * cache re-scan object storage on every dashboard refresh). Tune the
+   * memory down for small clusters.
+   */
+  KubernetesLokiCaching caching = 12;
+
+  /**
+   * The Loki canary — a DaemonSet that continuously writes and reads
+   * test log lines through the full pipeline, turning silent log loss
+   * into a visible metric. On by default (the chart's grain).
+   */
+  optional bool canary_enabled = 13 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * The ruler — evaluates alerting/recording rules over logs (LogQL)
+   * and fires alerts to an Alertmanager. Off by default.
+   */
+  KubernetesLokiRuler ruler = 14;
+
+  /**
+   * Render ServiceMonitor objects for Prometheus discovery. Requires
+   * the monitoring.coreos.com CRDs on the cluster (deploy
+   * KubernetesKubePrometheusStack first).
+   */
+  bool service_monitor_enabled = 15;
+
+  /**
+   * Send anonymous usage statistics about this install to Grafana Labs.
+   * Default false — this component deliberately diverges from Loki's
+   * report-by-default so no data leaves the cluster without an explicit
+   * opt-in.
+   */
+  optional bool usage_reporting = 16 [(dev.planton.shared.options.default) = "false"];
+
+  /**
+   * Registry that replaces the registry part of EVERY image this
+   * component pulls (loki, gateway nginx, memcached caches, canary,
+   * rules sidecar) — the air-gap/private-mirror path. Empty = each
+   * image's upstream registry (docker.io). KNOW THIS: the chart mixes
+   * split registry+repository image values with bare library images
+   * (memcached) — the modules translate this override correctly for
+   * both forms.
+   */
+  string image_registry = 17;
+
+  /**
+   * Names of existing image-pull Secrets applied to every workload
+   * (chart `imagePullSecrets`). The Secrets must already exist in the
+   * namespace.
+   */
+  repeated string image_pull_secrets = 18 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing image-pull Secrets (references), not secret material"];
+
+  /**
+   * Scheduling applied to the Loki workloads (monolithic StatefulSet or
+   * the write/read/backend tiers). The gateway, caches and canary keep
+   * the chart's own scheduling; steer them via `helm_values`.
+   */
+  KubernetesLokiScheduling scheduling = 19;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (bloom filters, pattern ingester, zone-aware rollouts,
+   * per-component overrides, ruler storage) — never the substitute for
+   * them. Do not put secrets here; object-storage credentials belong in
+   * the typed secret-reference fields, which keep them out of the
+   * rendered config.
+   */
+  string helm_values = 20;
+
+  option (buf.validate.message).cel = {
+    id: "spec.mode.simple_scalable.requires_object_storage"
+    message: "simple_scalable mode requires an object-storage backend (s3, gcs or azure) — the write/read/backend tiers rendezvous in the object store, so filesystem storage cannot serve them (this mirrors the chart's own validation)"
+    expression: "!has(this.simple_scalable) || (has(this.storage) && !has(this.storage.filesystem) && (has(this.storage.s3) || has(this.storage.gcs) || has(this.storage.azure)))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.mode.monolithic.replicas.require_object_storage"
+    message: "more than one monolithic replica requires an object-storage backend (s3, gcs or azure) — replicas cannot share a filesystem volume (this mirrors the chart's own validation)"
+    expression: "!has(this.monolithic) || this.monolithic.replicas <= 1 || (has(this.storage) && (has(this.storage.s3) || has(this.storage.gcs) || has(this.storage.azure)))"
+  };
+}
+
+/**
+ * Monolithic mode — every Loki target in one StatefulSet.
+ */
+message KubernetesLokiMonolithic {
+  /**
+   * Number of replicas. 1 is the filesystem-storage ceiling (the chart
+   * refuses more without object storage); 2–3 with object storage give
+   * HA ingest and query.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Size of the persistent volume PER replica (e.g. "10Gi"). With
+   * filesystem storage this volume holds ALL chunks and indexes — size
+   * it for your full retention window. With object storage it holds
+   * only the WAL and in-flight chunks.
+   */
+  optional string disk_size = 2 [
+    (dev.planton.shared.options.default) = "10Gi",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"
+  ];
+
+  /**
+   * Storage class for the volumes. Accepts a literal name or a
+   * reference to a KubernetesStorageClass resource. Empty = the
+   * cluster's default class.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * CPU and memory for the Loki container. Empty = no requests/limits
+   * (the chart default). Loki's memory scales with active streams and
+   * query concurrency.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 4;
+}
+
+/**
+ * Simple-scalable mode — write/read/backend tiers.
+ */
+message KubernetesLokiSimpleScalable {
+  /**
+   * Write tier (distributor + ingester; a StatefulSet with a WAL
+   * volume). 3 is the chart's default and the replication-factor-safe
+   * floor.
+   */
+  optional int32 write_replicas = 1 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Read tier (query-frontend + querier; a stateless Deployment that
+   * reads from object storage).
+   */
+  optional int32 read_replicas = 2 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Backend tier (compactor, ruler, index-gateway, scheduler; a
+   * StatefulSet with a working volume).
+   */
+  optional int32 backend_replicas = 3 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Size of the persistent volume PER write/backend replica (e.g.
+   * "10Gi" — WAL and compaction workspace; chunks live in the object
+   * store).
+   */
+  optional string disk_size = 4 [
+    (dev.planton.shared.options.default) = "10Gi",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"
+  ];
+
+  /**
+   * Storage class for the write/backend volumes. Empty = the cluster's
+   * default class.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * CPU and memory applied to each tier's containers. Empty = no
+   * requests/limits (the chart default). Size the write tier first —
+   * it holds the ingest path's memory.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 6;
+}
+
+/**
+ * Where Loki keeps chunks and indexes.
+ */
+message KubernetesLokiStorage {
+  oneof backend {
+    /**
+     * Chunks and indexes on the pod's PersistentVolume. Single
+     * monolithic replica only — the chart itself refuses every other
+     * shape on filesystem storage.
+     */
+    KubernetesLokiFilesystemStorage filesystem = 1;
+
+    /**
+     * Amazon S3 or any S3-compatible store. For in-cluster storage
+     * point `endpoint` at a KubernetesSeaweedFs S3 endpoint with
+     * `force_path_style: true`.
+     */
+    KubernetesLokiS3Storage s3 = 2;
+
+    /**
+     * Google Cloud Storage. With no key declared the pod's ambient
+     * identity is used (GKE workload identity — the keyless posture).
+     */
+    KubernetesLokiGcsStorage gcs = 3;
+
+    /**
+     * Azure Blob Storage.
+     */
+    KubernetesLokiAzureStorage azure = 4;
+  }
+}
+
+/**
+ * Filesystem storage (the single-replica dev/test arm).
+ */
+message KubernetesLokiFilesystemStorage {
+  // No knobs: chunks live under the data volume declared by the mode's
+  // disk_size. This arm exists so manifests can DECLARE the choice
+  // explicitly; leaving `storage` empty means the same thing.
+}
+
+/**
+ * S3 / S3-compatible object storage.
+ */
+message KubernetesLokiS3Storage {
+  /**
+   * Bucket for chunks and indexes (must exist; Loki does not create
+   * it). Also serves ruler state unless `ruler_bucket` is set.
+   */
+  string bucket = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Separate bucket for ruler state. Empty = `bucket`.
+   */
+  string ruler_bucket = 2;
+
+  /**
+   * AWS region (e.g. "us-east-1"). Required for Amazon S3; usually
+   * empty for S3-compatible endpoints.
+   */
+  string region = 3;
+
+  /**
+   * Custom endpoint for S3-COMPATIBLE stores (e.g.
+   * "http://objects-filer.storage.svc.cluster.local:8333" for an
+   * in-cluster KubernetesSeaweedFs). Empty = Amazon S3.
+   */
+  string endpoint = 4;
+
+  /**
+   * Use path-style addressing (bucket in the path, not the hostname).
+   * Required by most S3-compatible endpoints, including SeaweedFS.
+   */
+  bool force_path_style = 5;
+
+  /**
+   * Allow plain-HTTP endpoints. Only for in-cluster stores; never over
+   * a network you do not own.
+   */
+  bool insecure = 6;
+
+  /**
+   * Static credentials. Empty = the pod's ambient identity (IRSA on
+   * EKS — the recommended keyless posture). When declared, the modules
+   * inject them as environment variables from a Secret — they never
+   * land in the rendered Loki config.
+   */
+  KubernetesLokiObjectStoreCredentials credentials = 7;
+}
+
+/**
+ * Google Cloud Storage backend.
+ */
+message KubernetesLokiGcsStorage {
+  /**
+   * Bucket for chunks and indexes. Also serves ruler state unless
+   * `ruler_bucket` is set.
+   */
+  string bucket = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Separate bucket for ruler state. Empty = `bucket`.
+   */
+  string ruler_bucket = 2;
+
+  /**
+   * Existing Secret holding a service-account JSON key. Empty = the
+   * pod's ambient identity (GKE workload identity — the recommended
+   * keyless posture). When declared, the key is mounted and referenced
+   * via GOOGLE_APPLICATION_CREDENTIALS — never inlined in config.
+   */
+  KubernetesLokiSecretKeyRef service_account_key_secret = 3;
+}
+
+/**
+ * Azure Blob Storage backend.
+ */
+message KubernetesLokiAzureStorage {
+  /**
+   * Storage-account name.
+   */
+  string account_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Blob container for chunks and indexes. Also serves ruler state
+   * unless `ruler_container` is set.
+   */
+  string container = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Separate container for ruler state. Empty = `container`.
+   */
+  string ruler_container = 3;
+
+  /**
+   * Existing Secret holding the storage-account key. Empty = federated
+   * workload identity (AKS — the recommended keyless posture; the
+   * modules set the chart's federated-token switch).
+   */
+  KubernetesLokiSecretKeyRef account_key_secret = 4;
+}
+
+/**
+ * Static object-store credentials, read from an existing Secret.
+ */
+message KubernetesLokiObjectStoreCredentials {
+  /**
+   * Existing Secret holding the access key ID.
+   */
+  KubernetesLokiSecretKeyRef access_key_id_secret = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Existing Secret holding the secret access key.
+   */
+  KubernetesLokiSecretKeyRef secret_access_key_secret = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * A reference to one key of an existing Secret in the install
+ * namespace (a reference, never secret material).
+ */
+message KubernetesLokiSecretKeyRef {
+  /**
+   * Secret name.
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key within the Secret.
+   */
+  string key = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * Ingestion and query limits.
+ */
+message KubernetesLokiLimits {
+  /**
+   * Per-tenant ingestion rate in MB/s. Empty = Loki's default (4).
+   */
+  optional int32 ingestion_rate_mb = 1 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Per-tenant ingestion burst in MB. Empty = Loki's default (6).
+   */
+  optional int32 ingestion_burst_size_mb = 2 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * Maximum number of active streams per tenant. Empty = Loki's
+   * default (a high-cardinality label set explodes stream counts —
+   * this is the fence).
+   */
+  optional int32 max_global_streams_per_user = 3 [(buf.validate.field).int32.gte = 1];
+
+  /**
+   * How far back queries may look, as a Prometheus duration (e.g.
+   * "720h"). Empty = unlimited. Pair with `retention_period` — queries
+   * beyond retention return nothing anyway.
+   */
+  string max_query_lookback = 4 [(buf.validate.field).cel = {
+    id: "spec.limits.max_query_lookback"
+    message: "max_query_lookback must be a Prometheus duration like '720h' or '30d'"
+    expression: "this == '' || this.matches('^[0-9]+(ms|s|m|h|d|w|y)$')"
+  }];
+}
+
+/**
+ * Tenant isolation.
+ */
+message KubernetesLokiMultiTenancy {
+  /**
+   * Require an X-Scope-OrgID tenant header on every push and query.
+   * KNOW THIS: basic auth at the gateway AUTHENTICATES clients; it
+   * does not set their tenant — each client still sends the
+   * X-Scope-OrgID header naming the tenant it writes to or reads from
+   * (the collector's `headers` setting, Grafana's datasource httpHeader
+   * jsonData).
+   */
+  bool enabled = 1;
+
+  /**
+   * Tenants gated at the gateway with HTTP basic auth. The chart
+   * builds the gateway's htpasswd file from these entries. Requires
+   * `enabled: true`. Mutually exclusive with
+   * `existing_htpasswd_secret`.
+   */
+  repeated KubernetesLokiTenant tenants = 2;
+
+  /**
+   * Name of an existing Secret carrying a ready-made `.htpasswd` key —
+   * the bring-your-own-credentials arm for teams that manage htpasswd
+   * material themselves. Mutually exclusive with `tenants`. Requires
+   * `enabled: true`.
+   */
+  string existing_htpasswd_secret = 3 [(dev.planton.shared.options.sensitive_exempt_reason) = "Name of an existing Secret (a reference), not secret material"];
+
+  option (buf.validate.message).cel = {
+    id: "spec.multi_tenancy.auth.require_enabled"
+    message: "declaring tenants or an htpasswd Secret requires multi_tenancy.enabled: true — without it the gateway enforces no auth and they would silently do nothing"
+    expression: "(this.tenants.size() == 0 && this.existing_htpasswd_secret == '') || this.enabled"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "spec.multi_tenancy.auth.one_source"
+    message: "tenants and existing_htpasswd_secret are mutually exclusive — declare the tenant list OR bring your own htpasswd Secret, not both"
+    expression: "this.tenants.size() == 0 || this.existing_htpasswd_secret == ''"
+  };
+}
+
+/**
+ * One gateway-gated tenant.
+ */
+message KubernetesLokiTenant {
+  /**
+   * Tenant name — the basic-auth username. By convention clients use
+   * the same value as their X-Scope-OrgID tenant header.
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * bcrypt htpasswd HASH of the tenant's password (generate with
+   * `htpasswd -nbBC10 <name> <password>` and take the part after the
+   * colon). A one-way hash, safe to carry in a manifest — the actual
+   * password never appears anywhere. The chart writes these into the
+   * gateway's htpasswd Secret.
+   */
+  string password_hash = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "bcrypt htpasswd hash — a one-way hash, not usable secret material; the chart's own documented pattern",
+    (buf.validate.field).cel = {
+      id: "spec.multi_tenancy.tenants.password_hash"
+      message: "password_hash must be a bcrypt htpasswd hash (starts with $2y$ or $2b$ — generate with `htpasswd -nbBC10 <name> <password>`), never a plaintext password"
+      expression: "this.startsWith('$2y$') || this.startsWith('$2b$') || this.startsWith('$2a$')"
+    }
+  ];
+}
+
+/**
+ * The nginx gateway.
+ */
+message KubernetesLokiGateway {
+  /**
+   * Deploy the gateway. Default true (the exported endpoints route
+   * through it).
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Number of gateway replicas.
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * CPU and memory for the gateway container. Empty = no
+   * requests/limits (nginx is light).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 3;
+}
+
+/**
+ * The memcached caches.
+ */
+message KubernetesLokiCaching {
+  /**
+   * Deploy the chunks cache (dedicated memcached; keeps hot chunks out
+   * of object-store reads). Default true.
+   */
+  optional bool chunks_cache_enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Memory allocated to the chunks-cache memcached in MB. Empty = the
+   * chart default (8192). Tune DOWN for small clusters — this is the
+   * biggest memory consumer after Loki itself.
+   */
+  optional int32 chunks_cache_memory_mb = 2 [(buf.validate.field).int32.gte = 64];
+
+  /**
+   * Deploy the query-results cache. Default true — without it every
+   * dashboard refresh re-runs its queries end to end.
+   */
+  optional bool results_cache_enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Memory allocated to the results-cache memcached in MB. Empty = the
+   * chart default (1024).
+   */
+  optional int32 results_cache_memory_mb = 4 [(buf.validate.field).int32.gte = 64];
+}
+
+/**
+ * The ruler — alerting on logs.
+ */
+message KubernetesLokiRuler {
+  /**
+   * Evaluate LogQL alerting/recording rules. Rules are discovered from
+   * ConfigMaps labeled `loki_rule: "1"` (the sidecar contract — the
+   * same pattern Grafana dashboards use).
+   */
+  bool enabled = 1;
+
+  /**
+   * Alertmanager URL to fire alerts at. Accepts a literal URL or a
+   * reference to a KubernetesKubePrometheusStack resource (its
+   * Alertmanager endpoint) — the one-line wiring into the cluster's
+   * alerting.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef alertmanager_url = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKubePrometheusStack,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.alertmanager_endpoint"
+  ];
+}
+
+/**
+ * Pod scheduling for the Loki workloads.
+ */
+message KubernetesLokiScheduling {
+  /**
+   * Node selector for the Loki pods.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for the Loki pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+
+  /**
+   * Priority class name for the Loki pods.
+   */
+  string priority_class_name = 3;
+}

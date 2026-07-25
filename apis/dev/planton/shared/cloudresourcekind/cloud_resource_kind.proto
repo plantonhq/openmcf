@@ -3032,6 +3032,31 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8ssgz"
   }];
+  KubernetesLoki = 873 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sloki"
+  }];
+  KubernetesTempo = 874 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8stempo"
+  }];
+  // The operator's admission webhooks (failurePolicy Fail) are served
+  // with a cert-manager Certificate in the default posture —
+  // cert-manager must be running before the operator installs.
+  KubernetesOtelOperator = 875 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sotelop"
+    prerequisites: [KubernetesCertManager]
+  }];
+  KubernetesOtelCollector = 876 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sotelcol"
+    prerequisites: [KubernetesOtelOperator]
+  }];
   // 890–899: Kubernetes security, policy, and identity
   KubernetesKeycloak = 890 [(kind_meta) = {
     provider: kubernetes

@@ -1,0 +1,16 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesLoki
+metadata:
+  name: dev-loki
+spec:
+  namespace:
+    value: dev-loki
+  create_namespace: true
+  # Everything else is the component's defaults: a single-replica
+  # monolithic Loki on a filesystem PersistentVolume with the nginx
+  # gateway front door, single-tenant (no X-Scope-OrgID header needed),
+  # the canary and both memcached caches on. Right for a dev loop or a
+  # small single-node cluster. Ship logs to it with a
+  # KubernetesOtelCollector in daemonset mode (its cluster-logs preset)
+  # pointed at the exported gateway_endpoint; read them in Grafana with a
+  # loki datasource at the same endpoint.

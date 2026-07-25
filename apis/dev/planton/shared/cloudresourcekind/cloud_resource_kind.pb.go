@@ -938,6 +938,13 @@ const (
 	CloudResourceKind_KubernetesKubePrometheusStack CloudResourceKind = 870
 	CloudResourceKind_KubernetesGrafana             CloudResourceKind = 871
 	CloudResourceKind_KubernetesSignoz              CloudResourceKind = 872
+	CloudResourceKind_KubernetesLoki                CloudResourceKind = 873
+	CloudResourceKind_KubernetesTempo               CloudResourceKind = 874
+	// The operator's admission webhooks (failurePolicy Fail) are served
+	// with a cert-manager Certificate in the default posture —
+	// cert-manager must be running before the operator installs.
+	CloudResourceKind_KubernetesOtelOperator  CloudResourceKind = 875
+	CloudResourceKind_KubernetesOtelCollector CloudResourceKind = 876
 	// 890–899: Kubernetes security, policy, and identity
 	CloudResourceKind_KubernetesKeycloak CloudResourceKind = 890
 	CloudResourceKind_KubernetesOpenBao  CloudResourceKind = 891
@@ -1554,6 +1561,10 @@ var (
 		870:  "KubernetesKubePrometheusStack",
 		871:  "KubernetesGrafana",
 		872:  "KubernetesSignoz",
+		873:  "KubernetesLoki",
+		874:  "KubernetesTempo",
+		875:  "KubernetesOtelOperator",
+		876:  "KubernetesOtelCollector",
 		890:  "KubernetesKeycloak",
 		891:  "KubernetesOpenBao",
 		892:  "KubernetesOpenFga",
@@ -2152,6 +2163,10 @@ var (
 		"KubernetesKubePrometheusStack":                  870,
 		"KubernetesGrafana":                              871,
 		"KubernetesSignoz":                               872,
+		"KubernetesLoki":                                 873,
+		"KubernetesTempo":                                874,
+		"KubernetesOtelOperator":                         875,
+		"KubernetesOtelCollector":                        876,
 		"KubernetesKeycloak":                             890,
 		"KubernetesOpenBao":                              891,
 		"KubernetesOpenFga":                              892,
@@ -2649,7 +2664,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xe9\xe2\x01\n" +
+	"\x02v1\x10\x01*\xa9\xe4\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3063,7 +3078,12 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x10KubernetesVelero\x10\xe3\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svel\x124\n" +
 	"\x1dKubernetesKubePrometheusStack\x10\xe6\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8skps\x12(\n" +
 	"\x11KubernetesGrafana\x10\xe7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sgfn\x12'\n" +
-	"\x10KubernetesSignoz\x10\xe8\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssgz\x12(\n" +
+	"\x10KubernetesSignoz\x10\xe8\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssgz\x12&\n" +
+	"\x0eKubernetesLoki\x10\xe9\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sloki\x12(\n" +
+	"\x0fKubernetesTempo\x10\xea\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8stempo\x124\n" +
+	"\x16KubernetesOtelOperator\x10\xeb\x06\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8sotelop:\x02\xbe\x06\x126\n" +
+	"\x17KubernetesOtelCollector\x10\xec\x06\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\n" +
+	"k8sotelcol:\x02\xeb\x06\x12(\n" +
 	"\x12KubernetesKeycloak\x10\xfa\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8skc\x12(\n" +
 	"\x11KubernetesOpenBao\x10\xfb\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sbao\x12(\n" +
 	"\x11KubernetesOpenFga\x10\xfc\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sfga\x129\n" +

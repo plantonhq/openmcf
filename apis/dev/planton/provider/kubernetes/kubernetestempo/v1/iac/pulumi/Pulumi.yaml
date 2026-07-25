@@ -1,0 +1,3 @@
+name: kubernetes-tempo
+runtime: go
+description: Grafana Tempo installation from the official monolithic Helm chart with object-storage backends (S3/GCS/Azure) on secret-safe credential wiring, OTLP trace ingest, a trace-derived metrics generator remote-writing to Prometheus, and persistent-by-default trace storage
