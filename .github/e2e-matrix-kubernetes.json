@@ -20,17 +20,17 @@
       "name": "Tier 2 Pulumi",
       "tier": 2,
       "engine": "pulumi",
-      "timeout": 165,
-      "run_regex": "Test(KubernetesArgoCD|KubernetesGrafana|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesQdrant)_Pulumi",
-      "component_count": 6
+      "timeout": 225,
+      "run_regex": "Test(KubernetesArgoCD|KubernetesGrafana|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesQdrant|KubernetesSeaweedFs)_Pulumi",
+      "component_count": 7
     },
     {
       "name": "Tier 2 Terraform",
       "tier": 2,
       "engine": "terraform",
-      "timeout": 140,
-      "run_regex": "Test(KubernetesArgoCD|KubernetesGrafana|KubernetesLocust|KubernetesNeo4j|KubernetesQdrant)_Terraform",
-      "component_count": 5
+      "timeout": 195,
+      "run_regex": "Test(KubernetesArgoCD|KubernetesGrafana|KubernetesLocust|KubernetesNeo4j|KubernetesQdrant|KubernetesSeaweedFs)_Terraform",
+      "component_count": 6
     },
     {
       "name": "Tier 3 Pulumi",

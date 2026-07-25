@@ -4,14 +4,8 @@ metadata:
   name: kubernetesseaweedfs
 spec:
   tier: 2
-  # Terraform lanes are live-proven (all 3 scenarios incl. the volume-loss
-  # durability proof and blind import round-trips with the secret-material
-  # random_password ID). The Pulumi lanes CANNOT run at the repo's pinned
-  # pulumi-kubernetes SDK: the chart's templates use fromToml (Helm >= 3.16)
-  # and the pinned provider embeds Helm 3.15.4 — parse-fails at release
-  # install regardless of values. Unblocks when the repo moves the pin to
-  # >= v4.23.0 (the first line embedding Helm >= 3.16).
-  status: pending_proof
+  status: green
   validated_provisioners:
+    - pulumi
     - terraform
   timeout_minutes: 30
