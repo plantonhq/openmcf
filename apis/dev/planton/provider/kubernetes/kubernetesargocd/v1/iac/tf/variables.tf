@@ -1,65 +1,193 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
-
 variable "spec" {
-  description = "spec"
+  description = "KubernetesArgocd specification"
   type = object({
-    # Kubernetes namespace to install Argo CD.
     namespace = string
-
-    # Flag to indicate if the namespace should be created by the module.
-    # Set to true to create the namespace, false to use an existing namespace.
     create_namespace = optional(bool, false)
-
-    # The container specifications for the Argo CD deployment.
-    container = object({
-
-      # The CPU and memory resources allocated to the Argo CD container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-    })
-
-    # The ingress configuration for the Argo CD deployment.
-    ingress = optional(object({
-
-      # A flag to enable or disable ingress.
-      is_enabled = bool
-
-      # The dns domain.
-      dns_domain = string
+    chart_version = optional(string)
+    admin_enabled = optional(bool)
+    domain = optional(string, "")
+    controller = optional(object({
+      replicas = optional(number)
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
     }))
+    server = optional(object({
+      replicas = optional(number)
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+      autoscaling = optional(object({
+        enabled = optional(bool, false)
+        min_replicas = optional(number)
+        max_replicas = optional(number)
+      }))
+      insecure = optional(bool, false)
+    }))
+    repo_server = optional(object({
+      replicas = optional(number)
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+      autoscaling = optional(object({
+        enabled = optional(bool, false)
+        min_replicas = optional(number)
+        max_replicas = optional(number)
+      }))
+    }))
+    application_set = optional(object({
+      replicas = optional(number)
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+    }))
+    notifications = optional(object({
+      enabled = optional(bool)
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+    }))
+    dex = optional(object({
+      enabled = optional(bool)
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+    }))
+    commit_server = optional(object({
+      enabled = optional(bool)
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+    }))
+    redis = optional(object({
+      bundled = optional(object({
+        resources = optional(object({
+          limits = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+          requests = optional(object({
+            cpu = optional(string, "")
+            memory = optional(string, "")
+          }))
+        }))
+      }))
+      ha = optional(object({
+        replicas = optional(number)
+      }))
+      external = optional(object({
+        host = string
+        port = optional(number)
+        credentials_secret_name = optional(string, "")
+      }))
+    }))
+    sso = optional(object({
+      oidc = optional(object({
+        name = string
+        issuer = string
+        client_id = string
+        client_secret_secret = optional(object({
+          name = string
+          key = string
+        }))
+      }))
+      dex_config = optional(string, "")
+    }))
+    rbac = optional(object({
+      policy_default = optional(string, "")
+      policy_csv = optional(string, "")
+      scopes = optional(string)
+    }))
+    exec_enabled = optional(bool, false)
+    reconciliation_timeout = optional(string, "")
+    repositories = optional(list(object({
+      name = string
+      url = string
+      type = optional(string)
+    })), [])
+    crds = optional(object({
+      install = optional(bool)
+      keep = optional(bool)
+    }))
+    service_monitors_enabled = optional(bool, false)
+    image = optional(object({
+      repository = optional(string, "")
+      tag = optional(string, "")
+      pull_secret_name = optional(string, "")
+    }))
+    scheduling = optional(object({
+      node_selector = optional(map(string), {})
+      tolerations = optional(list(object({
+        key = optional(string, "")
+        operator = optional(string, "")
+        value = optional(string, "")
+        effect = optional(string, "")
+        toleration_seconds = optional(number)
+      })), [])
+      priority_class_name = optional(string, "")
+    }))
+    helm_values = optional(string, "")
   })
 }

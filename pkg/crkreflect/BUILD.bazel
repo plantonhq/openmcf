@@ -436,6 +436,7 @@ go_library(
         "//apis/dev/planton/provider/hetznercloud/hetznercloudvolume/v1:hetznercloudvolume",
         "//apis/dev/planton/provider/kubernetes/kubernetesaltinityoperator/v1:kubernetesaltinityoperator",
         "//apis/dev/planton/provider/kubernetes/kubernetesargocd/v1:kubernetesargocd",
+        "//apis/dev/planton/provider/kubernetes/kubernetesargoworkflows/v1:kubernetesargoworkflows",
         "//apis/dev/planton/provider/kubernetes/kubernetesauthorizationpolicy/v1:kubernetesauthorizationpolicy",
         "//apis/dev/planton/provider/kubernetes/kubernetesbackendtlspolicy/v1:kubernetesbackendtlspolicy",
         "//apis/dev/planton/provider/kubernetes/kubernetescertificate/v1:kubernetescertificate",

@@ -1,0 +1,47 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesArgoWorkflows
+metadata:
+  name: pipelines
+spec:
+  namespace:
+    value: pipelines
+  create_namespace: true
+  # ---- the two durability seams ------------------------------------
+  # Artifacts: an in-cluster S3-compatible store. Literal values shown;
+  # both endpoint and the credentials Secret compose naturally from a
+  # KubernetesSeaweedFs resource — its s3_endpoint output via
+  # value_from, and its credentials Secret already carries the
+  # accesskey/secretkey pair this chart's selectors expect.
+  artifact_repository:
+    archive_logs: true
+    s3:
+      bucket: workflow-artifacts
+      endpoint:
+        value: objects-s3.storage.svc.cluster.local:8333
+      insecure: true
+      credentials_secret_name: objects-s3-auth
+  # History: completed workflows written to Postgres so the record
+  # outlives the CRs. The host composes from a KubernetesPostgres
+  # resource (its rw_service output via value_from); the credentials
+  # Secret is the one that database exports.
+  archive:
+    engine: postgres
+    host:
+      value: pipelines-db-rw.data.svc.cluster.local
+    database: argo_archive
+    credentials_secret:
+      name: pipelines-db-app
+  # With the archive keeping history, the cluster keeps only a working
+  # set of CRs per outcome.
+  retention_policy:
+    completed: 20
+    failed: 10
+    errored: 10
+  controller:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+  # Scrape the controller (requires the Prometheus Operator CRDs —
+  # deploy KubernetesKubePrometheusStack first).
+  service_monitor_enabled: true

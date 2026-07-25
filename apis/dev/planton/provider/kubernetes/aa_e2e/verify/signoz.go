@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -38,6 +39,26 @@ type SignozVerifier struct {
 	BundledClickHouse bool
 	// StateProof switches on the pod-replacement re-login + re-query arm.
 	StateProof bool
+	// Receiver posture, asserted against the collector Service's RENDERED
+	// ports (nil = the scenario does not declare the toggle, nothing
+	// asserted). The port toggles and the pipeline receiver lists derive
+	// from ONE spec field, so a Service port present/absent as declared is
+	// the observable half of that single-derivation contract.
+	ExpectZipkinPort *bool
+	ExpectJaegerPort *bool
+}
+
+// signozClickHouseCrds is the exact CRD set the bundled clickhouse
+// subchart ships in crds/ at the pin — Helm installs them skip-if-exists
+// and KEEPS them on uninstall (inherent crds/ posture), so ClickHouse
+// installations elsewhere in the cluster outlive any one SigNoz release.
+// The destroy phase asserts they SURVIVE. (The Altinity operator's own
+// chart additionally ships the clickhouse-keeper CRD; this subchart
+// vintage does not.)
+var signozClickHouseCrds = []string{
+	"clickhouseinstallations.clickhouse.altinity.com",
+	"clickhouseinstallationtemplates.clickhouse.altinity.com",
+	"clickhouseoperatorconfigurations.clickhouse.altinity.com",
 }
 
 // signozBundledClickHouse reports whether the bundled ClickHouse deploys:
@@ -51,6 +72,33 @@ func signozBundledClickHouse(spec map[string]interface{}) bool {
 		return false
 	}
 	return true
+}
+
+// SignozReceiverPosture derives the receiver-port expectations from the
+// scenario's spec: a toggle the manifest DECLARES becomes an assertion
+// against the collector Service's rendered ports; an absent toggle
+// asserts nothing (the chart default stays upstream's business). Both
+// manifest key forms tolerated.
+func SignozReceiverPosture(spec map[string]interface{}) (zipkin, jaeger *bool) {
+	collector, _ := spec["otel_collector"].(map[string]interface{})
+	if collector == nil {
+		collector, _ = spec["otelCollector"].(map[string]interface{})
+	}
+	if collector == nil {
+		return nil, nil
+	}
+	lookup := func(keys ...string) *bool {
+		for _, k := range keys {
+			if raw, ok := collector[k]; ok {
+				if b, ok := raw.(bool); ok {
+					return &b
+				}
+			}
+		}
+		return nil
+	}
+	return lookup("zipkin_receiver_enabled", "zipkinReceiverEnabled"),
+		lookup("jaeger_receiver_enabled", "jaegerReceiverEnabled")
 }
 
 // The verifier-owned first-admin credentials. Registration is the
@@ -80,6 +128,9 @@ func (v *SignozVerifier) VerifyExists(ctx context.Context, kubeconfig string) er
 	if err := KubectlResourceExists(ctx, kubeconfig, "service", collector, v.Namespace); err != nil {
 		return errors.Wrap(err, "otel-collector service not found")
 	}
+	if err := v.assertReceiverPorts(ctx, kubeconfig, collector); err != nil {
+		return err
+	}
 
 	// The bundled ClickHouse: the chart-owned installation object and
 	// the module-owned credential Secret (the composition handle the
@@ -98,8 +149,62 @@ func (v *SignozVerifier) VerifyExists(ctx context.Context, kubeconfig string) er
 	return v.proveIngestQuery(ctx, kubeconfig)
 }
 
+// assertReceiverPorts checks the collector Service's rendered port NAMES
+// against the scenario's declared receiver toggles. The chart names each
+// Service port after its values key (zipkin, jaeger-thrift, jaeger-grpc,
+// jaeger-compact), so a toggle that failed to move the port map is
+// directly observable here — and because the pipeline receiver lists
+// derive from the same spec field, this is the rendered-surface half of
+// the "ports and pipelines move together" contract.
+func (v *SignozVerifier) assertReceiverPorts(ctx context.Context, kubeconfig, service string) error {
+	if v.ExpectZipkinPort == nil && v.ExpectJaegerPort == nil {
+		return nil
+	}
+	out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+		"get", "service", service, "-n", v.Namespace,
+		"-o", "jsonpath={.spec.ports[*].name}").CombinedOutput()
+	if err != nil {
+		return errors.Wrapf(err, "reading the collector service ports: %s", string(out))
+	}
+	ports := strings.Fields(string(out))
+	has := func(prefix string) bool {
+		for _, p := range ports {
+			if strings.HasPrefix(p, prefix) {
+				return true
+			}
+		}
+		return false
+	}
+	if v.ExpectZipkinPort != nil && has("zipkin") != *v.ExpectZipkinPort {
+		return errors.Errorf("receiver posture violated: zipkin port present=%v, declared enabled=%v (rendered ports: %v)",
+			has("zipkin"), *v.ExpectZipkinPort, ports)
+	}
+	if v.ExpectJaegerPort != nil && has("jaeger") != *v.ExpectJaegerPort {
+		return errors.Errorf("receiver posture violated: jaeger port present=%v, declared enabled=%v (rendered ports: %v)",
+			has("jaeger"), *v.ExpectJaegerPort, ports)
+	}
+	fmt.Printf("  [verify] RECEIVERS: collector service ports match the declared posture (%v)\n", ports)
+	return nil
+}
+
 func (v *SignozVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) error {
-	return KubectlResourceAbsent(ctx, kubeconfig, "statefulset", v.Name, v.Namespace)
+	if err := KubectlResourceAbsent(ctx, kubeconfig, "statefulset", v.Name, v.Namespace); err != nil {
+		return err
+	}
+	// The keep posture is DESIGNED behavior, not tolerated residue: the
+	// bundled subchart ships these CRDs via crds/ (skip-if-exists, kept
+	// on uninstall), so they must SURVIVE destroy — a missing CRD here
+	// means the lifecycle regressed and every ClickHouseInstallation in
+	// the cluster just lost its API.
+	if v.BundledClickHouse {
+		for _, crd := range signozClickHouseCrds {
+			if err := KubectlResourceExists(ctx, kubeconfig, "crd", crd, ""); err != nil {
+				return errors.Wrapf(err, "CRD %q should SURVIVE uninstall (the crds/ keep posture) but is gone", crd)
+			}
+		}
+		fmt.Printf("  [verify] DESTROY: release workloads gone; clickhouse.altinity.com CRDs kept (designed posture)\n")
+	}
+	return nil
 }
 
 // proveIngestQuery runs the product-grade round-trip: health → first-admin
@@ -133,7 +238,13 @@ func (v *SignozVerifier) proveIngestQuery(ctx context.Context, kubeconfig string
 	}
 	fmt.Printf("  [verify] HEALTH: /api/v1/health OK (telemetry store connected)\n")
 
-	// First-admin registration — the product's own first-run flow.
+	// First-admin registration — the product's own first-run flow. A
+	// register failure falls through to login instead of failing the
+	// lane: the route flips SetupCompleted the moment the first user row
+	// commits, so a retry after a response lost mid-read answers 4xx
+	// "self-registration is disabled" forever after — the only honest
+	// test of whether that first attempt actually took is a login with
+	// the same credentials (verified against the app source at the pin).
 	registerBody := fmt.Sprintf(`{
       "name": "E2E Proof",
       "email": %q,
@@ -141,14 +252,19 @@ func (v *SignozVerifier) proveIngestQuery(ctx context.Context, kubeconfig string
       "orgDisplayName": "e2e-proof",
       "orgName": "e2e-proof"
     }`, signozE2eEmail, signozE2ePassword)
-	if _, err := httpRoundTrip(ctx, http.MethodPost, apiBase+"/api/v1/register",
-		"application/json", registerBody, 3*time.Minute); err != nil {
-		return errors.Wrap(err, "registering the first admin user")
+	_, registerErr := httpRoundTrip(ctx, http.MethodPost, apiBase+"/api/v1/register",
+		"application/json", registerBody, 3*time.Minute)
+	if registerErr == nil {
+		fmt.Printf("  [verify] REGISTER: first admin user created through the product API\n")
+	} else {
+		fmt.Printf("  [verify] REGISTER: did not complete cleanly — attempting login with the same credentials (a partial success disables re-registration)\n")
 	}
-	fmt.Printf("  [verify] REGISTER: first admin user created through the product API\n")
 
 	token, err := v.login(ctx, apiBase)
 	if err != nil {
+		if registerErr != nil {
+			return errors.Wrapf(registerErr, "registering the first admin user (login with the same credentials also failed: %v)", err)
+		}
 		return errors.Wrap(err, "opening a session as the registered admin")
 	}
 	fmt.Printf("  [verify] LOGIN: session opened (access token issued)\n")

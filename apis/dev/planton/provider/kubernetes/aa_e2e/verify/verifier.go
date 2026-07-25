@@ -32,7 +32,6 @@ var helmTier2Kinds = map[string]bool{
 	"kubernetesopenfga":  true,
 	"kubernetesjenkins":  true,
 	"kubernetestemporal": true,
-	"kubernetesargocd":   true,
 	"kubernetesharbor":   true,
 	"kuberneteslocust":   true,
 	"kuberneteskeycloak": true,
@@ -763,11 +762,54 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 	// users survive on the SQLite PVC, telemetry in ClickHouse.
 	case "kubernetessignoz":
 		spec := manifestSpecMap(manifestPath)
+		zipkinPort, jaegerPort := SignozReceiverPosture(spec)
 		return &SignozVerifier{
 			Namespace:         info.Namespace,
 			Name:              info.Name,
 			BundledClickHouse: signozBundledClickHouse(spec),
 			StateProof:        strings.Contains(manifestPath, "behavioral-state"),
+			ExpectZipkinPort:  zipkinPort,
+			ExpectJaegerPort:  jaegerPort,
+		}, nil
+
+	// An Argo CD GitOps control plane: server + repo-server Deployments
+	// and the application-controller StatefulSet rolled out, the
+	// APPLICATION-generated initial admin Secret read as the credential
+	// proof, a session opened through the product's session API, and an
+	// authenticated applications round-trip. The behavioral-gitops
+	// scenario (recognized by name) runs THE GITOPS PROOF: an
+	// API-declared Application auto-syncs a public repo into the
+	// namespace (asserted on the synced workload), then survives a
+	// server pod replacement still Synced/Healthy. Destroy asserts the
+	// crds.keep posture (applications.argoproj.io must REMAIN).
+	case "kubernetesargocd":
+		spec := manifestSpecMap(manifestPath)
+		return &ArgoCdVerifier{
+			Namespace:      info.Namespace,
+			Name:           info.Name,
+			AdminEnabled:   argocdAdminEnabled(spec),
+			ServerInsecure: argocdServerInsecure(spec),
+			CrdsKeep:       argocdCrdsKeep(spec),
+			GitOpsProof:    strings.Contains(manifestPath, "behavioral-gitops"),
+		}, nil
+
+	// An Argo Workflows engine: the workflow controller (and the Argo
+	// server when enabled, with an authenticated version-API round-trip
+	// as the runner identity) rolled out, and THE ENGINE PROOF on every
+	// lane — a verifier-owned Workflow CR runs to Succeeded under the
+	// runner ServiceAccount. The behavioral-resilience scenario
+	// (recognized by name) replaces the controller pod and proves a
+	// fresh workflow still completes. Destroy asserts the crds.keep
+	// posture (workflows.argoproj.io must REMAIN).
+	case "kubernetesargoworkflows":
+		spec := manifestSpecMap(manifestPath)
+		return &ArgoWorkflowsVerifier{
+			Namespace:              info.Namespace,
+			Name:                   info.Name,
+			ServerEnabled:          argoWorkflowsServerEnabled(spec),
+			WorkflowServiceAccount: argoWorkflowsRunnerSA(spec),
+			InstanceId:             argoWorkflowsInstanceId(spec),
+			ResilienceProof:        strings.Contains(manifestPath, "behavioral-resilience"),
 		}, nil
 
 	// A Qdrant vector database: replicas ready, the main Service

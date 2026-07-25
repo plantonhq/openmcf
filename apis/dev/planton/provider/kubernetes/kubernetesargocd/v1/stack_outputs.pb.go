@@ -21,31 +21,39 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// *
+// Outputs exported after deploying Argo CD — the handles downstream
+// resources and humans compose against.
 type KubernetesArgocdStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which argocd-kubernetes is created.
+	// *
+	// Namespace Argo CD is installed in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for argocd-kubernetes.
-	// ex: main-argocd-kubernetes
-	// in the above example, "main" is the name of the argocd-kubernetes
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open argocd-kubernetes from developers laptop.
-	// this might come handy when argocd-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining argocd_kubernetes_kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/argocd_kubernetes_kubernetes_service -n kubernetes_namespace 6379:6379
-	// running the command from this attribute makes it possible to access argocd-kubernetes using http://localhost:8080/argocd
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to argocd-kubernetes from the web browser.
-	// ex: main-argocd-kubernetes.namespace.svc.cluster.local:6379
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open argocd-kubernetes from clients outside kubernetes.
-	// ex: https://acdk8s-planton-pcs-dev-main.data.dev.planton.live:6379/argocd
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// public endpoint to open argocd-kubernetes from clients outside kubernetes.
-	// ex: https://acdk8s-planton-pcs-dev-main.data-internal.dev.planton.live:6379/argocd
-	InternalHostname string `protobuf:"bytes,6,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// *
+	// Helm release name (equals metadata.name).
+	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
+	// *
+	// Name of the API/UI server Service (`<name>-server`) — the backend
+	// handle exposure kinds (KubernetesIngress, KubernetesHttpRoute)
+	// reference.
+	ServerService string `protobuf:"bytes,3,opt,name=server_service,json=serverService,proto3" json:"server_service,omitempty"`
+	// *
+	// In-cluster endpoint of the server
+	// (e.g. "https://main-argocd-server.gitops.svc.cluster.local").
+	// HTTPS by default; plain HTTP when `server.insecure` is set.
+	ServerKubeEndpoint string `protobuf:"bytes,4,opt,name=server_kube_endpoint,json=serverKubeEndpoint,proto3" json:"server_kube_endpoint,omitempty"`
+	// *
+	// Name of the Secret carrying the generated initial admin password
+	// (key `password`) — Argo CD creates it at first start. Empty when
+	// the admin user is disabled. The name is fixed by the application:
+	// "argocd-initial-admin-secret".
+	InitialAdminSecretName string `protobuf:"bytes,5,opt,name=initial_admin_secret_name,json=initialAdminSecretName,proto3" json:"initial_admin_secret_name,omitempty"`
+	// *
+	// Command to port-forward the UI to a workstation
+	// (https://localhost:8080 unless `server.insecure`).
+	PortForwardCommand string `protobuf:"bytes,6,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesArgocdStackOutputs) Reset() {
@@ -85,9 +93,30 @@ func (x *KubernetesArgocdStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesArgocdStackOutputs) GetService() string {
+func (x *KubernetesArgocdStackOutputs) GetReleaseName() string {
 	if x != nil {
-		return x.Service
+		return x.ReleaseName
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdStackOutputs) GetServerService() string {
+	if x != nil {
+		return x.ServerService
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdStackOutputs) GetServerKubeEndpoint() string {
+	if x != nil {
+		return x.ServerKubeEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdStackOutputs) GetInitialAdminSecretName() string {
+	if x != nil {
+		return x.InitialAdminSecretName
 	}
 	return ""
 }
@@ -99,39 +128,18 @@ func (x *KubernetesArgocdStackOutputs) GetPortForwardCommand() string {
 	return ""
 }
 
-func (x *KubernetesArgocdStackOutputs) GetKubeEndpoint() string {
-	if x != nil {
-		return x.KubeEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesArgocdStackOutputs) GetExternalHostname() string {
-	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesArgocdStackOutputs) GetInternalHostname() string {
-	if x != nil {
-		return x.InternalHostname
-	}
-	return ""
-}
-
 var File_dev_planton_provider_kubernetes_kubernetesargocd_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesargocd_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kubernetesargocd/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kubernetesargocd.v1\"\x87\x02\n" +
+	"Gdev/planton/provider/kubernetes/kubernetesargocd/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kubernetesargocd.v1\"\xa5\x02\n" +
 	"\x1cKubernetesArgocdStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\x06 \x01(\tR\x10internalHostnameB\xa9\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12%\n" +
+	"\x0eserver_service\x18\x03 \x01(\tR\rserverService\x120\n" +
+	"\x14server_kube_endpoint\x18\x04 \x01(\tR\x12serverKubeEndpoint\x129\n" +
+	"\x19initial_admin_secret_name\x18\x05 \x01(\tR\x16initialAdminSecretName\x120\n" +
+	"\x14port_forward_command\x18\x06 \x01(\tR\x12portForwardCommandB\xa9\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetesargocd.v1B\x11StackOutputsProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesargocd/v1;kubernetesargocdv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetesargocd.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetesargocd\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetesargocd\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetesargocd::V1b\x06proto3"
 
 var (

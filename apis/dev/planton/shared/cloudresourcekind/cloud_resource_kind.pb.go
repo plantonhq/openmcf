@@ -982,12 +982,13 @@ const (
 	CloudResourceKind_KubernetesRabbitMq         CloudResourceKind = 926
 	// 950–969: Kubernetes GitOps and CI/CD
 	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 950
-	CloudResourceKind_KubernetesTektonOperator              CloudResourceKind = 951
-	CloudResourceKind_KubernetesTekton                      CloudResourceKind = 952
-	CloudResourceKind_KubernetesGhaRunnerScaleSetController CloudResourceKind = 953
-	CloudResourceKind_KubernetesGhaRunnerScaleSet           CloudResourceKind = 954
-	CloudResourceKind_KubernetesHarbor                      CloudResourceKind = 955
-	CloudResourceKind_KubernetesJenkins                     CloudResourceKind = 956
+	CloudResourceKind_KubernetesArgoWorkflows               CloudResourceKind = 951
+	CloudResourceKind_KubernetesTektonOperator              CloudResourceKind = 952
+	CloudResourceKind_KubernetesTekton                      CloudResourceKind = 953
+	CloudResourceKind_KubernetesGhaRunnerScaleSetController CloudResourceKind = 954
+	CloudResourceKind_KubernetesGhaRunnerScaleSet           CloudResourceKind = 955
+	CloudResourceKind_KubernetesHarbor                      CloudResourceKind = 956
+	CloudResourceKind_KubernetesJenkins                     CloudResourceKind = 957
 	// 970–989: Kubernetes app platforms
 	CloudResourceKind_KubernetesTemporal CloudResourceKind = 970
 	CloudResourceKind_KubernetesNats     CloudResourceKind = 971
@@ -1596,12 +1597,13 @@ var (
 		925:  "KubernetesRabbitMqOperator",
 		926:  "KubernetesRabbitMq",
 		950:  "KubernetesArgocd",
-		951:  "KubernetesTektonOperator",
-		952:  "KubernetesTekton",
-		953:  "KubernetesGhaRunnerScaleSetController",
-		954:  "KubernetesGhaRunnerScaleSet",
-		955:  "KubernetesHarbor",
-		956:  "KubernetesJenkins",
+		951:  "KubernetesArgoWorkflows",
+		952:  "KubernetesTektonOperator",
+		953:  "KubernetesTekton",
+		954:  "KubernetesGhaRunnerScaleSetController",
+		955:  "KubernetesGhaRunnerScaleSet",
+		956:  "KubernetesHarbor",
+		957:  "KubernetesJenkins",
 		970:  "KubernetesTemporal",
 		971:  "KubernetesNats",
 		972:  "KubernetesLocust",
@@ -2198,12 +2200,13 @@ var (
 		"KubernetesRabbitMqOperator":                     925,
 		"KubernetesRabbitMq":                             926,
 		"KubernetesArgocd":                               950,
-		"KubernetesTektonOperator":                       951,
-		"KubernetesTekton":                               952,
-		"KubernetesGhaRunnerScaleSetController":          953,
-		"KubernetesGhaRunnerScaleSet":                    954,
-		"KubernetesHarbor":                               955,
-		"KubernetesJenkins":                              956,
+		"KubernetesArgoWorkflows":                        951,
+		"KubernetesTektonOperator":                       952,
+		"KubernetesTekton":                               953,
+		"KubernetesGhaRunnerScaleSetController":          954,
+		"KubernetesGhaRunnerScaleSet":                    955,
+		"KubernetesHarbor":                               956,
+		"KubernetesJenkins":                              957,
 		"KubernetesTemporal":                             970,
 		"KubernetesNats":                                 971,
 		"KubernetesLocust":                               972,
@@ -2664,7 +2667,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xa9\xe4\x01\n" +
+	"\x02v1\x10\x01*\xdc\xe4\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3114,13 +3117,14 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x10KubernetesQdrant\x10\x9c\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sqdrt\x127\n" +
 	"\x1aKubernetesRabbitMqOperator\x10\x9d\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8srmqop:\x02\xbe\x06\x12-\n" +
 	"\x12KubernetesRabbitMq\x10\x9e\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8srmq:\x02\x9d\a\x12(\n" +
-	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x122\n" +
-	"\x18KubernetesTektonOperator\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12(\n" +
-	"\x10KubernetesTekton\x10\xb8\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stktn\x12?\n" +
-	"%KubernetesGhaRunnerScaleSetController\x10\xb9\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharsc\x125\n" +
-	"\x1bKubernetesGhaRunnerScaleSet\x10\xba\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharss\x12(\n" +
-	"\x10KubernetesHarbor\x10\xbb\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shrbr\x12(\n" +
-	"\x11KubernetesJenkins\x10\xbc\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sjkn\x12*\n" +
+	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x121\n" +
+	"\x17KubernetesArgoWorkflows\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sargowf\x122\n" +
+	"\x18KubernetesTektonOperator\x10\xb8\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12(\n" +
+	"\x10KubernetesTekton\x10\xb9\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stktn\x12?\n" +
+	"%KubernetesGhaRunnerScaleSetController\x10\xba\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharsc\x125\n" +
+	"\x1bKubernetesGhaRunnerScaleSet\x10\xbb\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharss\x12(\n" +
+	"\x10KubernetesHarbor\x10\xbc\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shrbr\x12(\n" +
+	"\x11KubernetesJenkins\x10\xbd\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sjkn\x12*\n" +
 	"\x12KubernetesTemporal\x10\xca\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stprl\x12&\n" +
 	"\x0eKubernetesNats\x10\xcb\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8snats\x12'\n" +
 	"\x10KubernetesLocust\x10\xcc\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sloc\x124\n" +

@@ -1381,6 +1381,48 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesArgocd: the pinned-fullname naming contract — the server
+			// Service is `<name>-server` — plus the APPLICATION-owned initial
+			// admin Secret handle (fixed name, created by Argo CD itself at
+			// first start) and the endpoint/port-forward composition handles.
+			name: "KubernetesArgocd",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesArgocd,
+			rawOutputs: map[string]interface{}{
+				"namespace":                 "gitops",
+				"release_name":              "delivery",
+				"server_service":            "delivery-server",
+				"server_kube_endpoint":      "https://delivery-server.gitops.svc.cluster.local",
+				"initial_admin_secret_name": "argocd-initial-admin-secret",
+				"port_forward_command":      "kubectl port-forward svc/delivery-server -n gitops 8080:443",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "server_service",
+				"server_kube_endpoint", "initial_admin_secret_name",
+				"port_forward_command",
+			},
+		},
+		{
+			// KubernetesArgoWorkflows: the pinned-fullname naming contract — the
+			// Argo server Service is `<name>-server` — plus the runner
+			// ServiceAccount handle (the identity to annotate for
+			// IRSA/workload identity) and the endpoint/port-forward handles.
+			name: "KubernetesArgoWorkflows",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesArgoWorkflows,
+			rawOutputs: map[string]interface{}{
+				"namespace":                "pipelines",
+				"release_name":             "runs",
+				"server_service":           "runs-server",
+				"server_kube_endpoint":     "http://runs-server.pipelines.svc.cluster.local:2746",
+				"workflow_service_account": "argo-workflow",
+				"port_forward_command":     "kubectl port-forward svc/runs-server -n pipelines 2746:2746",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "server_service",
+				"server_kube_endpoint", "workflow_service_account",
+				"port_forward_command",
+			},
+		},
+		{
 			// KubernetesSignoz: the pinned-fullname naming contract — the server
 			// Service (= the release name), the `<name>-otel-collector` ingestion
 			// handles, the bundled `<name>-clickhouse` endpoint, and the

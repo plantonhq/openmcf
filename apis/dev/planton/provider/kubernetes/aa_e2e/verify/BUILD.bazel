@@ -4,6 +4,8 @@ go_library(
     name = "verify",
     srcs = [
         "altinityoperatorinstall.go",
+        "argocd.go",
+        "argoworkflows.go",
         "authzbehavior.go",
         "certmanager.go",
         "cilium.go",

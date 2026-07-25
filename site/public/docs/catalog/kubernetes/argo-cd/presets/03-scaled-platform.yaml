@@ -1,0 +1,53 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesArgocd
+metadata:
+  name: platform-argocd
+spec:
+  namespace:
+    value: gitops
+  create_namespace: true
+  domain: argocd.example.com
+  # The reconciliation engine: one replica reconciles everything until
+  # the app count says otherwise — controller replicas are SHARDS
+  # across target clusters, not load-balanced copies.
+  controller:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        memory: 4Gi
+  # The API/UI server and the repo server scale on HPAs (requires
+  # metrics-server). CPU requests are what the HPAs meter — an
+  # autoscaler without a request never scales.
+  server:
+    insecure: true
+    autoscaling:
+      enabled: true
+      min_replicas: 2
+      max_replicas: 5
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  repo_server:
+    autoscaling:
+      enabled: true
+      min_replicas: 2
+      max_replicas: 6
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+  # The HA cache: a 3-replica Sentinel cluster behind HAProxy. KNOW
+  # THIS: its pods carry a REQUIRED anti-affinity — the cluster needs
+  # at least three schedulable worker nodes or they stay Pending.
+  redis:
+    ha:
+      replicas: 3
+  # Faster repo polling for a busy platform (webhook-driven setups can
+  # raise it instead).
+  reconciliation_timeout: 60s
+  # Scrape every component (requires the Prometheus Operator CRDs —
+  # deploy KubernetesKubePrometheusStack first).
+  service_monitors_enabled: true

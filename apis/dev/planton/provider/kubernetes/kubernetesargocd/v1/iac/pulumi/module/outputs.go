@@ -1,10 +1,10 @@
 package module
 
 const (
-	Namespace          = "namespace"
-	Service            = "service"
-	PortForwardCommand = "port_forward_command"
-	KubeEndpoint       = "kube_endpoint"
-	ExternalHostname   = "external_hostname"
-	InternalHostname   = "internal_hostname"
+	OpNamespace              = "namespace"
+	OpReleaseName            = "release_name"
+	OpServerService          = "server_service"
+	OpServerKubeEndpoint     = "server_kube_endpoint"
+	OpInitialAdminSecretName = "initial_admin_secret_name"
+	OpPortForwardCommand     = "port_forward_command"
 )

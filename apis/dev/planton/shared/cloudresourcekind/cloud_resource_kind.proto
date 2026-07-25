@@ -3233,32 +3233,37 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8sargo"
   }];
-  KubernetesTektonOperator = 951 [(kind_meta) = {
+  KubernetesArgoWorkflows = 951 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sargowf"
+  }];
+  KubernetesTektonOperator = 952 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stktnop"
   }];
-  KubernetesTekton = 952 [(kind_meta) = {
+  KubernetesTekton = 953 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stktn"
   }];
-  KubernetesGhaRunnerScaleSetController = 953 [(kind_meta) = {
+  KubernetesGhaRunnerScaleSetController = 954 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgharsc"
   }];
-  KubernetesGhaRunnerScaleSet = 954 [(kind_meta) = {
+  KubernetesGhaRunnerScaleSet = 955 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgharss"
   }];
-  KubernetesHarbor = 955 [(kind_meta) = {
+  KubernetesHarbor = 956 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8shrbr"
   }];
-  KubernetesJenkins = 956 [(kind_meta) = {
+  KubernetesJenkins = 957 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sjkn"

@@ -11,6 +11,7 @@ The following KUBERNETES resources can be deployed using Planton:
 
 - [Altinity Operator](/docs/catalog/kubernetes/altinity-operator)
 - [Argo CD](/docs/catalog/kubernetes/argo-cd)
+- [Argo Workflows](/docs/catalog/kubernetes/argo-workflows)
 - [Authorization Policy](/docs/catalog/kubernetes/authorization-policy)
 - [Backend TLS Policy](/docs/catalog/kubernetes/backend-tls-policy)
 - [Cilium](/docs/catalog/kubernetes/cilium)

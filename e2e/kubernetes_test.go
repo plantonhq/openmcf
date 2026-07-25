@@ -109,6 +109,7 @@ var kubernetesTier2Components = []string{
 	"kubernetesgrafana",
 	"kubernetesopenbao",
 	"kubernetesargocd",
+	"kubernetesargoworkflows",
 	"kuberneteslocust",
 	"kubernetesnats",
 	"kubernetesneo4j",
@@ -396,6 +397,9 @@ func TestKubernetesOpenBao_Pulumi(t *testing.T) {
 func TestKubernetesArgoCD_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesargocd", "pulumi")
 }
+func TestKubernetesArgoWorkflows_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesargoworkflows", "pulumi")
+}
 func TestKubernetesLocust_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteslocust", "pulumi")
 }
@@ -476,6 +480,9 @@ func TestKubernetesKubePrometheusStack_Terraform(t *testing.T) {
 }
 func TestKubernetesArgoCD_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesargocd", "terraform")
+}
+func TestKubernetesArgoWorkflows_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesargoworkflows", "terraform")
 }
 func TestKubernetesLocust_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteslocust", "terraform")

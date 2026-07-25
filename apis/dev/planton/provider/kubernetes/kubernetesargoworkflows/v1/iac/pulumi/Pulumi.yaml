@@ -1,0 +1,3 @@
+name: kubernetes-argo-workflows
+runtime: go
+description: Argo Workflows installation from the official Helm chart with secret-selector artifact and archive credentials, keyless cloud-identity arms, per-namespace runner-identity placement, and kept-by-default CRDs

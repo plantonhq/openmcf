@@ -420,6 +420,7 @@ import (
 	hetznercloudvolumev1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudvolume/v1"
 	kubernetesaltinityoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesaltinityoperator/v1"
 	kubernetesargocdv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesargocd/v1"
+	kubernetesargoworkflowsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesargoworkflows/v1"
 	kubernetesauthorizationpolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesauthorizationpolicy/v1"
 	kubernetesbackendtlspolicyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesbackendtlspolicy/v1"
 	kubernetescertificatev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetescertificate/v1"
@@ -1069,6 +1070,7 @@ var ProviderHetznerCloudMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 
 var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_KubernetesAltinityOperator:            &kubernetesaltinityoperatorv1.KubernetesAltinityOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesArgoWorkflows:               &kubernetesargoworkflowsv1.KubernetesArgoWorkflows{},
 	cloudresourcekind.CloudResourceKind_KubernetesArgocd:                      &kubernetesargocdv1.KubernetesArgocd{},
 	cloudresourcekind.CloudResourceKind_KubernetesAuthorizationPolicy:         &kubernetesauthorizationpolicyv1.KubernetesAuthorizationPolicy{},
 	cloudresourcekind.CloudResourceKind_KubernetesBackendTlsPolicy:            &kubernetesbackendtlspolicyv1.KubernetesBackendTlsPolicy{},

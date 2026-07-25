@@ -850,6 +850,32 @@ registry and every mirror override dies in ImagePullBackOff. This class
 is identically wrong in BOTH engines, so cross-engine parity review
 never catches it — only the chart template read does.
 
+**A scalar-looking chart value may be a STRUCTURED block — the templates'
+`.Values` accesses are the shape truth, not values.yaml alone.** A value
+that reads like a plain setting (an instance identifier, a toggle-with-
+options) is sometimes a nested object whose sub-fields the templates
+access directly (`.Values.x.enabled`, `.Values.x.explicitID`); rendering
+a bare string onto it makes Helm's template evaluation fail at install
+("can't evaluate field ... in type string") on any manifest that sets
+the field — identically in BOTH engines, invisible to every offline
+gate that never renders the chart. Before mapping any spec scalar onto
+a chart value, grep the templates for that value's field accesses; a
+single `.Values.<key>.<subfield>` hit means the module renders the
+structured shape, however plain the spec field stays.
+
+**Read every chart default that PLACES resources by namespace or
+cluster-scoped name — silence adopts it.** Charts ship list/map defaults
+whose entries name namespaces (or fixed cluster-scoped names) and plant
+real resources there — a runner-RBAC namespace list defaulting to
+`["default"]` creates ServiceAccounts and RoleBindings in the cluster's
+`default` namespace on every install that does not override it. A module
+that renders such a list only when the spec declares entries has
+silently adopted the chart's placement; destroy assertions then fail
+zero-orphan checks in namespaces the component never claimed. Either
+ALWAYS render the list (the spec's entries, else an explicit empty list
+— lists REPLACE under Helm merge semantics) or adopt the default
+consciously with the reason taught on the spec field.
+
 **Behavioral drivers against PERSISTENT external stores need run-unique
 names.** A verifier-owned driver CR whose name doubles as a key in an
 external store (a Velero Backup's name keys its object-store records) must
