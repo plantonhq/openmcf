@@ -1,0 +1,3 @@
+name: kubernetes-kyverno
+runtime: go
+description: Kyverno policy engine from the official chart — the four controllers (admission, background, cleanup, reports), the policy CRDs, runtime config and feature flags, with typed sizing, certificates and metrics

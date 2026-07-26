@@ -440,6 +440,7 @@ import (
 	kubernetesexternaldnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternaldns/v1"
 	kubernetesexternalsecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternalsecret/v1"
 	kubernetesexternalsecretsoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternalsecretsoperator/v1"
+	kubernetesgatekeeperv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatekeeper/v1"
 	kubernetesgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgateway/v1"
 	kubernetesgatewayapicrdsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1"
 	kubernetesgatewayclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatewayclass/v1"
@@ -472,6 +473,7 @@ import (
 	kuberneteskedav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeda/v1"
 	kuberneteskeycloakv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeycloak/v1"
 	kuberneteskubeprometheusstackv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskubeprometheusstack/v1"
+	kuberneteskyvernov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskyverno/v1"
 	kuberneteslistenersetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteslistenerset/v1"
 	kuberneteslocustv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteslocust/v1"
 	kuberneteslokiv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesloki/v1"
@@ -1091,6 +1093,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesExternalDns:                 &kubernetesexternaldnsv1.KubernetesExternalDns{},
 	cloudresourcekind.CloudResourceKind_KubernetesExternalSecret:              &kubernetesexternalsecretv1.KubernetesExternalSecret{},
 	cloudresourcekind.CloudResourceKind_KubernetesExternalSecretsOperator:     &kubernetesexternalsecretsoperatorv1.KubernetesExternalSecretsOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesGatekeeper:                  &kubernetesgatekeeperv1.KubernetesGatekeeper{},
 	cloudresourcekind.CloudResourceKind_KubernetesGateway:                     &kubernetesgatewayv1.KubernetesGateway{},
 	cloudresourcekind.CloudResourceKind_KubernetesGatewayApiCrds:              &kubernetesgatewayapicrdsv1.KubernetesGatewayApiCrds{},
 	cloudresourcekind.CloudResourceKind_KubernetesGatewayClass:                &kubernetesgatewayclassv1.KubernetesGatewayClass{},
@@ -1123,6 +1126,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesKeda:                        &kuberneteskedav1.KubernetesKeda{},
 	cloudresourcekind.CloudResourceKind_KubernetesKeycloak:                    &kuberneteskeycloakv1.KubernetesKeycloak{},
 	cloudresourcekind.CloudResourceKind_KubernetesKubePrometheusStack:         &kuberneteskubeprometheusstackv1.KubernetesKubePrometheusStack{},
+	cloudresourcekind.CloudResourceKind_KubernetesKyverno:                     &kuberneteskyvernov1.KubernetesKyverno{},
 	cloudresourcekind.CloudResourceKind_KubernetesListenerSet:                 &kuberneteslistenersetv1.KubernetesListenerSet{},
 	cloudresourcekind.CloudResourceKind_KubernetesLocust:                      &kuberneteslocustv1.KubernetesLocust{},
 	cloudresourcekind.CloudResourceKind_KubernetesLoki:                        &kuberneteslokiv1.KubernetesLoki{},

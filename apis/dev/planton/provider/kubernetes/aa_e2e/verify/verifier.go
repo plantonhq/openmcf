@@ -852,6 +852,40 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			DurabilityProof:  strings.Contains(manifestPath, "behavioral-durability"),
 		}, nil
 
+	// The Kyverno policy engine: every enabled controller rolled out,
+	// the runtime-registered webhook configurations present, and THE
+	// ENFORCEMENT PROOF on every lane (a verifier-owned Enforce
+	// ClusterPolicy rejects a violating Pod and admits a compliant
+	// one). The behavioral-enforcement scenario (recognized by name)
+	// adds the mutation proof. Destroy asserts the webhook
+	// configurations are GONE — the pre-delete cleanup hook is the
+	// designed uninstall path.
+	case "kuberneteskyverno":
+		spec := manifestSpecMap(manifestPath)
+		return &KyvernoVerifier{
+			Namespace:         info.Namespace,
+			Name:              info.Name,
+			BackgroundEnabled: nestedBoolWithDefault(spec, "background_controller", "enabled", true),
+			CleanupEnabled:    nestedBoolWithDefault(spec, "cleanup_controller", "enabled", true),
+			ReportsEnabled:    nestedBoolWithDefault(spec, "reports_controller", "enabled", true),
+			Mutation:          strings.Contains(manifestPath, "behavioral-enforcement"),
+		}, nil
+
+	// The OPA Gatekeeper engine: controller-manager replicas + the audit
+	// controller rolled out, the chart-owned webhook configuration and
+	// engine CRDs present, and THE ENFORCEMENT PROOF on every lane (a
+	// verifier-owned CEL ConstraintTemplate + deny Constraint rejects a
+	// violating Pod and admits a compliant one). The behavioral-audit
+	// scenario (recognized by name) adds the audit-loop proof on a
+	// pre-constraint victim. Destroy asserts webhook configurations
+	// GONE and engine CRDs KEPT (the crds/-directory posture).
+	case "kubernetesgatekeeper":
+		return &GatekeeperVerifier{
+			Namespace: info.Namespace,
+			Name:      info.Name,
+			Audit:     strings.Contains(manifestPath, "behavioral-audit"),
+		}, nil
+
 	// A Qdrant vector database: replicas ready, the main Service
 	// present, and a live vector round-trip (collection create → upsert
 	// → similarity search asserting the nearest neighbour), carrying the

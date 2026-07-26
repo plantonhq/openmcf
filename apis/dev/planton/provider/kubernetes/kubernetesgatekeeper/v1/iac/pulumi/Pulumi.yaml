@@ -1,0 +1,3 @@
+name: kubernetes-gatekeeper
+runtime: go
+description: OPA Gatekeeper policy engine from the official chart — the webhook controller manager, the audit controller and the constraint-framework CRDs, with typed webhook postures, audit tuning, exemptions, certificates and lifecycle hooks

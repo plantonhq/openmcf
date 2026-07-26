@@ -1294,6 +1294,42 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesKyverno: the chart naming contract — release, the
+			// fullname-derived admission webhook Service and the runtime
+			// ConfigMap (the engine's skip-list, the first object to
+			// inspect when a resource is unexpectedly skipped or policed).
+			name: "KubernetesKyverno",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKyverno,
+			rawOutputs: map[string]interface{}{
+				"namespace":              "kyverno",
+				"release_name":           "kyverno",
+				"admission_service_name": "kyverno-svc",
+				"config_map_name":        "kyverno",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "admission_service_name",
+				"config_map_name",
+			},
+		},
+		{
+			// KubernetesGatekeeper: the chart-FIXED handles (the chart
+			// hardcodes its resource names — no fullname derivation): the
+			// webhook Service and the cert Secret the embedded rotator
+			// maintains.
+			name: "KubernetesGatekeeper",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGatekeeper,
+			rawOutputs: map[string]interface{}{
+				"namespace":                "gatekeeper-system",
+				"release_name":             "gatekeeper",
+				"webhook_service_name":     "gatekeeper-webhook-service",
+				"webhook_cert_secret_name": "gatekeeper-webhook-server-cert",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "webhook_service_name",
+				"webhook_cert_secret_name",
+			},
+		},
+		{
 			// KubernetesRabbitMqOperator: the release manifest's fixed
 			// handles (namespace, Deployment, metrics endpoint, the CRD the
 			// manifest installs and deletes with the resource).

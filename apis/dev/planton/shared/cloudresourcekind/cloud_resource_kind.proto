@@ -3061,7 +3061,17 @@ enum CloudResourceKind {
     id_prefix: "k8sotelcol"
     prerequisites: [KubernetesOtelOperator]
   }];
-  // 890–899: Kubernetes security, policy, and identity
+  // 880–899: Kubernetes security, policy, and identity
+  KubernetesKyverno = 880 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skyvrn"
+  }];
+  KubernetesGatekeeper = 881 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sgtkpr"
+  }];
   KubernetesKeycloak = 890 [(kind_meta) = {
     provider: kubernetes
     version: v1

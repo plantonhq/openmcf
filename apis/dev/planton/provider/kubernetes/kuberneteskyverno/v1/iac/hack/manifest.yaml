@@ -1,0 +1,88 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# typed block rendered at once (CRD keep, config filter edits, feature
+# flags, all four controllers, HPA, cert-manager certificates,
+# ServiceMonitor fan-out, registry override, escape hatch).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKyverno
+metadata:
+  name: kyverno
+spec:
+  namespace:
+    value: kyverno
+  createNamespace: true
+  chartVersion: 3.8.2
+  crds:
+    install: true
+    keepOnUninstall: true
+    migrationEnabled: true
+  config:
+    webhookExcludeNamespaces:
+      - platform-system
+    resourceFiltersInclude:
+      - "[Secret,ci-cache,*]"
+    resourceFiltersExclude:
+      - "[Node,*,*]"
+    excludeGroups:
+      - system:nodes
+    excludeUsernames:
+      - "!system:kube-scheduler"
+    defaultRegistry: mirror.example.com
+    enableDefaultRegistryMutation: false
+  features:
+    forceFailurePolicyIgnore: true
+    backgroundScan:
+      enabled: true
+      workers: 4
+      interval: 30m
+    generateValidatingAdmissionPolicy: false
+    admissionReports: true
+    aggregateReports: true
+    policyReports: true
+    loggingFormat: json
+    loggingVerbosity: 4
+    omitEventTypes:
+      - PolicyApplied
+      - PolicySkipped
+  admissionController:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    scheduling:
+      nodeSelector:
+        role: platform
+      tolerations:
+        - key: platform
+          operator: Exists
+          effect: NoSchedule
+  backgroundController:
+    enabled: true
+    replicas: 2
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  cleanupController:
+    enabled: true
+    replicas: 2
+  reportsController:
+    enabled: false
+  certificates:
+    certManager:
+      issuerName:
+        value: platform-ca
+      issuerKind: ClusterIssuer
+  metrics:
+    serviceMonitor: true
+  imageRegistry: mirror.example.com
+  imagePullSecrets:
+    - mirror-pull
+  webhooksCleanupEnabled: true
+  helmValues: |
+    admissionController:
+      podLabels:
+        team: platform

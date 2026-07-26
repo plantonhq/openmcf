@@ -440,6 +440,18 @@ func TestKubernetesQdrant_Pulumi(t *testing.T) {
 func TestKubernetesQdrant_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesqdrant", "terraform")
 }
+func TestKubernetesKyverno_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskyverno", "pulumi")
+}
+func TestKubernetesKyverno_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskyverno", "terraform")
+}
+func TestKubernetesGatekeeper_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgatekeeper", "pulumi")
+}
+func TestKubernetesGatekeeper_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgatekeeper", "terraform")
+}
 func TestKubernetesRabbitMqOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesrabbitmqoperator", "pulumi")
 }
@@ -671,6 +683,9 @@ func TestKubernetesGhaRunnerScaleSetController_Terraform(t *testing.T) {
 }
 func TestKubernetesTekton_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestekton", "terraform")
+}
+func TestKubernetesTektonOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestektonoperator", "terraform")
 }
 func TestKubernetesIstioBaseCrds_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesistiobasecrds", "terraform")

@@ -1,0 +1,62 @@
+# Every fixture-free typed block at once: HA admission controller with
+# sizing and an HPA, config filter edits (webhook exclusions, include /
+# exclude filters, registry mutation), feature flags (background scan
+# tuning, JSON logging, VAP generation off, omit-events), a disabled
+# reports controller, and the escape hatch. The cert-manager
+# certificates arm and the ServiceMonitor fan-out are deliberately
+# absent (fixture-needing arms — plan-proven, deferred-ledger rows);
+# the enforcement proof runs identically on this lane.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKyverno
+metadata:
+  name: e2e-kyv-full
+spec:
+  namespace:
+    value: e2e-kyv-full
+  create_namespace: true
+  crds:
+    install: true
+    migration_enabled: true
+  config:
+    webhook_exclude_namespaces:
+      - e2e-kyv-full-quiet
+    resource_filters_include:
+      - "[Secret,e2e-kyv-full-quiet,*]"
+    exclude_usernames:
+      - "!system:kube-scheduler"
+    enable_default_registry_mutation: false
+  features:
+    background_scan:
+      enabled: true
+      workers: 3
+      interval: 30m
+    generate_validating_admission_policy: false
+    logging_format: json
+    logging_verbosity: 2
+    omit_event_types:
+      - PolicyApplied
+      - PolicySkipped
+  admission_controller:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    autoscaling:
+      min_replicas: 2
+      max_replicas: 4
+      target_cpu_utilization_percentage: 80
+  background_controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+  cleanup_controller:
+    enabled: true
+  reports_controller:
+    enabled: false
+  helm_values: |
+    admissionController:
+      podLabels:
+        e2e.planton.ai/lane: full-surface

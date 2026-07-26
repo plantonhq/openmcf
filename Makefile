@@ -239,7 +239,7 @@ e2e-test-kubernetes-tier1:  ## Run Kubernetes Tier 1 (native K8s) E2E tests only
 
 .PHONY: e2e-test-kubernetes-tier2
 e2e-test-kubernetes-tier2:  ## Run Kubernetes Tier 2 (Helm-based) E2E tests only
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesOpenBao|KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesJenkins|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesSeaweedFs|KubernetesQdrant)_" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesOpenBao|KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesJenkins|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesTemporal|KubernetesSeaweedFs|KubernetesQdrant|KubernetesKyverno|KubernetesGatekeeper)_" ./e2e/
 
 .PHONY: e2e-test-kubernetes-tier3
 e2e-test-kubernetes-tier3:  ## Run Kubernetes Tier 3 (operator-dependent) E2E tests -- fixtures deployed automatically
@@ -257,7 +257,7 @@ e2e-test-kubernetes-terraform-tier1:  ## Run Kubernetes Tier 1 Terraform E2E tes
 
 .PHONY: e2e-test-kubernetes-terraform-tier2
 e2e-test-kubernetes-terraform-tier2:  ## Run Kubernetes Tier 2 Terraform (Helm-based) E2E tests only
-	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesSeaweedFs|KubernetesQdrant)_Terraform" ./e2e/
+	go test -tags=e2e -timeout=120m -v -count=1 -run "Test(KubernetesValkey|KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesLocust|KubernetesNats|KubernetesNeo4j|KubernetesSolrOperator|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesTemporal|KubernetesSeaweedFs|KubernetesQdrant|KubernetesKyverno|KubernetesGatekeeper)_Terraform" ./e2e/
 
 .PHONY: e2e-test-kubernetes-terraform-tier3
 e2e-test-kubernetes-terraform-tier3:  ## Run Kubernetes Tier 3 Terraform (operator-dependent) E2E tests
