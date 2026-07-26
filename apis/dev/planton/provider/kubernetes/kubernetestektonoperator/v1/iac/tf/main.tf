@@ -1,86 +1,48 @@
-##############################################
-# main.tf
+# KubernetesTektonOperator Terraform module.
 #
-# Main orchestration file for deploying the
-# Tekton Operator on Kubernetes.
+# Installs the Tekton Operator from its released single-file manifest —
+# the operator's OFFICIAL distribution (the in-repo Helm chart is
+# unpublished, version "devel"). The manifest applies per document: the
+# namespace `tekton-operator`, the 14 operator.tekton.dev CRDs, the
+# operator and webhook Deployments (with the spec's typed overrides
+# patched on — see locals.tf), ConfigMaps, RBAC, Services and the webhook
+# cert Secret.
 #
-# This module installs the Tekton Operator using
-# official release manifests, which provides
-# automated lifecycle management for Tekton
-# components (Pipelines, Triggers, Dashboard).
+# AUTO-INSTALL IS ALWAYS DISABLED: the tekton-config-defaults ConfigMap's
+# AUTOINSTALL_COMPONENTS key is patched from the release's "true" to
+# "false" so the operator never creates its own TektonConfig — the
+# KubernetesTekton declaration kind is the single owner of the cluster's
+# Tekton configuration. Installing the operator alone deploys no Tekton
+# components.
 #
-# Resources Created:
-#  1. Tekton Operator (via kubectl_manifest)
-#  2. TektonConfig CRD (to configure components)
-#
-# IMPORTANT: Namespace Behavior
-# Tekton Operator manages its own namespaces:
-# - 'tekton-operator' for the operator itself
-# - 'tekton-pipelines' for Tekton components
-# These are automatically created by the operator
-# and cannot be customized by the user.
-#
-# The Tekton Operator extends the Kubernetes API
-# with Custom Resource Definitions (CRDs) and
-# provides automated operations including:
-#  - Component installation and upgrades
-#  - Configuration management
-#  - Health monitoring
-#
-# For more information see:
-#  - examples.md for usage examples
-#  - ../README.md for component documentation
-#  - ../../docs/README.md for deployment patterns
-##############################################
+# DESTROY SEMANTICS: every document deletes with the resource, INCLUDING
+# the CRDs — which cascade-deletes any TektonConfig on the cluster.
+# Always destroy the KubernetesTekton resource FIRST while the operator
+# still runs (TektonInstallerSet finalizers are operator-processed; see
+# the spec's destroy note).
 
-##############################################
-# 1. Deploy Tekton Operator
-#
-# Apply the Tekton Operator release manifests.
-# This installs the operator controller which
-# watches for TektonConfig CRDs.
-##############################################
+# Fetch the released manifest from the pinned release tag.
 data "http" "tekton_operator_manifest" {
-  url = local.operator_release_url
-}
+  url = local.manifest_url
 
-resource "kubectl_manifest" "tekton_operator" {
-  for_each = {
-    for idx, doc in split("---", data.http.tekton_operator_manifest.response_body) : idx => doc
-    if trimspace(doc) != "" && !startswith(trimspace(doc), "#")
+  request_headers = {
+    Accept = "application/yaml"
   }
-
-  yaml_body = each.value
-
-  # Wait for the previous manifest to be applied
-  wait = true
 }
 
-##############################################
-# 2. Create TektonConfig
+# Apply every document. Keyed by each document's COMPOSED IDENTITY
+# (apiVersion//kind//name[//namespace]) — stable across manifest
+# reorderings, and exactly the ID form the kubectl importer takes so the
+# import map derives IDs blind from the address keys.
 #
-# Configure which Tekton components to install.
-# The operator will reconcile this and install
-# the requested components in 'tekton-pipelines'
-# namespace.
-#
-# Profiles:
-#  - all: Pipelines + Triggers + Dashboard
-#  - basic: Pipelines + Triggers
-#  - lite: Pipelines only
-##############################################
-resource "kubectl_manifest" "tekton_config" {
-  # Note: Do not set fields that the operator manages automatically (e.g., pipeline.enable-api-fields)
-  # to avoid Server-Side Apply field conflicts
-  yaml_body = <<-YAML
-    apiVersion: operator.tekton.dev/v1alpha1
-    kind: TektonConfig
-    metadata:
-      name: ${local.tekton_config_name}
-    spec:
-      profile: ${local.tekton_profile}
-      targetNamespace: ${local.components_namespace}
-  YAML
+# server_side_apply keeps re-installs tolerant of the operator's own
+# field management on its ConfigMaps and matches the Pulumi twin's apply
+# mode.
+resource "kubectl_manifest" "tekton_operator" {
+  for_each = local.applied_documents
 
-  depends_on = [kubectl_manifest.tekton_operator]
+  yaml_body = yamlencode(each.value)
+
+  server_side_apply = true
+  force_conflicts   = true
 }

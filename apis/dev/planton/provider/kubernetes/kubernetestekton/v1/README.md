@@ -1,120 +1,54 @@
-# KubernetesTekton
+# Kubernetes Tekton
 
-Deploy Tekton Pipelines and Dashboard on Kubernetes using official release manifests.
+## When NOT to Use This
 
-## Overview
+**One resource is THE cluster's Tekton installation** — the declaration
+of which components run (Pipelines, Triggers, Dashboard, Chains), their
+feature flags, execution defaults and cleanup policy. Exactly one per
+cluster (the operator's own admission rule).
 
-KubernetesTekton provides a manifest-based deployment of Tekton, ideal for users who prefer direct control over installation without the Tekton Operator's lifecycle management overhead.
+Not the right component when:
 
-**Key Features:**
-- Deploy Tekton Pipelines using official release manifests
-- Optional Tekton Dashboard deployment
-- CloudEvents integration for pipeline notifications
-- Dashboard ingress via Kubernetes Gateway API
+- **The operator is missing** — `KubernetesTektonOperator` is the
+  registry prerequisite; this resource is the declaration it
+  reconciles.
+- **You want to declare pipelines** — Tasks, Pipelines and their runs
+  are plain custom resources once this converges; declare them via
+  `KubernetesManifest`, your platform, or the Tekton CLI. This kind
+  shapes the engine, never your pipelines.
+- **You want GitHub Actions runners** — that is the
+  `KubernetesGhaRunnerScaleSet` family; Tekton is its own ecosystem.
 
-## Comparison: KubernetesTekton vs KubernetesTektonOperator
+## The profile honesty
 
-| Feature | KubernetesTekton | KubernetesTektonOperator |
-|---------|------------------|-------------------------|
-| Deployment Method | Direct manifests (kubectl apply) | Operator with TektonConfig CRD |
-| Complexity | Simpler, direct | More abstraction layers |
-| Lifecycle Management | Manual upgrades | Automated by operator |
-| Configuration | ConfigMap patches | TektonConfig CR |
-| Best For | Simple deployments, debugging | Production with automation |
+`lite` = Pipelines. `basic` = + Triggers. `all` (the default) = +
+Dashboard. Chains installs on `basic`/`all` unless `chain.disabled`.
+The dashboard has NO authentication of its own — its Service stays
+ClusterIP and exposure composes from first-class kinds over the
+exported handle; set `dashboard.readonly` before putting it anywhere
+people can reach.
 
-## Quick Start
+## One CloudEvents sink per cluster
 
-### Minimal Example
+`pipeline.cloud_events_sink_url` is Tekton's single, cluster-global
+event destination — every run in every namespace reports there.
+Multi-tenant clusters put a fan-out service at that URL (each event
+carries its source namespace) rather than wishing for per-namespace
+sinks that do not exist.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesTekton
-metadata:
-  name: my-tekton
-spec:
-  pipeline_version: "latest"
-```
+## Two fields you cannot change in place
 
-### With Dashboard
+`target_namespace` is immutable (the operator rejects the update —
+destroy and recreate to move), and the rendered TektonConfig is always
+named `config` (the operator's singleton rule; your `metadata.name`
+keys the Planton resource only).
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesTekton
-metadata:
-  name: my-tekton
-spec:
-  pipeline_version: "v0.65.2"
-  dashboard:
-    enabled: true
-    version: "v0.53.0"
-```
+## Destroy while the operator lives
 
-### With CloudEvents and Dashboard Ingress
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesTekton
-metadata:
-  name: my-tekton
-spec:
-  pipeline_version: "latest"
-  dashboard:
-    enabled: true
-    version: "latest"
-    ingress:
-      enabled: true
-      hostname: "tekton-dashboard.example.com"
-  cloud_events:
-    sink_url: "http://my-receiver.my-namespace.svc.cluster.local/tekton/events"
-```
-
-## Namespace Behavior
-
-Tekton components are installed in the `tekton-pipelines` namespace, which is created automatically by the official Tekton manifests. **This namespace cannot be customized.**
-
-## CloudEvents Integration
-
-When `cloud_events.sink_url` is configured, Tekton sends CloudEvents for:
-- TaskRun state changes (started, running, succeeded, failed)
-- PipelineRun state changes
-
-This enables external systems to react to pipeline events (e.g., update a UI, trigger notifications, start downstream processes).
-
-## Dashboard Ingress
-
-When enabled, the dashboard is exposed via Kubernetes Gateway API:
-- TLS certificate via cert-manager
-- HTTP → HTTPS redirect
-- Routes traffic to `tekton-dashboard:9097`
-
-**Prerequisites:**
-- Istio ingress gateway installed
-- cert-manager with ClusterIssuer matching your domain
-- Gateway API CRDs installed
-
-## Accessing the Dashboard
-
-### Port Forward (No Ingress)
-
-```bash
-kubectl port-forward -n tekton-pipelines service/tekton-dashboard 9097:9097
-```
-
-Then open: http://localhost:9097
-
-### Via Ingress
-
-If dashboard ingress is enabled, access via the configured hostname (e.g., https://tekton-dashboard.example.com).
-
-## Version Selection
-
-### Pipeline Versions
-See: https://github.com/tektoncd/pipeline/releases
-
-### Dashboard Versions  
-See: https://github.com/tektoncd/dashboard/releases
-
-Use `"latest"` for the most recent stable release, or pin to a specific version (e.g., `"v0.65.2"`).
+Deleting this resource makes the operator tear down every component it
+installed, and the deletion BLOCKS until that finishes. Never destroy
+the `KubernetesTektonOperator` first — without a running operator the
+teardown finalizers strand.
 
 ---
 

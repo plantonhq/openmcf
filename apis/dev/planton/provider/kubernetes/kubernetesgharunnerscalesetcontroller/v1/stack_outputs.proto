@@ -2,25 +2,25 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1;
 
-// KubernetesGhaRunnerScaleSetControllerStackOutputs describes the outputs from deploying the
-// GitHub Actions Runner Scale Set Controller on Kubernetes.
+/**
+ * Outputs exported after installing the runner scale set controller.
+ */
 message KubernetesGhaRunnerScaleSetControllerStackOutputs {
-  // Namespace where the controller is deployed.
+  /**
+   * Namespace the controller runs in.
+   */
   string namespace = 1;
 
-  // Name of the Helm release.
+  /**
+   * Helm release name (equals metadata.name).
+   */
   string release_name = 2;
 
-  // Version of the deployed Helm chart.
-  string chart_version = 3;
-
-  // Name of the controller deployment.
-  string deployment_name = 4;
-
-  // Name of the controller service account.
-  string service_account_name = 5;
-
-  // Controller metrics endpoint (if metrics are enabled).
-  // Format: <service>.<namespace>.svc.cluster.local:<port>
-  string metrics_endpoint = 6;
+  /**
+   * Name of the controller's ServiceAccount — what a
+   * KubernetesGhaRunnerScaleSet references in
+   * `controller_service_account` when this controller watches a
+   * single namespace.
+   */
+  string service_account_name = 3;
 }

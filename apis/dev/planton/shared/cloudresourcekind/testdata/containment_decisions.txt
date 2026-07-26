@@ -373,6 +373,7 @@ contained dev.planton.provider.hetznercloud.hetznercloudserver.v1.HetznerCloudSe
 contained dev.planton.provider.kubernetes.ExternalSecretsStoreGcp.project_id -> GcpProject
 contained dev.planton.provider.kubernetes.kubernetesaltinityoperator.v1.KubernetesAltinityOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesauthorizationpolicy.v1.KubernetesAuthorizationPolicySpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesbackendtlspolicy.v1.KubernetesBackendTlsPolicySpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateSpec.namespace -> KubernetesNamespace

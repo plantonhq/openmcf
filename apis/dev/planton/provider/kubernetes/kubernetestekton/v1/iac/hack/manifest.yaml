@@ -1,24 +1,78 @@
-# Test manifest for KubernetesTekton
-# Used for local development and testing
-#
-# Usage:
-#   pulumi up --stack dev --config-file manifest.yaml
-#   OR
-#   terraform apply -var-file=manifest.tfvars
-
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# typed block rendered at once on the `all` profile.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTekton
 metadata:
-  name: test-tekton
-  org: test-org
-  env: dev
+  name: tekton-full
 spec:
-  pipeline_version: "latest"
+  profile: all
+  targetNamespace: ci-tekton
+  targetNamespaceMetadata:
+    labels:
+      team: platform
+    annotations:
+      cost-center: ci
+  placement:
+    nodeSelector:
+      role: ci
+    tolerations:
+      - key: ci
+        operator: Exists
+        effect: NoSchedule
+    priorityClassName: platform-critical
+  pipeline:
+    cloudEventsSinkUrl: https://ci-events.example.com/tekton
+    enableApiFields: beta
+    defaultTimeoutMinutes: 90
+    defaultServiceAccount: pipelines-runner
+    features:
+      disableCredsInit: true
+      awaitSidecarReadiness: true
+      runningInEnvironmentWithInjectedSidecars: false
+      requireGitSshSecretKnownHosts: true
+      enableCustomTasks: true
+      keepPodOnCancel: false
+      enableProvenanceInStatus: true
+      setSecurityContext: true
+      enableCelInWhenexpression: true
+      enableStepActions: true
+      enableParamEnum: true
+      resultsFrom: termination-message
+      maxResultSize: 8192
+      coschedule: workspaces
+    resolvers:
+      enableBundlesResolver: true
+      enableHubResolver: false
+      enableGitResolver: true
+      enableClusterResolver: true
+    metrics:
+      taskrunLevel: task
+      taskrunDurationType: histogram
+      pipelinerunLevel: pipeline
+      pipelinerunDurationType: histogram
+      countWithReason: true
+    performance:
+      replicas: 2
+      buckets: 2
+      threadsPerController: 4
+      kubeApiQps: 50
+      kubeApiBurst: 100
+  trigger:
+    enableApiFields: stable
+    defaultServiceAccount: triggers-runner
   dashboard:
-    enabled: true
-    version: "latest"
-    ingress:
-      enabled: true
-      hostname: "tekton-dashboard-test.example.com"
-  cloud_events:
-    sink_url: "http://event-receiver.test-namespace.svc.cluster.local/tekton/events"
+    readonly: true
+    externalLogs: https://logs.example.com
+  chain:
+    disabled: false
+    generateSigningSecret: true
+  pruner:
+    schedule: "0 8 * * *"
+    resources:
+      - pipelinerun
+      - taskrun
+    keep: 100
+    prunePerResource: true
+  additionalParams:
+    - name: createRbacResource
+      value: "true"

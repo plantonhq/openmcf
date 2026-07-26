@@ -1,0 +1,28 @@
+# Every fixture-free knob at once: explicit resources for both
+# Deployments and pod scheduling. Same install proof as minimal — the
+# overrides must render without disturbing the faithful manifest apply
+# (the rendered Deployments carry the resources; every other document
+# applies verbatim).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTektonOperator
+metadata:
+  name: e2e-tektonop-full
+spec:
+  operatorResources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  webhookResources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  tolerations:
+    - key: e2e-nonexistent-taint
+      operator: Exists
+      effect: PreferNoSchedule

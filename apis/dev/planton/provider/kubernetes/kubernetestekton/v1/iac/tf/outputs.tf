@@ -1,40 +1,27 @@
-##############################################
-# outputs.tf
-#
-# Terraform outputs for KubernetesTekton deployment.
-##############################################
+# Stack outputs — identical names and derivations in the Pulumi module
+# (KubernetesTektonStackOutputs).
 
 output "namespace" {
-  description = "The namespace where Tekton is installed"
-  value       = local.namespace
+  description = "Namespace the Tekton components run in (the TektonConfig targetNamespace)"
+  value       = local.target_namespace
 }
 
-output "pipeline_version" {
-  description = "The version of Tekton Pipelines deployed"
-  value       = local.pipeline_version
+output "profile" {
+  description = "The installed profile (lite, basic or all)"
+  value       = local.profile
 }
 
-output "dashboard_version" {
-  description = "The version of Tekton Dashboard deployed (empty if disabled)"
-  value       = local.dashboard_enabled ? local.dashboard_version : ""
+output "dashboard_service" {
+  description = "Name of the dashboard Service in the target namespace — the backend handle exposure kinds reference; empty unless profile is all"
+  value       = local.dashboard_service
 }
 
-output "dashboard_internal_endpoint" {
-  description = "Internal cluster endpoint for the Tekton Dashboard"
-  value       = local.dashboard_enabled ? local.dashboard_internal_endpoint : ""
+output "dashboard_kube_endpoint" {
+  description = "In-cluster endpoint of the dashboard; empty unless profile is all"
+  value       = local.dashboard_kube_endpoint
 }
 
-output "dashboard_external_hostname" {
-  description = "External hostname for the Tekton Dashboard (if ingress enabled)"
-  value       = local.ingress_enabled ? local.ingress_hostname : ""
-}
-
-output "port_forward_dashboard_command" {
-  description = "kubectl port-forward command to access the dashboard locally"
-  value       = local.dashboard_enabled ? local.port_forward_dashboard_command : ""
-}
-
-output "cloud_events_sink_url" {
-  description = "The CloudEvents sink URL configured for pipeline notifications"
-  value       = local.cloud_events_sink_url
+output "port_forward_command" {
+  description = "Command to port-forward the dashboard to a workstation; empty unless profile is all"
+  value       = local.port_forward_command
 }

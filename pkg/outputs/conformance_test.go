@@ -1402,6 +1402,65 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesTektonOperator: the release manifest's fixed
+			// namespace — the one handle the manifest-bundle install exports.
+			name: "KubernetesTektonOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesTektonOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace": "tekton-operator",
+			},
+			mustPopulate: []string{"namespace"},
+		},
+		{
+			// KubernetesTekton: the resolved installation handles — target
+			// namespace, profile, and the dashboard Service handles exposure
+			// kinds compose against (populated on profile `all`).
+			name: "KubernetesTekton",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesTekton,
+			rawOutputs: map[string]interface{}{
+				"namespace":               "tekton-pipelines",
+				"profile":                 "all",
+				"dashboard_service":       "tekton-dashboard",
+				"dashboard_kube_endpoint": "http://tekton-dashboard.tekton-pipelines.svc.cluster.local:9097",
+				"port_forward_command":    "kubectl port-forward -n tekton-pipelines service/tekton-dashboard 9097:9097",
+			},
+			mustPopulate: []string{
+				"namespace", "profile", "dashboard_service",
+				"dashboard_kube_endpoint", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesGhaRunnerScaleSetController: the pinned-fullname
+			// naming contract — the controller ServiceAccount equals the
+			// release name — the handle fenced scale sets reference.
+			name: "KubernetesGhaRunnerScaleSetController",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGhaRunnerScaleSetController,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "arc-system",
+				"release_name":         "arc",
+				"service_account_name": "arc",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_account_name",
+			},
+		},
+		{
+			// KubernetesGhaRunnerScaleSet: the GitHub-visible fleet identity —
+			// the exact `runs-on:` value — plus the registration URL.
+			name: "KubernetesGhaRunnerScaleSet",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGhaRunnerScaleSet,
+			rawOutputs: map[string]interface{}{
+				"namespace":             "ci-runners",
+				"release_name":          "build-runners",
+				"runner_scale_set_name": "build-runners",
+				"github_config_url":     "https://github.com/my-org/my-repo",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "runner_scale_set_name",
+				"github_config_url",
+			},
+		},
+		{
 			// KubernetesArgoWorkflows: the pinned-fullname naming contract — the
 			// Argo server Service is `<name>-server` — plus the runner
 			// ServiceAccount handle (the identity to annotate for
@@ -1425,9 +1484,9 @@ func TestStackOutputsConformance(t *testing.T) {
 		{
 			// KubernetesSignoz: the pinned-fullname naming contract — the server
 			// Service (= the release name), the `<name>-otel-collector` ingestion
-			// handles, the bundled `<name>-clickhouse` endpoint, and the
-			// module-materialized clickhouse-auth Secret handle (nested
-			// name/key — the flat-vs-nested drift class this guard exists for).
+			// handles, and the composed-ClickHouse connection passthroughs
+			// including the password Secret handle (nested name/key — the
+			// flat-vs-nested drift class this guard exists for).
 			name: "KubernetesSignoz",
 			kind: cloudresourcekind.CloudResourceKind_KubernetesSignoz,
 			rawOutputs: map[string]interface{}{
@@ -1438,11 +1497,11 @@ func TestStackOutputsConformance(t *testing.T) {
 				"otel_collector_service": "observe-otel-collector",
 				"otlp_grpc_endpoint":     "observe-otel-collector.observability.svc.cluster.local:4317",
 				"otlp_http_endpoint":     "http://observe-otel-collector.observability.svc.cluster.local:4318",
-				"clickhouse_endpoint":    "observe-clickhouse.observability.svc.cluster.local:9000",
-				"clickhouse_username":    "admin",
+				"clickhouse_endpoint":    "clickhouse-telemetry.observability.svc.cluster.local:9000",
+				"clickhouse_username":    "signoz",
 				"clickhouse_password_secret": map[string]interface{}{
-					"name": "observe-clickhouse-auth",
-					"key":  "password",
+					"name": "telemetry-clickhouse-auth",
+					"key":  "signoz",
 				},
 			},
 			mustPopulate: []string{

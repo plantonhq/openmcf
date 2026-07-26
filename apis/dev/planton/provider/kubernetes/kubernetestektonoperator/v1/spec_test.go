@@ -6,117 +6,72 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	"github.com/plantonhq/planton/apis/dev/planton/shared"
 )
 
-func TestKubernetesTektonOperatorSpec(t *testing.T) {
+func TestKubernetesTektonOperator(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "KubernetesTektonOperatorSpec Validation Suite")
+	ginkgo.RunSpecs(t, "KubernetesTektonOperator Suite")
 }
 
-var _ = ginkgo.Describe("KubernetesTektonOperatorSpec Validation Tests", func() {
-	var spec *KubernetesTektonOperatorSpec
+var _ = ginkgo.Describe("KubernetesTektonOperator Validation Tests", func() {
+	var input *KubernetesTektonOperator
 
 	ginkgo.BeforeEach(func() {
-		// Note: Tekton Operator uses fixed namespaces managed by the operator:
-		// - 'tekton-operator' for the operator
-		// - 'tekton-pipelines' for components (Pipelines, Triggers, Dashboard)
-		// Therefore, no namespace field is included in the spec.
-		spec = &KubernetesTektonOperatorSpec{
-			Container: &KubernetesTektonOperatorSpecContainer{
-				Resources: &kubernetes.ContainerResources{
-					Requests: &kubernetes.CpuMemory{
-						Cpu:    "100m",
-						Memory: "128Mi",
-					},
-					Limits: &kubernetes.CpuMemory{
-						Cpu:    "500m",
-						Memory: "512Mi",
-					},
-				},
+		input = &KubernetesTektonOperator{
+			ApiVersion: "kubernetes.planton.dev/v1",
+			Kind:       "KubernetesTektonOperator",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "tekton-operator",
 			},
-			Components: &KubernetesTektonOperatorComponents{
-				Pipelines: true,
-			},
+			Spec: &KubernetesTektonOperatorSpec{},
 		}
 	})
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("with pipelines enabled", func() {
-			ginkgo.It("should not return a validation error", func() {
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("an empty spec should be valid (the manifest defaults)", func() {
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with triggers enabled", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec.Components = &KubernetesTektonOperatorComponents{
-					Triggers: true,
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("image overrides and resources should be valid", func() {
+			input.Spec.OperatorImage = &kubernetes.ContainerImage{
+				Repo: "mirror.example.com/tektoncd/operator",
+				Tag:  "v0.80.0",
+			}
+			input.Spec.WebhookImage = &kubernetes.ContainerImage{
+				Repo: "mirror.example.com/tektoncd/operator-webhook",
+				Tag:  "v0.80.0",
+			}
+			input.Spec.OperatorResources = &kubernetes.ContainerResources{
+				Requests: &kubernetes.CpuMemory{Cpu: "100m", Memory: "128Mi"},
+				Limits:   &kubernetes.CpuMemory{Cpu: "500m", Memory: "512Mi"},
+			}
+			input.Spec.WebhookResources = &kubernetes.ContainerResources{
+				Requests: &kubernetes.CpuMemory{Cpu: "50m", Memory: "64Mi"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with dashboard enabled", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec.Components = &KubernetesTektonOperatorComponents{
-					Dashboard: true,
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with all components enabled", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec.Components = &KubernetesTektonOperatorComponents{
-					Pipelines: true,
-					Triggers:  true,
-					Dashboard: true,
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with default container resources", func() {
-			ginkgo.It("should not return a validation error", func() {
-				spec.Container = &KubernetesTektonOperatorSpecContainer{}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("scheduling and pull secrets should be valid", func() {
+			input.Spec.NodeSelector = map[string]string{"role": "platform"}
+			input.Spec.Tolerations = []*kubernetes.WorkloadToleration{
+				{Key: "platform", Operator: "Exists", Effect: "NoSchedule"},
+			}
+			input.Spec.ImagePullSecrets = []string{"mirror-pull"}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("without container", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec.Container = nil
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("a missing spec should fail", func() {
+			input.Spec = nil
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("without components", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec.Components = nil
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with no components enabled", func() {
-			ginkgo.It("should return a validation error", func() {
-				spec.Components = &KubernetesTektonOperatorComponents{
-					Pipelines: false,
-					Triggers:  false,
-					Dashboard: false,
-				}
-				err := protovalidate.Validate(spec)
-				gomega.Expect(err).NotTo(gomega.BeNil())
-			})
+		ginkgo.It("a wrong kind constant should fail", func() {
+			input.Kind = "TektonOperator"
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 	})
 })

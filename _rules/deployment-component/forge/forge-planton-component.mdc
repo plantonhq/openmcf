@@ -876,6 +876,34 @@ ALWAYS render the list (the spec's entries, else an explicit empty list
 — lists REPLACE under Helm merge semantics) or adopt the default
 consciously with the reason taught on the spec field.
 
+**An operator distribution may auto-create its own workload CR — find
+the switch and disable it, or the declaration kind fights its manager.**
+Some operator release manifests ship a config default (an env var / a
+defaults ConfigMap key) that makes the operator CREATE its own instance
+of the very CR a companion declaration kind renders — a
+default-configuration singleton with a fixed name, materialized at
+controller startup. Left on, the operator and the declaration module
+co-write one object and fight through server-side apply field
+ownership; installs are order-dependent and updates flap. When splitting
+an operator kind from its workload-declaration kind, sweep the
+distribution for auto-install/auto-create switches (grep the controller
+source for the env keys its startup reads) and patch them OFF in the
+module as a design invariant, not a spec knob — then have the E2E
+verifier assert the CR does NOT exist after installing the operator
+alone (the regression is silent otherwise).
+
+**Fenced env tokens must satisfy the field's own CEL pre-expansion —
+embed the token inside the validated shape.** `${E2E_ENV:PLANTON_E2E_*}`
+tokens expand at lane runtime, but `validate-manifest` and the scenario
+gates parse the RAW file: a token standing alone in a field whose CEL
+demands a format (an `https://` URL prefix, a scheme, a prefix-anchored
+pattern) fails validation before any lane runs. Put the constant part
+of the format in the manifest and the token inside it
+(`https://github.com/${E2E_ENV:PLANTON_E2E_GITHUB_REPO_PATH}`) so the
+committed manifest passes its own CEL and the env var carries only the
+variable segment. Fields with no format CEL (credentials, ARNs, names)
+take the bare token.
+
 **Behavioral drivers against PERSISTENT external stores need run-unique
 names.** A verifier-owned driver CR whose name doubles as a key in an
 external store (a Velero Backup's name keys its object-store records) must

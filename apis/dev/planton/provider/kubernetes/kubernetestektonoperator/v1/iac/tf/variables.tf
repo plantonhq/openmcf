@@ -1,62 +1,62 @@
+# Typed mirror of KubernetesTektonOperatorSpec (spec.proto). The spec
+# arrives from the proto->tfvars converter in snake_case. The kind has no
+# foreign keys and no namespace field — the release manifest installs into
+# its fixed `tekton-operator` namespace (see the spec).
+
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  # IMPORTANT: Namespace Behavior
-  # Unlike other Kubernetes components in Planton, the Tekton Operator uses fixed namespaces
-  # that are managed by the operator itself:
-  # - The Tekton Operator is installed in the 'tekton-operator' namespace
-  # - Tekton components (Pipelines, Triggers, Dashboard) are installed in the 'tekton-pipelines' namespace
-  # These namespaces are automatically created and managed by the Tekton Operator and cannot be customized.
-  description = "Specification for KubernetesTektonOperator"
+  description = "KubernetesTektonOperator specification"
   type = object({
-
-    # The container specifications for the Tekton operator.
-    container = object({
-
-      # The CPU and memory resources allocated to the Tekton operator container.
-      resources = object({
-
-        # The resource limits for the container.
-        limits = object({
-          cpu    = string
-          memory = string
-        })
-
-        # The resource requests for the container.
-        requests = object({
-          cpu    = string
-          memory = string
-        })
-      })
-    })
-
-    # Configuration for which Tekton components to install.
-    components = object({
-      # Enable Tekton Pipelines component.
-      pipelines = bool
-
-      # Enable Tekton Triggers component.
-      triggers = bool
-
-      # Enable Tekton Dashboard component.
-      dashboard = bool
-    })
-
-    # The version of the Tekton Operator to deploy.
-    # Default value (v0.78.0) is set in spec.proto via options.default
-    # https://github.com/tektoncd/operator/releases
-    # https://operatorhub.io/operator/tektoncd-operator
-    operator_version = optional(string)
+    operator_image = optional(object({
+      repo             = optional(string, "")
+      tag              = optional(string, "")
+      pull_secret_name = optional(string, "")
+    }))
+    webhook_image = optional(object({
+      repo             = optional(string, "")
+      tag              = optional(string, "")
+      pull_secret_name = optional(string, "")
+    }))
+    operator_resources = optional(object({
+      requests = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+      limits = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+    }))
+    webhook_resources = optional(object({
+      requests = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+      limits = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+    }))
+    node_selector = optional(map(string), {})
+    tolerations = optional(list(object({
+      key                = optional(string, "")
+      operator           = optional(string, "")
+      value              = optional(string, "")
+      effect             = optional(string, "")
+      toleration_seconds = optional(number)
+    })), [])
+    image_pull_secrets = optional(list(string), [])
   })
 }

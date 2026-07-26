@@ -89,6 +89,18 @@ var kubernetesTier3Components = []string{
 	"kubernetesmysql",
 	"kubernetessolr",
 	"kubernetesclickhouse",
+	// SigNoz composes KubernetesClickHouse (registry prerequisite;
+	// consumer-scoped fixtures pin the operator's watch scope and the
+	// keeper-backed telemetry store) — the data-plane-dependency class,
+	// same as the Kafka ecosystem kinds.
+	"kubernetessignoz",
+	// The TektonConfig declaration KubernetesTektonOperator (its
+	// registry prerequisite) reconciles into running components.
+	"kubernetestekton",
+	// A runner fleet KubernetesGhaRunnerScaleSetController (its
+	// registry prerequisite) reconciles into a listener and ephemeral
+	// runner pods.
+	"kubernetesgharunnerscaleset",
 }
 
 // Kubernetes Tier 4 components: operators, addons, and cluster-level
@@ -99,7 +111,6 @@ var kubernetesTier4Components = []string{
 	"kubernetesopensearchoperator",
 	"kubernetesaltinityoperator",
 	"kubernetesgharunnerscalesetcontroller",
-	"kubernetestekton",
 	"kubernetestektonoperator",
 }
 
@@ -118,7 +129,6 @@ var kubernetesTier2Components = []string{
 	"kubernetesperconamongooperator",
 	"kubernetesperconamysqloperator",
 	"kubernetestemporal",
-	"kubernetessignoz",
 	"kubernetesseaweedfs",
 	"kubernetesqdrant",
 }
@@ -463,10 +473,6 @@ func TestKubernetesPerconaMysqlOperator_Pulumi(t *testing.T) {
 func TestKubernetesTemporal_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestemporal", "pulumi")
 }
-func TestKubernetesSignoz_Pulumi(t *testing.T) {
-	runAllScenariosForComponent(t, "kubernetessignoz", "pulumi")
-}
-
 // ─── Tier 2 Terraform (Helm-based) ──────────────────────────────────────────
 
 func TestKubernetesValkey_Terraform(t *testing.T) {
@@ -502,10 +508,6 @@ func TestKubernetesPerconaMysqlOperator_Terraform(t *testing.T) {
 func TestKubernetesTemporal_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestemporal", "terraform")
 }
-func TestKubernetesSignoz_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "kubernetessignoz", "terraform")
-}
-
 // ─── Tier 1 Pulumi/Terraform (Postgres flagship) ────────────────────────────
 // KubernetesPostgres declares KubernetesCloudNativePgOperator as a registry
 // prerequisite; the harness installs the operator (with the Barman Cloud
@@ -526,6 +528,9 @@ func TestKubernetesPostgres_Terraform(t *testing.T) {
 
 // ─── Tier 3 Pulumi (operator-dependent) ─────────────────────────────────────
 
+func TestKubernetesSignoz_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessignoz", "pulumi")
+}
 func TestKubernetesKafka_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskafka", "pulumi")
 }
@@ -565,9 +570,15 @@ func TestKubernetesSolr_Pulumi(t *testing.T) {
 func TestKubernetesClickHouse_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesclickhouse", "pulumi")
 }
+func TestKubernetesGhaRunnerScaleSet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "pulumi")
+}
 
 // ─── Tier 3 Terraform (operator-dependent) ──────────────────────────────────
 
+func TestKubernetesSignoz_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessignoz", "terraform")
+}
 func TestKubernetesKafka_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskafka", "terraform")
 }
@@ -606,6 +617,9 @@ func TestKubernetesSolr_Terraform(t *testing.T) {
 }
 func TestKubernetesClickHouse_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesclickhouse", "terraform")
+}
+func TestKubernetesGhaRunnerScaleSet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "terraform")
 }
 
 // ─── Tier 4 Pulumi (operators, addons) ──────────────────────────────────────

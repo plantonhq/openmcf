@@ -1,0 +1,23 @@
+# The kubernetes container-mode arm with a declared PAT (the module
+# materializes the `<name>-github-auth` Secret) and the ephemeral work
+# volume — the alternate-arm shape.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGhaRunnerScaleSet
+metadata:
+  name: secure-runners-k8s
+spec:
+  namespace:
+    value: ci-runners
+  createNamespace: true
+  githubConfigUrl: https://github.com/my-org/my-repo
+  auth:
+    pat:
+      token: ghp_hack_manifest_placeholder
+  containerMode:
+    mode: kubernetes
+    kubernetesWorkVolume:
+      storageClass:
+        value: standard
+      size: 2Gi
+  minRunners: 0
+  maxRunners: 10

@@ -3027,10 +3027,14 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8sgfn"
   }];
+  // KubernetesClickHouse is a prerequisite because SigNoz stores every
+  // trace, metric and log in ClickHouse and deploys none of its own —
+  // the telemetry store is composed, never bundled.
   KubernetesSignoz = 872 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8ssgz"
+    prerequisites: [KubernetesClickHouse]
   }];
   KubernetesLoki = 873 [(kind_meta) = {
     provider: kubernetes
@@ -3243,20 +3247,29 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8stktnop"
   }];
+  // KubernetesTektonOperator is a prerequisite because this kind declares
+  // the TektonConfig custom resource that only the operator's CRDs admit
+  // and only the operator reconciles into running components.
   KubernetesTekton = 953 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stktn"
+    prerequisites: [KubernetesTektonOperator]
   }];
   KubernetesGhaRunnerScaleSetController = 954 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgharsc"
   }];
+  // KubernetesGhaRunnerScaleSetController is a prerequisite because this
+  // kind renders an AutoscalingRunnerSet custom resource that only the
+  // controller's CRDs admit and only the controller reconciles into
+  // listener and runner pods.
   KubernetesGhaRunnerScaleSet = 955 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgharss"
+    prerequisites: [KubernetesGhaRunnerScaleSetController]
   }];
   KubernetesHarbor = 956 [(kind_meta) = {
     provider: kubernetes

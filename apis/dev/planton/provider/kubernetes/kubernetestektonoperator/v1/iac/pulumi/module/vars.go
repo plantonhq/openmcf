@@ -1,37 +1,52 @@
 package module
 
-// vars groups all operator-level constants so version bumps or repo changes
-// remain one-liner edits.
 var vars = struct {
-	OperatorNamespace        string
-	ComponentsNamespace      string
-	OperatorReleaseURLFormat string
-	TektonConfigName         string
+	// OperatorRelease is the pinned tektoncd/operator release tag.
+	//
+	// MUST stay in sync with the Terraform module's operator_release
+	// local: the TektonConfig surface the KubernetesTekton kind renders
+	// is designed against this release's operator API. Always an exact
+	// release TAG, never a branch — tag pinning keeps installs
+	// reproducible.
+	OperatorRelease string
 
-	// Dashboard service configuration (fixed by Tekton operator)
-	DashboardServiceName string
-	DashboardServicePort int
+	// Namespace is the fixed installation namespace. The release
+	// manifest bakes `tekton-operator` into its own cross-references
+	// (RBAC subjects, the webhook Service) — it is not configurable, and
+	// exactly one install per cluster is the upstream contract.
+	Namespace string
 
-	// Gateway API configuration for dashboard ingress
-	IstioIngressNamespace                      string
-	GatewayIngressClassName                    string
-	GatewayExternalLoadBalancerServiceHostname string
+	// OperatorDeploymentName / WebhookDeploymentName are the release
+	// manifest's fixed Deployment names the typed overrides patch.
+	OperatorDeploymentName string
+	WebhookDeploymentName  string
+
+	// ConfigDefaultsConfigMapName is the manifest ConfigMap whose
+	// AUTOINSTALL_COMPONENTS key the module ALWAYS patches to "false":
+	// the operator must never race the KubernetesTekton declaration for
+	// ownership of the cluster's TektonConfig (the operator would
+	// auto-create one named `config` with profile `all` — the exact
+	// object the declaration kind renders).
+	ConfigDefaultsConfigMapName string
+
+	// TektonConfigCrdName is the CRD the KubernetesTekton kind renders
+	// against — deleted with this resource (cascade warning on the
+	// spec).
+	TektonConfigCrdName string
 }{
-	OperatorNamespace:   "tekton-operator",
-	ComponentsNamespace: "tekton-pipelines",
-	// Release URL format: %s is replaced with the version (e.g., v0.78.1)
-	// https://github.com/tektoncd/operator/releases
-	// Using infra.tekton.dev as per current Tekton operator documentation
-	// https://tekton.dev/docs/operator/install/
-	OperatorReleaseURLFormat: "https://infra.tekton.dev/tekton-releases/operator/previous/%s/release.yaml",
-	TektonConfigName:         "config",
+	OperatorRelease:             "v0.80.0",
+	Namespace:                   "tekton-operator",
+	OperatorDeploymentName:      "tekton-operator",
+	WebhookDeploymentName:       "tekton-operator-webhook",
+	ConfigDefaultsConfigMapName: "tekton-config-defaults",
+	TektonConfigCrdName:         "tektonconfigs.operator.tekton.dev",
+}
 
-	// Dashboard service (created by Tekton operator when dashboard is enabled)
-	DashboardServiceName: "tekton-dashboard",
-	DashboardServicePort: 9097,
-
-	// Gateway API settings for Istio ingress
-	IstioIngressNamespace:                      "istio-ingress",
-	GatewayIngressClassName:                    "istio",
-	GatewayExternalLoadBalancerServiceHostname: "istio-ingress-gateway.istio-ingress.svc.cluster.local",
+// ManifestURL is the released single-file manifest for the pinned tag —
+// the operator's OFFICIAL distribution (the in-repo Helm chart is
+// unpublished, version "devel"). The GitHub release asset is immutable
+// per tag; the old storage.googleapis.com release host is dead.
+func ManifestURL() string {
+	return "https://github.com/tektoncd/operator/releases/download/" +
+		vars.OperatorRelease + "/release.yaml"
 }

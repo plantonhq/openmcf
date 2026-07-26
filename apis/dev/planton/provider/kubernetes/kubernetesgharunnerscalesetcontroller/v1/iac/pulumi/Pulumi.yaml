@@ -1,7 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
-
+name: kubernetes-gha-runner-scale-set
+runtime: go
+description: GitHub Actions Runner Scale Set controller from the official OCI chart — the actions.github.com CRDs and the manager that reconciles runner scale sets into listeners and ephemeral runner pods, with typed flags, metrics, sizing and placement

@@ -25,202 +25,87 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Log level enum (nested for cleaner YAML manifests).
-type KubernetesGhaRunnerScaleSetControllerFlags_LogLevel int32
-
-const (
-	KubernetesGhaRunnerScaleSetControllerFlags_log_level_unspecified KubernetesGhaRunnerScaleSetControllerFlags_LogLevel = 0
-	KubernetesGhaRunnerScaleSetControllerFlags_debug                 KubernetesGhaRunnerScaleSetControllerFlags_LogLevel = 1
-	KubernetesGhaRunnerScaleSetControllerFlags_info                  KubernetesGhaRunnerScaleSetControllerFlags_LogLevel = 2
-	KubernetesGhaRunnerScaleSetControllerFlags_warn                  KubernetesGhaRunnerScaleSetControllerFlags_LogLevel = 3
-	KubernetesGhaRunnerScaleSetControllerFlags_error                 KubernetesGhaRunnerScaleSetControllerFlags_LogLevel = 4
-)
-
-// Enum value maps for KubernetesGhaRunnerScaleSetControllerFlags_LogLevel.
-var (
-	KubernetesGhaRunnerScaleSetControllerFlags_LogLevel_name = map[int32]string{
-		0: "log_level_unspecified",
-		1: "debug",
-		2: "info",
-		3: "warn",
-		4: "error",
-	}
-	KubernetesGhaRunnerScaleSetControllerFlags_LogLevel_value = map[string]int32{
-		"log_level_unspecified": 0,
-		"debug":                 1,
-		"info":                  2,
-		"warn":                  3,
-		"error":                 4,
-	}
-)
-
-func (x KubernetesGhaRunnerScaleSetControllerFlags_LogLevel) Enum() *KubernetesGhaRunnerScaleSetControllerFlags_LogLevel {
-	p := new(KubernetesGhaRunnerScaleSetControllerFlags_LogLevel)
-	*p = x
-	return p
-}
-
-func (x KubernetesGhaRunnerScaleSetControllerFlags_LogLevel) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (KubernetesGhaRunnerScaleSetControllerFlags_LogLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (KubernetesGhaRunnerScaleSetControllerFlags_LogLevel) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_enumTypes[0]
-}
-
-func (x KubernetesGhaRunnerScaleSetControllerFlags_LogLevel) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use KubernetesGhaRunnerScaleSetControllerFlags_LogLevel.Descriptor instead.
-func (KubernetesGhaRunnerScaleSetControllerFlags_LogLevel) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescGZIP(), []int{3, 0}
-}
-
-// Log format enum.
-type KubernetesGhaRunnerScaleSetControllerFlags_LogFormat int32
-
-const (
-	KubernetesGhaRunnerScaleSetControllerFlags_log_format_unspecified KubernetesGhaRunnerScaleSetControllerFlags_LogFormat = 0
-	KubernetesGhaRunnerScaleSetControllerFlags_text                   KubernetesGhaRunnerScaleSetControllerFlags_LogFormat = 1
-	KubernetesGhaRunnerScaleSetControllerFlags_json                   KubernetesGhaRunnerScaleSetControllerFlags_LogFormat = 2
-)
-
-// Enum value maps for KubernetesGhaRunnerScaleSetControllerFlags_LogFormat.
-var (
-	KubernetesGhaRunnerScaleSetControllerFlags_LogFormat_name = map[int32]string{
-		0: "log_format_unspecified",
-		1: "text",
-		2: "json",
-	}
-	KubernetesGhaRunnerScaleSetControllerFlags_LogFormat_value = map[string]int32{
-		"log_format_unspecified": 0,
-		"text":                   1,
-		"json":                   2,
-	}
-)
-
-func (x KubernetesGhaRunnerScaleSetControllerFlags_LogFormat) Enum() *KubernetesGhaRunnerScaleSetControllerFlags_LogFormat {
-	p := new(KubernetesGhaRunnerScaleSetControllerFlags_LogFormat)
-	*p = x
-	return p
-}
-
-func (x KubernetesGhaRunnerScaleSetControllerFlags_LogFormat) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (KubernetesGhaRunnerScaleSetControllerFlags_LogFormat) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_enumTypes[1].Descriptor()
-}
-
-func (KubernetesGhaRunnerScaleSetControllerFlags_LogFormat) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_enumTypes[1]
-}
-
-func (x KubernetesGhaRunnerScaleSetControllerFlags_LogFormat) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use KubernetesGhaRunnerScaleSetControllerFlags_LogFormat.Descriptor instead.
-func (KubernetesGhaRunnerScaleSetControllerFlags_LogFormat) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescGZIP(), []int{3, 1}
-}
-
-// Update strategy enum.
-// Defines how the controller handles upgrades while jobs are running.
-type KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy int32
-
-const (
-	KubernetesGhaRunnerScaleSetControllerFlags_update_strategy_unspecified KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy = 0
-	// Immediately apply changes, may cause runner overprovisioning.
-	KubernetesGhaRunnerScaleSetControllerFlags_immediate KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy = 1
-	// Wait for pending/running jobs to complete before applying changes.
-	KubernetesGhaRunnerScaleSetControllerFlags_eventual KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy = 2
-)
-
-// Enum value maps for KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy.
-var (
-	KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy_name = map[int32]string{
-		0: "update_strategy_unspecified",
-		1: "immediate",
-		2: "eventual",
-	}
-	KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy_value = map[string]int32{
-		"update_strategy_unspecified": 0,
-		"immediate":                   1,
-		"eventual":                    2,
-	}
-)
-
-func (x KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy) Enum() *KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy {
-	p := new(KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy)
-	*p = x
-	return p
-}
-
-func (x KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_enumTypes[2].Descriptor()
-}
-
-func (KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_enumTypes[2]
-}
-
-func (x KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy.Descriptor instead.
-func (KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescGZIP(), []int{3, 2}
-}
-
-// KubernetesGhaRunnerScaleSetControllerSpec defines configuration for deploying the GitHub Actions
-// Runner Scale Set Controller on a Kubernetes cluster. The controller manages AutoScalingRunnerSets
-// and EphemeralRunners custom resources, enabling self-hosted GitHub Actions runners that scale
-// dynamically based on workflow demand.
+// *
+// **KubernetesGhaRunnerScaleSetControllerSpec** installs the GitHub
+// Actions Runner Scale Set controller — GitHub's official
+// actions-runner-controller (ARC) manager — from the official
+// `gha-runner-scale-set-controller` chart (OCI,
+// ghcr.io/actions/actions-runner-controller-charts).
 //
-// This component deploys the controller only. Runner scale sets (the actual runner pods) are
-// deployed separately using the gha-runner-scale-set Helm chart.
+// This component installs the ENGINE. Runner fleets themselves are
+// declared with KubernetesGhaRunnerScaleSet resources — one per
+// repository/organization/enterprise registration — which this
+// controller reconciles into listener pods and ephemeral runner pods.
+//
+// ONE CONTROLLER PER CLUSTER is the sane default: the controller
+// watches all namespaces, so every runner scale set on the cluster is
+// served by it. Fence the watch with `flags.watch_single_namespace`
+// only for hard multi-tenancy — each fenced controller then needs its
+// runner scale sets to reference it explicitly (the scale set kind's
+// `controller_service_account` field).
+//
+// CRD LIFECYCLE: the chart installs the actions.github.com CRDs
+// (AutoscalingRunnerSet, EphemeralRunner, ...) with the release and
+// they are REMOVED with it — destroying the controller cascade-deletes
+// every runner scale set on the cluster. Destroy
+// KubernetesGhaRunnerScaleSet resources first.
 type KubernetesGhaRunnerScaleSetControllerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace where the controller will be installed.
-	// The controller watches for AutoScalingRunnerSet resources across all namespaces by default,
-	// or can be restricted to a single namespace via flags.watch_single_namespace.
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Flag to indicate if the namespace should be created.
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// Version of the Helm chart to deploy.
-	// Chart versions match the controller image versions.
-	// https://github.com/actions/actions-runner-controller/releases
-	HelmChartVersion *string `protobuf:"bytes,4,opt,name=helm_chart_version,json=helmChartVersion,proto3,oneof" json:"helm_chart_version,omitempty"`
-	// Number of controller replicas.
-	// When replicaCount > 1, leader election is automatically enabled.
-	ReplicaCount *int32 `protobuf:"varint,5,opt,name=replica_count,json=replicaCount,proto3,oneof" json:"replica_count,omitempty"`
-	// Container specifications for the controller.
-	Container *KubernetesGhaRunnerScaleSetControllerContainer `protobuf:"bytes,6,opt,name=container,proto3" json:"container,omitempty"`
+	// *
+	// Namespace to install into. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the
+	// resource. When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (e.g. "0.14.2" — chart and
+	// controller image move in lockstep). Versions must exist as SERVED
+	// charts in the OCI registry
+	// (ghcr.io/actions/actions-runner-controller-charts).
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// Number of controller replicas. Empty = 1. With more than one, the
+	// chart enables leader election automatically — extra replicas are
+	// hot standbys, not workload shards.
+	Replicas *int32 `protobuf:"varint,4,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// Override the controller image (air-gap / private-mirror path).
+	// Empty = ghcr.io/actions/gha-runner-scale-set-controller at the
+	// chart's appVersion.
+	Image *kubernetes.ContainerImage `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
+	// *
+	// CPU and memory for the controller container. Empty = no
+	// requests/limits (the chart default).
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,6,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
 	// Controller behavior flags.
 	Flags *KubernetesGhaRunnerScaleSetControllerFlags `protobuf:"bytes,7,opt,name=flags,proto3" json:"flags,omitempty"`
-	// Metrics configuration for monitoring.
-	// When not specified, metrics are disabled.
+	// *
+	// Prometheus metrics for the controller manager AND the listener
+	// pods it creates. Empty = metrics disabled (the chart default —
+	// the chart passes empty metrics flags).
 	Metrics *KubernetesGhaRunnerScaleSetControllerMetrics `protobuf:"bytes,8,opt,name=metrics,proto3" json:"metrics,omitempty"`
-	// Image pull secrets for private container registries.
-	// These secrets are also passed to the auto-scaler for pulling listener images.
+	// *
+	// Names of image-pull secrets (in the install namespace) for
+	// pulling the controller image from a private mirror. Also passed
+	// to listener pods for pulling the listener image.
 	ImagePullSecrets []string `protobuf:"bytes,9,rep,name=image_pull_secrets,json=imagePullSecrets,proto3" json:"image_pull_secrets,omitempty"`
-	// Priority class name for the controller pods.
-	// Use "system-cluster-critical" to ensure controller survives resource pressure.
-	PriorityClassName string `protobuf:"bytes,10,opt,name=priority_class_name,json=priorityClassName,proto3" json:"priority_class_name,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// *
+	// Scheduling for the controller pod.
+	Scheduling *KubernetesGhaRunnerScaleSetControllerScheduling `protobuf:"bytes,10,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
+	// *
+	// Escape hatch: additional chart values as a YAML document, merged
+	// LAST over everything the typed fields render (Helm `-f`
+	// semantics, identical on both engines). For the chart surface
+	// beyond the typed fields (env entries, volumes, pprof, security
+	// contexts, ...) — never the substitute for them. Do not put
+	// secrets here.
+	HelmValues    string `protobuf:"bytes,11,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesGhaRunnerScaleSetControllerSpec) Reset() {
@@ -267,23 +152,30 @@ func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetHelmChartVersion() string {
-	if x != nil && x.HelmChartVersion != nil {
-		return *x.HelmChartVersion
+func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
 	}
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetReplicaCount() int32 {
-	if x != nil && x.ReplicaCount != nil {
-		return *x.ReplicaCount
+func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
 	}
 	return 0
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetContainer() *KubernetesGhaRunnerScaleSetControllerContainer {
+func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetImage() *kubernetes.ContainerImage {
 	if x != nil {
-		return x.Container
+		return x.Image
+	}
+	return nil
+}
+
+func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
 	}
 	return nil
 }
@@ -309,166 +201,85 @@ func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetImagePullSecrets() []stri
 	return nil
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetPriorityClassName() string {
+func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetScheduling() *KubernetesGhaRunnerScaleSetControllerScheduling {
 	if x != nil {
-		return x.PriorityClassName
-	}
-	return ""
-}
-
-// KubernetesGhaRunnerScaleSetControllerContainer specifies container configuration for the controller.
-type KubernetesGhaRunnerScaleSetControllerContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// CPU and memory resources for the controller container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources,omitempty"`
-	// Custom container image configuration.
-	// When not specified, uses the default image from the Helm chart.
-	Image         *KubernetesGhaRunnerScaleSetControllerImage `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesGhaRunnerScaleSetControllerContainer) Reset() {
-	*x = KubernetesGhaRunnerScaleSetControllerContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGhaRunnerScaleSetControllerContainer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGhaRunnerScaleSetControllerContainer) ProtoMessage() {}
-
-func (x *KubernetesGhaRunnerScaleSetControllerContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGhaRunnerScaleSetControllerContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetControllerContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *KubernetesGhaRunnerScaleSetControllerContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
+		return x.Scheduling
 	}
 	return nil
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerContainer) GetImage() *KubernetesGhaRunnerScaleSetControllerImage {
+func (x *KubernetesGhaRunnerScaleSetControllerSpec) GetHelmValues() string {
 	if x != nil {
-		return x.Image
-	}
-	return nil
-}
-
-// KubernetesGhaRunnerScaleSetControllerImage configures a custom controller image.
-type KubernetesGhaRunnerScaleSetControllerImage struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Container image repository.
-	// Default: ghcr.io/actions/gha-runner-scale-set-controller
-	Repository string `protobuf:"bytes,1,opt,name=repository,proto3" json:"repository,omitempty"`
-	// Image tag. When not specified, uses the chart appVersion.
-	Tag string `protobuf:"bytes,2,opt,name=tag,proto3" json:"tag,omitempty"`
-	// Image pull policy: Always, IfNotPresent, or Never.
-	PullPolicy    string `protobuf:"bytes,3,opt,name=pull_policy,json=pullPolicy,proto3" json:"pull_policy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesGhaRunnerScaleSetControllerImage) Reset() {
-	*x = KubernetesGhaRunnerScaleSetControllerImage{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGhaRunnerScaleSetControllerImage) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGhaRunnerScaleSetControllerImage) ProtoMessage() {}
-
-func (x *KubernetesGhaRunnerScaleSetControllerImage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGhaRunnerScaleSetControllerImage.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetControllerImage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesGhaRunnerScaleSetControllerImage) GetRepository() string {
-	if x != nil {
-		return x.Repository
+		return x.HelmValues
 	}
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerImage) GetTag() string {
-	if x != nil {
-		return x.Tag
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetControllerImage) GetPullPolicy() string {
-	if x != nil {
-		return x.PullPolicy
-	}
-	return ""
-}
-
-// KubernetesGhaRunnerScaleSetControllerFlags configures controller behavior.
+// *
+// Controller behavior flags.
 type KubernetesGhaRunnerScaleSetControllerFlags struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Log level for the controller.
-	// Valid values: debug, info, warn, error
-	LogLevel KubernetesGhaRunnerScaleSetControllerFlags_LogLevel `protobuf:"varint,1,opt,name=log_level,json=logLevel,proto3,enum=dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags_LogLevel" json:"log_level,omitempty"`
-	// Log format for the controller.
-	// Valid values: text, json
-	LogFormat KubernetesGhaRunnerScaleSetControllerFlags_LogFormat `protobuf:"varint,2,opt,name=log_format,json=logFormat,proto3,enum=dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags_LogFormat" json:"log_format,omitempty"`
-	// When set, restricts the controller to watch only the specified namespace.
-	// By default (empty), watches all namespaces.
+	// *
+	// Log level. Empty = "debug" (the chart default — noisy; production
+	// clusters usually set "info").
+	LogLevel *string `protobuf:"bytes,1,opt,name=log_level,json=logLevel,proto3,oneof" json:"log_level,omitempty"`
+	// *
+	// Log format. Empty = "text" (the chart default).
+	LogFormat *string `protobuf:"bytes,2,opt,name=log_format,json=logFormat,proto3,oneof" json:"log_format,omitempty"`
+	// *
+	// Restrict the controller to watch ONE namespace instead of the
+	// whole cluster. Runner scale sets outside it are ignored — and
+	// each scale set install must then name this controller's
+	// ServiceAccount explicitly (the scale set kind's
+	// `controller_service_account`). Empty = watch all namespaces.
 	WatchSingleNamespace string `protobuf:"bytes,3,opt,name=watch_single_namespace,json=watchSingleNamespace,proto3" json:"watch_single_namespace,omitempty"`
-	// Maximum concurrent reconciles for the EphemeralRunner controller.
-	// Increase to improve throughput at the cost of higher API server load.
+	// *
+	// Maximum concurrent reconciles of the EphemeralRunner controller.
+	// Empty = 2 (the chart default). Raising it improves runner
+	// throughput at the cost of API-server and GitHub-API load.
 	RunnerMaxConcurrentReconciles *int32 `protobuf:"varint,4,opt,name=runner_max_concurrent_reconciles,json=runnerMaxConcurrentReconciles,proto3,oneof" json:"runner_max_concurrent_reconciles,omitempty"`
-	// Strategy for handling upgrades while jobs are running.
-	UpdateStrategy KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy `protobuf:"varint,5,opt,name=update_strategy,json=updateStrategy,proto3,enum=dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy" json:"update_strategy,omitempty"`
-	// Label prefixes to exclude from propagation to internal resources.
-	// Useful for labels used by external tools (e.g., ArgoCD) that shouldn't
-	// be propagated to listener pods.
+	// *
+	// How upgrades behave while jobs run: `immediate` (the chart
+	// default — recreate listeners at once; may briefly overprovision
+	// runners) or `eventual` (tear down, then wait for running jobs to
+	// finish before recreating — no overprovisioning, slower rollout).
+	UpdateStrategy *string `protobuf:"bytes,5,opt,name=update_strategy,json=updateStrategy,proto3,oneof" json:"update_strategy,omitempty"`
+	// *
+	// Label PREFIXES excluded from propagation to listener/runner
+	// resources (e.g. "argocd.argoproj.io/instance" when a GitOps tool
+	// labels the install and must not see those labels come back on
+	// children).
 	ExcludeLabelPropagationPrefixes []string `protobuf:"bytes,6,rep,name=exclude_label_propagation_prefixes,json=excludeLabelPropagationPrefixes,proto3" json:"exclude_label_propagation_prefixes,omitempty"`
-	// Kubernetes API client rate limiter QPS.
-	K8SClientRateLimiterQps int32 `protobuf:"varint,7,opt,name=k8s_client_rate_limiter_qps,json=k8sClientRateLimiterQps,proto3" json:"k8s_client_rate_limiter_qps,omitempty"`
-	// Kubernetes API client rate limiter burst.
-	K8SClientRateLimiterBurst int32 `protobuf:"varint,8,opt,name=k8s_client_rate_limiter_burst,json=k8sClientRateLimiterBurst,proto3" json:"k8s_client_rate_limiter_burst,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// *
+	// Kubernetes API client rate-limiter QPS for the controller. Empty
+	// = the controller default.
+	K8SClientRateLimiterQps *int32 `protobuf:"varint,7,opt,name=k8s_client_rate_limiter_qps,json=k8sClientRateLimiterQps,proto3,oneof" json:"k8s_client_rate_limiter_qps,omitempty"`
+	// *
+	// Kubernetes API client rate-limiter burst for the controller.
+	// Empty = the controller default.
+	K8SClientRateLimiterBurst *int32 `protobuf:"varint,8,opt,name=k8s_client_rate_limiter_burst,json=k8sClientRateLimiterBurst,proto3,oneof" json:"k8s_client_rate_limiter_burst,omitempty"`
+	// *
+	// Workqueue rate limiter: `bucket_rate_limiter` (the default —
+	// per-item exponential backoff plus a global token bucket) or
+	// `typed_rate_limiter` (per-item backoff only).
+	RateLimiter *string `protobuf:"bytes,9,opt,name=rate_limiter,json=rateLimiter,proto3,oneof" json:"rate_limiter,omitempty"`
+	// *
+	// Bind address for the health-probe endpoint (e.g. ":8081"). When
+	// set, the chart adds liveness/readiness probes to the controller
+	// pod. Empty = probes disabled (the chart default).
+	HealthProbeBindAddress string `protobuf:"bytes,10,opt,name=health_probe_bind_address,json=healthProbeBindAddress,proto3" json:"health_probe_bind_address,omitempty"`
+	// *
+	// Priority class name for the controller pod. Use
+	// "system-cluster-critical" so the runner control plane survives
+	// node-pressure evictions.
+	PriorityClassName string `protobuf:"bytes,11,opt,name=priority_class_name,json=priorityClassName,proto3" json:"priority_class_name,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *KubernetesGhaRunnerScaleSetControllerFlags) Reset() {
 	*x = KubernetesGhaRunnerScaleSetControllerFlags{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -480,7 +291,7 @@ func (x *KubernetesGhaRunnerScaleSetControllerFlags) String() string {
 func (*KubernetesGhaRunnerScaleSetControllerFlags) ProtoMessage() {}
 
 func (x *KubernetesGhaRunnerScaleSetControllerFlags) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -493,21 +304,21 @@ func (x *KubernetesGhaRunnerScaleSetControllerFlags) ProtoReflect() protoreflect
 
 // Deprecated: Use KubernetesGhaRunnerScaleSetControllerFlags.ProtoReflect.Descriptor instead.
 func (*KubernetesGhaRunnerScaleSetControllerFlags) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetLogLevel() KubernetesGhaRunnerScaleSetControllerFlags_LogLevel {
-	if x != nil {
-		return x.LogLevel
+func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetLogLevel() string {
+	if x != nil && x.LogLevel != nil {
+		return *x.LogLevel
 	}
-	return KubernetesGhaRunnerScaleSetControllerFlags_log_level_unspecified
+	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetLogFormat() KubernetesGhaRunnerScaleSetControllerFlags_LogFormat {
-	if x != nil {
-		return x.LogFormat
+func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetLogFormat() string {
+	if x != nil && x.LogFormat != nil {
+		return *x.LogFormat
 	}
-	return KubernetesGhaRunnerScaleSetControllerFlags_log_format_unspecified
+	return ""
 }
 
 func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetWatchSingleNamespace() string {
@@ -524,11 +335,11 @@ func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetRunnerMaxConcurrentRecon
 	return 0
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetUpdateStrategy() KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy {
-	if x != nil {
-		return x.UpdateStrategy
+func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetUpdateStrategy() string {
+	if x != nil && x.UpdateStrategy != nil {
+		return *x.UpdateStrategy
 	}
-	return KubernetesGhaRunnerScaleSetControllerFlags_update_strategy_unspecified
+	return ""
 }
 
 func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetExcludeLabelPropagationPrefixes() []string {
@@ -539,27 +350,54 @@ func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetExcludeLabelPropagationP
 }
 
 func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetK8SClientRateLimiterQps() int32 {
-	if x != nil {
-		return x.K8SClientRateLimiterQps
+	if x != nil && x.K8SClientRateLimiterQps != nil {
+		return *x.K8SClientRateLimiterQps
 	}
 	return 0
 }
 
 func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetK8SClientRateLimiterBurst() int32 {
-	if x != nil {
-		return x.K8SClientRateLimiterBurst
+	if x != nil && x.K8SClientRateLimiterBurst != nil {
+		return *x.K8SClientRateLimiterBurst
 	}
 	return 0
 }
 
-// KubernetesGhaRunnerScaleSetControllerMetrics configures metrics endpoints.
+func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetRateLimiter() string {
+	if x != nil && x.RateLimiter != nil {
+		return *x.RateLimiter
+	}
+	return ""
+}
+
+func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetHealthProbeBindAddress() string {
+	if x != nil {
+		return x.HealthProbeBindAddress
+	}
+	return ""
+}
+
+func (x *KubernetesGhaRunnerScaleSetControllerFlags) GetPriorityClassName() string {
+	if x != nil {
+		return x.PriorityClassName
+	}
+	return ""
+}
+
+// *
+// Metrics endpoints. Declaring this block ENABLES metrics; all three
+// addresses must be set (the chart wires them into the controller
+// args and every listener pod).
 type KubernetesGhaRunnerScaleSetControllerMetrics struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Metrics address for the controller manager (e.g., ":8080").
+	// *
+	// Metrics bind address of the controller manager (e.g. ":8080").
 	ControllerManagerAddr string `protobuf:"bytes,1,opt,name=controller_manager_addr,json=controllerManagerAddr,proto3" json:"controller_manager_addr,omitempty"`
-	// Metrics address for the listener (e.g., ":8080").
+	// *
+	// Metrics bind address of each listener pod (e.g. ":8080").
 	ListenerAddr string `protobuf:"bytes,2,opt,name=listener_addr,json=listenerAddr,proto3" json:"listener_addr,omitempty"`
-	// Metrics endpoint path for the listener (e.g., "/metrics").
+	// *
+	// Metrics HTTP path on the listener (e.g. "/metrics").
 	ListenerEndpoint string `protobuf:"bytes,3,opt,name=listener_endpoint,json=listenerEndpoint,proto3" json:"listener_endpoint,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -567,7 +405,7 @@ type KubernetesGhaRunnerScaleSetControllerMetrics struct {
 
 func (x *KubernetesGhaRunnerScaleSetControllerMetrics) Reset() {
 	*x = KubernetesGhaRunnerScaleSetControllerMetrics{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -579,7 +417,7 @@ func (x *KubernetesGhaRunnerScaleSetControllerMetrics) String() string {
 func (*KubernetesGhaRunnerScaleSetControllerMetrics) ProtoMessage() {}
 
 func (x *KubernetesGhaRunnerScaleSetControllerMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[4]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -592,7 +430,7 @@ func (x *KubernetesGhaRunnerScaleSetControllerMetrics) ProtoReflect() protorefle
 
 // Deprecated: Use KubernetesGhaRunnerScaleSetControllerMetrics.ProtoReflect.Descriptor instead.
 func (*KubernetesGhaRunnerScaleSetControllerMetrics) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescGZIP(), []int{4}
+	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesGhaRunnerScaleSetControllerMetrics) GetControllerManagerAddr() string {
@@ -616,67 +454,120 @@ func (x *KubernetesGhaRunnerScaleSetControllerMetrics) GetListenerEndpoint() str
 	return ""
 }
 
+// *
+// Scheduling for the controller pod.
+type KubernetesGhaRunnerScaleSetControllerScheduling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Node selector for the controller pod.
+	NodeSelector map[string]string `protobuf:"bytes,1,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for the controller pod.
+	Tolerations   []*kubernetes.WorkloadToleration `protobuf:"bytes,2,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesGhaRunnerScaleSetControllerScheduling) Reset() {
+	*x = KubernetesGhaRunnerScaleSetControllerScheduling{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesGhaRunnerScaleSetControllerScheduling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesGhaRunnerScaleSetControllerScheduling) ProtoMessage() {}
+
+func (x *KubernetesGhaRunnerScaleSetControllerScheduling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesGhaRunnerScaleSetControllerScheduling.ProtoReflect.Descriptor instead.
+func (*KubernetesGhaRunnerScaleSetControllerScheduling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesGhaRunnerScaleSetControllerScheduling) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesGhaRunnerScaleSetControllerScheduling) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
 var File_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Sdev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1/spec.proto\x12Hdev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc1\a\n" +
+	"Sdev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1/spec.proto\x12Hdev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xc1\b\n" +
 	")KubernetesGhaRunnerScaleSetControllerSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12=\n" +
-	"\x12helm_chart_version\x18\x04 \x01(\tB\n" +
-	"\x8a\xa6\x1d\x060.13.1H\x00R\x10helmChartVersion\x88\x01\x01\x12/\n" +
-	"\rreplica_count\x18\x05 \x01(\x05B\x05\x8a\xa6\x1d\x011H\x01R\freplicaCount\x88\x01\x01\x12\x9e\x01\n" +
-	"\tcontainer\x18\x06 \x01(\v2x.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12\x8a\x01\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
+	"\rchart_version\x18\x03 \x01(\tB\n" +
+	"\x8a\xa6\x1d\x060.14.2H\x00R\fchartVersion\x88\x01\x01\x12-\n" +
+	"\breplicas\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12E\n" +
+	"\x05image\x18\x05 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12Q\n" +
+	"\tresources\x18\x06 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12\x8a\x01\n" +
 	"\x05flags\x18\a \x01(\v2t.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlagsR\x05flags\x12\x90\x01\n" +
-	"\ametrics\x18\b \x01(\v2v.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerMetricsR\ametrics\x12s\n" +
-	"\x12image_pull_secrets\x18\t \x03(\tBE\xaa\xa6\x1dANames of existing Kubernetes imagePullSecrets, not secret values.R\x10imagePullSecrets\x12.\n" +
-	"\x13priority_class_name\x18\n" +
-	" \x01(\tR\x11priorityClassNameB\x15\n" +
-	"\x13_helm_chart_versionB\x10\n" +
-	"\x0e_replica_count\"\xb5\x02\n" +
-	".KubernetesGhaRunnerScaleSetControllerContainer\x12v\n" +
-	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB#\xba\xfb\xa4\x02\x1e\n" +
-	"\r\n" +
-	"\x04500m\x12\x05512Mi\x12\r\n" +
-	"\x04100m\x12\x05128MiR\tresources\x12\x8a\x01\n" +
-	"\x05image\x18\x02 \x01(\v2t.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerImageR\x05image\"\x7f\n" +
-	"*KubernetesGhaRunnerScaleSetControllerImage\x12\x1e\n" +
+	"\ametrics\x18\b \x01(\v2v.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerMetricsR\ametrics\x12\x81\x01\n" +
+	"\x12image_pull_secrets\x18\t \x03(\tBS\xaa\xa6\x1dONames of existing Kubernetes imagePullSecrets (references), not secret materialR\x10imagePullSecrets\x12\x99\x01\n" +
 	"\n" +
-	"repository\x18\x01 \x01(\tR\n" +
-	"repository\x12\x10\n" +
-	"\x03tag\x18\x02 \x01(\tR\x03tag\x12\x1f\n" +
-	"\vpull_policy\x18\x03 \x01(\tR\n" +
-	"pullPolicy\"\xf4\b\n" +
-	"*KubernetesGhaRunnerScaleSetControllerFlags\x12\x9a\x01\n" +
-	"\tlog_level\x18\x01 \x01(\x0e2}.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.LogLevelR\blogLevel\x12\x9d\x01\n" +
+	"scheduling\x18\n" +
+	" \x01(\v2y.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSchedulingR\n" +
+	"scheduling\x12\x1f\n" +
+	"\vhelm_values\x18\v \x01(\tR\n" +
+	"helmValuesB\x10\n" +
+	"\x0e_chart_versionB\v\n" +
+	"\t_replicas\"\x8a\b\n" +
+	"*KubernetesGhaRunnerScaleSetControllerFlags\x12C\n" +
+	"\tlog_level\x18\x01 \x01(\tB!\xbaH\x1er\x1cR\x00R\x05debugR\x04infoR\x04warnR\x05errorH\x00R\blogLevel\x88\x01\x01\x127\n" +
 	"\n" +
-	"log_format\x18\x02 \x01(\x0e2~.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.LogFormatR\tlogFormat\x124\n" +
-	"\x16watch_single_namespace\x18\x03 \x01(\tR\x14watchSingleNamespace\x12S\n" +
-	" runner_max_concurrent_reconciles\x18\x04 \x01(\x05B\x05\x8a\xa6\x1d\x012H\x00R\x1drunnerMaxConcurrentReconciles\x88\x01\x01\x12\xad\x01\n" +
-	"\x0fupdate_strategy\x18\x05 \x01(\x0e2\x83\x01.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.UpdateStrategyR\x0eupdateStrategy\x12K\n" +
-	"\"exclude_label_propagation_prefixes\x18\x06 \x03(\tR\x1fexcludeLabelPropagationPrefixes\x12<\n" +
-	"\x1bk8s_client_rate_limiter_qps\x18\a \x01(\x05R\x17k8sClientRateLimiterQps\x12@\n" +
-	"\x1dk8s_client_rate_limiter_burst\x18\b \x01(\x05R\x19k8sClientRateLimiterBurst\"O\n" +
-	"\bLogLevel\x12\x19\n" +
-	"\x15log_level_unspecified\x10\x00\x12\t\n" +
-	"\x05debug\x10\x01\x12\b\n" +
-	"\x04info\x10\x02\x12\b\n" +
-	"\x04warn\x10\x03\x12\t\n" +
-	"\x05error\x10\x04\";\n" +
-	"\tLogFormat\x12\x1a\n" +
-	"\x16log_format_unspecified\x10\x00\x12\b\n" +
-	"\x04text\x10\x01\x12\b\n" +
-	"\x04json\x10\x02\"N\n" +
-	"\x0eUpdateStrategy\x12\x1f\n" +
-	"\x1bupdate_strategy_unspecified\x10\x00\x12\r\n" +
-	"\timmediate\x10\x01\x12\f\n" +
-	"\beventual\x10\x02B#\n" +
-	"!_runner_max_concurrent_reconciles\"\xb8\x01\n" +
-	",KubernetesGhaRunnerScaleSetControllerMetrics\x126\n" +
-	"\x17controller_manager_addr\x18\x01 \x01(\tR\x15controllerManagerAddr\x12#\n" +
-	"\rlistener_addr\x18\x02 \x01(\tR\flistenerAddr\x12+\n" +
-	"\x11listener_endpoint\x18\x03 \x01(\tR\x10listenerEndpointB\xb5\x04\n" +
+	"log_format\x18\x02 \x01(\tB\x13\xbaH\x10r\x0eR\x00R\x04textR\x04jsonH\x01R\tlogFormat\x88\x01\x01\x12_\n" +
+	"\x16watch_single_namespace\x18\x03 \x01(\tB)\xbaH&r$2\"^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\x14watchSingleNamespace\x12Z\n" +
+	" runner_max_concurrent_reconciles\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x012H\x02R\x1drunnerMaxConcurrentReconciles\x88\x01\x01\x12J\n" +
+	"\x0fupdate_strategy\x18\x05 \x01(\tB\x1c\xbaH\x19r\x17R\x00R\timmediateR\beventualH\x03R\x0eupdateStrategy\x88\x01\x01\x12K\n" +
+	"\"exclude_label_propagation_prefixes\x18\x06 \x03(\tR\x1fexcludeLabelPropagationPrefixes\x12J\n" +
+	"\x1bk8s_client_rate_limiter_qps\x18\a \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x04R\x17k8sClientRateLimiterQps\x88\x01\x01\x12N\n" +
+	"\x1dk8s_client_rate_limiter_burst\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x05R\x19k8sClientRateLimiterBurst\x88\x01\x01\x12X\n" +
+	"\frate_limiter\x18\t \x01(\tB0\xbaH-r+R\x00R\x13bucket_rate_limiterR\x12typed_rate_limiterH\x06R\vrateLimiter\x88\x01\x01\x129\n" +
+	"\x19health_probe_bind_address\x18\n" +
+	" \x01(\tR\x16healthProbeBindAddress\x12.\n" +
+	"\x13priority_class_name\x18\v \x01(\tR\x11priorityClassNameB\f\n" +
+	"\n" +
+	"_log_levelB\r\n" +
+	"\v_log_formatB#\n" +
+	"!_runner_max_concurrent_reconcilesB\x12\n" +
+	"\x10_update_strategyB\x1e\n" +
+	"\x1c_k8s_client_rate_limiter_qpsB \n" +
+	"\x1e_k8s_client_rate_limiter_burstB\x0f\n" +
+	"\r_rate_limiter\"\xd0\x01\n" +
+	",KubernetesGhaRunnerScaleSetControllerMetrics\x12>\n" +
+	"\x17controller_manager_addr\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x15controllerManagerAddr\x12+\n" +
+	"\rlistener_addr\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\flistenerAddr\x123\n" +
+	"\x11listener_endpoint\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10listenerEndpoint\"\xfd\x02\n" +
+	"/KubernetesGhaRunnerScaleSetControllerScheduling\x12\xb1\x01\n" +
+	"\rnode_selector\x18\x01 \x03(\v2\x8b\x01.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xb5\x04\n" +
 	"Lcom.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1B\tSpecProtoP\x01Z\x92\x01github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1;kubernetesgharunnerscalesetcontrollerv1\xa2\x02\x05DPPKK\xaa\x02HDev.Planton.Provider.Kubernetes.Kubernetesgharunnerscalesetcontroller.V1\xca\x02HDev\\Planton\\Provider\\Kubernetes\\Kubernetesgharunnerscalesetcontroller\\V1\xe2\x02TDev\\Planton\\Provider\\Kubernetes\\Kubernetesgharunnerscalesetcontroller\\V1\\GPBMetadata\xea\x02MDev::Planton::Provider::Kubernetes::Kubernetesgharunnerscalesetcontroller::V1b\x06proto3"
 
 var (
@@ -691,35 +582,32 @@ func file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_
 	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_goTypes = []any{
-	(KubernetesGhaRunnerScaleSetControllerFlags_LogLevel)(0),       // 0: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.LogLevel
-	(KubernetesGhaRunnerScaleSetControllerFlags_LogFormat)(0),      // 1: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.LogFormat
-	(KubernetesGhaRunnerScaleSetControllerFlags_UpdateStrategy)(0), // 2: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.UpdateStrategy
-	(*KubernetesGhaRunnerScaleSetControllerSpec)(nil),              // 3: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec
-	(*KubernetesGhaRunnerScaleSetControllerContainer)(nil),         // 4: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerContainer
-	(*KubernetesGhaRunnerScaleSetControllerImage)(nil),             // 5: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerImage
-	(*KubernetesGhaRunnerScaleSetControllerFlags)(nil),             // 6: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags
-	(*KubernetesGhaRunnerScaleSetControllerMetrics)(nil),           // 7: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerMetrics
-	(*v1.StringValueOrRef)(nil),                                    // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),                          // 9: dev.planton.provider.kubernetes.ContainerResources
+	(*KubernetesGhaRunnerScaleSetControllerSpec)(nil),       // 0: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec
+	(*KubernetesGhaRunnerScaleSetControllerFlags)(nil),      // 1: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags
+	(*KubernetesGhaRunnerScaleSetControllerMetrics)(nil),    // 2: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerMetrics
+	(*KubernetesGhaRunnerScaleSetControllerScheduling)(nil), // 3: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerScheduling
+	nil,                                   // 4: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),           // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerImage)(nil),     // 6: dev.planton.provider.kubernetes.ContainerImage
+	(*kubernetes.ContainerResources)(nil), // 7: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil), // 8: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_depIdxs = []int32{
-	8, // 0: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 1: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerContainer
-	6, // 2: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.flags:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags
-	7, // 3: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.metrics:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerMetrics
-	9, // 4: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	5, // 5: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerContainer.image:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerImage
-	0, // 6: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.log_level:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.LogLevel
-	1, // 7: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.log_format:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.LogFormat
-	2, // 8: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.update_strategy:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags.UpdateStrategy
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	5, // 0: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // 1: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	7, // 2: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	1, // 3: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.flags:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerFlags
+	2, // 4: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.metrics:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerMetrics
+	3, // 5: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerScheduling
+	4, // 6: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerScheduling.NodeSelectorEntry
+	8, // 7: dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() {
@@ -730,20 +618,19 @@ func file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_
 		return
 	}
 	file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_rawDesc)),
-			NumEnums:      3,
+			NumEnums:      0,
 			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_spec_proto = out.File

@@ -425,7 +425,12 @@ Based on scenario:
   produces an object, never a unified map. When a leaf map legitimately
   holds only same-typed strings (identity labels, secret data), plain
   merge with `cond ? {k = v} : {}` is safe — the hazard is mixed primitive
-  types.
+  types. The same plan-time trap hides in guard expressions:
+  `coalesce(x, {})` fails at PLAN with "all arguments must have the same
+  type" whenever `x` is a populated object (coalesce requires same-typed
+  arguments — an empty object literal is not the same type). Guard
+  nullable locals with a plain `x != null ?` and always-map locals with
+  `length(x) > 0 ?`; never `length(coalesce(x, {}))`.
 - **crd2pulumi cannot type a CRD field that is a map of NESTED objects**
   (name-keyed maps whose values are objects — e.g. backup-storage maps):
   it generates `map[string]map[string]string`, which structurally cannot
@@ -579,6 +584,27 @@ Based on scenario:
   pre-delete hook). Declare `delete_cascade = "Background"` on the TF
   resource and the `pulumi.com/deletionPropagationPolicy: background`
   annotation on the Pulumi CR, with twin comments.
+- **A chart arm that bundles an operator AND a CR it reconciles in ONE
+  release cannot uninstall cleanly — reject the arm, compose separate
+  kinds instead**: Helm uninstall issues every delete in one pass, so
+  the operator's Deployment dies seconds after the CR's delete while
+  the CR still carries that operator's finalizer — the release then
+  burns its full uninstall wait ("uninstallation completed with 1
+  error(s): context deadline exceeded"), the CR's children keep
+  running, and namespace deletion wedges on the same finalizer
+  (verified live, three lanes; the upstream README's own remedy was
+  "try deleting the namespace"). No values surface can sequence the
+  deletes — hooks and extra-manifest surfaces do not exist in such
+  charts, keep-annotations only relocate the deadlock, and operators
+  add finalizers unconditionally at reconcile. Audit UNINSTALL at the
+  pin before adopting any operator-bundling arm: identify who
+  processes each CR's finalizer after the operator dies in the same
+  pass — if nobody, model the dependency as a composed reference to
+  the catalog's separate operator + CR kinds, whose destroy order is
+  correct by construction. (Deletion still completes eventually via
+  the children's ownerReferences once the finalizer is CLEARED — the
+  manual unstick is a finalizer patch — but a component whose destroy
+  needs manual surgery is not shippable.)
 - **Module-owned keep-on-uninstall on Pulumi needs the CLASSIC `yaml`
   package plus a transformation — `yaml/v2` cannot do it**: yaml/v2
   components register remotely and their children are created

@@ -17,8 +17,6 @@ type ResourceVerifier interface {
 // pods only (no service requirement).
 var operatorKinds = map[string]bool{
 	"kubernetesstrimzikafkaoperator": true,
-	// Tier 4 operators with configurable namespace
-	"kubernetesgharunnerscalesetcontroller": true,
 }
 
 // helmTier2Kinds lists manifest kind values (lowercased) for Helm-based
@@ -753,23 +751,23 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 		}, nil
 
 	// A SigNoz observability platform: server StatefulSet + collector
-	// rolled out, the bundled ClickHouseInstallation reconciled (bundled
-	// arm), health OK, and the product-grade round-trip — first-admin
-	// REGISTRATION through the product API, a session, an OTLP span
-	// push, and the trace retrieved by ID through the authenticated
-	// query API. The behavioral-state scenario (recognized by name)
-	// re-authenticates and re-queries AFTER a server pod replacement —
-	// users survive on the SQLite PVC, telemetry in ClickHouse.
+	// rolled out, health OK (answers only with a working connection to
+	// the COMPOSED ClickHouse — the registry-prerequisite fixture), and
+	// the product-grade round-trip — first-admin REGISTRATION through
+	// the product API, a session, an OTLP span push, and the trace
+	// retrieved by ID through the authenticated query API. The
+	// behavioral-state scenario (recognized by name) re-authenticates
+	// and re-queries AFTER a server pod replacement — users survive on
+	// the SQLite PVC, telemetry in the composed ClickHouse.
 	case "kubernetessignoz":
 		spec := manifestSpecMap(manifestPath)
 		zipkinPort, jaegerPort := SignozReceiverPosture(spec)
 		return &SignozVerifier{
-			Namespace:         info.Namespace,
-			Name:              info.Name,
-			BundledClickHouse: signozBundledClickHouse(spec),
-			StateProof:        strings.Contains(manifestPath, "behavioral-state"),
-			ExpectZipkinPort:  zipkinPort,
-			ExpectJaegerPort:  jaegerPort,
+			Namespace:        info.Namespace,
+			Name:             info.Name,
+			StateProof:       strings.Contains(manifestPath, "behavioral-state"),
+			ExpectZipkinPort: zipkinPort,
+			ExpectJaegerPort: jaegerPort,
 		}, nil
 
 	// An Argo CD GitOps control plane: server + repo-server Deployments
@@ -1043,20 +1041,61 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			ComponentName: info.Name,
 		}, nil
 
-	// Fixed-namespace components: the proto spec has no namespace field because
-	// the upstream tooling (Tekton, etc.) uses hardcoded namespaces. The manifest
-	// YAML cannot carry a namespace hint because protojson.Unmarshal rejects
-	// unknown fields. Namespace is therefore embedded here.
-	case "kubernetestekton":
-		return &HelmComponentVerifier{
-			Namespace:     "tekton-pipelines",
-			ComponentName: info.Name,
+	// The Tekton Operator: operator + webhook rolled out in the fixed
+	// tekton-operator namespace, the operator.tekton.dev CRDs
+	// established — and THE DESIGN INVARIANT proven: NO TektonConfig
+	// exists after install (auto-install is module-disabled; the
+	// KubernetesTekton declaration owns the configuration). Destroy
+	// asserts the manifest-bundle posture: everything gone, CRDs
+	// included.
+	case "kubernetestektonoperator":
+		return &TektonOperatorVerifier{
+			Name: info.Name,
 		}, nil
 
-	case "kubernetestektonoperator":
-		return &OperatorComponentVerifier{
-			Namespace:     "tekton-operator",
-			ComponentName: info.Name,
+	// A Tekton installation (the TektonConfig declaration the operator
+	// reconciles): TektonConfig Ready, the per-profile component
+	// rollouts asserted BOTH ways (dashboard on `all` only), the pruner
+	// CronJob when declared — and THE ENGINE PROOF on every lane: a
+	// verifier-owned TaskRun runs to Succeeded. Destroy asserts the
+	// operator-alive teardown the two-kind grain exists for: no
+	// TektonInstallerSet left behind.
+	case "kubernetestekton":
+		spec := manifestSpecMap(manifestPath)
+		return &TektonVerifier{
+			Name:            info.Name,
+			Profile:         tektonProfile(spec),
+			TargetNamespace: tektonTargetNamespace(spec),
+			PrunerDeclared:  tektonPrunerDeclared(spec),
+		}, nil
+
+	// The GitHub Actions runner scale set controller: the controller
+	// rolled out at the declared replica count and every
+	// actions.github.com CRD established. Destroy asserts the
+	// chart-owned CRD posture: the CRDs delete WITH the release.
+	case "kubernetesgharunnerscalesetcontroller":
+		spec := manifestSpecMap(manifestPath)
+		return &GhaRunnerScaleSetControllerVerifier{
+			Namespace: info.Namespace,
+			Name:      info.Name,
+			Replicas:  ghaControllerReplicas(spec),
+		}, nil
+
+	// A GitHub Actions runner scale set: the credential Secret present,
+	// the AutoscalingRunnerSet rendered and OBSERVED by the controller
+	// (the reconcile-attempt proof — no GitHub account needed). The
+	// behavioral-github scenario (recognized by name) adds THE
+	// REGISTRATION PROOF with a real credential from the fenced env
+	// tokens: listener Running + the declared idle runners online.
+	case "kubernetesgharunnerscaleset":
+		spec := manifestSpecMap(manifestPath)
+		return &GhaRunnerScaleSetVerifier{
+			Namespace:         info.Namespace,
+			Name:              info.Name,
+			ScaleSetName:      ghaScaleSetName(spec, info.Name),
+			AuthSecretName:    ghaAuthSecretName(spec, info.Name),
+			MinRunners:        ghaMinRunners(spec),
+			RegistrationProof: strings.Contains(manifestPath, "behavioral-github"),
 		}, nil
 
 	default:

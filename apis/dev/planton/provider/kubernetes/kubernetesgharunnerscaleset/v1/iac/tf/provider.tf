@@ -1,16 +1,8 @@
-##############################################
-# provider.tf
-#
-# Terraform provider configuration for KubernetesGhaRunnerScaleSet
-##############################################
-
 terraform {
-  required_version = ">= 1.0"
-
   required_providers {
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = ">= 2.0"
+      version = "~> 2.35"
     }
     helm = {
       source  = "hashicorp/helm"
@@ -19,6 +11,8 @@ terraform {
   }
 }
 
-# Kubernetes and Helm providers should be configured by the caller
-# using kubeconfig or in-cluster configuration.
+provider "kubernetes" {
+}
 
+provider "helm" {
+}

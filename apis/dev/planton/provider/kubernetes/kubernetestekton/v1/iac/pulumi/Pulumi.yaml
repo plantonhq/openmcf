@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-aws-module-test
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-tekton
+runtime: go
+description: The cluster's Tekton installation declared as the TektonConfig the Tekton Operator reconciles — profile, component configuration, pipeline feature flags, CloudEvents sink, resolvers, metrics shape and pruner policy

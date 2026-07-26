@@ -1,18 +1,14 @@
+# The component defaults on their own: one controller replica watching
+# all namespaces. The verifier proves the ENGINE on every lane: the
+# controller Deployment rolled out and the actions.github.com CRDs
+# (AutoscalingRunnerSet, AutoscalingListener, EphemeralRunnerSet,
+# EphemeralRunner) established. Destroy removes everything INCLUDING the
+# CRDs (the chart-owned CRD posture).
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSetController
 metadata:
-  name: e2e-arc-ctrl
+  name: e2e-arc-min
 spec:
   namespace:
-    value: arc-system
-  create_namespace: true
-  helm_chart_version: "0.13.1"
-  replica_count: 1
-  container:
-    resources:
-      requests:
-        cpu: "50m"
-        memory: "64Mi"
-      limits:
-        cpu: "250m"
-        memory: "256Mi"
+    value: e2e-arc-min
+  createNamespace: true

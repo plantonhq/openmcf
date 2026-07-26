@@ -23,10 +23,11 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesTekton deploys Tekton Pipelines and Dashboard on Kubernetes using official release manifests.
-//
-// This is the manifest-based deployment approach (as opposed to the operator-based KubernetesTektonOperator).
-// It's simpler to understand and debug, and gives direct control over configuration.
+// KubernetesTekton declares the cluster's Tekton installation — which
+// components run (Pipelines, Triggers, Dashboard, Chains), their feature
+// flags and the pruner policy — as the TektonConfig the Tekton Operator
+// (a KubernetesTektonOperator resource, the prerequisite) reconciles.
+// Exactly one per cluster.
 type KubernetesTekton struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

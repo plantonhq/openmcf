@@ -21,29 +21,16 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesTektonOperatorStackOutputs captures observable outputs from the Tekton Operator deployment.
+// *
+// Outputs exported after installing the Tekton Operator.
 type KubernetesTektonOperatorStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes namespace where the Tekton Operator is installed.
-	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Name of the TektonConfig custom resource created by the operator.
-	TektonConfigName string `protobuf:"bytes,2,opt,name=tekton_config_name,json=tektonConfigName,proto3" json:"tekton_config_name,omitempty"`
-	// Kubernetes service name for the Tekton Pipelines controller.
-	// Example: tekton-pipelines-controller
-	PipelinesControllerService string `protobuf:"bytes,3,opt,name=pipelines_controller_service,json=pipelinesControllerService,proto3" json:"pipelines_controller_service,omitempty"`
-	// Kubernetes service name for the Tekton Triggers controller.
-	// Example: tekton-triggers-controller
-	// Empty if triggers component is not enabled.
-	TriggersControllerService string `protobuf:"bytes,4,opt,name=triggers_controller_service,json=triggersControllerService,proto3" json:"triggers_controller_service,omitempty"`
-	// Kubernetes service name for the Tekton Dashboard.
-	// Example: tekton-dashboard
-	// Empty if dashboard component is not enabled.
-	DashboardService string `protobuf:"bytes,5,opt,name=dashboard_service,json=dashboardService,proto3" json:"dashboard_service,omitempty"`
-	// Command to setup port-forwarding to access the Tekton Dashboard from a developer's laptop.
-	// Example: kubectl port-forward svc/tekton-dashboard -n tekton-pipelines 9097:9097
-	DashboardPortForwardCommand string `protobuf:"bytes,6,opt,name=dashboard_port_forward_command,json=dashboardPortForwardCommand,proto3" json:"dashboard_port_forward_command,omitempty"`
-	unknownFields               protoimpl.UnknownFields
-	sizeCache                   protoimpl.SizeCache
+	// *
+	// Namespace the operator runs in — always `tekton-operator` (fixed
+	// by the release manifest).
+	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesTektonOperatorStackOutputs) Reset() {
@@ -83,53 +70,13 @@ func (x *KubernetesTektonOperatorStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesTektonOperatorStackOutputs) GetTektonConfigName() string {
-	if x != nil {
-		return x.TektonConfigName
-	}
-	return ""
-}
-
-func (x *KubernetesTektonOperatorStackOutputs) GetPipelinesControllerService() string {
-	if x != nil {
-		return x.PipelinesControllerService
-	}
-	return ""
-}
-
-func (x *KubernetesTektonOperatorStackOutputs) GetTriggersControllerService() string {
-	if x != nil {
-		return x.TriggersControllerService
-	}
-	return ""
-}
-
-func (x *KubernetesTektonOperatorStackOutputs) GetDashboardService() string {
-	if x != nil {
-		return x.DashboardService
-	}
-	return ""
-}
-
-func (x *KubernetesTektonOperatorStackOutputs) GetDashboardPortForwardCommand() string {
-	if x != nil {
-		return x.DashboardPortForwardCommand
-	}
-	return ""
-}
-
 var File_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Odev/planton/provider/kubernetes/kubernetestektonoperator/v1/stack_outputs.proto\x12;dev.planton.provider.kubernetes.kubernetestektonoperator.v1\"\xe6\x02\n" +
+	"Odev/planton/provider/kubernetes/kubernetestektonoperator/v1/stack_outputs.proto\x12;dev.planton.provider.kubernetes.kubernetestektonoperator.v1\"D\n" +
 	"$KubernetesTektonOperatorStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12,\n" +
-	"\x12tekton_config_name\x18\x02 \x01(\tR\x10tektonConfigName\x12@\n" +
-	"\x1cpipelines_controller_service\x18\x03 \x01(\tR\x1apipelinesControllerService\x12>\n" +
-	"\x1btriggers_controller_service\x18\x04 \x01(\tR\x19triggersControllerService\x12+\n" +
-	"\x11dashboard_service\x18\x05 \x01(\tR\x10dashboardService\x12C\n" +
-	"\x1edashboard_port_forward_command\x18\x06 \x01(\tR\x1bdashboardPortForwardCommandB\xe1\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespaceB\xe1\x03\n" +
 	"?com.dev.planton.provider.kubernetes.kubernetestektonoperator.v1B\x11StackOutputsProtoP\x01Zxgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestektonoperator/v1;kubernetestektonoperatorv1\xa2\x02\x05DPPKK\xaa\x02;Dev.Planton.Provider.Kubernetes.Kubernetestektonoperator.V1\xca\x02;Dev\\Planton\\Provider\\Kubernetes\\Kubernetestektonoperator\\V1\xe2\x02GDev\\Planton\\Provider\\Kubernetes\\Kubernetestektonoperator\\V1\\GPBMetadata\xea\x02@Dev::Planton::Provider::Kubernetes::Kubernetestektonoperator::V1b\x06proto3"
 
 var (

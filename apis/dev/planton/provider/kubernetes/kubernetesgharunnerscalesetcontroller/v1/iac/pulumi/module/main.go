@@ -4,44 +4,81 @@ import (
 	"github.com/pkg/errors"
 	kubernetesgharunnerscalesetcontrollerv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources is the Pulumi entry-point for the GHA Runner Scale Set Controller.
+// Resources installs the GitHub Actions Runner Scale Set controller from
+// the official OCI chart as a real Helm release. The typed spec renders
+// into chart values (values.go); the helm_values escape hatch merges last
+// with Helm -f semantics — the exact semantic twin of the Terraform
+// module's helm_release with values = [typed, helm_values].
 //
-// The deployment order is:
-// 1. Create namespace (if create_namespace is true)
-// 2. Deploy Helm chart with controller configuration
+// OCI WIRING: Pulumi's helm.v3.Release resolves OCI registries through
+// the CHART REFERENCE — the joined
+// "oci://ghcr.io/actions/actions-runner-controller-charts/<chart>" string
+// with NO RepositoryOpts. The Terraform provider instead takes
+// repository = the registry path plus the bare chart name and joins them
+// internally. Same chart bytes, different wiring — keep both sides of the
+// split in lockstep.
 //
-// After deployment, users can create AutoScalingRunnerSet resources
-// in any namespace to deploy actual GitHub Actions runners.
-func Resources(ctx *pulumi.Context,
-	in *kubernetesgharunnerscalesetcontrollerv1.KubernetesGhaRunnerScaleSetControllerStackInput) error {
+// CRD LIFECYCLE: the chart installs the actions.github.com CRDs with the
+// release and they are REMOVED with it — destroying the controller
+// cascade-deletes every runner scale set on the cluster (the spec's CRD
+// note carries the warning).
+func Resources(ctx *pulumi.Context, stackInput *kubernetesgharunnerscalesetcontrollerv1.KubernetesGhaRunnerScaleSetControllerStackInput) error {
+	locals := initializeLocals(ctx, stackInput)
 
-	locals := initializeLocals(ctx, in)
-
-	k8sProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
-		ctx, in.ProviderConfig, "kubernetes")
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
+		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "setup kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
-	// Conditionally create namespace based on create_namespace flag
-	createdNamespace, err := namespace(ctx, in, locals, k8sProvider)
+	// ------------------------------ namespace ----------------------------
+	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	// Build conditional namespace dependency
-	var namespaceDeps []pulumi.ResourceOption
+	var releaseDeps []pulumi.ResourceOption
 	if createdNamespace != nil {
-		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+		releaseDeps = append(releaseDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
 	}
 
-	// Deploy GHA Runner Scale Set Controller via Helm
-	if err = ghaRunnerScaleSetController(ctx, locals, k8sProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "deploy gha-runner-scale-set-controller")
+	// ------------------------------ helm release --------------------------
+	mergedValues, err := buildHelmValues(locals)
+	if err != nil {
+		return errors.Wrap(err, "failed to build helm values")
 	}
 
+	releaseArgs := &helmv3.ReleaseArgs{
+		Name:      pulumi.String(locals.ReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		// OCI chart reference — joined string, no RepositoryOpts (see the
+		// module comment).
+		Chart:   pulumi.String(vars.HelmOciRepo + "/" + vars.HelmChartName),
+		Version: pulumi.String(locals.ChartVersion),
+		Values:  pulumi.ToMap(mergedValues),
+		// The module owns namespace creation (create_namespace flag).
+		CreateNamespace: pulumi.Bool(false),
+		// Wait for the controller to become Ready — a manager that never
+		// starts should fail THIS deploy, not the first runner scale set
+		// install. SkipAwait false is Helm --wait, stated explicitly to
+		// mirror the Terraform twin's `wait = true`.
+		SkipAwait:     pulumi.Bool(false),
+		Atomic:        pulumi.Bool(true),
+		CleanupOnFail: pulumi.Bool(true),
+		Timeout:       pulumi.Int(300),
+	}
+
+	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, releaseDeps...)
+
+	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, releaseArgs, opts...)
+	if err != nil {
+		return errors.Wrap(err, "failed to install gha-runner-scale-set-controller helm release")
+	}
+
+	exportOutputs(ctx, locals)
 	return nil
 }

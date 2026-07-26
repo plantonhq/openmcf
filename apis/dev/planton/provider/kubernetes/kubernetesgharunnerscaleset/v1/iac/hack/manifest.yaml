@@ -1,50 +1,56 @@
+# Full-surface hack manifest for the offline plan/preview proofs: the
+# GitHub App declared arm (the module materializes the Secret), dind
+# mode, proxy, GHES private CA, an explicit controller reference, and
+# the escape hatch — every typed block at once.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSet
 metadata:
-  name: example-runners
+  name: org-runners-full
 spec:
-  # Namespace configuration
   namespace:
-    value: gha-runners
+    value: ci-runners
   createNamespace: true
-
-  # Helm chart version
-  helmChartVersion: "0.13.1"
-
-  # GitHub configuration
-  github:
-    # Repository-level runners
-    configUrl: https://github.com/myorg/myrepo
-    # Use PAT token for authentication
-    patToken:
-      token: ghp_your_personal_access_token_here
-
-  # Scaling configuration
-  scaling:
-    minRunners: 0  # Scale to zero when idle
-    maxRunners: 5  # Maximum concurrent runners
-
-  # Container mode - Docker-in-Docker
+  chartVersion: 0.14.2
+  githubConfigUrl: https://github.example.com/my-org
+  auth:
+    githubApp:
+      appId: "123456"
+      installationId: "654321"
+      privateKey: |
+        -----BEGIN RSA PRIVATE KEY-----
+        hack-manifest-placeholder-never-a-real-key
+        -----END RSA PRIVATE KEY-----
+  runnerScaleSetName: org-runners
+  runnerGroup: platform
+  minRunners: 2
+  maxRunners: 30
   containerMode:
-    type: DIND
-
-  # Runner container configuration
+    mode: dind
   runner:
+    image: ghcr.io/actions/actions-runner:2.321.0
     resources:
       requests:
-        cpu: "500m"
-        memory: "1Gi"
+        cpu: "1"
+        memory: 2Gi
       limits:
-        cpu: "2"
-        memory: "4Gi"
-
-  # Persistent volumes for caching
-  persistentVolumes:
-    - name: npm-cache
-      size: "20Gi"
-      mountPath: /home/runner/.npm
-      storageClass: standard
-    - name: gradle-cache
-      size: "50Gi"
-      mountPath: /home/runner/.gradle
-
+        cpu: "4"
+        memory: 8Gi
+  proxy:
+    https:
+      url: http://proxy.example.com:8080
+      credentialSecretName: proxy-auth
+    noProxy:
+      - svc.cluster.local
+  githubServerTls:
+    configMapName:
+      value: ghes-ca
+    key: ca.crt
+    runnerMountPath: /usr/local/share/ca-certificates/
+  controllerServiceAccount:
+    namespace: arc-system
+    name: arc
+  helmValues: |
+    listenerTemplate:
+      spec:
+        containers:
+          - name: listener
