@@ -24,10 +24,22 @@ const (
 // kubernetes-altinity-operator stack outputs
 type KubernetesAltinityOperatorStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Namespace where the operator is installed
-	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// namespace the operator is installed into.
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Helm release name of the operator install (= metadata.name).
+	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
+	// name of the operator Deployment (= the chart fullname, which the
+	// modules pin to the resource name).
+	DeploymentName string `protobuf:"bytes,3,opt,name=deployment_name,json=deploymentName,proto3" json:"deployment_name,omitempty"`
+	// name of the chart-managed Secret holding the operator's ClickHouse
+	// credentials (fields username/password), e.g. <name>.
+	CredentialsSecretName string `protobuf:"bytes,4,opt,name=credentials_secret_name,json=credentialsSecretName,proto3" json:"credentials_secret_name,omitempty"`
+	// in-cluster metrics endpoint serving Prometheus metrics for every
+	// managed cluster, e.g. http://<name>-metrics.<ns>.svc.cluster.local:8888/metrics.
+	// Empty when the metrics exporter is disabled.
+	MetricsEndpoint string `protobuf:"bytes,5,opt,name=metrics_endpoint,json=metricsEndpoint,proto3" json:"metrics_endpoint,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *KubernetesAltinityOperatorStackOutputs) Reset() {
@@ -67,13 +79,45 @@ func (x *KubernetesAltinityOperatorStackOutputs) GetNamespace() string {
 	return ""
 }
 
+func (x *KubernetesAltinityOperatorStackOutputs) GetReleaseName() string {
+	if x != nil {
+		return x.ReleaseName
+	}
+	return ""
+}
+
+func (x *KubernetesAltinityOperatorStackOutputs) GetDeploymentName() string {
+	if x != nil {
+		return x.DeploymentName
+	}
+	return ""
+}
+
+func (x *KubernetesAltinityOperatorStackOutputs) GetCredentialsSecretName() string {
+	if x != nil {
+		return x.CredentialsSecretName
+	}
+	return ""
+}
+
+func (x *KubernetesAltinityOperatorStackOutputs) GetMetricsEndpoint() string {
+	if x != nil {
+		return x.MetricsEndpoint
+	}
+	return ""
+}
+
 var File_dev_planton_provider_kubernetes_kubernetesaltinityoperator_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesaltinityoperator_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Qdev/planton/provider/kubernetes/kubernetesaltinityoperator/v1/stack_outputs.proto\x12=dev.planton.provider.kubernetes.kubernetesaltinityoperator.v1\"F\n" +
+	"Qdev/planton/provider/kubernetes/kubernetesaltinityoperator/v1/stack_outputs.proto\x12=dev.planton.provider.kubernetes.kubernetesaltinityoperator.v1\"\xf5\x01\n" +
 	"&KubernetesAltinityOperatorStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespaceB\xef\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12'\n" +
+	"\x0fdeployment_name\x18\x03 \x01(\tR\x0edeploymentName\x126\n" +
+	"\x17credentials_secret_name\x18\x04 \x01(\tR\x15credentialsSecretName\x12)\n" +
+	"\x10metrics_endpoint\x18\x05 \x01(\tR\x0fmetricsEndpointB\xef\x03\n" +
 	"Acom.dev.planton.provider.kubernetes.kubernetesaltinityoperator.v1B\x11StackOutputsProtoP\x01Z|github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesaltinityoperator/v1;kubernetesaltinityoperatorv1\xa2\x02\x05DPPKK\xaa\x02=Dev.Planton.Provider.Kubernetes.Kubernetesaltinityoperator.V1\xca\x02=Dev\\Planton\\Provider\\Kubernetes\\Kubernetesaltinityoperator\\V1\xe2\x02IDev\\Planton\\Provider\\Kubernetes\\Kubernetesaltinityoperator\\V1\\GPBMetadata\xea\x02BDev::Planton::Provider::Kubernetes::Kubernetesaltinityoperator::V1b\x06proto3"
 
 var (

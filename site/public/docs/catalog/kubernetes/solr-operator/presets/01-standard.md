@@ -1,6 +1,6 @@
 ---
-title: "Standard Apache Solr Operator"
-description: "This preset deploys the Apache Solr Operator with recommended default resources. The operator manages the lifecycle of SolrCloud clusters on Kubernetes, enabling declarative provisioning, scaling,..."
+title: "Standard preset"
+description: "The default install: one cluster-wide Solr operator plus the bundled zookeeper-operator, on the stable 0.9.1 chart. This is the shape for a cluster you administer — install once, and every..."
 type: "preset"
 rank: "01"
 presetSlug: "01-standard"
@@ -11,23 +11,24 @@ icon: "package"
 order: 1
 ---
 
-# Standard Apache Solr Operator
+# Standard preset
 
-This preset deploys the Apache Solr Operator with recommended default resources. The operator manages the lifecycle of SolrCloud clusters on Kubernetes, enabling declarative provisioning, scaling, and configuration of Solr search infrastructure.
+The default install: one cluster-wide Solr operator plus the bundled
+zookeeper-operator, on the stable 0.9.1 chart. This is the shape for
+a cluster you administer — install once, and every KubernetesSolr
+resource in any namespace gets reconciled, including its provided
+ZooKeeper ensemble, with nothing else to set up.
 
-## When to Use
+Do not use this when a zookeeper-operator already runs in the
+cluster: its cluster-scoped RBAC uses fixed names, so a second
+install conflicts — use the existing-zookeeper-operator preset
+instead. And on shared clusters where you only own certain
+namespaces, prefer the namespace-fenced preset so this install does
+not claim SolrCloud resources belonging to other teams.
 
-- You need to run Apache Solr on Kubernetes
-- You want operator-managed SolrCloud cluster lifecycle (create, scale, configure, upgrade)
-- Standard resource allocation is sufficient for the operator control plane
+The first thing to change is nothing — the defaults are the
+recommended posture. If your platform requires it, add
+`node_selector`/`tolerations` for pod placement or `resources` for
+namespace quotas (the chart ships none; the operator is lightweight).
 
-## Key Configuration Choices
-
-- **Namespace** (`solr-system`) -- dedicated namespace isolates the operator from Solr workloads it manages
-- **Create namespace** (`true`) -- namespace is created automatically if it does not exist
-- **Resource requests** (`50m` CPU, `100Mi` memory) -- lightweight baseline for the operator pod
-- **Resource limits** (`1000m` CPU, `1Gi` memory) -- sufficient headroom for managing multiple SolrCloud clusters
-
-## Placeholders to Replace
-
-No placeholders -- this preset is directly deployable with sensible defaults.
+See [01-standard.yaml](./01-standard.yaml) for the manifest.

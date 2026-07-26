@@ -1,22 +1,25 @@
+# The dev shape: one shard, one replica, PVC-backed, no coordination
+# (single-replica topologies need none — the module deploys no
+# Keeper). The verifier proves a live SQL round-trip (CREATE TABLE /
+# INSERT / SELECT) over the HTTP interface as the declared user.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesClickHouse
 metadata:
-  name: e2e-ch-minimal
+  name: e2e-ch-min
 spec:
   namespace:
-    value: e2e-ch-minimal
+    value: e2e-ch-min
   create_namespace: true
-  cluster_name: e2e-ch
-  container:
-    replicas: 1
-    resources:
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 50m
-        memory: 128Mi
-    persistence_enabled: true
-    disk_size: 1Gi
-  logging:
-    level: information
+  version: "25.3"
+  disk_size: 2Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  users:
+    - name: verifier
+      password:
+        value: e2e-verifier-pass

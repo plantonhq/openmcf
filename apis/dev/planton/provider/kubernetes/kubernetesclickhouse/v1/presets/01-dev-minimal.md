@@ -1,0 +1,22 @@
+# Dev minimal preset
+
+The smallest declarable ClickHouse that actually serves: one host, a
+PVC, a pinned server version and one named user. No Keeper is
+deployed because a single-replica topology needs no coordination —
+which also means no replication: every pod restart is a brief outage
+and losing the volume loses the data. That trade-off is the point of
+this preset; it exists for developers and CI who need the real
+ClickHouse SQL surface without production ceremony.
+
+Be clear-eyed about access: the operator keeps the built-in `default`
+user passwordless but network-restricted to the cluster's own pods,
+so the declared user (whose password lands in a Kubernetes Secret,
+never in the custom resource) is the only real doorway. Change that
+password before the manifest leaves your laptop.
+
+The first thing to change is `version` — pin the line your clients
+test against — and `disk_size`, which cannot shrink later. When the
+data starts mattering, graduate to the production preset's replicated
+topology instead of just raising numbers here.
+
+See [01-dev-minimal.yaml](./01-dev-minimal.yaml) for the manifest.

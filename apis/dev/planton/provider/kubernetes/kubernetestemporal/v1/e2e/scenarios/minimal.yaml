@@ -1,0 +1,29 @@
+# The component defaults against the composed database: the PostgreSQL
+# fixture (registry prerequisite chain: CloudNativePgOperator →
+# Postgres) wired through one valueFrom per field. Co-located with the
+# fixture's namespace (create_namespace false) because the password
+# secretKeyRef cannot cross namespaces. One declared Temporal namespace
+# (the namespace Job proves the declarative path). The verifier proves
+# the ENGINE on every lane: all four server Deployments rolled out →
+# the Web UI answering → a real SDK worker connects through the
+# frontend and a workflow EXECUTES TO COMPLETION with its result read
+# back.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTemporal
+metadata:
+  name: e2e-tprl-min
+spec:
+  namespace:
+    value: e2e-temporal
+  database:
+    postgres:
+      host:
+        valueFrom:
+          name: e2e-tprl-pg
+      username: temporal
+      passwordSecret:
+        secretName:
+          valueFrom:
+            name: e2e-tprl-pg
+  temporalNamespaces:
+    - name: default

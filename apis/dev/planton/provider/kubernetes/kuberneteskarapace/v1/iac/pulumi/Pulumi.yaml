@@ -1,0 +1,3 @@
+name: kubernetes-karapace
+runtime: go
+description: Karapace schema registry (Confluent-API-compatible, Kafka-native storage) — module-owned Deployment/Service/Secret manifests with optional Kafka REST-proxy role, TLS/SASL Kafka connections, server TLS, and HTTP authentication

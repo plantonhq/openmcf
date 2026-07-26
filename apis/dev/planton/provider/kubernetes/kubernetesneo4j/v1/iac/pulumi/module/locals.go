@@ -5,109 +5,151 @@ import (
 	"strconv"
 
 	kubernetesneo4jv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesneo4j/v1"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/kuberneteslabelkeys"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Locals struct mirrors the "locals" concept from Terraform,
-// providing a consolidated place for derived values.
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	// The top-level resource from the user’s manifest (apiVersion, kind, metadata, spec).
-	KubernetesNeo4J *kubernetesneo4jv1.KubernetesNeo4J
+	Spec *kubernetesneo4jv1.KubernetesNeo4JSpec
 
-	// Standard labels used for all created resources.
+	// Resource-identity labels stamped on the module-created satellites
+	// (namespace, the auth Secret — never injected into the chart's own
+	// resources; Helm owns those).
 	Labels map[string]string
 
-	// The namespace in which everything will be deployed.
+	// Namespace Neo4j installs into (resolved literal from the spec's
+	// value-or-ref).
 	Namespace string
 
-	// Pod selector labels for identifying the pods that run Neo4j.
-	Neo4jPodSelectorLabels map[string]string
+	// Helm release name — metadata.name, NOT a fixed chart name: several
+	// Neo4j servers coexist in one cluster (and Enterprise cluster members
+	// are each their own release). The chart names its always-created
+	// ClusterIP Service after the release (neo4j.fullname = Release.Name
+	// when no name overrides are set), which is what makes ServiceName
+	// below deterministic.
+	ReleaseName string
 
-	// Calculated hostname for external Ingress usage.
-	IngressExternalHostname string
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
+	ChartVersion string
 
-	// The name of the Kubernetes Service for the Neo4j instance.
-	KubeServiceName string
+	// The chart's neo4j.name — REQUIRED by the chart (its neo4j.name
+	// helper fails the install when empty; nothing defaults it to the
+	// release name). cluster_name when set (Enterprise members sharing it
+	// form one cluster), else metadata.name. Controls the pod selector
+	// labels, anti-affinity matching, the shared `<neo4j.name>-lb-neo4j`
+	// LoadBalancer Service name, and clustering identity.
+	Neo4JName string
 
-	// The fully qualified domain name (in-cluster) for the Neo4j Service.
-	KubeServiceFqdn string
+	// Edition resolved to the chart/spec default (community) when unset.
+	Edition string
 
-	// A convenient port-forwarding command for local development.
-	KubePortForwardCommand string
+	// Whether the module materializes the auth Secret (spec.auth.password
+	// arm declared).
+	CreateAuthSecret bool
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// The Neo4j Helm chart creates a secret named "<release>-auth" for the password
-	PasswordSecretName string
+	// The admin password when the password arm is declared. Lands ONLY in
+	// the module-materialized Secret — never in rendered chart values.
+	AdminPassword string
+
+	// Name of the Secret the chart's neo4j.passwordFromSecret points at:
+	// the module-materialized "<metadata.name>-auth" (password arm), the
+	// referenced existing Secret, or "" when auth is absent (the chart
+	// then generates a random password).
+	AuthSecretName string
+
+	// Name of the main ClusterIP Service the chart always creates —
+	// neo4j.fullname = the release name (templates/neo4j-svc.yaml names it
+	// `{{ include "neo4j.fullname" . }}`; without fullnameOverride /
+	// nameOverride that helper renders .Release.Name).
+	ServiceName string
+
+	// In-cluster bolt endpoint drivers connect to.
+	BoltEndpoint string
+
+	// In-cluster HTTP API / Browser endpoint.
+	HttpEndpoint string
+
+	// kubectl one-liner for reaching bolt from a workstation.
+	PortForwardCommand string
 }
 
-// initializeLocals populates Locals from the stack input and
-// exports some fields to the Pulumi stack outputs.
-func initializeLocals(
-	ctx *pulumi.Context,
-	stackInput *kubernetesneo4jv1.KubernetesNeo4JStackInput,
-) *Locals {
-	// Initialize the Locals struct.
-	locals := &Locals{
-		KubernetesNeo4J: stackInput.Target,
-		Labels:          map[string]string{},
-	}
-
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesneo4jv1.KubernetesNeo4JStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	// Basic labels that identify this resource in the cluster.
-	locals.Labels[kuberneteslabelkeys.Resource] = strconv.FormatBool(true)
-	locals.Labels[kuberneteslabelkeys.ResourceName] = target.Metadata.Name
-	locals.Labels[kuberneteslabelkeys.ResourceKind] = cloudresourcekind.CloudResourceKind_KubernetesNeo4j.String()
-
+	labels := map[string]string{
+		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
+		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
+		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesNeo4j.String(),
+	}
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// get namespace from spec, it is required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
-
-	// export namespace as an output
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	// Define pod selector labels that Helm or raw K8s resources might use.
-	locals.Neo4jPodSelectorLabels = map[string]string{
-		"app.kubernetes.io/name":      "neo4j",
-		"app.kubernetes.io/instance":  target.Metadata.Name,
-		"app.kubernetes.io/component": "primary",
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// The Neo4j Helm chart creates a secret named "<release>-auth" for the password
-	locals.PasswordSecretName = fmt.Sprintf("%s-auth", target.Metadata.Name)
-
-	// Construct a service name and FQDN.
-	locals.KubeServiceName = fmt.Sprintf("%s-neo4j", target.Metadata.Name)
-	locals.KubeServiceFqdn = fmt.Sprintf("%s.%s.svc.cluster.local", locals.KubeServiceName, locals.Namespace)
-	ctx.Export(OpService, pulumi.String(locals.KubeServiceName))
-	ctx.Export(OpBoltUriKubeEndpoint, pulumi.String(locals.KubeServiceFqdn))
-
-	// Provide a default port-forward command for local debugging (web interface is 7474).
-	// For Bolt (7687), you could adapt this as needed.
-	locals.KubePortForwardCommand = fmt.Sprintf("kubectl port-forward -n %s service/%s 7474:7474",
-		locals.Namespace, locals.KubeServiceName)
-	ctx.Export(OpPortForwardCommand, pulumi.String(locals.KubePortForwardCommand))
-
-	// If ingress is enabled, use the hostname directly
-	if target.Spec.Ingress != nil &&
-		target.Spec.Ingress.Enabled &&
-		target.Spec.Ingress.Hostname != "" {
-		locals.IngressExternalHostname = target.Spec.Ingress.Hostname
-		ctx.Export(OpExternalHostname, pulumi.String(locals.IngressExternalHostname))
+	edition := spec.GetEdition()
+	if edition == "" {
+		edition = "community"
 	}
 
-	return locals
+	neo4jName := spec.GetClusterName()
+	if neo4jName == "" {
+		neo4jName = target.Metadata.Name
+	}
+
+	namespace := spec.Namespace.GetValue()
+	releaseName := target.Metadata.Name
+
+	adminPassword := spec.GetAuth().GetPassword()
+	createAuthSecret := adminPassword != ""
+
+	authSecretName := ""
+	if createAuthSecret {
+		authSecretName = releaseName + "-auth"
+	} else if spec.GetAuth().GetExistingSecret() != "" {
+		authSecretName = spec.GetAuth().GetExistingSecret()
+	}
+
+	// The chart's always-created ClusterIP Service is named after
+	// neo4j.fullname, which is the release name here (no name overrides
+	// are rendered).
+	serviceName := releaseName
+
+	return &Locals{
+		Spec:             spec,
+		Labels:           labels,
+		Namespace:        namespace,
+		ReleaseName:      releaseName,
+		ChartVersion:     chartVersion,
+		Neo4JName:        neo4jName,
+		Edition:          edition,
+		CreateAuthSecret: createAuthSecret,
+		AdminPassword:    adminPassword,
+		AuthSecretName:   authSecretName,
+		ServiceName:      serviceName,
+		BoltEndpoint: fmt.Sprintf("neo4j://%s.%s.svc.cluster.local:7687",
+			serviceName, namespace),
+		HttpEndpoint: fmt.Sprintf("http://%s.%s.svc.cluster.local:7474",
+			serviceName, namespace),
+		PortForwardCommand: fmt.Sprintf("kubectl port-forward svc/%s -n %s 7687:7687",
+			serviceName, namespace),
+	}
 }

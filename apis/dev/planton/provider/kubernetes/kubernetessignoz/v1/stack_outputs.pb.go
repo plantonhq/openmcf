@@ -22,53 +22,43 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesSignozStackOutputs captures observable outputs from a SigNoz deployment on Kubernetes.
+// signoz-kubernetes stack outputs
 type KubernetesSignozStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// namespace specifies the Kubernetes namespace in which the SigNoz cluster is created.
+	// namespace SigNoz runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for the SigNoz UI and API.
-	// ex: main-signoz-kubernetes
-	// in the above example, "main" is the name of the signoz-kubernetes
-	SignozService string `protobuf:"bytes,2,opt,name=signoz_service,json=signozService,proto3" json:"signoz_service,omitempty"`
-	// kubernetes service name for the OpenTelemetry Collector.
-	// ex: main-signoz-otel-collector
-	OtelCollectorService string `protobuf:"bytes,3,opt,name=otel_collector_service,json=otelCollectorService,proto3" json:"otel_collector_service,omitempty"`
-	// command to setup port-forwarding to open SigNoz UI from developers laptop.
-	// this might come handy when signoz-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining signoz service and namespace.
-	// ex: kubectl port-forward svc/signoz-kubernetes -n kubernetes_namespace 8080:8080
-	// running the command from this attribute makes it possible to access SigNoz UI using http://localhost:8080
+	// name of the SigNoz server Service (UI + API), e.g. signoz-main.
+	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
+	// in-cluster endpoint of the SigNoz UI/API,
+	// e.g. http://signoz-main.observability.svc.cluster.local:8080
+	KubeEndpoint string `protobuf:"bytes,3,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
+	// command to port-forward the UI to a developer laptop,
+	// e.g. kubectl port-forward svc/signoz-main -n observability 8080:8080
+	// (then open http://localhost:8080).
 	PortForwardCommand string `protobuf:"bytes,4,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to SigNoz from within the cluster.
-	// ex: main-signoz-kubernetes.namespace.svc.cluster.local:8080
-	KubeEndpoint string `protobuf:"bytes,5,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to access SigNoz UI from clients outside kubernetes.
-	// ex: https://signoz-planton-pcs-dev-main.observability.dev.planton.live
-	ExternalHostname string `protobuf:"bytes,6,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// internal endpoint to access SigNoz UI from clients inside kubernetes.
-	// ex: https://signoz-planton-pcs-dev-main.observability-internal.dev.planton.live
-	InternalHostname string `protobuf:"bytes,7,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	// kubernetes endpoint for the OpenTelemetry Collector gRPC ingestion endpoint.
-	// ex: main-signoz-otel-collector.namespace.svc.cluster.local:4317
-	OtelCollectorGrpcEndpoint string `protobuf:"bytes,8,opt,name=otel_collector_grpc_endpoint,json=otelCollectorGrpcEndpoint,proto3" json:"otel_collector_grpc_endpoint,omitempty"`
-	// kubernetes endpoint for the OpenTelemetry Collector HTTP ingestion endpoint.
-	// ex: main-signoz-otel-collector.namespace.svc.cluster.local:4318
-	OtelCollectorHttpEndpoint string `protobuf:"bytes,9,opt,name=otel_collector_http_endpoint,json=otelCollectorHttpEndpoint,proto3" json:"otel_collector_http_endpoint,omitempty"`
-	// external hostname for the OpenTelemetry Collector gRPC endpoint if ingress is configured.
-	// ex: https://signoz-ingest-grpc-planton-pcs-dev-main.observability.dev.planton.live
-	OtelCollectorExternalGrpcHostname string `protobuf:"bytes,10,opt,name=otel_collector_external_grpc_hostname,json=otelCollectorExternalGrpcHostname,proto3" json:"otel_collector_external_grpc_hostname,omitempty"`
-	// external hostname for the OpenTelemetry Collector HTTP endpoint if ingress is configured.
-	// ex: https://signoz-ingest-http-planton-pcs-dev-main.observability.dev.planton.live
-	OtelCollectorExternalHttpHostname string `protobuf:"bytes,11,opt,name=otel_collector_external_http_hostname,json=otelCollectorExternalHttpHostname,proto3" json:"otel_collector_external_http_hostname,omitempty"`
-	// ClickHouse database endpoint (internal cluster endpoint).
-	// ex: signoz-clickhouse.namespace.svc.cluster.local:8123
-	// This is only populated when using self-managed ClickHouse.
-	ClickhouseEndpoint string `protobuf:"bytes,12,opt,name=clickhouse_endpoint,json=clickhouseEndpoint,proto3" json:"clickhouse_endpoint,omitempty"`
-	// ClickHouse username for authentication.
-	ClickhouseUsername string `protobuf:"bytes,13,opt,name=clickhouse_username,json=clickhouseUsername,proto3" json:"clickhouse_username,omitempty"`
-	// kubernetes secret key for the ClickHouse password.
-	ClickhousePasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,14,opt,name=clickhouse_password_secret,json=clickhousePasswordSecret,proto3" json:"clickhouse_password_secret,omitempty"`
+	// name of the ingestion collector Service,
+	// e.g. signoz-main-otel-collector.
+	OtelCollectorService string `protobuf:"bytes,5,opt,name=otel_collector_service,json=otelCollectorService,proto3" json:"otel_collector_service,omitempty"`
+	// in-cluster OTLP gRPC ingestion endpoint — point OTLP/gRPC
+	// exporters here, e.g.
+	// signoz-main-otel-collector.observability.svc.cluster.local:4317
+	OtlpGrpcEndpoint string `protobuf:"bytes,6,opt,name=otlp_grpc_endpoint,json=otlpGrpcEndpoint,proto3" json:"otlp_grpc_endpoint,omitempty"`
+	// in-cluster OTLP HTTP ingestion endpoint — point OTLP/HTTP
+	// exporters here, e.g.
+	// http://signoz-main-otel-collector.observability.svc.cluster.local:4318
+	OtlpHttpEndpoint string `protobuf:"bytes,7,opt,name=otlp_http_endpoint,json=otlpHttpEndpoint,proto3" json:"otlp_http_endpoint,omitempty"`
+	// ClickHouse native-protocol endpoint SigNoz stores telemetry in —
+	// a passthrough of the declared connection (this component installs
+	// no ClickHouse). Downstream kinds referencing it compose against
+	// the same store SigNoz uses.
+	ClickhouseEndpoint string `protobuf:"bytes,8,opt,name=clickhouse_endpoint,json=clickhouseEndpoint,proto3" json:"clickhouse_endpoint,omitempty"`
+	// ClickHouse username SigNoz connects as (mirrors the declared
+	// connection).
+	ClickhouseUsername string `protobuf:"bytes,9,opt,name=clickhouse_username,json=clickhouseUsername,proto3" json:"clickhouse_username,omitempty"`
+	// Secret key holding that user's password — the declared Secret
+	// reference, never module-owned; the Secret lives in the SigNoz
+	// namespace (a secretKeyRef cannot cross namespaces).
+	ClickhousePasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,10,opt,name=clickhouse_password_secret,json=clickhousePasswordSecret,proto3" json:"clickhouse_password_secret,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -110,23 +100,9 @@ func (x *KubernetesSignozStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesSignozStackOutputs) GetSignozService() string {
+func (x *KubernetesSignozStackOutputs) GetService() string {
 	if x != nil {
-		return x.SignozService
-	}
-	return ""
-}
-
-func (x *KubernetesSignozStackOutputs) GetOtelCollectorService() string {
-	if x != nil {
-		return x.OtelCollectorService
-	}
-	return ""
-}
-
-func (x *KubernetesSignozStackOutputs) GetPortForwardCommand() string {
-	if x != nil {
-		return x.PortForwardCommand
+		return x.Service
 	}
 	return ""
 }
@@ -138,44 +114,30 @@ func (x *KubernetesSignozStackOutputs) GetKubeEndpoint() string {
 	return ""
 }
 
-func (x *KubernetesSignozStackOutputs) GetExternalHostname() string {
+func (x *KubernetesSignozStackOutputs) GetPortForwardCommand() string {
 	if x != nil {
-		return x.ExternalHostname
+		return x.PortForwardCommand
 	}
 	return ""
 }
 
-func (x *KubernetesSignozStackOutputs) GetInternalHostname() string {
+func (x *KubernetesSignozStackOutputs) GetOtelCollectorService() string {
 	if x != nil {
-		return x.InternalHostname
+		return x.OtelCollectorService
 	}
 	return ""
 }
 
-func (x *KubernetesSignozStackOutputs) GetOtelCollectorGrpcEndpoint() string {
+func (x *KubernetesSignozStackOutputs) GetOtlpGrpcEndpoint() string {
 	if x != nil {
-		return x.OtelCollectorGrpcEndpoint
+		return x.OtlpGrpcEndpoint
 	}
 	return ""
 }
 
-func (x *KubernetesSignozStackOutputs) GetOtelCollectorHttpEndpoint() string {
+func (x *KubernetesSignozStackOutputs) GetOtlpHttpEndpoint() string {
 	if x != nil {
-		return x.OtelCollectorHttpEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesSignozStackOutputs) GetOtelCollectorExternalGrpcHostname() string {
-	if x != nil {
-		return x.OtelCollectorExternalGrpcHostname
-	}
-	return ""
-}
-
-func (x *KubernetesSignozStackOutputs) GetOtelCollectorExternalHttpHostname() string {
-	if x != nil {
-		return x.OtelCollectorExternalHttpHostname
+		return x.OtlpHttpEndpoint
 	}
 	return ""
 }
@@ -205,23 +167,19 @@ var File_dev_planton_provider_kubernetes_kubernetessignoz_v1_stack_outputs_proto
 
 const file_dev_planton_provider_kubernetes_kubernetessignoz_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kubernetessignoz/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kubernetessignoz.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\xc6\x06\n" +
+	"Gdev/planton/provider/kubernetes/kubernetessignoz/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kubernetessignoz.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\x95\x04\n" +
 	"\x1cKubernetesSignozStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12%\n" +
-	"\x0esignoz_service\x18\x02 \x01(\tR\rsignozService\x124\n" +
-	"\x16otel_collector_service\x18\x03 \x01(\tR\x14otelCollectorService\x120\n" +
-	"\x14port_forward_command\x18\x04 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x05 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x06 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\a \x01(\tR\x10internalHostname\x12?\n" +
-	"\x1cotel_collector_grpc_endpoint\x18\b \x01(\tR\x19otelCollectorGrpcEndpoint\x12?\n" +
-	"\x1cotel_collector_http_endpoint\x18\t \x01(\tR\x19otelCollectorHttpEndpoint\x12P\n" +
-	"%otel_collector_external_grpc_hostname\x18\n" +
-	" \x01(\tR!otelCollectorExternalGrpcHostname\x12P\n" +
-	"%otel_collector_external_http_hostname\x18\v \x01(\tR!otelCollectorExternalHttpHostname\x12/\n" +
-	"\x13clickhouse_endpoint\x18\f \x01(\tR\x12clickhouseEndpoint\x12/\n" +
-	"\x13clickhouse_username\x18\r \x01(\tR\x12clickhouseUsername\x12r\n" +
-	"\x1aclickhouse_password_secret\x18\x0e \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x18clickhousePasswordSecretB\xa9\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
+	"\aservice\x18\x02 \x01(\tR\aservice\x12#\n" +
+	"\rkube_endpoint\x18\x03 \x01(\tR\fkubeEndpoint\x120\n" +
+	"\x14port_forward_command\x18\x04 \x01(\tR\x12portForwardCommand\x124\n" +
+	"\x16otel_collector_service\x18\x05 \x01(\tR\x14otelCollectorService\x12,\n" +
+	"\x12otlp_grpc_endpoint\x18\x06 \x01(\tR\x10otlpGrpcEndpoint\x12,\n" +
+	"\x12otlp_http_endpoint\x18\a \x01(\tR\x10otlpHttpEndpoint\x12/\n" +
+	"\x13clickhouse_endpoint\x18\b \x01(\tR\x12clickhouseEndpoint\x12/\n" +
+	"\x13clickhouse_username\x18\t \x01(\tR\x12clickhouseUsername\x12r\n" +
+	"\x1aclickhouse_password_secret\x18\n" +
+	" \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x18clickhousePasswordSecretB\xa9\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetessignoz.v1B\x11StackOutputsProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessignoz/v1;kubernetessignozv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetessignoz.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetessignoz\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetessignoz\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetessignoz::V1b\x06proto3"
 
 var (

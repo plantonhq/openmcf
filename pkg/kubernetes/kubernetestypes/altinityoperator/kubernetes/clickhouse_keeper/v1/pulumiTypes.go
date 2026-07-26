@@ -323,16 +323,19 @@ type ClickHouseKeeperInstallationSpec struct {
 	// Example: %s.svc.my.test
 	NamespaceDomainPattern *string                                      `pulumi:"namespaceDomainPattern"`
 	Reconciling            *ClickHouseKeeperInstallationSpecReconciling `pulumi:"reconciling"`
-	// Allows to stop all ClickHouse clusters defined in a CHI.
+	// CHK-level security defaults, applied to every cluster that does not override
+	// them. Symmetric with chi.spec.security. See docs/security_hardening.md.
+	Security map[string]interface{} `pulumi:"security"`
+	// Allows to stop all ClickHouse Keeper clusters defined in a CHK.
 	// Works as the following:
 	//  - When `stop` is `1` operator sets `Replicas: 0` in each StatefulSet. Thie leads to having all `Pods` and `Service` deleted. All PVCs are kept intact.
 	//  - When `stop` is `0` operator sets `Replicas: 1` and `Pod`s and `Service`s will created again and all retained PVCs will be attached to `Pod`s.
-	Stop *string `pulumi:"stop"`
+	Stop map[string]interface{} `pulumi:"stop"`
 	// Suspend reconciliation of resources managed by a ClickHouse Keeper.
 	// Works as the following:
 	//  - When `suspend` is `true` operator stops reconciling all resources.
 	//  - When `suspend` is `false` or not set, operator reconciles all resources.
-	Suspend *string `pulumi:"suspend"`
+	Suspend map[string]interface{} `pulumi:"suspend"`
 	// Allows to define custom taskID for CHI update and watch status of this update execution.
 	// Displayed in all .status.taskID* fields.
 	// By default (if not filled) every update of CHI manifest will generate random taskID
@@ -361,16 +364,19 @@ type ClickHouseKeeperInstallationSpecArgs struct {
 	// Example: %s.svc.my.test
 	NamespaceDomainPattern pulumi.StringPtrInput                               `pulumi:"namespaceDomainPattern"`
 	Reconciling            ClickHouseKeeperInstallationSpecReconcilingPtrInput `pulumi:"reconciling"`
-	// Allows to stop all ClickHouse clusters defined in a CHI.
+	// CHK-level security defaults, applied to every cluster that does not override
+	// them. Symmetric with chi.spec.security. See docs/security_hardening.md.
+	Security pulumi.MapInput `pulumi:"security"`
+	// Allows to stop all ClickHouse Keeper clusters defined in a CHK.
 	// Works as the following:
 	//  - When `stop` is `1` operator sets `Replicas: 0` in each StatefulSet. Thie leads to having all `Pods` and `Service` deleted. All PVCs are kept intact.
 	//  - When `stop` is `0` operator sets `Replicas: 1` and `Pod`s and `Service`s will created again and all retained PVCs will be attached to `Pod`s.
-	Stop pulumi.StringPtrInput `pulumi:"stop"`
+	Stop pulumi.MapInput `pulumi:"stop"`
 	// Suspend reconciliation of resources managed by a ClickHouse Keeper.
 	// Works as the following:
 	//  - When `suspend` is `true` operator stops reconciling all resources.
 	//  - When `suspend` is `false` or not set, operator reconciles all resources.
-	Suspend pulumi.StringPtrInput `pulumi:"suspend"`
+	Suspend pulumi.MapInput `pulumi:"suspend"`
 	// Allows to define custom taskID for CHI update and watch status of this update execution.
 	// Displayed in all .status.taskID* fields.
 	// By default (if not filled) every update of CHI manifest will generate random taskID
@@ -480,20 +486,26 @@ func (o ClickHouseKeeperInstallationSpecOutput) Reconciling() ClickHouseKeeperIn
 	}).(ClickHouseKeeperInstallationSpecReconcilingPtrOutput)
 }
 
-// Allows to stop all ClickHouse clusters defined in a CHI.
+// CHK-level security defaults, applied to every cluster that does not override
+// them. Symmetric with chi.spec.security. See docs/security_hardening.md.
+func (o ClickHouseKeeperInstallationSpecOutput) Security() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpec) map[string]interface{} { return v.Security }).(pulumi.MapOutput)
+}
+
+// Allows to stop all ClickHouse Keeper clusters defined in a CHK.
 // Works as the following:
 //   - When `stop` is `1` operator sets `Replicas: 0` in each StatefulSet. Thie leads to having all `Pods` and `Service` deleted. All PVCs are kept intact.
 //   - When `stop` is `0` operator sets `Replicas: 1` and `Pod`s and `Service`s will created again and all retained PVCs will be attached to `Pod`s.
-func (o ClickHouseKeeperInstallationSpecOutput) Stop() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v ClickHouseKeeperInstallationSpec) *string { return v.Stop }).(pulumi.StringPtrOutput)
+func (o ClickHouseKeeperInstallationSpecOutput) Stop() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpec) map[string]interface{} { return v.Stop }).(pulumi.MapOutput)
 }
 
 // Suspend reconciliation of resources managed by a ClickHouse Keeper.
 // Works as the following:
 //   - When `suspend` is `true` operator stops reconciling all resources.
 //   - When `suspend` is `false` or not set, operator reconciles all resources.
-func (o ClickHouseKeeperInstallationSpecOutput) Suspend() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v ClickHouseKeeperInstallationSpec) *string { return v.Suspend }).(pulumi.StringPtrOutput)
+func (o ClickHouseKeeperInstallationSpecOutput) Suspend() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpec) map[string]interface{} { return v.Suspend }).(pulumi.MapOutput)
 }
 
 // Allows to define custom taskID for CHI update and watch status of this update execution.
@@ -572,30 +584,41 @@ func (o ClickHouseKeeperInstallationSpecPtrOutput) Reconciling() ClickHouseKeepe
 	}).(ClickHouseKeeperInstallationSpecReconcilingPtrOutput)
 }
 
-// Allows to stop all ClickHouse clusters defined in a CHI.
+// CHK-level security defaults, applied to every cluster that does not override
+// them. Symmetric with chi.spec.security. See docs/security_hardening.md.
+func (o ClickHouseKeeperInstallationSpecPtrOutput) Security() pulumi.MapOutput {
+	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpec) map[string]interface{} {
+		if v == nil {
+			return nil
+		}
+		return v.Security
+	}).(pulumi.MapOutput)
+}
+
+// Allows to stop all ClickHouse Keeper clusters defined in a CHK.
 // Works as the following:
 //   - When `stop` is `1` operator sets `Replicas: 0` in each StatefulSet. Thie leads to having all `Pods` and `Service` deleted. All PVCs are kept intact.
 //   - When `stop` is `0` operator sets `Replicas: 1` and `Pod`s and `Service`s will created again and all retained PVCs will be attached to `Pod`s.
-func (o ClickHouseKeeperInstallationSpecPtrOutput) Stop() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpec) *string {
+func (o ClickHouseKeeperInstallationSpecPtrOutput) Stop() pulumi.MapOutput {
+	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpec) map[string]interface{} {
 		if v == nil {
 			return nil
 		}
 		return v.Stop
-	}).(pulumi.StringPtrOutput)
+	}).(pulumi.MapOutput)
 }
 
 // Suspend reconciliation of resources managed by a ClickHouse Keeper.
 // Works as the following:
 //   - When `suspend` is `true` operator stops reconciling all resources.
 //   - When `suspend` is `false` or not set, operator reconciles all resources.
-func (o ClickHouseKeeperInstallationSpecPtrOutput) Suspend() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpec) *string {
+func (o ClickHouseKeeperInstallationSpecPtrOutput) Suspend() pulumi.MapOutput {
+	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpec) map[string]interface{} {
 		if v == nil {
 			return nil
 		}
 		return v.Suspend
-	}).(pulumi.StringPtrOutput)
+	}).(pulumi.MapOutput)
 }
 
 // Allows to define custom taskID for CHI update and watch status of this update execution.
@@ -802,8 +825,23 @@ func (o ClickHouseKeeperInstallationSpecConfigurationPtrOutput) Settings() pulum
 type ClickHouseKeeperInstallationSpecConfigurationClusters struct {
 	// optional, allows define content of any setting file inside each `Pod` on current cluster during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/` or `/etc/clickhouse-server/conf.d/` or `/etc/clickhouse-server/users.d/`
 	// override top-level `chi.spec.configuration.files`
-	Files  map[string]interface{}                                       `pulumi:"files"`
-	Layout *ClickHouseKeeperInstallationSpecConfigurationClustersLayout `pulumi:"layout"`
+	Files map[string]interface{} `pulumi:"files"`
+	// optional, controls exposure of the plaintext Keeper
+	// client port (zk:2181). Defaults to "yes" (legacy
+	// behavior, byte-stable). Set to "no" to:
+	// - suppress zk:2181 from the per-cluster Service and
+	//   from per-host StatefulSet container ports;
+	// - emit <tcp_port remove="1"/> in the per-host overlay
+	//   so the Keeper process binds no plaintext listener at
+	//   all (the liveness probe automatically falls back to
+	//   `pgrep clickhouse-keeper` because 4LW does not work
+	//   over TLS upstream).
+	//   Must be paired with `secure: yes` — the normalizer
+	//   aborts reconcile with reason NoKeeperListener when
+	//   `insecure: no` is set without `secure: yes` (no
+	//   client port would be emitted).
+	Insecure map[string]interface{}                                       `pulumi:"insecure"`
+	Layout   *ClickHouseKeeperInstallationSpecConfigurationClustersLayout `pulumi:"layout"`
 	// cluster name, used to identify set of servers and wide used during generate names of related Kubernetes resources
 	Name *string `pulumi:"name"`
 	// Specifies whether the Pod Disruption Budget (PDB) should be managed.
@@ -812,11 +850,20 @@ type ClickHouseKeeperInstallationSpecConfigurationClusters struct {
 	// and initiate a reconciliation loop. If PDB management is disabled, the existing PDB
 	// will remain intact, and the reconciliation loop will not be executed. By default,
 	// PDB management is enabled.
-	PdbManaged *string `pulumi:"pdbManaged"`
+	PdbManaged map[string]interface{} `pulumi:"pdbManaged"`
 	// Pod eviction is allowed if at most "pdbMaxUnavailable" pods are unavailable after the eviction,
 	// i.e. even in absence of the evicted pod. For example, one can prevent all voluntary evictions
 	// by specifying 0. This is a mutually exclusive setting with "minAvailable".
 	PdbMaxUnavailable *int `pulumi:"pdbMaxUnavailable"`
+	// optional, open secure (TLS) Keeper client ports for this cluster.
+	// Translates into <secure>1</secure> in Raft server entries so peer
+	// Keeper instances dial each other over TLS. Mirrors the cluster.secure
+	// flag on CHI.
+	Secure map[string]interface{} `pulumi:"secure"`
+	// Per-cluster security toggles. Nil fields fall through to CHK spec security and
+	// then to operator-wide defaults in ClickHouseOperatorConfiguration. Symmetric
+	// with chi.spec.configuration.clusters[].security. See docs/security_hardening.md.
+	Security map[string]interface{} `pulumi:"security"`
 	// optional, allows configure `clickhouse-server` settings inside <yandex>...</yandex> tag in each `Pod` only in one cluster during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/`
 	// override top-level `chi.spec.configuration.settings`
 	// More details: https://clickhouse.tech/docs/en/operations/settings/settings/
@@ -838,8 +885,23 @@ type ClickHouseKeeperInstallationSpecConfigurationClustersInput interface {
 type ClickHouseKeeperInstallationSpecConfigurationClustersArgs struct {
 	// optional, allows define content of any setting file inside each `Pod` on current cluster during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/` or `/etc/clickhouse-server/conf.d/` or `/etc/clickhouse-server/users.d/`
 	// override top-level `chi.spec.configuration.files`
-	Files  pulumi.MapInput                                                     `pulumi:"files"`
-	Layout ClickHouseKeeperInstallationSpecConfigurationClustersLayoutPtrInput `pulumi:"layout"`
+	Files pulumi.MapInput `pulumi:"files"`
+	// optional, controls exposure of the plaintext Keeper
+	// client port (zk:2181). Defaults to "yes" (legacy
+	// behavior, byte-stable). Set to "no" to:
+	// - suppress zk:2181 from the per-cluster Service and
+	//   from per-host StatefulSet container ports;
+	// - emit <tcp_port remove="1"/> in the per-host overlay
+	//   so the Keeper process binds no plaintext listener at
+	//   all (the liveness probe automatically falls back to
+	//   `pgrep clickhouse-keeper` because 4LW does not work
+	//   over TLS upstream).
+	//   Must be paired with `secure: yes` — the normalizer
+	//   aborts reconcile with reason NoKeeperListener when
+	//   `insecure: no` is set without `secure: yes` (no
+	//   client port would be emitted).
+	Insecure pulumi.MapInput                                                     `pulumi:"insecure"`
+	Layout   ClickHouseKeeperInstallationSpecConfigurationClustersLayoutPtrInput `pulumi:"layout"`
 	// cluster name, used to identify set of servers and wide used during generate names of related Kubernetes resources
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// Specifies whether the Pod Disruption Budget (PDB) should be managed.
@@ -848,11 +910,20 @@ type ClickHouseKeeperInstallationSpecConfigurationClustersArgs struct {
 	// and initiate a reconciliation loop. If PDB management is disabled, the existing PDB
 	// will remain intact, and the reconciliation loop will not be executed. By default,
 	// PDB management is enabled.
-	PdbManaged pulumi.StringPtrInput `pulumi:"pdbManaged"`
+	PdbManaged pulumi.MapInput `pulumi:"pdbManaged"`
 	// Pod eviction is allowed if at most "pdbMaxUnavailable" pods are unavailable after the eviction,
 	// i.e. even in absence of the evicted pod. For example, one can prevent all voluntary evictions
 	// by specifying 0. This is a mutually exclusive setting with "minAvailable".
 	PdbMaxUnavailable pulumi.IntPtrInput `pulumi:"pdbMaxUnavailable"`
+	// optional, open secure (TLS) Keeper client ports for this cluster.
+	// Translates into <secure>1</secure> in Raft server entries so peer
+	// Keeper instances dial each other over TLS. Mirrors the cluster.secure
+	// flag on CHI.
+	Secure pulumi.MapInput `pulumi:"secure"`
+	// Per-cluster security toggles. Nil fields fall through to CHK spec security and
+	// then to operator-wide defaults in ClickHouseOperatorConfiguration. Symmetric
+	// with chi.spec.configuration.clusters[].security. See docs/security_hardening.md.
+	Security pulumi.MapInput `pulumi:"security"`
 	// optional, allows configure `clickhouse-server` settings inside <yandex>...</yandex> tag in each `Pod` only in one cluster during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/`
 	// override top-level `chi.spec.configuration.settings`
 	// More details: https://clickhouse.tech/docs/en/operations/settings/settings/
@@ -917,6 +988,26 @@ func (o ClickHouseKeeperInstallationSpecConfigurationClustersOutput) Files() pul
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClusters) map[string]interface{} { return v.Files }).(pulumi.MapOutput)
 }
 
+// optional, controls exposure of the plaintext Keeper
+// client port (zk:2181). Defaults to "yes" (legacy
+// behavior, byte-stable). Set to "no" to:
+//   - suppress zk:2181 from the per-cluster Service and
+//     from per-host StatefulSet container ports;
+//   - emit <tcp_port remove="1"/> in the per-host overlay
+//     so the Keeper process binds no plaintext listener at
+//     all (the liveness probe automatically falls back to
+//     `pgrep clickhouse-keeper` because 4LW does not work
+//     over TLS upstream).
+//     Must be paired with `secure: yes` — the normalizer
+//     aborts reconcile with reason NoKeeperListener when
+//     `insecure: no` is set without `secure: yes` (no
+//     client port would be emitted).
+func (o ClickHouseKeeperInstallationSpecConfigurationClustersOutput) Insecure() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClusters) map[string]interface{} {
+		return v.Insecure
+	}).(pulumi.MapOutput)
+}
+
 func (o ClickHouseKeeperInstallationSpecConfigurationClustersOutput) Layout() ClickHouseKeeperInstallationSpecConfigurationClustersLayoutPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClusters) *ClickHouseKeeperInstallationSpecConfigurationClustersLayout {
 		return v.Layout
@@ -934,8 +1025,10 @@ func (o ClickHouseKeeperInstallationSpecConfigurationClustersOutput) Name() pulu
 // and initiate a reconciliation loop. If PDB management is disabled, the existing PDB
 // will remain intact, and the reconciliation loop will not be executed. By default,
 // PDB management is enabled.
-func (o ClickHouseKeeperInstallationSpecConfigurationClustersOutput) PdbManaged() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClusters) *string { return v.PdbManaged }).(pulumi.StringPtrOutput)
+func (o ClickHouseKeeperInstallationSpecConfigurationClustersOutput) PdbManaged() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClusters) map[string]interface{} {
+		return v.PdbManaged
+	}).(pulumi.MapOutput)
 }
 
 // Pod eviction is allowed if at most "pdbMaxUnavailable" pods are unavailable after the eviction,
@@ -943,6 +1036,23 @@ func (o ClickHouseKeeperInstallationSpecConfigurationClustersOutput) PdbManaged(
 // by specifying 0. This is a mutually exclusive setting with "minAvailable".
 func (o ClickHouseKeeperInstallationSpecConfigurationClustersOutput) PdbMaxUnavailable() pulumi.IntPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClusters) *int { return v.PdbMaxUnavailable }).(pulumi.IntPtrOutput)
+}
+
+// optional, open secure (TLS) Keeper client ports for this cluster.
+// Translates into <secure>1</secure> in Raft server entries so peer
+// Keeper instances dial each other over TLS. Mirrors the cluster.secure
+// flag on CHI.
+func (o ClickHouseKeeperInstallationSpecConfigurationClustersOutput) Secure() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClusters) map[string]interface{} { return v.Secure }).(pulumi.MapOutput)
+}
+
+// Per-cluster security toggles. Nil fields fall through to CHK spec security and
+// then to operator-wide defaults in ClickHouseOperatorConfiguration. Symmetric
+// with chi.spec.configuration.clusters[].security. See docs/security_hardening.md.
+func (o ClickHouseKeeperInstallationSpecConfigurationClustersOutput) Security() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClusters) map[string]interface{} {
+		return v.Security
+	}).(pulumi.MapOutput)
 }
 
 // optional, allows configure `clickhouse-server` settings inside <yandex>...</yandex> tag in each `Pod` only in one cluster during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/`
@@ -1653,6 +1763,8 @@ type ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShards s
 	Settings  map[string]interface{}                                                              `pulumi:"settings"`
 	Templates *ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsTemplates `pulumi:"templates"`
 	ZkPort    *int                                                                                `pulumi:"zkPort"`
+	// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+	ZkPortSecure *int `pulumi:"zkPortSecure"`
 }
 
 // ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsInput is an input type that accepts ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsArgs and ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsOutput values.
@@ -1679,6 +1791,8 @@ type ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsAr
 	Settings  pulumi.MapInput                                                                            `pulumi:"settings"`
 	Templates ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsTemplatesPtrInput `pulumi:"templates"`
 	ZkPort    pulumi.IntPtrInput                                                                         `pulumi:"zkPort"`
+	// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+	ZkPortSecure pulumi.IntPtrInput `pulumi:"zkPortSecure"`
 }
 
 func (ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsArgs) ElementType() reflect.Type {
@@ -1774,6 +1888,13 @@ func (o ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShard
 	}).(pulumi.IntPtrOutput)
 }
 
+// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+func (o ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsOutput) ZkPortSecure() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShards) *int {
+		return v.ZkPortSecure
+	}).(pulumi.IntPtrOutput)
+}
+
 type ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsArrayOutput struct{ *pulumi.OutputState }
 
 func (ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsArrayOutput) ElementType() reflect.Type {
@@ -1807,6 +1928,8 @@ type ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsPa
 	Settings  map[string]interface{}                                                                   `pulumi:"settings"`
 	Templates *ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsTemplatesPatch `pulumi:"templates"`
 	ZkPort    *int                                                                                     `pulumi:"zkPort"`
+	// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+	ZkPortSecure *int `pulumi:"zkPortSecure"`
 }
 
 // ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsPatchInput is an input type that accepts ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsPatchArgs and ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsPatchOutput values.
@@ -1833,6 +1956,8 @@ type ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsPa
 	Settings  pulumi.MapInput                                                                                 `pulumi:"settings"`
 	Templates ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsTemplatesPatchPtrInput `pulumi:"templates"`
 	ZkPort    pulumi.IntPtrInput                                                                              `pulumi:"zkPort"`
+	// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+	ZkPortSecure pulumi.IntPtrInput `pulumi:"zkPortSecure"`
 }
 
 func (ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsPatchArgs) ElementType() reflect.Type {
@@ -1925,6 +2050,13 @@ func (o ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShard
 func (o ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsPatchOutput) ZkPort() pulumi.IntPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsPatch) *int {
 		return v.ZkPort
+	}).(pulumi.IntPtrOutput)
+}
+
+// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+func (o ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsPatchOutput) ZkPortSecure() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasShardsPatch) *int {
+		return v.ZkPortSecure
 	}).(pulumi.IntPtrOutput)
 }
 
@@ -3287,8 +3419,23 @@ func (o ClickHouseKeeperInstallationSpecConfigurationClustersLayoutReplicasTempl
 type ClickHouseKeeperInstallationSpecConfigurationClustersPatch struct {
 	// optional, allows define content of any setting file inside each `Pod` on current cluster during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/` or `/etc/clickhouse-server/conf.d/` or `/etc/clickhouse-server/users.d/`
 	// override top-level `chi.spec.configuration.files`
-	Files  map[string]interface{}                                            `pulumi:"files"`
-	Layout *ClickHouseKeeperInstallationSpecConfigurationClustersLayoutPatch `pulumi:"layout"`
+	Files map[string]interface{} `pulumi:"files"`
+	// optional, controls exposure of the plaintext Keeper
+	// client port (zk:2181). Defaults to "yes" (legacy
+	// behavior, byte-stable). Set to "no" to:
+	// - suppress zk:2181 from the per-cluster Service and
+	//   from per-host StatefulSet container ports;
+	// - emit <tcp_port remove="1"/> in the per-host overlay
+	//   so the Keeper process binds no plaintext listener at
+	//   all (the liveness probe automatically falls back to
+	//   `pgrep clickhouse-keeper` because 4LW does not work
+	//   over TLS upstream).
+	//   Must be paired with `secure: yes` — the normalizer
+	//   aborts reconcile with reason NoKeeperListener when
+	//   `insecure: no` is set without `secure: yes` (no
+	//   client port would be emitted).
+	Insecure map[string]interface{}                                            `pulumi:"insecure"`
+	Layout   *ClickHouseKeeperInstallationSpecConfigurationClustersLayoutPatch `pulumi:"layout"`
 	// cluster name, used to identify set of servers and wide used during generate names of related Kubernetes resources
 	Name *string `pulumi:"name"`
 	// Specifies whether the Pod Disruption Budget (PDB) should be managed.
@@ -3297,11 +3444,20 @@ type ClickHouseKeeperInstallationSpecConfigurationClustersPatch struct {
 	// and initiate a reconciliation loop. If PDB management is disabled, the existing PDB
 	// will remain intact, and the reconciliation loop will not be executed. By default,
 	// PDB management is enabled.
-	PdbManaged *string `pulumi:"pdbManaged"`
+	PdbManaged map[string]interface{} `pulumi:"pdbManaged"`
 	// Pod eviction is allowed if at most "pdbMaxUnavailable" pods are unavailable after the eviction,
 	// i.e. even in absence of the evicted pod. For example, one can prevent all voluntary evictions
 	// by specifying 0. This is a mutually exclusive setting with "minAvailable".
 	PdbMaxUnavailable *int `pulumi:"pdbMaxUnavailable"`
+	// optional, open secure (TLS) Keeper client ports for this cluster.
+	// Translates into <secure>1</secure> in Raft server entries so peer
+	// Keeper instances dial each other over TLS. Mirrors the cluster.secure
+	// flag on CHI.
+	Secure map[string]interface{} `pulumi:"secure"`
+	// Per-cluster security toggles. Nil fields fall through to CHK spec security and
+	// then to operator-wide defaults in ClickHouseOperatorConfiguration. Symmetric
+	// with chi.spec.configuration.clusters[].security. See docs/security_hardening.md.
+	Security map[string]interface{} `pulumi:"security"`
 	// optional, allows configure `clickhouse-server` settings inside <yandex>...</yandex> tag in each `Pod` only in one cluster during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/`
 	// override top-level `chi.spec.configuration.settings`
 	// More details: https://clickhouse.tech/docs/en/operations/settings/settings/
@@ -3323,8 +3479,23 @@ type ClickHouseKeeperInstallationSpecConfigurationClustersPatchInput interface {
 type ClickHouseKeeperInstallationSpecConfigurationClustersPatchArgs struct {
 	// optional, allows define content of any setting file inside each `Pod` on current cluster during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/` or `/etc/clickhouse-server/conf.d/` or `/etc/clickhouse-server/users.d/`
 	// override top-level `chi.spec.configuration.files`
-	Files  pulumi.MapInput                                                          `pulumi:"files"`
-	Layout ClickHouseKeeperInstallationSpecConfigurationClustersLayoutPatchPtrInput `pulumi:"layout"`
+	Files pulumi.MapInput `pulumi:"files"`
+	// optional, controls exposure of the plaintext Keeper
+	// client port (zk:2181). Defaults to "yes" (legacy
+	// behavior, byte-stable). Set to "no" to:
+	// - suppress zk:2181 from the per-cluster Service and
+	//   from per-host StatefulSet container ports;
+	// - emit <tcp_port remove="1"/> in the per-host overlay
+	//   so the Keeper process binds no plaintext listener at
+	//   all (the liveness probe automatically falls back to
+	//   `pgrep clickhouse-keeper` because 4LW does not work
+	//   over TLS upstream).
+	//   Must be paired with `secure: yes` — the normalizer
+	//   aborts reconcile with reason NoKeeperListener when
+	//   `insecure: no` is set without `secure: yes` (no
+	//   client port would be emitted).
+	Insecure pulumi.MapInput                                                          `pulumi:"insecure"`
+	Layout   ClickHouseKeeperInstallationSpecConfigurationClustersLayoutPatchPtrInput `pulumi:"layout"`
 	// cluster name, used to identify set of servers and wide used during generate names of related Kubernetes resources
 	Name pulumi.StringPtrInput `pulumi:"name"`
 	// Specifies whether the Pod Disruption Budget (PDB) should be managed.
@@ -3333,11 +3504,20 @@ type ClickHouseKeeperInstallationSpecConfigurationClustersPatchArgs struct {
 	// and initiate a reconciliation loop. If PDB management is disabled, the existing PDB
 	// will remain intact, and the reconciliation loop will not be executed. By default,
 	// PDB management is enabled.
-	PdbManaged pulumi.StringPtrInput `pulumi:"pdbManaged"`
+	PdbManaged pulumi.MapInput `pulumi:"pdbManaged"`
 	// Pod eviction is allowed if at most "pdbMaxUnavailable" pods are unavailable after the eviction,
 	// i.e. even in absence of the evicted pod. For example, one can prevent all voluntary evictions
 	// by specifying 0. This is a mutually exclusive setting with "minAvailable".
 	PdbMaxUnavailable pulumi.IntPtrInput `pulumi:"pdbMaxUnavailable"`
+	// optional, open secure (TLS) Keeper client ports for this cluster.
+	// Translates into <secure>1</secure> in Raft server entries so peer
+	// Keeper instances dial each other over TLS. Mirrors the cluster.secure
+	// flag on CHI.
+	Secure pulumi.MapInput `pulumi:"secure"`
+	// Per-cluster security toggles. Nil fields fall through to CHK spec security and
+	// then to operator-wide defaults in ClickHouseOperatorConfiguration. Symmetric
+	// with chi.spec.configuration.clusters[].security. See docs/security_hardening.md.
+	Security pulumi.MapInput `pulumi:"security"`
 	// optional, allows configure `clickhouse-server` settings inside <yandex>...</yandex> tag in each `Pod` only in one cluster during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/`
 	// override top-level `chi.spec.configuration.settings`
 	// More details: https://clickhouse.tech/docs/en/operations/settings/settings/
@@ -3404,6 +3584,26 @@ func (o ClickHouseKeeperInstallationSpecConfigurationClustersPatchOutput) Files(
 	}).(pulumi.MapOutput)
 }
 
+// optional, controls exposure of the plaintext Keeper
+// client port (zk:2181). Defaults to "yes" (legacy
+// behavior, byte-stable). Set to "no" to:
+//   - suppress zk:2181 from the per-cluster Service and
+//     from per-host StatefulSet container ports;
+//   - emit <tcp_port remove="1"/> in the per-host overlay
+//     so the Keeper process binds no plaintext listener at
+//     all (the liveness probe automatically falls back to
+//     `pgrep clickhouse-keeper` because 4LW does not work
+//     over TLS upstream).
+//     Must be paired with `secure: yes` — the normalizer
+//     aborts reconcile with reason NoKeeperListener when
+//     `insecure: no` is set without `secure: yes` (no
+//     client port would be emitted).
+func (o ClickHouseKeeperInstallationSpecConfigurationClustersPatchOutput) Insecure() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClustersPatch) map[string]interface{} {
+		return v.Insecure
+	}).(pulumi.MapOutput)
+}
+
 func (o ClickHouseKeeperInstallationSpecConfigurationClustersPatchOutput) Layout() ClickHouseKeeperInstallationSpecConfigurationClustersLayoutPatchPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClustersPatch) *ClickHouseKeeperInstallationSpecConfigurationClustersLayoutPatch {
 		return v.Layout
@@ -3421,8 +3621,10 @@ func (o ClickHouseKeeperInstallationSpecConfigurationClustersPatchOutput) Name()
 // and initiate a reconciliation loop. If PDB management is disabled, the existing PDB
 // will remain intact, and the reconciliation loop will not be executed. By default,
 // PDB management is enabled.
-func (o ClickHouseKeeperInstallationSpecConfigurationClustersPatchOutput) PdbManaged() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClustersPatch) *string { return v.PdbManaged }).(pulumi.StringPtrOutput)
+func (o ClickHouseKeeperInstallationSpecConfigurationClustersPatchOutput) PdbManaged() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClustersPatch) map[string]interface{} {
+		return v.PdbManaged
+	}).(pulumi.MapOutput)
 }
 
 // Pod eviction is allowed if at most "pdbMaxUnavailable" pods are unavailable after the eviction,
@@ -3430,6 +3632,25 @@ func (o ClickHouseKeeperInstallationSpecConfigurationClustersPatchOutput) PdbMan
 // by specifying 0. This is a mutually exclusive setting with "minAvailable".
 func (o ClickHouseKeeperInstallationSpecConfigurationClustersPatchOutput) PdbMaxUnavailable() pulumi.IntPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClustersPatch) *int { return v.PdbMaxUnavailable }).(pulumi.IntPtrOutput)
+}
+
+// optional, open secure (TLS) Keeper client ports for this cluster.
+// Translates into <secure>1</secure> in Raft server entries so peer
+// Keeper instances dial each other over TLS. Mirrors the cluster.secure
+// flag on CHI.
+func (o ClickHouseKeeperInstallationSpecConfigurationClustersPatchOutput) Secure() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClustersPatch) map[string]interface{} {
+		return v.Secure
+	}).(pulumi.MapOutput)
+}
+
+// Per-cluster security toggles. Nil fields fall through to CHK spec security and
+// then to operator-wide defaults in ClickHouseOperatorConfiguration. Symmetric
+// with chi.spec.configuration.clusters[].security. See docs/security_hardening.md.
+func (o ClickHouseKeeperInstallationSpecConfigurationClustersPatchOutput) Security() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecConfigurationClustersPatch) map[string]interface{} {
+		return v.Security
+	}).(pulumi.MapOutput)
 }
 
 // optional, allows configure `clickhouse-server` settings inside <yandex>...</yandex> tag in each `Pod` only in one cluster during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/`
@@ -4318,7 +4539,7 @@ type ClickHouseKeeperInstallationSpecDefaults struct {
 	// define should replicas be specified by FQDN in `<host></host>`.
 	// In case of "no" will use short hostname and clickhouse-server will use kubernetes default suffixes for DNS lookup
 	// "no" by default
-	ReplicasUseFQDN   *string                                                    `pulumi:"replicasUseFQDN"`
+	ReplicasUseFQDN   map[string]interface{}                                     `pulumi:"replicasUseFQDN"`
 	StorageManagement *ClickHouseKeeperInstallationSpecDefaultsStorageManagement `pulumi:"storageManagement"`
 	Templates         *ClickHouseKeeperInstallationSpecDefaultsTemplates         `pulumi:"templates"`
 }
@@ -4341,7 +4562,7 @@ type ClickHouseKeeperInstallationSpecDefaultsArgs struct {
 	// define should replicas be specified by FQDN in `<host></host>`.
 	// In case of "no" will use short hostname and clickhouse-server will use kubernetes default suffixes for DNS lookup
 	// "no" by default
-	ReplicasUseFQDN   pulumi.StringPtrInput                                             `pulumi:"replicasUseFQDN"`
+	ReplicasUseFQDN   pulumi.MapInput                                                   `pulumi:"replicasUseFQDN"`
 	StorageManagement ClickHouseKeeperInstallationSpecDefaultsStorageManagementPtrInput `pulumi:"storageManagement"`
 	Templates         ClickHouseKeeperInstallationSpecDefaultsTemplatesPtrInput         `pulumi:"templates"`
 }
@@ -4434,8 +4655,8 @@ func (o ClickHouseKeeperInstallationSpecDefaultsOutput) DistributedDDL() ClickHo
 // define should replicas be specified by FQDN in `<host></host>`.
 // In case of "no" will use short hostname and clickhouse-server will use kubernetes default suffixes for DNS lookup
 // "no" by default
-func (o ClickHouseKeeperInstallationSpecDefaultsOutput) ReplicasUseFQDN() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecDefaults) *string { return v.ReplicasUseFQDN }).(pulumi.StringPtrOutput)
+func (o ClickHouseKeeperInstallationSpecDefaultsOutput) ReplicasUseFQDN() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecDefaults) map[string]interface{} { return v.ReplicasUseFQDN }).(pulumi.MapOutput)
 }
 
 func (o ClickHouseKeeperInstallationSpecDefaultsOutput) StorageManagement() ClickHouseKeeperInstallationSpecDefaultsStorageManagementPtrOutput {
@@ -4486,13 +4707,13 @@ func (o ClickHouseKeeperInstallationSpecDefaultsPtrOutput) DistributedDDL() Clic
 // define should replicas be specified by FQDN in `<host></host>`.
 // In case of "no" will use short hostname and clickhouse-server will use kubernetes default suffixes for DNS lookup
 // "no" by default
-func (o ClickHouseKeeperInstallationSpecDefaultsPtrOutput) ReplicasUseFQDN() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecDefaults) *string {
+func (o ClickHouseKeeperInstallationSpecDefaultsPtrOutput) ReplicasUseFQDN() pulumi.MapOutput {
+	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecDefaults) map[string]interface{} {
 		if v == nil {
 			return nil
 		}
 		return v.ReplicasUseFQDN
-	}).(pulumi.StringPtrOutput)
+	}).(pulumi.MapOutput)
 }
 
 func (o ClickHouseKeeperInstallationSpecDefaultsPtrOutput) StorageManagement() ClickHouseKeeperInstallationSpecDefaultsStorageManagementPtrOutput {
@@ -4806,7 +5027,7 @@ type ClickHouseKeeperInstallationSpecDefaultsPatch struct {
 	// define should replicas be specified by FQDN in `<host></host>`.
 	// In case of "no" will use short hostname and clickhouse-server will use kubernetes default suffixes for DNS lookup
 	// "no" by default
-	ReplicasUseFQDN   *string                                                         `pulumi:"replicasUseFQDN"`
+	ReplicasUseFQDN   map[string]interface{}                                          `pulumi:"replicasUseFQDN"`
 	StorageManagement *ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatch `pulumi:"storageManagement"`
 	Templates         *ClickHouseKeeperInstallationSpecDefaultsTemplatesPatch         `pulumi:"templates"`
 }
@@ -4829,7 +5050,7 @@ type ClickHouseKeeperInstallationSpecDefaultsPatchArgs struct {
 	// define should replicas be specified by FQDN in `<host></host>`.
 	// In case of "no" will use short hostname and clickhouse-server will use kubernetes default suffixes for DNS lookup
 	// "no" by default
-	ReplicasUseFQDN   pulumi.StringPtrInput                                                  `pulumi:"replicasUseFQDN"`
+	ReplicasUseFQDN   pulumi.MapInput                                                        `pulumi:"replicasUseFQDN"`
 	StorageManagement ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchPtrInput `pulumi:"storageManagement"`
 	Templates         ClickHouseKeeperInstallationSpecDefaultsTemplatesPatchPtrInput         `pulumi:"templates"`
 }
@@ -4922,8 +5143,8 @@ func (o ClickHouseKeeperInstallationSpecDefaultsPatchOutput) DistributedDDL() Cl
 // define should replicas be specified by FQDN in `<host></host>`.
 // In case of "no" will use short hostname and clickhouse-server will use kubernetes default suffixes for DNS lookup
 // "no" by default
-func (o ClickHouseKeeperInstallationSpecDefaultsPatchOutput) ReplicasUseFQDN() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecDefaultsPatch) *string { return v.ReplicasUseFQDN }).(pulumi.StringPtrOutput)
+func (o ClickHouseKeeperInstallationSpecDefaultsPatchOutput) ReplicasUseFQDN() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecDefaultsPatch) map[string]interface{} { return v.ReplicasUseFQDN }).(pulumi.MapOutput)
 }
 
 func (o ClickHouseKeeperInstallationSpecDefaultsPatchOutput) StorageManagement() ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchPtrOutput {
@@ -4974,13 +5195,13 @@ func (o ClickHouseKeeperInstallationSpecDefaultsPatchPtrOutput) DistributedDDL()
 // define should replicas be specified by FQDN in `<host></host>`.
 // In case of "no" will use short hostname and clickhouse-server will use kubernetes default suffixes for DNS lookup
 // "no" by default
-func (o ClickHouseKeeperInstallationSpecDefaultsPatchPtrOutput) ReplicasUseFQDN() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecDefaultsPatch) *string {
+func (o ClickHouseKeeperInstallationSpecDefaultsPatchPtrOutput) ReplicasUseFQDN() pulumi.MapOutput {
+	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecDefaultsPatch) map[string]interface{} {
 		if v == nil {
 			return nil
 		}
 		return v.ReplicasUseFQDN
-	}).(pulumi.StringPtrOutput)
+	}).(pulumi.MapOutput)
 }
 
 func (o ClickHouseKeeperInstallationSpecDefaultsPatchPtrOutput) StorageManagement() ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchPtrOutput {
@@ -5003,9 +5224,9 @@ func (o ClickHouseKeeperInstallationSpecDefaultsPatchPtrOutput) Templates() Clic
 
 // default storage management options
 type ClickHouseKeeperInstallationSpecDefaultsStorageManagement struct {
-	// defines `PVC` provisioner - be it StatefulSet or the Operator
+	// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 	Provisioner *string `pulumi:"provisioner"`
-	// defines behavior of `PVC` deletion.
+	// defines behavior of `PVC` deletion (case-insensitive).
 	// `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 	ReclaimPolicy *string `pulumi:"reclaimPolicy"`
 }
@@ -5023,9 +5244,9 @@ type ClickHouseKeeperInstallationSpecDefaultsStorageManagementInput interface {
 
 // default storage management options
 type ClickHouseKeeperInstallationSpecDefaultsStorageManagementArgs struct {
-	// defines `PVC` provisioner - be it StatefulSet or the Operator
+	// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 	Provisioner pulumi.StringPtrInput `pulumi:"provisioner"`
-	// defines behavior of `PVC` deletion.
+	// defines behavior of `PVC` deletion (case-insensitive).
 	// `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 	ReclaimPolicy pulumi.StringPtrInput `pulumi:"reclaimPolicy"`
 }
@@ -5108,12 +5329,12 @@ func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementOutput) ToClick
 	}).(ClickHouseKeeperInstallationSpecDefaultsStorageManagementPtrOutput)
 }
 
-// defines `PVC` provisioner - be it StatefulSet or the Operator
+// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementOutput) Provisioner() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecDefaultsStorageManagement) *string { return v.Provisioner }).(pulumi.StringPtrOutput)
 }
 
-// defines behavior of `PVC` deletion.
+// defines behavior of `PVC` deletion (case-insensitive).
 // `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementOutput) ReclaimPolicy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecDefaultsStorageManagement) *string { return v.ReclaimPolicy }).(pulumi.StringPtrOutput)
@@ -5143,7 +5364,7 @@ func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPtrOutput) Elem
 	}).(ClickHouseKeeperInstallationSpecDefaultsStorageManagementOutput)
 }
 
-// defines `PVC` provisioner - be it StatefulSet or the Operator
+// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPtrOutput) Provisioner() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecDefaultsStorageManagement) *string {
 		if v == nil {
@@ -5153,7 +5374,7 @@ func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPtrOutput) Prov
 	}).(pulumi.StringPtrOutput)
 }
 
-// defines behavior of `PVC` deletion.
+// defines behavior of `PVC` deletion (case-insensitive).
 // `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPtrOutput) ReclaimPolicy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecDefaultsStorageManagement) *string {
@@ -5166,9 +5387,9 @@ func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPtrOutput) Recl
 
 // default storage management options
 type ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatch struct {
-	// defines `PVC` provisioner - be it StatefulSet or the Operator
+	// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 	Provisioner *string `pulumi:"provisioner"`
-	// defines behavior of `PVC` deletion.
+	// defines behavior of `PVC` deletion (case-insensitive).
 	// `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 	ReclaimPolicy *string `pulumi:"reclaimPolicy"`
 }
@@ -5186,9 +5407,9 @@ type ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchInput interfa
 
 // default storage management options
 type ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchArgs struct {
-	// defines `PVC` provisioner - be it StatefulSet or the Operator
+	// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 	Provisioner pulumi.StringPtrInput `pulumi:"provisioner"`
-	// defines behavior of `PVC` deletion.
+	// defines behavior of `PVC` deletion (case-insensitive).
 	// `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 	ReclaimPolicy pulumi.StringPtrInput `pulumi:"reclaimPolicy"`
 }
@@ -5271,12 +5492,12 @@ func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchOutput) To
 	}).(ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchPtrOutput)
 }
 
-// defines `PVC` provisioner - be it StatefulSet or the Operator
+// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchOutput) Provisioner() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatch) *string { return v.Provisioner }).(pulumi.StringPtrOutput)
 }
 
-// defines behavior of `PVC` deletion.
+// defines behavior of `PVC` deletion (case-insensitive).
 // `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchOutput) ReclaimPolicy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatch) *string { return v.ReclaimPolicy }).(pulumi.StringPtrOutput)
@@ -5306,7 +5527,7 @@ func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchPtrOutput)
 	}).(ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchOutput)
 }
 
-// defines `PVC` provisioner - be it StatefulSet or the Operator
+// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchPtrOutput) Provisioner() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatch) *string {
 		if v == nil {
@@ -5316,7 +5537,7 @@ func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchPtrOutput)
 	}).(pulumi.StringPtrOutput)
 }
 
-// defines behavior of `PVC` deletion.
+// defines behavior of `PVC` deletion (case-insensitive).
 // `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 func (o ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatchPtrOutput) ReclaimPolicy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecDefaultsStorageManagementPatch) *string {
@@ -5967,16 +6188,19 @@ type ClickHouseKeeperInstallationSpecPatch struct {
 	// Example: %s.svc.my.test
 	NamespaceDomainPattern *string                                           `pulumi:"namespaceDomainPattern"`
 	Reconciling            *ClickHouseKeeperInstallationSpecReconcilingPatch `pulumi:"reconciling"`
-	// Allows to stop all ClickHouse clusters defined in a CHI.
+	// CHK-level security defaults, applied to every cluster that does not override
+	// them. Symmetric with chi.spec.security. See docs/security_hardening.md.
+	Security map[string]interface{} `pulumi:"security"`
+	// Allows to stop all ClickHouse Keeper clusters defined in a CHK.
 	// Works as the following:
 	//  - When `stop` is `1` operator sets `Replicas: 0` in each StatefulSet. Thie leads to having all `Pods` and `Service` deleted. All PVCs are kept intact.
 	//  - When `stop` is `0` operator sets `Replicas: 1` and `Pod`s and `Service`s will created again and all retained PVCs will be attached to `Pod`s.
-	Stop *string `pulumi:"stop"`
+	Stop map[string]interface{} `pulumi:"stop"`
 	// Suspend reconciliation of resources managed by a ClickHouse Keeper.
 	// Works as the following:
 	//  - When `suspend` is `true` operator stops reconciling all resources.
 	//  - When `suspend` is `false` or not set, operator reconciles all resources.
-	Suspend *string `pulumi:"suspend"`
+	Suspend map[string]interface{} `pulumi:"suspend"`
 	// Allows to define custom taskID for CHI update and watch status of this update execution.
 	// Displayed in all .status.taskID* fields.
 	// By default (if not filled) every update of CHI manifest will generate random taskID
@@ -6005,16 +6229,19 @@ type ClickHouseKeeperInstallationSpecPatchArgs struct {
 	// Example: %s.svc.my.test
 	NamespaceDomainPattern pulumi.StringPtrInput                                    `pulumi:"namespaceDomainPattern"`
 	Reconciling            ClickHouseKeeperInstallationSpecReconcilingPatchPtrInput `pulumi:"reconciling"`
-	// Allows to stop all ClickHouse clusters defined in a CHI.
+	// CHK-level security defaults, applied to every cluster that does not override
+	// them. Symmetric with chi.spec.security. See docs/security_hardening.md.
+	Security pulumi.MapInput `pulumi:"security"`
+	// Allows to stop all ClickHouse Keeper clusters defined in a CHK.
 	// Works as the following:
 	//  - When `stop` is `1` operator sets `Replicas: 0` in each StatefulSet. Thie leads to having all `Pods` and `Service` deleted. All PVCs are kept intact.
 	//  - When `stop` is `0` operator sets `Replicas: 1` and `Pod`s and `Service`s will created again and all retained PVCs will be attached to `Pod`s.
-	Stop pulumi.StringPtrInput `pulumi:"stop"`
+	Stop pulumi.MapInput `pulumi:"stop"`
 	// Suspend reconciliation of resources managed by a ClickHouse Keeper.
 	// Works as the following:
 	//  - When `suspend` is `true` operator stops reconciling all resources.
 	//  - When `suspend` is `false` or not set, operator reconciles all resources.
-	Suspend pulumi.StringPtrInput `pulumi:"suspend"`
+	Suspend pulumi.MapInput `pulumi:"suspend"`
 	// Allows to define custom taskID for CHI update and watch status of this update execution.
 	// Displayed in all .status.taskID* fields.
 	// By default (if not filled) every update of CHI manifest will generate random taskID
@@ -6126,20 +6353,26 @@ func (o ClickHouseKeeperInstallationSpecPatchOutput) Reconciling() ClickHouseKee
 	}).(ClickHouseKeeperInstallationSpecReconcilingPatchPtrOutput)
 }
 
-// Allows to stop all ClickHouse clusters defined in a CHI.
+// CHK-level security defaults, applied to every cluster that does not override
+// them. Symmetric with chi.spec.security. See docs/security_hardening.md.
+func (o ClickHouseKeeperInstallationSpecPatchOutput) Security() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecPatch) map[string]interface{} { return v.Security }).(pulumi.MapOutput)
+}
+
+// Allows to stop all ClickHouse Keeper clusters defined in a CHK.
 // Works as the following:
 //   - When `stop` is `1` operator sets `Replicas: 0` in each StatefulSet. Thie leads to having all `Pods` and `Service` deleted. All PVCs are kept intact.
 //   - When `stop` is `0` operator sets `Replicas: 1` and `Pod`s and `Service`s will created again and all retained PVCs will be attached to `Pod`s.
-func (o ClickHouseKeeperInstallationSpecPatchOutput) Stop() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecPatch) *string { return v.Stop }).(pulumi.StringPtrOutput)
+func (o ClickHouseKeeperInstallationSpecPatchOutput) Stop() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecPatch) map[string]interface{} { return v.Stop }).(pulumi.MapOutput)
 }
 
 // Suspend reconciliation of resources managed by a ClickHouse Keeper.
 // Works as the following:
 //   - When `suspend` is `true` operator stops reconciling all resources.
 //   - When `suspend` is `false` or not set, operator reconciles all resources.
-func (o ClickHouseKeeperInstallationSpecPatchOutput) Suspend() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecPatch) *string { return v.Suspend }).(pulumi.StringPtrOutput)
+func (o ClickHouseKeeperInstallationSpecPatchOutput) Suspend() pulumi.MapOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecPatch) map[string]interface{} { return v.Suspend }).(pulumi.MapOutput)
 }
 
 // Allows to define custom taskID for CHI update and watch status of this update execution.
@@ -6218,30 +6451,41 @@ func (o ClickHouseKeeperInstallationSpecPatchPtrOutput) Reconciling() ClickHouse
 	}).(ClickHouseKeeperInstallationSpecReconcilingPatchPtrOutput)
 }
 
-// Allows to stop all ClickHouse clusters defined in a CHI.
+// CHK-level security defaults, applied to every cluster that does not override
+// them. Symmetric with chi.spec.security. See docs/security_hardening.md.
+func (o ClickHouseKeeperInstallationSpecPatchPtrOutput) Security() pulumi.MapOutput {
+	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecPatch) map[string]interface{} {
+		if v == nil {
+			return nil
+		}
+		return v.Security
+	}).(pulumi.MapOutput)
+}
+
+// Allows to stop all ClickHouse Keeper clusters defined in a CHK.
 // Works as the following:
 //   - When `stop` is `1` operator sets `Replicas: 0` in each StatefulSet. Thie leads to having all `Pods` and `Service` deleted. All PVCs are kept intact.
 //   - When `stop` is `0` operator sets `Replicas: 1` and `Pod`s and `Service`s will created again and all retained PVCs will be attached to `Pod`s.
-func (o ClickHouseKeeperInstallationSpecPatchPtrOutput) Stop() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecPatch) *string {
+func (o ClickHouseKeeperInstallationSpecPatchPtrOutput) Stop() pulumi.MapOutput {
+	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecPatch) map[string]interface{} {
 		if v == nil {
 			return nil
 		}
 		return v.Stop
-	}).(pulumi.StringPtrOutput)
+	}).(pulumi.MapOutput)
 }
 
 // Suspend reconciliation of resources managed by a ClickHouse Keeper.
 // Works as the following:
 //   - When `suspend` is `true` operator stops reconciling all resources.
 //   - When `suspend` is `false` or not set, operator reconciles all resources.
-func (o ClickHouseKeeperInstallationSpecPatchPtrOutput) Suspend() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecPatch) *string {
+func (o ClickHouseKeeperInstallationSpecPatchPtrOutput) Suspend() pulumi.MapOutput {
+	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecPatch) map[string]interface{} {
 		if v == nil {
 			return nil
 		}
 		return v.Suspend
-	}).(pulumi.StringPtrOutput)
+	}).(pulumi.MapOutput)
 }
 
 // Allows to define custom taskID for CHI update and watch status of this update execution.
@@ -6277,6 +6521,7 @@ type ClickHouseKeeperInstallationSpecReconciling struct {
 	// Possible values:
 	//  - wait - should wait to exclude host, complete queries and include host back into the cluster
 	//  - nowait - should NOT wait to exclude host, complete queries and include host back into the cluster
+	//    (case-insensitive)
 	Policy *string `pulumi:"policy"`
 }
 
@@ -6303,6 +6548,7 @@ type ClickHouseKeeperInstallationSpecReconcilingArgs struct {
 	// Possible values:
 	//  - wait - should wait to exclude host, complete queries and include host back into the cluster
 	//  - nowait - should NOT wait to exclude host, complete queries and include host back into the cluster
+	//    (case-insensitive)
 	Policy pulumi.StringPtrInput `pulumi:"policy"`
 }
 
@@ -6402,6 +6648,7 @@ func (o ClickHouseKeeperInstallationSpecReconcilingOutput) ConfigMapPropagationT
 // Possible values:
 //   - wait - should wait to exclude host, complete queries and include host back into the cluster
 //   - nowait - should NOT wait to exclude host, complete queries and include host back into the cluster
+//     (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecReconcilingOutput) Policy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecReconciling) *string { return v.Policy }).(pulumi.StringPtrOutput)
 }
@@ -6456,6 +6703,7 @@ func (o ClickHouseKeeperInstallationSpecReconcilingPtrOutput) ConfigMapPropagati
 // Possible values:
 //   - wait - should wait to exclude host, complete queries and include host back into the cluster
 //   - nowait - should NOT wait to exclude host, complete queries and include host back into the cluster
+//     (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecReconcilingPtrOutput) Policy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecReconciling) *string {
 		if v == nil {
@@ -7199,7 +7447,7 @@ type ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjects struct {
 	Pvc *string `pulumi:"pvc"`
 	// Behavior policy for unknown Service, `Delete` by default
 	Service *string `pulumi:"service"`
-	// Behavior policy for unknown StatefulSet, `Delete` by default
+	// Behavior policy for unknown StatefulSet, `Delete` by default (case-insensitive)
 	StatefulSet *string `pulumi:"statefulSet"`
 }
 
@@ -7224,7 +7472,7 @@ type ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsArgs struct
 	Pvc pulumi.StringPtrInput `pulumi:"pvc"`
 	// Behavior policy for unknown Service, `Delete` by default
 	Service pulumi.StringPtrInput `pulumi:"service"`
-	// Behavior policy for unknown StatefulSet, `Delete` by default
+	// Behavior policy for unknown StatefulSet, `Delete` by default (case-insensitive)
 	StatefulSet pulumi.StringPtrInput `pulumi:"statefulSet"`
 }
 
@@ -7323,7 +7571,7 @@ func (o ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsOutput) 
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjects) *string { return v.Service }).(pulumi.StringPtrOutput)
 }
 
-// Behavior policy for unknown StatefulSet, `Delete` by default
+// Behavior policy for unknown StatefulSet, `Delete` by default (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsOutput) StatefulSet() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjects) *string { return v.StatefulSet }).(pulumi.StringPtrOutput)
 }
@@ -7382,7 +7630,7 @@ func (o ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsPtrOutpu
 	}).(pulumi.StringPtrOutput)
 }
 
-// Behavior policy for unknown StatefulSet, `Delete` by default
+// Behavior policy for unknown StatefulSet, `Delete` by default (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsPtrOutput) StatefulSet() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjects) *string {
 		if v == nil {
@@ -7402,7 +7650,7 @@ type ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsPatch struc
 	Pvc *string `pulumi:"pvc"`
 	// Behavior policy for unknown Service, `Delete` by default
 	Service *string `pulumi:"service"`
-	// Behavior policy for unknown StatefulSet, `Delete` by default
+	// Behavior policy for unknown StatefulSet, `Delete` by default (case-insensitive)
 	StatefulSet *string `pulumi:"statefulSet"`
 }
 
@@ -7427,7 +7675,7 @@ type ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsPatchArgs s
 	Pvc pulumi.StringPtrInput `pulumi:"pvc"`
 	// Behavior policy for unknown Service, `Delete` by default
 	Service pulumi.StringPtrInput `pulumi:"service"`
-	// Behavior policy for unknown StatefulSet, `Delete` by default
+	// Behavior policy for unknown StatefulSet, `Delete` by default (case-insensitive)
 	StatefulSet pulumi.StringPtrInput `pulumi:"statefulSet"`
 }
 
@@ -7530,7 +7778,7 @@ func (o ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsPatchOut
 	}).(pulumi.StringPtrOutput)
 }
 
-// Behavior policy for unknown StatefulSet, `Delete` by default
+// Behavior policy for unknown StatefulSet, `Delete` by default (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsPatchOutput) StatefulSet() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsPatch) *string {
 		return v.StatefulSet
@@ -7591,7 +7839,7 @@ func (o ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsPatchPtr
 	}).(pulumi.StringPtrOutput)
 }
 
-// Behavior policy for unknown StatefulSet, `Delete` by default
+// Behavior policy for unknown StatefulSet, `Delete` by default (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsPatchPtrOutput) StatefulSet() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecReconcilingCleanupUnknownObjectsPatch) *string {
 		if v == nil {
@@ -7613,6 +7861,7 @@ type ClickHouseKeeperInstallationSpecReconcilingPatch struct {
 	// Possible values:
 	//  - wait - should wait to exclude host, complete queries and include host back into the cluster
 	//  - nowait - should NOT wait to exclude host, complete queries and include host back into the cluster
+	//    (case-insensitive)
 	Policy *string `pulumi:"policy"`
 }
 
@@ -7639,6 +7888,7 @@ type ClickHouseKeeperInstallationSpecReconcilingPatchArgs struct {
 	// Possible values:
 	//  - wait - should wait to exclude host, complete queries and include host back into the cluster
 	//  - nowait - should NOT wait to exclude host, complete queries and include host back into the cluster
+	//    (case-insensitive)
 	Policy pulumi.StringPtrInput `pulumi:"policy"`
 }
 
@@ -7738,6 +7988,7 @@ func (o ClickHouseKeeperInstallationSpecReconcilingPatchOutput) ConfigMapPropaga
 // Possible values:
 //   - wait - should wait to exclude host, complete queries and include host back into the cluster
 //   - nowait - should NOT wait to exclude host, complete queries and include host back into the cluster
+//     (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecReconcilingPatchOutput) Policy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecReconcilingPatch) *string { return v.Policy }).(pulumi.StringPtrOutput)
 }
@@ -7792,6 +8043,7 @@ func (o ClickHouseKeeperInstallationSpecReconcilingPatchPtrOutput) ConfigMapProp
 // Possible values:
 //   - wait - should wait to exclude host, complete queries and include host back into the cluster
 //   - nowait - should NOT wait to exclude host, complete queries and include host back into the cluster
+//     (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecReconcilingPatchPtrOutput) Policy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecReconcilingPatch) *string {
 		if v == nil {
@@ -8449,6 +8701,8 @@ type ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpec struct {
 	Settings  map[string]interface{}                                               `pulumi:"settings"`
 	Templates *ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecTemplates `pulumi:"templates"`
 	ZkPort    *int                                                                 `pulumi:"zkPort"`
+	// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+	ZkPortSecure *int `pulumi:"zkPortSecure"`
 }
 
 // ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecInput is an input type that accepts ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecArgs and ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecOutput values.
@@ -8473,6 +8727,8 @@ type ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecArgs struct {
 	Settings  pulumi.MapInput                                                             `pulumi:"settings"`
 	Templates ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecTemplatesPtrInput `pulumi:"templates"`
 	ZkPort    pulumi.IntPtrInput                                                          `pulumi:"zkPort"`
+	// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+	ZkPortSecure pulumi.IntPtrInput `pulumi:"zkPortSecure"`
 }
 
 func (ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecArgs) ElementType() reflect.Type {
@@ -8586,6 +8842,11 @@ func (o ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecOutput) ZkPort
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpec) *int { return v.ZkPort }).(pulumi.IntPtrOutput)
 }
 
+// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+func (o ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecOutput) ZkPortSecure() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpec) *int { return v.ZkPortSecure }).(pulumi.IntPtrOutput)
+}
+
 type ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPtrOutput struct{ *pulumi.OutputState }
 
 func (ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPtrOutput) ElementType() reflect.Type {
@@ -8668,6 +8929,16 @@ func (o ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPtrOutput) ZkP
 	}).(pulumi.IntPtrOutput)
 }
 
+// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+func (o ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPtrOutput) ZkPortSecure() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpec) *int {
+		if v == nil {
+			return nil
+		}
+		return v.ZkPortSecure
+	}).(pulumi.IntPtrOutput)
+}
+
 type ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatch struct {
 	// optional, allows define content of any setting file inside each `Pod` where this template will apply during generate `ConfigMap` which will mount in `/etc/clickhouse-server/config.d/` or `/etc/clickhouse-server/conf.d/` or `/etc/clickhouse-server/users.d/`
 	Files map[string]interface{} `pulumi:"files"`
@@ -8679,6 +8950,8 @@ type ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatch struct {
 	Settings  map[string]interface{}                                                    `pulumi:"settings"`
 	Templates *ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecTemplatesPatch `pulumi:"templates"`
 	ZkPort    *int                                                                      `pulumi:"zkPort"`
+	// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+	ZkPortSecure *int `pulumi:"zkPortSecure"`
 }
 
 // ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchInput is an input type that accepts ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchArgs and ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchOutput values.
@@ -8703,6 +8976,8 @@ type ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchArgs struct 
 	Settings  pulumi.MapInput                                                                  `pulumi:"settings"`
 	Templates ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecTemplatesPatchPtrInput `pulumi:"templates"`
 	ZkPort    pulumi.IntPtrInput                                                               `pulumi:"zkPort"`
+	// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+	ZkPortSecure pulumi.IntPtrInput `pulumi:"zkPortSecure"`
 }
 
 func (ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchArgs) ElementType() reflect.Type {
@@ -8816,6 +9091,11 @@ func (o ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchOutput) Z
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatch) *int { return v.ZkPort }).(pulumi.IntPtrOutput)
 }
 
+// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+func (o ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchOutput) ZkPortSecure() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatch) *int { return v.ZkPortSecure }).(pulumi.IntPtrOutput)
+}
+
 type ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchPtrOutput struct{ *pulumi.OutputState }
 
 func (ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchPtrOutput) ElementType() reflect.Type {
@@ -8895,6 +9175,16 @@ func (o ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchPtrOutput
 			return nil
 		}
 		return v.ZkPort
+	}).(pulumi.IntPtrOutput)
+}
+
+// optional, secure (TLS) Keeper client port; emitted alongside zkPort when the cluster opts into secure mode
+func (o ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatchPtrOutput) ZkPortSecure() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *ClickHouseKeeperInstallationSpecTemplatesHostTemplatesSpecPatch) *int {
+		if v == nil {
+			return nil
+		}
+		return v.ZkPortSecure
 	}).(pulumi.IntPtrOutput)
 }
 
@@ -10987,9 +11277,9 @@ type ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplates struct {
 	// shard-level `chi.spec.configuration.clusters.layout.shards.temlates.dataVolumeClaimTemplate` or `chi.spec.configuration.clusters.layout.shards.temlates.logVolumeClaimTemplate`
 	// replica-level `chi.spec.configuration.clusters.layout.replicas.templates.dataVolumeClaimTemplate` or `chi.spec.configuration.clusters.layout.replicas.templates.logVolumeClaimTemplate`
 	Name *string `pulumi:"name"`
-	// defines `PVC` provisioner - be it StatefulSet or the Operator
+	// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 	Provisioner *string `pulumi:"provisioner"`
-	// defines behavior of `PVC` deletion.
+	// defines behavior of `PVC` deletion (case-insensitive).
 	// `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 	ReclaimPolicy *string `pulumi:"reclaimPolicy"`
 	// allows define all aspects of `PVC` resource
@@ -11018,9 +11308,9 @@ type ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesArgs struct {
 	// shard-level `chi.spec.configuration.clusters.layout.shards.temlates.dataVolumeClaimTemplate` or `chi.spec.configuration.clusters.layout.shards.temlates.logVolumeClaimTemplate`
 	// replica-level `chi.spec.configuration.clusters.layout.replicas.templates.dataVolumeClaimTemplate` or `chi.spec.configuration.clusters.layout.replicas.templates.logVolumeClaimTemplate`
 	Name pulumi.StringPtrInput `pulumi:"name"`
-	// defines `PVC` provisioner - be it StatefulSet or the Operator
+	// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 	Provisioner pulumi.StringPtrInput `pulumi:"provisioner"`
-	// defines behavior of `PVC` deletion.
+	// defines behavior of `PVC` deletion (case-insensitive).
 	// `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 	ReclaimPolicy pulumi.StringPtrInput `pulumi:"reclaimPolicy"`
 	// allows define all aspects of `PVC` resource
@@ -11096,12 +11386,12 @@ func (o ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesOutput) Nam
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplates) *string { return v.Name }).(pulumi.StringPtrOutput)
 }
 
-// defines `PVC` provisioner - be it StatefulSet or the Operator
+// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesOutput) Provisioner() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplates) *string { return v.Provisioner }).(pulumi.StringPtrOutput)
 }
 
-// defines behavior of `PVC` deletion.
+// defines behavior of `PVC` deletion (case-insensitive).
 // `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 func (o ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesOutput) ReclaimPolicy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplates) *string { return v.ReclaimPolicy }).(pulumi.StringPtrOutput)
@@ -11145,9 +11435,9 @@ type ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesPatch struct {
 	// shard-level `chi.spec.configuration.clusters.layout.shards.temlates.dataVolumeClaimTemplate` or `chi.spec.configuration.clusters.layout.shards.temlates.logVolumeClaimTemplate`
 	// replica-level `chi.spec.configuration.clusters.layout.replicas.templates.dataVolumeClaimTemplate` or `chi.spec.configuration.clusters.layout.replicas.templates.logVolumeClaimTemplate`
 	Name *string `pulumi:"name"`
-	// defines `PVC` provisioner - be it StatefulSet or the Operator
+	// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 	Provisioner *string `pulumi:"provisioner"`
-	// defines behavior of `PVC` deletion.
+	// defines behavior of `PVC` deletion (case-insensitive).
 	// `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 	ReclaimPolicy *string `pulumi:"reclaimPolicy"`
 	// allows define all aspects of `PVC` resource
@@ -11176,9 +11466,9 @@ type ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesPatchArgs stru
 	// shard-level `chi.spec.configuration.clusters.layout.shards.temlates.dataVolumeClaimTemplate` or `chi.spec.configuration.clusters.layout.shards.temlates.logVolumeClaimTemplate`
 	// replica-level `chi.spec.configuration.clusters.layout.replicas.templates.dataVolumeClaimTemplate` or `chi.spec.configuration.clusters.layout.replicas.templates.logVolumeClaimTemplate`
 	Name pulumi.StringPtrInput `pulumi:"name"`
-	// defines `PVC` provisioner - be it StatefulSet or the Operator
+	// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 	Provisioner pulumi.StringPtrInput `pulumi:"provisioner"`
-	// defines behavior of `PVC` deletion.
+	// defines behavior of `PVC` deletion (case-insensitive).
 	// `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 	ReclaimPolicy pulumi.StringPtrInput `pulumi:"reclaimPolicy"`
 	// allows define all aspects of `PVC` resource
@@ -11254,14 +11544,14 @@ func (o ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesPatchOutput
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesPatch) *string { return v.Name }).(pulumi.StringPtrOutput)
 }
 
-// defines `PVC` provisioner - be it StatefulSet or the Operator
+// defines `PVC` provisioner - be it StatefulSet or the Operator (case-insensitive)
 func (o ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesPatchOutput) Provisioner() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesPatch) *string {
 		return v.Provisioner
 	}).(pulumi.StringPtrOutput)
 }
 
-// defines behavior of `PVC` deletion.
+// defines behavior of `PVC` deletion (case-insensitive).
 // `Delete` by default, if `Retain` specified then `PVC` will be kept when deleting StatefulSet
 func (o ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesPatchOutput) ReclaimPolicy() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ClickHouseKeeperInstallationSpecTemplatesVolumeClaimTemplatesPatch) *string {

@@ -1,22 +1,17 @@
-# Standard GitHub Actions Runner Scale Set Controller
+# Standard controller preset
 
-This preset deploys the GitHub Actions Runner Scale Set Controller with recommended default resources. The controller manages AutoScalingRunnerSet and EphemeralRunner custom resources, enabling self-hosted GitHub Actions runners that scale dynamically based on workflow demand.
+One cluster-wide controller in its own namespace — the shape almost
+every cluster wants. It installs the runner CRDs and the manager;
+runner fleets are declared separately (one KubernetesGhaRunnerScaleSet
+per repository/organization registration), and this controller serves
+all of them.
 
-## When to Use
+Know the destroy contract: the CRDs delete with the controller, which
+cascade-deletes every runner scale set on the cluster — destroy the
+scale sets first.
 
-- You need self-hosted GitHub Actions runners on Kubernetes
-- You want dynamic scaling of runner pods based on queued workflow jobs
-- This is the controller only -- deploy `KubernetesGhaRunnerScaleSet` resources separately for actual runner pods
+Change first: `flags.log_level: info` once the install is settled (the
+chart ships debug — noisy), and metrics when Prometheus scrapes the
+cluster.
 
-## Key Configuration Choices
-
-- **Namespace** (`gha-runner-system`) -- dedicated namespace for the controller; runner pods can be deployed in different namespaces
-- **Create namespace** (`true`) -- namespace is created automatically if it does not exist
-- **Resource requests** (`100m` CPU, `128Mi` memory) -- conservative baseline for the controller pod
-- **Resource limits** (`500m` CPU, `512Mi` memory) -- matches proto recommended defaults
-- **Default flags** -- controller watches all namespaces; single replica with no leader election
-- **No metrics** -- metrics endpoints are not configured; enable via the `metrics` field if needed
-
-## Placeholders to Replace
-
-No placeholders -- this preset is directly deployable with sensible defaults.
+See [01-standard.yaml](./01-standard.yaml) for the manifest.

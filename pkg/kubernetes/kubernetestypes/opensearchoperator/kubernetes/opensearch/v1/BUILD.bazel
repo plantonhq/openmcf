@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "opensearch",
+    srcs = [
+        "init.go",
+        "openSearchCluster.go",
+        "openSearchClusterList.go",
+        "openSearchClusterPatch.go",
+        "pulumiTypes.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/kubernetes/kubernetestypes/opensearchoperator/kubernetes/opensearch/v1",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_blang_semver//:semver",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/meta/v1:meta",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/utilities",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
+    ],
+)

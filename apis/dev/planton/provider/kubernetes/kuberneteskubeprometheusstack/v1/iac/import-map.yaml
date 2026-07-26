@@ -1,0 +1,58 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kuberneteskubeprometheusstack
+spec:
+  # The stack installs as one Helm release NAMED AFTER metadata.name.
+  # fullnameOverride pins the umbrella's own child names
+  # (`<name>-prometheus`, `<name>-alertmanager`, `<name>-operator`);
+  # the grafana subchart's `<name>-grafana` derives from the RELEASE
+  # name (a parent fullnameOverride never propagates into subcharts) —
+  # the two agree only because release name = resource name, which the
+  # modules guarantee. Plus the optional anchor namespace and, when any remote-write
+  # entry declares basic auth, the module-materialized
+  # `<name>-remote-write-auth` username Secret (count-indexed). The
+  # monitoring.coreos.com CRDs ride the chart's crds subchart
+  # (install-once, keep-on-uninstall) and travel with the release import —
+  # no CRD rows.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    # ── the module-materialized remote-write username Secret ─────────────
+    # Deterministic name "<metadata.name>-remote-write-auth"; count-indexed
+    # (present only when a remote_write entry declares basic_auth), so
+    # from_address_key cannot serve it — the scoped suffix derivation does.
+    - name: secret_name
+      tofu_resource_name: remote_write_auth
+      derivations:
+        - from_metadata_name_suffix: "-remote-write-auth"
+      where_to_find: >-
+        Always "<resource-name>-remote-write-auth" when any remote-write
+        destination uses basic auth — `kubectl get secrets -n <namespace>`
+        (keys username-<i> per entry).
+    - name: secret_namespace
+      tofu_resource_name: remote_write_auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

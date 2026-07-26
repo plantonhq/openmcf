@@ -1,7 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
-
+name: kubernetes-altinity-operator
+runtime: go
+description: Altinity ClickHouse operator installation from the official Helm chart — watch-namespace scoping, operator API credentials, metrics exporter, chart-owned CRD lifecycle (crds/ directory + upgrade hook), and per-half image overrides

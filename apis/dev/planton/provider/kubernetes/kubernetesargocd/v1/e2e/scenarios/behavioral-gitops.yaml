@@ -1,0 +1,21 @@
+# THE GITOPS PROOF: the verifier declares an Application through the
+# product API (repo: argoproj/argocd-example-apps, path: guestbook —
+# internet-at-pod: the repo server clones it live), automated sync must
+# drive the guestbook workload into this namespace (asserted on the
+# Deployment itself, never the reported status alone), then the server
+# pod is DELETED and — after a REPLACEMENT pod (a new UID) — a fresh
+# login and the same Application still reporting Synced/Healthy: Argo
+# CD's config and state live in CRs and the cluster, not its pods.
+#
+# This lane also proves the KEEP posture (the component default): destroy
+# must leave the argoproj CRDs behind; the verifier asserts survival and
+# then removes them — kept TEMPLATED CRDs carry this release's Helm
+# ownership metadata and would fail any later lane's install.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesArgocd
+metadata:
+  name: e2e-argocd-gitops
+spec:
+  namespace:
+    value: e2e-argocd-gitops
+  create_namespace: true

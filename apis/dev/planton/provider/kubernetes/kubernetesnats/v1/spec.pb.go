@@ -13,7 +13,6 @@ import (
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -26,413 +25,203 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesNatsAuthScheme is the authentication scheme for the nats cluster.
-type KubernetesNatsAuthScheme int32
+// *
+// Service type.
+type KubernetesNatsService_ServiceType int32
 
 const (
-	KubernetesNatsAuthScheme_nats_kubernetes_auth_scheme_unspecified KubernetesNatsAuthScheme = 0
-	// bearer token authentication
-	KubernetesNatsAuthScheme_bearer_token KubernetesNatsAuthScheme = 1
-	// basic auth authentication
-	KubernetesNatsAuthScheme_basic_auth KubernetesNatsAuthScheme = 2
+	// ClusterIP (the default) — in-cluster clients only; compose
+	// external exposure from first-class kinds or switch the type
+	// below.
+	KubernetesNatsService_cluster_ip KubernetesNatsService_ServiceType = 0
+	// LoadBalancer — the cloud provisions an external address;
+	// combine with `annotations` for the cloud's LB controller
+	// (internal LBs, NLB mode, external-dns hostnames).
+	KubernetesNatsService_load_balancer KubernetesNatsService_ServiceType = 1
+	// NodePort — every cluster node forwards a high port.
+	KubernetesNatsService_node_port KubernetesNatsService_ServiceType = 2
 )
 
-// Enum value maps for KubernetesNatsAuthScheme.
+// Enum value maps for KubernetesNatsService_ServiceType.
 var (
-	KubernetesNatsAuthScheme_name = map[int32]string{
-		0: "nats_kubernetes_auth_scheme_unspecified",
-		1: "bearer_token",
-		2: "basic_auth",
+	KubernetesNatsService_ServiceType_name = map[int32]string{
+		0: "cluster_ip",
+		1: "load_balancer",
+		2: "node_port",
 	}
-	KubernetesNatsAuthScheme_value = map[string]int32{
-		"nats_kubernetes_auth_scheme_unspecified": 0,
-		"bearer_token": 1,
-		"basic_auth":   2,
+	KubernetesNatsService_ServiceType_value = map[string]int32{
+		"cluster_ip":    0,
+		"load_balancer": 1,
+		"node_port":     2,
 	}
 )
 
-func (x KubernetesNatsAuthScheme) Enum() *KubernetesNatsAuthScheme {
-	p := new(KubernetesNatsAuthScheme)
+func (x KubernetesNatsService_ServiceType) Enum() *KubernetesNatsService_ServiceType {
+	p := new(KubernetesNatsService_ServiceType)
 	*p = x
 	return p
 }
 
-func (x KubernetesNatsAuthScheme) String() string {
+func (x KubernetesNatsService_ServiceType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (KubernetesNatsAuthScheme) Descriptor() protoreflect.EnumDescriptor {
+func (KubernetesNatsService_ServiceType) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[0].Descriptor()
 }
 
-func (KubernetesNatsAuthScheme) Type() protoreflect.EnumType {
+func (KubernetesNatsService_ServiceType) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[0]
 }
 
-func (x KubernetesNatsAuthScheme) Number() protoreflect.EnumNumber {
+func (x KubernetesNatsService_ServiceType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use KubernetesNatsAuthScheme.Descriptor instead.
-func (KubernetesNatsAuthScheme) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use KubernetesNatsService_ServiceType.Descriptor instead.
+func (KubernetesNatsService_ServiceType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{12, 0}
 }
 
-type StreamStorageEnum_Value int32
-
-const (
-	StreamStorageEnum_unspecified StreamStorageEnum_Value = 0
-	// File-based storage (persistent, survives restarts).
-	StreamStorageEnum_file StreamStorageEnum_Value = 1
-	// Memory-based storage (ephemeral, faster).
-	StreamStorageEnum_memory StreamStorageEnum_Value = 2
-)
-
-// Enum value maps for StreamStorageEnum_Value.
-var (
-	StreamStorageEnum_Value_name = map[int32]string{
-		0: "unspecified",
-		1: "file",
-		2: "memory",
-	}
-	StreamStorageEnum_Value_value = map[string]int32{
-		"unspecified": 0,
-		"file":        1,
-		"memory":      2,
-	}
-)
-
-func (x StreamStorageEnum_Value) Enum() *StreamStorageEnum_Value {
-	p := new(StreamStorageEnum_Value)
-	*p = x
-	return p
-}
-
-func (x StreamStorageEnum_Value) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (StreamStorageEnum_Value) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[1].Descriptor()
-}
-
-func (StreamStorageEnum_Value) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[1]
-}
-
-func (x StreamStorageEnum_Value) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use StreamStorageEnum_Value.Descriptor instead.
-func (StreamStorageEnum_Value) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{6, 0}
-}
-
-type StreamRetentionEnum_Value int32
-
-const (
-	StreamRetentionEnum_unspecified StreamRetentionEnum_Value = 0
-	// Messages kept based on limits (max_age, max_bytes, max_msgs).
-	StreamRetentionEnum_limits StreamRetentionEnum_Value = 1
-	// Messages removed when no consumers have interest.
-	StreamRetentionEnum_interest StreamRetentionEnum_Value = 2
-	// Work queue: messages removed once acknowledged.
-	StreamRetentionEnum_workqueue StreamRetentionEnum_Value = 3
-)
-
-// Enum value maps for StreamRetentionEnum_Value.
-var (
-	StreamRetentionEnum_Value_name = map[int32]string{
-		0: "unspecified",
-		1: "limits",
-		2: "interest",
-		3: "workqueue",
-	}
-	StreamRetentionEnum_Value_value = map[string]int32{
-		"unspecified": 0,
-		"limits":      1,
-		"interest":    2,
-		"workqueue":   3,
-	}
-)
-
-func (x StreamRetentionEnum_Value) Enum() *StreamRetentionEnum_Value {
-	p := new(StreamRetentionEnum_Value)
-	*p = x
-	return p
-}
-
-func (x StreamRetentionEnum_Value) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (StreamRetentionEnum_Value) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[2].Descriptor()
-}
-
-func (StreamRetentionEnum_Value) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[2]
-}
-
-func (x StreamRetentionEnum_Value) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use StreamRetentionEnum_Value.Descriptor instead.
-func (StreamRetentionEnum_Value) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{7, 0}
-}
-
-type StreamDiscardEnum_Value int32
-
-const (
-	StreamDiscardEnum_unspecified StreamDiscardEnum_Value = 0
-	// Discard old messages when limits reached.
-	StreamDiscardEnum_old StreamDiscardEnum_Value = 1
-	// Reject new messages when limits reached.
-	// Note: Named "new_msgs" instead of "new" because "new" is a reserved keyword in Java.
-	// IaC modules convert this to "new" when sending to NACK CRDs.
-	StreamDiscardEnum_new_msgs StreamDiscardEnum_Value = 2
-)
-
-// Enum value maps for StreamDiscardEnum_Value.
-var (
-	StreamDiscardEnum_Value_name = map[int32]string{
-		0: "unspecified",
-		1: "old",
-		2: "new_msgs",
-	}
-	StreamDiscardEnum_Value_value = map[string]int32{
-		"unspecified": 0,
-		"old":         1,
-		"new_msgs":    2,
-	}
-)
-
-func (x StreamDiscardEnum_Value) Enum() *StreamDiscardEnum_Value {
-	p := new(StreamDiscardEnum_Value)
-	*p = x
-	return p
-}
-
-func (x StreamDiscardEnum_Value) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (StreamDiscardEnum_Value) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[3].Descriptor()
-}
-
-func (StreamDiscardEnum_Value) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[3]
-}
-
-func (x StreamDiscardEnum_Value) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use StreamDiscardEnum_Value.Descriptor instead.
-func (StreamDiscardEnum_Value) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{8, 0}
-}
-
-type ConsumerDeliverPolicyEnum_Value int32
-
-const (
-	ConsumerDeliverPolicyEnum_unspecified ConsumerDeliverPolicyEnum_Value = 0
-	// Deliver all messages from the beginning.
-	ConsumerDeliverPolicyEnum_all ConsumerDeliverPolicyEnum_Value = 1
-	// Deliver starting from the last message.
-	ConsumerDeliverPolicyEnum_last ConsumerDeliverPolicyEnum_Value = 2
-	// Deliver only new messages (after consumer creation).
-	// Note: Named "new_msgs" instead of "new" because "new" is a reserved keyword in Java.
-	// IaC modules convert this to "new" when sending to NACK CRDs.
-	ConsumerDeliverPolicyEnum_new_msgs ConsumerDeliverPolicyEnum_Value = 3
-)
-
-// Enum value maps for ConsumerDeliverPolicyEnum_Value.
-var (
-	ConsumerDeliverPolicyEnum_Value_name = map[int32]string{
-		0: "unspecified",
-		1: "all",
-		2: "last",
-		3: "new_msgs",
-	}
-	ConsumerDeliverPolicyEnum_Value_value = map[string]int32{
-		"unspecified": 0,
-		"all":         1,
-		"last":        2,
-		"new_msgs":    3,
-	}
-)
-
-func (x ConsumerDeliverPolicyEnum_Value) Enum() *ConsumerDeliverPolicyEnum_Value {
-	p := new(ConsumerDeliverPolicyEnum_Value)
-	*p = x
-	return p
-}
-
-func (x ConsumerDeliverPolicyEnum_Value) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ConsumerDeliverPolicyEnum_Value) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[4].Descriptor()
-}
-
-func (ConsumerDeliverPolicyEnum_Value) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[4]
-}
-
-func (x ConsumerDeliverPolicyEnum_Value) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ConsumerDeliverPolicyEnum_Value.Descriptor instead.
-func (ConsumerDeliverPolicyEnum_Value) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{9, 0}
-}
-
-type ConsumerAckPolicyEnum_Value int32
-
-const (
-	ConsumerAckPolicyEnum_unspecified ConsumerAckPolicyEnum_Value = 0
-	// No acknowledgment required.
-	ConsumerAckPolicyEnum_none ConsumerAckPolicyEnum_Value = 1
-	// Acknowledge all previous messages.
-	ConsumerAckPolicyEnum_all ConsumerAckPolicyEnum_Value = 2
-	// Explicit acknowledgment required for each message.
-	ConsumerAckPolicyEnum_explicit ConsumerAckPolicyEnum_Value = 3
-)
-
-// Enum value maps for ConsumerAckPolicyEnum_Value.
-var (
-	ConsumerAckPolicyEnum_Value_name = map[int32]string{
-		0: "unspecified",
-		1: "none",
-		2: "all",
-		3: "explicit",
-	}
-	ConsumerAckPolicyEnum_Value_value = map[string]int32{
-		"unspecified": 0,
-		"none":        1,
-		"all":         2,
-		"explicit":    3,
-	}
-)
-
-func (x ConsumerAckPolicyEnum_Value) Enum() *ConsumerAckPolicyEnum_Value {
-	p := new(ConsumerAckPolicyEnum_Value)
-	*p = x
-	return p
-}
-
-func (x ConsumerAckPolicyEnum_Value) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ConsumerAckPolicyEnum_Value) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[5].Descriptor()
-}
-
-func (ConsumerAckPolicyEnum_Value) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[5]
-}
-
-func (x ConsumerAckPolicyEnum_Value) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ConsumerAckPolicyEnum_Value.Descriptor instead.
-func (ConsumerAckPolicyEnum_Value) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{10, 0}
-}
-
-type ConsumerReplayPolicyEnum_Value int32
-
-const (
-	ConsumerReplayPolicyEnum_unspecified ConsumerReplayPolicyEnum_Value = 0
-	// Replay messages at the original rate they were published.
-	ConsumerReplayPolicyEnum_original ConsumerReplayPolicyEnum_Value = 1
-	// Replay messages as fast as possible.
-	ConsumerReplayPolicyEnum_instant ConsumerReplayPolicyEnum_Value = 2
-)
-
-// Enum value maps for ConsumerReplayPolicyEnum_Value.
-var (
-	ConsumerReplayPolicyEnum_Value_name = map[int32]string{
-		0: "unspecified",
-		1: "original",
-		2: "instant",
-	}
-	ConsumerReplayPolicyEnum_Value_value = map[string]int32{
-		"unspecified": 0,
-		"original":    1,
-		"instant":     2,
-	}
-)
-
-func (x ConsumerReplayPolicyEnum_Value) Enum() *ConsumerReplayPolicyEnum_Value {
-	p := new(ConsumerReplayPolicyEnum_Value)
-	*p = x
-	return p
-}
-
-func (x ConsumerReplayPolicyEnum_Value) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (ConsumerReplayPolicyEnum_Value) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[6].Descriptor()
-}
-
-func (ConsumerReplayPolicyEnum_Value) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes[6]
-}
-
-func (x ConsumerReplayPolicyEnum_Value) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use ConsumerReplayPolicyEnum_Value.Descriptor instead.
-func (ConsumerReplayPolicyEnum_Value) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{11, 0}
-}
-
-// NatsKubernetes spec holds the 80-20 configuration for a nats cluster on kubernetes.
+// *
+// **KubernetesNatsSpec** deploys NATS — the lightweight, high-speed
+// messaging system (pub/sub, request/reply, queue groups) with
+// JetStream persistence (streams, consumers, key-value and object
+// stores) — from the official `nats` Helm chart
+// (https://nats-io.github.io/k8s/helm/charts/).
+//
+// WHAT GETS INSTALLED: the NATS server StatefulSet (with a config
+// hot-reload sidecar), its client Service, and by default the
+// nats-box utility pod (a shell with the `nats` CLI pre-configured
+// for this deployment).
+//
+// JETSTREAM IS ON BY DEFAULT here (the chart leaves it off): each
+// server gets a persistent volume for stream data, so published
+// messages survive pod restarts. A single server is a complete
+// JetStream deployment for dev; REPLICATED streams (R3) need
+// `cluster` enabled with at least 3 servers.
+//
+// SECURITY: with `auth` unset the server accepts unauthenticated
+// connections — fine inside a trusted cluster network, never for
+// anything reachable from outside. Declare users (flat, or grouped
+// into accounts for multi-tenant isolation) and the module GENERATES
+// their passwords, exports them in the `<name>-auth` Secret (one key
+// per username), and wires the server to read them from environment —
+// no password ever lands in the rendered config or Helm values.
+//
+// EXPOSURE: the client Service is ClusterIP by default; clients in
+// the cluster connect through `client_endpoint`. For external
+// clients, set `service` to LoadBalancer with your cloud's
+// annotations, or use `websocket` behind first-class exposure kinds.
+//
+// DECLARING STREAMS: this kind deploys the SERVER. Streams, consumers
+// and KV buckets are data-plane objects — create them from
+// applications (any NATS SDK), the nats CLI, or nats-box. A
+// declarative stream-as-resource surface (the NACK controller) is a
+// separate concern this kind deliberately does not bundle.
+//
+// The typed fields below cover the chart's meaningful configuration
+// surface; `helm_values` remains as the escape hatch for chart values
+// beyond them (merged last, Helm `-f` semantics, identical on both
+// engines) — gateways (superclusters), the JWT/operator auth mode and
+// its resolver, per-listener TLS, raw nats.conf keys via the chart's
+// config merge — a safety valve, never the primary interface. Never
+// put secret material in `helm_values`: chart config values render
+// into a ConfigMap; every credential path in this spec rides Secrets
+// and environment expansion instead.
 type KubernetesNatsSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// server container settings (replicas, resources, disk).
-	ServerContainer *KubernetesNatsServerContainer `protobuf:"bytes,4,opt,name=server_container,json=serverContainer,proto3" json:"server_container,omitempty"`
-	// disable jet-stream persistence
-	DisableJetStream bool `protobuf:"varint,5,opt,name=disable_jet_stream,json=disableJetStream,proto3" json:"disable_jet_stream,omitempty"`
-	// authentication settings for the nats cluster.
+	// *
+	// Namespace to install into. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the
+	// resource. When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (e.g. "2.14.2" — the chart and the
+	// NATS server move in version lockstep, so chart 2.14.2 runs
+	// nats-server 2.14.2). Versions must exist as SERVED charts in the
+	// repository index (https://nats-io.github.io/k8s/helm/charts/).
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// Multi-server clustering (full-mesh routes between servers). Empty
+	// = a single server — a complete deployment for dev and modest
+	// workloads. Enable for HA and for replicated JetStream streams
+	// (stream replicas can never exceed the server count).
+	Cluster *KubernetesNatsCluster `protobuf:"bytes,4,opt,name=cluster,proto3" json:"cluster,omitempty"`
+	// *
+	// JetStream — the persistence layer (streams, consumers, KV/object
+	// stores). ON by default with a persistent file store; core NATS
+	// pub/sub works either way.
+	JetStream *KubernetesNatsJetStream `protobuf:"bytes,5,opt,name=jet_stream,json=jetStream,proto3" json:"jet_stream,omitempty"`
+	// *
+	// Client authentication. Empty = UNAUTHENTICATED — any client that
+	// can reach the Service connects with full access. Declare flat
+	// `users` or multi-tenant `accounts` (never both); passwords are
+	// module-generated and exported via the `<name>-auth` Secret.
 	Auth *KubernetesNatsAuth `protobuf:"bytes,6,opt,name=auth,proto3" json:"auth,omitempty"`
-	// tls settings for the nats cluster.
-	TlsEnabled bool `protobuf:"varint,7,opt,name=tls_enabled,json=tlsEnabled,proto3" json:"tls_enabled,omitempty"`
-	// optional ingress configuration for external access.
-	Ingress *KubernetesNatsIngress `protobuf:"bytes,8,opt,name=ingress,proto3" json:"ingress,omitempty"`
-	// toggle to deploy the nats-box utility pod.
-	DisableNatsBox bool `protobuf:"varint,9,opt,name=disable_nats_box,json=disableNatsBox,proto3" json:"disable_nats_box,omitempty"`
-	// NACK JetStream controller configuration (opt-in).
-	// When enabled, deploys the NACK controller alongside NATS for managing
-	// streams and consumers via Kubernetes CRDs.
-	NackController *KubernetesNatsNackController `protobuf:"bytes,10,opt,name=nack_controller,json=nackController,proto3" json:"nack_controller,omitempty"`
-	// JetStream streams to create.
-	// Requires nack_controller.enabled = true.
-	// Streams are created as Kubernetes custom resources managed by NACK.
-	Streams []*KubernetesNatsStream `protobuf:"bytes,11,rep,name=streams,proto3" json:"streams,omitempty"`
-	// NATS Helm chart version.
-	// To check available versions: helm search repo nats/nats --versions
-	// Chart repository: https://nats-io.github.io/k8s/
-	NatsHelmChartVersion *string `protobuf:"bytes,12,opt,name=nats_helm_chart_version,json=natsHelmChartVersion,proto3,oneof" json:"nats_helm_chart_version,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// *
+	// TLS on the client listener (port 4222). Websocket, cluster and
+	// leafnode listener TLS ride `helm_values` (each listener has its
+	// own tls block in the chart).
+	Tls *KubernetesNatsTls `protobuf:"bytes,7,opt,name=tls,proto3" json:"tls,omitempty"`
+	// *
+	// The WebSocket listener — NATS over websockets for browser clients
+	// and networks that only pass HTTP. Off by default.
+	Websocket *KubernetesNatsWebsocket `protobuf:"bytes,8,opt,name=websocket,proto3" json:"websocket,omitempty"`
+	// *
+	// The MQTT listener — IoT devices speak MQTT 3.1.1 directly to
+	// NATS, bridged into JetStream. Requires `jet_stream` (MQTT
+	// sessions and retained messages live in JetStream). Off by
+	// default.
+	Mqtt *KubernetesNatsMqtt `protobuf:"bytes,9,opt,name=mqtt,proto3" json:"mqtt,omitempty"`
+	// *
+	// The leafnode listener — edge/remote NATS servers extend this
+	// deployment by connecting as leaf nodes (the hub side). Off by
+	// default.
+	Leafnodes *KubernetesNatsLeafnodes `protobuf:"bytes,10,opt,name=leafnodes,proto3" json:"leafnodes,omitempty"`
+	// *
+	// Prometheus metrics. The server's monitoring endpoint (port 8222)
+	// is always on in-pod; this block adds the prometheus-nats-exporter
+	// sidecar and, optionally, a PodMonitor for operator-based scraping.
+	Metrics *KubernetesNatsMetrics `protobuf:"bytes,11,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	// *
+	// Deploy the nats-box utility pod — a shell with the `nats` CLI
+	// pre-wired to this deployment (contexts, credentials). Enabled by
+	// default, matching the chart; the go-to surface for creating
+	// streams and debugging.
+	NatsBoxEnabled *bool `protobuf:"varint,12,opt,name=nats_box_enabled,json=natsBoxEnabled,proto3,oneof" json:"nats_box_enabled,omitempty"`
+	// *
+	// Container resources for each NATS server. Empty = the chart's
+	// defaults (no requests — fine for dev). When `jet_stream` uses a
+	// memory store, set a memory limit comfortably above
+	// `memory_store_max_size`.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,13,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// The client Service's exposure shape. Empty = ClusterIP (in-cluster
+	// clients only).
+	Service *KubernetesNatsService `protobuf:"bytes,14,opt,name=service,proto3" json:"service,omitempty"`
+	// *
+	// Pod scheduling for the NATS server pods.
+	Scheduling *KubernetesNatsScheduling `protobuf:"bytes,15,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
+	// *
+	// Container image overrides for air-gapped clusters and private
+	// mirrors. Empty = the chart's pinned upstream images.
+	Images *KubernetesNatsImages `protobuf:"bytes,16,opt,name=images,proto3" json:"images,omitempty"`
+	// *
+	// Additional Helm values merged LAST (Helm `-f` semantics, identical
+	// on both engines) — the escape hatch for chart values the typed
+	// fields do not model: gateways, the JWT resolver, per-listener TLS,
+	// raw nats.conf keys through `config.merge`, pod-template patches.
+	// YAML document as a string. Never put secret material here (config
+	// values render into a ConfigMap); credentials belong in the typed
+	// auth model, which keeps them in Secrets.
+	HelmValues    string `protobuf:"bytes,17,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesNatsSpec) Reset() {
@@ -479,18 +268,25 @@ func (x *KubernetesNatsSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesNatsSpec) GetServerContainer() *KubernetesNatsServerContainer {
+func (x *KubernetesNatsSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
+	}
+	return ""
+}
+
+func (x *KubernetesNatsSpec) GetCluster() *KubernetesNatsCluster {
 	if x != nil {
-		return x.ServerContainer
+		return x.Cluster
 	}
 	return nil
 }
 
-func (x *KubernetesNatsSpec) GetDisableJetStream() bool {
+func (x *KubernetesNatsSpec) GetJetStream() *KubernetesNatsJetStream {
 	if x != nil {
-		return x.DisableJetStream
+		return x.JetStream
 	}
-	return false
+	return nil
 }
 
 func (x *KubernetesNatsSpec) GetAuth() *KubernetesNatsAuth {
@@ -500,138 +296,191 @@ func (x *KubernetesNatsSpec) GetAuth() *KubernetesNatsAuth {
 	return nil
 }
 
-func (x *KubernetesNatsSpec) GetTlsEnabled() bool {
+func (x *KubernetesNatsSpec) GetTls() *KubernetesNatsTls {
 	if x != nil {
-		return x.TlsEnabled
+		return x.Tls
+	}
+	return nil
+}
+
+func (x *KubernetesNatsSpec) GetWebsocket() *KubernetesNatsWebsocket {
+	if x != nil {
+		return x.Websocket
+	}
+	return nil
+}
+
+func (x *KubernetesNatsSpec) GetMqtt() *KubernetesNatsMqtt {
+	if x != nil {
+		return x.Mqtt
+	}
+	return nil
+}
+
+func (x *KubernetesNatsSpec) GetLeafnodes() *KubernetesNatsLeafnodes {
+	if x != nil {
+		return x.Leafnodes
+	}
+	return nil
+}
+
+func (x *KubernetesNatsSpec) GetMetrics() *KubernetesNatsMetrics {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+func (x *KubernetesNatsSpec) GetNatsBoxEnabled() bool {
+	if x != nil && x.NatsBoxEnabled != nil {
+		return *x.NatsBoxEnabled
 	}
 	return false
 }
 
-func (x *KubernetesNatsSpec) GetIngress() *KubernetesNatsIngress {
-	if x != nil {
-		return x.Ingress
-	}
-	return nil
-}
-
-func (x *KubernetesNatsSpec) GetDisableNatsBox() bool {
-	if x != nil {
-		return x.DisableNatsBox
-	}
-	return false
-}
-
-func (x *KubernetesNatsSpec) GetNackController() *KubernetesNatsNackController {
-	if x != nil {
-		return x.NackController
-	}
-	return nil
-}
-
-func (x *KubernetesNatsSpec) GetStreams() []*KubernetesNatsStream {
-	if x != nil {
-		return x.Streams
-	}
-	return nil
-}
-
-func (x *KubernetesNatsSpec) GetNatsHelmChartVersion() string {
-	if x != nil && x.NatsHelmChartVersion != nil {
-		return *x.NatsHelmChartVersion
-	}
-	return ""
-}
-
-// server container settings for the nats stateful-set.
-type KubernetesNatsServerContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// number of nats replicas; use an odd value for quorum.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// cpu and memory resources for each pod.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// pvc size for jet-stream file store (e.g. "10Gi").
-	DiskSize      string `protobuf:"bytes,3,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesNatsServerContainer) Reset() {
-	*x = KubernetesNatsServerContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesNatsServerContainer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesNatsServerContainer) ProtoMessage() {}
-
-func (x *KubernetesNatsServerContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesNatsServerContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesNatsServerContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *KubernetesNatsServerContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesNatsServerContainer) GetResources() *kubernetes.ContainerResources {
+func (x *KubernetesNatsSpec) GetResources() *kubernetes.ContainerResources {
 	if x != nil {
 		return x.Resources
 	}
 	return nil
 }
 
-func (x *KubernetesNatsServerContainer) GetDiskSize() string {
+func (x *KubernetesNatsSpec) GetService() *KubernetesNatsService {
 	if x != nil {
-		return x.DiskSize
+		return x.Service
+	}
+	return nil
+}
+
+func (x *KubernetesNatsSpec) GetScheduling() *KubernetesNatsScheduling {
+	if x != nil {
+		return x.Scheduling
+	}
+	return nil
+}
+
+func (x *KubernetesNatsSpec) GetImages() *KubernetesNatsImages {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
+func (x *KubernetesNatsSpec) GetHelmValues() string {
+	if x != nil {
+		return x.HelmValues
 	}
 	return ""
 }
 
-// configuration for an unauthenticated ("no-auth") user.
-type KubernetesNatsNoAuthUser struct {
+// *
+// Multi-server clustering.
+type KubernetesNatsCluster struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// enables the unauthenticated user when true.
+	// *
+	// Enable clustering (a full mesh of routes across the StatefulSet's
+	// servers).
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// subjects on which the unauthenticated user may publish.
-	// at least one subject must be specified when enabled is true.
-	PublishSubjects []string `protobuf:"bytes,2,rep,name=publish_subjects,json=publishSubjects,proto3" json:"publish_subjects,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// *
+	// Number of NATS servers. Use an odd count — JetStream placement
+	// uses RAFT groups, and odd counts tolerate the most failures per
+	// server added (3 tolerates 1 down, 5 tolerates 2). Minimum 2 when
+	// clustering with JetStream (the chart's own floor); 3 is the
+	// smallest count that keeps replicated streams available through a
+	// pod loss. Empty = 3.
+	Replicas      *int32 `protobuf:"varint,2,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesNatsNoAuthUser) Reset() {
-	*x = KubernetesNatsNoAuthUser{}
+func (x *KubernetesNatsCluster) Reset() {
+	*x = KubernetesNatsCluster{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesNatsCluster) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesNatsCluster) ProtoMessage() {}
+
+func (x *KubernetesNatsCluster) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesNatsCluster.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsCluster) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesNatsCluster) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesNatsCluster) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+// *
+// JetStream persistence.
+type KubernetesNatsJetStream struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Enable JetStream. Empty = true — this kind's default posture is
+	// persistent messaging (the chart's raw default is off).
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// *
+	// Size of each server's persistent volume for the file store —
+	// where stream data lives. Empty = "10Gi" (the chart default).
+	DiskSize *string `protobuf:"bytes,2,opt,name=disk_size,json=diskSize,proto3,oneof" json:"disk_size,omitempty"`
+	// *
+	// Storage class for the JetStream volumes. Empty = the cluster's
+	// default class.
+	StorageClass *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// *
+	// Cap on total file-store usage per server (e.g. "8Gi"). Empty =
+	// the volume size (the chart derives it from the PVC).
+	MaxFileStore *string `protobuf:"bytes,4,opt,name=max_file_store,json=maxFileStore,proto3,oneof" json:"max_file_store,omitempty"`
+	// *
+	// Enable the in-memory store tier and cap its size per server
+	// (e.g. "1Gi"). Memory streams are fast and ephemeral — data is
+	// gone on pod restart. Empty = memory store disabled. The server's
+	// memory limit must comfortably exceed this.
+	MemoryStoreMaxSize *string `protobuf:"bytes,5,opt,name=memory_store_max_size,json=memoryStoreMaxSize,proto3,oneof" json:"memory_store_max_size,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *KubernetesNatsJetStream) Reset() {
+	*x = KubernetesNatsJetStream{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesNatsNoAuthUser) String() string {
+func (x *KubernetesNatsJetStream) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesNatsNoAuthUser) ProtoMessage() {}
+func (*KubernetesNatsJetStream) ProtoMessage() {}
 
-func (x *KubernetesNatsNoAuthUser) ProtoReflect() protoreflect.Message {
+func (x *KubernetesNatsJetStream) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -643,34 +492,69 @@ func (x *KubernetesNatsNoAuthUser) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesNatsNoAuthUser.ProtoReflect.Descriptor instead.
-func (*KubernetesNatsNoAuthUser) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesNatsJetStream.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsJetStream) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *KubernetesNatsNoAuthUser) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
+func (x *KubernetesNatsJetStream) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
 	}
 	return false
 }
 
-func (x *KubernetesNatsNoAuthUser) GetPublishSubjects() []string {
+func (x *KubernetesNatsJetStream) GetDiskSize() string {
+	if x != nil && x.DiskSize != nil {
+		return *x.DiskSize
+	}
+	return ""
+}
+
+func (x *KubernetesNatsJetStream) GetStorageClass() *v1.StringValueOrRef {
 	if x != nil {
-		return x.PublishSubjects
+		return x.StorageClass
 	}
 	return nil
 }
 
-// KubernetesNatsAuth holds the authentication configuration for the nats cluster.
+func (x *KubernetesNatsJetStream) GetMaxFileStore() string {
+	if x != nil && x.MaxFileStore != nil {
+		return *x.MaxFileStore
+	}
+	return ""
+}
+
+func (x *KubernetesNatsJetStream) GetMemoryStoreMaxSize() string {
+	if x != nil && x.MemoryStoreMaxSize != nil {
+		return *x.MemoryStoreMaxSize
+	}
+	return ""
+}
+
+// *
+// Client authentication. Declare EITHER flat `users` (one shared
+// namespace of subjects) OR `accounts` (isolated subject namespaces —
+// NATS's multi-tenancy). Passwords are always module-generated and
+// exported via the `<name>-auth` Secret, one key per username; the
+// server reads each password from environment (a Secret-backed env
+// var), so no credential ever appears in the rendered config.
 type KubernetesNatsAuth struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// toggle to enable authentication for the nats cluster.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// authentication scheme for the nats cluster.
-	Scheme KubernetesNatsAuthScheme `protobuf:"varint,2,opt,name=scheme,proto3,enum=dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuthScheme" json:"scheme,omitempty"`
-	// optional no-auth user configuration.
-	NoAuthUser    *KubernetesNatsNoAuthUser `protobuf:"bytes,3,opt,name=no_auth_user,json=noAuthUser,proto3" json:"no_auth_user,omitempty"`
+	// *
+	// Flat users on the global account.
+	Users []*KubernetesNatsUser `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	// *
+	// Multi-tenant accounts, each with its own users and an isolated
+	// subject namespace (messages never cross accounts unless you add
+	// exports/imports via `helm_values`).
+	Accounts []*KubernetesNatsAccount `protobuf:"bytes,2,rep,name=accounts,proto3" json:"accounts,omitempty"`
+	// *
+	// Username connections WITHOUT credentials are treated as (the
+	// "guest" identity). Must be one of the declared usernames — scope
+	// what anonymous clients may do through THAT user's permissions.
+	// Empty = unauthenticated connections are rejected outright.
+	NoAuthUser    string `protobuf:"bytes,3,opt,name=no_auth_user,json=noAuthUser,proto3" json:"no_auth_user,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -705,55 +589,57 @@ func (*KubernetesNatsAuth) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *KubernetesNatsAuth) GetEnabled() bool {
+func (x *KubernetesNatsAuth) GetUsers() []*KubernetesNatsUser {
 	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *KubernetesNatsAuth) GetScheme() KubernetesNatsAuthScheme {
-	if x != nil {
-		return x.Scheme
-	}
-	return KubernetesNatsAuthScheme_nats_kubernetes_auth_scheme_unspecified
-}
-
-func (x *KubernetesNatsAuth) GetNoAuthUser() *KubernetesNatsNoAuthUser {
-	if x != nil {
-		return x.NoAuthUser
+		return x.Users
 	}
 	return nil
 }
 
-// KubernetesNatsIngress defines ingress configuration for NATS external access.
-type KubernetesNatsIngress struct {
+func (x *KubernetesNatsAuth) GetAccounts() []*KubernetesNatsAccount {
+	if x != nil {
+		return x.Accounts
+	}
+	return nil
+}
+
+func (x *KubernetesNatsAuth) GetNoAuthUser() string {
+	if x != nil {
+		return x.NoAuthUser
+	}
+	return ""
+}
+
+// *
+// One NATS user. The password is module-generated and exported under
+// this username's key in the `<name>-auth` Secret.
+type KubernetesNatsUser struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Flag to enable or disable ingress.
-	// When enabled, creates a LoadBalancer service for external access.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// The full hostname for external access (e.g., "nats.example.com").
-	// This hostname will be configured via external-dns annotations.
-	// Required when enabled is true.
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	// *
+	// Username (also the key in the auth Secret).
+	Username string `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	// *
+	// Subject-level permissions. Empty = full publish/subscribe on the
+	// user's account.
+	Permissions   *KubernetesNatsPermissions `protobuf:"bytes,2,opt,name=permissions,proto3" json:"permissions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesNatsIngress) Reset() {
-	*x = KubernetesNatsIngress{}
+func (x *KubernetesNatsUser) Reset() {
+	*x = KubernetesNatsUser{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesNatsIngress) String() string {
+func (x *KubernetesNatsUser) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesNatsIngress) ProtoMessage() {}
+func (*KubernetesNatsUser) ProtoMessage() {}
 
-func (x *KubernetesNatsIngress) ProtoReflect() protoreflect.Message {
+func (x *KubernetesNatsUser) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -765,65 +651,57 @@ func (x *KubernetesNatsIngress) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesNatsIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesNatsIngress) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesNatsUser.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsUser) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *KubernetesNatsIngress) GetEnabled() bool {
+func (x *KubernetesNatsUser) GetUsername() string {
 	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *KubernetesNatsIngress) GetHostname() string {
-	if x != nil {
-		return x.Hostname
+		return x.Username
 	}
 	return ""
 }
 
-// KubernetesNatsNackController configures the NACK JetStream controller.
-// NACK (NATS Controllers for Kubernetes) is the official operator for managing
-// JetStream resources (Streams, Consumers, KeyValue, ObjectStore) via CRDs.
-type KubernetesNatsNackController struct {
+func (x *KubernetesNatsUser) GetPermissions() *KubernetesNatsPermissions {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
+}
+
+// *
+// Subject-level permissions for a user. Subjects support NATS
+// wildcards (`orders.*`, `events.>`). Allow and deny can be combined
+// — deny wins on overlap.
+type KubernetesNatsPermissions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable the NACK JetStream controller.
-	// When enabled, NACK will be deployed alongside NATS and can manage
-	// Stream/Consumer resources declaratively via Kubernetes CRDs.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// Enable control-loop mode for the NACK controller.
-	// Required for KeyValue and ObjectStore support.
-	// Also provides more reliable state enforcement.
-	EnableControlLoop bool `protobuf:"varint,2,opt,name=enable_control_loop,json=enableControlLoop,proto3" json:"enable_control_loop,omitempty"`
-	// NACK Helm chart version.
-	// To check available versions: helm search repo nats/nack --versions
-	// Chart repository: https://nats-io.github.io/k8s/
-	HelmChartVersion *string `protobuf:"bytes,3,opt,name=helm_chart_version,json=helmChartVersion,proto3,oneof" json:"helm_chart_version,omitempty"`
-	// NACK app version (GitHub release tag).
-	// Used for fetching CRDs from: https://github.com/nats-io/nack/releases
-	// Note: App version differs from chart version. Check "APP VERSION" column in:
-	// helm search repo nats/nack --versions
-	AppVersion    *string `protobuf:"bytes,4,opt,name=app_version,json=appVersion,proto3,oneof" json:"app_version,omitempty"`
+	// Subjects the user MAY publish to.
+	PublishAllow []string `protobuf:"bytes,1,rep,name=publish_allow,json=publishAllow,proto3" json:"publish_allow,omitempty"`
+	// Subjects the user may NOT publish to.
+	PublishDeny []string `protobuf:"bytes,2,rep,name=publish_deny,json=publishDeny,proto3" json:"publish_deny,omitempty"`
+	// Subjects the user MAY subscribe to.
+	SubscribeAllow []string `protobuf:"bytes,3,rep,name=subscribe_allow,json=subscribeAllow,proto3" json:"subscribe_allow,omitempty"`
+	// Subjects the user may NOT subscribe to.
+	SubscribeDeny []string `protobuf:"bytes,4,rep,name=subscribe_deny,json=subscribeDeny,proto3" json:"subscribe_deny,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesNatsNackController) Reset() {
-	*x = KubernetesNatsNackController{}
+func (x *KubernetesNatsPermissions) Reset() {
+	*x = KubernetesNatsPermissions{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesNatsNackController) String() string {
+func (x *KubernetesNatsPermissions) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesNatsNackController) ProtoMessage() {}
+func (*KubernetesNatsPermissions) ProtoMessage() {}
 
-func (x *KubernetesNatsNackController) ProtoReflect() protoreflect.Message {
+func (x *KubernetesNatsPermissions) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -835,60 +713,73 @@ func (x *KubernetesNatsNackController) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesNatsNackController.ProtoReflect.Descriptor instead.
-func (*KubernetesNatsNackController) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesNatsPermissions.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsPermissions) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *KubernetesNatsNackController) GetEnabled() bool {
+func (x *KubernetesNatsPermissions) GetPublishAllow() []string {
 	if x != nil {
-		return x.Enabled
+		return x.PublishAllow
 	}
-	return false
+	return nil
 }
 
-func (x *KubernetesNatsNackController) GetEnableControlLoop() bool {
+func (x *KubernetesNatsPermissions) GetPublishDeny() []string {
 	if x != nil {
-		return x.EnableControlLoop
+		return x.PublishDeny
 	}
-	return false
+	return nil
 }
 
-func (x *KubernetesNatsNackController) GetHelmChartVersion() string {
-	if x != nil && x.HelmChartVersion != nil {
-		return *x.HelmChartVersion
+func (x *KubernetesNatsPermissions) GetSubscribeAllow() []string {
+	if x != nil {
+		return x.SubscribeAllow
 	}
-	return ""
+	return nil
 }
 
-func (x *KubernetesNatsNackController) GetAppVersion() string {
-	if x != nil && x.AppVersion != nil {
-		return *x.AppVersion
+func (x *KubernetesNatsPermissions) GetSubscribeDeny() []string {
+	if x != nil {
+		return x.SubscribeDeny
 	}
-	return ""
+	return nil
 }
 
-// Wrapper for stream storage backend enum.
-type StreamStorageEnum struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+// *
+// One NATS account — an isolated subject namespace (multi-tenancy).
+type KubernetesNatsAccount struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Account name.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// *
+	// Users belonging to this account. At least one — an account
+	// nobody can connect to configures nothing.
+	Users []*KubernetesNatsUser `protobuf:"bytes,2,rep,name=users,proto3" json:"users,omitempty"`
+	// *
+	// Let this account use JetStream (streams/consumers/KV are
+	// per-account with `accounts` defined). Requires `jet_stream` on
+	// the spec.
+	JetStreamEnabled bool `protobuf:"varint,3,opt,name=jet_stream_enabled,json=jetStreamEnabled,proto3" json:"jet_stream_enabled,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
-func (x *StreamStorageEnum) Reset() {
-	*x = StreamStorageEnum{}
+func (x *KubernetesNatsAccount) Reset() {
+	*x = KubernetesNatsAccount{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *StreamStorageEnum) String() string {
+func (x *KubernetesNatsAccount) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*StreamStorageEnum) ProtoMessage() {}
+func (*KubernetesNatsAccount) ProtoMessage() {}
 
-func (x *StreamStorageEnum) ProtoReflect() protoreflect.Message {
+func (x *KubernetesNatsAccount) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -900,401 +791,418 @@ func (x *StreamStorageEnum) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use StreamStorageEnum.ProtoReflect.Descriptor instead.
-func (*StreamStorageEnum) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesNatsAccount.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsAccount) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
-// Wrapper for stream retention policy enum.
-type StreamRetentionEnum struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *StreamRetentionEnum) Reset() {
-	*x = StreamRetentionEnum{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StreamRetentionEnum) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StreamRetentionEnum) ProtoMessage() {}
-
-func (x *StreamRetentionEnum) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StreamRetentionEnum.ProtoReflect.Descriptor instead.
-func (*StreamRetentionEnum) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{7}
-}
-
-// Wrapper for stream discard policy enum.
-type StreamDiscardEnum struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *StreamDiscardEnum) Reset() {
-	*x = StreamDiscardEnum{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *StreamDiscardEnum) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*StreamDiscardEnum) ProtoMessage() {}
-
-func (x *StreamDiscardEnum) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use StreamDiscardEnum.ProtoReflect.Descriptor instead.
-func (*StreamDiscardEnum) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{8}
-}
-
-// Wrapper for consumer delivery policy enum.
-type ConsumerDeliverPolicyEnum struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConsumerDeliverPolicyEnum) Reset() {
-	*x = ConsumerDeliverPolicyEnum{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConsumerDeliverPolicyEnum) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConsumerDeliverPolicyEnum) ProtoMessage() {}
-
-func (x *ConsumerDeliverPolicyEnum) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConsumerDeliverPolicyEnum.ProtoReflect.Descriptor instead.
-func (*ConsumerDeliverPolicyEnum) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{9}
-}
-
-// Wrapper for consumer acknowledgment policy enum.
-type ConsumerAckPolicyEnum struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConsumerAckPolicyEnum) Reset() {
-	*x = ConsumerAckPolicyEnum{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConsumerAckPolicyEnum) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConsumerAckPolicyEnum) ProtoMessage() {}
-
-func (x *ConsumerAckPolicyEnum) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConsumerAckPolicyEnum.ProtoReflect.Descriptor instead.
-func (*ConsumerAckPolicyEnum) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{10}
-}
-
-// Wrapper for consumer replay policy enum.
-type ConsumerReplayPolicyEnum struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ConsumerReplayPolicyEnum) Reset() {
-	*x = ConsumerReplayPolicyEnum{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ConsumerReplayPolicyEnum) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ConsumerReplayPolicyEnum) ProtoMessage() {}
-
-func (x *ConsumerReplayPolicyEnum) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ConsumerReplayPolicyEnum.ProtoReflect.Descriptor instead.
-func (*ConsumerReplayPolicyEnum) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{11}
-}
-
-// KubernetesNatsStream configures a JetStream stream.
-// Streams are the core storage layer in JetStream, capturing and storing messages
-// published to specific subjects.
-type KubernetesNatsStream struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// A unique name for the stream.
-	// Must be between 1-255 characters, alphanumeric with allowed: - _ .
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// List of subjects to consume, supports wildcards (e.g., "orders.*", "events.>").
-	Subjects []string `protobuf:"bytes,2,rep,name=subjects,proto3" json:"subjects,omitempty"`
-	// Storage backend for the stream (file or memory).
-	Storage StreamStorageEnum_Value `protobuf:"varint,3,opt,name=storage,proto3,enum=dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum_Value" json:"storage,omitempty"`
-	// Number of replicas for the stream (odd number recommended for quorum).
-	Replicas int32 `protobuf:"varint,4,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// Retention policy for the stream (limits, interest, or workqueue).
-	Retention StreamRetentionEnum_Value `protobuf:"varint,5,opt,name=retention,proto3,enum=dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum_Value" json:"retention,omitempty"`
-	// Maximum age of messages in the stream (e.g., "24h", "7d").
-	// Empty string means unlimited.
-	MaxAge string `protobuf:"bytes,6,opt,name=max_age,json=maxAge,proto3" json:"max_age,omitempty"`
-	// Maximum size of the stream in bytes. -1 for unlimited.
-	MaxBytes int64 `protobuf:"varint,7,opt,name=max_bytes,json=maxBytes,proto3" json:"max_bytes,omitempty"`
-	// Maximum number of messages in the stream. -1 for unlimited.
-	MaxMsgs int64 `protobuf:"varint,8,opt,name=max_msgs,json=maxMsgs,proto3" json:"max_msgs,omitempty"`
-	// Maximum message size in bytes. -1 for unlimited.
-	MaxMsgSize int32 `protobuf:"varint,9,opt,name=max_msg_size,json=maxMsgSize,proto3" json:"max_msg_size,omitempty"`
-	// Maximum number of consumers allowed. -1 for unlimited.
-	MaxConsumers int32 `protobuf:"varint,10,opt,name=max_consumers,json=maxConsumers,proto3" json:"max_consumers,omitempty"`
-	// Discard policy when limits are reached (old or new).
-	Discard StreamDiscardEnum_Value `protobuf:"varint,11,opt,name=discard,proto3,enum=dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum_Value" json:"discard,omitempty"`
-	// Description of the stream.
-	Description string `protobuf:"bytes,12,opt,name=description,proto3" json:"description,omitempty"`
-	// Consumers for this stream.
-	Consumers     []*KubernetesNatsConsumer `protobuf:"bytes,13,rep,name=consumers,proto3" json:"consumers,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesNatsStream) Reset() {
-	*x = KubernetesNatsStream{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesNatsStream) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesNatsStream) ProtoMessage() {}
-
-func (x *KubernetesNatsStream) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesNatsStream.ProtoReflect.Descriptor instead.
-func (*KubernetesNatsStream) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *KubernetesNatsStream) GetName() string {
+func (x *KubernetesNatsAccount) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *KubernetesNatsStream) GetSubjects() []string {
+func (x *KubernetesNatsAccount) GetUsers() []*KubernetesNatsUser {
 	if x != nil {
-		return x.Subjects
+		return x.Users
 	}
 	return nil
 }
 
-func (x *KubernetesNatsStream) GetStorage() StreamStorageEnum_Value {
+func (x *KubernetesNatsAccount) GetJetStreamEnabled() bool {
 	if x != nil {
-		return x.Storage
+		return x.JetStreamEnabled
 	}
-	return StreamStorageEnum_unspecified
+	return false
 }
 
-func (x *KubernetesNatsStream) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesNatsStream) GetRetention() StreamRetentionEnum_Value {
-	if x != nil {
-		return x.Retention
-	}
-	return StreamRetentionEnum_unspecified
-}
-
-func (x *KubernetesNatsStream) GetMaxAge() string {
-	if x != nil {
-		return x.MaxAge
-	}
-	return ""
-}
-
-func (x *KubernetesNatsStream) GetMaxBytes() int64 {
-	if x != nil {
-		return x.MaxBytes
-	}
-	return 0
-}
-
-func (x *KubernetesNatsStream) GetMaxMsgs() int64 {
-	if x != nil {
-		return x.MaxMsgs
-	}
-	return 0
-}
-
-func (x *KubernetesNatsStream) GetMaxMsgSize() int32 {
-	if x != nil {
-		return x.MaxMsgSize
-	}
-	return 0
-}
-
-func (x *KubernetesNatsStream) GetMaxConsumers() int32 {
-	if x != nil {
-		return x.MaxConsumers
-	}
-	return 0
-}
-
-func (x *KubernetesNatsStream) GetDiscard() StreamDiscardEnum_Value {
-	if x != nil {
-		return x.Discard
-	}
-	return StreamDiscardEnum_unspecified
-}
-
-func (x *KubernetesNatsStream) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-func (x *KubernetesNatsStream) GetConsumers() []*KubernetesNatsConsumer {
-	if x != nil {
-		return x.Consumers
-	}
-	return nil
-}
-
-// KubernetesNatsConsumer configures a JetStream consumer.
-// Consumers define how messages are delivered and acknowledged from a stream.
-type KubernetesNatsConsumer struct {
+// *
+// TLS on the client listener. Expects a standard kubernetes.io/tls
+// Secret (keys tls.crt/tls.key — the shape cert-manager produces).
+type KubernetesNatsTls struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The durable name of the consumer.
-	// Must be unique within the stream.
-	DurableName string `protobuf:"bytes,1,opt,name=durable_name,json=durableName,proto3" json:"durable_name,omitempty"`
-	// Delivery policy for the consumer (all, last, or new).
-	DeliverPolicy ConsumerDeliverPolicyEnum_Value `protobuf:"varint,2,opt,name=deliver_policy,json=deliverPolicy,proto3,enum=dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum_Value" json:"deliver_policy,omitempty"`
-	// Acknowledgment policy for the consumer (none, all, or explicit).
-	AckPolicy ConsumerAckPolicyEnum_Value `protobuf:"varint,3,opt,name=ack_policy,json=ackPolicy,proto3,enum=dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum_Value" json:"ack_policy,omitempty"`
-	// Filter subject for the consumer (supports wildcards).
-	// Only messages matching this subject will be delivered.
-	FilterSubject string `protobuf:"bytes,4,opt,name=filter_subject,json=filterSubject,proto3" json:"filter_subject,omitempty"`
-	// Deliver subject for push-based consumers.
-	// If empty, creates a pull-based consumer.
-	DeliverSubject string `protobuf:"bytes,5,opt,name=deliver_subject,json=deliverSubject,proto3" json:"deliver_subject,omitempty"`
-	// Queue group name for load balancing across multiple consumers.
-	DeliverGroup string `protobuf:"bytes,6,opt,name=deliver_group,json=deliverGroup,proto3" json:"deliver_group,omitempty"`
-	// Maximum number of unacknowledged messages.
-	MaxAckPending int32 `protobuf:"varint,7,opt,name=max_ack_pending,json=maxAckPending,proto3" json:"max_ack_pending,omitempty"`
-	// Maximum number of delivery attempts. -1 for unlimited.
-	MaxDeliver int32 `protobuf:"varint,8,opt,name=max_deliver,json=maxDeliver,proto3" json:"max_deliver,omitempty"`
-	// Time to wait for acknowledgment (e.g., "30s", "1m").
-	AckWait string `protobuf:"bytes,9,opt,name=ack_wait,json=ackWait,proto3" json:"ack_wait,omitempty"`
-	// Replay policy for the consumer (original or instant).
-	ReplayPolicy ConsumerReplayPolicyEnum_Value `protobuf:"varint,10,opt,name=replay_policy,json=replayPolicy,proto3,enum=dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum_Value" json:"replay_policy,omitempty"`
-	// Description of the consumer.
-	Description   string `protobuf:"bytes,11,opt,name=description,proto3" json:"description,omitempty"`
+	// *
+	// Name of the existing TLS Secret in the install namespace.
+	// Accepts a literal name or a KubernetesCertificate reference.
+	SecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// *
+	// Require clients to present certificates signed by the CA (mutual
+	// TLS). The CA bundle must be present in the Secret (`ca.crt` —
+	// cert-manager includes it) for verification to work.
+	VerifyClients bool `protobuf:"varint,2,opt,name=verify_clients,json=verifyClients,proto3" json:"verify_clients,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesNatsConsumer) Reset() {
-	*x = KubernetesNatsConsumer{}
+func (x *KubernetesNatsTls) Reset() {
+	*x = KubernetesNatsTls{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesNatsTls) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesNatsTls) ProtoMessage() {}
+
+func (x *KubernetesNatsTls) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesNatsTls.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsTls) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesNatsTls) GetSecretName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SecretName
+	}
+	return nil
+}
+
+func (x *KubernetesNatsTls) GetVerifyClients() bool {
+	if x != nil {
+		return x.VerifyClients
+	}
+	return false
+}
+
+// *
+// The WebSocket listener.
+type KubernetesNatsWebsocket struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Enable NATS over WebSocket.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// WebSocket port. Empty = 8080.
+	Port          *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesNatsWebsocket) Reset() {
+	*x = KubernetesNatsWebsocket{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesNatsWebsocket) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesNatsWebsocket) ProtoMessage() {}
+
+func (x *KubernetesNatsWebsocket) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesNatsWebsocket.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsWebsocket) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *KubernetesNatsWebsocket) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesNatsWebsocket) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+// *
+// The MQTT listener (requires JetStream — enforced on the spec).
+type KubernetesNatsMqtt struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Enable the MQTT bridge.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// MQTT port. Empty = 1883.
+	Port          *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesNatsMqtt) Reset() {
+	*x = KubernetesNatsMqtt{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesNatsMqtt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesNatsMqtt) ProtoMessage() {}
+
+func (x *KubernetesNatsMqtt) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesNatsMqtt.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsMqtt) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *KubernetesNatsMqtt) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesNatsMqtt) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+// *
+// The leafnode listener (this deployment as the hub).
+type KubernetesNatsLeafnodes struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Accept leafnode connections.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Leafnode port. Empty = 7422.
+	Port          *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesNatsLeafnodes) Reset() {
+	*x = KubernetesNatsLeafnodes{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesNatsLeafnodes) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesNatsLeafnodes) ProtoMessage() {}
+
+func (x *KubernetesNatsLeafnodes) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesNatsLeafnodes.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsLeafnodes) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *KubernetesNatsLeafnodes) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesNatsLeafnodes) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+// *
+// Prometheus metrics.
+type KubernetesNatsMetrics struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Run the prometheus-nats-exporter sidecar (scrape endpoint on port
+	// 7777 of each server pod).
+	ExporterEnabled bool `protobuf:"varint,1,opt,name=exporter_enabled,json=exporterEnabled,proto3" json:"exporter_enabled,omitempty"`
+	// *
+	// Create a PodMonitor so a Prometheus Operator scrapes the
+	// exporter. Requires the Prometheus Operator CRDs on the cluster —
+	// a KubernetesKubePrometheusStack composes naturally. Requires
+	// `exporter_enabled`.
+	PodMonitorEnabled bool `protobuf:"varint,2,opt,name=pod_monitor_enabled,json=podMonitorEnabled,proto3" json:"pod_monitor_enabled,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *KubernetesNatsMetrics) Reset() {
+	*x = KubernetesNatsMetrics{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesNatsMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesNatsMetrics) ProtoMessage() {}
+
+func (x *KubernetesNatsMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesNatsMetrics.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsMetrics) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *KubernetesNatsMetrics) GetExporterEnabled() bool {
+	if x != nil {
+		return x.ExporterEnabled
+	}
+	return false
+}
+
+func (x *KubernetesNatsMetrics) GetPodMonitorEnabled() bool {
+	if x != nil {
+		return x.PodMonitorEnabled
+	}
+	return false
+}
+
+// *
+// The client Service's exposure shape.
+type KubernetesNatsService struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Service type. Default ClusterIP.
+	Type KubernetesNatsService_ServiceType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService_ServiceType" json:"type,omitempty"`
+	// *
+	// Annotations on the client Service — the cloud-integration surface
+	// (LB class/scheme, external-dns hostnames, internal-LB flags).
+	Annotations   map[string]string `protobuf:"bytes,2,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesNatsService) Reset() {
+	*x = KubernetesNatsService{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesNatsService) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesNatsService) ProtoMessage() {}
+
+func (x *KubernetesNatsService) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesNatsService.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsService) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *KubernetesNatsService) GetType() KubernetesNatsService_ServiceType {
+	if x != nil {
+		return x.Type
+	}
+	return KubernetesNatsService_cluster_ip
+}
+
+func (x *KubernetesNatsService) GetAnnotations() map[string]string {
+	if x != nil {
+		return x.Annotations
+	}
+	return nil
+}
+
+// *
+// Pod scheduling for the NATS server pods (nats-box schedules
+// anywhere).
+type KubernetesNatsScheduling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Node selector for the server pods.
+	NodeSelector map[string]string `protobuf:"bytes,1,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for the server pods.
+	Tolerations   []*kubernetes.WorkloadToleration `protobuf:"bytes,2,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesNatsScheduling) Reset() {
+	*x = KubernetesNatsScheduling{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesNatsConsumer) String() string {
+func (x *KubernetesNatsScheduling) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesNatsConsumer) ProtoMessage() {}
+func (*KubernetesNatsScheduling) ProtoMessage() {}
 
-func (x *KubernetesNatsConsumer) ProtoReflect() protoreflect.Message {
+func (x *KubernetesNatsScheduling) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1306,229 +1214,220 @@ func (x *KubernetesNatsConsumer) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesNatsConsumer.ProtoReflect.Descriptor instead.
-func (*KubernetesNatsConsumer) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesNatsScheduling.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsScheduling) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *KubernetesNatsConsumer) GetDurableName() string {
+func (x *KubernetesNatsScheduling) GetNodeSelector() map[string]string {
 	if x != nil {
-		return x.DurableName
+		return x.NodeSelector
 	}
-	return ""
+	return nil
 }
 
-func (x *KubernetesNatsConsumer) GetDeliverPolicy() ConsumerDeliverPolicyEnum_Value {
+func (x *KubernetesNatsScheduling) GetTolerations() []*kubernetes.WorkloadToleration {
 	if x != nil {
-		return x.DeliverPolicy
+		return x.Tolerations
 	}
-	return ConsumerDeliverPolicyEnum_unspecified
+	return nil
 }
 
-func (x *KubernetesNatsConsumer) GetAckPolicy() ConsumerAckPolicyEnum_Value {
+// *
+// Container image overrides (air-gap/mirror support). The chart
+// splits registry from repository internally; give each override as
+// a full repository reference (e.g. "mirror.example.com/nats") and
+// the modules place the pieces correctly. Empty tag = the chart's
+// pinned tag for `chart_version`.
+type KubernetesNatsImages struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// The NATS server image (upstream: nats, alpine tag).
+	Nats *kubernetes.ContainerImage `protobuf:"bytes,1,opt,name=nats,proto3" json:"nats,omitempty"`
+	// *
+	// The config-reloader sidecar image (upstream:
+	// natsio/nats-server-config-reloader).
+	Reloader *kubernetes.ContainerImage `protobuf:"bytes,2,opt,name=reloader,proto3" json:"reloader,omitempty"`
+	// *
+	// The metrics exporter image (upstream:
+	// natsio/prometheus-nats-exporter).
+	Exporter *kubernetes.ContainerImage `protobuf:"bytes,3,opt,name=exporter,proto3" json:"exporter,omitempty"`
+	// *
+	// The nats-box image (upstream: natsio/nats-box).
+	NatsBox       *kubernetes.ContainerImage `protobuf:"bytes,4,opt,name=nats_box,json=natsBox,proto3" json:"nats_box,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesNatsImages) Reset() {
+	*x = KubernetesNatsImages{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesNatsImages) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesNatsImages) ProtoMessage() {}
+
+func (x *KubernetesNatsImages) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[14]
 	if x != nil {
-		return x.AckPolicy
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
 	}
-	return ConsumerAckPolicyEnum_unspecified
+	return mi.MessageOf(x)
 }
 
-func (x *KubernetesNatsConsumer) GetFilterSubject() string {
+// Deprecated: Use KubernetesNatsImages.ProtoReflect.Descriptor instead.
+func (*KubernetesNatsImages) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *KubernetesNatsImages) GetNats() *kubernetes.ContainerImage {
 	if x != nil {
-		return x.FilterSubject
+		return x.Nats
 	}
-	return ""
+	return nil
 }
 
-func (x *KubernetesNatsConsumer) GetDeliverSubject() string {
+func (x *KubernetesNatsImages) GetReloader() *kubernetes.ContainerImage {
 	if x != nil {
-		return x.DeliverSubject
+		return x.Reloader
 	}
-	return ""
+	return nil
 }
 
-func (x *KubernetesNatsConsumer) GetDeliverGroup() string {
+func (x *KubernetesNatsImages) GetExporter() *kubernetes.ContainerImage {
 	if x != nil {
-		return x.DeliverGroup
+		return x.Exporter
 	}
-	return ""
+	return nil
 }
 
-func (x *KubernetesNatsConsumer) GetMaxAckPending() int32 {
+func (x *KubernetesNatsImages) GetNatsBox() *kubernetes.ContainerImage {
 	if x != nil {
-		return x.MaxAckPending
+		return x.NatsBox
 	}
-	return 0
+	return nil
 }
-
-func (x *KubernetesNatsConsumer) GetMaxDeliver() int32 {
-	if x != nil {
-		return x.MaxDeliver
-	}
-	return 0
-}
-
-func (x *KubernetesNatsConsumer) GetAckWait() string {
-	if x != nil {
-		return x.AckWait
-	}
-	return ""
-}
-
-func (x *KubernetesNatsConsumer) GetReplayPolicy() ConsumerReplayPolicyEnum_Value {
-	if x != nil {
-		return x.ReplayPolicy
-	}
-	return ConsumerReplayPolicyEnum_unspecified
-}
-
-func (x *KubernetesNatsConsumer) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_extTypes = []protoimpl.ExtensionInfo{
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesNatsServerContainer)(nil),
-		Field:         525001,
-		Name:          "dev.planton.provider.kubernetes.kubernetesnats.v1.default_server_container",
-		Tag:           "bytes,525001,opt,name=default_server_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetesnats/v1/spec.proto",
-	},
-}
-
-// Extension fields to descriptorpb.FieldOptions.
-var (
-	// optional dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer default_server_container = 525001;
-	E_DefaultServerContainer = &file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_extTypes[0]
-)
 
 var File_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/kubernetes/kubernetesnats/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetesnats.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xd0\a\n" +
+	"<dev/planton/provider/kubernetes/kubernetesnats/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetesnats.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xba\x0e\n" +
 	"\x12KubernetesNatsSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\xa9\x01\n" +
-	"\x10server_container\x18\x04 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainerB,ʬ\x80\x02'\b\x01\x12\x1d\n" +
-	"\f\n" +
-	"\x051000m\x12\x032Gi\x12\r\n" +
-	"\x04100m\x12\x05256Mi\x1a\x0410GiR\x0fserverContainer\x12,\n" +
-	"\x12disable_jet_stream\x18\x05 \x01(\bR\x10disableJetStream\x12Y\n" +
-	"\x04auth\x18\x06 \x01(\v2E.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuthR\x04auth\x12\x1f\n" +
-	"\vtls_enabled\x18\a \x01(\bR\n" +
-	"tlsEnabled\x12b\n" +
-	"\aingress\x18\b \x01(\v2H.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsIngressR\aingress\x12(\n" +
-	"\x10disable_nats_box\x18\t \x01(\bR\x0edisableNatsBox\x12x\n" +
-	"\x0fnack_controller\x18\n" +
-	" \x01(\v2O.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNackControllerR\x0enackController\x12a\n" +
-	"\astreams\x18\v \x03(\v2G.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStreamR\astreams\x12F\n" +
-	"\x17nats_helm_chart_version\x18\f \x01(\tB\n" +
-	"\x8a\xa6\x1d\x062.12.3H\x00R\x14natsHelmChartVersion\x88\x01\x01B\x1a\n" +
-	"\x18_nats_helm_chart_version\"\xc3\x01\n" +
-	"\x1dKubernetesNatsServerContainer\x12#\n" +
-	"\breplicas\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02 \x00R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12*\n" +
-	"\tdisk_size\x18\x03 \x01(\tB\r\xbaH\x03\xc8\x01\x01\x92\xa6\x1d\x031GiR\bdiskSize\"_\n" +
-	"\x18KubernetesNatsNoAuthUser\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12)\n" +
-	"\x10publish_subjects\x18\x02 \x03(\tR\x0fpublishSubjects\"\x82\x02\n" +
-	"\x12KubernetesNatsAuth\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12c\n" +
-	"\x06scheme\x18\x02 \x01(\x0e2K.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuthSchemeR\x06scheme\x12m\n" +
-	"\fno_auth_user\x18\x03 \x01(\v2K.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNoAuthUserR\n" +
-	"noAuthUser\"\xcc\x01\n" +
-	"\x15KubernetesNatsIngress\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
-	"\x1espec.ingress.hostname.required\x12,hostname is required when ingress is enabled\x1a(!this.enabled || size(this.hostname) > 0\"\x80\x02\n" +
-	"\x1cKubernetesNatsNackController\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12.\n" +
-	"\x13enable_control_loop\x18\x02 \x01(\bR\x11enableControlLoop\x12=\n" +
-	"\x12helm_chart_version\x18\x03 \x01(\tB\n" +
-	"\x8a\xa6\x1d\x060.31.1H\x00R\x10helmChartVersion\x88\x01\x01\x120\n" +
-	"\vapp_version\x18\x04 \x01(\tB\n" +
-	"\x8a\xa6\x1d\x060.21.1H\x01R\n" +
-	"appVersion\x88\x01\x01B\x15\n" +
-	"\x13_helm_chart_versionB\x0e\n" +
-	"\f_app_version\"C\n" +
-	"\x11StreamStorageEnum\".\n" +
-	"\x05Value\x12\x0f\n" +
-	"\vunspecified\x10\x00\x12\b\n" +
-	"\x04file\x10\x01\x12\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
+	"\rchart_version\x18\x03 \x01(\tB\n" +
+	"\x8a\xa6\x1d\x062.14.2H\x00R\fchartVersion\x88\x01\x01\x12b\n" +
+	"\acluster\x18\x04 \x01(\v2H.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsClusterR\acluster\x12i\n" +
 	"\n" +
-	"\x06memory\x10\x02\"X\n" +
-	"\x13StreamRetentionEnum\"A\n" +
-	"\x05Value\x12\x0f\n" +
-	"\vunspecified\x10\x00\x12\n" +
+	"jet_stream\x18\x05 \x01(\v2J.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsJetStreamR\tjetStream\x12Y\n" +
+	"\x04auth\x18\x06 \x01(\v2E.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuthR\x04auth\x12V\n" +
+	"\x03tls\x18\a \x01(\v2D.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsTlsR\x03tls\x12h\n" +
+	"\twebsocket\x18\b \x01(\v2J.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsWebsocketR\twebsocket\x12Y\n" +
+	"\x04mqtt\x18\t \x01(\v2E.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsMqttR\x04mqtt\x12h\n" +
+	"\tleafnodes\x18\n" +
+	" \x01(\v2J.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsLeafnodesR\tleafnodes\x12b\n" +
+	"\ametrics\x18\v \x01(\v2H.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsMetricsR\ametrics\x127\n" +
+	"\x10nats_box_enabled\x18\f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x0enatsBoxEnabled\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\r \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12b\n" +
+	"\aservice\x18\x0e \x01(\v2H.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServiceR\aservice\x12k\n" +
 	"\n" +
-	"\x06limits\x10\x01\x12\f\n" +
-	"\binterest\x10\x02\x12\r\n" +
-	"\tworkqueue\x10\x03\"D\n" +
-	"\x11StreamDiscardEnum\"/\n" +
-	"\x05Value\x12\x0f\n" +
-	"\vunspecified\x10\x00\x12\a\n" +
-	"\x03old\x10\x01\x12\f\n" +
-	"\bnew_msgs\x10\x02\"V\n" +
-	"\x19ConsumerDeliverPolicyEnum\"9\n" +
-	"\x05Value\x12\x0f\n" +
-	"\vunspecified\x10\x00\x12\a\n" +
-	"\x03all\x10\x01\x12\b\n" +
-	"\x04last\x10\x02\x12\f\n" +
-	"\bnew_msgs\x10\x03\"R\n" +
-	"\x15ConsumerAckPolicyEnum\"9\n" +
-	"\x05Value\x12\x0f\n" +
-	"\vunspecified\x10\x00\x12\b\n" +
-	"\x04none\x10\x01\x12\a\n" +
-	"\x03all\x10\x02\x12\f\n" +
-	"\bexplicit\x10\x03\"O\n" +
-	"\x18ConsumerReplayPolicyEnum\"3\n" +
-	"\x05Value\x12\x0f\n" +
-	"\vunspecified\x10\x00\x12\f\n" +
-	"\boriginal\x10\x01\x12\v\n" +
-	"\ainstant\x10\x02\"\xe1\x05\n" +
-	"\x14KubernetesNatsStream\x12!\n" +
-	"\x04name\x18\x01 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xff\x01R\x04name\x12$\n" +
-	"\bsubjects\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\bsubjects\x12d\n" +
-	"\astorage\x18\x03 \x01(\x0e2J.dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum.ValueR\astorage\x12%\n" +
-	"\breplicas\x18\x04 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x05(\x01R\breplicas\x12j\n" +
-	"\tretention\x18\x05 \x01(\x0e2L.dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum.ValueR\tretention\x12\x17\n" +
-	"\amax_age\x18\x06 \x01(\tR\x06maxAge\x12\x1b\n" +
-	"\tmax_bytes\x18\a \x01(\x03R\bmaxBytes\x12\x19\n" +
-	"\bmax_msgs\x18\b \x01(\x03R\amaxMsgs\x12 \n" +
-	"\fmax_msg_size\x18\t \x01(\x05R\n" +
-	"maxMsgSize\x12#\n" +
-	"\rmax_consumers\x18\n" +
-	" \x01(\x05R\fmaxConsumers\x12d\n" +
-	"\adiscard\x18\v \x01(\x0e2J.dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum.ValueR\adiscard\x12 \n" +
-	"\vdescription\x18\f \x01(\tR\vdescription\x12g\n" +
-	"\tconsumers\x18\r \x03(\v2I.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumerR\tconsumers\"\xa7\x05\n" +
-	"\x16KubernetesNatsConsumer\x120\n" +
-	"\fdurable_name\x18\x01 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\xff\x01R\vdurableName\x12y\n" +
-	"\x0edeliver_policy\x18\x02 \x01(\x0e2R.dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum.ValueR\rdeliverPolicy\x12m\n" +
+	"scheduling\x18\x0f \x01(\v2K.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSchedulingR\n" +
+	"scheduling\x12_\n" +
+	"\x06images\x18\x10 \x01(\v2G.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsImagesR\x06images\x12\x1f\n" +
+	"\vhelm_values\x18\x11 \x01(\tR\n" +
+	"helmValues:\xbb\x02\xbaH\xb7\x02\x1a\xb4\x02\n" +
+	"\x1cspec.mqtt.requires_jetstream\x12\x97\x01mqtt requires jet_stream to be enabled — MQTT sessions and retained messages are stored in JetStream, and the server refuses to start MQTT without it\x1az!has(this.mqtt) || !this.mqtt.enabled || !has(this.jet_stream) || !has(this.jet_stream.enabled) || this.jet_stream.enabledB\x10\n" +
+	"\x0e_chart_versionB\x13\n" +
+	"\x11_nats_box_enabled\"o\n" +
+	"\x15KubernetesNatsCluster\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12/\n" +
+	"\breplicas\x18\x02 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\t(\x02\x8a\xa6\x1d\x013H\x00R\breplicas\x88\x01\x01B\v\n" +
+	"\t_replicas\"\xaf\x04\n" +
+	"\x17KubernetesNatsJetStream\x12'\n" +
+	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12`\n" +
+	"\tdisk_size\x18\x02 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x01R\bdiskSize\x88\x01\x01\x12o\n" +
+	"\rstorage_class\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12a\n" +
+	"\x0emax_file_store\x18\x04 \x01(\tB6\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$H\x02R\fmaxFileStore\x88\x01\x01\x12n\n" +
+	"\x15memory_store_max_size\x18\x05 \x01(\tB6\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$H\x03R\x12memoryStoreMaxSize\x88\x01\x01B\n" +
 	"\n" +
-	"ack_policy\x18\x03 \x01(\x0e2N.dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum.ValueR\tackPolicy\x12%\n" +
-	"\x0efilter_subject\x18\x04 \x01(\tR\rfilterSubject\x12'\n" +
-	"\x0fdeliver_subject\x18\x05 \x01(\tR\x0edeliverSubject\x12#\n" +
-	"\rdeliver_group\x18\x06 \x01(\tR\fdeliverGroup\x12&\n" +
-	"\x0fmax_ack_pending\x18\a \x01(\x05R\rmaxAckPending\x12\x1f\n" +
-	"\vmax_deliver\x18\b \x01(\x05R\n" +
-	"maxDeliver\x12\x19\n" +
-	"\back_wait\x18\t \x01(\tR\aackWait\x12v\n" +
-	"\rreplay_policy\x18\n" +
-	" \x01(\x0e2Q.dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum.ValueR\freplayPolicy\x12 \n" +
-	"\vdescription\x18\v \x01(\tR\vdescription*i\n" +
-	"\x18KubernetesNatsAuthScheme\x12+\n" +
-	"'nats_kubernetes_auth_scheme_unspecified\x10\x00\x12\x10\n" +
-	"\fbearer_token\x10\x01\x12\x0e\n" +
+	"\b_enabledB\f\n" +
 	"\n" +
-	"basic_auth\x10\x02:\xab\x01\n" +
-	"\x18default_server_container\x12\x1d.google.protobuf.FieldOptions\x18Ʌ  \x01(\v2P.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainerR\x16defaultServerContainerB\x93\x03\n" +
+	"_disk_sizeB\x11\n" +
+	"\x0f_max_file_storeB\x18\n" +
+	"\x16_memory_store_max_size\"\x84\v\n" +
+	"\x12KubernetesNatsAuth\x12[\n" +
+	"\x05users\x18\x01 \x03(\v2E.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsUserR\x05users\x12d\n" +
+	"\baccounts\x18\x02 \x03(\v2H.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAccountR\baccounts\x12 \n" +
+	"\fno_auth_user\x18\x03 \x01(\tR\n" +
+	"noAuthUser:\x88\t\xbaH\x84\t\x1a\xa3\x02\n" +
+	"\x1cspec.auth.users_xor_accounts\x12\xcd\x01declare flat `users` or multi-tenant `accounts`, never both — with accounts defined, every user must belong to an account (nats-server rejects a config mixing top-level authorization users with accounts)\x1a3this.users.size() == 0 || this.accounts.size() == 0\x1a\xc7\x01\n" +
+	"\x1espec.auth.at_least_one_surface\x12rauth is declared but empty — declare `users` or `accounts` (or omit auth entirely for an unauthenticated server)\x1a1this.users.size() > 0 || this.accounts.size() > 0\x1a\x93\x02\n" +
+	"\x1fspec.auth.no_auth_user_declared\x12Nno_auth_user must be one of the declared usernames (in users or in an account)\x1a\x9f\x01this.no_auth_user == '' || this.users.exists(u, u.username == this.no_auth_user) || this.accounts.exists(a, a.users.exists(u, u.username == this.no_auth_user))\x1a\xfb\x02\n" +
+	"\x1aspec.auth.unique_usernames\x12\x84\x01usernames must be unique across the whole auth block (including across accounts) — each becomes a key in the generated auth Secret\x1a\xd5\x01this.users.map(u, u.username).unique() && this.accounts.all(a, a.users.map(u, u.username).unique()) && this.accounts.all(a, a.users.all(u, this.accounts.exists_one(b, b.users.exists(v, v.username == u.username))))\"\xcd\x01\n" +
+	"\x12KubernetesNatsUser\x12G\n" +
+	"\busername\x18\x01 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$R\busername\x12n\n" +
+	"\vpermissions\x18\x02 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsPermissionsR\vpermissions\"\xb3\x01\n" +
+	"\x19KubernetesNatsPermissions\x12#\n" +
+	"\rpublish_allow\x18\x01 \x03(\tR\fpublishAllow\x12!\n" +
+	"\fpublish_deny\x18\x02 \x03(\tR\vpublishDeny\x12'\n" +
+	"\x0fsubscribe_allow\x18\x03 \x03(\tR\x0esubscribeAllow\x12%\n" +
+	"\x0esubscribe_deny\x18\x04 \x03(\tR\rsubscribeDeny\"\xed\x01\n" +
+	"\x15KubernetesNatsAccount\x12?\n" +
+	"\x04name\x18\x01 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$R\x04name\x12e\n" +
+	"\x05users\x18\x02 \x03(\v2E.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsUserB\b\xbaH\x05\x92\x01\x02\b\x01R\x05users\x12,\n" +
+	"\x12jet_stream_enabled\x18\x03 \x01(\bR\x10jetStreamEnabled\"\xba\x01\n" +
+	"\x11KubernetesNatsTls\x12~\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\n" +
+	"secretName\x12%\n" +
+	"\x0everify_clients\x18\x02 \x01(\bR\rverifyClients\"j\n" +
+	"\x17KubernetesNatsWebsocket\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12,\n" +
+	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x048080H\x00R\x04port\x88\x01\x01B\a\n" +
+	"\x05_port\"e\n" +
+	"\x12KubernetesNatsMqtt\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12,\n" +
+	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x041883H\x00R\x04port\x88\x01\x01B\a\n" +
+	"\x05_port\"j\n" +
+	"\x17KubernetesNatsLeafnodes\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12,\n" +
+	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x047422H\x00R\x04port\x88\x01\x01B\a\n" +
+	"\x05_port\"\xc6\x02\n" +
+	"\x15KubernetesNatsMetrics\x12)\n" +
+	"\x10exporter_enabled\x18\x01 \x01(\bR\x0fexporterEnabled\x12.\n" +
+	"\x13pod_monitor_enabled\x18\x02 \x01(\bR\x11podMonitorEnabled:\xd1\x01\xbaH\xcd\x01\x1a\xca\x01\n" +
+	"*spec.metrics.pod_monitor.requires_exporter\x12hpod_monitor_enabled requires exporter_enabled — the PodMonitor scrapes the exporter sidecar's endpoint\x1a2!this.pod_monitor_enabled || this.exporter_enabled\"\xff\x02\n" +
+	"\x15KubernetesNatsService\x12h\n" +
+	"\x04type\x18\x01 \x01(\x0e2T.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService.ServiceTypeR\x04type\x12{\n" +
+	"\vannotations\x18\x02 \x03(\v2Y.dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService.AnnotationsEntryR\vannotations\x1a>\n" +
+	"\x10AnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"?\n" +
+	"\vServiceType\x12\x0e\n" +
+	"\n" +
+	"cluster_ip\x10\x00\x12\x11\n" +
+	"\rload_balancer\x10\x01\x12\r\n" +
+	"\tnode_port\x10\x02\"\xb7\x02\n" +
+	"\x18KubernetesNatsScheduling\x12\x82\x01\n" +
+	"\rnode_selector\x18\x01 \x03(\v2].dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xc1\x02\n" +
+	"\x14KubernetesNatsImages\x12C\n" +
+	"\x04nats\x18\x01 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x04nats\x12K\n" +
+	"\breloader\x18\x02 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\breloader\x12K\n" +
+	"\bexporter\x18\x03 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\bexporter\x12J\n" +
+	"\bnats_box\x18\x04 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\anatsBoxB\x93\x03\n" +
 	"5com.dev.planton.provider.kubernetes.kubernetesnats.v1B\tSpecProtoP\x01Zdgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnats/v1;kubernetesnatsv1\xa2\x02\x05DPPKK\xaa\x021Dev.Planton.Provider.Kubernetes.Kubernetesnats.V1\xca\x021Dev\\Planton\\Provider\\Kubernetes\\Kubernetesnats\\V1\xe2\x02=Dev\\Planton\\Provider\\Kubernetes\\Kubernetesnats\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Kubernetes::Kubernetesnats::V1b\x06proto3"
 
 var (
@@ -1543,58 +1442,65 @@ func file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescGZ
 	return file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_goTypes = []any{
-	(KubernetesNatsAuthScheme)(0),         // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuthScheme
-	(StreamStorageEnum_Value)(0),          // 1: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum.Value
-	(StreamRetentionEnum_Value)(0),        // 2: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum.Value
-	(StreamDiscardEnum_Value)(0),          // 3: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum.Value
-	(ConsumerDeliverPolicyEnum_Value)(0),  // 4: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum.Value
-	(ConsumerAckPolicyEnum_Value)(0),      // 5: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum.Value
-	(ConsumerReplayPolicyEnum_Value)(0),   // 6: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum.Value
-	(*KubernetesNatsSpec)(nil),            // 7: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec
-	(*KubernetesNatsServerContainer)(nil), // 8: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer
-	(*KubernetesNatsNoAuthUser)(nil),      // 9: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNoAuthUser
-	(*KubernetesNatsAuth)(nil),            // 10: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth
-	(*KubernetesNatsIngress)(nil),         // 11: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsIngress
-	(*KubernetesNatsNackController)(nil),  // 12: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNackController
-	(*StreamStorageEnum)(nil),             // 13: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum
-	(*StreamRetentionEnum)(nil),           // 14: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum
-	(*StreamDiscardEnum)(nil),             // 15: dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum
-	(*ConsumerDeliverPolicyEnum)(nil),     // 16: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum
-	(*ConsumerAckPolicyEnum)(nil),         // 17: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum
-	(*ConsumerReplayPolicyEnum)(nil),      // 18: dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum
-	(*KubernetesNatsStream)(nil),          // 19: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream
-	(*KubernetesNatsConsumer)(nil),        // 20: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer
-	(*v1.StringValueOrRef)(nil),           // 21: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil), // 22: dev.planton.provider.kubernetes.ContainerResources
-	(*descriptorpb.FieldOptions)(nil),     // 23: google.protobuf.FieldOptions
+	(KubernetesNatsService_ServiceType)(0), // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService.ServiceType
+	(*KubernetesNatsSpec)(nil),             // 1: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec
+	(*KubernetesNatsCluster)(nil),          // 2: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsCluster
+	(*KubernetesNatsJetStream)(nil),        // 3: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsJetStream
+	(*KubernetesNatsAuth)(nil),             // 4: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth
+	(*KubernetesNatsUser)(nil),             // 5: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsUser
+	(*KubernetesNatsPermissions)(nil),      // 6: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsPermissions
+	(*KubernetesNatsAccount)(nil),          // 7: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAccount
+	(*KubernetesNatsTls)(nil),              // 8: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsTls
+	(*KubernetesNatsWebsocket)(nil),        // 9: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsWebsocket
+	(*KubernetesNatsMqtt)(nil),             // 10: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsMqtt
+	(*KubernetesNatsLeafnodes)(nil),        // 11: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsLeafnodes
+	(*KubernetesNatsMetrics)(nil),          // 12: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsMetrics
+	(*KubernetesNatsService)(nil),          // 13: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService
+	(*KubernetesNatsScheduling)(nil),       // 14: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsScheduling
+	(*KubernetesNatsImages)(nil),           // 15: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsImages
+	nil,                                    // 16: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService.AnnotationsEntry
+	nil,                                    // 17: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),            // 18: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),  // 19: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),  // 20: dev.planton.provider.kubernetes.WorkloadToleration
+	(*kubernetes.ContainerImage)(nil),      // 21: dev.planton.provider.kubernetes.ContainerImage
 }
 var file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_depIdxs = []int32{
-	21, // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 1: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.server_container:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer
-	10, // 2: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.auth:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth
-	11, // 3: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsIngress
-	12, // 4: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.nack_controller:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNackController
-	19, // 5: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.streams:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream
-	22, // 6: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	0,  // 7: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth.scheme:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuthScheme
-	9,  // 8: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth.no_auth_user:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsNoAuthUser
-	1,  // 9: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.storage:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.StreamStorageEnum.Value
-	2,  // 10: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.retention:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.StreamRetentionEnum.Value
-	3,  // 11: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.discard:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.StreamDiscardEnum.Value
-	20, // 12: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStream.consumers:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer
-	4,  // 13: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer.deliver_policy:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerDeliverPolicyEnum.Value
-	5,  // 14: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer.ack_policy:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerAckPolicyEnum.Value
-	6,  // 15: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsConsumer.replay_policy:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.ConsumerReplayPolicyEnum.Value
-	23, // 16: dev.planton.provider.kubernetes.kubernetesnats.v1.default_server_container:extendee -> google.protobuf.FieldOptions
-	8,  // 17: dev.planton.provider.kubernetes.kubernetesnats.v1.default_server_container:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsServerContainer
-	18, // [18:18] is the sub-list for method output_type
-	18, // [18:18] is the sub-list for method input_type
-	17, // [17:18] is the sub-list for extension type_name
-	16, // [16:17] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	18, // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 1: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.cluster:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsCluster
+	3,  // 2: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.jet_stream:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsJetStream
+	4,  // 3: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.auth:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth
+	8,  // 4: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.tls:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsTls
+	9,  // 5: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.websocket:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsWebsocket
+	10, // 6: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.mqtt:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsMqtt
+	11, // 7: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.leafnodes:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsLeafnodes
+	12, // 8: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.metrics:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsMetrics
+	19, // 9: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	13, // 10: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.service:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService
+	14, // 11: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsScheduling
+	15, // 12: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsSpec.images:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsImages
+	18, // 13: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsJetStream.storage_class:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 14: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth.users:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsUser
+	7,  // 15: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAuth.accounts:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAccount
+	6,  // 16: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsUser.permissions:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsPermissions
+	5,  // 17: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsAccount.users:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsUser
+	18, // 18: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsTls.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 19: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService.type:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService.ServiceType
+	16, // 20: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsService.AnnotationsEntry
+	17, // 21: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsScheduling.NodeSelectorEntry
+	20, // 22: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	21, // 23: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsImages.nats:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	21, // 24: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsImages.reloader:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	21, // 25: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsImages.exporter:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	21, // 26: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsImages.nats_box:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	27, // [27:27] is the sub-list for method output_type
+	27, // [27:27] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_init() }
@@ -1603,22 +1509,25 @@ func file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_init() {
 		return
 	}
 	file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_rawDesc)),
-			NumEnums:      7,
-			NumMessages:   14,
-			NumExtensions: 1,
+			NumEnums:      1,
+			NumMessages:   17,
+			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_depIdxs,
 		EnumInfos:         file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_msgTypes,
-		ExtensionInfos:    file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_extTypes,
 	}.Build()
 	File_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto = out.File
 	file_dev_planton_provider_kubernetes_kubernetesnats_v1_spec_proto_goTypes = nil

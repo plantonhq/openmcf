@@ -1,0 +1,32 @@
+# A declared SCRAM user with a producer/consumer ACL set. The namespace
+# is the FIXTURE'S namespace, deliberately — the user operator watches
+# only the cluster's own namespace (the placement contract). The verifier
+# asserts the KafkaUser reaches Ready and the operator-generated
+# credentials Secret exists.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafkaUser
+metadata:
+  name: e2e-user-minimal
+spec:
+  namespace:
+    value: e2e-kafauth-fix
+  kafka_cluster:
+    valueFrom:
+      name: e2e-kafauth-fix
+  authentication:
+    type: scram-sha-512
+  authorization:
+    acls:
+      - resource:
+          type: topic
+          name: e2e-user-topic
+        operations:
+          - All
+      - resource:
+          type: group
+          name: e2e-user-group
+        operations:
+          - Read
+  quotas:
+    producer_byte_rate: 1048576
+    consumer_byte_rate: 2097152

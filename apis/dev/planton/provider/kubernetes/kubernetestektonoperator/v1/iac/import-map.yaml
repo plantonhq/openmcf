@@ -1,0 +1,45 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetestektonoperator
+spec:
+  # The module applies the release manifest's 41 documents through ONE
+  # kubectl_manifest resource whose for_each is keyed by each document's
+  # own composed identity — apiVersion//kind//name[//namespace] — exactly
+  # the ID form the kubectl importer takes. Every composed-ID placeholder
+  # is therefore a segment of the address key itself
+  # (from_address_key_segment): the bundle spans many apiVersion/kind
+  # pairs, so per-document literals cannot serve (the multi-GVK bundle
+  # class; single-GVK typed-CR modules keep their literal declarations).
+  # Cluster-scoped documents (the 14 CRDs, cluster roles/bindings) carry
+  # 3-part keys — the namespace segment resolves empty and the ID's
+  # bracketed group drops it.
+  values:
+    - name: api_version
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        The document's own apiVersion — the first "//" segment of the
+        state address key; `kubectl get <kind> <name> -o
+        jsonpath='{.apiVersion}'`.
+    - name: kind
+      derivations:
+        - from_address_key_segment: 1
+      where_to_find: >-
+        The document's own kind — the second "//" segment of the state
+        address key.
+    - name: name
+      derivations:
+        - from_address_key_segment: 2
+      where_to_find: >-
+        The document's metadata.name — the third "//" segment of the
+        state address key. Every name is FIXED by the release manifest
+        (e.g. the operator Deployment is "tekton-operator", the webhook
+        Deployment "tekton-operator-webhook").
+    - name: namespace
+      derivations:
+        - from_address_key_segment: 3
+      where_to_find: >-
+        "tekton-operator" for namespaced documents (the manifest's fixed
+        namespace); absent for the cluster-scoped ones (the CRDs,
+        cluster roles/bindings).

@@ -7,10 +7,11 @@ import "dev/planton/provider/kubernetes/kubernetestekton/v1/spec.proto";
 import "dev/planton/provider/kubernetes/kubernetestekton/v1/stack_outputs.proto";
 import "dev/planton/shared/metadata.proto";
 
-// KubernetesTekton deploys Tekton Pipelines and Dashboard on Kubernetes using official release manifests.
-//
-// This is the manifest-based deployment approach (as opposed to the operator-based KubernetesTektonOperator).
-// It's simpler to understand and debug, and gives direct control over configuration.
+// KubernetesTekton declares the cluster's Tekton installation — which
+// components run (Pipelines, Triggers, Dashboard, Chains), their feature
+// flags and the pruner policy — as the TektonConfig the Tekton Operator
+// (a KubernetesTektonOperator resource, the prerequisite) reconciles.
+// Exactly one per cluster.
 message KubernetesTekton {
   // api-version
   string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1'];

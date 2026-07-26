@@ -1,71 +1,337 @@
+# Computed values for the KubernetesGrafana module. Every resolution here
+# has an exact twin in the Pulumi module's locals.go / values.go — keep
+# them in lockstep.
+#
+# SECRET DISCIPLINE (load-bearing): the chart renders grafana.ini AND the
+# datasource provisioning file into a ConfigMap, and its own
+# assertNoLeakedSecrets helper REFUSES to render known secret paths into
+# it. Every credential below therefore travels as an environment variable
+# sourced from a Secret (envValueFrom / the chart's smtp existingSecret
+# wiring), with the provisioning file carrying only a $__env{VAR}
+# placeholder that Grafana expands at runtime.
+#
+# HCL DISCIPLINE (applies to every conditional object in this file):
+# conditional entries are written as `key = cond ? value : null` inside ONE
+# object literal, pruned with `{ for k, v in {...} : k => v if v != null }`.
+# `cond ? {...} : {}` ternaries fail plan-time type unification when
+# branches carry different attributes, and merge() over primitive-only
+# sibling objects silently UNIFIES them into map(string). Optional nested
+# blocks are read with try() (HCL's && does NOT short-circuit); optional
+# scalars inside optional blocks with try(coalesce(x), null).
+
 locals {
-  # Derive a stable resource ID
-  resource_id = (
-    var.metadata.id != null && var.metadata.id != ""
-    ? var.metadata.id
-    : var.metadata.name
+  # Chart identity — must stay byte-identical with the Pulumi module's
+  # vars. KNOW THIS about the repo URL: the grafana chart's canonical
+  # home is the grafana-community index — the old
+  # https://grafana.github.io/helm-charts stopped serving new versions at
+  # chart 10.5.x, and kube-prometheus-stack's own dependency block points
+  # at the community repo. Never "fix" this back.
+  helm_chart_name = "grafana"
+  helm_chart_repo = "https://grafana-community.github.io/helm-charts"
+
+  # Release name — metadata.name, NOT a fixed chart name: several Grafana
+  # instances coexist in one Kubernetes cluster. fullnameOverride below
+  # pins every chart child name to this.
+  release_name = var.metadata.name
+
+  # Chart version resolved to the pinned default when unset, so both
+  # engines install the same chart whether or not the platform's
+  # defaulting middleware ran. Chart 12.8.0 ships Grafana 13.1.1.
+  chart_version = coalesce(var.spec.chart_version, "12.8.0")
+
+  namespace = var.spec.namespace
+
+  # Resource-identity labels stamped on the module-created satellites
+  # (the namespace — never injected into the chart's own resources; Helm
+  # owns those).
+  labels = merge(
+    {
+      "planton.ai/resource"      = "true"
+      "planton.ai/resource-name" = var.metadata.name
+      "planton.ai/resource-kind" = "KubernetesGrafana"
+    },
+    var.metadata.id != null && var.metadata.id != "" ? { "planton.ai/resource-id" = var.metadata.id } : {},
+    var.metadata.org != null && var.metadata.org != "" ? { "planton.ai/organization" = var.metadata.org } : {},
+    var.metadata.env != null && var.metadata.env != "" ? { "planton.ai/environment" = var.metadata.env } : {}
   )
 
-  # Base labels
-  base_labels = {
-    "resource"      = "true"
-    "resource_id"   = local.resource_id
-    "resource_kind" = "grafana_kubernetes"
+  # The chart's Service is grafana.fullname — pinned to the resource name
+  # via fullnameOverride. Feeds the endpoint output.
+  service_name = local.release_name
+
+  # Name of the Secret carrying the admin credentials: the referenced
+  # existing Secret when declared, else the chart-owned `<name>` Secret
+  # the chart generates ONCE at first install (stable across upgrades via
+  # its lookup).
+  admin_secret_name = try(var.spec.admin_secret.name, null) != null ? var.spec.admin_secret.name : local.release_name
+
+  # ---- image registry/repository split -----------------------------------
+  # The spec's repository carries the registry
+  # ("my.registry.com/grafana/grafana") but the chart keeps them as
+  # SEPARATE values composed {registry}/{repository}:{tag} with registry
+  # defaulting to docker.io — mapped verbatim onto image.repository a
+  # mirror override would render docker.io/my.registry.com/... and
+  # ImagePullBackOff. The first path segment is a registry exactly when
+  # it looks like a host (a dot, a port colon, or the literal localhost)
+  # — the container runtimes' own rule. Twin: splitImageRepository.
+  image_repo_declared = try(coalesce(var.spec.image.repository), null)
+  image_repo_parts    = local.image_repo_declared != null ? split("/", local.image_repo_declared) : []
+  image_has_registry = (
+    length(local.image_repo_parts) > 1 &&
+    (can(regex("[.:]", local.image_repo_parts[0])) || local.image_repo_parts[0] == "localhost")
+  )
+  image_registry   = local.image_has_registry ? local.image_repo_parts[0] : null
+  image_repository = local.image_has_registry ? join("/", slice(local.image_repo_parts, 1, length(local.image_repo_parts))) : local.image_repo_declared
+
+  # ---- database (GF_DATABASE_* env config) -------------------------------
+  # Env-based configuration keeps the password out of grafana.ini (which
+  # lands in a ConfigMap). The password rides envValueFrom — a
+  # secretKeyRef the kubelet resolves — so it never appears in rendered
+  # values or any config text.
+  database_declared = try(var.spec.database, null) != null
+  database_env = local.database_declared ? {
+    for k, v in {
+      GF_DATABASE_TYPE     = var.spec.database.engine == "mysql" ? "mysql" : "postgres"
+      GF_DATABASE_HOST     = var.spec.database.host
+      GF_DATABASE_NAME     = var.spec.database.name
+      GF_DATABASE_USER     = var.spec.database.user
+      GF_DATABASE_SSL_MODE = var.spec.database.ssl_mode != "" ? var.spec.database.ssl_mode : null
+    } : k => v if v != null
+  } : {}
+
+  # ---- datasource credential env vars --------------------------------------
+  # One deterministic env var per basic-auth datasource
+  # (GF_DS_<NAME>_PASSWORD, non-alphanumerics collapsed to _) — the name
+  # appears in the provisioning file AND the envValueFrom key, and both
+  # engines derive it identically (twin: datasourcePasswordEnvVar).
+  datasource_password_env = {
+    for ds in var.spec.datasources : ds.name =>
+    "GF_DS_${trim(replace(upper(ds.name), "/[^A-Z0-9]+/", "_"), "_")}_PASSWORD"
+    if try(ds.basic_auth, null) != null
   }
 
-  # Organization label only if var.metadata.org is non-empty
-  org_label = (
-  var.metadata.org != null && var.metadata.org != ""
-  ) ? { "organization" = var.metadata.org } : {}
-
-  # Environment label only if var.metadata.env is non-empty
-  env_label = (
-  var.metadata.env != null &&
-  try(var.metadata.env, "") != ""
-  ) ? { "environment" = var.metadata.env } : {}
-
-  # Merge base, org, and environment labels
-  final_labels = merge(local.base_labels, local.org_label, local.env_label)
-
-  # Labels for Grafana pods
-  grafana_pod_selector_labels = {
-    "app.kubernetes.io/name"     = "grafana"
-    "app.kubernetes.io/instance" = local.resource_id
-  }
-
-  # Use namespace from spec with fallback to resource_id
-  namespace = (
-    var.spec.namespace != null && var.spec.namespace != ""
-    ? var.spec.namespace
-    : local.resource_id
+  env_value_from = merge(
+    local.database_declared ? {
+      GF_DATABASE_PASSWORD = {
+        secretKeyRef = {
+          name = var.spec.database.password_secret.name
+          key  = var.spec.database.password_secret.key
+        }
+      }
+    } : {},
+    {
+      for ds in var.spec.datasources : local.datasource_password_env[ds.name] => {
+        secretKeyRef = {
+          name = ds.basic_auth.password_secret.name
+          key  = ds.basic_auth.password_secret.key
+        }
+      } if try(ds.basic_auth, null) != null
+    }
   )
 
-  # Service name
-  kube_service_name = "${var.metadata.name}-grafana"
+  # ---- datasource provisioning entries ---------------------------------------
+  datasource_entries = [
+    for ds in var.spec.datasources : {
+      for k, v in {
+        name      = ds.name
+        type      = try(coalesce(ds.type), null) != null ? ds.type : "prometheus"
+        access    = "proxy"
+        url       = ds.url
+        isDefault = ds.is_default ? true : null
+        uid       = ds.uid != "" ? ds.uid : null
+        jsonData  = ds.json_data != "" ? yamldecode(ds.json_data) : null
+        # Basic-auth passwords ride $__env{VAR} placeholders expanded by
+        # Grafana at runtime — the provisioning file stays
+        # credential-free (it lands in the chart's ConfigMap).
+        basicAuth     = try(ds.basic_auth, null) != null ? true : null
+        basicAuthUser = try(ds.basic_auth.username, null)
+        secureJsonData = try(ds.basic_auth, null) != null ? {
+          basicAuthPassword = "$__env{${local.datasource_password_env[ds.name]}}"
+        } : null
+      } : k => v if v != null
+    }
+  ]
 
-  # Computed resource names to avoid conflicts when multiple instances share a namespace
-  # Format: {metadata.name}-{purpose}
-  external_ingress_name = "${var.metadata.name}-external"
-  internal_ingress_name = "${var.metadata.name}-internal"
+  # ---- community dashboards ------------------------------------------------------
+  community_dashboards_declared = length(var.spec.community_dashboards) > 0
+  community_dashboard_entries = {
+    for cd in var.spec.community_dashboards : "gnet-${cd.gnet_id}" => {
+      for k, v in {
+        gnetId     = cd.gnet_id
+        revision   = cd.revision > 0 ? cd.revision : null
+        datasource = cd.datasource
+      } : k => v if v != null
+    }
+  }
 
-  # Internal DNS name for the service
-  kube_service_fqdn = "${local.kube_service_name}.${local.namespace}.svc.cluster.local"
+  # ---- grafana.ini (non-secret settings ONLY) ---------------------------------------
+  grafana_ini = {
+    for k, v in {
+      server = try(coalesce(var.spec.server.root_url), null) != null ? {
+        root_url = var.spec.server.root_url
+      } : null
+      "auth.anonymous" = try(var.spec.auth.anonymous_enabled, false) ? {
+        enabled  = true
+        org_role = try(coalesce(var.spec.auth.anonymous_org_role), null) != null ? var.spec.auth.anonymous_org_role : "Viewer"
+      } : null
+      auth = try(var.spec.auth.disable_login_form, false) ? {
+        disable_login_form = true
+      } : null
+      smtp = try(var.spec.smtp, null) != null ? {
+        for sk, sv in {
+          enabled      = true
+          host         = var.spec.smtp.host
+          from_address = var.spec.smtp.from_address != "" ? var.spec.smtp.from_address : null
+          from_name    = var.spec.smtp.from_name != "" ? var.spec.smtp.from_name : null
+          skip_verify  = var.spec.smtp.skip_verify ? true : null
+        } : sk => sv if sv != null
+      } : null
+    } : k => v if v != null
+  }
 
-  # Handy port-forward command
-  kube_port_forward_command = "kubectl port-forward -n ${local.namespace} service/${local.kube_service_name} 8080:80"
+  # ---- typed chart values (twin of the Pulumi module's buildHelmValues) --
+  helm_values = {
+    for k, v in {
+      # fullnameOverride pins grafana.fullname to the resource name: the
+      # Service, the chart-generated admin Secret, the ConfigMap and the
+      # ServiceAccount all derive deterministically, and the exported
+      # outputs are built from that contract.
+      fullnameOverride = local.release_name
 
-  # Namespace to use - either created or referenced
-  namespace_name = try(var.spec.create_namespace, false) ? (
-    length(kubernetes_namespace_v1.grafana_namespace) > 0 ? kubernetes_namespace_v1.grafana_namespace[0].metadata[0].name : local.namespace
-  ) : local.namespace
+      # replicas > 1 is CEL-fenced to require the external database: the
+      # embedded SQLite state cannot be shared between pods.
+      replicas = try(coalesce(var.spec.replicas), null) != null ? var.spec.replicas : 1
 
-  # Safely handle optional ingress values
-  ingress_is_enabled = try(var.spec.ingress.enabled, false)
-  
-  # Calculate external hostname if ingress is enabled
-  ingress_external_hostname = local.ingress_is_enabled && try(var.spec.ingress.dns_domain, "") != "" ? "https://grafana-${var.metadata.name}.${var.spec.ingress.dns_domain}" : ""
-  
-  # Calculate internal hostname if ingress is enabled
-  ingress_internal_hostname = local.ingress_is_enabled && try(var.spec.ingress.dns_domain, "") != "" ? "https://grafana-${var.metadata.name}-internal.${var.spec.ingress.dns_domain}" : ""
+      resources = try(var.spec.resources, null) == null ? null : {
+        for rk, rv in {
+          requests = try(var.spec.resources.requests, null) == null ? null : {
+            for qk, qv in {
+              cpu    = var.spec.resources.requests.cpu != "" ? var.spec.resources.requests.cpu : null
+              memory = var.spec.resources.requests.memory != "" ? var.spec.resources.requests.memory : null
+            } : qk => qv if qv != null
+          }
+          limits = try(var.spec.resources.limits, null) == null ? null : {
+            for lk, lv in {
+              cpu    = var.spec.resources.limits.cpu != "" ? var.spec.resources.limits.cpu : null
+              memory = var.spec.resources.limits.memory != "" ? var.spec.resources.limits.memory : null
+            } : lk => lv if lv != null
+          }
+        } : rk => rv if rv != null && rv != {}
+      }
+
+      # Existing-secret arm: the chart wires the referenced Secret's keys
+      # into env at pod start — it must exist BEFORE the apply. Generate
+      # arm (admin_secret absent): the chart creates its own `<fullname>`
+      # Secret ONCE (lookup-stable across upgrades), so nothing renders
+      # here. Credential material never lands in chart values either way.
+      admin = try(var.spec.admin_secret, null) != null ? {
+        existingSecret = var.spec.admin_secret.name
+        userKey        = try(coalesce(var.spec.admin_secret.user_key), null) != null ? var.spec.admin_secret.user_key : "admin-user"
+        passwordKey    = try(coalesce(var.spec.admin_secret.password_key), null) != null ? var.spec.admin_secret.password_key : "admin-password"
+      } : null
+
+      # Rendered only when declared: the chart default is ephemeral,
+      # which the spec documents honestly.
+      persistence = try(var.spec.storage, null) != null ? {
+        for pk, pv in {
+          enabled          = true
+          size             = try(coalesce(var.spec.storage.size), null) != null ? var.spec.storage.size : "10Gi"
+          storageClassName = var.spec.storage.storage_class != "" ? var.spec.storage.storage_class : null
+        } : pk => pv if pv != null
+      } : null
+
+      datasources = length(local.datasource_entries) > 0 ? {
+        "datasources.yaml" = {
+          apiVersion  = 1
+          datasources = local.datasource_entries
+        }
+      } : null
+
+      # The composition contract: any ConfigMap labeled
+      # grafana_dashboard: "1" in ANY namespace becomes a dashboard here.
+      # Default ON (proto default true).
+      sidecar = (try(coalesce(var.spec.dashboard_sidecar_enabled), null) != null ? var.spec.dashboard_sidecar_enabled : true) ? {
+        dashboards = {
+          enabled         = true
+          searchNamespace = "ALL"
+        }
+      } : null
+
+      # gnetId imports need a file dashboard provider; entries key under
+      # the provider's name.
+      dashboardProviders = local.community_dashboards_declared ? {
+        "dashboardproviders.yaml" = {
+          apiVersion = 1
+          providers = [
+            {
+              name            = "default"
+              orgId           = 1
+              folder          = ""
+              type            = "file"
+              disableDeletion = false
+              options         = { path = "/var/lib/grafana/dashboards/default" }
+            }
+          ]
+        }
+      } : null
+
+      dashboards = local.community_dashboards_declared ? {
+        default = local.community_dashboard_entries
+      } : null
+
+      # Grafana 13 ships its once-core datasource plugins (elasticsearch,
+      # cloudwatch) outside the image, and the image's bundled-plugin
+      # directory is read-only — shadowBundledPlugins empties it into an
+      # emptyDir so listed plugins install cleanly. Rendered together so
+      # a plugin list can never hit the read-only-directory failure.
+      plugins              = length(var.spec.plugins) > 0 ? var.spec.plugins : null
+      shadowBundledPlugins = length(var.spec.plugins) > 0 ? true : null
+
+      "grafana.ini" = length(local.grafana_ini) > 0 ? local.grafana_ini : null
+
+      # Credentials ride the chart's own existingSecret wiring — it
+      # injects GF_SMTP_USER / GF_SMTP_PASSWORD from the referenced
+      # Secret (keys user / password), overriding the ini section at
+      # runtime. Nothing secret lands in the ini text.
+      smtp = try(coalesce(var.spec.smtp.credentials_secret_name), null) != null ? {
+        existingSecret = var.spec.smtp.credentials_secret_name
+      } : null
+
+      serviceMonitor = var.spec.service_monitor_enabled ? { enabled = true } : null
+
+      # The declared repository is split into the chart's separate
+      # registry/repository values (see the image split locals above) —
+      # the chart composes {registry}/{repository}:{tag} with registry
+      # defaulting to docker.io. pullSecrets is the private-mirror
+      # credential fold — the Pulumi twin renders the same split and
+      # list (a silent single-engine ImagePullBackOff class otherwise).
+      image = (try(var.spec.image, null) != null && (try(var.spec.image.repository, "") != "" || try(var.spec.image.tag, "") != "" || try(var.spec.image.pull_secret_name, "") != "")) ? {
+        for ik, iv in {
+          registry    = local.image_registry
+          repository  = local.image_repository
+          tag         = var.spec.image.tag != "" ? var.spec.image.tag : null
+          pullSecrets = var.spec.image.pull_secret_name != "" ? [var.spec.image.pull_secret_name] : null
+        } : ik => iv if iv != null
+      } : null
+
+      nodeSelector = length(try(var.spec.scheduling.node_selector, {})) > 0 ? var.spec.scheduling.node_selector : null
+
+      tolerations = length(try(var.spec.scheduling.tolerations, [])) > 0 ? [
+        for t in var.spec.scheduling.tolerations : {
+          for tk, tv in {
+            key               = t.key != "" ? t.key : null
+            operator          = t.operator != "" ? t.operator : null
+            value             = t.value != "" ? t.value : null
+            effect            = t.effect != "" ? t.effect : null
+            tolerationSeconds = try(t.toleration_seconds, null)
+          } : tk => tv if tv != null
+        }
+      ] : null
+
+      priorityClassName = try(var.spec.scheduling.priority_class_name, "") != "" ? var.spec.scheduling.priority_class_name : null
+
+      env          = length(local.database_env) > 0 ? local.database_env : null
+      envValueFrom = length(local.env_value_from) > 0 ? local.env_value_from : null
+    } : k => v if v != null && v != {}
+  }
 }
-

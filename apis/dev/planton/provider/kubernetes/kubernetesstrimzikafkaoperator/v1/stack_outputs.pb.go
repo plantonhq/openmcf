@@ -21,29 +21,20 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// kubernetes-strimzi-kafka-operator stack outputs
+// *
+// **KubernetesStrimziKafkaOperatorStackOutputs** — the composition
+// handles a deployed Strimzi cluster operator exports. The operator
+// has no per-cluster surface of its own; KubernetesKafka resources
+// compose against the CRDs it installs, so the handles here identify
+// the installation rather than any workload.
 type KubernetesStrimziKafkaOperatorStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which kubernetes-strimzi-kafka-operator is created.
+	// Namespace the operator runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for kubernetes-strimzi-kafka-operator.
-	// ex: main-kubernetes-strimzi-kafka-operator
-	// in the above example, "main" is the name of the kubernetes-strimzi-kafka-operator
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open kubernetes-strimzi-kafka-operator from developers laptop.
-	// this might come handy when kubernetes-strimzi-kafka-operator ingress is disabled for security reasons.
-	// this is rendered by combining kubernetes_strimzi_kafka_operator_kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/kubernetes_strimzi_kafka_operator_kubernetes_service -n kubernetes_namespace 6379:6379
-	// running the command from this attribute makes it possible to access kubernetes-strimzi-kafka-operator using http://localhost:8080
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to kubernetes-strimzi-kafka-operator from the web browser.
-	// ex: main-kubernetes-strimzi-kafka-operator.namespace.svc.cluster.local:6379
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open kubernetes-strimzi-kafka-operator from clients outside kubernetes.
-	// ex: https://gls-planton-pcs-dev-main.data.dev.planton.live:6379
-	IngressEndpoint string `protobuf:"bytes,5,opt,name=ingress_endpoint,json=ingressEndpoint,proto3" json:"ingress_endpoint,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Helm release name of the operator (`metadata.name`).
+	ReleaseName   string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesStrimziKafkaOperatorStackOutputs) Reset() {
@@ -83,30 +74,9 @@ func (x *KubernetesStrimziKafkaOperatorStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesStrimziKafkaOperatorStackOutputs) GetService() string {
+func (x *KubernetesStrimziKafkaOperatorStackOutputs) GetReleaseName() string {
 	if x != nil {
-		return x.Service
-	}
-	return ""
-}
-
-func (x *KubernetesStrimziKafkaOperatorStackOutputs) GetPortForwardCommand() string {
-	if x != nil {
-		return x.PortForwardCommand
-	}
-	return ""
-}
-
-func (x *KubernetesStrimziKafkaOperatorStackOutputs) GetKubeEndpoint() string {
-	if x != nil {
-		return x.KubeEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesStrimziKafkaOperatorStackOutputs) GetIngressEndpoint() string {
-	if x != nil {
-		return x.IngressEndpoint
+		return x.ReleaseName
 	}
 	return ""
 }
@@ -115,13 +85,10 @@ var File_dev_planton_provider_kubernetes_kubernetesstrimzikafkaoperator_v1_stack
 
 const file_dev_planton_provider_kubernetes_kubernetesstrimzikafkaoperator_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Udev/planton/provider/kubernetes/kubernetesstrimzikafkaoperator/v1/stack_outputs.proto\x12Adev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1\"\xe6\x01\n" +
+	"Udev/planton/provider/kubernetes/kubernetesstrimzikafkaoperator/v1/stack_outputs.proto\x12Adev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1\"m\n" +
 	"*KubernetesStrimziKafkaOperatorStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12)\n" +
-	"\x10ingress_endpoint\x18\x05 \x01(\tR\x0fingressEndpointB\x8c\x04\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseNameB\x8c\x04\n" +
 	"Ecom.dev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1B\x11StackOutputsProtoP\x01Z\x84\x01github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstrimzikafkaoperator/v1;kubernetesstrimzikafkaoperatorv1\xa2\x02\x05DPPKK\xaa\x02ADev.Planton.Provider.Kubernetes.Kubernetesstrimzikafkaoperator.V1\xca\x02ADev\\Planton\\Provider\\Kubernetes\\Kubernetesstrimzikafkaoperator\\V1\xe2\x02MDev\\Planton\\Provider\\Kubernetes\\Kubernetesstrimzikafkaoperator\\V1\\GPBMetadata\xea\x02FDev::Planton::Provider::Kubernetes::Kubernetesstrimzikafkaoperator::V1b\x06proto3"
 
 var (

@@ -4,296 +4,633 @@ package dev.planton.provider.kubernetes.kubernetestemporal.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
-import "dev/planton/provider/kubernetes/kubernetes_secret.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
 
-// temporal kubernetes database backend enumerates the supported databases.
-enum KubernetesTemporalDatabaseBackend {
-  // unspecified should not be used
-  kubernetes_temporal_database_backend_unspecified = 0;
-
-  // uses cassandra
-  cassandra = 1;
-
-  // uses postgresql
-  postgresql = 2;
-
-  // uses mysql
-  mysql = 3;
-}
-
-// temporal kubernetes spec defines minimal fields for deploying temporal on kubernetes.
+/**
+ * **KubernetesTemporalSpec** deploys Temporal — the durable workflow
+ * engine (long-running business logic, human-in-the-loop flows, saga
+ * orchestration, AI-agent pipelines) — from the official `temporal`
+ * Helm chart (https://go.temporal.io/helm-charts).
+ *
+ * WHAT GETS INSTALLED: the four Temporal server services (frontend,
+ * history, matching, worker) as separate Deployments, the Web UI (on
+ * by default), an admin-tools pod for operational commands, and the
+ * schema-setup Jobs that prepare the databases before the server
+ * starts.
+ *
+ * BRING YOUR OWN DATABASE — nothing is bundled. Temporal stores every
+ * workflow's state in a database you declare under `database`:
+ * PostgreSQL (a KubernetesPostgres composes naturally — the
+ * recommended path), MySQL (a KubernetesMysql composes), or an
+ * external Cassandra cluster you operate yourself. The chart's old
+ * bundled Cassandra/Elasticsearch/Prometheus/Grafana subcharts were
+ * removed upstream; declaring their legacy keys through `helm_values`
+ * makes the chart itself fail rendering.
+ *
+ * TWO DATABASES, ONE SERVER: Temporal keeps workflow state in the
+ * default store (`database_name`, default "temporal") and its search
+ * index in the visibility store (`visibility_database_name`, default
+ * "temporal_visibility"). Both must EXIST before install unless
+ * `create_databases` is set (which needs a database user with
+ * create-database privileges). On a KubernetesPostgres, declare the
+ * first database at bootstrap and create the second with one line of
+ * `post_init_sql` — both owned by the same application user.
+ *
+ * EXPOSURE: the frontend (gRPC 7233) and Web UI (HTTP 8080) Services
+ * stay ClusterIP; expose them via first-class kinds (KubernetesService
+ * for a LoadBalancer, Gateway API kinds for routes) over the exported
+ * service handles. Workers connect in-cluster through
+ * `frontend_endpoint`.
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `helm_values` remains as the escape hatch for chart values
+ * beyond them (merged last, Helm `-f` semantics, identical on both
+ * engines) — mTLS certificate mounts, JWT authorization, multi-cluster
+ * replication (clusterMetadata), extra dynamic-config keys — a safety
+ * valve, never the primary interface. Never put secret material in
+ * `helm_values`; database passwords ride existing Secrets through the
+ * typed fields and never land in rendered values.
+ */
 message KubernetesTemporalSpec {
-  // Kubernetes Namespace
-  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
   ];
 
-  // flag to indicate if the namespace should be created
-  bool create_namespace = 3;
-
-  // database configuration
-  KubernetesTemporalDatabaseConfig database = 4 [(buf.validate.field).required = true];
-  // disables temporal web ui
-  bool disable_web_ui = 5;
-  // enables embedded elasticsearch for temporal
-  // this is ignored if external elasticsearch is set
-  bool enable_embedded_elasticsearch = 6;
-  // enables monitoring stack for temporal
-  // enabling this will deploy prometheus and grafana
-  bool enable_monitoring_stack = 7;
-  //number of cassandra nodes to be deployed
-  //this is only honored when the backend is cassandra, and no external database is provided.
-  optional int32 cassandra_replicas = 8 [(dev.planton.shared.options.default) = "1"];
-  //The ingress configuration for the temporal deployment.
-  //if enabled, the frontend will be exposed using a load-balancer
-  // and also if web ui is enabled it will be exposed using the kubernetes ingress controller.
-  KubernetesTemporalIngress ingress = 9;
-  // external elasticsearch configuration to be used by temporal for configuring observability.
-  KubernetesTemporalExternalElasticsearch external_elasticsearch = 10;
-  // version of the Temporal Helm chart to deploy (e.g., "0.62.0")
-  // if not specified, the default version configured in the Pulumi module will be used
-  string version = 11;
-
-  // Dynamic configuration values for Temporal server runtime behavior.
-  // These settings control workflow execution limits and can be adjusted without server restart.
-  KubernetesTemporalDynamicConfig dynamic_config = 12;
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist. KNOW THIS:
+   * the database password is read through a secretKeyRef, and a
+   * secretKeyRef can only read Secrets in the workload's OWN namespace
+   * — co-locate Temporal with its database (the default composition)
+   * or replicate the credential Secret into this namespace.
+   */
+  bool create_namespace = 2;
 
   /**
-   * Number of history shards for the Temporal cluster.
-   * This is an IMMUTABLE setting that must be decided at cluster creation time.
-   * Higher values enable better parallelism and throughput but require more resources.
-   * Default: 512 (safe for most production workloads).
-   * WARNING: Cannot be changed after initial deployment without data migration.
+   * Helm chart version to install (e.g. "1.6.0" — chart 1.6.0 ships
+   * Temporal 1.31.2). Versions must exist as SERVED charts in the
+   * repository index (https://go.temporal.io/helm-charts).
    */
-  optional int32 num_history_shards = 13 [(buf.validate.field).int32 = {
-    gte: 1
-    lte: 16384
-  }];
-
-  // Per-service replica and resource configuration for Temporal services.
-  // Allows fine-tuning resources for frontend, history, matching, and worker services.
-  KubernetesTemporalServices services = 14;
-}
-
-// groups database configuration settings.
-message KubernetesTemporalDatabaseConfig {
-  // selected database backend
-  KubernetesTemporalDatabaseBackend backend = 1 [(buf.validate.field).required = true];
-
-  // external database configuration, if this is not set, in-cluster cassandra would be created
-  KubernetesTemporalExternalDatabase external_database = 2;
-
-  // primary database or keyspace name
-  optional string database_name = 6 [(dev.planton.shared.options.default) = "temporal"];
-
-  // visibility database or keyspace name
-  optional string visibility_name = 7 [(dev.planton.shared.options.default) = "temporal_visibility"];
-
-  // disables automatic schema creation
-  bool disable_auto_schema_setup = 8;
-}
-
-// describes an external database that temporal can use
-message KubernetesTemporalExternalDatabase {
-  // hostname for external database
-  string host = 1;
-
-  // port for external database
-  int32 port = 2;
-
-  // username for database
-  string username = 3;
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "1.6.0"];
 
   /**
-   * The password for authenticating to the database.
-   * Can be provided either as a plain string value or as a reference to an existing Kubernetes Secret.
-   *
-   * Using a secret reference is recommended for production deployments:
-   * ```yaml
-   * password:
-   *   secretRef:
-   *     name: db-credentials
-   *     key: password
-   * ```
-   *
-   * For development/testing, a plain string value can be used:
-   * ```yaml
-   * password:
-   *   stringValue: my-password
-   * ```
+   * The database Temporal persists every workflow's state in.
+   * Required — nothing is bundled.
    */
-  dev.planton.provider.kubernetes.KubernetesSensitiveValue password = 4;
-}
-
-// describes an external elasticsearch cluster that temporal can use
-// for advanced visibility instead of deploying an in-cluster es chart.
-message KubernetesTemporalExternalElasticsearch {
-  // the host address of the existing elasticsearch cluster
-  string host = 1;
-
-  // the port for the existing elasticsearch cluster
-  int32 port = 2;
-
-  // optional username, if the external cluster requires auth
-  string user = 3;
+  KubernetesTemporalDatabase database = 4 [(buf.validate.field).required = true];
 
   /**
-   * Optional password for authenticating to the external Elasticsearch cluster.
-   * Can be provided either as a plain string value or as a reference to an existing Kubernetes Secret.
-   *
-   * Using a secret reference is recommended for production deployments:
-   * ```yaml
-   * password:
-   *   secretRef:
-   *     name: es-credentials
-   *     key: password
-   * ```
-   *
-   * For development/testing, a plain string value can be used:
-   * ```yaml
-   * password:
-   *   stringValue: my-password
-   * ```
+   * Number of history shards for the cluster. IMMUTABLE — the value is
+   * baked into the default store's schema at first install and CANNOT
+   * be changed afterwards without a full cluster migration; pick for
+   * the cluster you will grow into, not the one you start with. Higher
+   * values raise parallelism and throughput ceilings at the cost of
+   * per-shard overhead. Empty = 512 (the upstream default, safe for
+   * most production workloads).
    */
-  dev.planton.provider.kubernetes.KubernetesSensitiveValue password = 4;
-}
+  optional int32 num_history_shards = 5 [
+    (dev.planton.shared.options.default) = "512",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 16384
+    }
+  ];
 
-// ingress configuration for temporal deployment with separate frontend and web ui endpoints
-message KubernetesTemporalIngress {
-  // frontend (gRPC + HTTP) ingress configuration
-  KubernetesTemporalFrontendIngressEndpoint frontend = 1;
+  /**
+   * Per-service sizing for the four Temporal server services. Empty =
+   * one replica of each with the chart's defaults (no resource
+   * requests — fine for dev, size them for production).
+   */
+  KubernetesTemporalServices services = 6;
 
-  // web ui ingress configuration
-  KubernetesTemporalWebUiIngressEndpoint web_ui = 2;
-}
+  /**
+   * Run the internal-frontend service. Temporal's system workers
+   * connect through it instead of the public frontend — REQUIRED when
+   * you enable authorization on the public frontend via `helm_values`
+   * (otherwise the server's own workers would need JWTs). Off by
+   * default, matching the chart.
+   */
+  bool internal_frontend_enabled = 7;
 
-// frontend ingress endpoint configuration supporting both gRPC and HTTP protocols
-message KubernetesTemporalFrontendIngressEndpoint {
-  // flag to enable or disable frontend ingress
-  bool enabled = 1;
+  /**
+   * The Temporal Web UI.
+   */
+  KubernetesTemporalWebUi web_ui = 8;
 
-  // the full hostname for gRPC access via LoadBalancer (e.g., "temporal-frontend-grpc.example.com")
-  // required when enabled is true
-  string grpc_hostname = 2;
+  /**
+   * Deploy the admin-tools pod — a shell with `temporal` and the
+   * schema tools pre-installed, for operational commands
+   * (`kubectl exec` into it). The schema Jobs use this image either
+   * way. Enabled by default, matching the chart.
+   */
+  optional bool admin_tools_enabled = 9 [(dev.planton.shared.options.default) = "true"];
 
-  // the full hostname for HTTP access via Gateway API (e.g., "temporal-frontend-http.example.com")
-  // optional - only creates Gateway/HTTPRoute resources if provided
-  string http_hostname = 3;
+  /**
+   * Temporal namespaces to create declaratively after install (a Job
+   * runs `temporal operator namespace create` for each, idempotently).
+   * Workflows execute inside a Temporal namespace — declare at least
+   * one, or create them later with the CLI/UI. Note these are
+   * TEMPORAL namespaces (a logical isolation unit inside the server),
+   * not Kubernetes namespaces.
+   */
+  repeated KubernetesTemporalNamespace temporal_namespaces = 10;
 
-  option (buf.validate.message).cel = {
-    id: "spec.ingress.frontend.grpc_hostname.required"
-    expression: "!this.enabled || size(this.grpc_hostname) > 0"
-    message: "frontend.grpc_hostname is required when frontend ingress is enabled"
-  };
-}
+  /**
+   * Runtime limits pushed through Temporal's dynamic-config file.
+   * These control workflow history and payload size ceilings and
+   * apply without a server restart. Empty = Temporal's defaults.
+   * Other dynamic-config keys ride `helm_values` under
+   * `server.dynamicConfig`.
+   */
+  KubernetesTemporalDynamicConfig dynamic_config = 11;
 
-// web ui ingress endpoint configuration for HTTP-only access
-message KubernetesTemporalWebUiIngressEndpoint {
-  // flag to enable or disable web ui ingress
-  bool enabled = 1;
+  /**
+   * Archive closed workflow histories and visibility records to
+   * long-term storage (S3, GCS, or a mounted filesystem) so they
+   * survive retention-driven deletion from the database. Empty =
+   * archival disabled (the upstream default).
+   */
+  KubernetesTemporalArchival archival = 12;
 
-  // the full hostname for HTTP access via Gateway API (e.g., "temporal-ui.example.com")
-  // required when enabled is true
-  string hostname = 2;
+  /**
+   * Emit Prometheus metrics via ServiceMonitor resources (one per
+   * server service). Requires the Prometheus Operator CRDs on the
+   * cluster — a KubernetesKubePrometheusStack composes naturally.
+   * When false (default), pods still carry prometheus.io scrape
+   * annotations for annotation-based collection.
+   */
+  bool service_monitor_enabled = 13;
 
-  option (buf.validate.message).cel = {
-    id: "spec.ingress.web_ui.hostname.required"
-    expression: "!this.enabled || size(this.hostname) > 0"
-    message: "web_ui.hostname is required when web ui ingress is enabled"
-  };
+  /**
+   * Server log level. Empty = "info". Accepts a single level or
+   * Temporal's comma form (e.g. "debug,info").
+   */
+  optional string log_level = 14 [
+    (dev.planton.shared.options.default) = "info",
+    (buf.validate.field).string.pattern = "^(debug|info|warn|error)(,(debug|info|warn|error))*$"
+  ];
+
+  /**
+   * Pod scheduling for the server services, schema Jobs, admin-tools
+   * and Web UI pods.
+   */
+  KubernetesTemporalScheduling scheduling = 15;
+
+  /**
+   * Container image overrides for air-gapped clusters and private
+   * mirrors. Empty = the chart's pinned upstream images
+   * (temporalio/server, temporalio/ui, temporalio/admin-tools).
+   */
+  KubernetesTemporalImages images = 16;
+
+  /**
+   * Additional Helm values merged LAST (Helm `-f` semantics, identical
+   * on both engines) — the escape hatch for chart values the typed
+   * fields do not model: mTLS mounts (`server.config.tls` +
+   * `server.additionalVolumes`), JWT authorization
+   * (`server.config.authorization`), multi-cluster replication
+   * (`server.config.clusterMetadata`), extra dynamic-config keys, and
+   * per-service scheduling. YAML document as a string. Never put
+   * secret material here; passwords belong in the typed
+   * secret-reference fields, which keep them out of rendered values.
+   * The legacy bundled-subchart keys (cassandra, elasticsearch,
+   * prometheus, grafana, mysql, postgresql) were REMOVED upstream —
+   * setting them makes the chart itself fail rendering.
+   */
+  string helm_values = 17;
 }
 
 /**
- * Dynamic configuration values for Temporal server runtime behavior.
- * These settings control workflow execution limits without requiring server restart.
- * When not specified, Temporal uses its default values.
+ * The database backing Temporal — the default (workflow state) store
+ * plus the visibility (search index) store.
  *
- * Two types of limits:
- * - **History limits**: Control total workflow history size and event count
- * - **Blob limits**: Control individual payload sizes (markers, signals, activity I/O)
- *
- * Example:
- * ```yaml
- * dynamic_config:
- *   history_size_limit_error: 104857600  # 100 MB total history
- *   history_count_limit_error: 102400    # 100K events
- *   blob_size_limit_error: 10485760      # 10 MB per payload (for large IaC diffs)
- *   blob_size_limit_warn: 5242880        # 5 MB warning threshold
- * ```
+ * PRIVILEGES CHEAT SHEET: with `create_databases: false` (the
+ * default), both databases must exist and the declared user needs
+ * full DDL+DML rights INSIDE them (ownership is simplest — the schema
+ * Jobs create dozens of tables and indexes). With
+ * `create_databases: true`, the user additionally needs
+ * create-database rights on the server (CREATEDB on PostgreSQL).
  */
-message KubernetesTemporalDynamicConfig {
+message KubernetesTemporalDatabase {
   /**
-   * Maximum size in bytes for workflow execution history.
-   * When a workflow exceeds this limit, Temporal terminates it with reason "Workflow history size exceeds limit."
-   * Default: 52428800 (50 MB). Increase for workflows with large payloads.
+   * Exactly one database backend.
    */
-  optional int64 history_size_limit_error = 1 [(buf.validate.field).int64 = {gte: 1048576} /* Minimum 1 MB */];
+  oneof backend {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * PostgreSQL — the recommended backend. Defaults compose a
+     * KubernetesPostgres resource; any reachable PostgreSQL ≥ 12
+     * (RDS, Cloud SQL, Aurora) works with literal values.
+     */
+    KubernetesTemporalPostgres postgres = 1;
+
+    /**
+     * MySQL 8. Defaults compose a KubernetesMysql resource; any
+     * reachable MySQL 8 works with literal values.
+     */
+    KubernetesTemporalMysql mysql = 2;
+
+    /**
+     * An EXTERNAL Cassandra cluster you operate outside Planton (the
+     * catalog has no Cassandra kind). Serves the default store ONLY —
+     * Temporal removed Cassandra visibility support in v1.21, so a
+     * `visibility` SQL block is REQUIRED with this backend.
+     */
+    KubernetesTemporalCassandra cassandra = 3;
+  }
 
   /**
-   * Maximum number of events in workflow execution history.
-   * When a workflow exceeds this limit, Temporal terminates it with reason "Workflow history size exceeds limit."
-   * Default: 51200 events. Increase for workflows with many activities/signals.
-   * Consider using ContinueAsNew pattern as an alternative.
+   * Name of the default store database (the Cassandra KEYSPACE when
+   * the backend is cassandra). Empty = "temporal".
    */
-  optional int64 history_count_limit_error = 2 [(buf.validate.field).int64 = {gte: 1000} /* Minimum 1000 events */];
+  optional string database_name = 4 [
+    (dev.planton.shared.options.default) = "temporal",
+    (buf.validate.field).string.pattern = "^[a-zA-Z_][a-zA-Z0-9_]*$"
+  ];
 
   /**
-   * Warning threshold for history size in bytes.
-   * Temporal logs warnings when workflows approach this limit.
-   * Default: 10485760 (10 MB, ~20% of error limit).
+   * Name of the visibility store database. Empty =
+   * "temporal_visibility". Ignored when a `visibility` block declares
+   * its own database name.
    */
-  optional int64 history_size_limit_warn = 3 [(buf.validate.field).int64 = {gte: 524288} /* Minimum 512 KB */];
+  optional string visibility_database_name = 5 [
+    (dev.planton.shared.options.default) = "temporal_visibility",
+    (buf.validate.field).string.pattern = "^[a-zA-Z_][a-zA-Z0-9_]*$"
+  ];
 
   /**
-   * Warning threshold for history event count.
-   * Temporal logs warnings when workflows approach this limit.
-   * Default: 10240 (~20% of error limit).
+   * A SEPARATE SQL connection for the visibility store. REQUIRED when
+   * the backend is cassandra (Cassandra cannot serve visibility since
+   * Temporal v1.21). Optional for SQL backends — declare it to place
+   * visibility on a different server than workflow state; empty = the
+   * same server and credentials as the default store, database
+   * `visibility_database_name`.
    */
-  optional int64 history_count_limit_warn = 4 [(buf.validate.field).int64 = {gte: 500} /* Minimum 500 events */];
+  KubernetesTemporalVisibility visibility = 6;
 
   /**
-   * Maximum size in bytes for a single blob/payload (marker details, signal data, activity I/O).
-   * When a payload exceeds this limit, Temporal rejects it with "exceeds size limit" error.
-   * This is different from history_size_limit which controls total workflow history size.
-   * Default: 2097152 (2 MB). Increase for workflows that send large payloads like IaC diffs.
-   *
-   * Example: Set to 10485760 (10 MB) to support large Pulumi diffs.
+   * Have the schema Jobs CREATE the databases/keyspace before setting
+   * up schemas. Off by default — the databases are expected to exist
+   * (on a KubernetesPostgres: declare the default database at
+   * bootstrap and add the visibility database via `post_init_sql`).
+   * Turning this on requires create-database privileges (CREATEDB on
+   * PostgreSQL) for the declared user.
    */
-  optional int64 blob_size_limit_error = 5 [(buf.validate.field).int64 = {gte: 1048576} /* Minimum 1 MB */];
+  bool create_databases = 7;
 
   /**
-   * Warning threshold for blob/payload size in bytes.
-   * Temporal logs warnings when payloads approach this limit.
-   * Default: 524288 (512 KB, ~25% of error limit).
+   * Skip the schema-setup Jobs entirely — you manage Temporal's
+   * schemas yourself with temporal-sql-tool/temporal-cassandra-tool.
+   * Leave off unless you have a dedicated schema pipeline: the server
+   * crash-loops against an empty or outdated schema.
    */
-  optional int64 blob_size_limit_warn = 6 [(buf.validate.field).int64 = {gte: 262144} /* Minimum 256 KB */];
+  bool skip_schema_setup = 8;
+
+  option (buf.validate.message).cel = {
+    id: "spec.database.cassandra.requires_sql_visibility"
+    message: "the cassandra backend requires a `visibility` SQL block — Temporal removed Cassandra visibility support in v1.21, so the search index must live in PostgreSQL or MySQL"
+    expression: "!has(this.cassandra) || has(this.visibility)"
+  };
 }
 
 /**
- * Per-service replica and resource configuration for a Temporal service.
- * Allows configuring replicas and CPU/memory resources independently for each service.
- *
- * Example:
- * ```yaml
- * replicas: 3
- * resources:
- *   limits:
- *     cpu: "2000m"
- *     memory: "4Gi"
- *   requests:
- *     cpu: "500m"
- *     memory: "1Gi"
- * ```
+ * PostgreSQL connection for a Temporal store.
+ */
+message KubernetesTemporalPostgres {
+  /**
+   * PostgreSQL host — a Service name (same namespace) or a full FQDN
+   * (cross-namespace or external, e.g.
+   * "pg-main-rw.data.svc.cluster.local" or an RDS endpoint). Accepts
+   * a literal or a reference to a KubernetesPostgres resource (its
+   * read-write Service — always the current primary). The port is
+   * declared separately — do not include one here.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.rw_service"
+  ];
+
+  /**
+   * PostgreSQL port. Empty = 5432.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "5432",
+    (buf.validate.field).int32.gt = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  /**
+   * Database username. On a KubernetesPostgres this is the bootstrap
+   * `owner` role (default: same as the bootstrap database name) —
+   * ownership of both Temporal databases gives the schema Jobs
+   * everything they need.
+   */
+  string username = 3 [(buf.validate.field).required = true];
+
+  /**
+   * The user's password, read from an existing Secret (the chart
+   * wires it as a secretKeyRef into the server and schema-Job pods —
+   * it never lands in rendered values).
+   */
+  KubernetesTemporalPasswordSecret password_secret = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Maximum open connections per service to this store. Empty = 20
+   * (the chart preset's value). The effective total is per Temporal
+   * service instance — four services × replicas all hold their own
+   * pools; size the database's max_connections accordingly.
+   */
+  optional int32 max_conns = 5 [
+    (dev.planton.shared.options.default) = "20",
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  /**
+   * Maximum idle connections kept per pool. Empty = 20.
+   */
+  optional int32 max_idle_conns = 6 [
+    (dev.planton.shared.options.default) = "20",
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  /**
+   * Maximum lifetime of a pooled connection (Go duration, e.g. "1h").
+   * Empty = "1h".
+   */
+  optional string max_conn_lifetime = 7 [
+    (dev.planton.shared.options.default) = "1h",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(ms|s|m|h)$"
+  ];
+
+  /**
+   * TLS towards the database.
+   */
+  KubernetesTemporalDatabaseTls tls = 8;
+}
+
+/**
+ * MySQL 8 connection for a Temporal store.
+ */
+message KubernetesTemporalMysql {
+  /**
+   * MySQL host — a Service name (same namespace) or a full FQDN
+   * (cross-namespace or external). Accepts a literal or a reference
+   * to a KubernetesMysql resource (its primary Service — writes
+   * always land on the current primary). The port is declared
+   * separately — do not include one here.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesMysql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_service"
+  ];
+
+  /**
+   * MySQL port. Empty = 3306.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "3306",
+    (buf.validate.field).int32.gt = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  /**
+   * Database username. Needs full rights on both Temporal databases
+   * (plus CREATE on the server when `create_databases` is on). On a
+   * KubernetesMysql, either use a declared user with grants on the
+   * temporal databases or root.
+   */
+  string username = 3 [(buf.validate.field).required = true];
+
+  /**
+   * The user's password, read from an existing Secret (wired as a
+   * secretKeyRef — it never lands in rendered values). The default
+   * reference composes a KubernetesMysql's root credential Secret;
+   * set `secret_key` to match the referenced user (e.g. "root").
+   */
+  KubernetesTemporalMysqlPasswordSecret password_secret = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Maximum open connections per service to this store. Empty = 20.
+   * Four services × replicas each hold their own pools.
+   */
+  optional int32 max_conns = 5 [
+    (dev.planton.shared.options.default) = "20",
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  /**
+   * Maximum idle connections kept per pool. Empty = 20.
+   */
+  optional int32 max_idle_conns = 6 [
+    (dev.planton.shared.options.default) = "20",
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  /**
+   * Maximum lifetime of a pooled connection (Go duration, e.g. "1h").
+   * Empty = "1h".
+   */
+  optional string max_conn_lifetime = 7 [
+    (dev.planton.shared.options.default) = "1h",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(ms|s|m|h)$"
+  ];
+
+  /**
+   * TLS towards the database.
+   */
+  KubernetesTemporalDatabaseTls tls = 8;
+}
+
+/**
+ * External Cassandra connection for the DEFAULT store (visibility
+ * cannot run on Cassandra — see the database message).
+ */
+message KubernetesTemporalCassandra {
+  /**
+   * Cassandra contact points (hostnames or IPs; the driver discovers
+   * the ring from them). At least one.
+   */
+  repeated string hosts = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  /**
+   * CQL port. Empty = 9042.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "9042",
+    (buf.validate.field).int32.gt = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  /**
+   * Cassandra username. Needs full rights on the Temporal keyspace
+   * (plus keyspace-creation rights when `create_databases` is on).
+   */
+  string username = 3 [(buf.validate.field).required = true];
+
+  /**
+   * The user's password, read from an existing Secret you create in
+   * the install namespace (wired as a secretKeyRef — it never lands
+   * in rendered values).
+   */
+  KubernetesTemporalPasswordSecret password_secret = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Replication factor used ONLY when `create_databases` creates the
+   * keyspace (SimpleStrategy). Empty = 3. Existing keyspaces keep
+   * their own replication settings.
+   */
+  optional int32 replication_factor = 5 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gt = 0
+  ];
+
+  /**
+   * Local datacenter name for keyspace creation and driver locality.
+   * Empty = the driver default.
+   */
+  string datacenter = 6;
+
+  /**
+   * TLS towards Cassandra.
+   */
+  KubernetesTemporalDatabaseTls tls = 7;
+}
+
+/**
+ * A store password read from an existing Kubernetes Secret. Defaults
+ * compose a KubernetesPostgres resource's application-user Secret.
+ */
+message KubernetesTemporalPasswordSecret {
+  /**
+   * Secret name. Accepts a literal or a reference to a
+   * KubernetesPostgres resource (its `<cluster>-app` credential
+   * Secret, maintained by the operator across failovers). KNOW THIS
+   * (a Kubernetes constraint, not a chart one): a secretKeyRef can
+   * only read Secrets in the workload's OWN namespace — co-locate
+   * Temporal with its database or replicate the Secret.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.password_secret.name"
+  ];
+
+  /**
+   * Key within the Secret holding the password. Empty = "password"
+   * (the key a KubernetesPostgres application Secret uses).
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * A store password read from an existing Kubernetes Secret. Defaults
+ * compose a KubernetesMysql resource's credential Secret.
+ */
+message KubernetesTemporalMysqlPasswordSecret {
+  /**
+   * Secret name. Accepts a literal or a reference to a
+   * KubernetesMysql resource (its operator-maintained credential
+   * Secret). Same-namespace constraint applies (secretKeyRef).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesMysql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.root_password_secret.name"
+  ];
+
+  /**
+   * Key within the Secret holding the declared user's password (on a
+   * KubernetesMysql credential Secret the keys are per-user, e.g.
+   * "root").
+   */
+  string secret_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * TLS settings towards a database. Server-certificate FILE mounts
+ * (private CAs, client certs) additionally need the certificate
+ * volumes mounted via `helm_values` (`server.additionalVolumes` +
+ * `server.additionalVolumeMounts` + the store's `tls.caFile`) — the
+ * typed fields cover managed databases that present
+ * publicly-verifiable or unverified certificates.
+ */
+message KubernetesTemporalDatabaseTls {
+  /**
+   * Connect with TLS.
+   */
+  bool enabled = 1;
+
+  /**
+   * Verify the server hostname against its certificate. Only
+   * meaningful with `enabled: true`.
+   */
+  bool host_verification = 2;
+
+  /**
+   * Expected server name (SNI) when it differs from the connect host
+   * — required by some serverless/proxied database offerings.
+   */
+  string server_name = 3;
+
+  option (buf.validate.message).cel = {
+    id: "spec.database.tls.host_verification.requires_enabled"
+    message: "host_verification is meaningless without enabled: true — hostname verification only applies to a TLS connection"
+    expression: "!this.host_verification || this.enabled"
+  };
+}
+
+/**
+ * The visibility store on its own SQL server (see the database
+ * message for when this is required vs optional).
+ */
+message KubernetesTemporalVisibility {
+  /**
+   * Exactly one SQL backend for visibility.
+   */
+  oneof backend {
+    option (buf.validate.oneof).required = true;
+
+    // PostgreSQL visibility store.
+    KubernetesTemporalPostgres postgres = 1;
+
+    // MySQL 8 visibility store.
+    KubernetesTemporalMysql mysql = 2;
+  }
+
+  /**
+   * Visibility database name on THIS server. Empty = the parent
+   * database block's `visibility_database_name` (default
+   * "temporal_visibility").
+   */
+  optional string database_name = 3 [(buf.validate.field).string.pattern = "^[a-zA-Z_][a-zA-Z0-9_]*$"];
+}
+
+/**
+ * Sizing for one Temporal server service.
  */
 message KubernetesTemporalServiceConfig {
   /**
-   * Number of replicas for this service.
-   * Higher replica counts provide better availability and throughput.
-   * Default: 1 for development, recommend 3+ for production.
+   * Number of replicas. Empty = 1. All four services scale
+   * horizontally; history is the stateful heavy-lifter (shard
+   * ownership redistributes across its replicas).
    */
   optional int32 replicas = 1 [(buf.validate.field).int32 = {
     gte: 1
@@ -301,56 +638,248 @@ message KubernetesTemporalServiceConfig {
   }];
 
   /**
-   * Container resources (CPU and memory) for this service.
-   * Resource requirements vary by service type:
-   * - history: Most resource-intensive, handles workflow state
-   * - matching: Task dispatch, moderate resources
-   * - frontend: API gateway, moderate resources
-   * - worker: Internal workflows, light resources
+   * Container resources. Typical production starting points: history
+   * is the most demanding (workflow state caches), frontend and
+   * matching moderate, worker light.
    */
   dev.planton.provider.kubernetes.ContainerResources resources = 2;
 }
 
 /**
- * Service-level configuration for all Temporal services.
- * Allows fine-tuning replica counts and resources for each Temporal service independently.
- *
- * Temporal consists of four core services:
- * - **frontend**: API gateway for client requests (gRPC/HTTP)
- * - **history**: Manages workflow state and execution (most resource-intensive)
- * - **matching**: Task queue management and worker dispatch
- * - **worker**: Runs internal Temporal system workflows
- *
- * Example:
- * ```yaml
- * services:
- *   frontend:
- *     replicas: 2
- *     resources:
- *       requests:
- *         cpu: "200m"
- *         memory: "512Mi"
- *   history:
- *     replicas: 3
- *     resources:
- *       requests:
- *         cpu: "500m"
- *         memory: "1Gi"
- *       limits:
- *         cpu: "2000m"
- *         memory: "4Gi"
- * ```
+ * Per-service sizing for the four Temporal server services.
  */
 message KubernetesTemporalServices {
-  // Frontend service configuration (API gateway for gRPC/HTTP requests)
+  // The frontend service — the gRPC/HTTP API gateway clients and workers connect to.
   KubernetesTemporalServiceConfig frontend = 1;
 
-  // History service configuration (manages workflow state, most resource-intensive)
+  // The history service — owns workflow state and the history shards; the most resource-intensive.
   KubernetesTemporalServiceConfig history = 2;
 
-  // Matching service configuration (task queue management and dispatch)
+  // The matching service — task-queue management and dispatch to workers.
   KubernetesTemporalServiceConfig matching = 3;
 
-  // Worker service configuration (internal Temporal system workflows)
+  // The worker service — Temporal's internal system workflows.
   KubernetesTemporalServiceConfig worker = 4;
+}
+
+/**
+ * The Temporal Web UI.
+ */
+message KubernetesTemporalWebUi {
+  /**
+   * Deploy the Web UI. Empty = true (the chart default). The UI is
+   * read-mostly; workflows are driven through the frontend gRPC API.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * UI replicas. Empty = 1 (the UI is stateless — scale freely).
+   */
+  optional int32 replicas = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 20
+  }];
+
+  /**
+   * Container resources for the UI.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 3;
+}
+
+/**
+ * A Temporal namespace created declaratively after install.
+ */
+message KubernetesTemporalNamespace {
+  /**
+   * Namespace name (e.g. "default", "payments").
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z][a-zA-Z0-9._-]{1,231}$"
+  ];
+
+  /**
+   * Workflow-execution retention period — how long CLOSED workflow
+   * histories stay queryable before deletion (archival, when
+   * configured, keeps them beyond this). Duration with a d/h/m
+   * suffix. Empty = "3d".
+   */
+  optional string retention = 2 [
+    (dev.planton.shared.options.default) = "3d",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(m|h|d)$"
+  ];
+}
+
+/**
+ * Runtime limits pushed through Temporal's dynamic config (applied
+ * without server restarts). Two limit families: HISTORY limits bound
+ * a workflow's total event history; BLOB limits bound individual
+ * payloads (activity inputs/outputs, signals, markers). When a
+ * workflow exceeds an error limit, Temporal terminates it; warn
+ * limits only log.
+ */
+message KubernetesTemporalDynamicConfig {
+  /**
+   * Maximum workflow history size in bytes before termination.
+   * Upstream default: 50 MB. Long-running workflows with large
+   * payloads should raise this or use ContinueAsNew.
+   */
+  optional int64 history_size_limit_error = 1 [(buf.validate.field).int64.gte = 1048576];
+
+  /**
+   * Warning threshold for history size in bytes. Upstream default:
+   * 10 MB.
+   */
+  optional int64 history_size_limit_warn = 2 [(buf.validate.field).int64.gte = 524288];
+
+  /**
+   * Maximum workflow history event count before termination.
+   * Upstream default: 51200.
+   */
+  optional int64 history_count_limit_error = 3 [(buf.validate.field).int64.gte = 1000];
+
+  /**
+   * Warning threshold for history event count. Upstream default:
+   * 10240.
+   */
+  optional int64 history_count_limit_warn = 4 [(buf.validate.field).int64.gte = 500];
+
+  /**
+   * Maximum size in bytes of a single payload (activity input/output,
+   * signal, marker). Upstream default: 2 MB. Raise for workflows
+   * passing large blobs — better yet, pass references to object
+   * storage.
+   */
+  optional int64 blob_size_limit_error = 5 [(buf.validate.field).int64.gte = 1048576];
+
+  /**
+   * Warning threshold for payload size in bytes. Upstream default:
+   * 512 KB.
+   */
+  optional int64 blob_size_limit_warn = 6 [(buf.validate.field).int64.gte = 262144];
+}
+
+/**
+ * Archival of closed workflow histories and visibility records to
+ * long-term storage. Enables both history and visibility archival
+ * with read access; per-namespace states beyond that ride
+ * `helm_values`.
+ *
+ * CLOUD CREDENTIALS: the s3 provider uses the pods' ambient AWS
+ * credentials (IRSA/instance profile — attach identity via
+ * `helm_values` ServiceAccount annotations or pod env); gcs uses
+ * Workload Identity/ADC. Nothing credential-bearing is rendered.
+ */
+message KubernetesTemporalArchival {
+  /**
+   * Exactly one storage provider.
+   */
+  oneof provider {
+    option (buf.validate.oneof).required = true;
+
+    // Amazon S3 (or S3-compatible endpoints configured via helm_values).
+    KubernetesTemporalArchivalS3 s3 = 1;
+
+    // Google Cloud Storage.
+    KubernetesTemporalArchivalGcs gcs = 2;
+
+    // A filesystem path INSIDE the history pods — dev/test only (the
+    // path is a pod-local mount unless you add a shared volume via
+    // helm_values); histories archived here do not survive pod loss.
+    KubernetesTemporalArchivalFilestore filestore = 3;
+  }
+
+  /**
+   * Archival URI for workflow HISTORIES, scheme matching the provider
+   * (s3://bucket[/prefix], gs://bucket[/prefix], file:///path).
+   * Becomes the namespace default — every Temporal namespace archives
+   * here unless overridden per namespace.
+   */
+  string history_uri = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Archival URI for VISIBILITY records, scheme matching the provider.
+   */
+  string visibility_uri = 5 [(buf.validate.field).required = true];
+
+  option (buf.validate.message).cel = {
+    id: "spec.archival.s3.uri_scheme"
+    message: "with the s3 provider, history_uri and visibility_uri must use the s3:// scheme"
+    expression: "!has(this.s3) || (this.history_uri.startsWith('s3://') && this.visibility_uri.startsWith('s3://'))"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.archival.gcs.uri_scheme"
+    message: "with the gcs provider, history_uri and visibility_uri must use the gs:// scheme"
+    expression: "!has(this.gcs) || (this.history_uri.startsWith('gs://') && this.visibility_uri.startsWith('gs://'))"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.archival.filestore.uri_scheme"
+    message: "with the filestore provider, history_uri and visibility_uri must use the file:// scheme"
+    expression: "!has(this.filestore) || (this.history_uri.startsWith('file://') && this.visibility_uri.startsWith('file://'))"
+  };
+}
+
+/**
+ * S3 archival provider.
+ */
+message KubernetesTemporalArchivalS3 {
+  /**
+   * AWS region of the archival bucket(s).
+   */
+  string region = 1 [(buf.validate.field).required = true];
+}
+
+/**
+ * GCS archival provider (no provider-level settings — the bucket
+ * rides the URIs; credentials are ambient).
+ */
+message KubernetesTemporalArchivalGcs {}
+
+/**
+ * Filestore archival provider (no provider-level settings — the
+ * directory rides the URIs).
+ */
+message KubernetesTemporalArchivalFilestore {}
+
+/**
+ * Pod scheduling applied to the server services, schema Jobs,
+ * admin-tools and Web UI pods. Per-service scheduling (e.g. pinning
+ * only history to dedicated nodes) rides `helm_values`.
+ */
+message KubernetesTemporalScheduling {
+  /**
+   * Node selector for all Temporal pods.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for all Temporal pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+}
+
+/**
+ * Container image overrides (air-gap/mirror support). Each override
+ * replaces the repository and/or tag while everything else about the
+ * deployment stays identical. Empty tag = the chart's pinned tag for
+ * `chart_version`.
+ */
+message KubernetesTemporalImages {
+  /**
+   * The Temporal server image (upstream: temporalio/server). Used by
+   * all four services.
+   */
+  dev.planton.provider.kubernetes.ContainerImage server = 1;
+
+  /**
+   * The Web UI image (upstream: temporalio/ui).
+   */
+  dev.planton.provider.kubernetes.ContainerImage web_ui = 2;
+
+  /**
+   * The admin-tools image (upstream: temporalio/admin-tools). Also
+   * runs the schema and namespace Jobs — needed even with
+   * `admin_tools_enabled: false`.
+   */
+  dev.planton.provider.kubernetes.ContainerImage admin_tools = 3;
 }

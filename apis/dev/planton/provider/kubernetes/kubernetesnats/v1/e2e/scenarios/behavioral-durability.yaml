@@ -1,0 +1,19 @@
+# THE DURABILITY PROOF: store a marker in a file-backed JetStream stream
+# as the declared user, DELETE the server pod (UID-verified replacement),
+# reconnect and read the SAME marker back — stream data survives on the
+# JetStream PersistentVolume; the pod is not the storage. A single
+# authenticated server is the honest shape for this (one PVC, one
+# replacement).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesNats
+metadata:
+  name: e2e-nats-dur
+spec:
+  namespace:
+    value: e2e-nats-dur
+  createNamespace: true
+  jetStream:
+    diskSize: 1Gi
+  auth:
+    users:
+      - username: app

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskafkamirrormaker2.v1;
+
+/**
+ * **KubernetesKafkaMirrorMaker2StackOutputs** — the handles a
+ * MirrorMaker 2 deployment exports.
+ */
+message KubernetesKafkaMirrorMaker2StackOutputs {
+  // Namespace the MirrorMaker 2 deployment runs in.
+  string namespace = 1;
+
+  // The deployment's name (metadata.name).
+  string mirrormaker_name = 2;
+
+  // In-cluster Connect REST API endpoint of the underlying engine
+  // (`http://<name>-mirrormaker2-api.<namespace>.svc.cluster.local:8083`)
+  // — read-only inspection of mirror connector status.
+  string rest_api_endpoint = 3;
+}

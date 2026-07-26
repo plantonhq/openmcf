@@ -3,15 +3,18 @@ kind: ComponentE2EProfile
 metadata:
   name: kubernetestekton
 spec:
-  tier: 4
-  status: deferred
-  deferred_reason: >-
-    Tekton webhook pods take too long to become ready on kind clusters.
-    Apply succeeds (74 resources created) but ConfigMaps in the
-    tekton-pipelines-resolvers namespace fail webhook validation because
-    config.webhook.pipeline.tekton.dev is not listening yet. This is a
-    kind/runner resource constraint, not a module bug.
-    Deferred by explicit decision in session 016 (2026-05-08).
-  validated_provisioners:
-    - pulumi
+  tier: 3
+  # Rebuilt as the TektonConfig declaration the Tekton Operator (the
+  # registry prerequisite, harness-installed first) reconciles, and
+  # offline-validated (spec tests, both engines' plan/preview proofs
+  # across all/basic/full shapes); the live lanes have not run yet —
+  # they prove TektonConfig Ready, the per-profile component rollouts
+  # (dashboard present on `all`, ABSENT on `basic`), a verifier-owned
+  # TaskRun run to Succeeded on every lane, and the destroy-by-design
+  # posture: TektonConfig deletion completes while the operator still
+  # runs (the finalizer-processing ordering the two-kind grain exists
+  # for). KNOW THIS: the operator pulls component images at first
+  # reconcile (internet-at-install on a cold cluster) and the full
+  # teardown takes minutes — the budget covers both.
+  status: pending_proof
   timeout_minutes: 25

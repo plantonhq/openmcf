@@ -1,0 +1,90 @@
+# Full-surface offline-proof manifest: exercises two clusters (one plain,
+# one production-postured with read_only, TLS trust from a Strimzi-style
+# cluster-CA Secret, SCRAM-SHA-512 sasl with a referenced password Secret,
+# a schema registry with HTTP Basic auth, and two Connect clusters — one
+# authenticated, one open), login_form authentication (ONE user: the app
+# supports a single LOGIN_FORM account via Spring Boot's default security
+# user — see the module comments), replicas, resources, a NodePort
+# Service, scheduling, the image-registry override, and the helm_values
+# escape hatch (its replicaCount override must WIN over the typed replicas
+# in the rendered values — the merge-last proof). Placeholder values;
+# never applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafkaUi
+metadata:
+  name: hack-kafka-ui
+spec:
+  namespace:
+    value: hack-kafka-ui
+  createNamespace: true
+  chartVersion: 1.6.4
+  clusters:
+    - name: staging
+      bootstrapServers:
+        value: staging-kafka-bootstrap.kafka-staging.svc.cluster.local:9092
+      properties:
+        request.timeout.ms: "30000"
+    - name: production
+      bootstrapServers:
+        value: prod-kafka-bootstrap.kafka-prod.svc.cluster.local:9093
+      readOnly: true
+      tls:
+        caSecretName:
+          value: prod-kafka-cluster-ca-cert
+        caCertificate: ca.crt
+      sasl:
+        mechanism: SCRAM-SHA-512
+        username: kafka-ui
+        passwordSecret:
+          secretName:
+            value: prod-kafka-ui-user
+          key: password
+      schemaRegistry:
+        url:
+          value: http://prod-karapace.kafka-prod.svc.cluster.local:8081
+        username: registry-ui
+        passwordSecret:
+          secretName:
+            value: prod-karapace-ui-credentials
+          key: password
+      kafkaConnect:
+        - name: cdc
+          address:
+            value: http://prod-connect-cdc.kafka-prod.svc.cluster.local:8083
+          username: connect-ui
+          passwordSecret:
+            secretName:
+              value: prod-connect-cdc-ui-credentials
+            key: password
+        - name: sink
+          address:
+            value: http://prod-connect-sink.kafka-prod.svc.cluster.local:8083
+      properties:
+        request.timeout.ms: "45000"
+  auth:
+    type: login_form
+    user:
+      username: admin
+      password: hack-placeholder-admin
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  serviceType: NodePort
+  servicePort: 8080
+  nodeSelector:
+    kubernetes.io/os: linux
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: consoles
+      effect: NoSchedule
+  imageRegistry: registry.example.com
+  helmValues: |
+    replicaCount: 3
+    podLabels:
+      example.org/owner: platform

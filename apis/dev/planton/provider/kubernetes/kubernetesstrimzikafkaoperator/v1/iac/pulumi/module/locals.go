@@ -1,60 +1,73 @@
 package module
 
 import (
+	"strconv"
+
 	kubernetesstrimzikafkaoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstrimzikafkaoperator/v1"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/kuberneteslabelkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// locals computes derived configuration values from the stack input
-type locals struct {
-	namespace    string
-	labels       pulumi.StringMap
-	operatorName string
-	chartVersion string
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
+type Locals struct {
+	Spec *kubernetesstrimzikafkaoperatorv1.KubernetesStrimziKafkaOperatorSpec
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	HelmReleaseName string
+	// Resource-identity labels stamped on the module-created satellites
+	// (the namespace — never injected into the chart's own resources;
+	// Helm owns those).
+	Labels map[string]string
+
+	// Namespace the operator installs into (resolved literal from the
+	// spec's value-or-ref). With the default watch scope this is also
+	// the only namespace the operator reconciles Kafka clusters in.
+	Namespace string
+
+	// Helm release name — metadata.name. The chart derives its resource
+	// names from fixed Strimzi names (strimzi-cluster-operator), so a
+	// SECOND install in one cluster additionally needs
+	// create_global_resources false — see the spec comment.
+	ReleaseName string
+
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
+	ChartVersion string
 }
 
-// newLocals creates computed values from stack input
-func newLocals(stackInput *kubernetesstrimzikafkaoperatorv1.KubernetesStrimziKafkaOperatorStackInput) *locals {
-	operatorName := "strimzi-kafka-operator"
-	if stackInput.Target != nil && stackInput.Target.Metadata != nil && stackInput.Target.Metadata.Name != "" {
-		operatorName = stackInput.Target.Metadata.Name
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesstrimzikafkaoperatorv1.KubernetesStrimziKafkaOperatorStackInput) *Locals {
+	target := stackInput.Target
+	spec := target.Spec
+
+	labels := map[string]string{
+		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
+		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
+		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesStrimziKafkaOperator.String(),
+	}
+	if target.Metadata.Id != "" {
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+	}
+	if target.Metadata.Org != "" {
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+	}
+	if target.Metadata.Env != "" {
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	labels := pulumi.StringMap{
-		"app.kubernetes.io/name":       pulumi.String("strimzi-kafka-operator"),
-		"app.kubernetes.io/managed-by": pulumi.String("planton"),
-		"planton.ai/resource-kind":     pulumi.String("kubernetes-strimzi-kafka-operator"),
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	if stackInput.Target != nil && stackInput.Target.Metadata != nil {
-		if stackInput.Target.Metadata.Name != "" {
-			labels["planton.ai/resource-id"] = pulumi.String(stackInput.Target.Metadata.Name)
-		}
-		if stackInput.Target.Metadata.Org != "" {
-			labels["planton.ai/organization"] = pulumi.String(stackInput.Target.Metadata.Org)
-		}
-		if stackInput.Target.Metadata.Env != "" {
-			labels["planton.ai/environment"] = pulumi.String(stackInput.Target.Metadata.Env)
-		}
-	}
-
-	// get namespace from spec
-	namespace := vars.Namespace
-	if stackInput.Target != nil && stackInput.Target.Spec != nil && stackInput.Target.Spec.Namespace != nil {
-		namespace = stackInput.Target.Spec.Namespace.GetValue()
-	}
-
-	return &locals{
-		namespace:    namespace,
-		labels:       labels,
-		operatorName: operatorName,
-		chartVersion: vars.HelmChartVersion,
-
-		// Computed resource names to avoid conflicts when multiple instances share a namespace
-		// Format: {metadata.name} - users can prefix with component type if needed (e.g., "strimzi-prod")
-		HelmReleaseName: operatorName,
+	return &Locals{
+		Spec:         spec,
+		Labels:       labels,
+		Namespace:    spec.Namespace.GetValue(),
+		ReleaseName:  target.Metadata.Name,
+		ChartVersion: chartVersion,
 	}
 }

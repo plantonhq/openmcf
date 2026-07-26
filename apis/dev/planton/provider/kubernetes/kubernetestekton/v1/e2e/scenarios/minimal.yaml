@@ -1,6 +1,12 @@
+# The component defaults on their own: profile `all` (Pipelines +
+# Triggers + Dashboard, plus Chains) in the upstream default
+# tekton-pipelines namespace. The registry-prerequisite
+# KubernetesTektonOperator installs first; the harness then applies this
+# TektonConfig declaration. The verifier proves the ENGINE on every lane:
+# TektonConfig Ready → the component Deployments rolled out → a
+# verifier-owned TaskRun (tekton.dev/v1, busybox echo) runs to Succeeded.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTekton
 metadata:
-  name: e2e-tekton
-spec:
-  pipeline_version: "latest"
+  name: e2e-tekton-min
+spec: {}

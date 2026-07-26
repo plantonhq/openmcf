@@ -72,7 +72,7 @@ func TestAllSevenOperatorDependentComponents(t *testing.T) {
 	}{
 		{cloudresourcekind.CloudResourceKind_KubernetesPostgres, cloudresourcekind.CloudResourceKind_KubernetesCloudNativePgOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesKafka, cloudresourcekind.CloudResourceKind_KubernetesStrimziKafkaOperator},
-		{cloudresourcekind.CloudResourceKind_KubernetesElasticsearch, cloudresourcekind.CloudResourceKind_KubernetesElasticOperator},
+		{cloudresourcekind.CloudResourceKind_KubernetesOpenSearch, cloudresourcekind.CloudResourceKind_KubernetesOpenSearchOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesMongodb, cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesMysql, cloudresourcekind.CloudResourceKind_KubernetesPerconaMysqlOperator},
 		{cloudresourcekind.CloudResourceKind_KubernetesSolr, cloudresourcekind.CloudResourceKind_KubernetesSolrOperator},

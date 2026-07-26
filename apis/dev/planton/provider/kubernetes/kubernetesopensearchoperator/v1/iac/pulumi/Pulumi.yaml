@@ -1,0 +1,3 @@
+name: kubernetes-open-search-operator
+runtime: go
+description: OpenSearch Kubernetes Operator installation from the official opensearch-operator Helm chart — reconciles OpenSearchCluster resources (declared with KubernetesOpenSearch) into running search clusters with managed TLS, security bootstrap, rolling upgrades and Dashboards

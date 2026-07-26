@@ -1,13 +1,16 @@
 package runner
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
 
+	"github.com/gruntwork-io/terratest/modules/logger"
 	tt "github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
@@ -148,6 +151,14 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 			AddressKey:   instanceKey,
 			LogicalName:  logicalName,
 			ArnParts:     accountArnParts,
+			// The round-trip holds cluster credentials (the harness
+			// exports KUBECONFIG), so it can serve secret-material
+			// import IDs the way the human recipe does: by reading the
+			// materialized Secret. The value feeds `tofu import` only
+			// and is never printed.
+			ReadClusterSecret: func(secretName, key string) (string, error) {
+				return readClusterSecretKey(tc.FlatOutputs["namespace"], secretName, key)
+			},
 		})
 		// Only required placeholders abort the blind import -- optional
 		// ("{name?}") segments are provider-documented as legitimately empty
@@ -160,14 +171,26 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 			return errors.Wrapf(err, "address %s", address)
 		}
 
-		fmt.Printf("  [import-rt] tofu import %s %s\n", address, importID)
+		// An ID carrying a cluster-Secret-derived value IS secret
+		// material: redact it from the progress line, silence
+		// terratest's command echo (it prints full argv), and keep it
+		// out of error wraps.
+		displayID := importID
+		importOpts := opts
+		if idContainsSecret(idFormat, importmap.SecretDerivedNames(componentMap)) {
+			displayID = "[redacted secret-material import ID]"
+			silenced := *opts
+			silenced.Logger = logger.Discard
+			importOpts = &silenced
+		}
+		fmt.Printf("  [import-rt] tofu import %s %s\n", address, displayID)
 		args := []string{"import", "-input=false"}
 		for _, varFile := range opts.VarFiles {
 			args = append(args, "-var-file="+varFile)
 		}
 		args = append(args, address, importID)
-		if _, err := tt.RunTerraformCommandE(tc.T, opts, args...); err != nil {
-			return errors.Wrapf(err, "importing %s as %q", address, importID)
+		if _, err := tt.RunTerraformCommandE(tc.T, importOpts, args...); err != nil {
+			return errors.Wrapf(err, "importing %s as %q", address, displayID)
 		}
 	}
 
@@ -424,4 +447,35 @@ func loadManifestMetadataAndSpec(component, manifestPath string) (string, proto.
 	metadataName := reflected.Get(metadataField).Message().Get(nameField).String()
 	spec := reflected.Get(specField).Message().Interface()
 	return metadataName, spec, nil
+}
+
+// idContainsSecret reports whether any placeholder of the id_format is a
+// secret-derived value (per the component map's declarations).
+func idContainsSecret(idFormat string, secretNames map[string]bool) bool {
+	for _, name := range importmap.Placeholders(idFormat) {
+		if secretNames[name] {
+			return true
+		}
+	}
+	return false
+}
+
+// readClusterSecretKey reads one data key of a Kubernetes Secret through
+// the ambient KUBECONFIG (the harness exports it) -- the cluster-connected
+// implementation behind the from_cluster_secret_key derivation arm. The
+// returned value is secret material and must never be logged.
+func readClusterSecretKey(namespace, secretName, key string) (string, error) {
+	if namespace == "" {
+		return "", errors.New("no namespace in the flattened outputs to scope the Secret read")
+	}
+	out, err := exec.Command("kubectl", "get", "secret", secretName,
+		"-n", namespace, "-o", fmt.Sprintf("jsonpath={.data.%s}", key)).Output()
+	if err != nil {
+		return "", errors.Wrapf(err, "reading secret %s/%s", namespace, secretName)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(out)))
+	if err != nil {
+		return "", errors.Wrapf(err, "decoding secret %s/%s key %s", namespace, secretName, key)
+	}
+	return string(decoded), nil
 }

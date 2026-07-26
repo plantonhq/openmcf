@@ -428,16 +428,29 @@ Only the CI runner can read them.)
 **Profile honesty is non-negotiable.** `e2e/profile.yaml` may claim
 `status: green` with `validated_provisioners` entries ONLY after a live
 deploy → verify → destroy run has actually passed on those provisioners.
-Until then, author the profile as `status: deferred` with an empty
-`validated_provisioners` list and a `deferred_reason` stating what remains
-(the field is `deferred_reason` — protojson silently drops unknown keys, so a
-misspelled key vanishes without an error). A profile that overclaims is a
-lie in the release ledger; flip it to green in the same session the lanes
-pass, never before. Note the mechanics for a NEW kind: the test entrypoints
-SKIP components whose profile is deferred, so a deferred profile can never
-run its own lanes — flip the profile to green immediately before executing
-the lanes, and if they do not pass by session end, flip it back to deferred
-in the same commit. Honesty is judged on the COMMITTED state, not the
+Until then, author the profile as `status: pending_proof` with an empty
+`validated_provisioners` list — the status that says "fully authored and
+offline-validated, live lanes not yet run." Reserve `status: deferred` (with
+a `deferred_reason` stating what blocks it — the field is `deferred_reason`;
+protojson silently drops unknown keys, so a misspelled key vanishes without
+an error) for kinds with a KNOWN blocker or failure. A profile that
+overclaims is a lie in the release ledger; flip it to green in the same
+session the lanes pass, never before.
+
+**The authoring and proving phases may be executed by different sessions.**
+Everything up to and including the offline gates (specs, both engine modules,
+spec tests, presets, docs, import maps, scenarios/fixtures/verifiers compiled
+via `e2e-build`/`e2e-vet`, static proofs) is the authoring phase and ends
+with the profile at `pending_proof`. The live-E2E phase below is the proving
+phase: whichever session executes it owns the kinds completely while proving
+— including spec/preset/docs changes when live evidence demands them — and
+finishes by flipping the profile, filling `validated_provisioners`, landing
+live-caught lessons on the surfaces their readers use, and regenerating the
+CI matrix. Note the mechanics either way: the test entrypoints SKIP
+components whose profile is `pending_proof` or `deferred`, so such a profile
+can never run its own lanes — flip the profile to green immediately before
+executing the lanes, and if they do not pass by session end, flip it back in
+the same commit. Honesty is judged on the COMMITTED state, not the
 mid-session working tree.
 
 ### Wire the kind into the provider E2E first (required for either tier)
@@ -572,7 +585,16 @@ profile table and mechanics). Rules when designing lanes around a profile:
 the profile cluster is typically single-node, so chart defaults sized for HA
 (a 2-replica anti-affine operator) can never fully schedule — scenario
 manifests must size those knobs to the topology or the atomic install waits
-forever; a CNI-less cluster's nodes are NotReady BY DESIGN until the CNI
+forever. The same class hides in RESOURCE REQUESTS, not just topology: read
+every companion workload's default requests at the pin — including computed
+factors (memcached charts request memory at 1.2× the allocated size, so an
+"8192MB cache" default renders a ~9.8Gi request that no small node can ever
+schedule; the pod stays Pending and the atomic install rolls the whole
+release back, reading as "the component won't install"). A default request
+that exceeds a small node's allocatable is a product caveat, not just a lane
+problem: teach it on the sizing field's spec comment and in the dev preset,
+and size it in every kind-lane scenario (the disk_size class). A CNI-less
+cluster's nodes are NotReady BY DESIGN until the CNI
 component installs, so never gate the profile's creation on node readiness —
 assert the NotReady→Ready transition in the component's install verifier
 instead, where it becomes part of the proof; and behavioral scenarios that
@@ -596,6 +618,26 @@ interrupted Helm install orphans its release in `pending-install` state, which
 blocks every later install of the same name with a misleading name-in-use
 error. Sweep with `helm uninstall <release> -n <namespace>` (plus the fixture
 namespaces) before re-running.
+
+**Verifier assertions against OTLP/protojson APIs match BASE64 IDs, not
+hex.** An API that returns protojson-encoded protobuf (Tempo's trace query,
+any OTLP surface) renders `bytes` fields — trace and span IDs above all — as
+BASE64. A verifier that greps the response for the hex ID it pushed will
+hold the successful response and still report failure, and every retry
+budget then expires "unable to retrieve" what was retrieved on the first
+try (caught live). Convert the pushed ID's bytes to base64 for the success
+check; keep hex only for human-facing log lines.
+
+**One-way-hash credentials in E2E artifacts must be VERIFIED pairings.** When
+a scenario or fixture carries a one-way hash (a bcrypt htpasswd tenant
+password, a pre-hashed basic-auth entry) whose PLAINTEXT a verifier must use
+live, the pairing is unprovable by reading and silently breaks: the hash
+validates as a manifest, every offline gate passes, and only the live 401
+exposes a hash that never matched its claimed plaintext. At authoring time,
+generate AND mechanically verify the pair (`htpasswd -nbBC 10 <user> <pass>`
+then `htpasswd -vbB <file> <user> <pass>`), record both commands in the
+artifact's comment, and keep the plaintext as a named constant beside the
+verifier that uses it — the two sides change only together.
 
 **Isolate the run from OTHER suites on the same machine.** Serial-within-your-
 provider is not enough when a different provider's E2E suite runs concurrently
@@ -706,6 +748,20 @@ scenario omits permissions so it needs no pre-existing resource server). Add a
 richer scenario (seeding the dependency) when you need live coverage of dependent
 fields.
 
+**An upstream doc's example class is not evidence it ships in the
+image.** Docs and in-repo examples routinely reference plugins/classes
+that the SHIPPED image no longer carries (distributions trim default
+classpaths; examples go stale against their own images). Before
+designing a proof, preset, or documented example on "class X runs on
+the stock image", verify against the RUNNING image itself — the
+service's own plugin/capability listing (e.g. a Connect worker's
+connector-plugins endpoint) or the image's directory contents. Every
+offline gate passes on the stale claim; only a live lane exposes it,
+as a resource that sits NotReady with "class not found". When the live
+check contradicts the upstream example, the live truth is what goes on
+the reader surfaces (spec comments, presets, docs), marked as verified
+live.
+
 **Model the upstream's built-in sandbox arm when one exists.** Cloud-talking
 addons (DNS publishers, secret-store operators, ...) cannot prove their
 provider hop on a kind cluster — but many upstreams ship a first-class
@@ -754,6 +810,99 @@ sweeping kept CRDs manually, enumerate by the `meta.helm.sh/release-name`
 annotation, never by an API-group name grep — CRD bundles routinely span
 groups (Karpenter's fleet CRDs live in karpenter.sh, karpenter.k8s.aws AND
 autoscaling.x-k8s.io), and one missed CRD reproduces the collision.
+
+**A THIRD keep-CRD class: chart-TEMPLATED CRDs with NO keep knob at all.**
+When a chart templates its CRDs release-owned and offers neither a
+`crds/` directory nor a keep-annotation passthrough, uninstalling the
+release cascade-deletes every CR (and its data) — the module must OWN
+the CRD lifecycle instead: disable the chart's CRD install, apply the
+staged CRD files itself keyed by each CRD's own name, and carry keep
+semantics module-side (`apply_only = true` on `kubectl_manifest`;
+classic-yaml ConfigGroup + a retainOnDelete TRANSFORMATION on Pulumi —
+yaml/v2 children are provider-side and unreachable by SDK options).
+Re-pin the chart's CRD-install flag AFTER the helm_values merge — a
+user override would re-arm the cascade the design exists to prevent.
+
+**Two chart-audit probes that only fail LIVE — run them at the pin,
+before any design lands.** (1) HEAD every DEFAULT image reference's
+registry manifest: chart defaults can point at registries that no longer
+exist (verified live — an entire upstream registry namespace deleted),
+and the failure is a pod stuck in ImagePullBackOff behind a green
+offline gate. A dead default gets re-pointed at the maintainer's live
+repository at the same tag, loudly commented and overridable. (2)
+Compute the chart's LONGEST child-name suffix: charts truncate their
+fullname at 63 characters but not the names derived from it, so an
+ordinary release name can push a child Service past the Kubernetes name
+cap and fail mid-install; when the budget breaks realistic names, pin
+`fullnameOverride` to metadata.name and record the resulting name-length
+budget on the spec.
+
+**Map the chart's image-value SHAPE, not the spec's.** Charts take the
+image reference either as one combined `image.repository` or SPLIT
+across `image.registry` + `image.repository` with the registry
+defaulting to docker.io — read the pod template at the pin to know
+which. When the spec's air-gap field carries a full reference
+("my.registry.com/org/app") and the chart wants the split shape, the
+module must split it (the first path segment is a registry exactly when
+it contains a dot, a port colon, or is `localhost` — the container
+runtimes' own rule); mapped verbatim, the chart re-prefixes its default
+registry and every mirror override dies in ImagePullBackOff. This class
+is identically wrong in BOTH engines, so cross-engine parity review
+never catches it — only the chart template read does.
+
+**A scalar-looking chart value may be a STRUCTURED block — the templates'
+`.Values` accesses are the shape truth, not values.yaml alone.** A value
+that reads like a plain setting (an instance identifier, a toggle-with-
+options) is sometimes a nested object whose sub-fields the templates
+access directly (`.Values.x.enabled`, `.Values.x.explicitID`); rendering
+a bare string onto it makes Helm's template evaluation fail at install
+("can't evaluate field ... in type string") on any manifest that sets
+the field — identically in BOTH engines, invisible to every offline
+gate that never renders the chart. Before mapping any spec scalar onto
+a chart value, grep the templates for that value's field accesses; a
+single `.Values.<key>.<subfield>` hit means the module renders the
+structured shape, however plain the spec field stays.
+
+**Read every chart default that PLACES resources by namespace or
+cluster-scoped name — silence adopts it.** Charts ship list/map defaults
+whose entries name namespaces (or fixed cluster-scoped names) and plant
+real resources there — a runner-RBAC namespace list defaulting to
+`["default"]` creates ServiceAccounts and RoleBindings in the cluster's
+`default` namespace on every install that does not override it. A module
+that renders such a list only when the spec declares entries has
+silently adopted the chart's placement; destroy assertions then fail
+zero-orphan checks in namespaces the component never claimed. Either
+ALWAYS render the list (the spec's entries, else an explicit empty list
+— lists REPLACE under Helm merge semantics) or adopt the default
+consciously with the reason taught on the spec field.
+
+**An operator distribution may auto-create its own workload CR — find
+the switch and disable it, or the declaration kind fights its manager.**
+Some operator release manifests ship a config default (an env var / a
+defaults ConfigMap key) that makes the operator CREATE its own instance
+of the very CR a companion declaration kind renders — a
+default-configuration singleton with a fixed name, materialized at
+controller startup. Left on, the operator and the declaration module
+co-write one object and fight through server-side apply field
+ownership; installs are order-dependent and updates flap. When splitting
+an operator kind from its workload-declaration kind, sweep the
+distribution for auto-install/auto-create switches (grep the controller
+source for the env keys its startup reads) and patch them OFF in the
+module as a design invariant, not a spec knob — then have the E2E
+verifier assert the CR does NOT exist after installing the operator
+alone (the regression is silent otherwise).
+
+**Fenced env tokens must satisfy the field's own CEL pre-expansion —
+embed the token inside the validated shape.** `${E2E_ENV:PLANTON_E2E_*}`
+tokens expand at lane runtime, but `validate-manifest` and the scenario
+gates parse the RAW file: a token standing alone in a field whose CEL
+demands a format (an `https://` URL prefix, a scheme, a prefix-anchored
+pattern) fails validation before any lane runs. Put the constant part
+of the format in the manifest and the token inside it
+(`https://github.com/${E2E_ENV:PLANTON_E2E_GITHUB_REPO_PATH}`) so the
+committed manifest passes its own CEL and the env var carries only the
+variable segment. Fields with no format CEL (credentials, ARNs, names)
+take the bare token.
 
 **Behavioral drivers against PERSISTENT external stores need run-unique
 names.** A verifier-owned driver CR whose name doubles as a key in an

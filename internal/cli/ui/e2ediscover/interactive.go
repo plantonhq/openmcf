@@ -337,6 +337,8 @@ func formatStatus(s componentv1.ComponentE2EProfileSpec_Status) string {
 		return dimStyle.Render("○ STUB  ")
 	case componentv1.ComponentE2EProfileSpec_real_cluster:
 		return blueStyle.Render("◍ REALCL")
+	case componentv1.ComponentE2EProfileSpec_pending_proof:
+		return yellowStyle.Render("◌ PENDNG")
 	default:
 		return dimStyle.Render("? ???   ")
 	}

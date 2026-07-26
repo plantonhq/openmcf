@@ -261,12 +261,13 @@ func capitalize(s string) string {
 
 // StatusCounts tallies components by status.
 type StatusCounts struct {
-	Green       int
-	Deferred    int
-	Skip        int
-	Stub        int
-	RealCluster int
-	Total       int
+	Green        int
+	Deferred     int
+	Skip         int
+	Stub         int
+	RealCluster  int
+	PendingProof int
+	Total        int
 }
 
 // CountByStatus counts components in the discovery result by their E2E status.
@@ -288,6 +289,8 @@ func CountByStatus(result *DiscoverResult) StatusCounts {
 			sc.Stub++
 		case componentv1.ComponentE2EProfileSpec_real_cluster:
 			sc.RealCluster++
+		case componentv1.ComponentE2EProfileSpec_pending_proof:
+			sc.PendingProof++
 		}
 	}
 	return sc

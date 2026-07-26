@@ -1,0 +1,17 @@
+# The `basic` profile arm with keep-since pruning — the alternate-arm
+# shape (no dashboard, chains disabled, keep_since instead of keep).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTekton
+metadata:
+  name: tekton-basic
+spec:
+  profile: basic
+  chain:
+    disabled: true
+  pipeline:
+    defaultTimeoutMinutes: 120
+  pruner:
+    schedule: "0 */6 * * *"
+    resources:
+      - pipelinerun
+    keepSince: 1440

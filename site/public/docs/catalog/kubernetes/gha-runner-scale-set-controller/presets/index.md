@@ -10,8 +10,12 @@ order: 200
 presets:
   - slug: "01-standard"
     rank: "01"
-    title: "Standard GitHub Actions Runner Scale Set Controller"
-    excerpt: "This preset deploys the GitHub Actions Runner Scale Set Controller with recommended default resources. The controller manages AutoScalingRunnerSet and EphemeralRunner custom resources, enabling..."
+    title: "Standard controller preset"
+    excerpt: "One cluster-wide controller in its own namespace — the shape almost every cluster wants. It installs the runner CRDs and the manager; runner fleets are declared separately (one..."
+  - slug: "02-production"
+    rank: "02"
+    title: "Production controller preset"
+    excerpt: "The controller hardened for a fleet the business depends on: a hot standby behind leader election, `eventual` update strategy (controller upgrades wait for running jobs instead of overprovisioning..."
 ---
 
 # GHA Runner Scale Set Controller Presets

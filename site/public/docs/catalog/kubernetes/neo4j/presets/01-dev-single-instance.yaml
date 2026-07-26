@@ -1,0 +1,29 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesNeo4j
+metadata:
+  name: dev-neo4j
+spec:
+  namespace:
+    value: dev-neo4j
+  create_namespace: true
+  # Community edition: free (GPLv3), single-instance by license — the
+  # chart's grain is one server per release either way.
+  edition: community
+  # A declared password: the module materializes it as the
+  # <name>-auth Secret (the chart's NEO4J_AUTH contract) — it never
+  # lands in rendered Helm values. Leaving auth empty would make the
+  # chart generate a random password and log it ONCE at first
+  # startup; a declared credential is less fragile even for dev.
+  auth:
+    password: dev-neo4j-change-me
+  # THE CHART'S FLOOR: 500m CPU / 2Gi memory — the chart REJECTS
+  # installs below it, so this is as small as Neo4j gets.
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  data_volume:
+    size: 10Gi

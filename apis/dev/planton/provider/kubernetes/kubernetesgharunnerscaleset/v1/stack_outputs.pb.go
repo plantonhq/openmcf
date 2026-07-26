@@ -21,33 +21,26 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesGhaRunnerScaleSetStackOutputs describes the outputs from deploying a
-// GitHub Actions Runner Scale Set on Kubernetes.
+// *
+// Outputs exported after deploying the runner scale set.
 type KubernetesGhaRunnerScaleSetStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Namespace where the runner scale set is deployed.
+	// *
+	// Namespace the scale set (listener + runner pods) runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Name of the Helm release.
+	// *
+	// Helm release name (equals metadata.name).
 	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
-	// Version of the deployed Helm chart.
-	ChartVersion string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3" json:"chart_version,omitempty"`
-	// Name of the runner scale set as registered with GitHub.
-	// Use this name in workflow runs-on labels.
-	RunnerScaleSetName string `protobuf:"bytes,4,opt,name=runner_scale_set_name,json=runnerScaleSetName,proto3" json:"runner_scale_set_name,omitempty"`
-	// GitHub configuration URL the runners are connected to.
-	GithubConfigUrl string `protobuf:"bytes,5,opt,name=github_config_url,json=githubConfigUrl,proto3" json:"github_config_url,omitempty"`
-	// Name of the Kubernetes secret containing GitHub credentials.
-	GithubSecretName string `protobuf:"bytes,6,opt,name=github_secret_name,json=githubSecretName,proto3" json:"github_secret_name,omitempty"`
-	// Names of PVCs created for persistent volumes.
-	PvcNames []string `protobuf:"bytes,7,rep,name=pvc_names,json=pvcNames,proto3" json:"pvc_names,omitempty"`
-	// Minimum runners configured.
-	MinRunners string `protobuf:"bytes,8,opt,name=min_runners,json=minRunners,proto3" json:"min_runners,omitempty"`
-	// Maximum runners configured.
-	MaxRunners string `protobuf:"bytes,9,opt,name=max_runners,json=maxRunners,proto3" json:"max_runners,omitempty"`
-	// Container mode type used (dind, kubernetes, kubernetes-novolume, default).
-	ContainerMode string `protobuf:"bytes,10,opt,name=container_mode,json=containerMode,proto3" json:"container_mode,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// *
+	// Name the fleet registered under in GitHub — the exact value
+	// workflows put in `runs-on:` to target this fleet.
+	RunnerScaleSetName string `protobuf:"bytes,3,opt,name=runner_scale_set_name,json=runnerScaleSetName,proto3" json:"runner_scale_set_name,omitempty"`
+	// *
+	// The GitHub URL the fleet serves (repository, organization or
+	// enterprise).
+	GithubConfigUrl string `protobuf:"bytes,4,opt,name=github_config_url,json=githubConfigUrl,proto3" json:"github_config_url,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *KubernetesGhaRunnerScaleSetStackOutputs) Reset() {
@@ -94,13 +87,6 @@ func (x *KubernetesGhaRunnerScaleSetStackOutputs) GetReleaseName() string {
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetStackOutputs) GetChartVersion() string {
-	if x != nil {
-		return x.ChartVersion
-	}
-	return ""
-}
-
 func (x *KubernetesGhaRunnerScaleSetStackOutputs) GetRunnerScaleSetName() string {
 	if x != nil {
 		return x.RunnerScaleSetName
@@ -115,60 +101,16 @@ func (x *KubernetesGhaRunnerScaleSetStackOutputs) GetGithubConfigUrl() string {
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetStackOutputs) GetGithubSecretName() string {
-	if x != nil {
-		return x.GithubSecretName
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetStackOutputs) GetPvcNames() []string {
-	if x != nil {
-		return x.PvcNames
-	}
-	return nil
-}
-
-func (x *KubernetesGhaRunnerScaleSetStackOutputs) GetMinRunners() string {
-	if x != nil {
-		return x.MinRunners
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetStackOutputs) GetMaxRunners() string {
-	if x != nil {
-		return x.MaxRunners
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetStackOutputs) GetContainerMode() string {
-	if x != nil {
-		return x.ContainerMode
-	}
-	return ""
-}
-
 var File_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Rdev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/stack_outputs.proto\x12>dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1\"\xa2\x03\n" +
+	"Rdev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/stack_outputs.proto\x12>dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1\"\xc9\x01\n" +
 	"'KubernetesGhaRunnerScaleSetStackOutputs\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
-	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12#\n" +
-	"\rchart_version\x18\x03 \x01(\tR\fchartVersion\x121\n" +
-	"\x15runner_scale_set_name\x18\x04 \x01(\tR\x12runnerScaleSetName\x12*\n" +
-	"\x11github_config_url\x18\x05 \x01(\tR\x0fgithubConfigUrl\x12,\n" +
-	"\x12github_secret_name\x18\x06 \x01(\tR\x10githubSecretName\x12\x1b\n" +
-	"\tpvc_names\x18\a \x03(\tR\bpvcNames\x12\x1f\n" +
-	"\vmin_runners\x18\b \x01(\tR\n" +
-	"minRunners\x12\x1f\n" +
-	"\vmax_runners\x18\t \x01(\tR\n" +
-	"maxRunners\x12%\n" +
-	"\x0econtainer_mode\x18\n" +
-	" \x01(\tR\rcontainerModeB\xf6\x03\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x121\n" +
+	"\x15runner_scale_set_name\x18\x03 \x01(\tR\x12runnerScaleSetName\x12*\n" +
+	"\x11github_config_url\x18\x04 \x01(\tR\x0fgithubConfigUrlB\xf6\x03\n" +
 	"Bcom.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1B\x11StackOutputsProtoP\x01Z~github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1;kubernetesgharunnerscalesetv1\xa2\x02\x05DPPKK\xaa\x02>Dev.Planton.Provider.Kubernetes.Kubernetesgharunnerscaleset.V1\xca\x02>Dev\\Planton\\Provider\\Kubernetes\\Kubernetesgharunnerscaleset\\V1\xe2\x02JDev\\Planton\\Provider\\Kubernetes\\Kubernetesgharunnerscaleset\\V1\\GPBMetadata\xea\x02CDev::Planton::Provider::Kubernetes::Kubernetesgharunnerscaleset::V1b\x06proto3"
 
 var (

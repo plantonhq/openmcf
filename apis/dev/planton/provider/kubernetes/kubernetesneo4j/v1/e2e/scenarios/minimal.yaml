@@ -1,17 +1,24 @@
+# The dev shape: community edition, declared credentials (materialized
+# by the module as the <name>-auth Secret), the chart's resource floor
+# (it REJECTS installs below 500m/2Gi). The verifier proves a live
+# Cypher write/read round-trip with those credentials.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
-  name: e2e-neo4j-minimal
+  name: e2e-neo-min
 spec:
   namespace:
-    value: e2e-neo4j-minimal
+    value: e2e-neo-min
   create_namespace: true
-  container:
-    resources:
-      limits:
-        cpu: "1000m"
-        memory: 2Gi
-      requests:
-        cpu: 50m
-        memory: 256Mi
-    disk_size: 1Gi
+  edition: community
+  auth:
+    password: E2ePassword-1
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  data_volume:
+    size: 4Gi

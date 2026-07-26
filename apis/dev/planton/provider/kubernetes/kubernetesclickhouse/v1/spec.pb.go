@@ -10,9 +10,9 @@ import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -26,188 +26,290 @@ const (
 )
 
 // *
-// Type of coordination service to use.
-type KubernetesClickHouseCoordinationConfig_CoordinationType int32
+// Coordination flavor.
+type KubernetesClickHouseCoordination_CoordinationType int32
 
 const (
-	// Unspecified defaults to 'keeper' (recommended for new deployments)
-	KubernetesClickHouseCoordinationConfig_unspecified KubernetesClickHouseCoordinationConfig_CoordinationType = 0
-	// Auto-managed ClickHouse Keeper deployed by the operator.
-	// Recommended: More efficient than ZooKeeper, easier to manage.
-	// Creates a ClickHouseKeeperInstallation resource automatically.
-	KubernetesClickHouseCoordinationConfig_keeper KubernetesClickHouseCoordinationConfig_CoordinationType = 1
-	// Use existing ClickHouse Keeper cluster.
-	// For shared infrastructure or advanced scenarios.
-	KubernetesClickHouseCoordinationConfig_external_keeper KubernetesClickHouseCoordinationConfig_CoordinationType = 2
-	// Use existing ZooKeeper cluster.
-	// For legacy systems or shared ZooKeeper infrastructure (Kafka, etc.)
-	KubernetesClickHouseCoordinationConfig_external_zookeeper KubernetesClickHouseCoordinationConfig_CoordinationType = 3
+	// Auto: managed Keeper when the topology needs coordination
+	// (replicas > 1 or shards > 1), none otherwise.
+	KubernetesClickHouseCoordination_unspecified KubernetesClickHouseCoordination_CoordinationType = 0
+	// Module-managed ClickHouse Keeper: a ClickHouseKeeperInstallation
+	// reconciled by the same operator, wired to the cluster through
+	// the CHI's native keeper reference (the operator resolves the
+	// endpoints itself). Keeper is ClickHouse's own Raft-based
+	// ZooKeeper replacement — markedly lighter than ZooKeeper (no
+	// JVM), protocol-compatible, and the upstream-recommended default.
+	KubernetesClickHouseCoordination_managed_keeper KubernetesClickHouseCoordination_CoordinationType = 1
+	// Existing ClickHouse Keeper ensemble reachable at
+	// `external.nodes` — for shared coordination infrastructure.
+	KubernetesClickHouseCoordination_external_keeper KubernetesClickHouseCoordination_CoordinationType = 2
+	// Existing ZooKeeper ensemble reachable at `external.nodes` — for
+	// legacy or Kafka-shared ZooKeeper deployments.
+	KubernetesClickHouseCoordination_external_zookeeper KubernetesClickHouseCoordination_CoordinationType = 3
+	// No coordination. Valid only for single-replica topologies;
+	// multi-shard single-replica clusters lose `ON CLUSTER` DDL (run
+	// DDL per shard instead) but Distributed queries keep working.
+	KubernetesClickHouseCoordination_none KubernetesClickHouseCoordination_CoordinationType = 4
 )
 
-// Enum value maps for KubernetesClickHouseCoordinationConfig_CoordinationType.
+// Enum value maps for KubernetesClickHouseCoordination_CoordinationType.
 var (
-	KubernetesClickHouseCoordinationConfig_CoordinationType_name = map[int32]string{
+	KubernetesClickHouseCoordination_CoordinationType_name = map[int32]string{
 		0: "unspecified",
-		1: "keeper",
+		1: "managed_keeper",
 		2: "external_keeper",
 		3: "external_zookeeper",
+		4: "none",
 	}
-	KubernetesClickHouseCoordinationConfig_CoordinationType_value = map[string]int32{
+	KubernetesClickHouseCoordination_CoordinationType_value = map[string]int32{
 		"unspecified":        0,
-		"keeper":             1,
+		"managed_keeper":     1,
 		"external_keeper":    2,
 		"external_zookeeper": 3,
+		"none":               4,
 	}
 )
 
-func (x KubernetesClickHouseCoordinationConfig_CoordinationType) Enum() *KubernetesClickHouseCoordinationConfig_CoordinationType {
-	p := new(KubernetesClickHouseCoordinationConfig_CoordinationType)
+func (x KubernetesClickHouseCoordination_CoordinationType) Enum() *KubernetesClickHouseCoordination_CoordinationType {
+	p := new(KubernetesClickHouseCoordination_CoordinationType)
 	*p = x
 	return p
 }
 
-func (x KubernetesClickHouseCoordinationConfig_CoordinationType) String() string {
+func (x KubernetesClickHouseCoordination_CoordinationType) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (KubernetesClickHouseCoordinationConfig_CoordinationType) Descriptor() protoreflect.EnumDescriptor {
+func (KubernetesClickHouseCoordination_CoordinationType) Descriptor() protoreflect.EnumDescriptor {
 	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_enumTypes[0].Descriptor()
 }
 
-func (KubernetesClickHouseCoordinationConfig_CoordinationType) Type() protoreflect.EnumType {
+func (KubernetesClickHouseCoordination_CoordinationType) Type() protoreflect.EnumType {
 	return &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_enumTypes[0]
 }
 
-func (x KubernetesClickHouseCoordinationConfig_CoordinationType) Number() protoreflect.EnumNumber {
+func (x KubernetesClickHouseCoordination_CoordinationType) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use KubernetesClickHouseCoordinationConfig_CoordinationType.Descriptor instead.
-func (KubernetesClickHouseCoordinationConfig_CoordinationType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{3, 0}
+// Deprecated: Use KubernetesClickHouseCoordination_CoordinationType.Descriptor instead.
+func (KubernetesClickHouseCoordination_CoordinationType) EnumDescriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{1, 0}
 }
 
 // *
-// Log level for ClickHouse server.
-type KubernetesClickHouseLoggingConfig_LogLevel int32
-
-const (
-	// Information level: Logs errors, warnings, and important operational events.
-	// Default and recommended for production environments.
-	// Typical log volume: 5-10 MB/day per pod under normal load.
-	KubernetesClickHouseLoggingConfig_information KubernetesClickHouseLoggingConfig_LogLevel = 0
-	// Debug level: Logs detailed debugging information including query execution details.
-	// Use for troubleshooting specific issues.
-	// Warning: Generates 10-50x more logs than information level.
-	// Typical log volume: 50-500 MB/day per pod.
-	KubernetesClickHouseLoggingConfig_debug KubernetesClickHouseLoggingConfig_LogLevel = 1
-	// Trace level: Logs extensive tracing information including internal operations.
-	// Use only for deep troubleshooting or development.
-	// Warning: Generates 50-100x more logs than information level.
-	// Can impact performance due to I/O overhead.
-	// Typical log volume: 500MB-5GB/day per pod.
-	KubernetesClickHouseLoggingConfig_trace KubernetesClickHouseLoggingConfig_LogLevel = 2
-)
-
-// Enum value maps for KubernetesClickHouseLoggingConfig_LogLevel.
-var (
-	KubernetesClickHouseLoggingConfig_LogLevel_name = map[int32]string{
-		0: "information",
-		1: "debug",
-		2: "trace",
-	}
-	KubernetesClickHouseLoggingConfig_LogLevel_value = map[string]int32{
-		"information": 0,
-		"debug":       1,
-		"trace":       2,
-	}
-)
-
-func (x KubernetesClickHouseLoggingConfig_LogLevel) Enum() *KubernetesClickHouseLoggingConfig_LogLevel {
-	p := new(KubernetesClickHouseLoggingConfig_LogLevel)
-	*p = x
-	return p
-}
-
-func (x KubernetesClickHouseLoggingConfig_LogLevel) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (KubernetesClickHouseLoggingConfig_LogLevel) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_enumTypes[1].Descriptor()
-}
-
-func (KubernetesClickHouseLoggingConfig_LogLevel) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_enumTypes[1]
-}
-
-func (x KubernetesClickHouseLoggingConfig_LogLevel) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use KubernetesClickHouseLoggingConfig_LogLevel.Descriptor instead.
-func (KubernetesClickHouseLoggingConfig_LogLevel) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{6, 0}
-}
-
-// *
-// **KubernetesClickHouseSpec** defines the configuration for deploying ClickHouse on a Kubernetes cluster.
-// This message specifies the parameters needed to create and manage a ClickHouse deployment within a Kubernetes environment.
-// It includes cluster name, container specifications, ingress settings, and cluster configuration options.
+// **KubernetesClickHouseSpec** declares one ClickHouse cluster — the
+// columnar OLAP database — as a `ClickHouseInstallation` (CHI) custom
+// resource reconciled by the Altinity ClickHouse operator (declare the
+// operator with KubernetesAltinityOperator; it is a registry
+// prerequisite of this kind). The operator renders every shard×replica
+// host as its own single-pod StatefulSet with generated ClickHouse
+// configuration mounted from ConfigMaps.
 //
-// The deployment uses the Altinity ClickHouse Operator, which provides production-grade ClickHouse cluster management
-// with features like automated upgrades, scaling, and ZooKeeper coordination.
+// TOPOLOGY: `shards` × `replicas` hosts. Shards split the data for
+// parallel query processing (Distributed-engine tables fan queries out
+// across shards); replicas within a shard hold copies of the same data
+// via ReplicatedMergeTree engines. Replication (replicas > 1) and
+// `ON CLUSTER` DDL both require a coordination service (ClickHouse
+// Keeper or ZooKeeper) — see `coordination`.
+//
+// NAMING CONTRACT (operator patterns, read from the operator source at
+// the pinned release): the cluster-wide client Service is
+// `clickhouse-<name>` (ClusterIP), the per-cluster Service is
+// `cluster-<name>-<cluster_name>`, and every host's StatefulSet and
+// headless Service are `chi-<name>-<cluster_name>-<shard>-<replica>`.
+// Kubernetes caps Service names at 63 characters, so keep
+// `metadata.name` within 48 characters with the default `cluster_name`
+// ("main"); a longer `cluster_name` shrinks that budget one-for-one.
+//
+// EXPOSURE: no ingress resources are created here. All generated
+// Services are ClusterIP (the operator's own default — verified in the
+// operator source); compose external exposure from first-class kinds
+// (KubernetesIngress, Gateway API kinds) over the exported
+// `service_name`, or set `service_annotations` for in-cluster
+// service-mesh/LB annotations.
+//
+// SERVER CONFIGURATION LAYERS: fully typed fields cover topology,
+// storage, users, and placement. ClickHouse's own configuration
+// vocabulary (hundreds of server settings, per-profile settings, quota
+// intervals, raw config-file drop-ins) is passed through the CHI's own
+// path-keyed maps — `settings`, `profiles`, `quotas`, `files` — where
+// keys use `/`-separated XML paths exactly as the upstream CRD defines
+// them. Those maps are the upstream's native model, not an escape
+// hatch bolted on top of one.
 type KubernetesClickHouseSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
 	// *
-	// The name of the ClickHouse cluster.
-	// This is used as the identifier for the ClickHouseInstallation custom resource.
-	// Must be a valid DNS subdomain name (lowercase alphanumeric with hyphens).
-	// Defaults to the resource metadata name if not specified.
-	ClusterName string `protobuf:"bytes,4,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
-	// The container specifications for the ClickHouse deployment.
-	Container *KubernetesClickHouseContainer `protobuf:"bytes,5,opt,name=container,proto3" json:"container,omitempty"`
-	// The ingress configuration for the ClickHouse deployment.
-	Ingress *KubernetesClickHouseIngress `protobuf:"bytes,6,opt,name=ingress,proto3" json:"ingress,omitempty"`
-	// The cluster configuration for ClickHouse sharding and replication.
-	Cluster *KubernetesClickHouseClusterConfig `protobuf:"bytes,7,opt,name=cluster,proto3" json:"cluster,omitempty"`
+	// Namespace to deploy the cluster into. Accepts a literal namespace
+	// name or a reference to a KubernetesNamespace resource. The
+	// ClickHouseInstallation is namespaced; the Altinity operator must
+	// be watching this namespace (see the operator kind's
+	// `watch_namespaces`).
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// *
-	// The ClickHouse version to deploy (e.g., "24.3", "23.8").
-	// If not specified, the operator's default stable version will be used.
-	// It's recommended to specify a version for production deployments to ensure consistency.
-	Version string `protobuf:"bytes,8,opt,name=version,proto3" json:"version,omitempty"`
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before deploying and deleted with the resource.
+	// When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
 	// *
-	// Coordination configuration for cluster operations.
-	// Required when cluster.is_enabled = true.
-	//
-	// Recommended: Leave unspecified to use auto-managed ClickHouse Keeper (default).
-	// This is more efficient than ZooKeeper and easier to manage.
-	//
-	// Advanced: Configure external Keeper or ZooKeeper for shared infrastructure scenarios.
-	Coordination *KubernetesClickHouseCoordinationConfig `protobuf:"bytes,9,opt,name=coordination,proto3" json:"coordination,omitempty"`
+	// ClickHouse server version tag, e.g. "25.3" (an LTS line) or
+	// "24.8". Resolves to the `clickhouse/clickhouse-server` image
+	// unless `image` overrides the repository. Always pin a version:
+	// the operator's built-in fallback is the `latest` tag, which makes
+	// cluster upgrades happen implicitly on pod restarts.
+	Version string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
 	// *
-	// ZooKeeper configuration for cluster coordination.
-	//
-	// DEPRECATED: Use 'coordination' field instead.
-	// This field is kept for backward compatibility and will be removed in v2.
-	//
-	// If both 'coordination' and 'zookeeper' are specified, 'coordination' takes precedence.
-	//
-	// Deprecated: Marked as deprecated in dev/planton/provider/kubernetes/kubernetesclickhouse/v1/spec.proto.
-	Zookeeper *KubernetesClickHouseZookeeperConfig `protobuf:"bytes,10,opt,name=zookeeper,proto3" json:"zookeeper,omitempty"`
+	// Override the ClickHouse server image (air-gap / private-mirror
+	// path). `repo` empty = "clickhouse/clickhouse-server"; `tag` empty
+	// = `version`.
+	Image *kubernetes.ContainerImage `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
 	// *
-	// Logging configuration for ClickHouse server.
-	// Controls the verbosity of ClickHouse server logs.
+	// Logical ClickHouse cluster name — the entry in `remote_servers`
+	// that Distributed tables and `ON CLUSTER '<name>'` DDL statements
+	// target. Also a segment of every generated child name (see the
+	// naming contract above), which is why the operator's CRD caps it at
+	// 15 characters. Default: "main".
 	//
-	// Required field. Defaults to 'information' level (recommended for production).
-	// Use 'debug' or 'trace' levels only for troubleshooting as they generate significant log volume.
-	Logging       *KubernetesClickHouseLoggingConfig `protobuf:"bytes,11,opt,name=logging,proto3" json:"logging,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Verified live: the in-server cluster definition propagates through
+	// mounted config and can LAG the installation reaching Completed —
+	// `ON CLUSTER` DDL initiated in that window silently executes on the
+	// subset of hosts the initiator can see (and still returns success).
+	// Before running distributed DDL right after a deploy or topology
+	// change, confirm `SELECT count() FROM system.clusters WHERE cluster
+	// = '<name>'` reports every declared host.
+	ClusterName *string `protobuf:"bytes,5,opt,name=cluster_name,json=clusterName,proto3,oneof" json:"cluster_name,omitempty"`
+	// *
+	// Number of shards. Each shard holds a disjoint slice of the data;
+	// queries against Distributed-engine tables run on all shards in
+	// parallel. 1 (the default) means all data on every host — scale
+	// this only for datasets or write rates a single shard cannot carry.
+	Shards *int32 `protobuf:"varint,6,opt,name=shards,proto3,oneof" json:"shards,omitempty"`
+	// *
+	// Replicas per shard. Each replica is a full copy of its shard's
+	// data, kept in sync through ReplicatedMergeTree — which requires
+	// `coordination`. 1 (the default) means no redundancy: a lost volume
+	// loses that shard's data. Production: 2–3.
+	Replicas *int32 `protobuf:"varint,7,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// CPU and memory for each ClickHouse host container. Empty = no
+	// requests/limits (schedulable anywhere, no protection). ClickHouse
+	// is memory-hungry under analytical load: give production hosts at
+	// least 4Gi and set `max_server_memory_usage_to_ram_ratio` (via
+	// `settings`) if the limit is tight.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,8,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Size of the persistent data volume for EACH host (e.g. "100Gi").
+	// Rendered as the data VolumeClaimTemplate mounted at
+	// /var/lib/clickhouse. Kubernetes cannot shrink PVCs, and expanding
+	// requires a storage class that allows it — plan for growth.
+	DiskSize string `protobuf:"bytes,9,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
+	// *
+	// Storage class for the data volumes. Accepts a literal name or a
+	// reference to a KubernetesStorageClass resource. Empty = the
+	// cluster's default storage class.
+	StorageClass *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// *
+	// Size of a SEPARATE persistent volume for server logs (e.g.
+	// "10Gi"), mounted at /var/log/clickhouse-server. Empty (default) =
+	// logs live on the container filesystem and vanish with the pod.
+	// Useful when log retention matters and no log shipper is in place.
+	LogDiskSize string `protobuf:"bytes,11,opt,name=log_disk_size,json=logDiskSize,proto3" json:"log_disk_size,omitempty"`
+	// *
+	// Keep the data volumes when the resource (or a host) is deleted.
+	// Maps to the operator's PVC reclaim policy: false (the operator
+	// default) deletes PVCs with their StatefulSet; true retains them,
+	// so a re-created cluster with the same name re-attaches the data.
+	// Retained PVCs are never garbage-collected — deleting them becomes
+	// a manual operation.
+	RetainVolumesOnDelete bool `protobuf:"varint,12,opt,name=retain_volumes_on_delete,json=retainVolumesOnDelete,proto3" json:"retain_volumes_on_delete,omitempty"`
+	// *
+	// Coordination service for replication and distributed DDL.
+	// UNSET (recommended): the module deploys a managed ClickHouse
+	// Keeper (3 nodes) automatically whenever the topology needs one
+	// (replicas > 1 or shards > 1) and none otherwise. Set explicitly to
+	// size the managed Keeper, point at external coordination, or opt
+	// out entirely.
+	Coordination *KubernetesClickHouseCoordination `protobuf:"bytes,13,opt,name=coordination,proto3" json:"coordination,omitempty"`
+	// *
+	// ClickHouse users to provision, each with a password delivered
+	// through a Kubernetes Secret (never plaintext in the CHI). The
+	// built-in `default` user stays operator-managed: passwordless but
+	// network-restricted to the cluster's own pods (the operator
+	// generates the IP allowlist) — create named users for every real
+	// client. KNOW THIS (upstream-documented): secret-sourced passwords
+	// reach ClickHouse through pod environment variables, so rotating
+	// the Secret alone does not re-render config — bump any spec field
+	// (the operator re-reconciles on CHI change) to roll a rotation out.
+	Users []*KubernetesClickHouseUser `protobuf:"bytes,14,rep,name=users,proto3" json:"users,omitempty"`
+	// *
+	// Settings profiles: named bundles of query-level settings users
+	// reference by profile name (e.g. a "readonly" profile with
+	// `readonly: "1"`). Keys are `/`-separated setting paths within the
+	// profile, exactly as the upstream CRD's `profiles` section takes
+	// them.
+	Profiles []*KubernetesClickHouseNamedSettings `protobuf:"bytes,15,rep,name=profiles,proto3" json:"profiles,omitempty"`
+	// *
+	// Quotas: named resource-consumption limits users reference by quota
+	// name. Keys are `/`-separated paths within the quota, e.g.
+	// "interval/duration" = "3600", "interval/queries" = "10000".
+	Quotas []*KubernetesClickHouseNamedSettings `protobuf:"bytes,16,rep,name=quotas,proto3" json:"quotas,omitempty"`
+	// *
+	// Server-level settings rendered into config.d for every host. Keys
+	// are `/`-separated XML paths exactly as the upstream CRD's
+	// `settings` section takes them, e.g.
+	// "compression/case/method" = "zstd",
+	// "merge_tree/max_suspicious_broken_parts" = "5",
+	// "max_concurrent_queries" = "200".
+	Settings map[string]string `protobuf:"bytes,17,rep,name=settings,proto3" json:"settings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Raw configuration file drop-ins: file name → full file content.
+	// Rendered into the generated ConfigMaps alongside the operator's
+	// own files. A file name may carry the upstream's placement prefix
+	// ({common}, {users}, {hosts}) to choose between config.d, users.d
+	// and conf.d — unprefixed names land in config.d.
+	Files map[string]string `protobuf:"bytes,18,rep,name=files,proto3" json:"files,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Secure distributed queries between this cluster's own hosts with
+	// an operator-generated shared secret (the CHI `secret.auto`
+	// mechanism). Default true; rendered only when the topology has more
+	// than one host. Disable only for ClickHouse versions below 20.10,
+	// which predate the mechanism.
+	AutoInterNodeSecret *bool `protobuf:"varint,19,opt,name=auto_inter_node_secret,json=autoInterNodeSecret,proto3,oneof" json:"auto_inter_node_secret,omitempty"`
+	// *
+	// Never schedule two replicas of the same shard on the same
+	// Kubernetes node (the operator's ShardAntiAffinity pod
+	// distribution). Off by default so single-node dev clusters
+	// schedule; turn on in production — co-located replicas make
+	// replication pointless against node loss.
+	SpreadReplicasAcrossNodes bool `protobuf:"varint,20,opt,name=spread_replicas_across_nodes,json=spreadReplicasAcrossNodes,proto3" json:"spread_replicas_across_nodes,omitempty"`
+	// *
+	// How many of this cluster's pods may be voluntarily evicted at
+	// once (PodDisruptionBudget maxUnavailable, one PDB per cluster,
+	// operator-managed). Default 1.
+	PdbMaxUnavailable *int32 `protobuf:"varint,21,opt,name=pdb_max_unavailable,json=pdbMaxUnavailable,proto3,oneof" json:"pdb_max_unavailable,omitempty"`
+	// *
+	// Node selector for every ClickHouse host pod.
+	NodeSelector map[string]string `protobuf:"bytes,22,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for every ClickHouse host pod.
+	Tolerations []*kubernetes.WorkloadToleration `protobuf:"bytes,23,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	// *
+	// Annotations for the cluster-wide client Service `clickhouse-<name>`
+	// (internal LB or service-mesh annotations). The Service stays
+	// ClusterIP — compose external exposure from first-class kinds.
+	ServiceAnnotations map[string]string `protobuf:"bytes,24,rep,name=service_annotations,json=serviceAnnotations,proto3" json:"service_annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Stop the cluster without losing data (the CHI `stop` verb): true
+	// scales every host StatefulSet to zero — pods and Services go away,
+	// every PVC stays — and false brings the same data back. The
+	// declarative pause switch for expensive dev/staging clusters.
+	Stopped bool `protobuf:"varint,25,opt,name=stopped,proto3" json:"stopped,omitempty"`
+	// *
+	// Names of image-pull secrets (in the deployment namespace) for
+	// pulling images from a private mirror.
+	ImagePullSecrets []string `protobuf:"bytes,26,rep,name=image_pull_secrets,json=imagePullSecrets,proto3" json:"image_pull_secrets,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *KubernetesClickHouseSpec) Reset() {
@@ -254,34 +356,6 @@ func (x *KubernetesClickHouseSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesClickHouseSpec) GetClusterName() string {
-	if x != nil {
-		return x.ClusterName
-	}
-	return ""
-}
-
-func (x *KubernetesClickHouseSpec) GetContainer() *KubernetesClickHouseContainer {
-	if x != nil {
-		return x.Container
-	}
-	return nil
-}
-
-func (x *KubernetesClickHouseSpec) GetIngress() *KubernetesClickHouseIngress {
-	if x != nil {
-		return x.Ingress
-	}
-	return nil
-}
-
-func (x *KubernetesClickHouseSpec) GetCluster() *KubernetesClickHouseClusterConfig {
-	if x != nil {
-		return x.Cluster
-	}
-	return nil
-}
-
 func (x *KubernetesClickHouseSpec) GetVersion() string {
 	if x != nil {
 		return x.Version
@@ -289,72 +363,203 @@ func (x *KubernetesClickHouseSpec) GetVersion() string {
 	return ""
 }
 
-func (x *KubernetesClickHouseSpec) GetCoordination() *KubernetesClickHouseCoordinationConfig {
+func (x *KubernetesClickHouseSpec) GetImage() *kubernetes.ContainerImage {
+	if x != nil {
+		return x.Image
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseSpec) GetClusterName() string {
+	if x != nil && x.ClusterName != nil {
+		return *x.ClusterName
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseSpec) GetShards() int32 {
+	if x != nil && x.Shards != nil {
+		return *x.Shards
+	}
+	return 0
+}
+
+func (x *KubernetesClickHouseSpec) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesClickHouseSpec) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseSpec) GetDiskSize() string {
+	if x != nil {
+		return x.DiskSize
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseSpec) GetStorageClass() *v1.StringValueOrRef {
+	if x != nil {
+		return x.StorageClass
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseSpec) GetLogDiskSize() string {
+	if x != nil {
+		return x.LogDiskSize
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseSpec) GetRetainVolumesOnDelete() bool {
+	if x != nil {
+		return x.RetainVolumesOnDelete
+	}
+	return false
+}
+
+func (x *KubernetesClickHouseSpec) GetCoordination() *KubernetesClickHouseCoordination {
 	if x != nil {
 		return x.Coordination
 	}
 	return nil
 }
 
-// Deprecated: Marked as deprecated in dev/planton/provider/kubernetes/kubernetesclickhouse/v1/spec.proto.
-func (x *KubernetesClickHouseSpec) GetZookeeper() *KubernetesClickHouseZookeeperConfig {
+func (x *KubernetesClickHouseSpec) GetUsers() []*KubernetesClickHouseUser {
 	if x != nil {
-		return x.Zookeeper
+		return x.Users
 	}
 	return nil
 }
 
-func (x *KubernetesClickHouseSpec) GetLogging() *KubernetesClickHouseLoggingConfig {
+func (x *KubernetesClickHouseSpec) GetProfiles() []*KubernetesClickHouseNamedSettings {
 	if x != nil {
-		return x.Logging
+		return x.Profiles
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseSpec) GetQuotas() []*KubernetesClickHouseNamedSettings {
+	if x != nil {
+		return x.Quotas
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseSpec) GetSettings() map[string]string {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseSpec) GetFiles() map[string]string {
+	if x != nil {
+		return x.Files
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseSpec) GetAutoInterNodeSecret() bool {
+	if x != nil && x.AutoInterNodeSecret != nil {
+		return *x.AutoInterNodeSecret
+	}
+	return false
+}
+
+func (x *KubernetesClickHouseSpec) GetSpreadReplicasAcrossNodes() bool {
+	if x != nil {
+		return x.SpreadReplicasAcrossNodes
+	}
+	return false
+}
+
+func (x *KubernetesClickHouseSpec) GetPdbMaxUnavailable() int32 {
+	if x != nil && x.PdbMaxUnavailable != nil {
+		return *x.PdbMaxUnavailable
+	}
+	return 0
+}
+
+func (x *KubernetesClickHouseSpec) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseSpec) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseSpec) GetServiceAnnotations() map[string]string {
+	if x != nil {
+		return x.ServiceAnnotations
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseSpec) GetStopped() bool {
+	if x != nil {
+		return x.Stopped
+	}
+	return false
+}
+
+func (x *KubernetesClickHouseSpec) GetImagePullSecrets() []string {
+	if x != nil {
+		return x.ImagePullSecrets
 	}
 	return nil
 }
 
 // *
-// **KubernetesClickHouseContainer** specifies the container configuration for the ClickHouse application.
-// It includes resource allocations, data persistence options, and disk size.
-// Proper configuration ensures optimal performance and data reliability for your ClickHouse deployment.
-type KubernetesClickHouseContainer struct {
+// **KubernetesClickHouseCoordination** selects and configures the
+// coordination service (ClickHouse Keeper or ZooKeeper) that
+// replication and `ON CLUSTER` DDL depend on.
+type KubernetesClickHouseCoordination struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// The number of ClickHouse replicas (pods) to deploy.
-	// For non-clustered deployments, this is the total number of ClickHouse pods.
-	// For clustered deployments, this value is ignored in favor of shard_count * replica_count.
-	// Must be at least 1.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to each ClickHouse container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
+	// Coordination flavor. See the enum values for semantics.
+	Type KubernetesClickHouseCoordination_CoordinationType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordination_CoordinationType" json:"type,omitempty"`
 	// *
-	// A flag to enable or disable data persistence for ClickHouse.
-	// When enabled, data is persisted to a storage volume, allowing data to survive pod restarts.
-	// Defaults to `true`. Strongly recommended for production use.
-	PersistenceEnabled bool `protobuf:"varint,3,opt,name=persistence_enabled,json=persistenceEnabled,proto3" json:"persistence_enabled,omitempty"`
+	// Managed Keeper sizing. Only read when the effective type is
+	// managed_keeper; empty = 3 replicas with operator-default
+	// resources and a 10Gi volume.
+	Keeper *KubernetesClickHouseManagedKeeper `protobuf:"bytes,2,opt,name=keeper,proto3" json:"keeper,omitempty"`
 	// *
-	// The size of the persistent volume attached to each ClickHouse pod (e.g., "50Gi", "100Gi").
-	// If the client does not provide a value, a default value is configured.
-	// This attribute is ignored when persistence is not enabled.
-	// **Note:** This value cannot be easily modified after creation due to Kubernetes limitations.
-	// Plan for growth and allocate sufficient storage initially.
-	DiskSize      string `protobuf:"bytes,4,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
+	// External coordination endpoints. Required when type is
+	// external_keeper or external_zookeeper.
+	External      *KubernetesClickHouseExternalCoordination `protobuf:"bytes,3,opt,name=external,proto3" json:"external,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesClickHouseContainer) Reset() {
-	*x = KubernetesClickHouseContainer{}
+func (x *KubernetesClickHouseCoordination) Reset() {
+	*x = KubernetesClickHouseCoordination{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesClickHouseContainer) String() string {
+func (x *KubernetesClickHouseCoordination) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesClickHouseContainer) ProtoMessage() {}
+func (*KubernetesClickHouseCoordination) ProtoMessage() {}
 
-func (x *KubernetesClickHouseContainer) ProtoReflect() protoreflect.Message {
+func (x *KubernetesClickHouseCoordination) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -366,260 +571,75 @@ func (x *KubernetesClickHouseContainer) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesClickHouseContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesClickHouseContainer) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesClickHouseCoordination.ProtoReflect.Descriptor instead.
+func (*KubernetesClickHouseCoordination) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesClickHouseContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesClickHouseContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-func (x *KubernetesClickHouseContainer) GetPersistenceEnabled() bool {
-	if x != nil {
-		return x.PersistenceEnabled
-	}
-	return false
-}
-
-func (x *KubernetesClickHouseContainer) GetDiskSize() string {
-	if x != nil {
-		return x.DiskSize
-	}
-	return ""
-}
-
-// *
-// **KubernetesClickHouseClusterConfig** defines the clustering configuration for ClickHouse.
-// This includes settings for sharding and replication to enable distributed ClickHouse deployments.
-//
-// Clustering provides horizontal scaling and high availability. When clustering is enabled:
-// - Data is distributed across shards for parallel processing
-// - Each shard can have multiple replicas for redundancy
-// - ZooKeeper is used for cluster coordination (automatically managed by the operator)
-type KubernetesClickHouseClusterConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// A flag to enable or disable clustering mode for ClickHouse.
-	// When enabled, ClickHouse will be deployed in a distributed cluster configuration with sharding and replication.
-	// When disabled, a single standalone ClickHouse instance is deployed.
-	// Defaults to `false` (standalone mode suitable for development and small workloads).
-	IsEnabled bool `protobuf:"varint,1,opt,name=is_enabled,json=isEnabled,proto3" json:"is_enabled,omitempty"`
-	// *
-	// The number of shards in the ClickHouse cluster.
-	// Sharding distributes data across multiple nodes for horizontal scaling and improved query performance.
-	// Each shard processes queries in parallel, allowing for massive throughput.
-	// This value is ignored if clustering is not enabled.
-	// Typical values: 2-8 for most use cases, can go higher for very large deployments.
-	ShardCount int32 `protobuf:"varint,2,opt,name=shard_count,json=shardCount,proto3" json:"shard_count,omitempty"`
-	// *
-	// The number of replicas for each shard.
-	// Replication provides data redundancy and high availability.
-	// If one replica fails, queries can be served by other replicas in the same shard.
-	// This value is ignored if clustering is not enabled.
-	// Typical values: 2-3 (more than 3 replicas is rarely needed).
-	ReplicaCount  int32 `protobuf:"varint,3,opt,name=replica_count,json=replicaCount,proto3" json:"replica_count,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesClickHouseClusterConfig) Reset() {
-	*x = KubernetesClickHouseClusterConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesClickHouseClusterConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesClickHouseClusterConfig) ProtoMessage() {}
-
-func (x *KubernetesClickHouseClusterConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesClickHouseClusterConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesClickHouseClusterConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesClickHouseClusterConfig) GetIsEnabled() bool {
-	if x != nil {
-		return x.IsEnabled
-	}
-	return false
-}
-
-func (x *KubernetesClickHouseClusterConfig) GetShardCount() int32 {
-	if x != nil {
-		return x.ShardCount
-	}
-	return 0
-}
-
-func (x *KubernetesClickHouseClusterConfig) GetReplicaCount() int32 {
-	if x != nil {
-		return x.ReplicaCount
-	}
-	return 0
-}
-
-// *
-// **KubernetesClickHouseCoordinationConfig** defines coordination service configuration for ClickHouse cluster.
-// ClickHouse requires coordination for distributed operations (DDL execution, replication management).
-//
-// For most use cases, auto-managed ClickHouse Keeper (default) is recommended.
-// It's more efficient than ZooKeeper (75% less resources) and managed by the same operator.
-//
-// Use external coordination when:
-// - Sharing infrastructure across multiple ClickHouse clusters
-// - Using existing ZooKeeper for other services (Kafka, etc.)
-// - Migrating from ZooKeeper to ClickHouse Keeper
-type KubernetesClickHouseCoordinationConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// Type of coordination service to use.
-	// Defaults to 'keeper' (auto-managed ClickHouse Keeper).
-	Type KubernetesClickHouseCoordinationConfig_CoordinationType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfig_CoordinationType" json:"type,omitempty"`
-	// *
-	// Configuration for auto-managed ClickHouse Keeper.
-	// Only used when type = 'keeper'.
-	// If not specified, sensible defaults are used (1 replica for dev, 3 for prod).
-	KeeperConfig *KubernetesClickHouseKeeperConfig `protobuf:"bytes,2,opt,name=keeper_config,json=keeperConfig,proto3" json:"keeper_config,omitempty"`
-	// *
-	// Configuration for external coordination service.
-	// Only used when type = 'external_keeper' or 'external_zookeeper'.
-	// Must specify at least one node.
-	ExternalConfig *KubernetesClickHouseExternalCoordinationConfig `protobuf:"bytes,3,opt,name=external_config,json=externalConfig,proto3" json:"external_config,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *KubernetesClickHouseCoordinationConfig) Reset() {
-	*x = KubernetesClickHouseCoordinationConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesClickHouseCoordinationConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesClickHouseCoordinationConfig) ProtoMessage() {}
-
-func (x *KubernetesClickHouseCoordinationConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesClickHouseCoordinationConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesClickHouseCoordinationConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *KubernetesClickHouseCoordinationConfig) GetType() KubernetesClickHouseCoordinationConfig_CoordinationType {
+func (x *KubernetesClickHouseCoordination) GetType() KubernetesClickHouseCoordination_CoordinationType {
 	if x != nil {
 		return x.Type
 	}
-	return KubernetesClickHouseCoordinationConfig_unspecified
+	return KubernetesClickHouseCoordination_unspecified
 }
 
-func (x *KubernetesClickHouseCoordinationConfig) GetKeeperConfig() *KubernetesClickHouseKeeperConfig {
+func (x *KubernetesClickHouseCoordination) GetKeeper() *KubernetesClickHouseManagedKeeper {
 	if x != nil {
-		return x.KeeperConfig
+		return x.Keeper
 	}
 	return nil
 }
 
-func (x *KubernetesClickHouseCoordinationConfig) GetExternalConfig() *KubernetesClickHouseExternalCoordinationConfig {
+func (x *KubernetesClickHouseCoordination) GetExternal() *KubernetesClickHouseExternalCoordination {
 	if x != nil {
-		return x.ExternalConfig
+		return x.External
 	}
 	return nil
 }
 
 // *
-// **KubernetesClickHouseKeeperConfig** defines configuration for auto-managed ClickHouse Keeper.
-// The operator creates a ClickHouseKeeperInstallation resource with these settings.
-//
-// ClickHouse Keeper is a ZooKeeper alternative written in C++ specifically for ClickHouse.
-// Benefits: 75% less CPU/memory usage, no JVM overhead, protocol-compatible with ZooKeeper.
-type KubernetesClickHouseKeeperConfig struct {
+// **KubernetesClickHouseManagedKeeper** sizes the module-managed
+// ClickHouse Keeper ensemble (a ClickHouseKeeperInstallation named
+// `<resource-name>-keeper`, client Service `keeper-<resource-name>-keeper`).
+type KubernetesClickHouseManagedKeeper struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// Number of ClickHouse Keeper replicas.
-	// Must be an odd number for quorum (1, 3, or 5).
-	//
-	// Recommendations:
-	// - Development/Testing: 1 (no fault tolerance)
-	// - Production: 3 (survives 1 node failure)
-	// - Large Production: 5 (survives 2 node failures)
-	//
-	// Defaults to 1 if not specified.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
+	// Keeper ensemble size. Raft quorum needs an odd count: 1 (dev — no
+	// fault tolerance), 3 (production — survives one node loss), or 5
+	// (survives two). Default 3.
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
 	// *
-	// Resources for each Keeper pod.
-	//
-	// Recommended defaults (applied if not specified):
-	// - Requests: 100m CPU, 256Mi memory
-	// - Limits: 500m CPU, 1Gi memory
-	//
-	// ClickHouse Keeper is very efficient; these defaults work for most deployments.
+	// CPU and memory per Keeper pod. Keeper is deliberately light
+	// (C++, no JVM): 100m/256Mi requests with 500m/1Gi limits carry most
+	// clusters. Empty = operator defaults.
 	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
 	// *
-	// Persistent volume size for each Keeper pod.
-	// Defaults to "10Gi" if not specified.
-	//
-	// Keeper stores coordination metadata (not data), so 10Gi is sufficient for most use cases.
-	// Consider larger sizes (20-50Gi) for very large clusters (100+ nodes).
-	DiskSize      string `protobuf:"bytes,3,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
+	// Persistent volume per Keeper pod for the coordination log and
+	// snapshots (metadata only, not table data). Default "10Gi".
+	DiskSize *string `protobuf:"bytes,3,opt,name=disk_size,json=diskSize,proto3,oneof" json:"disk_size,omitempty"`
+	// *
+	// Storage class for the Keeper volumes. Empty = the cluster's
+	// default storage class.
+	StorageClass  *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesClickHouseKeeperConfig) Reset() {
-	*x = KubernetesClickHouseKeeperConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[4]
+func (x *KubernetesClickHouseManagedKeeper) Reset() {
+	*x = KubernetesClickHouseManagedKeeper{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesClickHouseKeeperConfig) String() string {
+func (x *KubernetesClickHouseManagedKeeper) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesClickHouseKeeperConfig) ProtoMessage() {}
+func (*KubernetesClickHouseManagedKeeper) ProtoMessage() {}
 
-func (x *KubernetesClickHouseKeeperConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[4]
+func (x *KubernetesClickHouseManagedKeeper) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -630,72 +650,252 @@ func (x *KubernetesClickHouseKeeperConfig) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesClickHouseKeeperConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesClickHouseKeeperConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{4}
+// Deprecated: Use KubernetesClickHouseManagedKeeper.ProtoReflect.Descriptor instead.
+func (*KubernetesClickHouseManagedKeeper) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *KubernetesClickHouseKeeperConfig) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
+func (x *KubernetesClickHouseManagedKeeper) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
 	}
 	return 0
 }
 
-func (x *KubernetesClickHouseKeeperConfig) GetResources() *kubernetes.ContainerResources {
+func (x *KubernetesClickHouseManagedKeeper) GetResources() *kubernetes.ContainerResources {
 	if x != nil {
 		return x.Resources
 	}
 	return nil
 }
 
-func (x *KubernetesClickHouseKeeperConfig) GetDiskSize() string {
+func (x *KubernetesClickHouseManagedKeeper) GetDiskSize() string {
+	if x != nil && x.DiskSize != nil {
+		return *x.DiskSize
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseManagedKeeper) GetStorageClass() *v1.StringValueOrRef {
 	if x != nil {
-		return x.DiskSize
+		return x.StorageClass
+	}
+	return nil
+}
+
+// *
+// **KubernetesClickHouseExternalCoordination** points the cluster at
+// an existing ClickHouse Keeper or ZooKeeper ensemble.
+type KubernetesClickHouseExternalCoordination struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Ensemble nodes. List every member for client-side failover.
+	Nodes []*KubernetesClickHouseCoordinationNode `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	// *
+	// Optional root znode path under which this cluster stores its
+	// replication and DDL metadata — set it when several ClickHouse
+	// clusters share one ensemble (e.g. "/clickhouse/prod-analytics").
+	Root string `protobuf:"bytes,2,opt,name=root,proto3" json:"root,omitempty"`
+	// *
+	// Optional digest-auth credentials for the ensemble in
+	// "user:password" form (ZooKeeper ACL identity). Delivered into the
+	// generated config verbatim.
+	Identity      string `protobuf:"bytes,3,opt,name=identity,proto3" json:"identity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesClickHouseExternalCoordination) Reset() {
+	*x = KubernetesClickHouseExternalCoordination{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesClickHouseExternalCoordination) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesClickHouseExternalCoordination) ProtoMessage() {}
+
+func (x *KubernetesClickHouseExternalCoordination) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesClickHouseExternalCoordination.ProtoReflect.Descriptor instead.
+func (*KubernetesClickHouseExternalCoordination) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesClickHouseExternalCoordination) GetNodes() []*KubernetesClickHouseCoordinationNode {
+	if x != nil {
+		return x.Nodes
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseExternalCoordination) GetRoot() string {
+	if x != nil {
+		return x.Root
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseExternalCoordination) GetIdentity() string {
+	if x != nil {
+		return x.Identity
 	}
 	return ""
 }
 
 // *
-// **KubernetesClickHouseExternalCoordinationConfig** defines external coordination service configuration.
-// Use when connecting to existing ClickHouse Keeper or ZooKeeper infrastructure.
-//
-// Common scenarios:
-// - Shared ZooKeeper used by Kafka, Solr, and ClickHouse
-// - Centrally managed Keeper infrastructure
-// - Multi-cluster coordination through shared Keeper
-type KubernetesClickHouseExternalCoordinationConfig struct {
+// **KubernetesClickHouseCoordinationNode** is one external ensemble
+// member.
+type KubernetesClickHouseCoordinationNode struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// List of coordination service nodes in "host:port" format.
-	//
-	// For production, specify all nodes in the ensemble for redundancy.
-	//
-	// Examples:
-	// - ClickHouse Keeper: ["keeper-prod:2181"]
-	// - ClickHouse Keeper HA: ["keeper-0.keeper-svc:2181", "keeper-1.keeper-svc:2181", "keeper-2.keeper-svc:2181"]
-	// - ZooKeeper: ["zk-0.zk.svc:2181", "zk-1.zk.svc:2181", "zk-2.zk.svc:2181"]
-	//
-	// Port 2181 is the standard client port for both ZooKeeper and ClickHouse Keeper.
-	Nodes         []string `protobuf:"bytes,1,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	// DNS name or IP of the node, e.g.
+	// "zk-0.zk-headless.zoo.svc.cluster.local".
+	Host string `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	// *
+	// Client port. Default 2181 — the standard for both ZooKeeper and
+	// ClickHouse Keeper.
+	Port          *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesClickHouseExternalCoordinationConfig) Reset() {
-	*x = KubernetesClickHouseExternalCoordinationConfig{}
+func (x *KubernetesClickHouseCoordinationNode) Reset() {
+	*x = KubernetesClickHouseCoordinationNode{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesClickHouseCoordinationNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesClickHouseCoordinationNode) ProtoMessage() {}
+
+func (x *KubernetesClickHouseCoordinationNode) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesClickHouseCoordinationNode.ProtoReflect.Descriptor instead.
+func (*KubernetesClickHouseCoordinationNode) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesClickHouseCoordinationNode) GetHost() string {
+	if x != nil {
+		return x.Host
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseCoordinationNode) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+// *
+// **KubernetesClickHouseUser** provisions one ClickHouse user through
+// the CHI users section. The password never appears in the CHI: the
+// module writes it into a Kubernetes Secret
+// (`<resource-name>-clickhouse-auth`, key = the user name) and the
+// operator injects it via `valueFrom.secretKeyRef`.
+type KubernetesClickHouseUser struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// User name (becomes the XML section name and the Secret key).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// *
+	// Password. Accepts a literal value or a reference to another
+	// resource's output. Required — passwordless named users are not
+	// provisioned by this kind.
+	Password *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	// *
+	// Settings profile this user runs under (a name from `profiles`, or
+	// a profile defined via `files`/upstream defaults such as
+	// "default").
+	Profile string `protobuf:"bytes,3,opt,name=profile,proto3" json:"profile,omitempty"`
+	// *
+	// Quota applied to this user (a name from `quotas`).
+	Quota string `protobuf:"bytes,4,opt,name=quota,proto3" json:"quota,omitempty"`
+	// *
+	// Networks the user may connect from, as IPs/CIDRs (e.g.
+	// "10.0.0.0/8") or "::/0" for anywhere. KNOW THIS (verified live):
+	// empty is NOT ClickHouse's own any-network default — the operator
+	// normalizes a user declared without networks to a restrictive
+	// fence (the cluster's own pods by host_regexp, plus ::1 and
+	// 127.0.0.1), and ClickHouse reports the network rejection as
+	// "Authentication failed: password is incorrect, or there is no
+	// user with such name" — indistinguishable from a wrong password.
+	// Port-forwarded connections arrive as localhost and slip through
+	// the fence, which is why a smoke test can pass while every
+	// in-cluster client fails. Declare networks explicitly for every
+	// user a workload connects as (e.g. "0.0.0.0/0" and "::/0" when the
+	// password is the gate).
+	Networks []string `protobuf:"bytes,5,rep,name=networks,proto3" json:"networks,omitempty"`
+	// *
+	// SQL GRANT statements executed for the user at config render, e.g.
+	// "GRANT SELECT ON analytics.*". The declarative alternative to
+	// running GRANTs by hand; requires `access_management` on an admin
+	// user only for runtime-managed grants, not for these.
+	//
+	// Two access behaviors verified live (ClickHouse 25.3): a user
+	// declared with NO grants receives ClickHouse's default,
+	// UNRESTRICTED access (config-file user semantics) — declare grants
+	// to constrain a user, never to widen one. And once grants are
+	// declared, distributed DDL (`... ON CLUSTER`) additionally requires
+	// "GRANT CLUSTER ON *.*" — CREATE on the target database alone is
+	// rejected with ACCESS_DENIED for ON CLUSTER statements.
+	Grants []string `protobuf:"bytes,6,rep,name=grants,proto3" json:"grants,omitempty"`
+	// *
+	// Allow this user to manage users and grants at runtime via SQL
+	// (CREATE USER / GRANT). Reserve for administrative users.
+	AccessManagement bool `protobuf:"varint,7,opt,name=access_management,json=accessManagement,proto3" json:"access_management,omitempty"`
+	// *
+	// Per-user setting overrides. Keys are `/`-separated paths within
+	// the user's XML section, e.g. "max_memory_usage" = "10000000000".
+	Settings      map[string]string `protobuf:"bytes,8,rep,name=settings,proto3" json:"settings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesClickHouseUser) Reset() {
+	*x = KubernetesClickHouseUser{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesClickHouseExternalCoordinationConfig) String() string {
+func (x *KubernetesClickHouseUser) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesClickHouseExternalCoordinationConfig) ProtoMessage() {}
+func (*KubernetesClickHouseUser) ProtoMessage() {}
 
-func (x *KubernetesClickHouseExternalCoordinationConfig) ProtoReflect() protoreflect.Message {
+func (x *KubernetesClickHouseUser) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -707,175 +907,98 @@ func (x *KubernetesClickHouseExternalCoordinationConfig) ProtoReflect() protoref
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesClickHouseExternalCoordinationConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesClickHouseExternalCoordinationConfig) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesClickHouseUser.ProtoReflect.Descriptor instead.
+func (*KubernetesClickHouseUser) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *KubernetesClickHouseExternalCoordinationConfig) GetNodes() []string {
+func (x *KubernetesClickHouseUser) GetName() string {
 	if x != nil {
-		return x.Nodes
-	}
-	return nil
-}
-
-// *
-// **KubernetesClickHouseLoggingConfig** defines logging configuration for ClickHouse server.
-// Controls the verbosity and behavior of ClickHouse server logs.
-//
-// ClickHouse logging can significantly impact I/O performance and disk usage.
-// Choose the appropriate level based on your operational needs.
-type KubernetesClickHouseLoggingConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// The log level for ClickHouse server logs.
-	// Defaults to 'information' if not specified.
-	//
-	// Production recommendation: Use 'information' for normal operations.
-	// Temporarily switch to 'debug' or 'trace' when troubleshooting specific issues,
-	// then revert to 'information' to avoid excessive log volume.
-	Level         KubernetesClickHouseLoggingConfig_LogLevel `protobuf:"varint,1,opt,name=level,proto3,enum=dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseLoggingConfig_LogLevel" json:"level,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesClickHouseLoggingConfig) Reset() {
-	*x = KubernetesClickHouseLoggingConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesClickHouseLoggingConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesClickHouseLoggingConfig) ProtoMessage() {}
-
-func (x *KubernetesClickHouseLoggingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesClickHouseLoggingConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesClickHouseLoggingConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *KubernetesClickHouseLoggingConfig) GetLevel() KubernetesClickHouseLoggingConfig_LogLevel {
-	if x != nil {
-		return x.Level
-	}
-	return KubernetesClickHouseLoggingConfig_information
-}
-
-// *
-// **KubernetesClickHouseIngress** defines the ingress configuration for ClickHouse deployment.
-// Controls external access to the ClickHouse cluster via LoadBalancer with automatic DNS configuration.
-type KubernetesClickHouseIngress struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// Flag to enable or disable ingress.
-	// When enabled, creates a LoadBalancer service with external-dns annotations.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// *
-	// The full hostname for external access (e.g., "clickhouse.example.com").
-	// This hostname will be configured automatically via external-dns.
-	// Required when enabled is true.
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesClickHouseIngress) Reset() {
-	*x = KubernetesClickHouseIngress{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesClickHouseIngress) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesClickHouseIngress) ProtoMessage() {}
-
-func (x *KubernetesClickHouseIngress) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesClickHouseIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesClickHouseIngress) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *KubernetesClickHouseIngress) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *KubernetesClickHouseIngress) GetHostname() string {
-	if x != nil {
-		return x.Hostname
+		return x.Name
 	}
 	return ""
 }
 
+func (x *KubernetesClickHouseUser) GetPassword() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Password
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseUser) GetProfile() string {
+	if x != nil {
+		return x.Profile
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseUser) GetQuota() string {
+	if x != nil {
+		return x.Quota
+	}
+	return ""
+}
+
+func (x *KubernetesClickHouseUser) GetNetworks() []string {
+	if x != nil {
+		return x.Networks
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseUser) GetGrants() []string {
+	if x != nil {
+		return x.Grants
+	}
+	return nil
+}
+
+func (x *KubernetesClickHouseUser) GetAccessManagement() bool {
+	if x != nil {
+		return x.AccessManagement
+	}
+	return false
+}
+
+func (x *KubernetesClickHouseUser) GetSettings() map[string]string {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
 // *
-// **KubernetesClickHouseZookeeperConfig** defines the ZooKeeper configuration for ClickHouse cluster coordination.
-//
-// DEPRECATED: This message is deprecated in favor of KubernetesClickHouseCoordinationConfig.
-// Use the 'coordination' field in KubernetesClickHouseSpec instead.
-//
-// This is kept for backward compatibility and will be removed in v2.
-type KubernetesClickHouseZookeeperConfig struct {
+// **KubernetesClickHouseNamedSettings** is one named, path-keyed
+// settings bundle — the shape of both a settings profile and a quota.
+type KubernetesClickHouseNamedSettings struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// A flag to use external ZooKeeper instead of operator-managed ZooKeeper.
-	// When false (default), the operator automatically provisions and manages ZooKeeper pods.
-	// When true, you must provide external ZooKeeper nodes.
-	UseExternal bool `protobuf:"varint,1,opt,name=use_external,json=useExternal,proto3" json:"use_external,omitempty"`
+	// Bundle name (profile name or quota name) referenced from `users`.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// *
-	// List of external ZooKeeper nodes in the format "host:port".
-	// This is only used when use_external is true.
-	// Example: ["zk-0.zk-headless.default.svc.cluster.local:2181", "zk-1.zk-headless.default.svc.cluster.local:2181"]
-	Nodes         []string `protobuf:"bytes,2,rep,name=nodes,proto3" json:"nodes,omitempty"`
+	// Path-keyed values within the bundle, exactly as the upstream CRD
+	// takes them (profiles: setting paths; quotas: "interval/…" paths).
+	Settings      map[string]string `protobuf:"bytes,2,rep,name=settings,proto3" json:"settings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesClickHouseZookeeperConfig) Reset() {
-	*x = KubernetesClickHouseZookeeperConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[8]
+func (x *KubernetesClickHouseNamedSettings) Reset() {
+	*x = KubernetesClickHouseNamedSettings{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesClickHouseZookeeperConfig) String() string {
+func (x *KubernetesClickHouseNamedSettings) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesClickHouseZookeeperConfig) ProtoMessage() {}
+func (*KubernetesClickHouseNamedSettings) ProtoMessage() {}
 
-func (x *KubernetesClickHouseZookeeperConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[8]
+func (x *KubernetesClickHouseNamedSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -886,106 +1009,124 @@ func (x *KubernetesClickHouseZookeeperConfig) ProtoReflect() protoreflect.Messag
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesClickHouseZookeeperConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesClickHouseZookeeperConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{8}
+// Deprecated: Use KubernetesClickHouseNamedSettings.ProtoReflect.Descriptor instead.
+func (*KubernetesClickHouseNamedSettings) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *KubernetesClickHouseZookeeperConfig) GetUseExternal() bool {
+func (x *KubernetesClickHouseNamedSettings) GetName() string {
 	if x != nil {
-		return x.UseExternal
+		return x.Name
 	}
-	return false
+	return ""
 }
 
-func (x *KubernetesClickHouseZookeeperConfig) GetNodes() []string {
+func (x *KubernetesClickHouseNamedSettings) GetSettings() map[string]string {
 	if x != nil {
-		return x.Nodes
+		return x.Settings
 	}
 	return nil
 }
-
-var file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_extTypes = []protoimpl.ExtensionInfo{
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesClickHouseContainer)(nil),
-		Field:         519001,
-		Name:          "dev.planton.provider.kubernetes.kubernetesclickhouse.v1.default_container",
-		Tag:           "bytes,519001,opt,name=default_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetesclickhouse/v1/spec.proto",
-	},
-}
-
-// Extension fields to descriptorpb.FieldOptions.
-var (
-	// optional dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseContainer default_container = 519001;
-	E_DefaultContainer = &file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_extTypes[0]
-)
 
 var File_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Bdev/planton/provider/kubernetes/kubernetesclickhouse/v1/spec.proto\x127dev.planton.provider.kubernetes.kubernetesclickhouse.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a google/protobuf/descriptor.proto\"\xa5\b\n" +
+	"Bdev/planton/provider/kubernetes/kubernetesclickhouse/v1/spec.proto\x127dev.planton.provider.kubernetes.kubernetesclickhouse.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x89\x19\n" +
 	"\x18KubernetesClickHouseSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12I\n" +
-	"\fcluster_name\x18\x04 \x01(\tB&\xbaH#r!2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\vclusterName\x12\xa2\x01\n" +
-	"\tcontainer\x18\x05 \x01(\v2V.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseContainerB,ʵ\xfd\x01'\b\x01\x12\x1b\n" +
-	"\f\n" +
-	"\x052000m\x12\x034Gi\x12\v\n" +
-	"\x04500m\x12\x031Gi\x18\x01\"\x0450GiR\tcontainer\x12n\n" +
-	"\aingress\x18\x06 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseIngressR\aingress\x12t\n" +
-	"\acluster\x18\a \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseClusterConfigR\acluster\x12\x18\n" +
-	"\aversion\x18\b \x01(\tR\aversion\x12\x83\x01\n" +
-	"\fcoordination\x18\t \x01(\v2_.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfigR\fcoordination\x12~\n" +
-	"\tzookeeper\x18\n" +
-	" \x01(\v2\\.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseZookeeperConfigB\x02\x18\x01R\tzookeeper\x12|\n" +
-	"\alogging\x18\v \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseLoggingConfigB\x06\xbaH\x03\xc8\x01\x01R\alogging\"\xbf\x04\n" +
-	"\x1dKubernetesClickHouseContainer\x12#\n" +
-	"\breplicas\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12/\n" +
-	"\x13persistence_enabled\x18\x03 \x01(\bR\x12persistenceEnabled\x12\x1b\n" +
-	"\tdisk_size\x18\x04 \x01(\tR\bdiskSize:\xd7\x02\xbaH\xd3\x02\x1a\xd0\x02\n" +
-	"!spec.container.disk_size.required\x12IDisk size is required and must match the format if persistence is enabled\x1a\xdf\x01((!this.persistence_enabled && (size(this.disk_size) == 0 || this.disk_size == '')) || (this.persistence_enabled && size(this.disk_size) > 0 && this.disk_size.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')))\"\xc9\x02\n" +
-	"!KubernetesClickHouseClusterConfig\x12\x1d\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12 \n" +
+	"\aversion\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\aversion\x12E\n" +
+	"\x05image\x18\x04 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12[\n" +
+	"\fcluster_name\x18\x05 \x01(\tB3\xbaH(r&2$^[a-z0-9]([-a-z0-9]{0,13}[a-z0-9])?$\x8a\xa6\x1d\x04mainH\x00R\vclusterName\x88\x01\x01\x12)\n" +
+	"\x06shards\x18\x06 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\x06shards\x88\x01\x01\x12-\n" +
+	"\breplicas\x18\a \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x02R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\b \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12V\n" +
+	"\tdisk_size\x18\t \x01(\tB9\xbaH6\xc8\x01\x01r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$R\bdiskSize\x12o\n" +
+	"\rstorage_class\x18\n" +
+	" \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12\xdb\x01\n" +
+	"\rlog_disk_size\x18\v \x01(\tB\xb6\x01\xbaH\xb2\x01\xba\x01\xae\x01\n" +
+	"\x19spec.log_disk_size.format\x12>log_disk_size must be a Kubernetes quantity like 10Gi or 512Mi\x1aQthis == '' || this.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')R\vlogDiskSize\x127\n" +
+	"\x18retain_volumes_on_delete\x18\f \x01(\bR\x15retainVolumesOnDelete\x12}\n" +
+	"\fcoordination\x18\r \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationR\fcoordination\x12g\n" +
+	"\x05users\x18\x0e \x03(\v2Q.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseUserR\x05users\x12v\n" +
+	"\bprofiles\x18\x0f \x03(\v2Z.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseNamedSettingsR\bprofiles\x12r\n" +
+	"\x06quotas\x18\x10 \x03(\v2Z.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseNamedSettingsR\x06quotas\x12{\n" +
+	"\bsettings\x18\x11 \x03(\v2_.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.SettingsEntryR\bsettings\x12r\n" +
+	"\x05files\x18\x12 \x03(\v2\\.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.FilesEntryR\x05files\x12B\n" +
+	"\x16auto_inter_node_secret\x18\x13 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x13autoInterNodeSecret\x88\x01\x01\x12?\n" +
+	"\x1cspread_replicas_across_nodes\x18\x14 \x01(\bR\x19spreadReplicasAcrossNodes\x12A\n" +
+	"\x13pdb_max_unavailable\x18\x15 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x011H\x04R\x11pdbMaxUnavailable\x88\x01\x01\x12\x88\x01\n" +
+	"\rnode_selector\x18\x16 \x03(\v2c.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x17 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x12\x9a\x01\n" +
+	"\x13service_annotations\x18\x18 \x03(\v2i.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.ServiceAnnotationsEntryR\x12serviceAnnotations\x12\x18\n" +
+	"\astopped\x18\x19 \x01(\bR\astopped\x12x\n" +
+	"\x12image_pull_secrets\x18\x1a \x03(\tBJ\xaa\xa6\x1dFNames of existing Kubernetes Secrets (references), not secret materialR\x10imagePullSecrets\x1a;\n" +
+	"\rSettingsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a8\n" +
 	"\n" +
-	"is_enabled\x18\x01 \x01(\bR\tisEnabled\x12\x1f\n" +
-	"\vshard_count\x18\x02 \x01(\x05R\n" +
-	"shardCount\x12#\n" +
-	"\rreplica_count\x18\x03 \x01(\x05R\freplicaCount:\xbe\x01\xbaH\xba\x01\x1a\xb7\x01\n" +
-	" spec.cluster.counts_when_enabled\x12KShard count and replica count must be at least 1 when clustering is enabled\x1aF!this.is_enabled || (this.shard_count >= 1 && this.replica_count >= 1)\"\xa0\x04\n" +
-	"&KubernetesClickHouseCoordinationConfig\x12\x84\x01\n" +
-	"\x04type\x18\x01 \x01(\x0e2p.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfig.CoordinationTypeR\x04type\x12~\n" +
-	"\rkeeper_config\x18\x02 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseKeeperConfigR\fkeeperConfig\x12\x90\x01\n" +
-	"\x0fexternal_config\x18\x03 \x01(\v2g.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseExternalCoordinationConfigR\x0eexternalConfig\"\\\n" +
+	"FilesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aE\n" +
+	"\x17ServiceAnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x87\x03\xbaH\x83\x03\x1a\x80\x03\n" +
+	"*spec.coordination.required_for_replication\x12\x81\x02replicas > 1 requires coordination — ReplicatedMergeTree cannot sync without ClickHouse Keeper or ZooKeeper; leave coordination unset to get a managed Keeper automatically, or configure it explicitly (type none is only valid for single-replica topologies)\x1aN!(this.replicas > 1) || !has(this.coordination) || this.coordination.type != 4B\x0f\n" +
+	"\r_cluster_nameB\t\n" +
+	"\a_shardsB\v\n" +
+	"\t_replicasB\x19\n" +
+	"\x17_auto_inter_node_secretB\x16\n" +
+	"\x14_pdb_max_unavailable\"\x8b\x06\n" +
+	" KubernetesClickHouseCoordination\x12~\n" +
+	"\x04type\x18\x01 \x01(\x0e2j.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordination.CoordinationTypeR\x04type\x12r\n" +
+	"\x06keeper\x18\x02 \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseManagedKeeperR\x06keeper\x12}\n" +
+	"\bexternal\x18\x03 \x01(\v2a.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseExternalCoordinationR\bexternal\"n\n" +
 	"\x10CoordinationType\x12\x0f\n" +
-	"\vunspecified\x10\x00\x12\n" +
-	"\n" +
-	"\x06keeper\x10\x01\x12\x13\n" +
+	"\vunspecified\x10\x00\x12\x12\n" +
+	"\x0emanaged_keeper\x10\x01\x12\x13\n" +
 	"\x0fexternal_keeper\x10\x02\x12\x16\n" +
-	"\x12external_zookeeper\x10\x03\"\xf3\x01\n" +
-	" KubernetesClickHouseKeeperConfig\x12'\n" +
-	"\breplicas\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x060\x010\x030\x05R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12S\n" +
-	"\tdisk_size\x18\x03 \x01(\tB6\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$R\bdiskSize\"P\n" +
-	".KubernetesClickHouseExternalCoordinationConfig\x12\x1e\n" +
-	"\x05nodes\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x05nodes\"\xd1\x01\n" +
-	"!KubernetesClickHouseLoggingConfig\x12y\n" +
-	"\x05level\x18\x01 \x01(\x0e2c.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseLoggingConfig.LogLevelR\x05level\"1\n" +
-	"\bLogLevel\x12\x0f\n" +
-	"\vinformation\x10\x00\x12\t\n" +
-	"\x05debug\x10\x01\x12\t\n" +
-	"\x05trace\x10\x02\"\xd2\x01\n" +
-	"\x1bKubernetesClickHouseIngress\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
-	"\x1espec.ingress.hostname.required\x12,hostname is required when ingress is enabled\x1a(!this.enabled || size(this.hostname) > 0\"\x86\x02\n" +
-	"#KubernetesClickHouseZookeeperConfig\x12!\n" +
-	"\fuse_external\x18\x01 \x01(\bR\vuseExternal\x12\x14\n" +
-	"\x05nodes\x18\x02 \x03(\tR\x05nodes:\xa5\x01\xbaH\xa1\x01\x1a\x9e\x01\n" +
-	"\"spec.zookeeper.nodes_when_external\x12KAt least one ZooKeeper node must be specified when using external ZooKeeper\x1a+!this.use_external || size(this.nodes) >= 1:\xa4\x01\n" +
-	"\x11default_container\x12\x1d.google.protobuf.FieldOptions\x18\xd9\xd6\x1f \x01(\v2V.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseContainerR\x10defaultContainerB\xbd\x03\n" +
+	"\x12external_zookeeper\x10\x03\x12\b\n" +
+	"\x04none\x10\x04:\x83\x02\xbaH\xff\x01\x1a\xfc\x01\n" +
+	")spec.coordination.external.nodes_required\x12qexternal coordination (external_keeper / external_zookeeper) requires external.nodes with at least one host entry\x1a\\!(this.type == 2 || this.type == 3) || (has(this.external) && size(this.external.nodes) > 0)\"\x97\x03\n" +
+	"!KubernetesClickHouseManagedKeeper\x121\n" +
+	"\breplicas\x18\x01 \x01(\x05B\x10\xbaH\b\x1a\x060\x010\x030\x05\x8a\xa6\x1d\x013H\x00R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12`\n" +
+	"\tdisk_size\x18\x03 \x01(\tB>\xbaH3r12/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x01R\bdiskSize\x88\x01\x01\x12o\n" +
+	"\rstorage_class\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClassB\v\n" +
+	"\t_replicasB\f\n" +
+	"\n" +
+	"_disk_size\"\xd5\x01\n" +
+	"(KubernetesClickHouseExternalCoordination\x12s\n" +
+	"\x05nodes\x18\x01 \x03(\v2].dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationNodeR\x05nodes\x12\x12\n" +
+	"\x04root\x18\x02 \x01(\tR\x04root\x12 \n" +
+	"\bidentity\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\bidentity\"y\n" +
+	"$KubernetesClickHouseCoordinationNode\x12\x1a\n" +
+	"\x04host\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04host\x12,\n" +
+	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x042181H\x00R\x04port\x88\x01\x01B\a\n" +
+	"\x05_port\"\x91\x04\n" +
+	"\x18KubernetesClickHouseUser\x12N\n" +
+	"\x04name\x18\x01 \x01(\tB:\xbaH7\xc8\x01\x01r220^[a-zA-Z0-9_]([a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?$R\x04name\x12Z\n" +
+	"\bpassword\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bpassword\x12\x18\n" +
+	"\aprofile\x18\x03 \x01(\tR\aprofile\x12\x14\n" +
+	"\x05quota\x18\x04 \x01(\tR\x05quota\x12\x1a\n" +
+	"\bnetworks\x18\x05 \x03(\tR\bnetworks\x12\x16\n" +
+	"\x06grants\x18\x06 \x03(\tR\x06grants\x12+\n" +
+	"\x11access_management\x18\a \x01(\bR\x10accessManagement\x12{\n" +
+	"\bsettings\x18\b \x03(\v2_.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseUser.SettingsEntryR\bsettings\x1a;\n" +
+	"\rSettingsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb7\x02\n" +
+	"!KubernetesClickHouseNamedSettings\x12N\n" +
+	"\x04name\x18\x01 \x01(\tB:\xbaH7\xc8\x01\x01r220^[a-zA-Z0-9_]([a-zA-Z0-9_-]{0,61}[a-zA-Z0-9_])?$R\x04name\x12\x84\x01\n" +
+	"\bsettings\x18\x02 \x03(\v2h.dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseNamedSettings.SettingsEntryR\bsettings\x1a;\n" +
+	"\rSettingsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xbd\x03\n" +
 	";com.dev.planton.provider.kubernetes.kubernetesclickhouse.v1B\tSpecProtoP\x01Zpgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesclickhouse/v1;kubernetesclickhousev1\xa2\x02\x05DPPKK\xaa\x027Dev.Planton.Provider.Kubernetes.Kubernetesclickhouse.V1\xca\x027Dev\\Planton\\Provider\\Kubernetes\\Kubernetesclickhouse\\V1\xe2\x02CDev\\Planton\\Provider\\Kubernetes\\Kubernetesclickhouse\\V1\\GPBMetadata\xea\x02<Dev::Planton::Provider::Kubernetes::Kubernetesclickhouse::V1b\x06proto3"
 
 var (
@@ -1000,45 +1141,56 @@ func file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_raw
 	return file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_goTypes = []any{
-	(KubernetesClickHouseCoordinationConfig_CoordinationType)(0), // 0: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfig.CoordinationType
-	(KubernetesClickHouseLoggingConfig_LogLevel)(0),              // 1: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseLoggingConfig.LogLevel
-	(*KubernetesClickHouseSpec)(nil),                             // 2: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec
-	(*KubernetesClickHouseContainer)(nil),                        // 3: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseContainer
-	(*KubernetesClickHouseClusterConfig)(nil),                    // 4: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseClusterConfig
-	(*KubernetesClickHouseCoordinationConfig)(nil),               // 5: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfig
-	(*KubernetesClickHouseKeeperConfig)(nil),                     // 6: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseKeeperConfig
-	(*KubernetesClickHouseExternalCoordinationConfig)(nil),       // 7: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseExternalCoordinationConfig
-	(*KubernetesClickHouseLoggingConfig)(nil),                    // 8: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseLoggingConfig
-	(*KubernetesClickHouseIngress)(nil),                          // 9: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseIngress
-	(*KubernetesClickHouseZookeeperConfig)(nil),                  // 10: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseZookeeperConfig
-	(*v1.StringValueOrRef)(nil),                                  // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),                        // 12: dev.planton.provider.kubernetes.ContainerResources
-	(*descriptorpb.FieldOptions)(nil),                            // 13: google.protobuf.FieldOptions
+	(KubernetesClickHouseCoordination_CoordinationType)(0), // 0: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordination.CoordinationType
+	(*KubernetesClickHouseSpec)(nil),                       // 1: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec
+	(*KubernetesClickHouseCoordination)(nil),               // 2: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordination
+	(*KubernetesClickHouseManagedKeeper)(nil),              // 3: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseManagedKeeper
+	(*KubernetesClickHouseExternalCoordination)(nil),       // 4: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseExternalCoordination
+	(*KubernetesClickHouseCoordinationNode)(nil),           // 5: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationNode
+	(*KubernetesClickHouseUser)(nil),                       // 6: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseUser
+	(*KubernetesClickHouseNamedSettings)(nil),              // 7: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseNamedSettings
+	nil,                                   // 8: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.SettingsEntry
+	nil,                                   // 9: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.FilesEntry
+	nil,                                   // 10: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.NodeSelectorEntry
+	nil,                                   // 11: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.ServiceAnnotationsEntry
+	nil,                                   // 12: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseUser.SettingsEntry
+	nil,                                   // 13: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseNamedSettings.SettingsEntry
+	(*v1.StringValueOrRef)(nil),           // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerImage)(nil),     // 15: dev.planton.provider.kubernetes.ContainerImage
+	(*kubernetes.ContainerResources)(nil), // 16: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil), // 17: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_depIdxs = []int32{
-	11, // 0: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 1: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseContainer
-	9,  // 2: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseIngress
-	4,  // 3: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.cluster:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseClusterConfig
-	5,  // 4: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.coordination:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfig
-	10, // 5: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.zookeeper:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseZookeeperConfig
-	8,  // 6: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.logging:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseLoggingConfig
-	12, // 7: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	0,  // 8: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfig.type:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfig.CoordinationType
-	6,  // 9: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfig.keeper_config:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseKeeperConfig
-	7,  // 10: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationConfig.external_config:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseExternalCoordinationConfig
-	12, // 11: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseKeeperConfig.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	1,  // 12: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseLoggingConfig.level:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseLoggingConfig.LogLevel
-	13, // 13: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.default_container:extendee -> google.protobuf.FieldOptions
-	3,  // 14: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.default_container:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseContainer
-	15, // [15:15] is the sub-list for method output_type
-	15, // [15:15] is the sub-list for method input_type
-	14, // [14:15] is the sub-list for extension type_name
-	13, // [13:14] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	14, // 0: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 1: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	16, // 2: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	14, // 3: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.storage_class:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 4: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.coordination:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordination
+	6,  // 5: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.users:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseUser
+	7,  // 6: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.profiles:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseNamedSettings
+	7,  // 7: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.quotas:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseNamedSettings
+	8,  // 8: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.settings:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.SettingsEntry
+	9,  // 9: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.files:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.FilesEntry
+	10, // 10: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.NodeSelectorEntry
+	17, // 11: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	11, // 12: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.service_annotations:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseSpec.ServiceAnnotationsEntry
+	0,  // 13: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordination.type:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordination.CoordinationType
+	3,  // 14: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordination.keeper:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseManagedKeeper
+	4,  // 15: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordination.external:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseExternalCoordination
+	16, // 16: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseManagedKeeper.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	14, // 17: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseManagedKeeper.storage_class:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 18: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseExternalCoordination.nodes:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseCoordinationNode
+	14, // 19: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseUser.password:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 20: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseUser.settings:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseUser.SettingsEntry
+	13, // 21: dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseNamedSettings.settings:type_name -> dev.planton.provider.kubernetes.kubernetesclickhouse.v1.KubernetesClickHouseNamedSettings.SettingsEntry
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_init() }
@@ -1046,21 +1198,23 @@ func file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_ini
 	if File_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   9,
-			NumExtensions: 1,
+			NumEnums:      1,
+			NumMessages:   13,
+			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_depIdxs,
 		EnumInfos:         file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_msgTypes,
-		ExtensionInfos:    file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_extTypes,
 	}.Build()
 	File_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto = out.File
 	file_dev_planton_provider_kubernetes_kubernetesclickhouse_v1_spec_proto_goTypes = nil

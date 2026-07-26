@@ -23,7 +23,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// click-house-kubernetes
+// kubernetes-click-house
 type KubernetesClickHouse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version
@@ -105,7 +105,7 @@ func (x *KubernetesClickHouse) GetStatus() *KubernetesClickHouseStatus {
 	return nil
 }
 
-// click-house-kubernetes status
+// kubernetes-click-house status
 type KubernetesClickHouseStatus struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// stack-outputs

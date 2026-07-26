@@ -3,9 +3,16 @@ kind: ComponentE2EProfile
 metadata:
   name: kubernetesgharunnerscaleset
 spec:
-  tier: 4
-  status: skip
-  deferred_reason: "requires GitHub PAT + privileged containers"
-  validated_provisioners:
-    - pulumi
+  tier: 3
+  # Rebuilt on the official gha-runner-scale-set OCI chart 0.14.2 with
+  # secret-native GitHub auth and offline-validated (spec tests, both
+  # engines' plan/preview proofs across placeholder/live/mode shapes);
+  # the live lanes have not run yet. The minimal lane is install-grade
+  # by design (placeholder credential — proves the materialized Secret,
+  # the rendered AutoscalingRunnerSet and the controller observing it);
+  # the behavioral-github lane owns the REGISTRATION proof (listener
+  # Running + an idle runner online) and requires a real GitHub
+  # credential through the fenced env tokens
+  # PLANTON_E2E_GITHUB_REPO_PATH + PLANTON_E2E_GITHUB_TOKEN.
+  status: pending_proof
   timeout_minutes: 15

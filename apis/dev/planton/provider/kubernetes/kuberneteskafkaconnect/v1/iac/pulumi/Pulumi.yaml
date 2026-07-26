@@ -1,0 +1,3 @@
+name: kubernetes-kafka-connect
+runtime: go
+description: Strimzi-operator-managed Kafka Connect cluster — KafkaConnect custom resource with declarative connector management, TLS/SASL client connection, OCI image-volume plugins, operator-driven image builds, and JMX Prometheus metrics

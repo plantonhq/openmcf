@@ -1,132 +1,189 @@
+# Typed mirror of KubernetesSolrSpec (spec.proto). The spec arrives from
+# the proto->tfvars converter in snake_case with every StringValueOrRef
+# foreign key -- `namespace` (KubernetesNamespace), the two
+# `storage_class` references (KubernetesStorageClass), and
+# `security.basic_auth_secret` (KubernetesSecret) -- resolved to a literal
+# string before Terraform runs.
+#
+# optional() defaults mirror the proto's (dev.planton.shared.options.default)
+# annotations, so the module renders the same resource whether or not the
+# platform's defaulting middleware ran. Fields whose ABSENCE is meaningful
+# (availability.pdb_enabled, the scaling flags) carry NO default: the
+# module renders them only when explicitly set, exactly like the Pulumi
+# module's presence checks.
+
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "spec"
+  description = "KubernetesSolr specification"
   type = object({
-    # Kubernetes namespace to install the component
-    namespace = string
-
-    # flag to indicate if the namespace should be created
+    namespace        = string
     create_namespace = optional(bool, false)
+    replicas         = optional(number, 3)
+    version          = string
+    image_repository = optional(string, "")
 
-    # The specifications for the Solr container deployment.
-    solr_container = object({
-
-      # The number of Solr pods in the Solr Kubernetes deployment.
-      replicas = number
-
-      # The CPU and memory resources allocated to the Solr container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-
-      # The size of the persistent volume attached to each Solr pod (e.g., "1Gi").
-      disk_size = string
-
-      # The container image for the Solr deployment.
-      # Example repository: "solr", example tag: "8.7.0".
-      image = object({
-
-        # The repository of the image (e.g., "gcr.io/project/image").
-        repo = string
-
-        # The tag of the image (e.g., "latest" or "1.0.0").
-        tag = string
-
-        # The name of the image pull secret for private image repositories.
-        pull_secret_name = optional(string)
-      })
-    })
-
-    # The Solr-specific configuration options.
-    config = optional(object({
-
-      # JVM memory settings for Solr.
-      java_mem = optional(string)
-
-      # Custom Solr options (e.g., "-Dsolr.autoSoftCommit.maxTime=10000").
-      opts = optional(string)
-
-      # Solr garbage collection tuning configuration (e.g., "-XX:SurvivorRatio=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=8").
-      garbage_collection_tuning = optional(string)
+    zookeeper = optional(object({
+      provided = optional(object({
+        replicas = optional(number, 3)
+        persistence = optional(object({
+          size          = optional(string, "")
+          storage_class = optional(string, "")
+        }))
+        resources = optional(object({
+          limits = optional(object({
+            cpu    = optional(string, "")
+            memory = optional(string, "")
+          }))
+          requests = optional(object({
+            cpu    = optional(string, "")
+            memory = optional(string, "")
+          }))
+        }))
+        chroot = optional(string, "/")
+      }))
+      external = optional(object({
+        connection_string = string
+        chroot            = optional(string, "/")
+      }))
     }))
 
-    # The specifications for the Zookeeper container deployment.
-    zookeeper_container = object({
-
-      # The number of Zookeeper pods in the Zookeeper cluster.
-      replicas = number
-
-      # The CPU and memory resources allocated to the Zookeeper container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-
-      # The size of the persistent volume attached to each Zookeeper pod (e.g., "1Gi").
-      disk_size = string
-    })
-
-    # The ingress configuration for the Solr deployment.
-    ingress = optional(object({
-
-      # A flag to enable or disable ingress.
-      is_enabled = bool
-
-      # The dns domain.
-      dns_domain = string
+    storage = optional(object({
+      persistent = optional(object({
+        size           = string
+        storage_class  = optional(string, "")
+        reclaim_policy = optional(string, "Retain")
+      }))
+      ephemeral = optional(object({
+        size_limit = optional(string, "")
+      }))
     }))
+
+    java_mem  = optional(string, "")
+    solr_opts = optional(string, "")
+    log_level = optional(string, "INFO")
+    gc_tune   = optional(string, "")
+
+    resources = optional(object({
+      limits = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+      requests = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+    }))
+
+    security = optional(object({
+      authentication_type = optional(string, "")
+      basic_auth_secret   = optional(string, "")
+      probes_require_auth = optional(bool, false)
+      bootstrap_security_json = optional(object({
+        name = string
+        key  = string
+      }))
+    }))
+
+    tls = optional(object({
+      pkcs12_secret = object({
+        name = string
+        key  = string
+      })
+      keystore_password_secret = object({
+        name = string
+        key  = string
+      })
+      truststore_secret = optional(object({
+        name = string
+        key  = string
+      }))
+      truststore_password_secret = optional(object({
+        name = string
+        key  = string
+      }))
+      client_auth            = optional(string, "None")
+      verify_client_hostname = optional(bool, false)
+    }))
+
+    backup_repositories = optional(list(object({
+      name = string
+      s3 = optional(object({
+        region        = string
+        bucket        = string
+        base_location = optional(string, "")
+        endpoint      = optional(string, "")
+        credentials = optional(object({
+          access_key_id_secret = optional(object({
+            name = string
+            key  = string
+          }))
+          secret_access_key_secret = optional(object({
+            name = string
+            key  = string
+          }))
+        }))
+      }))
+      gcs = optional(object({
+        bucket = string
+        gcs_credential_secret = optional(object({
+          name = string
+          key  = string
+        }))
+        base_location = optional(string, "")
+      }))
+      volume = optional(object({
+        pvc_claim_name = string
+        directory      = optional(string, "")
+      }))
+    })), [])
+
+    solr_modules    = optional(list(string), [])
+    additional_libs = optional(list(string), [])
+
+    update_strategy = optional(object({
+      method                         = optional(string, "Managed")
+      max_pods_unavailable           = optional(string, "")
+      max_shard_replicas_unavailable = optional(string, "")
+      restart_schedule               = optional(string, "")
+    }))
+
+    availability = optional(object({
+      pdb_enabled = optional(bool)
+    }))
+
+    scaling = optional(object({
+      vacate_pods_on_scale_down = optional(bool)
+      populate_pods_on_scale_up = optional(bool)
+    }))
+
+    external = optional(object({
+      method               = string
+      domain_name          = string
+      use_external_address = optional(bool, false)
+      hide_common          = optional(bool, false)
+      hide_nodes           = optional(bool, false)
+    }))
+
+    pod_port      = optional(number, 8983)
+    node_selector = optional(map(string), {})
+    tolerations = optional(list(object({
+      key                = optional(string, "")
+      operator           = optional(string, "")
+      value              = optional(string, "")
+      effect             = optional(string, "")
+      toleration_seconds = optional(number)
+    })), [])
   })
 }

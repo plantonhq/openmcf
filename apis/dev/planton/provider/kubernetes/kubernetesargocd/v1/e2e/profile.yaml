@@ -4,8 +4,14 @@ metadata:
   name: kubernetesargocd
 spec:
   tier: 2
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
-  timeout_minutes: 15
+  # Rebuilt from the pre-program shell onto the official argo-cd chart
+  # 10.2.1 and offline-validated (spec tests, both engines' plan/preview
+  # proofs across full, minimal and external-redis shapes); the live
+  # lanes have not run yet — they run the session-API login proof on
+  # every lane and the behavioral-gitops lane's live Application sync +
+  # server-pod-replacement state proof.
+  status: pending_proof
+  # Seven components plus the redis-secret-init hook; the gitops lane
+  # additionally clones and syncs a public repository. The budget covers
+  # that cold start on the shared cluster.
+  timeout_minutes: 25

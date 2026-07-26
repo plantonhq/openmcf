@@ -2,8 +2,24 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesaltinityoperator.v1;
 
-// kubernetes-altinity-operator stack outputs
+//kubernetes-altinity-operator stack outputs
 message KubernetesAltinityOperatorStackOutputs {
-  // Namespace where the operator is installed
+  //namespace the operator is installed into.
   string namespace = 1;
+
+  //Helm release name of the operator install (= metadata.name).
+  string release_name = 2;
+
+  //name of the operator Deployment (= the chart fullname, which the
+  //modules pin to the resource name).
+  string deployment_name = 3;
+
+  //name of the chart-managed Secret holding the operator's ClickHouse
+  //credentials (fields username/password), e.g. <name>.
+  string credentials_secret_name = 4;
+
+  //in-cluster metrics endpoint serving Prometheus metrics for every
+  //managed cluster, e.g. http://<name>-metrics.<ns>.svc.cluster.local:8888/metrics.
+  //Empty when the metrics exporter is disabled.
+  string metrics_endpoint = 5;
 }

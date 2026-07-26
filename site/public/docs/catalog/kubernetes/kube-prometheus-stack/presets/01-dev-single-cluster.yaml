@@ -1,0 +1,33 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKubePrometheusStack
+metadata:
+  name: dev-metrics
+spec:
+  namespace:
+    value: monitoring
+  create_namespace: true
+  # Kind / laptop / private-lab posture: the control-plane scrapers
+  # that bind to localhost (or do not exist under Cilium
+  # kube-proxy-replacement) are off so the target list stays green.
+  # Pair the matching rule groups so permanently-unreachable scrapers
+  # do not fire forever.
+  prometheus:
+    disk_size: 10Gi
+    retention: 2d
+  alertmanager:
+    disk_size: 2Gi
+  control_plane_scrapers:
+    kube_controller_manager: false
+    kube_etcd: false
+    kube_scheduler: false
+    kube_proxy: false
+  default_rules:
+    disabled_groups:
+      - etcd
+      - kubeControllerManager
+      - kubeSchedulerAlerting
+      - kubeSchedulerRecording
+      - kubeProxy
+  # Everything else is the component default: cluster-wide monitor
+  # discovery, Alertmanager on, bundled Grafana on with its own
+  # chart-generated admin Secret, both exporters on.

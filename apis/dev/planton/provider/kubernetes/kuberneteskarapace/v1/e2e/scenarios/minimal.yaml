@@ -1,0 +1,20 @@
+# A minimal registry against the lane's Kafka fixture: one replica,
+# plaintext Kafka, its own namespace (the registry composes across
+# namespaces through the FQDN bootstrap endpoint). The verifier proves a
+# LIVE schema register/fetch round-trip on every lane. Each scenario
+# uses its OWN schemas topic so no state crosses scenarios on the
+# shared fixture cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKarapace
+metadata:
+  name: e2e-karapace-minimal
+spec:
+  namespace:
+    value: e2e-krp-min
+  create_namespace: true
+  kafka:
+    bootstrap_servers:
+      valueFrom:
+        name: e2e-kaf-fix
+  registry:
+    topic_name: e2e-schemas-min

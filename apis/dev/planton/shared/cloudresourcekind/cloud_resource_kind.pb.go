@@ -935,9 +935,19 @@ const (
 	CloudResourceKind_KubernetesClusterAutoscaler     CloudResourceKind = 866
 	CloudResourceKind_KubernetesVelero                CloudResourceKind = 867
 	// 870–889: Kubernetes observability
-	CloudResourceKind_KubernetesPrometheus CloudResourceKind = 870
-	CloudResourceKind_KubernetesGrafana    CloudResourceKind = 871
-	CloudResourceKind_KubernetesSignoz     CloudResourceKind = 872
+	CloudResourceKind_KubernetesKubePrometheusStack CloudResourceKind = 870
+	CloudResourceKind_KubernetesGrafana             CloudResourceKind = 871
+	// KubernetesClickHouse is a prerequisite because SigNoz stores every
+	// trace, metric and log in ClickHouse and deploys none of its own —
+	// the telemetry store is composed, never bundled.
+	CloudResourceKind_KubernetesSignoz CloudResourceKind = 872
+	CloudResourceKind_KubernetesLoki   CloudResourceKind = 873
+	CloudResourceKind_KubernetesTempo  CloudResourceKind = 874
+	// The operator's admission webhooks (failurePolicy Fail) are served
+	// with a cert-manager Certificate in the default posture —
+	// cert-manager must be running before the operator installs.
+	CloudResourceKind_KubernetesOtelOperator  CloudResourceKind = 875
+	CloudResourceKind_KubernetesOtelCollector CloudResourceKind = 876
 	// 890–899: Kubernetes security, policy, and identity
 	CloudResourceKind_KubernetesKeycloak CloudResourceKind = 890
 	CloudResourceKind_KubernetesOpenBao  CloudResourceKind = 891
@@ -952,24 +962,47 @@ const (
 	CloudResourceKind_KubernetesMongodb               CloudResourceKind = 906
 	CloudResourceKind_KubernetesStrimziKafkaOperator  CloudResourceKind = 907
 	CloudResourceKind_KubernetesKafka                 CloudResourceKind = 908
-	CloudResourceKind_KubernetesElasticOperator       CloudResourceKind = 909
-	CloudResourceKind_KubernetesElasticsearch         CloudResourceKind = 910
-	CloudResourceKind_KubernetesAltinityOperator      CloudResourceKind = 911
-	CloudResourceKind_KubernetesClickHouse            CloudResourceKind = 912
-	CloudResourceKind_KubernetesSolrOperator          CloudResourceKind = 913
-	CloudResourceKind_KubernetesSolr                  CloudResourceKind = 914
-	CloudResourceKind_KubernetesNeo4j                 CloudResourceKind = 915
-	CloudResourceKind_KubernetesRookCephOperator      CloudResourceKind = 916
-	CloudResourceKind_KubernetesRookCephCluster       CloudResourceKind = 917
+	CloudResourceKind_KubernetesKafkaTopic            CloudResourceKind = 909
+	CloudResourceKind_KubernetesKafkaUser             CloudResourceKind = 910
+	CloudResourceKind_KubernetesKafkaConnect          CloudResourceKind = 911
+	CloudResourceKind_KubernetesKafkaConnector        CloudResourceKind = 912
+	CloudResourceKind_KubernetesKafkaMirrorMaker2     CloudResourceKind = 913
+	CloudResourceKind_KubernetesKarapace              CloudResourceKind = 914
+	CloudResourceKind_KubernetesKafkaUi               CloudResourceKind = 915
+	CloudResourceKind_KubernetesOpenSearchOperator    CloudResourceKind = 916
+	CloudResourceKind_KubernetesOpenSearch            CloudResourceKind = 917
+	CloudResourceKind_KubernetesAltinityOperator      CloudResourceKind = 918
+	CloudResourceKind_KubernetesClickHouse            CloudResourceKind = 919
+	CloudResourceKind_KubernetesSolrOperator          CloudResourceKind = 920
+	CloudResourceKind_KubernetesSolr                  CloudResourceKind = 921
+	CloudResourceKind_KubernetesNeo4j                 CloudResourceKind = 922
+	CloudResourceKind_KubernetesSeaweedFs             CloudResourceKind = 923
+	CloudResourceKind_KubernetesQdrant                CloudResourceKind = 924
+	// The RabbitMQ Cluster Operator's release manifest ships admission
+	// webhooks whose serving certificate is a cert-manager Certificate —
+	// cert-manager must be running before the operator installs.
+	CloudResourceKind_KubernetesRabbitMqOperator CloudResourceKind = 925
+	CloudResourceKind_KubernetesRabbitMq         CloudResourceKind = 926
 	// 950–969: Kubernetes GitOps and CI/CD
-	CloudResourceKind_KubernetesArgocd                      CloudResourceKind = 950
-	CloudResourceKind_KubernetesTektonOperator              CloudResourceKind = 951
-	CloudResourceKind_KubernetesTekton                      CloudResourceKind = 952
-	CloudResourceKind_KubernetesGhaRunnerScaleSetController CloudResourceKind = 953
-	CloudResourceKind_KubernetesGhaRunnerScaleSet           CloudResourceKind = 954
-	CloudResourceKind_KubernetesHarbor                      CloudResourceKind = 955
-	CloudResourceKind_KubernetesJenkins                     CloudResourceKind = 956
+	CloudResourceKind_KubernetesArgocd         CloudResourceKind = 950
+	CloudResourceKind_KubernetesArgoWorkflows  CloudResourceKind = 951
+	CloudResourceKind_KubernetesTektonOperator CloudResourceKind = 952
+	// KubernetesTektonOperator is a prerequisite because this kind declares
+	// the TektonConfig custom resource that only the operator's CRDs admit
+	// and only the operator reconciles into running components.
+	CloudResourceKind_KubernetesTekton                      CloudResourceKind = 953
+	CloudResourceKind_KubernetesGhaRunnerScaleSetController CloudResourceKind = 954
+	// KubernetesGhaRunnerScaleSetController is a prerequisite because this
+	// kind renders an AutoscalingRunnerSet custom resource that only the
+	// controller's CRDs admit and only the controller reconciles into
+	// listener and runner pods.
+	CloudResourceKind_KubernetesGhaRunnerScaleSet CloudResourceKind = 955
+	CloudResourceKind_KubernetesHarbor            CloudResourceKind = 956
+	CloudResourceKind_KubernetesJenkins           CloudResourceKind = 957
 	// 970–989: Kubernetes app platforms
+	// KubernetesPostgres is a prerequisite because the recommended (and
+	// E2E-proven) database composition backs Temporal's default and
+	// visibility stores with a CloudNativePG cluster.
 	CloudResourceKind_KubernetesTemporal CloudResourceKind = 970
 	CloudResourceKind_KubernetesNats     CloudResourceKind = 971
 	CloudResourceKind_KubernetesLocust   CloudResourceKind = 972
@@ -1539,9 +1572,13 @@ var (
 		865:  "KubernetesKarpenterEc2NodeClass",
 		866:  "KubernetesClusterAutoscaler",
 		867:  "KubernetesVelero",
-		870:  "KubernetesPrometheus",
+		870:  "KubernetesKubePrometheusStack",
 		871:  "KubernetesGrafana",
 		872:  "KubernetesSignoz",
+		873:  "KubernetesLoki",
+		874:  "KubernetesTempo",
+		875:  "KubernetesOtelOperator",
+		876:  "KubernetesOtelCollector",
 		890:  "KubernetesKeycloak",
 		891:  "KubernetesOpenBao",
 		892:  "KubernetesOpenFga",
@@ -1554,22 +1591,32 @@ var (
 		906:  "KubernetesMongodb",
 		907:  "KubernetesStrimziKafkaOperator",
 		908:  "KubernetesKafka",
-		909:  "KubernetesElasticOperator",
-		910:  "KubernetesElasticsearch",
-		911:  "KubernetesAltinityOperator",
-		912:  "KubernetesClickHouse",
-		913:  "KubernetesSolrOperator",
-		914:  "KubernetesSolr",
-		915:  "KubernetesNeo4j",
-		916:  "KubernetesRookCephOperator",
-		917:  "KubernetesRookCephCluster",
+		909:  "KubernetesKafkaTopic",
+		910:  "KubernetesKafkaUser",
+		911:  "KubernetesKafkaConnect",
+		912:  "KubernetesKafkaConnector",
+		913:  "KubernetesKafkaMirrorMaker2",
+		914:  "KubernetesKarapace",
+		915:  "KubernetesKafkaUi",
+		916:  "KubernetesOpenSearchOperator",
+		917:  "KubernetesOpenSearch",
+		918:  "KubernetesAltinityOperator",
+		919:  "KubernetesClickHouse",
+		920:  "KubernetesSolrOperator",
+		921:  "KubernetesSolr",
+		922:  "KubernetesNeo4j",
+		923:  "KubernetesSeaweedFs",
+		924:  "KubernetesQdrant",
+		925:  "KubernetesRabbitMqOperator",
+		926:  "KubernetesRabbitMq",
 		950:  "KubernetesArgocd",
-		951:  "KubernetesTektonOperator",
-		952:  "KubernetesTekton",
-		953:  "KubernetesGhaRunnerScaleSetController",
-		954:  "KubernetesGhaRunnerScaleSet",
-		955:  "KubernetesHarbor",
-		956:  "KubernetesJenkins",
+		951:  "KubernetesArgoWorkflows",
+		952:  "KubernetesTektonOperator",
+		953:  "KubernetesTekton",
+		954:  "KubernetesGhaRunnerScaleSetController",
+		955:  "KubernetesGhaRunnerScaleSet",
+		956:  "KubernetesHarbor",
+		957:  "KubernetesJenkins",
 		970:  "KubernetesTemporal",
 		971:  "KubernetesNats",
 		972:  "KubernetesLocust",
@@ -2128,9 +2175,13 @@ var (
 		"KubernetesKarpenterEc2NodeClass":                865,
 		"KubernetesClusterAutoscaler":                    866,
 		"KubernetesVelero":                               867,
-		"KubernetesPrometheus":                           870,
+		"KubernetesKubePrometheusStack":                  870,
 		"KubernetesGrafana":                              871,
 		"KubernetesSignoz":                               872,
+		"KubernetesLoki":                                 873,
+		"KubernetesTempo":                                874,
+		"KubernetesOtelOperator":                         875,
+		"KubernetesOtelCollector":                        876,
 		"KubernetesKeycloak":                             890,
 		"KubernetesOpenBao":                              891,
 		"KubernetesOpenFga":                              892,
@@ -2143,22 +2194,32 @@ var (
 		"KubernetesMongodb":                              906,
 		"KubernetesStrimziKafkaOperator":                 907,
 		"KubernetesKafka":                                908,
-		"KubernetesElasticOperator":                      909,
-		"KubernetesElasticsearch":                        910,
-		"KubernetesAltinityOperator":                     911,
-		"KubernetesClickHouse":                           912,
-		"KubernetesSolrOperator":                         913,
-		"KubernetesSolr":                                 914,
-		"KubernetesNeo4j":                                915,
-		"KubernetesRookCephOperator":                     916,
-		"KubernetesRookCephCluster":                      917,
+		"KubernetesKafkaTopic":                           909,
+		"KubernetesKafkaUser":                            910,
+		"KubernetesKafkaConnect":                         911,
+		"KubernetesKafkaConnector":                       912,
+		"KubernetesKafkaMirrorMaker2":                    913,
+		"KubernetesKarapace":                             914,
+		"KubernetesKafkaUi":                              915,
+		"KubernetesOpenSearchOperator":                   916,
+		"KubernetesOpenSearch":                           917,
+		"KubernetesAltinityOperator":                     918,
+		"KubernetesClickHouse":                           919,
+		"KubernetesSolrOperator":                         920,
+		"KubernetesSolr":                                 921,
+		"KubernetesNeo4j":                                922,
+		"KubernetesSeaweedFs":                            923,
+		"KubernetesQdrant":                               924,
+		"KubernetesRabbitMqOperator":                     925,
+		"KubernetesRabbitMq":                             926,
 		"KubernetesArgocd":                               950,
-		"KubernetesTektonOperator":                       951,
-		"KubernetesTekton":                               952,
-		"KubernetesGhaRunnerScaleSetController":          953,
-		"KubernetesGhaRunnerScaleSet":                    954,
-		"KubernetesHarbor":                               955,
-		"KubernetesJenkins":                              956,
+		"KubernetesArgoWorkflows":                        951,
+		"KubernetesTektonOperator":                       952,
+		"KubernetesTekton":                               953,
+		"KubernetesGhaRunnerScaleSetController":          954,
+		"KubernetesGhaRunnerScaleSet":                    955,
+		"KubernetesHarbor":                               956,
+		"KubernetesJenkins":                              957,
 		"KubernetesTemporal":                             970,
 		"KubernetesNats":                                 971,
 		"KubernetesLocust":                               972,
@@ -2619,7 +2680,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xa2\xdf\x01\n" +
+	"\x02v1\x10\x01*\xec\xe4\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3030,10 +3091,15 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"k8skarpenc:\x02\xdf\x06B$\n" +
 	"\x14karpenter.k8s.aws/v1\x12\fEC2NodeClass\x122\n" +
 	"\x1bKubernetesClusterAutoscaler\x10\xe2\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8scas\x12'\n" +
-	"\x10KubernetesVelero\x10\xe3\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svel\x12,\n" +
-	"\x14KubernetesPrometheus\x10\xe6\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sprom\x12(\n" +
-	"\x11KubernetesGrafana\x10\xe7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sgfn\x12'\n" +
-	"\x10KubernetesSignoz\x10\xe8\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8ssgz\x12(\n" +
+	"\x10KubernetesVelero\x10\xe3\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svel\x124\n" +
+	"\x1dKubernetesKubePrometheusStack\x10\xe6\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8skps\x12(\n" +
+	"\x11KubernetesGrafana\x10\xe7\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sgfn\x12+\n" +
+	"\x10KubernetesSignoz\x10\xe8\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8ssgz:\x02\x97\a\x12&\n" +
+	"\x0eKubernetesLoki\x10\xe9\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sloki\x12(\n" +
+	"\x0fKubernetesTempo\x10\xea\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8stempo\x124\n" +
+	"\x16KubernetesOtelOperator\x10\xeb\x06\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8sotelop:\x02\xbe\x06\x126\n" +
+	"\x17KubernetesOtelCollector\x10\xec\x06\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\n" +
+	"k8sotelcol:\x02\xeb\x06\x12(\n" +
 	"\x12KubernetesKeycloak\x10\xfa\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8skc\x12(\n" +
 	"\x11KubernetesOpenBao\x10\xfb\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sbao\x12(\n" +
 	"\x11KubernetesOpenFga\x10\xfc\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sfga\x129\n" +
@@ -3046,23 +3112,33 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x11KubernetesMongodb\x10\x8a\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8smdb:\x02\x89\a\x127\n" +
 	"\x1eKubernetesStrimziKafkaOperator\x10\x8b\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sstzop\x12*\n" +
 	"\x0fKubernetesKafka\x10\x8c\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8skaf:\x02\x8b\a\x122\n" +
-	"\x19KubernetesElasticOperator\x10\x8d\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8selaop\x121\n" +
-	"\x17KubernetesElasticsearch\x10\x8e\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8ses:\x02\x8d\a\x123\n" +
-	"\x1aKubernetesAltinityOperator\x10\x8f\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8saltop\x121\n" +
-	"\x14KubernetesClickHouse\x10\x90\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sclkhs:\x02\x8f\a\x12/\n" +
-	"\x16KubernetesSolrOperator\x10\x91\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sslrop\x12*\n" +
-	"\x0eKubernetesSolr\x10\x92\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8ssolr:\x02\x91\a\x12&\n" +
-	"\x0fKubernetesNeo4j\x10\x93\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sneo\x124\n" +
-	"\x1aKubernetesRookCephOperator\x10\x94\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookop\x123\n" +
-	"\x19KubernetesRookCephCluster\x10\x95\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8srookcl\x12(\n" +
-	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x122\n" +
-	"\x18KubernetesTektonOperator\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12(\n" +
-	"\x10KubernetesTekton\x10\xb8\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stktn\x12?\n" +
-	"%KubernetesGhaRunnerScaleSetController\x10\xb9\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharsc\x125\n" +
-	"\x1bKubernetesGhaRunnerScaleSet\x10\xba\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharss\x12(\n" +
-	"\x10KubernetesHarbor\x10\xbb\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shrbr\x12(\n" +
-	"\x11KubernetesJenkins\x10\xbc\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sjkn\x12*\n" +
-	"\x12KubernetesTemporal\x10\xca\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stprl\x12&\n" +
+	"\x14KubernetesKafkaTopic\x10\x8d\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skaftop:\x02\x8c\a\x121\n" +
+	"\x13KubernetesKafkaUser\x10\x8e\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafusr:\x02\x8c\a\x124\n" +
+	"\x16KubernetesKafkaConnect\x10\x8f\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafcon:\x02\x8c\a\x126\n" +
+	"\x18KubernetesKafkaConnector\x10\x90\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafcnr:\x02\x8f\a\x129\n" +
+	"\x1bKubernetesKafkaMirrorMaker2\x10\x91\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafmm2:\x02\x8c\a\x12.\n" +
+	"\x12KubernetesKarapace\x10\x92\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8skrpc:\x02\x8c\a\x12*\n" +
+	"\x11KubernetesKafkaUi\x10\x93\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8skafui\x124\n" +
+	"\x1cKubernetesOpenSearchOperator\x10\x94\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sosop\x12.\n" +
+	"\x14KubernetesOpenSearch\x10\x95\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8sos:\x02\x94\a\x123\n" +
+	"\x1aKubernetesAltinityOperator\x10\x96\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8saltop\x121\n" +
+	"\x14KubernetesClickHouse\x10\x97\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sclkhs:\x02\x96\a\x12/\n" +
+	"\x16KubernetesSolrOperator\x10\x98\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sslrop\x12*\n" +
+	"\x0eKubernetesSolr\x10\x99\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8ssolr:\x02\x98\a\x12&\n" +
+	"\x0fKubernetesNeo4j\x10\x9a\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sneo\x12+\n" +
+	"\x13KubernetesSeaweedFs\x10\x9b\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sswfs\x12(\n" +
+	"\x10KubernetesQdrant\x10\x9c\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sqdrt\x127\n" +
+	"\x1aKubernetesRabbitMqOperator\x10\x9d\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8srmqop:\x02\xbe\x06\x12-\n" +
+	"\x12KubernetesRabbitMq\x10\x9e\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8srmq:\x02\x9d\a\x12(\n" +
+	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x121\n" +
+	"\x17KubernetesArgoWorkflows\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sargowf\x122\n" +
+	"\x18KubernetesTektonOperator\x10\xb8\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12,\n" +
+	"\x10KubernetesTekton\x10\xb9\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8stktn:\x02\xb8\a\x12?\n" +
+	"%KubernetesGhaRunnerScaleSetController\x10\xba\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharsc\x129\n" +
+	"\x1bKubernetesGhaRunnerScaleSet\x10\xbb\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8sgharss:\x02\xba\a\x12(\n" +
+	"\x10KubernetesHarbor\x10\xbc\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shrbr\x12(\n" +
+	"\x11KubernetesJenkins\x10\xbd\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sjkn\x12.\n" +
+	"\x12KubernetesTemporal\x10\xca\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8stprl:\x02\x85\a\x12&\n" +
 	"\x0eKubernetesNats\x10\xcb\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8snats\x12'\n" +
 	"\x10KubernetesLocust\x10\xcc\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sloc\x124\n" +
 	"\x1eDigitalOceanAppPlatformService\x10\xb0\t\x1a\x0f\xa2\xf7\x04\v\b\x11\x10\x01\"\x05doapp\x12(\n" +

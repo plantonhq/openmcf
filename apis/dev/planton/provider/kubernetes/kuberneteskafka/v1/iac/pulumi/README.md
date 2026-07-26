@@ -1,134 +1,106 @@
-# Kafka Kubernetes Pulumi Module
+# KubernetesKafka Pulumi Module
 
-This Pulumi module simplifies the deployment and management of a Kafka cluster on Kubernetes using the Strimzi operator. By leveraging a standardized API resource definition, it enables developers to configure and deploy complex Kafka infrastructures with minimal effort. The module supports additional components like Schema Registry and Kafka UI (Kowl), providing a comprehensive solution for event streaming platforms.
+Deploys one Strimzi-operator-managed KRaft Kafka cluster: the optional
+namespace, the optional JMX metrics rules ConfigMap, one
+`kafka.strimzi.io/v1` `KafkaNodePool` per `node_pools` entry, and the
+`kafka.strimzi.io/v1` `Kafka` CR itself. The typed spec renders into
+untyped CR bodies in `module/kafka.go` / `module/nodepools.go` — the
+exact twin of the Terraform module's `locals.tf` (same keys rendered
+and omitted, numbers as ints, booleans as booleans).
 
-## Key Features
+## What the Module Creates
 
-- **Standardized API Resource**: Utilizes a consistent API structure with `apiVersion`, `kind`, `metadata`, `spec`, and `status`, making it easy to define and manage resources.
+1. **Namespace** (optional) — created with the standard governance
+   labels when `create_namespace` is true; otherwise the namespace
+   must already exist
+2. **JMX metrics ConfigMap** (optional, `metrics.enabled`) — the
+   canonical Strimzi Prometheus rules as `<name>-kafka-metrics`
+   (key `kafka-metrics-config.yml`); the Kafka CR's `metricsConfig`
+   only points at it
+3. **KafkaNodePool CRs** — one per pool, named after the pool, bound
+   to the cluster by the `strimzi.io/cluster` label riding on top of
+   the identity labels; created BEFORE the Kafka CR (Strimzi tolerates
+   either order, but a Kafka CR with no matching pools reports a
+   transient warning state)
+4. **The Kafka CR** (named `metadata.name`) — listeners, config,
+   authorization, entity operators, Cruise Control, exporter, CAs,
+   rack, JVM, maintenance windows
 
-- **Customizable Kafka Cluster**: Configure broker and zookeeper replicas, resource allocations, and storage options to meet specific requirements.
+## Why Untyped CustomResources
 
-- **Kafka Topics Management**: Define multiple Kafka topics with custom configurations, partitions, and replicas directly in the API resource.
+The typed crd2pulumi tree is structurally unable to carry this CR: the
+CRD types `spec.kafka.config` (and the listener and Cruise Control
+configuration blocks) with `x-kubernetes-preserve-unknown-fields`,
+which the generated types flatten into shapes that cannot hold the
+free-typed bodies — so no generated package is shipped for the Kafka
+family at all. Shape errors still fail loudly: the operator validates
+the applied spec against its schema.
 
-- **Optional Components**:
-    - **Schema Registry**: Enable Schema Registry deployment for managing Avro schemas.
-    - **Kafka UI (Kowl)**: Optionally deploy Kowl for an intuitive web-based Kafka management interface.
+## Rendering Notes
 
-- **Ingress Configuration**: Supports external access via ingress resources, with automatic TLS certificate management using Cert-Manager.
+- **Every listener carries the CRD-required quartet**
+  (name/port/type/tls, type coalesced to `internal`); authentication
+  and configuration render only when declared. Custom-authentication
+  knobs (`sasl`, `listenerConfig`) render only on the custom arm, and
+  custom-authorizer knobs (`authorizerClass`, `supportsAdminApi`) only
+  on the custom authorization arm.
+- **Storage renders per arm** — ephemeral (type only),
+  persistent-claim (size/class/deleteClaim), jbod (per-volume bodies,
+  at most one carrying `kraftMetadata: shared`).
+- **`node_selector` translates to node affinity** — the Strimzi pod
+  template carries affinity and tolerations but NO nodeSelector; the
+  module renders a required node affinity with one matchExpressions
+  entry per label, sorted for determinism (the Terraform module
+  renders the same translation).
+- **The entity operator omits cleanly** — each sub-operator renders
+  when enabled (spec defaults both true); with BOTH disabled the block
+  is omitted entirely and KafkaTopic/KafkaUser declarations for this
+  cluster become inert.
+- **cert-manager key fallbacks** — `broker_cert_chain_and_key` renders
+  `certificate`/`key` defaulted to `tls.crt`/`tls.key`, the names
+  cert-manager writes.
+- **An unset optional is never inserted into the map** (the Go twin of
+  Terraform's null-prune), so the apiserver applies the CRD's own
+  defaults.
 
-- **Pulumi Integration**: Written in Golang, the module leverages Pulumi for infrastructure as code, enabling seamless integration into existing workflows.
+## No Await Machinery, Deliberately
 
-## Table of Contents
+Cluster readiness depends on the operator (image pulls, KRaft quorum
+formation, listener provisioning) that is not part of applying the
+resources — the never-block-on-a-controller posture of every
+operator-CR kind in the catalog.
 
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [API Resource Specification](#api-resource-specification)
-    - [KafkaKubernetesSpec](#kafkakubernetesspec)
-    - [KafkaKubernetesBrokerContainer](#kafkakubernetesbrokercontainer)
-    - [KafkaKubernetesZookeeperContainer](#kafkakuberneteszookeepercontainer)
-    - [KafkaKubernetesSchemaRegistryContainer](#kafkakubernetesschemaregistrycontainer)
-    - [KafkaTopic](#kafkatopic)
-- [Usage](#usage)
-    - [Sample YAML Configuration](#sample-yaml-configuration)
-    - [Deploying with CLI](#deploying-with-cli)
-- [Module Components](#module-components)
-    - [Namespace Creation](#namespace-creation)
-    - [Kafka Cluster Deployment](#kafka-cluster-deployment)
-    - [Kafka Topics Creation](#kafka-topics-creation)
-    - [Schema Registry Deployment](#schema-registry-deployment)
-    - [Kafka UI (Kowl) Deployment](#kafka-ui-kowl-deployment)
-- [Outputs](#outputs)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Prerequisites
-
-- Kubernetes cluster with appropriate permissions.
-- Strimzi Kafka Operator installed in the cluster.
-- Cert-Manager installed for certificate management.
-- Pulumi CLI installed.
-- Golang environment set up if modifying the module code.
-
-## Installation
-
-Clone the repository containing the Pulumi module:
-
-```bash
-git clone https://github.com/your-org/kafka-kubernetes-pulumi-module.git
-```
-
-Install the required dependencies:
-
-```bash
-cd kafka-kubernetes-pulumi-module
-go mod download
-```
 ## Usage
 
-Refer to [example](example.md) for usage instructions.
-
-## Module Components
-
-### Namespace Management
-
-The module provides flexible namespace management through the `create_namespace` flag:
-
-- **Automatic Creation** (`create_namespace: true`): The module creates a dedicated Kubernetes namespace with appropriate labels, ensuring resource isolation and lifecycle management.
-- **External Management** (`create_namespace: false`): Use an existing namespace managed outside this module (e.g., via KubernetesNamespace component or manual creation). Resources will be deployed into the specified namespace without attempting to create it.
-
-**When to use `create_namespace: true`:**
-- New deployments where namespace doesn't exist
-- Full lifecycle management by the module
-- Default and recommended approach
-
-**When to use `create_namespace: false`:**
-- Namespace is managed by a centralized governance system
-- Pre-existing namespace with specific configurations
-- Multi-tenant environments with namespace policies
-
-### Kafka Cluster Deployment
-
-- **Brokers**: Deploys the specified number of Kafka broker pods with the provided resource allocations and storage configurations.
-- **Zookeeper**: Sets up Zookeeper nodes required for Kafka coordination.
-
-### Kafka Topics Creation
-
-Automatically creates the defined Kafka topics using the Strimzi KafkaTopic custom resource.
-
-### Schema Registry Deployment
-
-If enabled, deploys the Confluent Schema Registry:
-
-- Configures connections to the Kafka cluster.
-- Sets up authentication using SASL/SCRAM.
-
-### Kafka UI (Kowl) Deployment
-
-Optionally deploys Kowl, a web-based UI for Kafka:
-
-- Connects to the Kafka cluster using provided credentials.
-- Provides an interface to monitor topics, consumer groups, and more.
-
-### Ingress Configuration
-
-- Sets up ingress resources for external access to Kafka brokers, Schema Registry, and Kowl.
-- Manages TLS certificates using Cert-Manager and Kubernetes secrets.
+```shell
+planton pulumi up --manifest hack/manifest.yaml --module-dir <path-to-this-module>
+```
 
 ## Outputs
 
-After deployment, the module provides several outputs:
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the cluster deploys into |
+| `cluster_name` | Kafka cluster name (`metadata.name`) — the `strimzi.io/cluster` binding value |
+| `bootstrap_service_name` | Internal bootstrap Service (`<cluster>-kafka-bootstrap`) |
+| `internal_bootstrap_endpoint` | In-cluster bootstrap address for the first internal listener (empty when none is declared) |
+| `cluster_ca_cert_secret_name` | Cluster CA Secret (`<cluster>-cluster-ca-cert`, key `ca.crt`) |
 
-- **Namespace**: The Kubernetes namespace where resources are deployed.
-- **Kafka Admin Credentials**: Username and secret references for the admin user.
-- **Bootstrap Servers**: Internal and external hostnames for connecting to the Kafka cluster.
-- **Schema Registry URLs**: URLs for accessing the Schema Registry.
-- **Kafka UI URL**: External URL for accessing Kowl.
+## Module Structure
 
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request on GitHub.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
+- `main.go`: entrypoint that calls the module
+- `module/main.go`: namespace → metrics ConfigMap → node pools →
+  Kafka CR → output exports
+- `module/kafka.go`: the Kafka CR body (listeners, config,
+  authorization, entity operators, Cruise Control, exporter, CAs,
+  rack, JVM, maintenance windows)
+- `module/nodepools.go`: the KafkaNodePool bodies (roles, storage
+  arms, resources, the node-affinity translation)
+- `module/metrics.go` / `module/metrics_rules.go`: the module-owned
+  JMX Prometheus rules ConfigMap
+- `module/locals.go`: naming contracts (`<name>-kafka-bootstrap`,
+  `<name>-cluster-ca-cert`, `<name>-kafka-metrics`) and the
+  first-internal-listener bootstrap endpoint — kept in lockstep with
+  the Terraform module's `locals.tf`
+- `module/vars.go`: the `kafka.strimzi.io/v1` apiVersion, the
+  `strimzi.io/cluster` label key, the metrics ConfigMap key

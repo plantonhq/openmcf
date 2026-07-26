@@ -1,0 +1,32 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesgharunnerscalesetcontroller
+spec:
+  # The controller installs as one Helm release NAMED AFTER metadata.name
+  # (fullnameOverride pins the chart fullname — and the ServiceAccount —
+  # the same way), plus the optional anchor namespace. No Secret rows:
+  # the controller itself holds no credentials (each runner scale set
+  # brings its own GitHub credential).
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

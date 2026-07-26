@@ -4,7 +4,16 @@ metadata:
   name: kubernetesnats
 spec:
   tier: 2
-  status: green
-  validated_provisioners:
-    - pulumi
+  # Rebuilt from the pre-program shell onto the official nats chart
+  # 2.14.2 (the embedded NACK operator + stream declarations removed —
+  # the bundled-operator-and-CR class; JetStream persistent by default;
+  # module-generated user credentials wired through env-var config
+  # references) and offline-validated (spec tests, both engines'
+  # plan/preview proofs across full, minimal and accounts shapes). The
+  # pre-rebuild pulumi-only green belonged to the OLD surface and is
+  # honestly RESET — the live lanes for the rebuilt surface have not run
+  # yet: they run the nats.go pub/sub + JetStream store/read proofs and
+  # the auth gate on every lane, and the behavioral-durability lane's
+  # pod-replacement marker-survival proof.
+  status: pending_proof
   timeout_minutes: 15

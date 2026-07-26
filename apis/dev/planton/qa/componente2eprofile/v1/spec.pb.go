@@ -46,6 +46,15 @@ const (
 	// so CI matrices built from green components never schedule lanes that
 	// can only skip.
 	ComponentE2EProfileSpec_real_cluster ComponentE2EProfileSpec_Status = 5
+	// Fully authored and offline-validated (specs, both engine modules,
+	// scenarios, verifiers, static gates) but the live lanes have not yet
+	// run. Skipped everywhere like `deferred`, and excluded from CI matrices,
+	// until a proving session executes the lanes and flips the profile to
+	// `green` (or to `real_cluster`/`deferred` with a reason). Deliberately
+	// distinct from `deferred`, which records a KNOWN failure — a component
+	// awaiting its first proof has not failed anything. While a profile
+	// carries this status, validated_provisioners stays empty.
+	ComponentE2EProfileSpec_pending_proof ComponentE2EProfileSpec_Status = 6
 )
 
 // Enum value maps for ComponentE2EProfileSpec_Status.
@@ -57,6 +66,7 @@ var (
 		3: "skip",
 		4: "stub",
 		5: "real_cluster",
+		6: "pending_proof",
 	}
 	ComponentE2EProfileSpec_Status_value = map[string]int32{
 		"status_unspecified": 0,
@@ -65,6 +75,7 @@ var (
 		"skip":               3,
 		"stub":               4,
 		"real_cluster":       5,
+		"pending_proof":      6,
 	}
 )
 
@@ -200,7 +211,7 @@ var File_dev_planton_qa_componente2eprofile_v1_spec_proto protoreflect.FileDescr
 
 const file_dev_planton_qa_componente2eprofile_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0dev/planton/qa/componente2eprofile/v1/spec.proto\x12%dev.planton.qa.componente2eprofile.v1\x1a&dev/planton/qa/shared/cost_class.proto\x1a\x1cdev/planton/shared/iac.proto\"\xfd\x03\n" +
+	"0dev/planton/qa/componente2eprofile/v1/spec.proto\x12%dev.planton.qa.componente2eprofile.v1\x1a&dev/planton/qa/shared/cost_class.proto\x1a\x1cdev/planton/shared/iac.proto\"\x90\x04\n" +
 	"\x17ComponentE2EProfileSpec\x12\x12\n" +
 	"\x04tier\x18\x01 \x01(\x05R\x04tier\x12]\n" +
 	"\x06status\x18\x02 \x01(\x0e2E.dev.planton.qa.componente2eprofile.v1.ComponentE2EProfileSpec.StatusR\x06status\x12'\n" +
@@ -209,14 +220,15 @@ const file_dev_planton_qa_componente2eprofile_v1_spec_proto_rawDesc = "" +
 	"\x0ftimeout_minutes\x18\x05 \x01(\x05R\x0etimeoutMinutes\x12?\n" +
 	"\n" +
 	"cost_class\x18\x06 \x01(\x0e2 .dev.planton.qa.shared.CostClassR\tcostClass\x12 \n" +
-	"\vlimitations\x18\a \x03(\tR\vlimitations\"_\n" +
+	"\vlimitations\x18\a \x03(\tR\vlimitations\"r\n" +
 	"\x06Status\x12\x16\n" +
 	"\x12status_unspecified\x10\x00\x12\t\n" +
 	"\x05green\x10\x01\x12\f\n" +
 	"\bdeferred\x10\x02\x12\b\n" +
 	"\x04skip\x10\x03\x12\b\n" +
 	"\x04stub\x10\x04\x12\x10\n" +
-	"\freal_cluster\x10\x05B\xce\x02\n" +
+	"\freal_cluster\x10\x05\x12\x11\n" +
+	"\rpending_proof\x10\x06B\xce\x02\n" +
 	")com.dev.planton.qa.componente2eprofile.v1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1;componente2eprofilev1\xa2\x02\x04DPQC\xaa\x02%Dev.Planton.Qa.Componente2eprofile.V1\xca\x02%Dev\\Planton\\Qa\\Componente2eprofile\\V1\xe2\x021Dev\\Planton\\Qa\\Componente2eprofile\\V1\\GPBMetadata\xea\x02)Dev::Planton::Qa::Componente2eprofile::V1b\x06proto3"
 
 var (

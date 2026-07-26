@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-aws-module-test
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-strimzi-kafka-operator
+runtime: go
+description: Strimzi cluster operator installation from the official strimzi-kafka-operator Helm chart — reconciles Kafka and KafkaNodePool resources into KRaft-mode Kafka clusters and runs the per-cluster entity operators that reconcile KafkaTopic/KafkaUser resources

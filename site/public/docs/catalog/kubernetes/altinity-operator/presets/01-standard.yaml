@@ -1,16 +1,27 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesAltinityOperator
 metadata:
-  name: my-altinity-operator
+  name: clickhouse-operator
 spec:
   namespace:
-    value: altinity-system
-  createNamespace: true
-  container:
-    resources:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 1000m
-        memory: 1Gi
+    value: clickhouse-operator
+  create_namespace: true
+  # The chart default watches ONLY the operator's own namespace. Cover
+  # every namespace that will hold KubernetesClickHouse resources —
+  # entries are regular expressions; [".*"] watches the whole cluster.
+  watch_namespaces:
+    - ".*"
+  # The operator's own login on every managed cluster. UNSET, the
+  # chart falls back to publicly documented defaults — never ship
+  # that outside a throwaway environment.
+  operator_credentials:
+    username: clickhouse_operator
+    password:
+      value: change-me-operator-password
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

@@ -1,0 +1,36 @@
+# The tuned surface: cluster-wide watch scope, real operator
+# credentials, sized operator and metrics-exporter containers —
+# every live-safe field class exercised. (service_monitor_enabled
+# stays off: the persistent test cluster does not carry the
+# Prometheus Operator CRDs; namespace_scoped_rbac is exclusive with
+# the cluster-wide watch and rides the offline plan proofs.)
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesAltinityOperator
+metadata:
+  name: e2e-altop-full
+spec:
+  namespace:
+    value: e2e-altop-full
+  create_namespace: true
+  watch_namespaces:
+    - ".*"
+  operator_credentials:
+    username: clickhouse_operator
+    password:
+      value: e2e-operator-pass
+  metrics:
+    enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

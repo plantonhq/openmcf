@@ -1,0 +1,41 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafkaConnector
+metadata:
+  name: orders-cdc
+spec:
+  # The Connect cluster's own namespace (placement contract).
+  namespace:
+    value: kafka
+  # A cluster whose workers CARRY the Debezium Postgres plugin — via
+  # image, plugins, or build on the KubernetesKafkaConnect resource
+  # (see that kind's debezium presets). A class the workers lack
+  # fails reconcile with "class not found".
+  connect_cluster:
+    value: cdc-connect
+  connector_class: io.debezium.connector.postgresql.PostgresConnector
+  # Debezium Postgres runs a single task per connector — the
+  # replication slot is a single stream.
+  tasks_max: 1
+  config:
+    database.hostname: orders-db.postgres.svc.cluster.local
+    database.port: "5432"
+    database.user: debezium
+    # A CONFIG-PROVIDER reference, not a literal: the workers resolve
+    # ${secrets:<namespace>/<secret>:<key>} from the Kubernetes Secret
+    # at connector start. Requires the KubernetesSecretConfigProvider
+    # enabled through the Connect cluster's config
+    # (config.providers entries); the password never appears in this
+    # resource, in IaC state, or in kubectl output.
+    database.password: ${secrets:kafka/orders-db-credentials:password}
+    database.dbname: orders
+    # Prefix for every emitted topic (topic names become
+    # <prefix>.<schema>.<table>) and the connector's logical identity.
+    topic.prefix: orders
+    # pgoutput is Postgres's built-in logical-decoding plugin — no
+    # server-side plugin installation needed (Postgres 10+).
+    plugin.name: pgoutput
+    slot.name: debezium_orders
+    table.include.list: public.orders,public.order_items
+  auto_restart:
+    enabled: true
+    max_restarts: 10

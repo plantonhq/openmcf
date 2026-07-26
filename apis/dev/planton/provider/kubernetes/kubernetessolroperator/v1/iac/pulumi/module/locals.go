@@ -1,7 +1,6 @@
 package module
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -11,74 +10,95 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Locals holds computed configuration values from the stack input
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	// KubernetesSolrOperator is the target resource
-	KubernetesSolrOperator *kubernetessolroperatorv1.KubernetesSolrOperator
+	Spec *kubernetessolroperatorv1.KubernetesSolrOperatorSpec
 
-	// Namespace is the Kubernetes namespace to deploy to
-	Namespace string
-
-	// Labels are common labels applied to all resources
+	// Resource-identity labels stamped on the module-created satellites
+	// (the namespace — never injected into the chart's own resources;
+	// Helm owns those).
 	Labels map[string]string
 
-	// HelmReleaseName is the name of the Helm release (prefixed with metadata.name for uniqueness)
-	HelmReleaseName string
+	// Namespace the operator installs into (resolved literal from the
+	// spec's value-or-ref).
+	Namespace string
 
-	// CrdsResourceName is the name of the CRDs ConfigFile resource (prefixed for uniqueness)
-	CrdsResourceName string
+	// Helm release name — metadata.name.
+	ReleaseName string
 
-	// ChartVersion is the Helm chart version to install (without 'v' prefix)
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
 	ChartVersion string
 
-	// CrdManifestURL is the URL to download CRDs from
-	CrdManifestURL string
+	// DeploymentName replays the chart's fullname helper
+	// (templates/_helpers.tpl, "solr-operator.fullname"): with no
+	// nameOverride/fullnameOverride (the typed spec sets neither), the
+	// Deployment is named after the release — the release name itself
+	// when it already contains "solr-operator", otherwise
+	// "<release>-solr-operator" — truncated to 63 chars with one
+	// trailing "-" trimmed.
+	DeploymentName string
 }
 
-// initializeLocals creates computed values from stack input
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetessolroperatorv1.KubernetesSolrOperatorStackInput) *Locals {
-	locals := &Locals{}
-
-	locals.KubernetesSolrOperator = stackInput.Target
-
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetessolroperatorv1.KubernetesSolrOperatorStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	// Build common labels
-	locals.Labels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesSolrOperator.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// Get namespace from spec, it is required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
+	}
 
-	// Export namespace as an output
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	releaseName := target.Metadata.Name
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Users can prefix metadata.name with component type if needed (e.g., "solr-operator-prod")
-	locals.HelmReleaseName = target.Metadata.Name
-	locals.CrdsResourceName = fmt.Sprintf("%s-crds", target.Metadata.Name)
+	return &Locals{
+		Spec:           spec,
+		Labels:         labels,
+		Namespace:      spec.Namespace.GetValue(),
+		ReleaseName:    releaseName,
+		ChartVersion:   chartVersion,
+		DeploymentName: chartFullname(releaseName),
+	}
+}
 
-	// Helm chart version without 'v' prefix
-	// The default version (v0.9.1) is set in spec.proto via options.default
-	locals.ChartVersion = strings.TrimPrefix(target.Spec.OperatorVersion, "v")
-
-	// CRD manifest URL uses version without 'v' prefix
-	locals.CrdManifestURL = fmt.Sprintf(vars.CrdManifestURLFormat, locals.ChartVersion)
-
-	return locals
+// chartFullname is the Go replay of the chart's fullname template:
+//
+//	{{- if contains $name .Release.Name -}}
+//	{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+//	{{- else -}}
+//	{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+//
+// with $name = the chart name ("solr-operator") since the typed spec sets
+// neither nameOverride nor fullnameOverride. A helm_values override of
+// either would change the real name without being reflected here — the
+// escape-hatch caveat both engines document.
+func chartFullname(releaseName string) string {
+	fullname := releaseName
+	if !strings.Contains(releaseName, vars.HelmChartName) {
+		fullname = releaseName + "-" + vars.HelmChartName
+	}
+	if len(fullname) > 63 {
+		fullname = fullname[:63]
+	}
+	return strings.TrimSuffix(fullname, "-")
 }

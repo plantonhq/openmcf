@@ -1,0 +1,3 @@
+name: kubernetes-kafka-ui
+runtime: go
+description: kafbat UI console installation from the served kafka-ui Helm chart with typed multi-cluster wiring, Secret-backed credential placeholders, and login-form authentication

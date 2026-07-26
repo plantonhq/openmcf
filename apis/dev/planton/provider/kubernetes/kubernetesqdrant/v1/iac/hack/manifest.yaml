@@ -1,0 +1,60 @@
+# Full-surface offline-proof manifest: exercises a 3-node Raft cluster, a
+# generated read-write API key plus an existing-Secret read-only key, the
+# certificate-Secret TLS seam, dual persistence (storage + a separate
+# snapshots volume on a cold class), scheduling, the ServiceMonitor toggle
+# (off), an image override, and an engine-config escape-hatch entry — so
+# the offline tofu plan and pulumi preview proofs cover the full typed
+# surface. Placeholder values; never applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesQdrant
+metadata:
+  name: qdrant-hack
+spec:
+  namespace:
+    value: qdrant-hack
+  createNamespace: true
+  chartVersion: 1.18.2
+  replicas: 3
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 8Gi
+  storage:
+    size: 50Gi
+    storageClass:
+      value: fast-ssd
+  snapshots:
+    size: 50Gi
+    storageClass:
+      value: cold-storage
+  apiKey:
+    generate: true
+  readOnlyApiKey:
+    existingSecret:
+      name: qdrant-hack-ro-key
+      key: api-key
+  tls:
+    secret:
+      value: qdrant-hack-tls
+  scheduling:
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: vector
+        effect: NoSchedule
+    podAntiAffinity: true
+    priorityClassName: system-cluster-critical
+  serviceMonitorEnabled: false
+  image:
+    repository: docker.io/qdrant/qdrant
+    useUnprivileged: true
+  helmValues: |
+    config:
+      storage:
+        performance:
+          max_search_threads: 4

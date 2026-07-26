@@ -4,150 +4,676 @@ package dev.planton.provider.kubernetes.kubernetessolr.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
-import "google/protobuf/descriptor.proto";
-
-extend google.protobuf.FieldOptions {
-  KubernetesSolrSolrContainer default_solr_container = 540001;
-  KubernetesSolrSolrContainer default_zookeeper_container = 540002;
-}
+import "dev/planton/shared/options/options.proto";
 
 /**
- * **KubernetesSolrSpec** defines the configuration for deploying Apache Solr on a Kubernetes cluster.
- * This message includes specifications for the Solr container, Zookeeper container, and ingress settings.
- * By configuring these parameters, you can set up a Solr deployment tailored to your application's needs,
- * including resource allocation, data persistence, and external access through ingress.
+ * **KubernetesSolrSpec** declares an Apache SolrCloud cluster as a
+ * `SolrCloud` custom resource reconciled by the Apache Solr Operator
+ * (KubernetesSolrOperator, the registry prerequisite).
+ *
+ * The operator manages the node StatefulSet, ZooKeeper wiring,
+ * managed rolling updates that keep shards available, scale
+ * operations that move replicas off departing pods, TLS, basic-auth
+ * security bootstrap, and registered backup repositories.
+ *
+ * ZOOKEEPER: every SolrCloud needs an ensemble. The default (empty
+ * `zookeeper`) provisions a 3-node ensemble through the
+ * zookeeper-operator the KubernetesSolrOperator chart bundles;
+ * `zookeeper.external` connects to an ensemble you already run
+ * instead.
+ *
+ * STORAGE: ephemeral (emptyDir) is the operator default — data is
+ * LOST on pod eviction. Declare `storage.persistent` for anything
+ * beyond throwaway experiments.
+ *
+ * SECURITY: `security.authentication_type: basic` bootstraps
+ * basic-auth with operator-generated credentials in a Secret (see
+ * stack outputs); no credential ever appears in this spec.
+ *
+ * EXPOSURE: in-cluster access rides the common Service (see stack
+ * outputs). The `external` block models the operator's own
+ * Ingress/ExternalDNS exposure; composing a KubernetesIngress or
+ * Gateway API route over the common service handle is equally valid
+ * and keeps exposure as a first-class graph node.
  */
 message KubernetesSolrSpec {
-  // Kubernetes Namespace
-  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+  /**
+   * Namespace to create the cluster in. Accepts a literal namespace
+   * name or a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
   ];
 
-  // flag to indicate if the namespace should be created
-  bool create_namespace = 3;
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before the cluster and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
 
-  // The specifications for the Solr container deployment.
-  KubernetesSolrSolrContainer solr_container = 4 [(default_solr_container) = {
-    replicas: 1
-    resources: {
-      limits: {
-        cpu: "1000m"
-        memory: "1Gi"
-      }
-      requests: {
-        cpu: "50m"
-        memory: "100Mi"
-      }
+  /**
+   * Number of Solr nodes. Operator default: 3. One node works for
+   * development; production shard/replica placement needs 3+.
+   */
+  optional int32 replicas = 3 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Solr version to run — the image tag of the official `solr`
+   * image, e.g. "9.10.0". Check the operator's compatibility matrix
+   * before pinning a new major line.
+   */
+  string version = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Override the Solr image repository (air-gap / custom-image
+   * path). Empty = "solr" (Docker Hub official). The tag always
+   * comes from `version`.
+   */
+  string image_repository = 5;
+
+  /**
+   * ZooKeeper wiring. Empty = a provided 3-node ensemble managed by
+   * the bundled zookeeper-operator.
+   */
+  KubernetesSolrZookeeper zookeeper = 6;
+
+  /**
+   * Data storage. Empty = ephemeral emptyDir (operator default) —
+   * data is LOST when a pod leaves its node. Declare `persistent`
+   * for real workloads.
+   */
+  KubernetesSolrStorage storage = 7;
+
+  /**
+   * JVM heap for Solr nodes, e.g. "-Xms1g -Xmx1g". Operator default:
+   * "-Xms300m -Xmx300m" — size it to roughly half the container
+   * memory.
+   */
+  string java_mem = 8;
+
+  /**
+   * Extra system properties appended to SOLR_OPTS,
+   * e.g. "-Dsolr.autoSoftCommit.maxTime=10000".
+   */
+  string solr_opts = 9;
+
+  /**
+   * Solr log level. Operator default: INFO.
+   */
+  optional string log_level = 10 [
+    (dev.planton.shared.options.default) = "INFO",
+    (buf.validate.field).cel = {
+      id: "spec.log_level_enum"
+      message: "log level must be ERROR, WARN, INFO, DEBUG, or TRACE"
+      expression: "this == '' || this in ['ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE']"
     }
-    disk_size: "1Gi"
-    image: {
-      repo: "solr"
-      tag: "9.10.0"
-    }
-  }];
+  ];
 
-  //The Solr-specific configuration options.
-  KubernetesSolrSolrConfig config = 5;
+  /**
+   * GC tuning flags exported via GC_TUNE, e.g.
+   * "-XX:+UseG1GC -XX:MaxGCPauseMillis=200".
+   */
+  string gc_tune = 11;
 
-  // The specifications for the Zookeeper container deployment.
-  KubernetesSolrZookeeperContainer zookeeper_container = 6 [(default_zookeeper_container) = {
-    replicas: 1
-    resources: {
-      limits: {
-        cpu: "1000m"
-        memory: "1Gi"
-      }
-      requests: {
-        cpu: "50m"
-        memory: "100Mi"
-      }
-    }
-    disk_size: "1Gi"
-  }];
+  /**
+   * Solr node container resources. Empty = no requests/limits (set
+   * them for any real deployment; pair memory with `java_mem`).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 12;
 
-  //The ingress configuration for the Solr deployment.
-  KubernetesSolrIngress ingress = 7;
+  /**
+   * Basic-auth security bootstrap.
+   */
+  KubernetesSolrSecurity security = 13;
+
+  /**
+   * Server TLS for Solr's HTTP listener (keystore-based, the
+   * operator's model). When set, all endpoints switch to https.
+   */
+  KubernetesSolrTls tls = 14;
+
+  /**
+   * Backup repositories registered on the cluster — the targets
+   * SolrBackup operations (operational verbs, run against the Solr
+   * API or as SolrBackup CRs) write to. Each name must be unique.
+   */
+  repeated KubernetesSolrBackupRepository backup_repositories = 15;
+
+  /**
+   * Solr modules to load at startup (e.g. "analytics", "ltr").
+   * Modules required by a declared backup repository load
+   * automatically.
+   */
+  repeated string solr_modules = 16;
+
+  /**
+   * Extra classpath directories inside the image (custom plugin
+   * jars baked into a derived image).
+   */
+  repeated string additional_libs = 17;
+
+  /**
+   * How rolling updates execute. Empty = the operator's Managed
+   * strategy (keeps shards available, the safe default).
+   */
+  KubernetesSolrUpdateStrategy update_strategy = 18;
+
+  /**
+   * Cluster-wide PodDisruptionBudget. Empty = enabled (operator
+   * default).
+   */
+  KubernetesSolrAvailability availability = 19;
+
+  /**
+   * Scale-operation data handling. Empty = operator defaults (both
+   * true — replicas are moved, not dropped).
+   */
+  KubernetesSolrScaling scaling = 20;
+
+  /**
+   * The operator's own external exposure (Ingress or ExternalDNS
+   * with per-node addressability — what SolrJ/CloudSolrClient needs
+   * to reach individual nodes from outside). For simple HTTP access
+   * compose a KubernetesIngress over the common service instead.
+   */
+  KubernetesSolrExternal external = 21;
+
+  /**
+   * The port Solr listens on (operator default 8983). The common
+   * Service in front of the nodes exposes the operator's own default
+   * (80, or 443 with TLS) — deliberately not modeled; the exported
+   * endpoint carries the effective port.
+   */
+  optional int32 pod_port = 22 [
+    (dev.planton.shared.options.default) = "8983",
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  /**
+   * Node selector for Solr pods.
+   */
+  map<string, string> node_selector = 23;
+
+  /**
+   * Tolerations for Solr pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 24;
 }
 
 /**
- * KubernetesSolrIngress defines ingress configuration for Solr.
+ * ZooKeeper wiring: provided (operator-managed) or external. At most
+ * one arm; empty = provided with defaults.
  */
-message KubernetesSolrIngress {
-  // Flag to enable or disable ingress.
-  bool enabled = 1;
+message KubernetesSolrZookeeper {
+  oneof source {
+    /**
+     * An ensemble provisioned and managed by the zookeeper-operator
+     * (the KubernetesSolrOperator chart must have it installed —
+     * its default).
+     */
+    KubernetesSolrProvidedZookeeper provided = 1;
 
-  // The full hostname for external access (e.g., "solr.example.com").
-  // Required when enabled is true.
-  string hostname = 2;
+    /**
+     * Connect to an ensemble running outside the operator's
+     * management.
+     */
+    KubernetesSolrExternalZookeeper external = 2;
+  }
+}
 
+message KubernetesSolrProvidedZookeeper {
+  /**
+   * Ensemble size. Default: 3 (the ZooKeeper quorum minimum for
+   * production; 1 works for development).
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Persistent storage for the ensemble. Empty = a small PVC on the
+   * default StorageClass (the zookeeper-operator default).
+   */
+  KubernetesSolrProvidedZookeeperPersistence persistence = 2;
+
+  /**
+   * ZooKeeper container resources. Empty = zookeeper-operator
+   * defaults.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 3;
+
+  /**
+   * The chroot Solr uses within the ensemble. Default "/".
+   */
+  optional string chroot = 4 [(dev.planton.shared.options.default) = "/"];
+}
+
+message KubernetesSolrProvidedZookeeperPersistence {
+  /**
+   * Volume size per ZooKeeper member, e.g. "5Gi". Empty = the
+   * zookeeper-operator default (20Gi).
+   */
+  string size = 1;
+
+  /**
+   * StorageClass for the ensemble's PVCs. Accepts a literal class
+   * name or a reference to a KubernetesStorageClass resource. Empty
+   * = the cluster default class.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_class_name"
+  ];
+}
+
+message KubernetesSolrExternalZookeeper {
+  /**
+   * The ensemble connection string reachable from inside the
+   * Kubernetes cluster, e.g. "zk-0.zk:2181,zk-1.zk:2181".
+   */
+  string connection_string = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "ZooKeeper host:port connection string (service addresses), not a credential"
+  ];
+
+  /**
+   * The chroot Solr uses within the ensemble. Default "/".
+   */
+  optional string chroot = 2 [(dev.planton.shared.options.default) = "/"];
+}
+
+/**
+ * Data storage: persistent or ephemeral. At most one arm; empty =
+ * ephemeral (operator default).
+ */
+message KubernetesSolrStorage {
+  oneof source {
+    /**
+     * PVC-backed storage — data survives pod loss.
+     */
+    KubernetesSolrPersistentStorage persistent = 1;
+
+    /**
+     * emptyDir storage — data is LOST when a pod leaves its node.
+     */
+    KubernetesSolrEphemeralStorage ephemeral = 2;
+  }
+}
+
+message KubernetesSolrPersistentStorage {
+  /**
+   * Volume size per Solr node, e.g. "20Gi".
+   */
+  string size = 1 [(buf.validate.field).required = true];
+
+  /**
+   * StorageClass for the node PVCs. Accepts a literal class name or
+   * a reference to a KubernetesStorageClass resource. Empty = the
+   * cluster default class.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_class_name"
+  ];
+
+  /**
+   * What happens to the PVCs when the SolrCloud is deleted: Retain
+   * (operator default — data outlives the resource) or Delete.
+   */
+  optional string reclaim_policy = 3 [
+    (dev.planton.shared.options.default) = "Retain",
+    (buf.validate.field).cel = {
+      id: "spec.storage.reclaim_policy_enum"
+      message: "reclaim policy must be Retain or Delete"
+      expression: "this == '' || this in ['Retain', 'Delete']"
+    }
+  ];
+}
+
+message KubernetesSolrEphemeralStorage {
+  /**
+   * Optional cap on the emptyDir size, e.g. "10Gi". Empty = no
+   * limit.
+   */
+  string size_limit = 1;
+}
+
+/**
+ * Basic-auth security bootstrap.
+ */
+message KubernetesSolrSecurity {
+  /**
+   * Authentication plugin: "basic" is the one the operator manages.
+   * Empty = security disabled (open cluster — development only).
+   */
+  optional string authentication_type = 1 [(buf.validate.field).cel = {
+    id: "spec.security.authentication_type_enum"
+    message: "authentication_type must be basic"
+    expression: "this == '' || this == 'basic'"
+  }];
+
+  /**
+   * Existing kubernetes.io/basic-auth Secret with the credentials
+   * the OPERATOR uses against secured pods. Empty = the operator
+   * bootstraps security.json plus admin/solr/k8s-oper users and
+   * writes their credentials to `<name>-solrcloud-basic-auth`
+   * (see stack outputs). If you later rotate that password through
+   * Solr's security API, update the Secret too — the operator locks
+   * itself out otherwise (upstream contract).
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef basic_auth_secret = 2 [
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Name of an existing Kubernetes Secret (reference), not secret material",
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * Probe endpoints require authentication too. Operator default:
+   * false (probes stay open).
+   */
+  bool probes_require_auth = 3;
+
+  /**
+   * Bring-your-own bootstrap security.json from a Secret key —
+   * advanced setups only; the operator applies it once and never
+   * updates it.
+   */
+  KubernetesSolrSecretKeyRef bootstrap_security_json = 4;
+}
+
+/**
+ * A reference to one key of an existing Secret.
+ */
+message KubernetesSolrSecretKeyRef {
+  /**
+   * Secret name (a reference to an existing Kubernetes Secret, never
+   * secret material).
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key within the Secret.
+   */
+  string key = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * Server TLS (keystore-based).
+ */
+message KubernetesSolrTls {
+  /**
+   * Secret + key holding a PKCS#12 keystore (e.g. produced by a
+   * KubernetesCertificate with a pkcs12 keystore output).
+   */
+  KubernetesSolrSecretKeyRef pkcs12_secret = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Secret + key holding the keystore password (JVMs refuse
+   * password-less PKCS#12).
+   */
+  KubernetesSolrSecretKeyRef keystore_password_secret = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Optional separate truststore (PKCS#12). Empty = the keystore
+   * doubles as the truststore.
+   */
+  KubernetesSolrSecretKeyRef truststore_secret = 3;
+
+  /**
+   * Optional truststore password. Empty = the keystore password.
+   */
+  KubernetesSolrSecretKeyRef truststore_password_secret = 4;
+
+  /**
+   * Client-certificate demand on the server listener: None (operator
+   * default), Want, or Need. Need requires the operator's own mTLS
+   * client identity (KubernetesSolrOperator `mtls`) or probes and
+   * reconciliation calls fail.
+   */
+  optional string client_auth = 5 [
+    (dev.planton.shared.options.default) = "None",
+    (buf.validate.field).cel = {
+      id: "spec.tls.client_auth_enum"
+      message: "client_auth must be None, Want, or Need"
+      expression: "this == '' || this in ['None', 'Want', 'Need']"
+    }
+  ];
+
+  /**
+   * Verify client hostnames during the TLS handshake.
+   */
+  bool verify_client_hostname = 6;
+}
+
+/**
+ * One backup repository. Exactly one backend arm.
+ */
+message KubernetesSolrBackupRepository {
+  /**
+   * Repository name (referenced by backup operations). Alphanumeric
+   * with interior dashes/underscores, max 100 characters — the CRD's
+   * own pattern (broader than a DNS label; the operator accepts
+   * uppercase and underscores here).
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9]([-_a-zA-Z0-9]*[a-zA-Z0-9])?$",
+    (buf.validate.field).string.max_len = 100
+  ];
+
+  oneof backend {
+    /**
+     * Amazon S3 (or an S3-compatible endpoint).
+     */
+    KubernetesSolrS3Repository s3 = 2;
+
+    /**
+     * Google Cloud Storage.
+     */
+    KubernetesSolrGcsRepository gcs = 3;
+
+    /**
+     * A shared volume (must be multi-writer: ReadWriteMany PVC or
+     * NFS).
+     */
+    KubernetesSolrVolumeRepository volume = 4;
+  }
+
+  // The oneof already caps the arms at one; this rule guards the EMPTY
+  // case (a repository with no backend at all).
   option (buf.validate.message).cel = {
-    id: "spec.ingress.hostname.required"
-    expression: "!this.enabled || size(this.hostname) > 0"
-    message: "hostname is required when ingress is enabled"
+    id: "spec.backup_repository.backend_required"
+    message: "declare a backend: s3, gcs, or volume"
+    expression: "has(this.s3) || has(this.gcs) || has(this.volume)"
   };
 }
 
-/**
- * **KubernetesSolrSolrContainer** specifies the configuration for the Solr container.
- * It includes settings such as the number of replicas, container image, resource allocations,
- * disk size for data persistence, and Solr-specific configurations.
- * Proper configuration ensures optimal performance and data reliability for your Solr deployment.
- */
-message KubernetesSolrSolrContainer {
-  // The number of Solr pods in the Solr Kubernetes deployment.
-  int32 replicas = 1;
+message KubernetesSolrS3Repository {
+  /**
+   * AWS region of the bucket, e.g. "us-west-2". Required even for
+   * S3-compatible endpoints (any value works there).
+   */
+  string region = 1 [(buf.validate.field).required = true];
 
-  // The CPU and memory resources allocated to the Solr container.
-  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+  /**
+   * Bucket name.
+   */
+  string bucket = 2 [(buf.validate.field).required = true];
 
-  //The size of the persistent volume attached to each Solr pod (e.g., "1Gi").
-  string disk_size = 3 [(buf.validate.field).cel = {
-    id: "spec.container.disk_size.required"
-    message: "Disk size value is invalid"
-    // Regex to validate disk size format (e.g., "10Gi", "500Mi")
-    expression: "this.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$') && size(this) > 0"
-  }];
+  /**
+   * Chroot within the bucket. Empty = "/".
+   */
+  string base_location = 3;
 
-  //The container image for the Solr deployment.
-  //Example repository: "solr", example tag: "8.7.0".
-  dev.planton.provider.kubernetes.ContainerImage image = 4;
+  /**
+   * Full endpoint URL for S3-compatible stores (MinIO, ...). Empty =
+   * AWS S3.
+   */
+  string endpoint = 4;
+
+  /**
+   * Declared credentials read from existing Secrets. Empty = the
+   * nodes' ambient identity (EKS: an IRSA-bound ServiceAccount on
+   * the Solr pods — the keyless path).
+   */
+  KubernetesSolrS3Credentials credentials = 5;
+}
+
+message KubernetesSolrS3Credentials {
+  /**
+   * Secret + key holding the AWS access key ID.
+   */
+  KubernetesSolrSecretKeyRef access_key_id_secret = 1;
+
+  /**
+   * Secret + key holding the AWS secret access key.
+   */
+  KubernetesSolrSecretKeyRef secret_access_key_secret = 2;
+}
+
+message KubernetesSolrGcsRepository {
+  /**
+   * Bucket name.
+   */
+  string bucket = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Secret + key holding a Google service-account key JSON. Empty =
+   * ambient identity (GKE Workload Identity on the Solr pods).
+   */
+  KubernetesSolrSecretKeyRef gcs_credential_secret = 2;
+
+  /**
+   * Chroot within the bucket. Empty = "/".
+   */
+  string base_location = 3;
+}
+
+message KubernetesSolrVolumeRepository {
+  /**
+   * Name of an existing ReadWriteMany PVC mounted to every Solr node
+   * for backup data.
+   */
+  string pvc_claim_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Directory within the volume. Empty = the cluster name.
+   */
+  string directory = 2;
 }
 
 /**
- * **KubernetesSolrSolrConfig** specifies the configuration settings for Solr.
- * It includes JVM memory settings, custom Solr options, and garbage collection tuning parameters.
+ * Rolling-update behavior.
  */
-message KubernetesSolrSolrConfig {
-  //JVM memory settings for Solr.
-  string java_mem = 1;
+message KubernetesSolrUpdateStrategy {
+  /**
+   * Managed (operator default — shard-aware parallel restarts),
+   * StatefulSet (plain ordinal order), or Manual (never restart —
+   * you delete pods).
+   */
+  optional string method = 1 [
+    (dev.planton.shared.options.default) = "Managed",
+    (buf.validate.field).cel = {
+      id: "spec.update_strategy.method_enum"
+      message: "method must be Managed, StatefulSet, or Manual"
+      expression: "this == '' || this in ['Managed', 'StatefulSet', 'Manual']"
+    }
+  ];
 
-  //Custom Solr options (e.g., "-Dsolr.autoSoftCommit.maxTime=10000").
-  string opts = 2;
+  /**
+   * Managed only: max pods updating at once — integer ("2") or
+   * percentage ("25%", the operator default).
+   */
+  string max_pods_unavailable = 2;
 
-  //Solr garbage collection tuning configuration (e.g., "-XX:SurvivorRatio=4 -XX:TargetSurvivorRatio=90 -XX:MaxTenuringThreshold=8").
-  string garbage_collection_tuning = 3;
+  /**
+   * Managed only: max replicas of any one shard down at once —
+   * integer (operator default 1) or percentage.
+   */
+  string max_shard_replicas_unavailable = 3;
+
+  /**
+   * Restart the cluster on a schedule (CRON syntax, e.g.
+   * "@every 168h").
+   */
+  string restart_schedule = 4;
 }
 
 /**
- * **KubernetesSolrZookeeperContainer** specifies the configuration for the Zookeeper container used by Solr.
- * It includes settings such as the number of replicas, resource allocations, and disk size for data persistence.
- * Proper configuration ensures high availability and reliability for your Solr cluster.
+ * Cluster-wide PDB.
  */
-message KubernetesSolrZookeeperContainer {
-  // The number of Zookeeper pods in the Zookeeper cluster.
-  int32 replicas = 1;
+message KubernetesSolrAvailability {
+  /**
+   * Create the cluster-wide PodDisruptionBudget. Operator default:
+   * true.
+   */
+  optional bool pdb_enabled = 1 [(dev.planton.shared.options.default) = "true"];
+}
 
-  // The CPU and memory resources allocated to the Zookeeper container.
-  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+/**
+ * Scale-operation data handling.
+ */
+message KubernetesSolrScaling {
+  /**
+   * Move replicas off pods before scale-down deletes them. Operator
+   * default: true.
+   */
+  optional bool vacate_pods_on_scale_down = 1 [(dev.planton.shared.options.default) = "true"];
 
-  //The size of the persistent volume attached to each Zookeeper pod (e.g., "1Gi").
-  string disk_size = 3 [(buf.validate.field).cel = {
-    id: "spec.container.disk_size.required"
-    message: "Disk size value is invalid"
-    // Regex to validate disk size format (e.g., "10Gi", "500Mi")
-    expression: "this.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$') && size(this) > 0"
-  }];
+  /**
+   * Move replicas onto new pods after scale-up (Solr 9.3+). Operator
+   * default: true.
+   */
+  optional bool populate_pods_on_scale_up = 2 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * The operator's own external exposure.
+ */
+message KubernetesSolrExternal {
+  /**
+   * Ingress (per-node paths through an ingress controller) or
+   * ExternalDNS (per-node DNS records).
+   */
+  string method = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.external.method_enum"
+      message: "method must be Ingress or ExternalDNS"
+      expression: "this in ['Ingress', 'ExternalDNS']"
+    }
+  ];
+
+  /**
+   * Domain the cluster is addressed under,
+   * e.g. "search.example.com" — nodes become
+   * `<ns>-<name>-solrcloud-*.<domain>`.
+   */
+  string domain_name = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Solr advertises its EXTERNAL addresses to clients (needed for
+   * CloudSolrClient outside the cluster). Operator default: false.
+   */
+  bool use_external_address = 3;
+
+  /**
+   * Skip exposing the common (all-nodes) service.
+   */
+  bool hide_common = 4;
+
+  /**
+   * Skip exposing individual node services.
+   */
+  bool hide_nodes = 5;
 }

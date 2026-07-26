@@ -1,66 +1,64 @@
-#########################################################################################################
-# Apache Solr on Kubernetes - Main Terraform Configuration
-#########################################################################################################
+# KubernetesSolr Terraform module.
 #
-# This module deploys Apache Solr on Kubernetes using the Solr Operator pattern.
-# It creates a production-ready SolrCloud cluster with integrated Zookeeper ensemble.
+# Deploys one Apache Solr Operator-managed SolrCloud cluster:
 #
-# Architecture:
-#   - SolrCloud: Scalable Solr cluster deployed as a StatefulSet
-#   - Zookeeper: Coordination service for Solr nodes (deployed via Solr Operator)
-#   - Ingress: Optional external access via Kubernetes Gateway API (Istio)
-#   - Namespace: Dedicated namespace for isolation
+#   1. the namespace (optional, create_namespace),
+#   2. the solr.apache.org/v1beta1 SolrCloud CR itself.
 #
-# Key Features:
-#   - Horizontal scaling via replica configuration
-#   - Persistent storage for both Solr and Zookeeper
-#   - Customizable JVM settings and garbage collection tuning
-#   - TLS-enabled ingress with cert-manager integration
-#   - Resource limits and requests for production stability
+# Everything else — the node StatefulSet, the provided ZooKeeper ensemble,
+# services, PVCs, the basic-auth bootstrap Secret, Ingress exposure — is
+# the operator's to create from the SolrCloud spec; the module renders the
+# CR and exports the operator's deterministic names.
 #
-# File Organization:
-#   - main.tf: Core namespace and orchestration (this file)
-#   - solr_cloud.tf: SolrCloud custom resource definition
-#   - ingress.tf: Gateway API resources (Certificate, Gateway, HTTPRoute)
-#   - locals.tf: Computed values and naming conventions
-#   - variables.tf: Input variables from spec.proto
-#   - outputs.tf: Stack outputs for consumers
-#   - provider.tf: Kubernetes provider configuration
+# The CR applies through kubectl_manifest (alekc/kubectl): unlike the
+# hashicorp provider's kubernetes_manifest resource it needs no cluster
+# connection at plan time — a SolrCloud can be PLANNED before the Solr
+# operator's CRDs exist, which is what lets an infra chart deploy the
+# operator and its clusters in one run (and lets offline plan proofs work).
 #
-# Dependencies:
-#   - Solr Operator: Must be pre-installed in the cluster
-#   - cert-manager: Required for TLS certificate generation (if ingress enabled)
-#   - Istio: Required for Gateway API support (if ingress enabled)
+# No wait_for block, deliberately: cluster readiness depends on the
+# operator (image pulls, ZooKeeper quorum, node startup) that is not part
+# of applying the resource — the same never-block-on-a-controller posture
+# as the sibling operator-CR modules. Pulumi equivalent: the typed
+# SolrCloud resource without await annotations.
 #
-# Usage:
-#   terraform init
-#   terraform plan -var-file="hack/manifest.yaml"
-#   terraform apply -var-file="hack/manifest.yaml"
-#
-#########################################################################################################
+# NAMING CONTRACT: every object the operator creates derives from
+# metadata.name — StatefulSet `<name>-solrcloud`, common Service
+# `<name>-solrcloud-common`, generated basic-auth Secret
+# `<name>-solrcloud-basic-auth`, provided ZooKeeper client service
+# `<name>-solrcloud-zookeeper-client:2181` — so the outputs derive them
+# blind and both engines agree byte-for-byte.
 
-# Create dedicated namespace for Solr deployment
-# This isolates Solr resources and provides a security boundary
-# The namespace is conditionally created based on the create_namespace flag
-resource "kubernetes_namespace" "solr_namespace" {
-  count = var.spec.create_namespace ? 1 : 0
+# The optional namespace. Created before the cluster; deleted with the
+# resource. Pre-existing-namespace deployments leave create_namespace
+# false.
+resource "kubernetes_namespace_v1" "namespace" {
+  count = try(var.spec.create_namespace, false) ? 1 : 0
 
   metadata {
     name   = local.namespace
-    labels = local.final_labels
+    labels = local.labels
   }
 }
 
-# Note: The SolrCloud resource is defined in solr_cloud.tf
-# It depends on this namespace and creates:
-#   - SolrCloud StatefulSet
-#   - Zookeeper StatefulSet (via operator)
-#   - Associated Services, ConfigMaps, and PVCs
+# ---- the SolrCloud ------------------------------------------------------------
+resource "kubectl_manifest" "solr_cloud" {
+  yaml_body = yamlencode(local.solrcloud_manifest)
 
-# Note: Ingress resources are defined in ingress.tf
-# They are conditionally created when spec.ingress.is_enabled = true
-# and include:
-#   - TLS Certificate (cert-manager)
-#   - Gateway (Istio Gateway API)
-#   - HTTPRoute for HTTP->HTTPS redirect
-#   - HTTPRoute for HTTPS traffic routing
+  server_side_apply = true
+
+  # BACKGROUND deletion, explicitly: the OPERATOR owns the SolrCloud's
+  # cascade (its finalizer deletes the StatefulSet, services and the
+  # provided ZooKeeper). Foreground propagation DEADLOCKS the teardown —
+  # verified live: the foregroundDeletion finalizer waits for the child
+  # ZookeeperCluster while the zookeeper-operator keeps reconciling it
+  # back to life, and the fixture uninstall then hangs on the
+  # zookeeper-operator's pre-delete hook. The provider would default to
+  # Foreground whenever wait is set — never rely on that default here.
+  # Pulumi twin: the pulumi.com/deletionPropagationPolicy annotation.
+  delete_cascade = "Background"
+
+  depends_on = [
+    kubernetes_namespace_v1.namespace,
+  ]
+}

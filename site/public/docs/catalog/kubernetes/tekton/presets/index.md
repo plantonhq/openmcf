@@ -8,10 +8,14 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-standard"
+  - slug: "01-ci-standard"
     rank: "01"
-    title: "Standard Tekton Pipelines"
-    excerpt: "This preset deploys Tekton pipeline resources (PipelineRuns, TaskRuns) with default resources. Use this alongside `KubernetesTektonOperator` which manages the Tekton control plane."
+    title: "CI standard preset"
+    excerpt: "The full Tekton control plane — Pipelines, Triggers, Dashboard and Chains — with the one piece of configuration no production cluster should skip: a pruner. Completed runs keep their pods around..."
+  - slug: "02-pipelines-engine"
+    rank: "02"
+    title: "Pipelines engine preset"
+    excerpt: "Tekton as an embedded engine: the `lite` profile runs Pipelines alone — no Triggers, no Dashboard, no Chains — for platforms that create PipelineRuns programmatically and present their own UI. Every..."
 ---
 
 # Tekton Presets

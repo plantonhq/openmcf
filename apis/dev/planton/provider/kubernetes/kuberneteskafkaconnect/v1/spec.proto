@@ -1,0 +1,499 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskafkaconnect.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/strimzi_kafka_client.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesKafkaConnectSpec** declares a Kafka Connect cluster on
+ * the Strimzi `KafkaConnect` custom resource — the pluggable
+ * integration engine that streams data between Kafka and external
+ * systems (databases via Debezium CDC, object stores, search indexes,
+ * SaaS APIs). The Strimzi cluster operator
+ * (KubernetesStrimziKafkaOperator) reconciles it into Connect worker
+ * pods; individual pipes are declared as KubernetesKafkaConnector
+ * resources against this cluster.
+ *
+ * CONNECTOR MANAGEMENT: the module always sets the
+ * `strimzi.io/use-connector-resources: "true"` annotation, so
+ * connectors are managed DECLARATIVELY through KubernetesKafkaConnector
+ * resources. Do not create or modify connectors through the Connect
+ * REST API on this cluster — the operator reverts changes it does not
+ * own.
+ *
+ * CONNECTOR PLUGINS reach the workers four ways, from simplest to
+ * most self-contained:
+ * 1. The STOCK image — carries ONLY the MirrorMaker 2 connectors
+ *    (MirrorSource/MirrorCheckpoint/MirrorHeartbeat — verified live
+ *    against the workers' own plugin listing; Kafka's FileStream
+ *    example connectors are NOT on the distribution's classpath, so
+ *    every real integration needs one of the arms below).
+ * 2. `image` — run a prebuilt Connect image that already carries your
+ *    plugins (the fastest path when a vendor publishes one).
+ * 3. `plugins` — mount plugins from OCI artifacts as Kubernetes image
+ *    volumes (no image build; requires the cluster's ImageVolume
+ *    feature — see the field comment).
+ * 4. `build` — have the operator BUILD a custom image from declared
+ *    artifacts (Kaniko/Buildah on Kubernetes) and push it to your
+ *    registry.
+ * When `build` is configured the operator runs the built image and
+ * `image` is not used — set one or the other.
+ *
+ * The GROUP IDENTITY fields (`group_id` and the three storage topics)
+ * default from metadata.name and MUST be unique per Connect cluster
+ * sharing a Kafka cluster — two Connect clusters sharing a group.id
+ * or a storage topic corrupt each other's state.
+ */
+message KubernetesKafkaConnectSpec {
+  /**
+   * Namespace for the Connect cluster. Accepts a literal namespace
+   * name or a reference to a KubernetesNamespace resource. The
+   * namespace must be watched by a Strimzi operator installation, and
+   * KubernetesKafkaConnector declarations for this cluster must live
+   * in THIS namespace.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Kafka version the Connect workers run (e.g. "4.3.0"). Empty =
+   * the operator's default version (the newest the pinned Strimzi
+   * release supports). Keep it aligned with the target cluster's
+   * version during upgrades.
+   */
+  string version = 3;
+
+  /**
+   * Number of Connect worker pods. Workers share connector tasks
+   * through the Connect group protocol — scale for task throughput.
+   */
+  optional int32 replicas = 4 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Bootstrap address of the Kafka cluster this Connect cluster
+   * reads from and writes to, as host:port. Accepts a literal
+   * address (an external cluster, Confluent, MSK) or a reference to
+   * a KubernetesKafka resource, which resolves to its in-cluster
+   * bootstrap endpoint.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bootstrap_servers = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint"
+  ];
+
+  /**
+   * TLS trust for the Kafka connection. Set when the bootstrap
+   * address is a TLS listener; for a Strimzi-managed cluster,
+   * reference the KubernetesKafka resource to trust its cluster CA.
+   * Omitted = plaintext connection.
+   */
+  dev.planton.provider.kubernetes.StrimziKafkaClientTls tls = 6;
+
+  /**
+   * How the Connect workers authenticate to Kafka. Must match the
+   * target listener's authentication type. Omitted = unauthenticated
+   * (only for unauthenticated listeners).
+   */
+  dev.planton.provider.kubernetes.StrimziKafkaClientAuthentication authentication = 7;
+
+  /**
+   * Connect group ID — the identity workers share. Empty = the
+   * resource's metadata.name. MUST be unique among Connect clusters
+   * (including MirrorMaker 2 instances) sharing a Kafka cluster.
+   */
+  string group_id = 8;
+
+  /**
+   * Topic storing connector configurations. Empty =
+   * "<metadata.name>-connect-configs". Must be unique per Connect
+   * cluster sharing a Kafka cluster.
+   */
+  string config_storage_topic = 9;
+
+  /**
+   * Topic storing connector/task status. Empty =
+   * "<metadata.name>-connect-status".
+   */
+  string status_storage_topic = 10;
+
+  /**
+   * Topic storing source-connector offsets. Empty =
+   * "<metadata.name>-connect-offsets".
+   */
+  string offset_storage_topic = 11;
+
+  /**
+   * Connect worker configuration (connect-distributed.properties
+   * entries), e.g. "key.converter", "value.converter",
+   * "config.storage.replication.factor". Values are configuration
+   * strings — write numbers and booleans as strings ("3", "false");
+   * the operator serializes every value into Java properties form.
+   *
+   * The operator OWNS connection, identity and listener
+   * configuration: entries with the prefixes group.id,
+   * config.storage.topic, offset.storage.topic, status.storage.topic,
+   * ssl., sasl., security., listeners, plugin.path, rest.,
+   * bootstrap.servers, consumer.interceptor.classes,
+   * producer.interceptor.classes and prometheus.metrics.reporter.
+   * are IGNORED with an operator log warning (the
+   * ssl.endpoint.identification.algorithm / ssl.cipher.suites /
+   * ssl.protocol / ssl.enabled.protocols client-tuning keys are the
+   * exception) — configure those concerns through their typed fields.
+   */
+  map<string, string> config = 12 [(buf.validate.field).cel = {
+    id: "spec.config.no_connector_plugin_version"
+    message: "connector.plugin.version is not accepted in Connect worker config on this Strimzi line — declare the desired plugin version on each KubernetesKafkaConnector's version field instead"
+    expression: "!('connector.plugin.version' in this)"
+  }];
+
+  /**
+   * Run a PREBUILT Connect image that already carries your connector
+   * plugins (e.g. a published Debezium Connect image or the output
+   * of a previous `build`). Empty = the operator's stock image for
+   * `version`. Not used when `build` is configured — the operator
+   * runs the image it builds.
+   */
+  string image = 13;
+
+  /**
+   * Mount connector plugins from OCI ARTIFACTS as Kubernetes image
+   * volumes — plugins ship as container images and mount directly
+   * into the workers, no image build or registry push. REQUIRES the
+   * Kubernetes ImageVolume feature to be enabled AND supported by
+   * the cluster's container runtime (a cluster-level capability —
+   * verified live: workers fail to schedule with an image-volume
+   * admission error on clusters without it; check before relying on
+   * this arm).
+   */
+  repeated KubernetesKafkaConnectOciPlugin plugins = 14 [(buf.validate.field).cel = {
+    id: "spec.plugins.unique_names"
+    message: "plugin names must be unique within the Connect cluster"
+    expression: "this.map(p, p.name).unique()"
+  }];
+
+  /**
+   * Have the OPERATOR build a custom Connect image containing the
+   * declared plugin artifacts (Kaniko or Buildah on Kubernetes) and
+   * push it to `output.image`. The workers then run the built image.
+   */
+  KubernetesKafkaConnectBuild build = 15;
+
+  /**
+   * CPU/memory for each worker pod. Empty = no requests/limits
+   * (fine for kind/dev; always set for production — the JVM heap
+   * default derives from the memory limit).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 16;
+
+  /**
+   * JVM heap for the workers (rendered as -Xms/-Xmx). Empty =
+   * Strimzi's dynamic default. Set both to the SAME value for
+   * production.
+   */
+  KubernetesKafkaConnectJvm jvm = 17;
+
+  /**
+   * Rack awareness: injects each worker's failure domain from its
+   * node's label value (e.g. "topology.kubernetes.io/zone") so
+   * consumers fetch from the closest replica. Requires nodes labeled
+   * with the key.
+   */
+  KubernetesKafkaConnectRack rack = 18;
+
+  /**
+   * JMX Prometheus metrics. When enabled, the module renders the
+   * canonical Strimzi connect-metrics ConfigMap and wires it as the
+   * cluster's metricsConfig (port 9404 inside the pods).
+   */
+  KubernetesKafkaConnectMetrics metrics = 19;
+
+  /**
+   * Node selector for the worker pods.
+   */
+  map<string, string> node_selector = 20;
+
+  /**
+   * Tolerations for the worker pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 21;
+
+  option (buf.validate.message).cel = {
+    id: "spec.image_xor_build"
+    message: "image and build cannot both be set — when build is configured the operator deploys the image IT builds and a declared image is silently overridden (verified in the operator source); set image for a prebuilt-plugins image OR build to have one built"
+    expression: "!has(this.build) || this.image == ''"
+  };
+}
+
+/**
+ * One OCI-artifact plugin mounted as an image volume.
+ */
+message KubernetesKafkaConnectOciPlugin {
+  /**
+   * Unique plugin name — becomes the plugin's mount path inside the
+   * workers. Lowercase alphanumerics, '-' and '_', starting and
+   * ending with an alphanumeric.
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.plugins.name.format"
+      message: "plugin name must be lowercase alphanumerics, '-' and '_', starting and ending with an alphanumeric"
+      expression: "this.matches('^[a-z0-9][-_a-z0-9]*[a-z0-9]$')"
+    }
+  ];
+
+  /**
+   * The OCI artifacts carrying this plugin's binaries. Each is
+   * mounted as an image volume.
+   */
+  repeated KubernetesKafkaConnectOciArtifact artifacts = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+/**
+ * One OCI artifact reference.
+ */
+message KubernetesKafkaConnectOciArtifact {
+  /**
+   * Reference to the container image (OCI artifact) containing the
+   * plugin binaries, e.g. "quay.io/example/debezium-postgres:3.1.0".
+   */
+  string reference = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Image pull policy: "Always", "Never", or "IfNotPresent". Empty =
+   * the Kubernetes default (Always for :latest references,
+   * IfNotPresent otherwise).
+   */
+  optional string pull_policy = 2 [(buf.validate.field).cel = {
+    id: "spec.plugins.artifacts.pull_policy_enum"
+    message: "pull_policy must be Always, Never, or IfNotPresent"
+    expression: "this == '' || this in ['Always', 'Never', 'IfNotPresent']"
+  }];
+}
+
+/**
+ * Operator-driven Connect image build.
+ */
+message KubernetesKafkaConnectBuild {
+  /**
+   * Where the built image goes.
+   */
+  KubernetesKafkaConnectBuildOutput output = 1 [(buf.validate.field).required = true];
+
+  /**
+   * The plugins to bake into the image.
+   */
+  repeated KubernetesKafkaConnectBuildPlugin plugins = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "spec.build.plugins.unique_names"
+      message: "build plugin names must be unique"
+      expression: "this.map(p, p.name).unique()"
+    }
+  ];
+}
+
+/**
+ * Build output — the registry destination.
+ */
+message KubernetesKafkaConnectBuildOutput {
+  /**
+   * Output type: "docker" (push to any Docker-compatible registry —
+   * the Kubernetes path) or "imagestream" (push to an OpenShift
+   * ImageStream; only meaningful on OpenShift clusters).
+   */
+  optional string type = 1 [
+    (dev.planton.shared.options.default) = "docker",
+    (buf.validate.field).cel = {
+      id: "spec.build.output.type_enum"
+      message: "build output type must be docker (any Docker-compatible registry) or imagestream (OpenShift only)"
+      expression: "this == '' || this in ['docker', 'imagestream']"
+    }
+  ];
+
+  /**
+   * Full name of the image to build and push, including the
+   * registry, e.g. "registry.example.com/team/my-connect:latest".
+   */
+  string image = 2 [(buf.validate.field).required = true];
+
+  /**
+   * Name of a docker-registry Secret (in the Connect namespace) with
+   * push credentials. This is the SECRET'S NAME, not a credential
+   * value. Empty for registries the build pod can push to
+   * anonymously or via ambient identity.
+   */
+  string push_secret = 3 [(dev.planton.shared.options.sensitive_exempt_reason) = "The NAME of an existing docker-registry Secret (a reference), not credential material"];
+
+  /**
+   * Additional options passed to the Kaniko/Buildah build command
+   * (e.g. "--insecure" for plain-HTTP in-cluster registries — the
+   * allowed option set is validated by the operator).
+   */
+  repeated string additional_build_options = 4;
+
+  /**
+   * Additional options passed to the Buildah push command (ignored
+   * when Kaniko performs the build).
+   */
+  repeated string additional_push_options = 5;
+}
+
+/**
+ * One plugin baked into the built image.
+ */
+message KubernetesKafkaConnectBuildPlugin {
+  /**
+   * Unique plugin name — becomes the plugin's directory inside the
+   * image.
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.build.plugins.name.format"
+      message: "plugin name must be lowercase alphanumerics, '-' and '_', starting and ending with an alphanumeric"
+      expression: "this.matches('^[a-z0-9][-_a-z0-9]*[a-z0-9]$')"
+    }
+  ];
+
+  /**
+   * The artifacts that make up this plugin.
+   */
+  repeated KubernetesKafkaConnectBuildArtifact artifacts = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+/**
+ * One build artifact — a jar/archive URL or a Maven coordinate.
+ */
+message KubernetesKafkaConnectBuildArtifact {
+  /**
+   * Artifact type: "jar" (a single JAR from a URL), "tgz" / "zip"
+   * (an archive from a URL, unpacked into the plugin directory),
+   * "maven" (a Maven coordinate resolved at build time), or "other"
+   * (any file from a URL, stored as file_name).
+   */
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.build.artifacts.type_enum"
+      message: "artifact type must be one of jar, tgz, zip, maven, other"
+      expression: "this in ['jar', 'tgz', 'zip', 'maven', 'other']"
+    }
+  ];
+
+  /**
+   * Download URL (jar, tgz, zip, other types).
+   */
+  string url = 2;
+
+  /**
+   * SHA-512 checksum of the downloaded artifact — strongly
+   * recommended for URL artifacts so a tampered download fails the
+   * build instead of running in the workers.
+   */
+  string sha512sum = 3;
+
+  /**
+   * Allow insecure (plain-HTTP / unverified-TLS) download of this
+   * artifact. Leave false outside isolated dev environments.
+   */
+  bool insecure = 4;
+
+  /**
+   * other type only: the file name to store the artifact under.
+   */
+  string file_name = 5;
+
+  /**
+   * maven type only: repository URL. Empty = Maven Central.
+   */
+  string repository = 6;
+
+  /**
+   * maven type only: group ID, e.g. "io.debezium".
+   */
+  string group = 7;
+
+  /**
+   * maven type only: artifact ID, e.g.
+   * "debezium-connector-postgres".
+   */
+  string artifact = 8;
+
+  /**
+   * maven type only: version, e.g. "3.1.0.Final".
+   */
+  string version = 9;
+
+  option (buf.validate.message).cel = {
+    id: "spec.build.artifacts.url_required"
+    message: "jar, tgz, zip and other artifacts require a url to download from"
+    expression: "!(this.type in ['jar', 'tgz', 'zip', 'other']) || this.url != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.build.artifacts.maven_coordinates"
+    message: "maven artifacts require group, artifact and version (repository is optional — Maven Central is the default)"
+    expression: "this.type != 'maven' || (this.group != '' && this.artifact != '' && this.version != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.build.artifacts.maven_no_url"
+    message: "maven artifacts are resolved from their coordinates — url is only for jar, tgz, zip and other types"
+    expression: "this.type != 'maven' || this.url == ''"
+  };
+}
+
+/**
+ * JVM heap.
+ */
+message KubernetesKafkaConnectJvm {
+  /**
+   * Initial heap (-Xms), e.g. "1g". Set equal to xmx in production.
+   */
+  string xms = 1;
+
+  /**
+   * Maximum heap (-Xmx), e.g. "1g".
+   */
+  string xmx = 2;
+}
+
+/**
+ * Rack awareness.
+ */
+message KubernetesKafkaConnectRack {
+  /**
+   * Node label whose value identifies a node's failure domain,
+   * e.g. "topology.kubernetes.io/zone".
+   */
+  string topology_key = 1 [(buf.validate.field).required = true];
+}
+
+/**
+ * JMX Prometheus metrics.
+ */
+message KubernetesKafkaConnectMetrics {
+  /**
+   * Render the canonical Strimzi JMX exporter rules ConfigMap and
+   * enable the metrics endpoint on every worker.
+   */
+  bool enabled = 1;
+}

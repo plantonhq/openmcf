@@ -1,0 +1,22 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesOpenSearchOperator
+metadata:
+  name: opensearch-operator
+spec:
+  namespace:
+    value: opensearch-operator
+  create_namespace: true
+  # Everything else rides the defaults, and the defaults are the point:
+  #
+  # - chart_version 2.8.0 — the newest STABLE chart/operator pairing.
+  #   The served 2.8.3+/3.0.x charts default to a PRERELEASE manager
+  #   image and bundle next-generation opensearch.org CRDs; pin those
+  #   lines only after upstream cuts a stable 3.x operator.
+  # - Cluster-wide watch: this one install reconciles KubernetesOpenSearch
+  #   resources in EVERY namespace — the single-operator-per-cluster norm.
+  # - CRD lifecycle is module-owned (never Helm-owned), so uninstalling
+  #   the operator can never cascade-delete OpenSearchCluster resources
+  #   and their data.
+  # - Manager resources: chart defaults (requests 100m/350Mi,
+  #   limits 200m/500Mi) — adequate for the reconciler at any cluster
+  #   count that fits one Kubernetes cluster.

@@ -8,10 +8,14 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-standard"
+  - slug: "01-dev"
     rank: "01"
-    title: "Standard Temporal"
-    excerpt: "This preset deploys Temporal -- a durable execution platform for running reliable, long-running workflows. Includes the Temporal server with the web UI exposed via ingress."
+    title: "Dev preset"
+    excerpt: "The smallest useful Temporal: all four server services, the Web UI, and one Temporal namespace (`default`) — against a composed KubernetesPostgres named `temporal-db` in the same Kubernetes..."
+  - slug: "02-production"
+    rank: "02"
+    title: "Production preset"
+    excerpt: "Temporal sized for real workloads on the composed-PostgreSQL story: replicated frontend/matching/worker, three history replicas (shard ownership redistributes across them — history is where workflow..."
 ---
 
 # Temporal Presets

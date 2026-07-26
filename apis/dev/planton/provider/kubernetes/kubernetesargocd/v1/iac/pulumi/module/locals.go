@@ -10,139 +10,122 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	KubernetesArgocd             *kubernetesargocdv1.KubernetesArgocd
-	Namespace                    string
-	ServiceName                  string
-	KubeServiceFqdn              string
-	KubePortForwardCommand       string
-	IngressCertClusterIssuerName string
-	IngressCertSecretName        string
-	IngressInternalHostname      string
-	IngressExternalHostname      string
-	IngressHostnames             []string
-	Labels                       map[string]string
+	Spec *kubernetesargocdv1.KubernetesArgocdSpec
+
+	// Resource-identity labels stamped on the module-created satellites
+	// (the namespace — never injected into the chart's own resources;
+	// Helm owns those).
+	Labels map[string]string
+
+	// Namespace Argo CD installs into (resolved literal from the spec's
+	// value-or-ref).
+	Namespace string
+
+	// Helm release name — metadata.name, NOT a fixed chart name: several
+	// Argo CD instances can coexist in one cluster (one per namespace
+	// when using the generated admin password — the app fixes that
+	// Secret's name).
+	ReleaseName string
+
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
+	ChartVersion string
+
+	// Name of the API/UI server Service — `<fullname>-server`, with the
+	// fullname pinned to the resource name via fullnameOverride.
+	ServerServiceName string
+
+	// Whether the server serves plain HTTP (spec.server.insecure — the
+	// posture behind composed TLS-terminating exposure). The exported
+	// endpoint and port-forward command follow it.
+	ServerInsecure bool
+
+	// In-cluster endpoint of the server (scheme follows ServerInsecure).
+	ServerKubeEndpoint string
+
+	// Whether the local admin user is enabled (spec default true) — the
+	// initial-admin-secret handle is exported only while it is.
+	AdminEnabled bool
+
+	// Name of the generated initial-admin-password Secret ("" when the
+	// admin user is disabled). Fixed by the application, never by the
+	// chart or this module.
+	InitialAdminSecretName string
+
+	// kubectl one-liner for reaching the UI from a workstation.
+	PortForwardCommand string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesargocdv1.KubernetesArgocdStackInput) *Locals {
-	locals := &Locals{}
-
-	// Assign value for the local variable to make it available across the project
-	locals.KubernetesArgocd = stackInput.Target
-
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesargocdv1.KubernetesArgocdStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	// Build labels
-	locals.Labels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesArgocd.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// Namespace determination
-	// Priority order:
-	// 1. Spec.Namespace (required field)
-	// 2. Override with stackInput if provided (for backward compatibility)
-	// 3. Override with custom label if provided
-	// 4. Default: "argo-" + metadata.name
-
-	resourceId := target.Metadata.Name
-	if target.Metadata.Id != "" {
-		resourceId = target.Metadata.Id
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	// get namespace from spec, it is required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
+	namespace := spec.Namespace.GetValue()
+	releaseName := target.Metadata.Name
 
-	// Export namespace
-	ctx.Export(Namespace, pulumi.String(locals.Namespace))
+	// fullnameOverride is pinned to metadata.name (values.go), so the
+	// server Service is exactly `<name>-server`.
+	serverServiceName := fmt.Sprintf("%s-server", releaseName)
 
-	// Service name follows Helm chart naming: <release-name>-argocd-server
-	locals.ServiceName = fmt.Sprintf("%s-argocd-server", resourceId)
-
-	// Export service name
-	ctx.Export(Service, pulumi.String(locals.ServiceName))
-
-	// Kubernetes service FQDN for internal cluster access
-	locals.KubeServiceFqdn = fmt.Sprintf("%s.%s.svc.cluster.local",
-		locals.ServiceName, locals.Namespace)
-
-	// Export kubernetes endpoint
-	ctx.Export(KubeEndpoint, pulumi.String(locals.KubeServiceFqdn))
-
-	// Port-forward command for local access
-	locals.KubePortForwardCommand = fmt.Sprintf("kubectl port-forward -n %s service/%s 8080:80",
-		locals.Namespace, locals.ServiceName)
-
-	// Export port-forward command
-	ctx.Export(PortForwardCommand, pulumi.String(locals.KubePortForwardCommand))
-
-	// Handle ingress configuration
-	if target.Spec.Ingress == nil ||
-		!target.Spec.Ingress.Enabled ||
-		target.Spec.Ingress.Hostname == "" {
-		// Export empty hostnames if ingress is not enabled
-		ctx.Export(ExternalHostname, pulumi.String(""))
-		ctx.Export(InternalHostname, pulumi.String(""))
-		return locals
+	serverInsecure := spec.GetServer().GetInsecure()
+	scheme := "https"
+	forwardPort := 443
+	if serverInsecure {
+		scheme = "http"
+		forwardPort = 80
 	}
 
-	// Use the hostname directly from spec
-	locals.IngressExternalHostname = target.Spec.Ingress.Hostname
-
-	// Internal hostname (private ingress) - append -internal to the hostname
-	locals.IngressInternalHostname = fmt.Sprintf("internal-%s", target.Spec.Ingress.Hostname)
-
-	locals.IngressHostnames = []string{
-		locals.IngressExternalHostname,
-		locals.IngressInternalHostname,
+	// The admin user defaults ON (proto default true); the generated
+	// initial-admin Secret exists only while it is enabled.
+	adminEnabled := true
+	if spec.AdminEnabled != nil {
+		adminEnabled = spec.GetAdminEnabled()
+	}
+	initialAdminSecretName := ""
+	if adminEnabled {
+		initialAdminSecretName = vars.InitialAdminSecretName
 	}
 
-	// Export ingress hostnames
-	ctx.Export(ExternalHostname, pulumi.String(locals.IngressExternalHostname))
-	ctx.Export(InternalHostname, pulumi.String(locals.IngressInternalHostname))
-
-	// Certificate configuration
-	// Note: a ClusterIssuer resource should already exist on the kubernetes-cluster
-	// Extract the domain from hostname for certificate issuer name
-	// For example: "argocd.example.com" -> "example.com"
-	dnsDomain := extractDomainFromHostname(target.Spec.Ingress.Hostname)
-	locals.IngressCertClusterIssuerName = dnsDomain
-	// Computed TLS secret name to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	locals.IngressCertSecretName = fmt.Sprintf("%s-tls", target.Metadata.Name)
-
-	return locals
-}
-
-// extractDomainFromHostname extracts the domain from a hostname
-// Example: "argocd.example.com" -> "example.com"
-func extractDomainFromHostname(hostname string) string {
-	// Split by dots and take everything after the first part
-	// This is a simple implementation - assumes standard domain structure
-	parts := []rune(hostname)
-	firstDotIndex := -1
-	for i, char := range parts {
-		if char == '.' {
-			firstDotIndex = i
-			break
-		}
+	return &Locals{
+		Spec:                   spec,
+		Labels:                 labels,
+		Namespace:              namespace,
+		ReleaseName:            releaseName,
+		ChartVersion:           chartVersion,
+		ServerServiceName:      serverServiceName,
+		ServerInsecure:         serverInsecure,
+		AdminEnabled:           adminEnabled,
+		InitialAdminSecretName: initialAdminSecretName,
+		ServerKubeEndpoint: fmt.Sprintf("%s://%s.%s.svc.cluster.local",
+			scheme, serverServiceName, namespace),
+		PortForwardCommand: fmt.Sprintf("kubectl port-forward svc/%s -n %s 8080:%d",
+			serverServiceName, namespace, forwardPort),
 	}
-	if firstDotIndex > 0 && firstDotIndex < len(hostname)-1 {
-		return hostname[firstDotIndex+1:]
-	}
-	// If no dot found or dot is at the end, return the hostname as-is
-	return hostname
 }

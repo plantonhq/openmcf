@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskafkauser.v1;
+
+/**
+ * **KubernetesKafkaUserStackOutputs** — the handles a declared Kafka
+ * user exports for composition. Workloads mount or env-reference the
+ * credentials Secret; the bootstrap endpoint comes from the
+ * KubernetesKafka resource's own outputs.
+ */
+message KubernetesKafkaUserStackOutputs {
+  // Namespace the KafkaUser resource lives in (the Kafka cluster's
+  // namespace).
+  string namespace = 1;
+
+  // Kafka principal name (`metadata.name`) — combine with the
+  // authentication type for ACL/super-user principal form
+  // ("User:<name>" for scram-sha-512; "User:CN=<name>" for tls).
+  string username = 2;
+
+  // Name of the credentials Secret the user operator generates
+  // (equal to the user name). Keys: `password` + `sasl.jaas.config`
+  // for scram-sha-512 users; `user.crt` / `user.key` / `user.p12` /
+  // `user.password` for tls users. Empty semantics for tls-external
+  // users (no Secret is generated).
+  string secret_name = 3;
+}

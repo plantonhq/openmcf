@@ -1,0 +1,48 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafkaConnect
+metadata:
+  name: built-connect
+spec:
+  namespace:
+    value: kafka
+  bootstrap_servers:
+    value: events-kafka-bootstrap.kafka.svc.cluster.local:9092
+  replicas: 3
+  # The BUILD arm: the operator builds a custom Connect image from the
+  # declared artifacts (Kaniko on Kubernetes) and pushes it to
+  # output.image; the workers then run the built image. NO `image`
+  # field — image and build are mutually exclusive (spec-enforced):
+  # the operator would silently override a declared image with the one
+  # it builds.
+  build:
+    output:
+      type: docker
+      # Full image name including the registry — where the built
+      # image is pushed and pulled from.
+      image: registry.example.com/team/built-connect:latest
+      # Name of a docker-registry Secret (in this namespace) with push
+      # credentials — the SECRET'S NAME, not a credential value.
+      push_secret: registry-push-creds
+    plugins:
+      - name: debezium-connector-postgres
+        artifacts:
+          # Maven coordinates resolved at build time (Maven Central by
+          # default) — the reproducible way to pin a connector.
+          - type: maven
+            group: io.debezium
+            artifact: debezium-connector-postgres
+            version: 3.1.0.Final
+  config:
+    config.storage.replication.factor: "3"
+    offset.storage.replication.factor: "3"
+    status.storage.replication.factor: "3"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1536Mi
+    limits:
+      cpu: "2"
+      memory: 3Gi
+  jvm:
+    xms: 1g
+    xmx: 1g

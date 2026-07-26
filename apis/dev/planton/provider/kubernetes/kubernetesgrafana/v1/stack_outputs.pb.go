@@ -21,32 +21,30 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// grafana-kubernetes stack outputs.
+// grafana-kubernetes stack outputs
 type KubernetesGrafanaStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which grafana-kubernetes is created.
+	// namespace Grafana runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for grafana-kubernetes.
-	// ex: main-grafana-kubernetes
-	// in the above example, "main" is the name of the grafana-kubernetes
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open grafana-kubernetes from developers laptop.
-	// this might come handy when grafana-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining grafana_kubernetes_kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/grafana_kubernetes_kubernetes_service -n kubernetes_namespace 6379:6379
-	// running the command from this attribute makes it possible to access grafana-kubernetes using http://localhost:8080/grafana
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to grafana-kubernetes from the web browser.
-	// ex: main-grafana-kubernetes.namespace.svc.cluster.local:6379
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open grafana-kubernetes from clients outside kubernetes.
-	// ex: https://gfnk8s-planton-pcs-dev-main.data.dev.planton.live
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// internal endpoint to open grafana-kubernetes from clients outside kubernetes.
-	// ex: https://gfnk8s-planton-pcs-dev-main.data-internal.dev.planton.live
-	InternalHostname string `protobuf:"bytes,6,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Helm release name (= metadata.name). The modules pin the chart's
+	// fullname to it, so the Service and Secret names derive from it.
+	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
+	// name of the Grafana Service (port 80 → container 3000).
+	Service string `protobuf:"bytes,3,opt,name=service,proto3" json:"service,omitempty"`
+	// in-cluster endpoint for browsers behind composed exposure and for
+	// in-cluster API clients,
+	// e.g. http://dashboards.observability.svc.cluster.local
+	Endpoint string `protobuf:"bytes,4,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// name of the Secret holding the admin credentials — `<name>`, keys
+	// `admin-user` / `admin-password` (the chart generates it once and
+	// keeps it stable across upgrades; when spec.admin_secret points at an
+	// existing Secret, that name is echoed here instead).
+	AdminSecretName string `protobuf:"bytes,5,opt,name=admin_secret_name,json=adminSecretName,proto3" json:"admin_secret_name,omitempty"`
+	// command to port-forward the Grafana UI to a developer laptop,
+	// e.g. kubectl port-forward svc/dashboards -n observability 3000:80
+	PortForwardCommand string `protobuf:"bytes,6,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesGrafanaStackOutputs) Reset() {
@@ -86,9 +84,30 @@ func (x *KubernetesGrafanaStackOutputs) GetNamespace() string {
 	return ""
 }
 
+func (x *KubernetesGrafanaStackOutputs) GetReleaseName() string {
+	if x != nil {
+		return x.ReleaseName
+	}
+	return ""
+}
+
 func (x *KubernetesGrafanaStackOutputs) GetService() string {
 	if x != nil {
 		return x.Service
+	}
+	return ""
+}
+
+func (x *KubernetesGrafanaStackOutputs) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *KubernetesGrafanaStackOutputs) GetAdminSecretName() string {
+	if x != nil {
+		return x.AdminSecretName
 	}
 	return ""
 }
@@ -100,39 +119,18 @@ func (x *KubernetesGrafanaStackOutputs) GetPortForwardCommand() string {
 	return ""
 }
 
-func (x *KubernetesGrafanaStackOutputs) GetKubeEndpoint() string {
-	if x != nil {
-		return x.KubeEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesGrafanaStackOutputs) GetExternalHostname() string {
-	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesGrafanaStackOutputs) GetInternalHostname() string {
-	if x != nil {
-		return x.InternalHostname
-	}
-	return ""
-}
-
 var File_dev_planton_provider_kubernetes_kubernetesgrafana_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesgrafana_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Hdev/planton/provider/kubernetes/kubernetesgrafana/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetesgrafana.v1\"\x88\x02\n" +
+	"Hdev/planton/provider/kubernetes/kubernetesgrafana/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetesgrafana.v1\"\xf4\x01\n" +
 	"\x1dKubernetesGrafanaStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\x06 \x01(\tR\x10internalHostnameB\xb0\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12\x18\n" +
+	"\aservice\x18\x03 \x01(\tR\aservice\x12\x1a\n" +
+	"\bendpoint\x18\x04 \x01(\tR\bendpoint\x12*\n" +
+	"\x11admin_secret_name\x18\x05 \x01(\tR\x0fadminSecretName\x120\n" +
+	"\x14port_forward_command\x18\x06 \x01(\tR\x12portForwardCommandB\xb0\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetesgrafana.v1B\x11StackOutputsProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgrafana/v1;kubernetesgrafanav1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetesgrafana.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetesgrafana\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetesgrafana\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetesgrafana::V1b\x06proto3"
 
 var (

@@ -1,64 +1,91 @@
-# Neo4j Kubernetes Pulumi Module
+# KubernetesNeo4j Pulumi Module
 
-## Key Features
+Pulumi (Go) module for the KubernetesNeo4j component: installs Neo4j — the
+graph database behind knowledge graphs, GraphRAG and agent-memory
+architectures — from the official Neo4j Helm chart (`neo4j` at
+https://helm.neo4j.com/neo4j) as a real Helm release
+(`helm/v3.Release`).
 
-### Unified API Resource Model
-The Neo4j Kubernetes Pulumi module adheres to a standardized API resource model, ensuring a consistent approach to managing infrastructure on Kubernetes. Each resource follows a familiar structure (`apiVersion`, `kind`, `metadata`, `spec`, and `status`), allowing developers to easily integrate and manage their Neo4j instances in line with Kubernetes best practices.
+## Module Behavior
 
-### Key Features of the API Resource:
-- **Resource Configuration**: Developers can specify CPU and memory resource requests and limits for the Neo4j container. This ensures that the database operates efficiently and scales appropriately based on the available resources within the Kubernetes cluster.
-- **Ingress Support**: The module includes optional ingress configuration, allowing the Neo4j instance to be accessed from outside the Kubernetes cluster. This is particularly useful for external clients or hybrid cloud architectures where external connectivity is required.
-- **Namespace Isolation**: Each deployment of Neo4j is placed within its own Kubernetes namespace, ensuring that resources are logically isolated. This is especially beneficial in multi-tenant environments or when managing multiple instances of Neo4j in a single cluster.
-- **Internal and External Access**: By configuring Kubernetes services, the module enables both internal (within-cluster) and external (outside-cluster) access to the Neo4j instance. Depending on the ingress configuration, the database can be exposed externally via a public endpoint.
+- **One Helm release named after `metadata.name`** — several Neo4j servers
+  coexist in one cluster, and Enterprise cluster members are each their own
+  release. The chart names its always-created ClusterIP Service after the
+  release (`neo4j.fullname` = the release name when no name overrides are
+  set), so the exported `service_name` is deterministic.
+- **`neo4j.name` always renders** — the chart REQUIRES it (its `neo4j.name`
+  helper fails the install when empty; nothing defaults it to the release
+  name): `cluster_name` when set (Enterprise members sharing it form one
+  cluster), else `metadata.name`.
+- **The typed spec renders into chart values** (`values.go`), and the
+  spec's `helm_values` escape hatch deep-merges over them with Helm `-f`
+  semantics (`helpers.go` mergeMaps) — the exact semantic twin of the
+  Terraform module's two-document `values` list.
 
-### Key Features of the Pulumi Module:
-- **Dynamic Resource Creation**: The module dynamically creates Kubernetes resources based on the specifications in the `Neo4jKubernetesStackInput`, including services, namespaces, and ingress (if enabled).
-- **Kubernetes Provider Integration**: Leveraging the Pulumi Kubernetes provider, the module interacts with the cluster to create and manage resources such as Neo4j services and network configurations.
-- **Port-Forwarding for Local Access**: When ingress is disabled, the module provides a port-forwarding command that developers can use to access the Neo4j instance locally via `kubectl`. This is useful for development and testing scenarios.
-- **Status Outputs**: After the deployment, the module provides key output values such as the Kubernetes service name, internal and external endpoints, and the port-forwarding command. These outputs simplify the management and interaction with the Neo4j instance post-deployment.
+### The auth Secret contract (created BEFORE the release)
 
-## Status and Outputs
+The chart's credential interface is `neo4j.passwordFromSecret`: a Secret
+carrying key `NEO4J_AUTH` with value `neo4j/<password>`, which the chart
+LOOKS UP AT TEMPLATE TIME — the install fails if the Secret is missing or
+lacks the key. The module therefore wires an explicit `DependsOn` so the
+Secret always exists first:
 
-After deploying Neo4j using this module, the following outputs are provided to facilitate management and operations:
-- **Namespace**: The Kubernetes namespace in which the Neo4j instance is deployed, allowing for resource isolation.
-- **Service Name**: The Kubernetes service name for accessing the Neo4j instance within the cluster.
-- **Port-Forwarding Command**: A command to enable port-forwarding for local access to the Neo4j instance, useful when ingress is not enabled.
-- **Internal Endpoint**: The internal URL to access the Neo4j service within the Kubernetes cluster.
-- **External Endpoint**: (If ingress is enabled) The external URL to access the Neo4j instance from outside the Kubernetes cluster.
+- `auth.password` arm → the module materializes the `<metadata.name>-auth`
+  Secret (`secrets.go`; key `NEO4J_AUTH` = `neo4j/<password>`, value
+  wrapped with `pulumi.ToSecret` so it is encrypted in state) before the
+  Helm release, and renders `passwordFromSecret` = that name. The password
+  itself NEVER appears in rendered chart values.
+- `auth.existing_secret` arm → `passwordFromSecret` = the given name; no
+  Secret is created (it must already exist and carry the contract).
+- auth absent → neither renders; the chart generates a random password and
+  logs it once at first startup.
 
-## Usage
+### The ClusterIP override (deliberate)
 
-To deploy and manage a Neo4j Kubernetes instance using this module, create a YAML file representing the Neo4j Kubernetes resource. Use the CLI command `planton pulumi up --stack-input <api-resource.yaml>` to apply the configuration and provision the resources.
+The chart ships `services.neo4j.spec.type: LoadBalancer`, which would
+provision a cloud load balancer (or hang Pending) on every install. This
+module pins it to **ClusterIP** unless `spec.service.type` says otherwise —
+exposure composes from first-class kinds (KubernetesIngress, Gateway API
+kinds) over the exported service handle instead. Note the chart names this
+extra service `<neo4j.name>-lb-neo4j`; the always-created default ClusterIP
+Service (= the release name) is the composition handle.
 
-Refer to the example section for usage instructions.
+### The SSL key-name bridge (cert-manager Secrets)
 
-## Requirements
+The chart mounts `private.key` and `public.crt` from each `ssl.<scope>`
+Secret (its `subPath` defaults). cert-manager Certificates store their
+material as `tls.key`/`tls.crt` — the module does NOT silently rewrite key
+names, so a cert-manager Secret needs a key bridge before use: either copy
+the Secret with renamed keys, or set the chart's
+`ssl.<scope>.privateKey.subPath: tls.key` and
+`ssl.<scope>.publicCertificate.subPath: tls.crt` via `helm_values`.
 
-- **Pulumi**: Ensure that Pulumi is installed and configured in your environment.
-- **Kubernetes Provider**: The Kubernetes provider is required to manage and interact with the Kubernetes cluster.
-- **Kubernetes Credential**: This credential is required to authenticate and interact with the target Kubernetes cluster where the Neo4j instance will be deployed.
-- **Neo4j License**: If required, ensure that you have the necessary Neo4j license, depending on the environment and usage.
+## Values Mapping
 
-## Installation
+See the Terraform module README (`../tf/README.md`) for the full
+field-by-field table — both engines render byte-identical values. Notable
+mechanics: `neo4j.resources` renders requests into the chart's flat
+`{cpu, memory}` shape plus declared limits into the full-format `limits`
+sub-map; `volumes.data` ALWAYS renders (the chart requires a mode) —
+`dynamic` with the declared StorageClass, else `defaultStorageClass`; the
+typed `memory` block merges over `spec.config` with TYPED KEYS WINNING on
+collision; the chart REJECTS resources below its floor (500m CPU / 2Gi
+memory) and the module never defaults below it.
 
-You can install and use this Pulumi module by cloning the repository from GitHub and running the necessary Pulumi commands to set up the infrastructure. Make sure you have the correct dependencies installed and access to your Kubernetes cluster.
+## Outputs
 
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/your-repo/planton-pulumi-neo4j-kubernetes.git
-    cd planton-pulumi-neo4j-kubernetes
-    ```
+| Output | Meaning |
+|---|---|
+| `namespace` | Namespace the server runs in |
+| `release_name` | Helm release name (= `metadata.name`) |
+| `service_name` | The main Neo4j Service (= the release name) |
+| `bolt_endpoint` | `neo4j://<svc>.<ns>.svc.cluster.local:7687` |
+| `http_endpoint` | `http://<svc>.<ns>.svc.cluster.local:7474` |
+| `auth_secret_name` | `<name>-auth`, the existing Secret name, or empty (random password) |
+| `port_forward_command` | kubectl one-liner for reaching bolt from a workstation |
 
-2. Install dependencies and initialize Pulumi:
-    ```bash
-    pulumi stack init <stack-name>
-    pulumi config set <config-parameters>
-    ```
+## Parity
 
-## Contributing
-
-We welcome contributions to improve and expand the functionality of this Pulumi module. If you encounter any issues or have suggestions for new features, feel free to open an issue or submit a pull request on the GitHub repository.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+Kept in lockstep with the Terraform module (`../tf/`): same chart identity
+(`vars.go` ↔ `locals.tf`), same values rendering, same auth Secret name,
+key, and contents, same outputs.

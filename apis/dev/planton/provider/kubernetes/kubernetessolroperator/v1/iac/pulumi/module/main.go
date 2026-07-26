@@ -4,93 +4,106 @@ import (
 	"github.com/pkg/errors"
 	kubernetessolroperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessolroperator/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
-	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
-	pulumiyaml "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml"
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources creates all Pulumi resources for the Apache Solr Operator Kubernetes add‑on.
+// Resources installs the Apache Solr Operator from the official
+// solr-operator Helm chart as a single Helm release named after
+// metadata.name. The operator reconciles SolrCloud custom resources
+// (declared through KubernetesSolr) into running Solr clusters, plus
+// SolrBackup and SolrPrometheusExporter resources.
+//
+// CRD LIFECYCLE: unlike most operator charts, the solr-operator chart
+// ships NO CRDs — they are separate release artifacts. The module OWNS
+// them: the four staged files at ../crds (the three solr.apache.org CRDs
+// plus the ZookeeperCluster CRD of the bundled zookeeper-operator
+// dependency) are applied before the release, each keyed by its own
+// metadata.name and carrying retainOnDelete — destroying the stack
+// removes the operator but NEVER the CRDs, so SolrCloud resources are
+// never cascade-deleted. The bundled subchart's own CRD switch is pinned
+// off (`zookeeper-operator.crd.create: false`) so the ZookeeperCluster
+// CRD never falls under Helm's delete-on-uninstall lifecycle.
+//
+// The typed spec renders into chart values (values.go); the helm_values
+// escape hatch merges last with Helm -f semantics — the exact semantic
+// twin of the Terraform module's helm_release with
+// values = [typed, helm_values].
 func Resources(ctx *pulumi.Context, stackInput *kubernetessolroperatorv1.KubernetesSolrOperatorStackInput) error {
-	// Initialize locals with computed values
 	locals := initializeLocals(ctx, stackInput)
 
-	// Set up kubernetes provider from the supplied cluster credential
-	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
-		ctx, stackInput.ProviderConfig, "kubernetes")
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
+		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to set up kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
 	// ------------------------------ namespace ----------------------------
-	// Conditionally create namespace based on create_namespace flag
 	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	// Build conditional namespace dependency (Pulumi equivalent of Terraform depends_on).
-	// When create_namespace is false, createdNamespace is nil and namespaceDeps is empty.
-	var namespaceDeps []pulumi.ResourceOption
+	var operatorDeps []pulumi.Resource
 	if createdNamespace != nil {
-		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+		operatorDeps = append(operatorDeps, createdNamespace)
 	}
 
-	// --------------------------------------------------------------------
-	// 2. Apply CRDs required by the operator
-	// Uses computed CrdsResourceName to avoid conflicts when multiple
-	// instances share a namespace.
-	// --------------------------------------------------------------------
-	//
-	// Note on CRD Deletion:
-	// CRDs are cluster-scoped and have built-in protection preventing deletion while
-	// CustomResources of that type exist. During `pulumi destroy`, CRDs will wait
-	// until all CRs are removed. The namespace background deletion policy (above)
-	// ensures the operator stops running quickly, which allows CRs to be garbage
-	// collected, unblocking CRD deletion.
-	//
-	// We intentionally avoid using ConfigFile transformations here because they
-	// cause Pulumi to recompute diffs on every operation, leading to massive
-	// (180MB+) diff sizes due to the embedded OpenAPI schemas in the CRDs.
-	crdsOpts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, namespaceDeps...)
-	crds, err := pulumiyaml.NewConfigFile(ctx, locals.CrdsResourceName,
-		&pulumiyaml.ConfigFileArgs{
-			File: locals.CrdManifestURL,
-		},
-		crdsOpts...)
+	// ------------------------------ CRDs ----------------------------------
+	// Applied before the release: the operator's controllers start
+	// watching these types immediately, and the bundled
+	// zookeeper-operator refuses to start without the ZookeeperCluster
+	// CRD present.
+	createdCrds, err := applyCrds(ctx, kubernetesProvider)
 	if err != nil {
-		return errors.Wrap(err, "failed to apply CRDs")
+		return errors.Wrap(err, "failed to apply solr-operator crds")
+	}
+	operatorDeps = append(operatorDeps, createdCrds...)
+
+	// ------------------------------ operator release ----------------------
+	mergedValues, err := buildHelmValues(locals)
+	if err != nil {
+		return errors.Wrap(err, "failed to build helm values")
 	}
 
-	// --------------------------------------------------------------------
-	// 3. Deploy the operator via Helm
-	// Uses computed HelmReleaseName to avoid conflicts when multiple
-	// instances share a namespace.
-	// --------------------------------------------------------------------
-	helmOpts := append([]pulumi.ResourceOption{
-		pulumi.Provider(kubernetesProvider),
-		pulumi.DependsOn([]pulumi.Resource{crds}),
-		pulumi.IgnoreChanges([]string{"status", "description", "resourceNames"}),
-	}, namespaceDeps...)
-	_, err = helm.NewRelease(ctx, locals.HelmReleaseName,
-		&helm.ReleaseArgs{
-			Name:            pulumi.String(locals.HelmReleaseName),
-			Namespace:       pulumi.String(locals.Namespace),
-			Chart:           pulumi.String(vars.HelmChartName),
-			Version:         pulumi.String(locals.ChartVersion),
-			CreateNamespace: pulumi.Bool(false),
-			Atomic:          pulumi.Bool(true),
-			CleanupOnFail:   pulumi.Bool(true),
-			WaitForJobs:     pulumi.Bool(true),
-			Timeout:         pulumi.Int(180),
-			Values:          pulumi.Map{}, // no extra values at this time
-			RepositoryOpts: helm.RepositoryOptsArgs{
-				Repo: pulumi.String(vars.HelmChartRepo),
-			},
+	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, &helmv3.ReleaseArgs{
+		Name:      pulumi.String(locals.ReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		Chart:     pulumi.String(vars.HelmChartName),
+		Version:   pulumi.String(locals.ChartVersion),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(vars.HelmChartRepo),
 		},
-		helmOpts...)
+		Values: pulumi.ToMap(mergedValues),
+		// The module owns namespace creation (create_namespace flag).
+		CreateNamespace: pulumi.Bool(false),
+		// Wait for the operator to become Available — an operator that
+		// never becomes ready (an unpullable image from a private mirror
+		// is the classic case) should fail THIS deploy with a readiness
+		// timeout, not surface later as SolrCloud resources that
+		// mysteriously never reconcile.
+		Atomic:        pulumi.Bool(true),
+		CleanupOnFail: pulumi.Bool(true),
+		Timeout:       pulumi.Int(vars.HelmTimeoutSeconds),
+	}, append([]pulumi.ResourceOption{
+		pulumi.Provider(kubernetesProvider)},
+		dependsOn(operatorDeps)...)...)
 	if err != nil {
-		return errors.Wrap(err, "failed to install solr‑operator helm release")
+		return errors.Wrap(err, "failed to install solr-operator helm release")
 	}
+
+	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	ctx.Export(OpReleaseName, pulumi.String(locals.ReleaseName))
+	ctx.Export(OpDeploymentName, pulumi.String(locals.DeploymentName))
 
 	return nil
+}
+
+// dependsOn wraps a possibly-empty dependency list into resource options
+// (an empty DependsOn is a valid no-op).
+func dependsOn(deps []pulumi.Resource) []pulumi.ResourceOption {
+	if len(deps) == 0 {
+		return nil
+	}
+	return []pulumi.ResourceOption{pulumi.DependsOn(deps)}
 }

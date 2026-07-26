@@ -7,7 +7,6 @@
 package kubernetesnatsv1
 
 import (
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -22,25 +21,38 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// nats-kubernetes stack outputs captures key runtime info after provisioning.
+// *
+// **KubernetesNatsStackOutputs** — the composition handles a deployed
+// NATS system exports. Applications connect through the client
+// Service; credentials (when auth is declared) live in the exported
+// auth Secret.
 type KubernetesNatsStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which the nats cluster is deployed.
+	// Namespace the servers run in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// internal dns url for clients (e.g. "nats://nats.default.svc:4222").
-	ClientUrlInternal string `protobuf:"bytes,2,opt,name=client_url_internal,json=clientUrlInternal,proto3" json:"client_url_internal,omitempty"`
-	// external url if ingress or load-balancer is enabled.
-	ClientUrlExternal string `protobuf:"bytes,3,opt,name=client_url_external,json=clientUrlExternal,proto3" json:"client_url_external,omitempty"`
-	// reference to the secret that stores the auth token (blank if auth disabled).
-	AuthTokenSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,4,opt,name=auth_token_secret,json=authTokenSecret,proto3" json:"auth_token_secret,omitempty"`
-	// jet-stream domain configured for the cluster (blank if jet-stream disabled).
-	JetStreamDomain string `protobuf:"bytes,5,opt,name=jet_stream_domain,json=jetStreamDomain,proto3" json:"jet_stream_domain,omitempty"`
-	// prometheus metrics endpoint (e.g. "http://nats-prom.default.svc:7777/metrics").
-	MetricsEndpoint string `protobuf:"bytes,6,opt,name=metrics_endpoint,json=metricsEndpoint,proto3" json:"metrics_endpoint,omitempty"`
-	// kubernetes secret containing the tls certificate and key (blank if tls disabled).
-	TlsSecret     *kubernetes.KubernetesSecretKey `protobuf:"bytes,7,opt,name=tls_secret,json=tlsSecret,proto3" json:"tls_secret,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Name of the client Service (equals metadata.name).
+	ServiceName string `protobuf:"bytes,2,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	// Name of the headless Service (`<name>-headless`) — per-server DNS
+	// for clients that need direct server addressing.
+	HeadlessServiceName string `protobuf:"bytes,3,opt,name=headless_service_name,json=headlessServiceName,proto3" json:"headless_service_name,omitempty"`
+	// In-cluster client endpoint,
+	// `nats://<name>.<namespace>.svc.cluster.local:4222` — what NATS
+	// clients set as their server URL.
+	ClientEndpoint string `protobuf:"bytes,4,opt,name=client_endpoint,json=clientEndpoint,proto3" json:"client_endpoint,omitempty"`
+	// In-cluster WebSocket endpoint
+	// (`ws://<name>.<namespace>.svc.cluster.local:<port>`); empty when
+	// the websocket listener is off.
+	WebsocketEndpoint string `protobuf:"bytes,5,opt,name=websocket_endpoint,json=websocketEndpoint,proto3" json:"websocket_endpoint,omitempty"`
+	// Name of the module-generated auth Secret (`<name>-auth`, one key
+	// per declared username holding that user's password); empty when
+	// auth is not declared.
+	AuthSecretName string `protobuf:"bytes,6,opt,name=auth_secret_name,json=authSecretName,proto3" json:"auth_secret_name,omitempty"`
+	// Port-forward command for reaching the client port from a
+	// workstation when no exposure is composed
+	// (`kubectl port-forward svc/<name> -n <namespace> 4222:4222`).
+	PortForwardCommand string `protobuf:"bytes,7,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesNatsStackOutputs) Reset() {
@@ -80,62 +92,61 @@ func (x *KubernetesNatsStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesNatsStackOutputs) GetClientUrlInternal() string {
+func (x *KubernetesNatsStackOutputs) GetServiceName() string {
 	if x != nil {
-		return x.ClientUrlInternal
+		return x.ServiceName
 	}
 	return ""
 }
 
-func (x *KubernetesNatsStackOutputs) GetClientUrlExternal() string {
+func (x *KubernetesNatsStackOutputs) GetHeadlessServiceName() string {
 	if x != nil {
-		return x.ClientUrlExternal
+		return x.HeadlessServiceName
 	}
 	return ""
 }
 
-func (x *KubernetesNatsStackOutputs) GetAuthTokenSecret() *kubernetes.KubernetesSecretKey {
+func (x *KubernetesNatsStackOutputs) GetClientEndpoint() string {
 	if x != nil {
-		return x.AuthTokenSecret
-	}
-	return nil
-}
-
-func (x *KubernetesNatsStackOutputs) GetJetStreamDomain() string {
-	if x != nil {
-		return x.JetStreamDomain
+		return x.ClientEndpoint
 	}
 	return ""
 }
 
-func (x *KubernetesNatsStackOutputs) GetMetricsEndpoint() string {
+func (x *KubernetesNatsStackOutputs) GetWebsocketEndpoint() string {
 	if x != nil {
-		return x.MetricsEndpoint
+		return x.WebsocketEndpoint
 	}
 	return ""
 }
 
-func (x *KubernetesNatsStackOutputs) GetTlsSecret() *kubernetes.KubernetesSecretKey {
+func (x *KubernetesNatsStackOutputs) GetAuthSecretName() string {
 	if x != nil {
-		return x.TlsSecret
+		return x.AuthSecretName
 	}
-	return nil
+	return ""
+}
+
+func (x *KubernetesNatsStackOutputs) GetPortForwardCommand() string {
+	if x != nil {
+		return x.PortForwardCommand
+	}
+	return ""
 }
 
 var File_dev_planton_provider_kubernetes_kubernetesnats_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesnats_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/kubernetes/kubernetesnats/v1/stack_outputs.proto\x121dev.planton.provider.kubernetes.kubernetesnats.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\xa8\x03\n" +
+	"Edev/planton/provider/kubernetes/kubernetesnats/v1/stack_outputs.proto\x121dev.planton.provider.kubernetes.kubernetesnats.v1\"\xc5\x02\n" +
 	"\x1aKubernetesNatsStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12.\n" +
-	"\x13client_url_internal\x18\x02 \x01(\tR\x11clientUrlInternal\x12.\n" +
-	"\x13client_url_external\x18\x03 \x01(\tR\x11clientUrlExternal\x12`\n" +
-	"\x11auth_token_secret\x18\x04 \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x0fauthTokenSecret\x12*\n" +
-	"\x11jet_stream_domain\x18\x05 \x01(\tR\x0fjetStreamDomain\x12)\n" +
-	"\x10metrics_endpoint\x18\x06 \x01(\tR\x0fmetricsEndpoint\x12S\n" +
-	"\n" +
-	"tls_secret\x18\a \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\ttlsSecretB\x9b\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x122\n" +
+	"\x15headless_service_name\x18\x03 \x01(\tR\x13headlessServiceName\x12'\n" +
+	"\x0fclient_endpoint\x18\x04 \x01(\tR\x0eclientEndpoint\x12-\n" +
+	"\x12websocket_endpoint\x18\x05 \x01(\tR\x11websocketEndpoint\x12(\n" +
+	"\x10auth_secret_name\x18\x06 \x01(\tR\x0eauthSecretName\x120\n" +
+	"\x14port_forward_command\x18\a \x01(\tR\x12portForwardCommandB\x9b\x03\n" +
 	"5com.dev.planton.provider.kubernetes.kubernetesnats.v1B\x11StackOutputsProtoP\x01Zdgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnats/v1;kubernetesnatsv1\xa2\x02\x05DPPKK\xaa\x021Dev.Planton.Provider.Kubernetes.Kubernetesnats.V1\xca\x021Dev\\Planton\\Provider\\Kubernetes\\Kubernetesnats\\V1\xe2\x02=Dev\\Planton\\Provider\\Kubernetes\\Kubernetesnats\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Kubernetes::Kubernetesnats::V1b\x06proto3"
 
 var (
@@ -152,17 +163,14 @@ func file_dev_planton_provider_kubernetes_kubernetesnats_v1_stack_outputs_proto_
 
 var file_dev_planton_provider_kubernetes_kubernetesnats_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_kubernetes_kubernetesnats_v1_stack_outputs_proto_goTypes = []any{
-	(*KubernetesNatsStackOutputs)(nil),     // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStackOutputs
-	(*kubernetes.KubernetesSecretKey)(nil), // 1: dev.planton.provider.kubernetes.KubernetesSecretKey
+	(*KubernetesNatsStackOutputs)(nil), // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStackOutputs
 }
 var file_dev_planton_provider_kubernetes_kubernetesnats_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStackOutputs.auth_token_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
-	1, // 1: dev.planton.provider.kubernetes.kubernetesnats.v1.KubernetesNatsStackOutputs.tls_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesnats_v1_stack_outputs_proto_init() }

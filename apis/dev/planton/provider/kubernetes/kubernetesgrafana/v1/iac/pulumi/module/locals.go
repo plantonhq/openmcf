@@ -10,92 +10,103 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	IngressExternalHostname  string
-	IngressInternalHostname  string
-	KubePortForwardCommand   string
-	KubeServiceFqdn          string
-	KubeServiceName          string
-	Namespace                string
-	KubernetesGrafana        *kubernetesgrafanav1.KubernetesGrafana
-	GrafanaPodSelectorLabels map[string]string
-	Labels                   map[string]string
+	Spec *kubernetesgrafanav1.KubernetesGrafanaSpec
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	ExternalIngressName string
-	InternalIngressName string
+	// Resource-identity labels stamped on the module-created satellites
+	// (the namespace — never injected into the chart's own resources;
+	// Helm owns those).
+	Labels map[string]string
+
+	// Namespace Grafana installs into (resolved literal from the spec's
+	// value-or-ref).
+	Namespace string
+
+	// Helm release name — metadata.name, NOT a fixed chart name: several
+	// Grafana instances coexist in one Kubernetes cluster (per-team
+	// dashboards, a mesh-specific instance, ...).
+	ReleaseName string
+
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
+	ChartVersion string
+
+	// Name of the Grafana Service — grafana.fullname, pinned to the
+	// resource name via fullnameOverride (the 63-char child-name
+	// discipline), so the Service and the chart-owned admin Secret derive
+	// from the resource name deterministically.
+	ServiceName string
+
+	// Name of the Secret carrying the admin credentials: the referenced
+	// existing Secret when spec.admin_secret is declared, else the
+	// chart-owned `<name>` Secret the chart generates ONCE at first
+	// install (stable across upgrades via its lookup).
+	AdminSecretName string
+
+	// In-cluster endpoint (the chart serves plain HTTP on the Service;
+	// TLS terminates at the composed exposure layer — ingress or
+	// gateway — never inside this module).
+	Endpoint string
+
+	// kubectl one-liner for reaching the UI from a workstation.
+	PortForwardCommand string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesgrafanav1.KubernetesGrafanaStackInput) *Locals {
-	locals := &Locals{}
-
-	locals.KubernetesGrafana = stackInput.Target
-
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesgrafanav1.KubernetesGrafanaStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	locals.Labels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesGrafana.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// get namespace from spec, it is required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
-
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	locals.GrafanaPodSelectorLabels = map[string]string{
-		"app.kubernetes.io/name":     "grafana",
-		"app.kubernetes.io/instance": target.Metadata.Name,
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	locals.ExternalIngressName = fmt.Sprintf("%s-external", target.Metadata.Name)
-	locals.InternalIngressName = fmt.Sprintf("%s-internal", target.Metadata.Name)
+	namespace := spec.Namespace.GetValue()
+	releaseName := target.Metadata.Name
 
-	locals.KubeServiceName = fmt.Sprintf("%s-grafana", target.Metadata.Name)
+	// fullnameOverride is pinned to metadata.name (values.go), so the
+	// chart's Service is exactly the resource name.
+	serviceName := releaseName
 
-	//export kubernetes service name
-	ctx.Export(OpService, pulumi.String(locals.KubeServiceName))
-
-	locals.KubeServiceFqdn = fmt.Sprintf("%s.%s.svc.cluster.local", locals.KubeServiceName, locals.Namespace)
-
-	//export kubernetes endpoint
-	ctx.Export(OpKubeEndpoint, pulumi.String(locals.KubeServiceFqdn))
-
-	locals.KubePortForwardCommand = fmt.Sprintf("kubectl port-forward -n %s service/%s 8080:80",
-		locals.Namespace, locals.KubeServiceName)
-
-	//export kube-port-forward command
-	ctx.Export(OpPortForwardCommand, pulumi.String(locals.KubePortForwardCommand))
-
-	if target.Spec.Ingress == nil ||
-		!target.Spec.Ingress.Enabled ||
-		target.Spec.Ingress.Hostname == "" {
-		return locals
+	// The chart-generated admin Secret is named grafana.fullname (= the
+	// resource name); an existing Secret's own name wins when declared.
+	adminSecretName := releaseName
+	if existing := spec.GetAdminSecret(); existing != nil {
+		adminSecretName = existing.GetName()
 	}
 
-	// Use the hostname directly from spec
-	locals.IngressExternalHostname = fmt.Sprintf("https://%s", target.Spec.Ingress.Hostname)
-	ctx.Export(OpExternalHostname, pulumi.String(locals.IngressExternalHostname))
-
-	// Internal hostname (private ingress) - prepend internal-
-	locals.IngressInternalHostname = fmt.Sprintf("https://internal-%s", target.Spec.Ingress.Hostname)
-	ctx.Export(OpInternalHostname, pulumi.String(locals.IngressInternalHostname))
-
-	return locals
+	return &Locals{
+		Spec:            spec,
+		Labels:          labels,
+		Namespace:       namespace,
+		ReleaseName:     releaseName,
+		ChartVersion:    chartVersion,
+		ServiceName:     serviceName,
+		AdminSecretName: adminSecretName,
+		Endpoint: fmt.Sprintf("http://%s.%s.svc.cluster.local",
+			serviceName, namespace),
+		PortForwardCommand: fmt.Sprintf("kubectl port-forward svc/%s -n %s 3000:%d",
+			serviceName, namespace, vars.ServicePort),
+	}
 }

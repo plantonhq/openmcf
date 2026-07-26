@@ -1,0 +1,25 @@
+# The `basic` profile arm: Pipelines + Triggers, NO dashboard, Chains
+# disabled, with the pruner declared (keep-newest retention) and pipeline
+# defaults tuned. The verifier proves the profile honesty: pipelines +
+# triggers Deployments rolled out, the dashboard Deployment ABSENT, the
+# pruner CronJob present — and the TaskRun engine proof still green.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTekton
+metadata:
+  name: e2e-tekton-basic
+spec:
+  profile: basic
+  chain:
+    disabled: true
+  pipeline:
+    defaultTimeoutMinutes: 120
+    features:
+      enableCelInWhenexpression: true
+  trigger:
+    enableApiFields: stable
+  pruner:
+    schedule: "0 8 * * *"
+    resources:
+      - pipelinerun
+      - taskrun
+    keep: 100

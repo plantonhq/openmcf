@@ -4,65 +4,65 @@
       "name": "Tier 1 Pulumi",
       "tier": 1,
       "engine": "pulumi",
-      "timeout": 2490,
-      "run_regex": "Test(KubernetesBackendTlsPolicy|KubernetesCertificate|KubernetesCertManager|KubernetesCilium|KubernetesCloudNativePgOperator|KubernetesClusterAutoscaler|KubernetesClusterIssuer|KubernetesClusterSecretStore|KubernetesConfigMap|KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesExternalDns|KubernetesExternalSecret|KubernetesExternalSecretsOperator|KubernetesGateway|KubernetesGatewayApiCrds|KubernetesGatewayClass|KubernetesGrpcRoute|KubernetesHelmRelease|KubernetesHorizontalPodAutoscaler|KubernetesHttpRoute|KubernetesIngress|KubernetesIngressNginx|KubernetesIssuer|KubernetesIstio|KubernetesJob|KubernetesKeda|KubernetesListenerSet|KubernetesManifest|KubernetesMetricsServer|KubernetesMongodb|KubernetesMysql|KubernetesNamespace|KubernetesNetworkPolicy|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesPersistentVolumeClaim|KubernetesPodDisruptionBudget|KubernetesPostgres|KubernetesPriorityClass|KubernetesRbac|KubernetesReferenceGrant|KubernetesResourceQuota|KubernetesSecret|KubernetesSecretStore|KubernetesService|KubernetesServiceAccount|KubernetesStatefulSet|KubernetesStorageClass|KubernetesTcpRoute|KubernetesTlsRoute|KubernetesUdpRoute|KubernetesValkey|KubernetesVelero)_Pulumi",
-      "component_count": 55
+      "timeout": 4815,
+      "run_regex": "Test(KubernetesBackendTlsPolicy|KubernetesCertificate|KubernetesCertManager|KubernetesCilium|KubernetesCloudNativePgOperator|KubernetesClusterAutoscaler|KubernetesClusterIssuer|KubernetesClusterSecretStore|KubernetesConfigMap|KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesExternalDns|KubernetesExternalSecret|KubernetesExternalSecretsOperator|KubernetesGateway|KubernetesGatewayApiCrds|KubernetesGatewayClass|KubernetesGrpcRoute|KubernetesHelmRelease|KubernetesHorizontalPodAutoscaler|KubernetesHttpRoute|KubernetesIngress|KubernetesIngressNginx|KubernetesIssuer|KubernetesIstio|KubernetesJob|KubernetesKafka|KubernetesKafkaConnect|KubernetesKafkaConnector|KubernetesKafkaMirrorMaker2|KubernetesKafkaTopic|KubernetesKafkaUi|KubernetesKafkaUser|KubernetesKarapace|KubernetesKeda|KubernetesListenerSet|KubernetesManifest|KubernetesMetricsServer|KubernetesMongodb|KubernetesMysql|KubernetesNamespace|KubernetesNetworkPolicy|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesPersistentVolumeClaim|KubernetesPodDisruptionBudget|KubernetesPostgres|KubernetesPriorityClass|KubernetesRbac|KubernetesReferenceGrant|KubernetesResourceQuota|KubernetesSecret|KubernetesSecretStore|KubernetesService|KubernetesServiceAccount|KubernetesStatefulSet|KubernetesStorageClass|KubernetesStrimziKafkaOperator|KubernetesTcpRoute|KubernetesTlsRoute|KubernetesUdpRoute|KubernetesValkey|KubernetesVelero)_Pulumi",
+      "component_count": 64
     },
     {
       "name": "Tier 1 Terraform",
       "tier": 1,
       "engine": "terraform",
-      "timeout": 2490,
-      "run_regex": "Test(KubernetesBackendTlsPolicy|KubernetesCertificate|KubernetesCertManager|KubernetesCilium|KubernetesCloudNativePgOperator|KubernetesClusterAutoscaler|KubernetesClusterIssuer|KubernetesClusterSecretStore|KubernetesConfigMap|KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesExternalDns|KubernetesExternalSecret|KubernetesExternalSecretsOperator|KubernetesGateway|KubernetesGatewayApiCrds|KubernetesGatewayClass|KubernetesGrpcRoute|KubernetesHelmRelease|KubernetesHorizontalPodAutoscaler|KubernetesHttpRoute|KubernetesIngress|KubernetesIngressNginx|KubernetesIssuer|KubernetesIstio|KubernetesJob|KubernetesKeda|KubernetesListenerSet|KubernetesManifest|KubernetesMetricsServer|KubernetesMongodb|KubernetesMysql|KubernetesNamespace|KubernetesNetworkPolicy|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesPersistentVolumeClaim|KubernetesPodDisruptionBudget|KubernetesPostgres|KubernetesPriorityClass|KubernetesRbac|KubernetesReferenceGrant|KubernetesResourceQuota|KubernetesSecret|KubernetesSecretStore|KubernetesService|KubernetesServiceAccount|KubernetesStatefulSet|KubernetesStorageClass|KubernetesTcpRoute|KubernetesTlsRoute|KubernetesUdpRoute|KubernetesValkey|KubernetesVelero)_Terraform",
-      "component_count": 55
+      "timeout": 4815,
+      "run_regex": "Test(KubernetesBackendTlsPolicy|KubernetesCertificate|KubernetesCertManager|KubernetesCilium|KubernetesCloudNativePgOperator|KubernetesClusterAutoscaler|KubernetesClusterIssuer|KubernetesClusterSecretStore|KubernetesConfigMap|KubernetesCronJob|KubernetesDaemonSet|KubernetesDeployment|KubernetesExternalDns|KubernetesExternalSecret|KubernetesExternalSecretsOperator|KubernetesGateway|KubernetesGatewayApiCrds|KubernetesGatewayClass|KubernetesGrpcRoute|KubernetesHelmRelease|KubernetesHorizontalPodAutoscaler|KubernetesHttpRoute|KubernetesIngress|KubernetesIngressNginx|KubernetesIssuer|KubernetesIstio|KubernetesJob|KubernetesKafka|KubernetesKafkaConnect|KubernetesKafkaConnector|KubernetesKafkaMirrorMaker2|KubernetesKafkaTopic|KubernetesKafkaUi|KubernetesKafkaUser|KubernetesKarapace|KubernetesKeda|KubernetesListenerSet|KubernetesManifest|KubernetesMetricsServer|KubernetesMongodb|KubernetesMysql|KubernetesNamespace|KubernetesNetworkPolicy|KubernetesPerconaMongoOperator|KubernetesPerconaMysqlOperator|KubernetesPersistentVolumeClaim|KubernetesPodDisruptionBudget|KubernetesPostgres|KubernetesPriorityClass|KubernetesRbac|KubernetesReferenceGrant|KubernetesResourceQuota|KubernetesSecret|KubernetesSecretStore|KubernetesService|KubernetesServiceAccount|KubernetesStatefulSet|KubernetesStorageClass|KubernetesStrimziKafkaOperator|KubernetesTcpRoute|KubernetesTlsRoute|KubernetesUdpRoute|KubernetesValkey|KubernetesVelero)_Terraform",
+      "component_count": 64
     },
     {
       "name": "Tier 2 Pulumi",
       "tier": 2,
       "engine": "pulumi",
-      "timeout": 90,
-      "run_regex": "Test(KubernetesArgoCD|KubernetesGrafana|KubernetesLocust|KubernetesNats|KubernetesSolrOperator)_Pulumi",
-      "component_count": 5
+      "timeout": 255,
+      "run_regex": "Test(KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesLocust|KubernetesLoki|KubernetesNeo4j|KubernetesQdrant|KubernetesSeaweedFs|KubernetesTempo)_Pulumi",
+      "component_count": 8
     },
     {
       "name": "Tier 2 Terraform",
       "tier": 2,
       "engine": "terraform",
-      "timeout": 60,
-      "run_regex": "Test(KubernetesArgoCD|KubernetesGrafana|KubernetesLocust)_Terraform",
-      "component_count": 3
+      "timeout": 255,
+      "run_regex": "Test(KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesLocust|KubernetesLoki|KubernetesNeo4j|KubernetesQdrant|KubernetesSeaweedFs|KubernetesTempo)_Terraform",
+      "component_count": 8
     },
     {
       "name": "Tier 3 Pulumi",
       "tier": 3,
       "engine": "pulumi",
-      "timeout": 75,
-      "run_regex": "Test(KubernetesClickHouse|KubernetesElasticsearch|KubernetesKafka|KubernetesSolr)_Pulumi",
-      "component_count": 4
+      "timeout": 260,
+      "run_regex": "Test(KubernetesClickHouse|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesRabbitMq|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator)_Pulumi",
+      "component_count": 7
     },
     {
       "name": "Tier 3 Terraform",
       "tier": 3,
       "engine": "terraform",
-      "timeout": 75,
-      "run_regex": "Test(KubernetesClickHouse|KubernetesElasticsearch|KubernetesKafka|KubernetesSolr)_Terraform",
-      "component_count": 4
+      "timeout": 260,
+      "run_regex": "Test(KubernetesClickHouse|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesRabbitMq|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator)_Terraform",
+      "component_count": 7
     },
     {
       "name": "Tier 4 Pulumi",
       "tier": 4,
       "engine": "pulumi",
-      "timeout": 210,
-      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesElasticOperator|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesRookCephOperator|KubernetesServiceEntry|KubernetesStrimziKafkaOperator|KubernetesTelemetry)_Pulumi",
-      "component_count": 13
+      "timeout": 215,
+      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRabbitMqOperator|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTelemetry)_Pulumi",
+      "component_count": 10
     },
     {
       "name": "Tier 4 Terraform",
       "tier": 4,
       "engine": "terraform",
-      "timeout": 210,
-      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesElasticOperator|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRequestAuthentication|KubernetesRookCephOperator|KubernetesServiceEntry|KubernetesStrimziKafkaOperator|KubernetesTelemetry)_Terraform",
-      "component_count": 13
+      "timeout": 215,
+      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesIstioBaseCrds|KubernetesPeerAuthentication|KubernetesRabbitMqOperator|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTelemetry)_Terraform",
+      "component_count": 10
     }
   ]
 }

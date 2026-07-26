@@ -33,6 +33,27 @@ unscoped declaration of the same placeholder. The offline conformance guard
 rejects a scope that names no real module resource (a typo'd scope would
 otherwise silently fall back and import the wrong resource).
 
+A module that applies a MULTI-GVK manifest bundle through one `for_each`
+resource (a release-manifest operator install) keys its instances by each
+document's own composed identity — `apiVersion//kind//name[//namespace]` —
+and derives every composed-ID placeholder from a segment of the key itself
+via `from_address_key_segment` (0-based, `//`-delimited; an index past the
+key's segment count resolves empty, so the namespace group drops for
+cluster-scoped documents). Per-document literals cannot serve there: the
+bundle spans many apiVersion/kind pairs. Single-GVK typed-CR modules keep
+their literal declarations — the segment arm exists for the bundle class.
+
+An import ID that IS secret material — the canonical case is a
+`random_password` resource, whose provider import ID is the password value
+itself — derives through `from_cluster_secret_key`: the module materialized
+the value into a convention-named Kubernetes Secret
+(`<metadata.name><name_suffix>`, the `from_metadata_name_suffix` naming
+convention), and a cluster-connected resolving context reads the declared
+key from it — exactly the recipe the row's `where_to_find` gives a human.
+Contexts without cluster credentials leave the value unresolved and fall
+back to asking. The resolved value feeds the import operation and is never
+logged or persisted.
+
 Both are proto-backed KRM documents (`iac.planton.dev/v1`, protos under
 `apis/dev/planton/iac/`), parsed through `pkg/protobufyaml` like the E2E
 profiles.
@@ -150,6 +171,14 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kubernetesvelero` | 2026-07-23, both scenarios (Helm release + created namespace; behavioral re-imports alongside the live MinIO fixture) | `helm_release` install-time attributes (config-only, see the catalog row) |
 | `kubernetescloudnativepgoperator` | 2026-07-23, both scenarios (two tofu_resource_name-scoped Helm releases — operator + Barman Cloud plugin — plus the created namespace; the plugin scenario re-imports alongside the live cert-manager fixture) | `helm_release` install-time attributes (config-only, see the catalog row) |
 | `kubernetespostgres` | 2026-07-23, all three scenarios (composed 4-part IDs for the Cluster / ObjectStore / ScheduledBackup CRs, for_each Secrets via from_address_key, count-indexed singleton Secrets via scoped from_metadata_name_suffix — the with-backup lane's 10-resource blind re-import is the largest kubectl_manifest family proven to date) | `kubectl_manifest` provider-side knobs (config-only, see the catalog row) |
+| `kubernetesstrimzikafkaoperator` | 2026-07-23, both scenarios (Helm release + created namespace; tuned-full re-imports alongside its watched-namespace fixtures) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kuberneteskafka` | 2026-07-23, all three scenarios (two tofu_resource_name-scoped kubectl_manifest families — the Kafka CR singleton and the pool-name-keyed KafkaNodePool for_each — plus the count-indexed metrics ConfigMap via scoped from_metadata_name_suffix and the created namespace; the durability lane re-imports a live 3-node cluster) | `kubectl_manifest` provider-side knobs (config-only, see the catalog row) |
+| `kuberneteskafkatopic` | 2026-07-23, both scenarios (4-part namespaced composed ID; the scenarios resolve the kafka_cluster FK against a live fixture cluster) | same `kubectl_manifest` tolerances |
+| `kuberneteskafkauser` | 2026-07-23, both scenarios (4-part namespaced composed ID; behavioral-auth re-imports alongside the operator-generated credentials Secret, which is deliberately outside the module's state) | same `kubectl_manifest` tolerances |
+| `kuberneteskubeprometheusstack` | 2026-07-25, all three scenarios (Helm release + created namespace; the alerting lane re-imports with the operator-reconciled StatefulSets live) | `helm_release` install-time attributes (config-only, see the catalog row); the count-indexed `<name>-remote-write-auth` Secret is not composed by any scenario (none declares remote-write basic auth), offline-validated only |
+| `kubernetesgrafana` | 2026-07-25, all three scenarios (Helm release + created namespace; behavioral-persistence re-imports alongside the live PVC-backed dashboard) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetesloki` | 2026-07-25, all three scenarios (Helm release + created namespace; full-surface re-imports with the gateway auth-guarded in multi-tenant mode) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetestempo` | 2026-07-25, all three scenarios (Helm release + created namespace) | `helm_release` install-time attributes (config-only, see the catalog row) |
 
 Kinds where an import map is **deliberately not applicable** (recorded so
 absence is never mistaken for an oversight):

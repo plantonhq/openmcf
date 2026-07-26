@@ -3017,20 +3017,49 @@ enum CloudResourceKind {
     id_prefix: "k8svel"
   }];
   // 870–889: Kubernetes observability
-  KubernetesPrometheus = 870 [(kind_meta) = {
+  KubernetesKubePrometheusStack = 870 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8sprom"
+    id_prefix: "k8skps"
   }];
   KubernetesGrafana = 871 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgfn"
   }];
+  // KubernetesClickHouse is a prerequisite because SigNoz stores every
+  // trace, metric and log in ClickHouse and deploys none of its own —
+  // the telemetry store is composed, never bundled.
   KubernetesSignoz = 872 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8ssgz"
+    prerequisites: [KubernetesClickHouse]
+  }];
+  KubernetesLoki = 873 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sloki"
+  }];
+  KubernetesTempo = 874 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8stempo"
+  }];
+  // The operator's admission webhooks (failurePolicy Fail) are served
+  // with a cert-manager Certificate in the default posture —
+  // cert-manager must be running before the operator installs.
+  KubernetesOtelOperator = 875 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sotelop"
+    prerequisites: [KubernetesCertManager]
+  }];
+  KubernetesOtelCollector = 876 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sotelcol"
+    prerequisites: [KubernetesOtelOperator]
   }];
   // 890–899: Kubernetes security, policy, and identity
   KubernetesKeycloak = 890 [(kind_meta) = {
@@ -3098,53 +3127,109 @@ enum CloudResourceKind {
     id_prefix: "k8skaf"
     prerequisites: [KubernetesStrimziKafkaOperator]
   }];
-  KubernetesElasticOperator = 909 [(kind_meta) = {
+  KubernetesKafkaTopic = 909 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8selaop"
+    id_prefix: "k8skaftop"
+    prerequisites: [KubernetesKafka]
   }];
-  KubernetesElasticsearch = 910 [(kind_meta) = {
+  KubernetesKafkaUser = 910 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8ses"
-    prerequisites: [KubernetesElasticOperator]
+    id_prefix: "k8skafusr"
+    prerequisites: [KubernetesKafka]
   }];
-  KubernetesAltinityOperator = 911 [(kind_meta) = {
+  KubernetesKafkaConnect = 911 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skafcon"
+    prerequisites: [KubernetesKafka]
+  }];
+  KubernetesKafkaConnector = 912 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skafcnr"
+    prerequisites: [KubernetesKafkaConnect]
+  }];
+  KubernetesKafkaMirrorMaker2 = 913 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skafmm2"
+    prerequisites: [KubernetesKafka]
+  }];
+  KubernetesKarapace = 914 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skrpc"
+    prerequisites: [KubernetesKafka]
+  }];
+  KubernetesKafkaUi = 915 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skafui"
+  }];
+  KubernetesOpenSearchOperator = 916 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sosop"
+  }];
+  KubernetesOpenSearch = 917 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sos"
+    prerequisites: [KubernetesOpenSearchOperator]
+  }];
+  KubernetesAltinityOperator = 918 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8saltop"
   }];
-  KubernetesClickHouse = 912 [(kind_meta) = {
+  KubernetesClickHouse = 919 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sclkhs"
     prerequisites: [KubernetesAltinityOperator]
   }];
-  KubernetesSolrOperator = 913 [(kind_meta) = {
+  KubernetesSolrOperator = 920 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sslrop"
   }];
-  KubernetesSolr = 914 [(kind_meta) = {
+  KubernetesSolr = 921 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8ssolr"
     prerequisites: [KubernetesSolrOperator]
   }];
-  KubernetesNeo4j = 915 [(kind_meta) = {
+  KubernetesNeo4j = 922 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sneo"
   }];
-  KubernetesRookCephOperator = 916 [(kind_meta) = {
+  KubernetesSeaweedFs = 923 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8srookop"
+    id_prefix: "k8sswfs"
   }];
-  KubernetesRookCephCluster = 917 [(kind_meta) = {
+  KubernetesQdrant = 924 [(kind_meta) = {
     provider: kubernetes
     version: v1
-    id_prefix: "k8srookcl"
+    id_prefix: "k8sqdrt"
+  }];
+  // The RabbitMQ Cluster Operator's release manifest ships admission
+  // webhooks whose serving certificate is a cert-manager Certificate —
+  // cert-manager must be running before the operator installs.
+  KubernetesRabbitMqOperator = 925 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srmqop"
+    prerequisites: [KubernetesCertManager]
+  }];
+  KubernetesRabbitMq = 926 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8srmq"
+    prerequisites: [KubernetesRabbitMqOperator]
   }];
   // 950–969: Kubernetes GitOps and CI/CD
   KubernetesArgocd = 950 [(kind_meta) = {
@@ -3152,41 +3237,59 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8sargo"
   }];
-  KubernetesTektonOperator = 951 [(kind_meta) = {
+  KubernetesArgoWorkflows = 951 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sargowf"
+  }];
+  KubernetesTektonOperator = 952 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stktnop"
   }];
-  KubernetesTekton = 952 [(kind_meta) = {
+  // KubernetesTektonOperator is a prerequisite because this kind declares
+  // the TektonConfig custom resource that only the operator's CRDs admit
+  // and only the operator reconciles into running components.
+  KubernetesTekton = 953 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stktn"
+    prerequisites: [KubernetesTektonOperator]
   }];
-  KubernetesGhaRunnerScaleSetController = 953 [(kind_meta) = {
+  KubernetesGhaRunnerScaleSetController = 954 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgharsc"
   }];
-  KubernetesGhaRunnerScaleSet = 954 [(kind_meta) = {
+  // KubernetesGhaRunnerScaleSetController is a prerequisite because this
+  // kind renders an AutoscalingRunnerSet custom resource that only the
+  // controller's CRDs admit and only the controller reconciles into
+  // listener and runner pods.
+  KubernetesGhaRunnerScaleSet = 955 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sgharss"
+    prerequisites: [KubernetesGhaRunnerScaleSetController]
   }];
-  KubernetesHarbor = 955 [(kind_meta) = {
+  KubernetesHarbor = 956 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8shrbr"
   }];
-  KubernetesJenkins = 956 [(kind_meta) = {
+  KubernetesJenkins = 957 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sjkn"
   }];
   // 970–989: Kubernetes app platforms
+  // KubernetesPostgres is a prerequisite because the recommended (and
+  // E2E-proven) database composition backs Temporal's default and
+  // visibility stores with a CloudNativePG cluster.
   KubernetesTemporal = 970 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stprl"
+    prerequisites: [KubernetesPostgres]
   }];
   KubernetesNats = 971 [(kind_meta) = {
     provider: kubernetes

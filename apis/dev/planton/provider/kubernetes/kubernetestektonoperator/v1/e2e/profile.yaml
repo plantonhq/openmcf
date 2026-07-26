@@ -4,10 +4,13 @@ metadata:
   name: kubernetestektonoperator
 spec:
   tier: 4
-  status: deferred
-  deferred_reason: "Server-Side Apply field manager conflict on kind"
-  validated_provisioners:
-    - pulumi
-  limitations:
-    - "Operator auto-creates TektonConfig; Pulumi SSA conflict"
+  # Rebuilt on the official tektoncd/operator release manifest v0.80.0
+  # (auto-install of the default TektonConfig disabled — the
+  # KubernetesTekton declaration owns the cluster's configuration) and
+  # offline-validated (spec tests, both engines' plan/preview proofs);
+  # the live lanes have not run yet — they prove the operator + webhook
+  # rollouts, the CRDs established, and the design invariant that NO
+  # TektonConfig exists after install. Destroy removes everything
+  # INCLUDING the CRDs (the manifest-bundle posture).
+  status: pending_proof
   timeout_minutes: 15

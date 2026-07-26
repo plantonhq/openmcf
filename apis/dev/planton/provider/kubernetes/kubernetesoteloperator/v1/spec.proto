@@ -1,0 +1,248 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesoteloperator.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesOtelOperatorSpec** deploys the OpenTelemetry Operator —
+ * the controller that turns OpenTelemetryCollector declarations into
+ * running collector fleets — from the official `opentelemetry-operator`
+ * Helm chart
+ * (https://open-telemetry.github.io/opentelemetry-helm-charts).
+ *
+ * GRAIN: one operator per cluster. It watches every namespace and
+ * reconciles the KubernetesOtelCollector kind's CRs (and, unmodeled
+ * here, Instrumentation/OpAMPBridge/TargetAllocator CRs authored
+ * directly).
+ *
+ * CRD LIFECYCLE: the chart templates its five opentelemetry.io CRDs as
+ * release-owned objects — a Helm uninstall would cascade-delete every
+ * collector in the cluster. This component instead OWNS the CRD
+ * lifecycle: the modules apply the chart's pinned CRD bundle outside
+ * the release (create/update only, retained on destroy), so removing
+ * the operator never deletes the fleet's declarations. Chart-version
+ * bumps upgrade the CRDs with the release.
+ *
+ * WEBHOOK CERTIFICATE: the operator's admission webhooks (they default
+ * and validate collector CRs, failurePolicy Fail) need a serving
+ * certificate. The default arm has cert-manager issue and rotate it —
+ * which makes KubernetesCertManager a prerequisite of the default
+ * posture. The `auto_generate` arm needs no cert-manager (Helm
+ * generates the cert at install) — for clusters that will never run
+ * cert-manager.
+ *
+ * NAMING: keep the resource name at 30 characters or fewer — the chart
+ * derives a `<name>-controller-manager-service-cert` Secret and
+ * truncates composed names at 63 characters; the modules pin the
+ * chart's fullname to the resource name and fail loudly over the
+ * budget.
+ *
+ * The typed fields cover the chart's meaningful surface; `helm_values`
+ * remains the escape hatch (merged last, Helm `-f` semantics, identical
+ * on both engines) — kube-rbac-proxy tuning, network policy, PDB — a
+ * safety valve, never the primary interface.
+ */
+message KubernetesOtelOperatorSpec {
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "0.120.0" — chart 0.120.0
+   * pairs with operator v0.156.0). Versions must exist as SERVED charts
+   * in the repository index
+   * (https://open-telemetry.github.io/opentelemetry-helm-charts).
+   * Bumping the chart version upgrades the module-owned CRDs with it.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "0.120.0"];
+
+  /**
+   * Skip installing the opentelemetry.io CRDs. Set ONLY when the CRDs
+   * are owned elsewhere (a GitOps-managed CRD bundle). With the CRDs
+   * absent the operator cannot start — this is a bring-your-own-CRDs
+   * arm, not a lighter install.
+   */
+  bool skip_crds = 4;
+
+  /**
+   * How the admission webhooks' serving certificate is issued. Empty =
+   * cert-manager (the chart's own default posture — requires
+   * KubernetesCertManager on the cluster).
+   */
+  KubernetesOtelOperatorWebhook webhook = 5;
+
+  /**
+   * Default collector image the operator injects into
+   * OpenTelemetryCollector CRs that declare none. Empty = the
+   * operator's compiled-in default
+   * (ghcr.io/open-telemetry/opentelemetry-collector-releases/
+   * opentelemetry-collector-k8s at the operator's paired version).
+   * Override for air-gapped registries or a different collector
+   * distribution fleet-wide.
+   */
+  string default_collector_image = 6;
+
+  /**
+   * Number of operator replicas. 2 gives a warm standby (leader
+   * election picks one active reconciler).
+   */
+  optional int32 replicas = 7 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * CPU and memory for the operator container. Empty = the chart
+   * defaults.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 8;
+
+  /**
+   * Render a ServiceMonitor for Prometheus discovery of the operator's
+   * own metrics. Requires the monitoring.coreos.com CRDs on the
+   * cluster (deploy KubernetesKubePrometheusStack first).
+   */
+  bool service_monitor_enabled = 9;
+
+  /**
+   * Registry that replaces the registry part of every image this
+   * component pulls (the operator manager, and the CRD-bundle apply
+   * path) — the air-gap/private-mirror path. Empty = each image's
+   * upstream registry (ghcr.io).
+   */
+  string image_registry = 10;
+
+  /**
+   * Names of existing image-pull Secrets applied to the operator pods.
+   * The Secrets must already exist in the namespace.
+   */
+  repeated string image_pull_secrets = 11 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing image-pull Secrets (references), not secret material"];
+
+  /**
+   * Scheduling for the operator pods.
+   */
+  KubernetesOtelOperatorScheduling scheduling = 12;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (kube-rbac-proxy, network policy, PDB, feature gates) —
+   * never the substitute for them.
+   */
+  string helm_values = 13;
+}
+
+/**
+ * Admission-webhook certificate posture.
+ */
+message KubernetesOtelOperatorWebhook {
+  oneof cert {
+    /**
+     * cert-manager issues and rotates the webhook certificate (the
+     * chart's default). Requires KubernetesCertManager on the cluster.
+     */
+    KubernetesOtelOperatorWebhookCertManager cert_manager = 1;
+
+    /**
+     * Helm generates a self-signed certificate at install — no
+     * cert-manager dependency.
+     */
+    KubernetesOtelOperatorWebhookAutoGenerate auto_generate = 2;
+  }
+}
+
+/**
+ * cert-manager-issued webhook certificate.
+ */
+message KubernetesOtelOperatorWebhookCertManager {
+  /**
+   * Issuer to sign the webhook certificate. Empty = the chart creates
+   * its own self-signed Issuer (the default — right for almost
+   * everyone; the webhook cert only needs to be trusted by the API
+   * server, which cert-manager's CA injection handles).
+   */
+  KubernetesOtelOperatorIssuerRef issuer_ref = 1;
+}
+
+/**
+ * A cert-manager issuer reference.
+ */
+message KubernetesOtelOperatorIssuerRef {
+  /**
+   * Issuer kind: "Issuer" or "ClusterIssuer".
+   */
+  string kind = 1 [(buf.validate.field).string = {
+    in: [
+      "Issuer",
+      "ClusterIssuer"
+    ]
+  }];
+
+  /**
+   * Issuer name.
+   */
+  string name = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * Helm-generated self-signed webhook certificate.
+ */
+message KubernetesOtelOperatorWebhookAutoGenerate {
+  /**
+   * Regenerate the certificate on every helm upgrade. Default false —
+   * this component deliberately diverges from the chart's
+   * regenerate-by-default so upgrades never churn the webhook trust
+   * chain; the certificate is valid for `cert_period_days` and a
+   * deliberate regeneration is an upgrade with this flag flipped.
+   */
+  bool recreate_on_upgrade = 1;
+
+  /**
+   * Certificate validity in days. Empty = 365. Plan the regeneration
+   * upgrade before it expires — an expired webhook cert blocks every
+   * collector-CR write.
+   */
+  optional int32 cert_period_days = 2 [
+    (dev.planton.shared.options.default) = "365",
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+/**
+ * Pod scheduling for the operator pods.
+ */
+message KubernetesOtelOperatorScheduling {
+  /**
+   * Node selector for the operator pods.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for the operator pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+
+  /**
+   * Priority class name for the operator pods.
+   */
+  string priority_class_name = 3;
+}

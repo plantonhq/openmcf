@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-clickhouse
+runtime: go
+description: ClickHouse installation reconciled by the Altinity operator — shards-by-replicas topology, managed or external Keeper/ZooKeeper coordination, Secret-only user credentials with profiles/quotas/grants, server settings and configuration files, and PVC-backed data/log storage

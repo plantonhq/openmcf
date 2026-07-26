@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-aws-module-test
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-argocd
+runtime: go
+description: Argo CD installation from the official Helm chart with application-owned initial admin credentials, secret-safe SSO indirection, a three-arm Redis cache, public repository registration, and kept-by-default CRDs

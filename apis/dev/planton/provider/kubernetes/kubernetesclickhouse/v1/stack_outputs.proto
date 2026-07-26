@@ -2,40 +2,45 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesclickhouse.v1;
 
-import "dev/planton/provider/kubernetes/kubernetes.proto";
-
-// KubernetesClickHouseStackOutputs captures observable outputs from a ClickHouse deployment on Kubernetes.
+//kubernetes-click-house stack outputs
 message KubernetesClickHouseStackOutputs {
-  // namespace specifies the Kubernetes namespace in which the ClickHouse cluster is created.
+  //namespace the cluster runs in.
   string namespace = 1;
 
-  // kubernetes service name for click-house-kubernetes.
-  // ex: main-click-house-kubernetes
-  // in the above example, "main" is the name of the click-house-kubernetes
-  string service = 2;
+  //name of the ClickHouseInstallation resource (= metadata.name).
+  string chi_name = 2;
 
-  // command to setup port-forwarding to open click-house-kubernetes from developers laptop.
-  // this might come handy when click-house-kubernetes ingress is disabled for security reasons.
-  // this is rendered by combining click-house-kubernetes kubernetes service and namespace.
-  // ex: kubectl port-forward svc/click-house-kubernetes -n kubernetes_namespace 8123:8123
-  // running the command from this attribute makes it possible to access click-house-kubernetes using http://localhost:8123
-  string port_forward_command = 3;
+  //logical ClickHouse cluster name (the `ON CLUSTER` / remote_servers
+  //target), e.g. main.
+  string cluster_name = 3;
 
-  // kubernetes endpoint to connect to click-house-kubernetes from within the cluster.
-  // ex: main-click-house-kubernetes.namespace.svc.cluster.local:8123
-  string kube_endpoint = 4;
+  //name of the cluster-wide client Service covering all hosts
+  //(operator naming contract: clickhouse-<name>).
+  string service_name = 4;
 
-  // public endpoint to access click-house-kubernetes from clients outside kubernetes.
-  // ex: https://chk8s-planton-pcs-dev-main.data.dev.planton.live:8123
-  string external_hostname = 5;
+  //in-cluster native-protocol endpoint (clickhouse-client, drivers),
+  //e.g. clickhouse-analytics.data.svc.cluster.local:9000
+  string tcp_endpoint = 5;
 
-  // internal endpoint to access click-house-kubernetes from clients inside kubernetes.
-  // ex: https://chk8s-planton-pcs-dev-main.data-internal.dev.planton.live:8123
-  string internal_hostname = 6;
+  //in-cluster HTTP interface endpoint (curl, JDBC/ODBC over HTTP),
+  //e.g. http://clickhouse-analytics.data.svc.cluster.local:8123
+  string http_endpoint = 6;
 
-  // clickhouse username
-  string username = 7;
+  //name of the module-managed Secret holding the provisioned users'
+  //passwords (one key per user name), e.g. <name>-clickhouse-auth.
+  //Empty when no users are declared.
+  string auth_secret_name = 7;
 
-  // kubernetes secret key for the password.
-  dev.planton.provider.kubernetes.KubernetesSecretKey password_secret = 8;
+  //name of the managed ClickHouseKeeperInstallation resource,
+  //e.g. <name>-keeper. Empty when coordination is external or none.
+  string keeper_name = 8;
+
+  //name of the managed Keeper's client Service (operator naming
+  //contract: keeper-<keeper_name>). Empty when coordination is
+  //external or none.
+  string keeper_service_name = 9;
+
+  //command to port-forward the HTTP interface to a developer laptop,
+  //e.g. kubectl port-forward svc/clickhouse-analytics -n data 8123:8123
+  string port_forward_command = 10;
 }

@@ -1,4 +1,12 @@
+# Stack outputs — flattened onto KubernetesStrimziKafkaOperatorStackOutputs
+# by the platform. Keep in lockstep with the Pulumi module's exports.
+
 output "namespace" {
-  description = "The Kubernetes namespace where the Strimzi Kafka Operator is deployed."
+  description = "Kubernetes namespace the operator was installed into"
   value       = local.namespace
+}
+
+output "release_name" {
+  description = "Helm release name of the operator (metadata.name)"
+  value       = local.release_name
 }

@@ -1,0 +1,56 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetessolroperator
+spec:
+  # The module renders one Helm release NAMED AFTER metadata.name, the
+  # module-owned CRD set (three solr.apache.org CRDs plus the bundled
+  # zookeeper-operator's ZookeeperCluster CRD; kubectl_manifest for_each
+  # keyed by each CRD's OWN name — cluster-scoped, 3-part composed IDs),
+  # and the optional anchor namespace.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally
+        "solr-operator-system".
+    # ── the module-owned CRDs (for_each resource "solr_operator_crds") ──
+    - name: api_version
+      tofu_resource_name: solr_operator_crds
+      derivations:
+        - literal: apiextensions.k8s.io/v1
+      where_to_find: Always "apiextensions.k8s.io/v1" — the CRD group/version.
+    - name: kind
+      tofu_resource_name: solr_operator_crds
+      derivations:
+        - literal: CustomResourceDefinition
+      where_to_find: Always "CustomResourceDefinition".
+    - name: name
+      tofu_resource_name: solr_operator_crds
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        Each CRD's metadata.name (the for_each key) — `kubectl get crd |
+        grep -e solr.apache.org -e zookeeper.pravega.io` (NAME column).
+    - name: namespace
+      where_to_find: >-
+        Not applicable — CustomResourceDefinitions are cluster-scoped,
+        so the composed import ID has no namespace segment (the
+        optional [//{namespace}] group drops).
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

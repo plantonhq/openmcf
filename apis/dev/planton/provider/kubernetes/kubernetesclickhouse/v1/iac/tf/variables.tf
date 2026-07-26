@@ -1,85 +1,127 @@
+# Typed mirror of KubernetesClickHouseSpec (spec.proto). The spec arrives
+# from the proto->tfvars converter in snake_case with every StringValueOrRef
+# foreign key -- `namespace` (KubernetesNamespace), `storage_class` and the
+# managed-Keeper `coordination.keeper.storage_class`
+# (KubernetesStorageClass), each user's `password` -- resolved to a literal
+# string before Terraform runs. Enum fields arrive as the proto enum value
+# names (e.g. "managed_keeper", "external_zookeeper").
+#
+# optional() defaults mirror the proto's (dev.planton.shared.options.default)
+# annotations, so the module renders the same resource whether or not the
+# platform's defaulting middleware ran.
+
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
-
 variable "spec" {
-  description = "ClickHouse cluster specification"
+  description = "KubernetesClickHouse specification"
   type = object({
-    # Kubernetes namespace to install ClickHouse
-    namespace = string
-
-    # Flag to indicate if the namespace should be created
+    namespace        = string
     create_namespace = optional(bool, false)
+    version          = string
 
-    # The name of the ClickHouse cluster (used for ClickHouseInstallation resource name)
-    # Defaults to metadata.name if not specified
-    cluster_name = optional(string)
-
-    # The ClickHouse version to deploy (e.g., "24.8")
-    # If not specified, defaults to a recent stable version
-    version = optional(string)
-
-    # The container specifications for the ClickHouse deployment.
-    container = object({
-
-      # The number of ClickHouse pods to deploy (for standalone mode).
-      # Ignored if clustering is enabled (uses shard_count * replica_count instead)
-      replicas = number
-
-      # The CPU and memory resources allocated to each ClickHouse container.
-      resources = object({
-
-        # The resource limits for the container.
-        limits = object({
-          cpu    = string
-          memory = string
-        })
-
-        # The resource requests for the container.
-        requests = object({
-          cpu    = string
-          memory = string
-        })
-      })
-
-      # A flag to enable or disable data persistence for ClickHouse.
-      # When enabled, data is persisted to a storage volume.
-      persistence_enabled = bool
-
-      # The size of the persistent volume attached to each ClickHouse pod (e.g., "50Gi").
-      disk_size = string
-    })
-
-    # The ingress configuration for the ClickHouse deployment.
-    ingress = optional(object({
-      is_enabled = bool
-      dns_domain = string
+    image = optional(object({
+      repo             = optional(string, "")
+      tag              = optional(string, "")
+      pull_secret_name = optional(string, "")
     }))
 
-    # The cluster configuration for ClickHouse sharding and replication.
-    cluster = optional(object({
-      is_enabled    = bool
-      shard_count   = number
-      replica_count = number
+    cluster_name = optional(string, "main")
+    shards       = optional(number, 1)
+    replicas     = optional(number, 1)
+
+    resources = optional(object({
+      limits = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+      requests = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
     }))
 
-    # ZooKeeper configuration for cluster coordination (optional)
-    # If not specified, the operator automatically manages ZooKeeper for clustered deployments
-    zookeeper = optional(object({
-      # Flag to use external ZooKeeper instead of operator-managed
-      use_external = bool
-      # List of external ZooKeeper nodes in format "host:port"
-      nodes = optional(list(string))
+    disk_size                = string
+    storage_class            = optional(string, "")
+    log_disk_size            = optional(string, "")
+    retain_volumes_on_delete = optional(bool, false)
+
+    coordination = optional(object({
+      type = optional(string, "")
+      keeper = optional(object({
+        replicas = optional(number, 3)
+        resources = optional(object({
+          limits = optional(object({
+            cpu    = optional(string, "")
+            memory = optional(string, "")
+          }))
+          requests = optional(object({
+            cpu    = optional(string, "")
+            memory = optional(string, "")
+          }))
+        }))
+        disk_size     = optional(string, "10Gi")
+        storage_class = optional(string, "")
+      }))
+      external = optional(object({
+        nodes = optional(list(object({
+          host = string
+          port = optional(number, 2181)
+        })), [])
+        root     = optional(string, "")
+        identity = optional(string, "")
+      }))
     }))
+
+    users = optional(list(object({
+      name              = string
+      password          = string
+      profile           = optional(string, "")
+      quota             = optional(string, "")
+      networks          = optional(list(string), [])
+      grants            = optional(list(string), [])
+      access_management = optional(bool, false)
+      settings          = optional(map(string), {})
+    })), [])
+
+    profiles = optional(list(object({
+      name     = string
+      settings = optional(map(string), {})
+    })), [])
+
+    quotas = optional(list(object({
+      name     = string
+      settings = optional(map(string), {})
+    })), [])
+
+    settings = optional(map(string), {})
+    files    = optional(map(string), {})
+
+    auto_inter_node_secret       = optional(bool, true)
+    spread_replicas_across_nodes = optional(bool, false)
+    pdb_max_unavailable          = optional(number, 1)
+
+    node_selector = optional(map(string), {})
+    tolerations = optional(list(object({
+      key                = optional(string, "")
+      operator           = optional(string, "")
+      value              = optional(string, "")
+      effect             = optional(string, "")
+      toleration_seconds = optional(number)
+    })), [])
+
+    service_annotations = optional(map(string), {})
+    stopped             = optional(bool, false)
+    image_pull_secrets  = optional(list(string), [])
   })
 }

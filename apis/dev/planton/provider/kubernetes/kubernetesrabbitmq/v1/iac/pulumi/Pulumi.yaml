@@ -1,0 +1,3 @@
+name: kubernetes-rabbitmq
+runtime: go
+description: RabbitMQ cluster reconciled by the RabbitMQ Cluster Operator — quorum-ready topology, persistent storage, certificate-Secret TLS seam, plugin and rabbitmq.conf configuration layers, and operator-generated admin credentials

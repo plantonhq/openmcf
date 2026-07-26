@@ -1,5 +1,3 @@
-// Package main provides the Pulumi program entrypoint for Kubernetes ArgoCD deployment.
-// Binary releases are gzip-compressed to reduce download size.
 package main
 
 import (

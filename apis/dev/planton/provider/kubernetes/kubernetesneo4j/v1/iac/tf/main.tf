@@ -1,12 +1,20 @@
-##############################################
-# main.tf
+# KubernetesNeo4j Terraform module.
 #
-# Deploys Neo4j Community Edition on Kubernetes
-# using the official Neo4j Helm chart.
-##############################################
+# Installs Neo4j from the official Helm chart as a real Helm release. The
+# typed spec renders into chart values (locals.helm_values); a declared
+# admin password materializes as the "<name>-auth" Kubernetes Secret the
+# chart consumes via neo4j.passwordFromSecret; the helm_values escape hatch
+# is passed as a SECOND values document, which the provider merges over the
+# first with Helm -f semantics — the exact semantic twin of the Pulumi
+# module's buildHelmValues + mergeMaps.
+#
+# ORDERING IS LOAD-BEARING: the chart looks the passwordFromSecret Secret up
+# AT TEMPLATE TIME and fails the install when it is missing, so the auth
+# Secret is an explicit dependency of the release — it exists first, always.
 
-# Conditionally create namespace for Neo4j deployment
-resource "kubernetes_namespace_v1" "neo4j_namespace" {
+# The optional installation namespace. Created before the release; deleted
+# with the resource.
+resource "kubernetes_namespace_v1" "neo4j" {
   count = var.spec.create_namespace ? 1 : 0
 
   metadata {
@@ -15,67 +23,58 @@ resource "kubernetes_namespace_v1" "neo4j_namespace" {
   }
 }
 
-# Deploy Neo4j using Helm chart
+# The declared admin password, materialized as an Opaque Secret with the
+# chart's contract: ONE key, NEO4J_AUTH, whose value is "neo4j/<password>".
+# Because neo4j.passwordFromSecret points here, the chart renders no auth
+# Secret of its own — this Secret is the only place the credential lands,
+# and it never transits chart values. Created only for the password arm
+# (the existing_secret arm references a Secret the user owns).
+resource "kubernetes_secret_v1" "auth" {
+  count = local.create_auth_secret ? 1 : 0
+
+  metadata {
+    name      = local.auth_secret_name
+    namespace = local.namespace
+    labels    = local.labels
+  }
+
+  type = "Opaque"
+
+  data = {
+    NEO4J_AUTH = sensitive("neo4j/${local.auth_password}")
+  }
+
+  depends_on = [kubernetes_namespace_v1.neo4j]
+}
+
 resource "helm_release" "neo4j" {
-  name       = var.metadata.name
-  repository = local.neo4j_helm_chart_repo
-  chart      = local.neo4j_helm_chart_name
-  version    = local.neo4j_helm_chart_version
+  name       = local.release_name
+  repository = local.helm_chart_repo
+  chart      = local.helm_chart_name
+  version    = local.chart_version
   namespace  = local.namespace
 
+  # The module owns namespace creation (create_namespace flag).
+  create_namespace = false
+
+  # Wait for the server to become Ready — a database that never starts (bad
+  # image, unschedulable pod, unbindable volume, a JVM that OOMs on boot)
+  # should fail THIS apply, not the first driver connection. Neo4j
+  # recovers/upgrades store files on startup, so the budget is generous.
+  wait            = true
+  atomic          = true
+  cleanup_on_fail = true
+  timeout         = 600
+
+  # Two documents, merged in order by the provider (helm -f semantics):
+  # the typed rendering first, the user's escape hatch last.
   values = [
-    yamlencode({
-      neo4j = {
-        name = var.metadata.name
-
-        # Let the chart create its own secret and password
-        # The chart will create a secret named "<release>-auth" with key "neo4j-password"
-
-        # Resource limits
-        resources = {
-          cpu    = var.spec.container.resources.limits.cpu
-          memory = var.spec.container.resources.limits.memory
-        }
-
-        # Accept Neo4j Community Edition license
-        acceptLicenseAgreement = "yes"
-      }
-
-      # External service configuration for ingress
-      externalService = {
-        enabled = local.ingress_enabled
-        type    = local.ingress_enabled ? "LoadBalancer" : ""
-        annotations = local.ingress_enabled && local.ingress_external_hostname != "" ? {
-          "external-dns.alpha.kubernetes.io/hostname" = local.ingress_external_hostname
-        } : {}
-      }
-
-      # Persistent storage configuration
-      volumes = {
-        data = {
-          mode = "defaultStorageClass"
-          size = var.spec.container.disk_size
-        }
-      }
-
-      # Neo4j configuration overrides (neo4j.conf)
-      config = merge(
-        {},
-        local.heap_max != "" ? {
-          "server.memory.heap.initial_size" = local.heap_max
-        } : {},
-        local.page_cache != "" ? {
-          "server.memory.pagecache.size" = local.page_cache
-        } : {}
-      )
-
-      # Pod labels
-      podLabels = local.labels
-    })
+    yamlencode(local.helm_values),
+    try(var.spec.helm_values, ""),
   ]
 
   depends_on = [
-    kubernetes_namespace_v1.neo4j_namespace
+    kubernetes_namespace_v1.neo4j,
+    kubernetes_secret_v1.auth,
   ]
 }
-

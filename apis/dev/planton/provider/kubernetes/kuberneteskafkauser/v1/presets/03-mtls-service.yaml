@@ -1,0 +1,42 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafkaUser
+metadata:
+  name: payment-service
+spec:
+  namespace:
+    value: kafka # MUST be the Kafka cluster's own namespace
+  kafkaCluster:
+    value: my-kafka # the KubernetesKafka resource's metadata.name
+  authentication:
+    # The user operator issues a client certificate from the cluster's
+    # clients CA into a Secret named after the user: user.crt/user.key
+    # (PEM) plus user.p12/user.password (PKCS #12). Must match a
+    # tls-auth listener; the principal is CN=payment-service.
+    type: tls
+  authorization:
+    # Enforced only when the cluster runs simple authorization.
+    acls:
+      # Producer half: publishes payment events.
+      - resource:
+          type: topic
+          name: payment-events
+        operations:
+          - Write
+          - Describe
+      # Consumer half: reads orders under its own group.
+      - resource:
+          type: topic
+          name: order-events
+        operations:
+          - Read
+          - Describe
+      - resource:
+          type: group
+          name: payment-service
+        operations:
+          - Read
+  quotas:
+    # Broker-enforced caps so one service cannot starve the cluster.
+    producerByteRate: 1048576 # 1 MiB/s produce ceiling
+    consumerByteRate: 2097152 # 2 MiB/s fetch ceiling
+    requestPercentage: 55 # share of broker request-handler time

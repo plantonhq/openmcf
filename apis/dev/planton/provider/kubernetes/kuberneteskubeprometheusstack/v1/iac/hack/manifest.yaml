@@ -1,0 +1,175 @@
+# Full-surface offline-proof manifest: exercises an HA Prometheus pair with
+# retention/size trimming and a tuned PVC, external labels, all four
+# remote-write auth arms (basic auth with the module-materialized username
+# Secret, bearer token, keyless SigV4 with a role, Azure managed identity),
+# the raw scrape-config seam, a 3-replica Alertmanager with a routed config,
+# the bundled Grafana with an existing admin Secret and persistence,
+# operator sizing with cert-manager-issued webhook certificates, exporter
+# sizing, the managed-cloud scraper posture with its matching rule-group
+# disables, the CRD upgrade hook, global registry + pull-secret plumbing,
+# per-component scheduling, and an escape-hatch entry — so the offline tofu
+# plan and pulumi preview proofs cover the full typed surface. Placeholder
+# values; never applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKubePrometheusStack
+metadata:
+  name: kps-hack
+spec:
+  namespace:
+    value: kps-hack
+  createNamespace: true
+  chartVersion: 87.19.1
+  crdUpgradeJob: true
+  prometheus:
+    replicas: 2
+    retention: 30d
+    retentionSize: 180GiB
+    diskSize: 200Gi
+    storageClass:
+      value: fast-ssd
+    resources:
+      requests:
+        cpu: "1"
+        memory: 4Gi
+      limits:
+        cpu: "4"
+        memory: 16Gi
+    externalLabels:
+      cluster: hack-cluster
+      region: us-east-1
+    scrapeInterval: 30s
+    evaluationInterval: 1m
+    discovery: all_monitors
+    enableRemoteWriteReceiver: true
+    remoteWrite:
+      - url: https://prometheus-us-central1.grafana.net/api/prom/push
+        name: grafana-cloud
+        basicAuth:
+          username: "123456"
+          passwordSecret:
+            name: grafana-cloud-credentials
+            key: token
+      - url: https://mimir.example.com/api/v1/push
+        name: mimir
+        bearerTokenSecret:
+          name: mimir-credentials
+          key: token
+      - url: https://aps-workspaces.us-east-1.amazonaws.com/workspaces/ws-hack/api/v1/remote_write
+        name: amp
+        sigv4:
+          region: us-east-1
+          roleArn: arn:aws:iam::123456789012:role/amp-remote-write
+      - url: https://hack.eastus-1.metrics.ingest.monitor.azure.com/dataCollectionRules/dcr-hack/streams/Microsoft-PrometheusMetrics/api/v1/write
+        name: azure-monitor
+        azureAd:
+          managedIdentityClientId: 11111111-2222-3333-4444-555555555555
+    additionalScrapeConfigs: |
+      - job_name: legacy-appliance
+        static_configs:
+          - targets:
+              - 10.0.0.42:9100
+    scheduling:
+      nodeSelector:
+        workload: monitoring
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: monitoring
+          effect: NoSchedule
+      priorityClassName: system-cluster-critical
+  alertmanager:
+    replicas: 3
+    retention: 240h
+    diskSize: 5Gi
+    storageClass:
+      value: fast-ssd
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    configYaml: |
+      route:
+        group_by:
+          - namespace
+        receiver: team-webhook
+        routes:
+          - receiver: "null"
+            matchers:
+              - alertname = "Watchdog"
+      receivers:
+        - name: "null"
+        - name: team-webhook
+          webhook_configs:
+            - url_file: /etc/alertmanager/secrets/team-webhook/url
+    scheduling:
+      nodeSelector:
+        workload: monitoring
+  grafana:
+    adminSecret:
+      name: kps-hack-grafana-admin
+      userKey: user
+      passwordKey: password
+    defaultDashboardsEnabled: true
+    storage:
+      size: 20Gi
+      storageClass:
+        value: fast-ssd
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+  operator:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    admissionWebhooks:
+      certManager: true
+    scheduling:
+      nodeSelector:
+        workload: monitoring
+  exporters:
+    kubeStateMetricsEnabled: true
+    kubeStateMetricsResources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+    nodeExporterEnabled: true
+    nodeExporterResources:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+  controlPlaneScrapers:
+    kubeControllerManager: false
+    kubeEtcd: false
+    kubeScheduler: false
+    kubeProxy: false
+  defaultRules:
+    disabledGroups:
+      - etcd
+      - kubeControllerManager
+      - kubeSchedulerAlerting
+      - kubeSchedulerRecording
+      - kubeProxy
+  imageRegistry: mirror.example.com
+  imagePullSecrets:
+    - mirror-pull
+  helmValues: |
+    prometheus:
+      prometheusSpec:
+        walCompression: false

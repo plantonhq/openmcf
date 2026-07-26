@@ -1,52 +1,46 @@
+# Stack outputs — identical names and derivations in the Pulumi module's
+# outputs.go / main.go exports.
+#
+# The client Service is `<name>` and the headless sibling
+# `<name>-headless` (fullnameOverride pins the chart's fullname to the
+# resource name); the websocket endpoint and auth Secret name are empty
+# when their features are off.
+
 output "namespace" {
-  description = "The Kubernetes namespace where NATS is deployed."
+  description = "Kubernetes namespace the NATS servers run in"
   value       = local.namespace
 }
 
-output "internal_client_url" {
-  description = "The internal NATS client URL for cluster-local connections."
-  value       = local.internal_client_url
+output "service_name" {
+  description = "Name of the client Service (port 4222; equals metadata.name)"
+  value       = local.release_name
 }
 
-output "external_hostname" {
-  description = "The external hostname for NATS if ingress is enabled."
-  value       = local.ingress_hostname
+output "headless_service_name" {
+  description = "Name of the headless Service — per-server DNS for clients that need direct server addressing"
+  value       = "${local.release_name}-headless"
+}
+
+output "client_endpoint" {
+  description = "In-cluster client endpoint — what NATS clients set as their server URL"
+  value       = "nats://${local.release_name}.${local.namespace}.svc.cluster.local:4222"
+}
+
+output "websocket_endpoint" {
+  description = "In-cluster WebSocket endpoint; empty when the websocket listener is off"
+  value = try(var.spec.websocket.enabled, false) ? format(
+    "ws://%s.%s.svc.cluster.local:%d",
+    local.release_name, local.namespace,
+    try(coalesce(var.spec.websocket.port), null) != null ? var.spec.websocket.port : 8080
+  ) : ""
 }
 
 output "auth_secret_name" {
-  description = "The name of the Kubernetes secret containing authentication credentials."
+  description = "Name of the module-generated auth Secret (one key per declared username); empty when auth is not declared"
   value       = local.auth_secret_name
 }
 
-output "tls_secret_name" {
-  description = "The name of the Kubernetes secret containing TLS certificates (if TLS is enabled)."
-  value       = try(var.spec.tls_enabled, false) ? local.tls_secret_name : null
-}
-
-# NACK Controller outputs
-output "nack_controller_enabled" {
-  description = "Whether the NACK JetStream controller is enabled."
-  value       = local.nack_controller_enabled
-}
-
-output "nack_controller_version" {
-  description = "The version of the NACK controller Helm chart."
-  value       = local.nack_controller_enabled ? local.nack_helm_chart_version : null
-}
-
-output "nack_app_version" {
-  description = "The NACK app version (GitHub release tag) used for CRDs."
-  value       = local.nack_controller_enabled ? local.nack_app_version : null
-}
-
-# Streams output
-output "streams_created" {
-  description = "List of JetStream stream names created by the module."
-  value       = local.nack_controller_enabled ? [for stream in local.streams : stream.name] : []
-}
-
-# JetStream domain
-output "jetstream_domain" {
-  description = "The JetStream domain (namespace-based)."
-  value       = var.spec.disable_jet_stream ? null : local.namespace
+output "port_forward_command" {
+  description = "kubectl one-liner for reaching the client port from a workstation when no exposure is composed"
+  value       = "kubectl port-forward svc/${local.release_name} -n ${local.namespace} 4222:4222"
 }

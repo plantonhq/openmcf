@@ -1,0 +1,66 @@
+# Full-surface offline-proof manifest: multiple replicas on an
+# S3-compatible object store (credentials via Secret + env expansion), a
+# longer retention, the legacy Jaeger receivers, multi-tenancy, the
+# trace-derived metrics generator remote-writing to a Prometheus, the
+# tempo-query sidecar, ServiceMonitor, a private-mirror image registry with
+# a pull secret, and scheduling — so the offline tofu plan and pulumi
+# preview proofs cover the full typed surface. Placeholder values; never
+# applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTempo
+metadata:
+  name: tempo-hack
+spec:
+  namespace:
+    value: tempo-hack
+  createNamespace: true
+  chartVersion: 2.2.3
+  replicas: 2
+  storage:
+    s3:
+      bucket: tempo-traces
+      endpoint: objects-filer.storage.svc.cluster.local:8333
+      forcePathStyle: true
+      insecure: true
+      credentials:
+        accessKeyIdSecret:
+          name: tempo-s3
+          key: access-key-id
+        secretAccessKeySecret:
+          name: tempo-s3
+          key: secret-access-key
+  retention: 336h
+  jaegerReceiversEnabled: true
+  multiTenancyEnabled: true
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl:
+      value: http://monitoring-kube-prometheus-prometheus.observability.svc.cluster.local:9090
+    processors:
+      - service_graphs
+      - span_metrics
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  tempoQueryEnabled: true
+  serviceMonitorEnabled: true
+  imageRegistry: mirror.example.com
+  imagePullSecrets:
+    - mirror-pull
+  scheduling:
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+    priorityClassName: system-cluster-critical
+  helmValues: |
+    tempo:
+      podLabels:
+        team: observability

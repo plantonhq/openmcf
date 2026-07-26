@@ -4,11 +4,18 @@ metadata:
   name: kubernetestemporal
 spec:
   tier: 2
-  status: deferred
-  deferred_reason: "too heavy for default kind -- embedded PostgreSQL + schema init jobs + 4 Temporal services exceed 20m deployment window"
-  validated_provisioners:
-    - pulumi
-  timeout_minutes: 15
-  limitations:
-    - "Helm chart deploys PostgreSQL + 3 schema jobs + 4 Temporal services sequentially"
-    - "Module validation fixed: embedded PostgreSQL/MySQL now supported (was restricted to Cassandra-only)"
+  # Rebuilt from the pre-program shell onto the official temporal chart
+  # 1.6.0 (external databases only — the composed-PostgreSQL story) and
+  # offline-validated (spec tests, both engines' plan/preview proofs
+  # across full, minimal, cassandra+visibility and mysql shapes); the
+  # live lanes have not run yet — they run the SDK workflow-execution
+  # engine proof on every lane and the behavioral-state lane's
+  # pod-replacement history-survival proof. The old deferred posture
+  # (embedded-PostgreSQL weight) died with the rebuild: nothing is
+  # bundled anymore.
+  status: pending_proof
+  # The pre-install schema Jobs run against the composed Postgres
+  # fixture before four server Deployments + the UI roll out; the
+  # budget covers that cold start on the shared cluster, serial lanes
+  # only.
+  timeout_minutes: 30

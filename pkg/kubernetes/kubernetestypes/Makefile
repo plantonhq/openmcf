@@ -15,13 +15,22 @@ istio_release=1.30.3
 #https://github.com/cert-manager/cert-manager/tree/release-1.15
 cert_manager_release=v1.20.3
 
-#https://github.com/apache/solr-operator/tree/v0.8.1/helm/solr-operator/crds
-#https://github.com/apache/solr-operator/releases/tag/v0.8.1
-solr_operator_release=v0.8.1
+#https://github.com/apache/solr-operator/tree/v0.9.1/helm/solr-operator/crds
+#https://github.com/apache/solr-operator/releases/tag/v0.9.1
+#Note: the served chart index (https://solr.apache.org/charts) pairs chart
+#0.9.1 with app v0.9.1 — chart versions carry no `v` prefix, the operator/CRD
+#artifacts do.
+solr_operator_release=v0.9.1
 
-#https://github.com/strimzi/strimzi-kafka-operator/tree/main/install/cluster-operator
-#https://github.com/strimzi/strimzi-kafka-operator/tree/release-0.42.x
-strimzi_operator_release=release-0.42.x
+#https://github.com/strimzi/strimzi-kafka-operator/tree/1.1.0/install/cluster-operator
+#Strimzi 1.1.0 (KRaft-only; CRD API v1). No generated types: the Kafka and
+#KafkaTopic CRDs type their `config` objects (and the listener/Cruise Control
+#configuration blocks) with x-kubernetes-preserve-unknown-fields, which
+#crd2pulumi cannot carry faithfully — the Kafka-family modules render their
+#CRs through apiextensions.CustomResource with untyped args instead (see the
+#kuberneteskafka Pulumi module). The pin is recorded for the CRD schemas the
+#specs and modules are designed against.
+strimzi_operator_release=1.1.0
 
 #https://github.com/cloudnative-pg/cloudnative-pg/tree/v1.30.0/config/crd/bases
 #Note: the served operator chart (https://cloudnative-pg.github.io/charts)
@@ -40,20 +49,26 @@ barman_cloud_plugin_release=v0.13.0
 #unserved v1beta1 blocks and the generators.external-secrets.io v1alpha1 CRDs.
 external_secrets_release=v2.8.0
 
-#https://raw.githubusercontent.com/elastic/cloud-on-k8s/v2.14.0/deploy/eck-operator/charts/eck-operator-crds/templates/all-crds.yaml
-elastic_operator_release=v2.14.0
+#https://github.com/opensearch-project/opensearch-k8s-operator/tree/v2.8.0/opensearch-operator/config/crd/bases
+#The stable operator app release. The served chart pairing is 2.8.0 = app
+#2.8.0 (later served charts default to a PRERELEASE manager image and bundle
+#next-generation opensearch.org CRDs the stable operator does not serve —
+#verified against the served charts; the chart index governs, never a
+#vendored Chart.yaml). Only the OpenSearchCluster CRD is generated: it is
+#the one CR the catalog declares (KubernetesOpenSearch); the operator's
+#declarative satellite CRs (users, roles, ISM policies, templates) are not
+#admitted kinds.
+opensearch_operator_release=v2.8.0
 
 #https://github.com/keycloak/keycloak-k8s-resources/tree/25.0.4/kubernetes
 keycloak_release=25.0.4
 
 #https://github.com/Altinity/clickhouse-operator/tree/master/deploy/operator
-#https://github.com/Altinity/clickhouse-operator/tree/0.25.4
-altinity_operator_release=0.25.4
-
-#https://github.com/nats-io/nack/releases
-#https://github.com/nats-io/nack/tree/main/deploy
-#Note: Using 'main' branch as CRDs are not published as release assets
-nack_release=v0.21.1
+#https://github.com/Altinity/clickhouse-operator/tree/release-0.27.2
+#Note: upstream tags are `release-X.Y.Z` — the plain `X.Y.Z` tag form no
+#longer exists, and a wrong ref fails SILENTLY through the curl pipeline
+#(empty CRD file, stale generated types). Keep the full tag name here.
+altinity_operator_release=release-0.27.2
 
 #https://github.com/aws/karpenter-provider-aws/tree/v1.14.0/pkg/apis/crds
 #Note: the karpenter/karpenter-crd Helm charts are OCI-served
@@ -61,6 +76,16 @@ nack_release=v0.21.1
 #served chart, so the release pin below is verified against the ECR
 #registry API, never the vendored chart version.
 karpenter_release=v1.14.0
+
+#https://github.com/rabbitmq/cluster-operator/tree/v2.22.3/config/crd/bases
+#The operator has NO Helm chart; the official distribution is the released
+#single-file manifest (releases/download/<tag>/cluster-operator.yml), which
+#the KubernetesRabbitMqOperator module renders per document. The CRD pin
+#below is the source the KubernetesRabbitMq spec and generated types are
+#designed against. The released manifest requires cert-manager: it ships
+#Mutating/Validating webhooks (failurePolicy: Fail) whose serving
+#certificate is a cert-manager.io Certificate with CA injection.
+rabbitmq_cluster_operator_release=v2.22.3
 
 .PHONY: clean
 clean:
@@ -104,19 +129,11 @@ gen-cert-manager:
 gen-solr-operator:
 	crd2pulumi --force --goPath=solroperator https://raw.githubusercontent.com/apache/solr-operator/${solr_operator_release}/helm/solr-operator/crds/crds.yaml
 
-.PHONY: gen-strimzi-operator
-gen-strimzi-operator:
-	crd2pulumi --force --goPath=strimzioperator https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/main/install/cluster-operator/040-Crd-kafka.yaml \
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/041-Crd-kafkaconnect.yaml \
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/042-Crd-strimzipodset.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/043-Crd-kafkatopic.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/044-Crd-kafkauser.yaml \
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/045-Crd-kafkamirrormaker.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/046-Crd-kafkabridge.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/047-Crd-kafkaconnector.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/048-Crd-kafkamirrormaker2.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/049-Crd-kafkarebalance.yaml\
-		https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/${strimzi_operator_release}/install/cluster-operator/04A-Crd-kafkanodepool.yaml
+#gen-strimzi-operator deliberately retired: the Strimzi CRDs' free-typed
+#config objects (x-kubernetes-preserve-unknown-fields) cannot be carried by
+#crd2pulumi's generated types, so the Kafka-family Pulumi modules render
+#untyped CRs and no generated package exists to regenerate. The pin above
+#records which CRD schemas the specs were designed against.
 
 # Clusters + ScheduledBackups from the operator; the ObjectStore CRD from the
 # Barman Cloud plugin (backups are plugin-based — the operator's in-tree
@@ -132,9 +149,9 @@ gen-cloudnative-pg:
 gen-external-secrets:
 	crd2pulumi --force --goPath=externalsecrets https://raw.githubusercontent.com/external-secrets/external-secrets/${external_secrets_release}/deploy/crds/bundle.yaml
 
-.PHONY: gen-elastic-operator
-gen-elastic-operator:
-	crd2pulumi --force --goPath=elasticsearch https://raw.githubusercontent.com/elastic/cloud-on-k8s/${elastic_operator_release}/deploy/eck-operator/charts/eck-operator-crds/templates/all-crds.yaml
+.PHONY: gen-opensearch-operator
+gen-opensearch-operator:
+	crd2pulumi --force --goPath=opensearchoperator https://raw.githubusercontent.com/opensearch-project/opensearch-k8s-operator/${opensearch_operator_release}/opensearch-operator/config/crd/bases/opensearch.opster.io_opensearchclusters.yaml
 
 .PHONY: gen-keycloak
 gen-keycloak:
@@ -159,12 +176,12 @@ gen-altinity-operator:
 # posture as the cert-manager issuer kinds), so the generated packages
 # would have no consumer.
 
-.PHONY: gen-nack
-gen-nack:
-	crd2pulumi --force --goPath=nack https://raw.githubusercontent.com/nats-io/nack/${nack_release}/deploy/crds.yml
+.PHONY: gen-rabbitmq-cluster-operator
+gen-rabbitmq-cluster-operator:
+	crd2pulumi --force --goPath=rabbitmqoperator https://raw.githubusercontent.com/rabbitmq/cluster-operator/${rabbitmq_cluster_operator_release}/config/crd/bases/rabbitmq.com_rabbitmqclusters.yaml
 
 .PHONY: gen
-gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-strimzi-operator gen-external-secrets gen-elastic-operator gen-keycloak gen-altinity-operator gen-nack
+gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-external-secrets gen-opensearch-operator gen-keycloak gen-altinity-operator gen-rabbitmq-cluster-operator
 
 .PHONY: build
 build: clean gen
