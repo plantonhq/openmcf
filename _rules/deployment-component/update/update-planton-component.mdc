@@ -573,6 +573,20 @@ Based on scenario:
   redact it from progress lines, command echoes, and error wraps (the
   round-trip harness does this whenever an id_format carries a
   `from_cluster_secret_key`-derived placeholder).
+- **A COLLECTION of generated credentials is keyed by each credential's
+  IDENTITY (the username), never by list position — on BOTH engines**:
+  a positional key (`for_each` over an index, or an index-derived env
+  name) silently re-pairs passwords with usernames when the user list is
+  REORDERED — user B inherits user A's live password and vice versa, with
+  nothing in the plan that reads like a rotation. Keyed by username
+  (unique by CEL), reorders are no-ops and a rename is honestly a NEW
+  credential; positional names stay fine for derived plumbing that
+  carries no state (env-var names, config references) because they
+  re-render consistently on both sides of the pairing. The import map
+  then serves the whole collection with ONE row:
+  `from_cluster_secret_key` with `key_from_address_key: true` reads each
+  instance's value from the materialized Secret under the instance's own
+  address key — the username.
 - **Operator-owned CRs delete with BACKGROUND propagation, declared
   explicitly on both engines**: the operator's finalizer IS the CR's
   cascade — foreground propagation (the Pulumi provider's DEFAULT for

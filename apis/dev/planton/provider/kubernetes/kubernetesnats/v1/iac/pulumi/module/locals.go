@@ -10,115 +10,168 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Locals keeps all frequently-used, derived values in one place –
-// similar to a Terraform “locals {}” block.
-type Locals struct {
-	Namespace         string
-	Labels            map[string]string
-	KubernetesNats    *kubernetesnatsv1.KubernetesNats
-	ClientURLInternal string
-	ClientURLExternal string
-	TlsSecretName     string
-	TlsSecretKey      string
-
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	AuthSecretName        string
-	NoAuthUserSecretName  string
-	ExternalLbServiceName string
-
-	// Helm chart versions (from spec or defaults)
-	NatsHelmChartVersion string
-	NackHelmChartVersion string
-	NackAppVersion       string
-	NackCrdsUrl          string
+// authUser pairs a declared username with its deterministic password
+// env-var name — ONE ordering shared by the auth Secret, the container
+// env and the rendered config (and byte-identical in the Terraform twin):
+// flat users indexed in spec order; account users indexed
+// `<account-index>_<user-index>`.
+type authUser struct {
+	Username string
+	EnvVar   string
 }
 
-// initializeLocals builds the Locals struct and immediately exports the
-// values required by KubernetesNatsStackOutputs.
-func initializeLocals(ctx *pulumi.Context,
-	stackInput *kubernetesnatsv1.KubernetesNatsStackInput) *Locals {
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
+type Locals struct {
+	Spec *kubernetesnatsv1.KubernetesNatsSpec
 
-	locals := &Locals{}
-	locals.KubernetesNats = stackInput.Target
+	// Resource-identity labels stamped on the module-created satellites
+	// (the namespace and the auth Secret — never injected into the
+	// chart's own resources; Helm owns those).
+	Labels map[string]string
+
+	// Namespace NATS installs into (resolved literal from the spec's
+	// value-or-ref).
+	Namespace string
+
+	// Helm release name — metadata.name, NOT a fixed chart name:
+	// several NATS systems can coexist in one cluster.
+	ReleaseName string
+
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
+	ChartVersion string
+
+	// Whether auth is declared (users or accounts) — drives the auth
+	// Secret and the config's authorization/accounts rendering.
+	AuthEnabled bool
+
+	// Name of the module-generated credential Secret
+	// (`<metadata.name>-auth`, one key per username); "" without auth.
+	AuthSecretName string
+
+	// Every declared user (flat, then per account in spec order) with
+	// its deterministic password env-var name.
+	FlatUsers    []authUser
+	AccountUsers [][]authUser
+
+	// Whether JetStream is on (spec default true — the kind's
+	// persistent-messaging posture).
+	JetStreamEnabled bool
+
+	// Name of the client Service (equals metadata.name via
+	// fullnameOverride) and the headless sibling.
+	ServiceName         string
+	HeadlessServiceName string
+
+	// In-cluster client endpoint (nats:// URL).
+	ClientEndpoint string
+
+	// In-cluster WebSocket endpoint ("" when the listener is off).
+	WebsocketEndpoint string
+
+	// kubectl one-liner for reaching the client port from a
+	// workstation.
+	PortForwardCommand string
+}
+
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesnatsv1.KubernetesNatsStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	// ------------------------------- labels ----------------------------------
-	locals.Labels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesNats.String(),
 	}
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// get namespace from spec, it is required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
-
-	// export namespace as an output
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	// Users can prefix metadata.name with component type if needed (e.g., "nats-my-bus")
-	locals.AuthSecretName = fmt.Sprintf("%s-auth", target.Metadata.Name)
-	locals.NoAuthUserSecretName = fmt.Sprintf("%s-no-auth-user", target.Metadata.Name)
-	locals.ExternalLbServiceName = fmt.Sprintf("%s-external-lb", target.Metadata.Name)
-
-	// ------------------------- internal client URL ---------------------------
-	// NATS Helm chart (v2.x) creates a Service named "{release-name}". Port 4222 is fixed.
-	serviceName := target.Metadata.Name
-	locals.ClientURLInternal = fmt.Sprintf("nats://%s.%s.svc.cluster.local:%d",
-		serviceName, locals.Namespace, vars.NatsClientPort)
-	ctx.Export(OpClientUrlInternal, pulumi.String(locals.ClientURLInternal))
-
-	// ------------------------------ ingress ----------------------------------
-	if target.Spec.Ingress != nil &&
-		target.Spec.Ingress.Enabled &&
-		target.Spec.Ingress.Hostname != "" {
-
-		locals.ClientURLExternal = fmt.Sprintf("nats://%s:%d",
-			target.Spec.Ingress.Hostname, vars.NatsClientPort)
-		ctx.Export(OpClientUrlExternal, pulumi.String(locals.ClientURLExternal))
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	// -------------------- auth / token secret outputs ------------------------
-	// Secret names are deterministic so callers / automation can pre-bake RBAC.
-	ctx.Export(OpAuthSecretName, pulumi.String(locals.AuthSecretName))
-	ctx.Export(OpAuthSecretKey, pulumi.String(vars.AdminAuthSecretKey))
+	namespace := spec.Namespace.GetValue()
+	releaseName := target.Metadata.Name
 
-	// ----------------------- TLS certificate secret --------------------------
-	if target.Spec.TlsEnabled {
-		locals.TlsSecretName = fmt.Sprintf("%s-tls", target.Metadata.Name)
-		locals.TlsSecretKey = vars.TlsCertKey
-		ctx.Export(OpTlsSecretName, pulumi.String(locals.TlsSecretName))
-		ctx.Export(OpTlsSecretKey, pulumi.String(locals.TlsSecretKey))
+	auth := spec.GetAuth()
+	authEnabled := auth != nil && (len(auth.GetUsers()) > 0 || len(auth.GetAccounts()) > 0)
+	authSecretName := ""
+	var flatUsers []authUser
+	var accountUsers [][]authUser
+	if authEnabled {
+		authSecretName = fmt.Sprintf("%s-auth", releaseName)
+		for i, u := range auth.GetUsers() {
+			flatUsers = append(flatUsers, authUser{
+				Username: u.GetUsername(),
+				EnvVar:   fmt.Sprintf("%s%d", vars.PasswordEnvPrefix, i),
+			})
+		}
+		for ai, account := range auth.GetAccounts() {
+			var users []authUser
+			for ui, u := range account.GetUsers() {
+				users = append(users, authUser{
+					Username: u.GetUsername(),
+					EnvVar:   fmt.Sprintf("%s%d_%d", vars.PasswordEnvPrefix, ai, ui),
+				})
+			}
+			accountUsers = append(accountUsers, users)
+		}
 	}
 
-	// ------------------------ jet-stream domain ------------------------------
-	if !target.Spec.DisableJetStream {
-		localsJetDomain := fmt.Sprintf("%s", locals.Namespace) // simple default
-		ctx.Export(OpJetStreamDomain, pulumi.String(localsJetDomain))
+	jetStreamEnabled := true
+	if spec.GetJetStream() != nil && spec.GetJetStream().Enabled != nil {
+		jetStreamEnabled = spec.GetJetStream().GetEnabled()
 	}
 
-	// ------------------------ helm chart versions -----------------------------
-	// Defaults are guaranteed by Planton CLI from proto definitions
-	locals.NatsHelmChartVersion = *target.Spec.NatsHelmChartVersion
+	// fullnameOverride pins the fullname to metadata.name (values.go),
+	// so the client Service is exactly `<name>` and the headless
+	// sibling `<name>-headless`.
+	serviceName := releaseName
+	headlessServiceName := fmt.Sprintf("%s-headless", releaseName)
+	clientEndpoint := fmt.Sprintf("nats://%s.%s.svc.cluster.local:%d",
+		serviceName, namespace, vars.ClientPort)
 
-	// NACK chart version, app version, and CRDs URL
-	if target.Spec.NackController != nil {
-		locals.NackHelmChartVersion = *target.Spec.NackController.HelmChartVersion
-		locals.NackAppVersion = *target.Spec.NackController.AppVersion
-		// CRDs URL uses app version (GitHub tag), NOT chart version
-		locals.NackCrdsUrl = fmt.Sprintf(vars.NackCrdsUrlTemplate, locals.NackAppVersion)
+	websocketEndpoint := ""
+	if ws := spec.GetWebsocket(); ws != nil && ws.GetEnabled() {
+		port := int32(8080)
+		if ws.Port != nil {
+			port = ws.GetPort()
+		}
+		websocketEndpoint = fmt.Sprintf("ws://%s.%s.svc.cluster.local:%d",
+			serviceName, namespace, port)
 	}
 
-	return locals
+	portForwardCommand := fmt.Sprintf("kubectl port-forward svc/%s -n %s %d:%d",
+		serviceName, namespace, vars.ClientPort, vars.ClientPort)
+
+	return &Locals{
+		Spec:                spec,
+		Labels:              labels,
+		Namespace:           namespace,
+		ReleaseName:         releaseName,
+		ChartVersion:        chartVersion,
+		AuthEnabled:         authEnabled,
+		AuthSecretName:      authSecretName,
+		FlatUsers:           flatUsers,
+		AccountUsers:        accountUsers,
+		JetStreamEnabled:    jetStreamEnabled,
+		ServiceName:         serviceName,
+		HeadlessServiceName: headlessServiceName,
+		ClientEndpoint:      clientEndpoint,
+		WebsocketEndpoint:   websocketEndpoint,
+		PortForwardCommand:  portForwardCommand,
+	}
 }

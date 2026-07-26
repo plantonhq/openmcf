@@ -145,10 +145,18 @@ func resolveDerivation(d *componentv1.ImportValueDerivation, rctx ResolveContext
 			return ""
 		}
 		ref := source.FromClusterSecretKey
-		if ref.GetKey() == "" {
+		// The Secret key is either declared statically or taken from the
+		// address's own instance key (keyed resource collections whose
+		// per-instance credentials live under manifest-driven keys --
+		// e.g. one random_password per declared user, keyed by username).
+		key := ref.GetKey()
+		if ref.GetKeyFromAddressKey() && rctx.AddressKey != "" {
+			key = rctx.AddressKey
+		}
+		if key == "" {
 			return ""
 		}
-		value, err := rctx.ReadClusterSecret(rctx.MetadataName+ref.GetNameSuffix(), ref.GetKey())
+		value, err := rctx.ReadClusterSecret(rctx.MetadataName+ref.GetNameSuffix(), key)
 		if err != nil {
 			return ""
 		}

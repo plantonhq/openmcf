@@ -21,29 +21,42 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// temporal kubernetes stack outputs store deployment details in the resource status.
+// *
+// **KubernetesTemporalStackOutputs** — the composition handles a
+// deployed Temporal cluster exports. Workers and clients join through
+// the frontend gRPC endpoint; humans reach the Web UI through its
+// service handle (compose exposure kinds over it).
 type KubernetesTemporalStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace where temporal is deployed
+	// Namespace the cluster runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// service name for the temporal frontend
-	FrontendServiceName string `protobuf:"bytes,2,opt,name=frontend_service_name,json=frontendServiceName,proto3" json:"frontend_service_name,omitempty"`
-	// service name for the temporal web ui
-	UiServiceName string `protobuf:"bytes,3,opt,name=ui_service_name,json=uiServiceName,proto3" json:"ui_service_name,omitempty"`
-	// command to port-forward the frontend service
-	PortForwardFrontendCommand string `protobuf:"bytes,4,opt,name=port_forward_frontend_command,json=portForwardFrontendCommand,proto3" json:"port_forward_frontend_command,omitempty"`
-	// command to port-forward the ui service
-	PortForwardUiCommand string `protobuf:"bytes,5,opt,name=port_forward_ui_command,json=portForwardUiCommand,proto3" json:"port_forward_ui_command,omitempty"`
-	// internal cluster endpoint for the frontend (e.g. temporal-frontend.namespace.svc:7233)
-	FrontendEndpoint string `protobuf:"bytes,6,opt,name=frontend_endpoint,json=frontendEndpoint,proto3" json:"frontend_endpoint,omitempty"`
-	// internal cluster endpoint for the ui (e.g. temporal-ui.namespace.svc:8080)
-	WebUiEndpoint string `protobuf:"bytes,7,opt,name=web_ui_endpoint,json=webUiEndpoint,proto3" json:"web_ui_endpoint,omitempty"`
-	// external hostname if load balancer is enabled for the frontend
-	ExternalFrontendHostname string `protobuf:"bytes,8,opt,name=external_frontend_hostname,json=externalFrontendHostname,proto3" json:"external_frontend_hostname,omitempty"`
-	// external hostname for the ui if ingress is configured
-	ExternalUiHostname string `protobuf:"bytes,9,opt,name=external_ui_hostname,json=externalUiHostname,proto3" json:"external_ui_hostname,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Name of the frontend Service (`<name>-frontend`) — the gRPC/HTTP
+	// API gateway. The handle exposure kinds route to.
+	FrontendService string `protobuf:"bytes,2,opt,name=frontend_service,json=frontendService,proto3" json:"frontend_service,omitempty"`
+	// In-cluster frontend gRPC endpoint,
+	// `<name>-frontend.<namespace>.svc.cluster.local:7233` — what
+	// Temporal SDK workers and clients set as their server address.
+	FrontendEndpoint string `protobuf:"bytes,3,opt,name=frontend_endpoint,json=frontendEndpoint,proto3" json:"frontend_endpoint,omitempty"`
+	// In-cluster frontend HTTP API endpoint (port 7243) — Temporal's
+	// HTTP/JSON API for clients that cannot speak gRPC.
+	FrontendHttpEndpoint string `protobuf:"bytes,4,opt,name=frontend_http_endpoint,json=frontendHttpEndpoint,proto3" json:"frontend_http_endpoint,omitempty"`
+	// Name of the Web UI Service (`<name>-web`); empty when the UI is
+	// disabled.
+	WebUiService string `protobuf:"bytes,5,opt,name=web_ui_service,json=webUiService,proto3" json:"web_ui_service,omitempty"`
+	// In-cluster Web UI endpoint,
+	// `http://<name>-web.<namespace>.svc.cluster.local:8080`; empty
+	// when the UI is disabled.
+	WebUiEndpoint string `protobuf:"bytes,6,opt,name=web_ui_endpoint,json=webUiEndpoint,proto3" json:"web_ui_endpoint,omitempty"`
+	// Port-forward command for reaching the frontend from a
+	// workstation when no exposure is composed
+	// (`kubectl port-forward svc/<name>-frontend -n <namespace> 7233:7233`).
+	PortForwardFrontendCommand string `protobuf:"bytes,7,opt,name=port_forward_frontend_command,json=portForwardFrontendCommand,proto3" json:"port_forward_frontend_command,omitempty"`
+	// Port-forward command for reaching the Web UI from a workstation
+	// (`kubectl port-forward svc/<name>-web -n <namespace> 8080:8080`);
+	// empty when the UI is disabled.
+	PortForwardWebUiCommand string `protobuf:"bytes,8,opt,name=port_forward_web_ui_command,json=portForwardWebUiCommand,proto3" json:"port_forward_web_ui_command,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *KubernetesTemporalStackOutputs) Reset() {
@@ -83,30 +96,9 @@ func (x *KubernetesTemporalStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesTemporalStackOutputs) GetFrontendServiceName() string {
+func (x *KubernetesTemporalStackOutputs) GetFrontendService() string {
 	if x != nil {
-		return x.FrontendServiceName
-	}
-	return ""
-}
-
-func (x *KubernetesTemporalStackOutputs) GetUiServiceName() string {
-	if x != nil {
-		return x.UiServiceName
-	}
-	return ""
-}
-
-func (x *KubernetesTemporalStackOutputs) GetPortForwardFrontendCommand() string {
-	if x != nil {
-		return x.PortForwardFrontendCommand
-	}
-	return ""
-}
-
-func (x *KubernetesTemporalStackOutputs) GetPortForwardUiCommand() string {
-	if x != nil {
-		return x.PortForwardUiCommand
+		return x.FrontendService
 	}
 	return ""
 }
@@ -118,6 +110,20 @@ func (x *KubernetesTemporalStackOutputs) GetFrontendEndpoint() string {
 	return ""
 }
 
+func (x *KubernetesTemporalStackOutputs) GetFrontendHttpEndpoint() string {
+	if x != nil {
+		return x.FrontendHttpEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalStackOutputs) GetWebUiService() string {
+	if x != nil {
+		return x.WebUiService
+	}
+	return ""
+}
+
 func (x *KubernetesTemporalStackOutputs) GetWebUiEndpoint() string {
 	if x != nil {
 		return x.WebUiEndpoint
@@ -125,16 +131,16 @@ func (x *KubernetesTemporalStackOutputs) GetWebUiEndpoint() string {
 	return ""
 }
 
-func (x *KubernetesTemporalStackOutputs) GetExternalFrontendHostname() string {
+func (x *KubernetesTemporalStackOutputs) GetPortForwardFrontendCommand() string {
 	if x != nil {
-		return x.ExternalFrontendHostname
+		return x.PortForwardFrontendCommand
 	}
 	return ""
 }
 
-func (x *KubernetesTemporalStackOutputs) GetExternalUiHostname() string {
+func (x *KubernetesTemporalStackOutputs) GetPortForwardWebUiCommand() string {
 	if x != nil {
-		return x.ExternalUiHostname
+		return x.PortForwardWebUiCommand
 	}
 	return ""
 }
@@ -143,17 +149,16 @@ var File_dev_planton_provider_kubernetes_kubernetestemporal_v1_stack_outputs_pro
 
 const file_dev_planton_provider_kubernetes_kubernetestemporal_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Idev/planton/provider/kubernetes/kubernetestemporal/v1/stack_outputs.proto\x125dev.planton.provider.kubernetes.kubernetestemporal.v1\"\xd9\x03\n" +
+	"Idev/planton/provider/kubernetes/kubernetestemporal/v1/stack_outputs.proto\x125dev.planton.provider.kubernetes.kubernetestemporal.v1\"\x9b\x03\n" +
 	"\x1eKubernetesTemporalStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x122\n" +
-	"\x15frontend_service_name\x18\x02 \x01(\tR\x13frontendServiceName\x12&\n" +
-	"\x0fui_service_name\x18\x03 \x01(\tR\ruiServiceName\x12A\n" +
-	"\x1dport_forward_frontend_command\x18\x04 \x01(\tR\x1aportForwardFrontendCommand\x125\n" +
-	"\x17port_forward_ui_command\x18\x05 \x01(\tR\x14portForwardUiCommand\x12+\n" +
-	"\x11frontend_endpoint\x18\x06 \x01(\tR\x10frontendEndpoint\x12&\n" +
-	"\x0fweb_ui_endpoint\x18\a \x01(\tR\rwebUiEndpoint\x12<\n" +
-	"\x1aexternal_frontend_hostname\x18\b \x01(\tR\x18externalFrontendHostname\x120\n" +
-	"\x14external_ui_hostname\x18\t \x01(\tR\x12externalUiHostnameB\xb7\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12)\n" +
+	"\x10frontend_service\x18\x02 \x01(\tR\x0ffrontendService\x12+\n" +
+	"\x11frontend_endpoint\x18\x03 \x01(\tR\x10frontendEndpoint\x124\n" +
+	"\x16frontend_http_endpoint\x18\x04 \x01(\tR\x14frontendHttpEndpoint\x12$\n" +
+	"\x0eweb_ui_service\x18\x05 \x01(\tR\fwebUiService\x12&\n" +
+	"\x0fweb_ui_endpoint\x18\x06 \x01(\tR\rwebUiEndpoint\x12A\n" +
+	"\x1dport_forward_frontend_command\x18\a \x01(\tR\x1aportForwardFrontendCommand\x12<\n" +
+	"\x1bport_forward_web_ui_command\x18\b \x01(\tR\x17portForwardWebUiCommandB\xb7\x03\n" +
 	"9com.dev.planton.provider.kubernetes.kubernetestemporal.v1B\x11StackOutputsProtoP\x01Zlgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestemporal/v1;kubernetestemporalv1\xa2\x02\x05DPPKK\xaa\x025Dev.Planton.Provider.Kubernetes.Kubernetestemporal.V1\xca\x025Dev\\Planton\\Provider\\Kubernetes\\Kubernetestemporal\\V1\xe2\x02ADev\\Planton\\Provider\\Kubernetes\\Kubernetestemporal\\V1\\GPBMetadata\xea\x02:Dev::Planton::Provider::Kubernetes::Kubernetestemporal::V1b\x06proto3"
 
 var (

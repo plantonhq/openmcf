@@ -2,32 +2,45 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetestemporal.v1;
 
-// temporal kubernetes stack outputs store deployment details in the resource status.
+/**
+ * **KubernetesTemporalStackOutputs** — the composition handles a
+ * deployed Temporal cluster exports. Workers and clients join through
+ * the frontend gRPC endpoint; humans reach the Web UI through its
+ * service handle (compose exposure kinds over it).
+ */
 message KubernetesTemporalStackOutputs {
-  // kubernetes namespace where temporal is deployed
+  // Namespace the cluster runs in.
   string namespace = 1;
 
-  // service name for the temporal frontend
-  string frontend_service_name = 2;
+  // Name of the frontend Service (`<name>-frontend`) — the gRPC/HTTP
+  // API gateway. The handle exposure kinds route to.
+  string frontend_service = 2;
 
-  // service name for the temporal web ui
-  string ui_service_name = 3;
+  // In-cluster frontend gRPC endpoint,
+  // `<name>-frontend.<namespace>.svc.cluster.local:7233` — what
+  // Temporal SDK workers and clients set as their server address.
+  string frontend_endpoint = 3;
 
-  // command to port-forward the frontend service
-  string port_forward_frontend_command = 4;
+  // In-cluster frontend HTTP API endpoint (port 7243) — Temporal's
+  // HTTP/JSON API for clients that cannot speak gRPC.
+  string frontend_http_endpoint = 4;
 
-  // command to port-forward the ui service
-  string port_forward_ui_command = 5;
+  // Name of the Web UI Service (`<name>-web`); empty when the UI is
+  // disabled.
+  string web_ui_service = 5;
 
-  // internal cluster endpoint for the frontend (e.g. temporal-frontend.namespace.svc:7233)
-  string frontend_endpoint = 6;
+  // In-cluster Web UI endpoint,
+  // `http://<name>-web.<namespace>.svc.cluster.local:8080`; empty
+  // when the UI is disabled.
+  string web_ui_endpoint = 6;
 
-  // internal cluster endpoint for the ui (e.g. temporal-ui.namespace.svc:8080)
-  string web_ui_endpoint = 7;
+  // Port-forward command for reaching the frontend from a
+  // workstation when no exposure is composed
+  // (`kubectl port-forward svc/<name>-frontend -n <namespace> 7233:7233`).
+  string port_forward_frontend_command = 7;
 
-  // external hostname if load balancer is enabled for the frontend
-  string external_frontend_hostname = 8;
-
-  // external hostname for the ui if ingress is configured
-  string external_ui_hostname = 9;
+  // Port-forward command for reaching the Web UI from a workstation
+  // (`kubectl port-forward svc/<name>-web -n <namespace> 8080:8080`);
+  // empty when the UI is disabled.
+  string port_forward_web_ui_command = 8;
 }

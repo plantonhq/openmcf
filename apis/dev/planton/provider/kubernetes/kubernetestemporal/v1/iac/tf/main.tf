@@ -1,87 +1,71 @@
-# Create namespace for Temporal deployment (only if create_namespace is true)
-resource "kubernetes_namespace_v1" "temporal_namespace" {
+# KubernetesTemporal Terraform module.
+#
+# Installs Temporal from the official Helm chart as a real Helm release.
+# The typed spec renders into chart values (locals.helm_values); database
+# passwords ride the chart's existingSecret contract (a secretKeyRef the
+# server and schema Jobs resolve at runtime — never rendered as values);
+# the helm_values escape hatch is passed as a SECOND values document,
+# which the provider merges over the first with Helm -f semantics — the
+# exact semantic twin of the Pulumi module's buildHelmValues + mergeMaps.
+
+# The optional installation namespace. Created before the release; deleted
+# with the resource.
+resource "kubernetes_namespace_v1" "temporal" {
   count = var.spec.create_namespace ? 1 : 0
 
   metadata {
     name   = local.namespace
-    labels = local.final_labels
+    labels = local.labels
   }
 }
 
-# Create secret for external database password (only when external database is configured with string_value)
-# When using secret_ref, the user's existing secret is used directly
-resource "kubernetes_secret_v1" "db_password" {
-  count = local.has_external_database && !local.use_existing_db_secret && local.external_db_password_string != "" ? 1 : 0
-
-  metadata {
-    name      = local.database_secret_name
-    namespace = local.namespace
-    labels    = local.final_labels
-  }
-
-  data = {
-    (local.database_secret_key) = local.external_db_password_string
-  }
-
-  type = "Opaque"
-}
-
-# Deploy Temporal using Helm chart.
-# helm provider v3 replaced the `set {}`/`dynamic "set"` blocks with list attributes;
-# the chart configuration is assembled in local.helm_values (locals.tf) using the house
-# values=[yamlencode(...)] idiom, which mirrors the Pulumi module's nested values map.
 resource "helm_release" "temporal" {
-  name       = var.metadata.name
-  repository = local.helm_chart_repository
+  name       = local.release_name
+  repository = local.helm_chart_repo
   chart      = local.helm_chart_name
-  version    = local.helm_chart_version
+  version    = local.chart_version
   namespace  = local.namespace
 
-  # Wait for deployment to complete
-  wait          = true
-  wait_for_jobs = true
-  timeout       = 600
+  # The module owns namespace creation (create_namespace flag).
+  create_namespace = false
 
-  values = [
-    yamlencode(local.helm_values)
-  ]
+  # Wait for the cluster to become Ready — a server that never starts
+  # (empty schema, unreachable database, wrong credential Secret name)
+  # should fail THIS apply, not the first workflow. The pre-install
+  # schema Jobs run inside this budget too (Helm hooks execute before
+  # the release resources).
+  wait            = true
+  atomic          = true
+  cleanup_on_fail = true
+  timeout         = 900
 
-  depends_on = [
-    kubernetes_secret_v1.db_password
-  ]
-}
+  # Documents merged in order by the provider (helm -f semantics): the
+  # typed rendering first, the user's escape hatch second — and
+  # fullnameOverride re-pinned LAST, the one deliberate exception to the
+  # escape hatch's last-word contract (twin of the Pulumi module). Every
+  # child name (`<name>-frontend`, `<name>-web`, ...) — and the exported
+  # outputs built from them — derive from the fullname; letting an
+  # override move it would break every output.
+  values = concat(
+    [yamlencode(local.helm_values)],
+    try(var.spec.helm_values, "") != "" ? [var.spec.helm_values] : [],
+    [yamlencode({ fullnameOverride = local.release_name })]
+  )
 
-# Create LoadBalancer service for frontend gRPC ingress (when enabled)
-resource "kubernetes_service_v1" "frontend_grpc_lb" {
-  count = local.frontend_ingress_enabled && local.frontend_grpc_hostname != "" ? 1 : 0
-
-  metadata {
-    name      = "${var.metadata.name}-frontend-grpc-lb"
-    namespace = local.namespace
-    labels    = local.final_labels
-    annotations = {
-      "external-dns.alpha.kubernetes.io/hostname" = local.frontend_grpc_hostname
-    }
-  }
-
-  spec {
-    type = "LoadBalancer"
-
-    port {
-      name        = "grpc"
-      port        = local.frontend_grpc_port
-      target_port = local.frontend_grpc_port
-      protocol    = "TCP"
-    }
-
-    selector = {
-      "app.kubernetes.io/name"      = "temporal"
-      "app.kubernetes.io/instance"  = var.metadata.name
-      "app.kubernetes.io/component" = "frontend"
+  lifecycle {
+    # FAIL LOUDLY on names past the chart's fullname budget: child names
+    # are `<fullname>-<component>` and the chart's componentname helper
+    # truncates the FULLNAME to fit 63 characters — the longest
+    # component ("internal-frontend", 17 chars) silently truncates the
+    # fullname past 45 and breaks the naming contract the exported
+    # outputs are built on. Twin: the Pulumi module's Resources() guard.
+    precondition {
+      condition     = length(var.metadata.name) <= 45
+      error_message = "The temporal chart derives child names from the resource name and silently truncates past 45 characters (62 minus its longest component suffix), which would break the naming contract — use a name of at most 45 characters."
     }
   }
 
   depends_on = [
-    helm_release.temporal
+    kubernetes_namespace_v1.temporal,
   ]
 }

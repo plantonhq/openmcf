@@ -25,17 +25,18 @@ var operatorKinds = map[string]bool{
 // (case-insensitive via lowercasing).
 var helmTier2Kinds = map[string]bool{
 	// Tier 2 Helm applications
-	"kubernetesnats":     true,
 	"kubernetesopenbao":  true,
 	"kubernetesopenfga":  true,
 	"kubernetesjenkins":  true,
-	"kubernetestemporal": true,
 	"kubernetesharbor":   true,
 	"kuberneteslocust":   true,
 	"kuberneteskeycloak": true,
-	// Data-tier Helm applications with dedicated behavioral verifiers
+	// Helm applications with dedicated behavioral verifiers (the
+	// dispatch cases win; these rows are the generic fallback)
 	"kubernetesseaweedfs": true,
 	"kubernetesqdrant":    true,
+	"kubernetestemporal":  true,
+	"kubernetesnats":      true,
 }
 
 // crdInstallKinds maps manifest kind values (lowercased) to their expected CRD
@@ -808,6 +809,47 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			WorkflowServiceAccount: argoWorkflowsRunnerSA(spec),
 			InstanceId:             argoWorkflowsInstanceId(spec),
 			ResilienceProof:        strings.Contains(manifestPath, "behavioral-resilience"),
+		}, nil
+
+	// A Temporal workflow engine: all four server Deployments rolled
+	// out against the COMPOSED PostgreSQL (the registry-prerequisite
+	// fixture), the Web UI answering when enabled, and THE ENGINE PROOF
+	// on every lane — a real SDK worker connects through the frontend
+	// gRPC endpoint and a workflow EXECUTES TO COMPLETION with its
+	// result read back. The behavioral-state scenario (recognized by
+	// name) replaces the history and frontend pods and proves the
+	// completed workflow still describes (state lives in the database)
+	// plus a fresh workflow succeeds. Destroy is clean by design (no
+	// CRDs).
+	case "kubernetestemporal":
+		spec := manifestSpecMap(manifestPath)
+		return &TemporalVerifier{
+			Namespace:         info.Namespace,
+			Name:              info.Name,
+			WebUiEnabled:      temporalWebUiEnabled(spec),
+			TemporalNamespace: temporalFirstNamespace(spec),
+			StateProof:        strings.Contains(manifestPath, "behavioral-state"),
+		}, nil
+
+	// A NATS messaging system: the StatefulSet rolled out and THE
+	// MESSAGING PROOF on every lane — a real nats.go client completes a
+	// pub/sub round-trip (authenticated as the first declared user from
+	// the module-generated auth Secret when auth is on, with the auth
+	// gate asserted), and with JetStream on (the kind's default) a
+	// file-backed stream stores a marker a consumer reads back. The
+	// behavioral-durability scenario (recognized by name) proves the
+	// marker survives a server pod replacement through the JetStream
+	// PVC. Destroy is clean by design (no CRDs).
+	case "kubernetesnats":
+		spec := manifestSpecMap(manifestPath)
+		return &NatsVerifier{
+			Namespace:        info.Namespace,
+			Name:             info.Name,
+			JetStreamEnabled: natsJetStreamEnabled(spec),
+			FirstUsername:    natsFirstUsername(spec),
+			NoAuthUser:       natsNoAuthUser(spec),
+			NatsBoxEnabled:   natsBoxEnabled(spec),
+			DurabilityProof:  strings.Contains(manifestPath, "behavioral-durability"),
 		}, nil
 
 	// A Qdrant vector database: replicas ready, the main Service

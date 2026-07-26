@@ -8,14 +8,14 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-single-instance"
+  - slug: "01-dev"
     rank: "01"
-    title: "Single Instance NATS with JetStream"
-    excerpt: "This preset deploys a single-node NATS server with JetStream enabled and the NATS Box diagnostic tool. JetStream provides persistent messaging, key-value store, and object store capabilities."
-  - slug: "02-clustered"
+    title: "Dev preset"
+    excerpt: "The smallest useful NATS: one server, JetStream on. A single server is a complete JetStream deployment for dev — streams, consumers, KV and object stores all work, and the file-store volume means a..."
+  - slug: "02-production"
     rank: "02"
-    title: "Clustered NATS with JetStream"
-    excerpt: "This preset deploys a 3-node NATS cluster with JetStream enabled for production messaging. The cluster provides high availability with automatic leader election for JetStream streams."
+    title: "Production preset"
+    excerpt: "A 3-server NATS cluster with JetStream on 20Gi file stores per server, authenticated clients, and Prometheus metrics. Three servers is the smallest count that keeps replicated (R3) streams available..."
 ---
 
 # NATS Presets

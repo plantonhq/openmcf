@@ -52,7 +52,7 @@ spec:
     # exactly the human recipe below when the resolving context holds
     # cluster credentials). Count-indexed alongside admin_auth (present
     # only when the console generated its own credentials).
-    - name: admin_password_value
+    - name: password_value
       tofu_resource_name: admin
       derivations:
         - from_cluster_secret_key:

@@ -4,57 +4,101 @@ import (
 	"github.com/pkg/errors"
 	kubernetestemporalv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestemporal/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources is the single entry-point consumed by Planton runtime.
-// It wires together all noun-style helpers in a Terraform-like, top-down
-// order so the flow is easy for DevOps engineers to follow.
-func Resources(ctx *pulumi.Context,
-	stackInput *kubernetestemporalv1.KubernetesTemporalStackInput) error {
-
+// Resources installs Temporal from the official Helm chart as a real Helm
+// release. The typed spec renders into chart values (values.go); database
+// passwords ride the chart's existingSecret contract (a secretKeyRef the
+// server and schema Jobs resolve at runtime — never rendered as values);
+// the helm_values escape hatch merges last with Helm -f semantics — the
+// exact semantic twin of the Terraform module's helm_release with
+// values = [typed, helm_values].
+func Resources(ctx *pulumi.Context, stackInput *kubernetestemporalv1.KubernetesTemporalStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	if locals.KubernetesTemporal.Spec.Database == nil {
-		return errors.New("database configuration is required")
+	// FAIL LOUDLY on names past the chart's fullname budget: child names
+	// are `<fullname>-<component>` and the chart's componentname helper
+	// truncates the FULLNAME to fit 63 characters — the longest
+	// component ("internal-frontend", 17 chars) would silently truncate
+	// the fullname past 45, breaking the naming contract every exported
+	// output is built on. Twin: the Terraform module's lifecycle
+	// precondition.
+	if len(locals.ReleaseName) > vars.FullnameBudget {
+		return errors.Errorf(
+			"resource name %q is %d characters — the temporal chart derives child names from it and silently truncates past %d characters, which would break the naming contract; use a name of at most %d characters",
+			locals.ReleaseName, len(locals.ReleaseName), vars.FullnameBudget, vars.FullnameBudget)
 	}
 
 	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
 		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to set up kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
-	// Conditionally create namespace based on create_namespace flag
-	createdNamespace, err := namespace(ctx, locals, kubernetesProvider)
+	// ------------------------------ namespace ----------------------------
+	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	var namespaceDeps []pulumi.ResourceOption
+	var releaseDeps []pulumi.ResourceOption
 	if createdNamespace != nil {
-		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+		releaseDeps = append(releaseDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
 	}
 
-	if err := dbPasswordSecret(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create database password secret")
+	// ------------------------------ helm release --------------------------
+	mergedValues, err := buildHelmValues(locals)
+	if err != nil {
+		return errors.Wrap(err, "failed to build helm values")
 	}
 
-	if err := helmChart(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to install Temporal Helm chart")
+	releaseArgs := &helmv3.ReleaseArgs{
+		Name:      pulumi.String(locals.ReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		Chart:     pulumi.String(vars.HelmChartName),
+		Version:   pulumi.String(locals.ChartVersion),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(vars.HelmChartRepo),
+		},
+		Values: pulumi.ToMap(mergedValues),
+		// The module owns namespace creation (create_namespace flag).
+		CreateNamespace: pulumi.Bool(false),
+		// Wait for the cluster to become Ready — a server that never
+		// starts (empty schema, unreachable database, wrong credential
+		// Secret name) should fail THIS deploy, not the first workflow.
+		// The pre-install schema Jobs run inside this budget too (Helm
+		// hooks execute before the release resources). SkipAwait false
+		// is Helm --wait, stated explicitly to mirror the Terraform
+		// twin's `wait = true`.
+		SkipAwait:     pulumi.Bool(false),
+		Atomic:        pulumi.Bool(true),
+		CleanupOnFail: pulumi.Bool(true),
+		Timeout:       pulumi.Int(vars.HelmTimeoutSeconds),
 	}
 
-	if err := frontendIngress(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create frontend gRPC ingress")
+	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, releaseDeps...)
+
+	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, releaseArgs, opts...)
+	if err != nil {
+		return errors.Wrap(err, "failed to install temporal helm release")
 	}
 
-	if err := frontendHttpIngress(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create frontend HTTP ingress")
-	}
-
-	if err := webUiIngress(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create web UI ingress")
-	}
-
+	exportOutputs(ctx, locals)
 	return nil
+}
+
+// exportOutputs publishes the composition handles. The frontend Service is
+// `<name>-frontend` (fullnameOverride pins the fullname); the web handles
+// are empty when the UI is disabled.
+func exportOutputs(ctx *pulumi.Context, locals *Locals) {
+	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	ctx.Export(OpFrontendService, pulumi.String(locals.FrontendServiceName))
+	ctx.Export(OpFrontendEndpoint, pulumi.String(locals.FrontendEndpoint))
+	ctx.Export(OpFrontendHttpEndpoint, pulumi.String(locals.FrontendHttpEndpoint))
+	ctx.Export(OpWebUiService, pulumi.String(locals.WebUiServiceName))
+	ctx.Export(OpWebUiEndpoint, pulumi.String(locals.WebUiEndpoint))
+	ctx.Export(OpPortForwardFrontendCommand, pulumi.String(locals.PortForwardFrontendCommand))
+	ctx.Export(OpPortForwardWebUiCommand, pulumi.String(locals.PortForwardWebUiCommand))
 }

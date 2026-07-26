@@ -197,7 +197,7 @@ spec:
     # --- Random (provider-local — no cluster state) ---------------------------
     - terraform_type: random_password
       pulumi_type: random:index/randomPassword:RandomPassword
-      id_format: "{admin_password_value}"
+      id_format: "{password_value}"
       # The random provider keeps no cloud-side state: import takes the
       # password VALUE ITSELF as the ID (read it from the materialized
       # credentials Secret the module wrote it into). Post-import, the

@@ -25,105 +25,159 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// temporal kubernetes database backend enumerates the supported databases.
-type KubernetesTemporalDatabaseBackend int32
-
-const (
-	// unspecified should not be used
-	KubernetesTemporalDatabaseBackend_kubernetes_temporal_database_backend_unspecified KubernetesTemporalDatabaseBackend = 0
-	// uses cassandra
-	KubernetesTemporalDatabaseBackend_cassandra KubernetesTemporalDatabaseBackend = 1
-	// uses postgresql
-	KubernetesTemporalDatabaseBackend_postgresql KubernetesTemporalDatabaseBackend = 2
-	// uses mysql
-	KubernetesTemporalDatabaseBackend_mysql KubernetesTemporalDatabaseBackend = 3
-)
-
-// Enum value maps for KubernetesTemporalDatabaseBackend.
-var (
-	KubernetesTemporalDatabaseBackend_name = map[int32]string{
-		0: "kubernetes_temporal_database_backend_unspecified",
-		1: "cassandra",
-		2: "postgresql",
-		3: "mysql",
-	}
-	KubernetesTemporalDatabaseBackend_value = map[string]int32{
-		"kubernetes_temporal_database_backend_unspecified": 0,
-		"cassandra":  1,
-		"postgresql": 2,
-		"mysql":      3,
-	}
-)
-
-func (x KubernetesTemporalDatabaseBackend) Enum() *KubernetesTemporalDatabaseBackend {
-	p := new(KubernetesTemporalDatabaseBackend)
-	*p = x
-	return p
-}
-
-func (x KubernetesTemporalDatabaseBackend) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (KubernetesTemporalDatabaseBackend) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (KubernetesTemporalDatabaseBackend) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_enumTypes[0]
-}
-
-func (x KubernetesTemporalDatabaseBackend) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use KubernetesTemporalDatabaseBackend.Descriptor instead.
-func (KubernetesTemporalDatabaseBackend) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-// temporal kubernetes spec defines minimal fields for deploying temporal on kubernetes.
+// *
+// **KubernetesTemporalSpec** deploys Temporal — the durable workflow
+// engine (long-running business logic, human-in-the-loop flows, saga
+// orchestration, AI-agent pipelines) — from the official `temporal`
+// Helm chart (https://go.temporal.io/helm-charts).
+//
+// WHAT GETS INSTALLED: the four Temporal server services (frontend,
+// history, matching, worker) as separate Deployments, the Web UI (on
+// by default), an admin-tools pod for operational commands, and the
+// schema-setup Jobs that prepare the databases before the server
+// starts.
+//
+// BRING YOUR OWN DATABASE — nothing is bundled. Temporal stores every
+// workflow's state in a database you declare under `database`:
+// PostgreSQL (a KubernetesPostgres composes naturally — the
+// recommended path), MySQL (a KubernetesMysql composes), or an
+// external Cassandra cluster you operate yourself. The chart's old
+// bundled Cassandra/Elasticsearch/Prometheus/Grafana subcharts were
+// removed upstream; declaring their legacy keys through `helm_values`
+// makes the chart itself fail rendering.
+//
+// TWO DATABASES, ONE SERVER: Temporal keeps workflow state in the
+// default store (`database_name`, default "temporal") and its search
+// index in the visibility store (`visibility_database_name`, default
+// "temporal_visibility"). Both must EXIST before install unless
+// `create_databases` is set (which needs a database user with
+// create-database privileges). On a KubernetesPostgres, declare the
+// first database at bootstrap and create the second with one line of
+// `post_init_sql` — both owned by the same application user.
+//
+// EXPOSURE: the frontend (gRPC 7233) and Web UI (HTTP 8080) Services
+// stay ClusterIP; expose them via first-class kinds (KubernetesService
+// for a LoadBalancer, Gateway API kinds for routes) over the exported
+// service handles. Workers connect in-cluster through
+// `frontend_endpoint`.
+//
+// The typed fields below cover the chart's meaningful configuration
+// surface; `helm_values` remains as the escape hatch for chart values
+// beyond them (merged last, Helm `-f` semantics, identical on both
+// engines) — mTLS certificate mounts, JWT authorization, multi-cluster
+// replication (clusterMetadata), extra dynamic-config keys — a safety
+// valve, never the primary interface. Never put secret material in
+// `helm_values`; database passwords ride existing Secrets through the
+// typed fields and never land in rendered values.
 type KubernetesTemporalSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// database configuration
-	Database *KubernetesTemporalDatabaseConfig `protobuf:"bytes,4,opt,name=database,proto3" json:"database,omitempty"`
-	// disables temporal web ui
-	DisableWebUi bool `protobuf:"varint,5,opt,name=disable_web_ui,json=disableWebUi,proto3" json:"disable_web_ui,omitempty"`
-	// enables embedded elasticsearch for temporal
-	// this is ignored if external elasticsearch is set
-	EnableEmbeddedElasticsearch bool `protobuf:"varint,6,opt,name=enable_embedded_elasticsearch,json=enableEmbeddedElasticsearch,proto3" json:"enable_embedded_elasticsearch,omitempty"`
-	// enables monitoring stack for temporal
-	// enabling this will deploy prometheus and grafana
-	EnableMonitoringStack bool `protobuf:"varint,7,opt,name=enable_monitoring_stack,json=enableMonitoringStack,proto3" json:"enable_monitoring_stack,omitempty"`
-	// number of cassandra nodes to be deployed
-	// this is only honored when the backend is cassandra, and no external database is provided.
-	CassandraReplicas *int32 `protobuf:"varint,8,opt,name=cassandra_replicas,json=cassandraReplicas,proto3,oneof" json:"cassandra_replicas,omitempty"`
-	// The ingress configuration for the temporal deployment.
-	// if enabled, the frontend will be exposed using a load-balancer
-	// and also if web ui is enabled it will be exposed using the kubernetes ingress controller.
-	Ingress *KubernetesTemporalIngress `protobuf:"bytes,9,opt,name=ingress,proto3" json:"ingress,omitempty"`
-	// external elasticsearch configuration to be used by temporal for configuring observability.
-	ExternalElasticsearch *KubernetesTemporalExternalElasticsearch `protobuf:"bytes,10,opt,name=external_elasticsearch,json=externalElasticsearch,proto3" json:"external_elasticsearch,omitempty"`
-	// version of the Temporal Helm chart to deploy (e.g., "0.62.0")
-	// if not specified, the default version configured in the Pulumi module will be used
-	Version string `protobuf:"bytes,11,opt,name=version,proto3" json:"version,omitempty"`
-	// Dynamic configuration values for Temporal server runtime behavior.
-	// These settings control workflow execution limits and can be adjusted without server restart.
-	DynamicConfig *KubernetesTemporalDynamicConfig `protobuf:"bytes,12,opt,name=dynamic_config,json=dynamicConfig,proto3" json:"dynamic_config,omitempty"`
 	// *
-	// Number of history shards for the Temporal cluster.
-	// This is an IMMUTABLE setting that must be decided at cluster creation time.
-	// Higher values enable better parallelism and throughput but require more resources.
-	// Default: 512 (safe for most production workloads).
-	// WARNING: Cannot be changed after initial deployment without data migration.
-	NumHistoryShards *int32 `protobuf:"varint,13,opt,name=num_history_shards,json=numHistoryShards,proto3,oneof" json:"num_history_shards,omitempty"`
-	// Per-service replica and resource configuration for Temporal services.
-	// Allows fine-tuning resources for frontend, history, matching, and worker services.
-	Services      *KubernetesTemporalServices `protobuf:"bytes,14,opt,name=services,proto3" json:"services,omitempty"`
+	// Namespace to install into. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the
+	// resource. When false, the namespace must already exist. KNOW THIS:
+	// the database password is read through a secretKeyRef, and a
+	// secretKeyRef can only read Secrets in the workload's OWN namespace
+	// — co-locate Temporal with its database (the default composition)
+	// or replicate the credential Secret into this namespace.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (e.g. "1.6.0" — chart 1.6.0 ships
+	// Temporal 1.31.2). Versions must exist as SERVED charts in the
+	// repository index (https://go.temporal.io/helm-charts).
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// The database Temporal persists every workflow's state in.
+	// Required — nothing is bundled.
+	Database *KubernetesTemporalDatabase `protobuf:"bytes,4,opt,name=database,proto3" json:"database,omitempty"`
+	// *
+	// Number of history shards for the cluster. IMMUTABLE — the value is
+	// baked into the default store's schema at first install and CANNOT
+	// be changed afterwards without a full cluster migration; pick for
+	// the cluster you will grow into, not the one you start with. Higher
+	// values raise parallelism and throughput ceilings at the cost of
+	// per-shard overhead. Empty = 512 (the upstream default, safe for
+	// most production workloads).
+	NumHistoryShards *int32 `protobuf:"varint,5,opt,name=num_history_shards,json=numHistoryShards,proto3,oneof" json:"num_history_shards,omitempty"`
+	// *
+	// Per-service sizing for the four Temporal server services. Empty =
+	// one replica of each with the chart's defaults (no resource
+	// requests — fine for dev, size them for production).
+	Services *KubernetesTemporalServices `protobuf:"bytes,6,opt,name=services,proto3" json:"services,omitempty"`
+	// *
+	// Run the internal-frontend service. Temporal's system workers
+	// connect through it instead of the public frontend — REQUIRED when
+	// you enable authorization on the public frontend via `helm_values`
+	// (otherwise the server's own workers would need JWTs). Off by
+	// default, matching the chart.
+	InternalFrontendEnabled bool `protobuf:"varint,7,opt,name=internal_frontend_enabled,json=internalFrontendEnabled,proto3" json:"internal_frontend_enabled,omitempty"`
+	// *
+	// The Temporal Web UI.
+	WebUi *KubernetesTemporalWebUi `protobuf:"bytes,8,opt,name=web_ui,json=webUi,proto3" json:"web_ui,omitempty"`
+	// *
+	// Deploy the admin-tools pod — a shell with `temporal` and the
+	// schema tools pre-installed, for operational commands
+	// (`kubectl exec` into it). The schema Jobs use this image either
+	// way. Enabled by default, matching the chart.
+	AdminToolsEnabled *bool `protobuf:"varint,9,opt,name=admin_tools_enabled,json=adminToolsEnabled,proto3,oneof" json:"admin_tools_enabled,omitempty"`
+	// *
+	// Temporal namespaces to create declaratively after install (a Job
+	// runs `temporal operator namespace create` for each, idempotently).
+	// Workflows execute inside a Temporal namespace — declare at least
+	// one, or create them later with the CLI/UI. Note these are
+	// TEMPORAL namespaces (a logical isolation unit inside the server),
+	// not Kubernetes namespaces.
+	TemporalNamespaces []*KubernetesTemporalNamespace `protobuf:"bytes,10,rep,name=temporal_namespaces,json=temporalNamespaces,proto3" json:"temporal_namespaces,omitempty"`
+	// *
+	// Runtime limits pushed through Temporal's dynamic-config file.
+	// These control workflow history and payload size ceilings and
+	// apply without a server restart. Empty = Temporal's defaults.
+	// Other dynamic-config keys ride `helm_values` under
+	// `server.dynamicConfig`.
+	DynamicConfig *KubernetesTemporalDynamicConfig `protobuf:"bytes,11,opt,name=dynamic_config,json=dynamicConfig,proto3" json:"dynamic_config,omitempty"`
+	// *
+	// Archive closed workflow histories and visibility records to
+	// long-term storage (S3, GCS, or a mounted filesystem) so they
+	// survive retention-driven deletion from the database. Empty =
+	// archival disabled (the upstream default).
+	Archival *KubernetesTemporalArchival `protobuf:"bytes,12,opt,name=archival,proto3" json:"archival,omitempty"`
+	// *
+	// Emit Prometheus metrics via ServiceMonitor resources (one per
+	// server service). Requires the Prometheus Operator CRDs on the
+	// cluster — a KubernetesKubePrometheusStack composes naturally.
+	// When false (default), pods still carry prometheus.io scrape
+	// annotations for annotation-based collection.
+	ServiceMonitorEnabled bool `protobuf:"varint,13,opt,name=service_monitor_enabled,json=serviceMonitorEnabled,proto3" json:"service_monitor_enabled,omitempty"`
+	// *
+	// Server log level. Empty = "info". Accepts a single level or
+	// Temporal's comma form (e.g. "debug,info").
+	LogLevel *string `protobuf:"bytes,14,opt,name=log_level,json=logLevel,proto3,oneof" json:"log_level,omitempty"`
+	// *
+	// Pod scheduling for the server services, schema Jobs, admin-tools
+	// and Web UI pods.
+	Scheduling *KubernetesTemporalScheduling `protobuf:"bytes,15,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
+	// *
+	// Container image overrides for air-gapped clusters and private
+	// mirrors. Empty = the chart's pinned upstream images
+	// (temporalio/server, temporalio/ui, temporalio/admin-tools).
+	Images *KubernetesTemporalImages `protobuf:"bytes,16,opt,name=images,proto3" json:"images,omitempty"`
+	// *
+	// Additional Helm values merged LAST (Helm `-f` semantics, identical
+	// on both engines) — the escape hatch for chart values the typed
+	// fields do not model: mTLS mounts (`server.config.tls` +
+	// `server.additionalVolumes`), JWT authorization
+	// (`server.config.authorization`), multi-cluster replication
+	// (`server.config.clusterMetadata`), extra dynamic-config keys, and
+	// per-service scheduling. YAML document as a string. Never put
+	// secret material here; passwords belong in the typed
+	// secret-reference fields, which keep them out of rendered values.
+	// The legacy bundled-subchart keys (cassandra, elasticsearch,
+	// prometheus, grafana, mysql, postgresql) were REMOVED upstream —
+	// setting them makes the chart itself fail rendering.
+	HelmValues    string `protobuf:"bytes,17,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -172,65 +226,16 @@ func (x *KubernetesTemporalSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesTemporalSpec) GetDatabase() *KubernetesTemporalDatabaseConfig {
-	if x != nil {
-		return x.Database
-	}
-	return nil
-}
-
-func (x *KubernetesTemporalSpec) GetDisableWebUi() bool {
-	if x != nil {
-		return x.DisableWebUi
-	}
-	return false
-}
-
-func (x *KubernetesTemporalSpec) GetEnableEmbeddedElasticsearch() bool {
-	if x != nil {
-		return x.EnableEmbeddedElasticsearch
-	}
-	return false
-}
-
-func (x *KubernetesTemporalSpec) GetEnableMonitoringStack() bool {
-	if x != nil {
-		return x.EnableMonitoringStack
-	}
-	return false
-}
-
-func (x *KubernetesTemporalSpec) GetCassandraReplicas() int32 {
-	if x != nil && x.CassandraReplicas != nil {
-		return *x.CassandraReplicas
-	}
-	return 0
-}
-
-func (x *KubernetesTemporalSpec) GetIngress() *KubernetesTemporalIngress {
-	if x != nil {
-		return x.Ingress
-	}
-	return nil
-}
-
-func (x *KubernetesTemporalSpec) GetExternalElasticsearch() *KubernetesTemporalExternalElasticsearch {
-	if x != nil {
-		return x.ExternalElasticsearch
-	}
-	return nil
-}
-
-func (x *KubernetesTemporalSpec) GetVersion() string {
-	if x != nil {
-		return x.Version
+func (x *KubernetesTemporalSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
 	}
 	return ""
 }
 
-func (x *KubernetesTemporalSpec) GetDynamicConfig() *KubernetesTemporalDynamicConfig {
+func (x *KubernetesTemporalSpec) GetDatabase() *KubernetesTemporalDatabase {
 	if x != nil {
-		return x.DynamicConfig
+		return x.Database
 	}
 	return nil
 }
@@ -249,359 +254,685 @@ func (x *KubernetesTemporalSpec) GetServices() *KubernetesTemporalServices {
 	return nil
 }
 
-// groups database configuration settings.
-type KubernetesTemporalDatabaseConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// selected database backend
-	Backend KubernetesTemporalDatabaseBackend `protobuf:"varint,1,opt,name=backend,proto3,enum=dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseBackend" json:"backend,omitempty"`
-	// external database configuration, if this is not set, in-cluster cassandra would be created
-	ExternalDatabase *KubernetesTemporalExternalDatabase `protobuf:"bytes,2,opt,name=external_database,json=externalDatabase,proto3" json:"external_database,omitempty"`
-	// primary database or keyspace name
-	DatabaseName *string `protobuf:"bytes,6,opt,name=database_name,json=databaseName,proto3,oneof" json:"database_name,omitempty"`
-	// visibility database or keyspace name
-	VisibilityName *string `protobuf:"bytes,7,opt,name=visibility_name,json=visibilityName,proto3,oneof" json:"visibility_name,omitempty"`
-	// disables automatic schema creation
-	DisableAutoSchemaSetup bool `protobuf:"varint,8,opt,name=disable_auto_schema_setup,json=disableAutoSchemaSetup,proto3" json:"disable_auto_schema_setup,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
-}
-
-func (x *KubernetesTemporalDatabaseConfig) Reset() {
-	*x = KubernetesTemporalDatabaseConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesTemporalDatabaseConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesTemporalDatabaseConfig) ProtoMessage() {}
-
-func (x *KubernetesTemporalDatabaseConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[1]
+func (x *KubernetesTemporalSpec) GetInternalFrontendEnabled() bool {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesTemporalDatabaseConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesTemporalDatabaseConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *KubernetesTemporalDatabaseConfig) GetBackend() KubernetesTemporalDatabaseBackend {
-	if x != nil {
-		return x.Backend
-	}
-	return KubernetesTemporalDatabaseBackend_kubernetes_temporal_database_backend_unspecified
-}
-
-func (x *KubernetesTemporalDatabaseConfig) GetExternalDatabase() *KubernetesTemporalExternalDatabase {
-	if x != nil {
-		return x.ExternalDatabase
-	}
-	return nil
-}
-
-func (x *KubernetesTemporalDatabaseConfig) GetDatabaseName() string {
-	if x != nil && x.DatabaseName != nil {
-		return *x.DatabaseName
-	}
-	return ""
-}
-
-func (x *KubernetesTemporalDatabaseConfig) GetVisibilityName() string {
-	if x != nil && x.VisibilityName != nil {
-		return *x.VisibilityName
-	}
-	return ""
-}
-
-func (x *KubernetesTemporalDatabaseConfig) GetDisableAutoSchemaSetup() bool {
-	if x != nil {
-		return x.DisableAutoSchemaSetup
+		return x.InternalFrontendEnabled
 	}
 	return false
 }
 
-// describes an external database that temporal can use
-type KubernetesTemporalExternalDatabase struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// hostname for external database
-	Host string `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
-	// port for external database
-	Port int32 `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
-	// username for database
-	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
-	// *
-	// The password for authenticating to the database.
-	// Can be provided either as a plain string value or as a reference to an existing Kubernetes Secret.
-	//
-	// Using a secret reference is recommended for production deployments:
-	// ```yaml
-	// password:
-	//
-	//	secretRef:
-	//	  name: db-credentials
-	//	  key: password
-	//
-	// ```
-	//
-	// For development/testing, a plain string value can be used:
-	// ```yaml
-	// password:
-	//
-	//	stringValue: my-password
-	//
-	// ```
-	Password      *kubernetes.KubernetesSensitiveValue `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesTemporalExternalDatabase) Reset() {
-	*x = KubernetesTemporalExternalDatabase{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesTemporalExternalDatabase) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesTemporalExternalDatabase) ProtoMessage() {}
-
-func (x *KubernetesTemporalExternalDatabase) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesTemporalExternalDatabase.ProtoReflect.Descriptor instead.
-func (*KubernetesTemporalExternalDatabase) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesTemporalExternalDatabase) GetHost() string {
-	if x != nil {
-		return x.Host
-	}
-	return ""
-}
-
-func (x *KubernetesTemporalExternalDatabase) GetPort() int32 {
-	if x != nil {
-		return x.Port
-	}
-	return 0
-}
-
-func (x *KubernetesTemporalExternalDatabase) GetUsername() string {
-	if x != nil {
-		return x.Username
-	}
-	return ""
-}
-
-func (x *KubernetesTemporalExternalDatabase) GetPassword() *kubernetes.KubernetesSensitiveValue {
-	if x != nil {
-		return x.Password
-	}
-	return nil
-}
-
-// describes an external elasticsearch cluster that temporal can use
-// for advanced visibility instead of deploying an in-cluster es chart.
-type KubernetesTemporalExternalElasticsearch struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// the host address of the existing elasticsearch cluster
-	Host string `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
-	// the port for the existing elasticsearch cluster
-	Port int32 `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
-	// optional username, if the external cluster requires auth
-	User string `protobuf:"bytes,3,opt,name=user,proto3" json:"user,omitempty"`
-	// *
-	// Optional password for authenticating to the external Elasticsearch cluster.
-	// Can be provided either as a plain string value or as a reference to an existing Kubernetes Secret.
-	//
-	// Using a secret reference is recommended for production deployments:
-	// ```yaml
-	// password:
-	//
-	//	secretRef:
-	//	  name: es-credentials
-	//	  key: password
-	//
-	// ```
-	//
-	// For development/testing, a plain string value can be used:
-	// ```yaml
-	// password:
-	//
-	//	stringValue: my-password
-	//
-	// ```
-	Password      *kubernetes.KubernetesSensitiveValue `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesTemporalExternalElasticsearch) Reset() {
-	*x = KubernetesTemporalExternalElasticsearch{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesTemporalExternalElasticsearch) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesTemporalExternalElasticsearch) ProtoMessage() {}
-
-func (x *KubernetesTemporalExternalElasticsearch) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesTemporalExternalElasticsearch.ProtoReflect.Descriptor instead.
-func (*KubernetesTemporalExternalElasticsearch) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *KubernetesTemporalExternalElasticsearch) GetHost() string {
-	if x != nil {
-		return x.Host
-	}
-	return ""
-}
-
-func (x *KubernetesTemporalExternalElasticsearch) GetPort() int32 {
-	if x != nil {
-		return x.Port
-	}
-	return 0
-}
-
-func (x *KubernetesTemporalExternalElasticsearch) GetUser() string {
-	if x != nil {
-		return x.User
-	}
-	return ""
-}
-
-func (x *KubernetesTemporalExternalElasticsearch) GetPassword() *kubernetes.KubernetesSensitiveValue {
-	if x != nil {
-		return x.Password
-	}
-	return nil
-}
-
-// ingress configuration for temporal deployment with separate frontend and web ui endpoints
-type KubernetesTemporalIngress struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// frontend (gRPC + HTTP) ingress configuration
-	Frontend *KubernetesTemporalFrontendIngressEndpoint `protobuf:"bytes,1,opt,name=frontend,proto3" json:"frontend,omitempty"`
-	// web ui ingress configuration
-	WebUi         *KubernetesTemporalWebUiIngressEndpoint `protobuf:"bytes,2,opt,name=web_ui,json=webUi,proto3" json:"web_ui,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesTemporalIngress) Reset() {
-	*x = KubernetesTemporalIngress{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesTemporalIngress) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesTemporalIngress) ProtoMessage() {}
-
-func (x *KubernetesTemporalIngress) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesTemporalIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesTemporalIngress) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *KubernetesTemporalIngress) GetFrontend() *KubernetesTemporalFrontendIngressEndpoint {
-	if x != nil {
-		return x.Frontend
-	}
-	return nil
-}
-
-func (x *KubernetesTemporalIngress) GetWebUi() *KubernetesTemporalWebUiIngressEndpoint {
+func (x *KubernetesTemporalSpec) GetWebUi() *KubernetesTemporalWebUi {
 	if x != nil {
 		return x.WebUi
 	}
 	return nil
 }
 
-// frontend ingress endpoint configuration supporting both gRPC and HTTP protocols
-type KubernetesTemporalFrontendIngressEndpoint struct {
+func (x *KubernetesTemporalSpec) GetAdminToolsEnabled() bool {
+	if x != nil && x.AdminToolsEnabled != nil {
+		return *x.AdminToolsEnabled
+	}
+	return false
+}
+
+func (x *KubernetesTemporalSpec) GetTemporalNamespaces() []*KubernetesTemporalNamespace {
+	if x != nil {
+		return x.TemporalNamespaces
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalSpec) GetDynamicConfig() *KubernetesTemporalDynamicConfig {
+	if x != nil {
+		return x.DynamicConfig
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalSpec) GetArchival() *KubernetesTemporalArchival {
+	if x != nil {
+		return x.Archival
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalSpec) GetServiceMonitorEnabled() bool {
+	if x != nil {
+		return x.ServiceMonitorEnabled
+	}
+	return false
+}
+
+func (x *KubernetesTemporalSpec) GetLogLevel() string {
+	if x != nil && x.LogLevel != nil {
+		return *x.LogLevel
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalSpec) GetScheduling() *KubernetesTemporalScheduling {
+	if x != nil {
+		return x.Scheduling
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalSpec) GetImages() *KubernetesTemporalImages {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalSpec) GetHelmValues() string {
+	if x != nil {
+		return x.HelmValues
+	}
+	return ""
+}
+
+// *
+// The database backing Temporal — the default (workflow state) store
+// plus the visibility (search index) store.
+//
+// PRIVILEGES CHEAT SHEET: with `create_databases: false` (the
+// default), both databases must exist and the declared user needs
+// full DDL+DML rights INSIDE them (ownership is simplest — the schema
+// Jobs create dozens of tables and indexes). With
+// `create_databases: true`, the user additionally needs
+// create-database rights on the server (CREATEDB on PostgreSQL).
+type KubernetesTemporalDatabase struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// flag to enable or disable frontend ingress
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// the full hostname for gRPC access via LoadBalancer (e.g., "temporal-frontend-grpc.example.com")
-	// required when enabled is true
-	GrpcHostname string `protobuf:"bytes,2,opt,name=grpc_hostname,json=grpcHostname,proto3" json:"grpc_hostname,omitempty"`
-	// the full hostname for HTTP access via Gateway API (e.g., "temporal-frontend-http.example.com")
-	// optional - only creates Gateway/HTTPRoute resources if provided
-	HttpHostname  string `protobuf:"bytes,3,opt,name=http_hostname,json=httpHostname,proto3" json:"http_hostname,omitempty"`
+	// *
+	// Exactly one database backend.
+	//
+	// Types that are valid to be assigned to Backend:
+	//
+	//	*KubernetesTemporalDatabase_Postgres
+	//	*KubernetesTemporalDatabase_Mysql
+	//	*KubernetesTemporalDatabase_Cassandra
+	Backend isKubernetesTemporalDatabase_Backend `protobuf_oneof:"backend"`
+	// *
+	// Name of the default store database (the Cassandra KEYSPACE when
+	// the backend is cassandra). Empty = "temporal".
+	DatabaseName *string `protobuf:"bytes,4,opt,name=database_name,json=databaseName,proto3,oneof" json:"database_name,omitempty"`
+	// *
+	// Name of the visibility store database. Empty =
+	// "temporal_visibility". Ignored when a `visibility` block declares
+	// its own database name.
+	VisibilityDatabaseName *string `protobuf:"bytes,5,opt,name=visibility_database_name,json=visibilityDatabaseName,proto3,oneof" json:"visibility_database_name,omitempty"`
+	// *
+	// A SEPARATE SQL connection for the visibility store. REQUIRED when
+	// the backend is cassandra (Cassandra cannot serve visibility since
+	// Temporal v1.21). Optional for SQL backends — declare it to place
+	// visibility on a different server than workflow state; empty = the
+	// same server and credentials as the default store, database
+	// `visibility_database_name`.
+	Visibility *KubernetesTemporalVisibility `protobuf:"bytes,6,opt,name=visibility,proto3" json:"visibility,omitempty"`
+	// *
+	// Have the schema Jobs CREATE the databases/keyspace before setting
+	// up schemas. Off by default — the databases are expected to exist
+	// (on a KubernetesPostgres: declare the default database at
+	// bootstrap and add the visibility database via `post_init_sql`).
+	// Turning this on requires create-database privileges (CREATEDB on
+	// PostgreSQL) for the declared user.
+	CreateDatabases bool `protobuf:"varint,7,opt,name=create_databases,json=createDatabases,proto3" json:"create_databases,omitempty"`
+	// *
+	// Skip the schema-setup Jobs entirely — you manage Temporal's
+	// schemas yourself with temporal-sql-tool/temporal-cassandra-tool.
+	// Leave off unless you have a dedicated schema pipeline: the server
+	// crash-loops against an empty or outdated schema.
+	SkipSchemaSetup bool `protobuf:"varint,8,opt,name=skip_schema_setup,json=skipSchemaSetup,proto3" json:"skip_schema_setup,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalDatabase) Reset() {
+	*x = KubernetesTemporalDatabase{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalDatabase) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalDatabase) ProtoMessage() {}
+
+func (x *KubernetesTemporalDatabase) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalDatabase.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalDatabase) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesTemporalDatabase) GetBackend() isKubernetesTemporalDatabase_Backend {
+	if x != nil {
+		return x.Backend
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalDatabase) GetPostgres() *KubernetesTemporalPostgres {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesTemporalDatabase_Postgres); ok {
+			return x.Postgres
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalDatabase) GetMysql() *KubernetesTemporalMysql {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesTemporalDatabase_Mysql); ok {
+			return x.Mysql
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalDatabase) GetCassandra() *KubernetesTemporalCassandra {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesTemporalDatabase_Cassandra); ok {
+			return x.Cassandra
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalDatabase) GetDatabaseName() string {
+	if x != nil && x.DatabaseName != nil {
+		return *x.DatabaseName
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalDatabase) GetVisibilityDatabaseName() string {
+	if x != nil && x.VisibilityDatabaseName != nil {
+		return *x.VisibilityDatabaseName
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalDatabase) GetVisibility() *KubernetesTemporalVisibility {
+	if x != nil {
+		return x.Visibility
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalDatabase) GetCreateDatabases() bool {
+	if x != nil {
+		return x.CreateDatabases
+	}
+	return false
+}
+
+func (x *KubernetesTemporalDatabase) GetSkipSchemaSetup() bool {
+	if x != nil {
+		return x.SkipSchemaSetup
+	}
+	return false
+}
+
+type isKubernetesTemporalDatabase_Backend interface {
+	isKubernetesTemporalDatabase_Backend()
+}
+
+type KubernetesTemporalDatabase_Postgres struct {
+	// *
+	// PostgreSQL — the recommended backend. Defaults compose a
+	// KubernetesPostgres resource; any reachable PostgreSQL ≥ 12
+	// (RDS, Cloud SQL, Aurora) works with literal values.
+	Postgres *KubernetesTemporalPostgres `protobuf:"bytes,1,opt,name=postgres,proto3,oneof"`
+}
+
+type KubernetesTemporalDatabase_Mysql struct {
+	// *
+	// MySQL 8. Defaults compose a KubernetesMysql resource; any
+	// reachable MySQL 8 works with literal values.
+	Mysql *KubernetesTemporalMysql `protobuf:"bytes,2,opt,name=mysql,proto3,oneof"`
+}
+
+type KubernetesTemporalDatabase_Cassandra struct {
+	// *
+	// An EXTERNAL Cassandra cluster you operate outside Planton (the
+	// catalog has no Cassandra kind). Serves the default store ONLY —
+	// Temporal removed Cassandra visibility support in v1.21, so a
+	// `visibility` SQL block is REQUIRED with this backend.
+	Cassandra *KubernetesTemporalCassandra `protobuf:"bytes,3,opt,name=cassandra,proto3,oneof"`
+}
+
+func (*KubernetesTemporalDatabase_Postgres) isKubernetesTemporalDatabase_Backend() {}
+
+func (*KubernetesTemporalDatabase_Mysql) isKubernetesTemporalDatabase_Backend() {}
+
+func (*KubernetesTemporalDatabase_Cassandra) isKubernetesTemporalDatabase_Backend() {}
+
+// *
+// PostgreSQL connection for a Temporal store.
+type KubernetesTemporalPostgres struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// PostgreSQL host — a Service name (same namespace) or a full FQDN
+	// (cross-namespace or external, e.g.
+	// "pg-main-rw.data.svc.cluster.local" or an RDS endpoint). Accepts
+	// a literal or a reference to a KubernetesPostgres resource (its
+	// read-write Service — always the current primary). The port is
+	// declared separately — do not include one here.
+	Host *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	// *
+	// PostgreSQL port. Empty = 5432.
+	Port *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// *
+	// Database username. On a KubernetesPostgres this is the bootstrap
+	// `owner` role (default: same as the bootstrap database name) —
+	// ownership of both Temporal databases gives the schema Jobs
+	// everything they need.
+	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	// *
+	// The user's password, read from an existing Secret (the chart
+	// wires it as a secretKeyRef into the server and schema-Job pods —
+	// it never lands in rendered values).
+	PasswordSecret *KubernetesTemporalPasswordSecret `protobuf:"bytes,4,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
+	// *
+	// Maximum open connections per service to this store. Empty = 20
+	// (the chart preset's value). The effective total is per Temporal
+	// service instance — four services × replicas all hold their own
+	// pools; size the database's max_connections accordingly.
+	MaxConns *int32 `protobuf:"varint,5,opt,name=max_conns,json=maxConns,proto3,oneof" json:"max_conns,omitempty"`
+	// *
+	// Maximum idle connections kept per pool. Empty = 20.
+	MaxIdleConns *int32 `protobuf:"varint,6,opt,name=max_idle_conns,json=maxIdleConns,proto3,oneof" json:"max_idle_conns,omitempty"`
+	// *
+	// Maximum lifetime of a pooled connection (Go duration, e.g. "1h").
+	// Empty = "1h".
+	MaxConnLifetime *string `protobuf:"bytes,7,opt,name=max_conn_lifetime,json=maxConnLifetime,proto3,oneof" json:"max_conn_lifetime,omitempty"`
+	// *
+	// TLS towards the database.
+	Tls           *KubernetesTemporalDatabaseTls `protobuf:"bytes,8,opt,name=tls,proto3" json:"tls,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesTemporalFrontendIngressEndpoint) Reset() {
-	*x = KubernetesTemporalFrontendIngressEndpoint{}
+func (x *KubernetesTemporalPostgres) Reset() {
+	*x = KubernetesTemporalPostgres{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalPostgres) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalPostgres) ProtoMessage() {}
+
+func (x *KubernetesTemporalPostgres) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalPostgres.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalPostgres) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesTemporalPostgres) GetHost() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Host
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalPostgres) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalPostgres) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalPostgres) GetPasswordSecret() *KubernetesTemporalPasswordSecret {
+	if x != nil {
+		return x.PasswordSecret
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalPostgres) GetMaxConns() int32 {
+	if x != nil && x.MaxConns != nil {
+		return *x.MaxConns
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalPostgres) GetMaxIdleConns() int32 {
+	if x != nil && x.MaxIdleConns != nil {
+		return *x.MaxIdleConns
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalPostgres) GetMaxConnLifetime() string {
+	if x != nil && x.MaxConnLifetime != nil {
+		return *x.MaxConnLifetime
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalPostgres) GetTls() *KubernetesTemporalDatabaseTls {
+	if x != nil {
+		return x.Tls
+	}
+	return nil
+}
+
+// *
+// MySQL 8 connection for a Temporal store.
+type KubernetesTemporalMysql struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// MySQL host — a Service name (same namespace) or a full FQDN
+	// (cross-namespace or external). Accepts a literal or a reference
+	// to a KubernetesMysql resource (its primary Service — writes
+	// always land on the current primary). The port is declared
+	// separately — do not include one here.
+	Host *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	// *
+	// MySQL port. Empty = 3306.
+	Port *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// *
+	// Database username. Needs full rights on both Temporal databases
+	// (plus CREATE on the server when `create_databases` is on). On a
+	// KubernetesMysql, either use a declared user with grants on the
+	// temporal databases or root.
+	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	// *
+	// The user's password, read from an existing Secret (wired as a
+	// secretKeyRef — it never lands in rendered values). The default
+	// reference composes a KubernetesMysql's root credential Secret;
+	// set `secret_key` to match the referenced user (e.g. "root").
+	PasswordSecret *KubernetesTemporalMysqlPasswordSecret `protobuf:"bytes,4,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
+	// *
+	// Maximum open connections per service to this store. Empty = 20.
+	// Four services × replicas each hold their own pools.
+	MaxConns *int32 `protobuf:"varint,5,opt,name=max_conns,json=maxConns,proto3,oneof" json:"max_conns,omitempty"`
+	// *
+	// Maximum idle connections kept per pool. Empty = 20.
+	MaxIdleConns *int32 `protobuf:"varint,6,opt,name=max_idle_conns,json=maxIdleConns,proto3,oneof" json:"max_idle_conns,omitempty"`
+	// *
+	// Maximum lifetime of a pooled connection (Go duration, e.g. "1h").
+	// Empty = "1h".
+	MaxConnLifetime *string `protobuf:"bytes,7,opt,name=max_conn_lifetime,json=maxConnLifetime,proto3,oneof" json:"max_conn_lifetime,omitempty"`
+	// *
+	// TLS towards the database.
+	Tls           *KubernetesTemporalDatabaseTls `protobuf:"bytes,8,opt,name=tls,proto3" json:"tls,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalMysql) Reset() {
+	*x = KubernetesTemporalMysql{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalMysql) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalMysql) ProtoMessage() {}
+
+func (x *KubernetesTemporalMysql) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalMysql.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalMysql) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesTemporalMysql) GetHost() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Host
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalMysql) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalMysql) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalMysql) GetPasswordSecret() *KubernetesTemporalMysqlPasswordSecret {
+	if x != nil {
+		return x.PasswordSecret
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalMysql) GetMaxConns() int32 {
+	if x != nil && x.MaxConns != nil {
+		return *x.MaxConns
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalMysql) GetMaxIdleConns() int32 {
+	if x != nil && x.MaxIdleConns != nil {
+		return *x.MaxIdleConns
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalMysql) GetMaxConnLifetime() string {
+	if x != nil && x.MaxConnLifetime != nil {
+		return *x.MaxConnLifetime
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalMysql) GetTls() *KubernetesTemporalDatabaseTls {
+	if x != nil {
+		return x.Tls
+	}
+	return nil
+}
+
+// *
+// External Cassandra connection for the DEFAULT store (visibility
+// cannot run on Cassandra — see the database message).
+type KubernetesTemporalCassandra struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Cassandra contact points (hostnames or IPs; the driver discovers
+	// the ring from them). At least one.
+	Hosts []string `protobuf:"bytes,1,rep,name=hosts,proto3" json:"hosts,omitempty"`
+	// *
+	// CQL port. Empty = 9042.
+	Port *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// *
+	// Cassandra username. Needs full rights on the Temporal keyspace
+	// (plus keyspace-creation rights when `create_databases` is on).
+	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	// *
+	// The user's password, read from an existing Secret you create in
+	// the install namespace (wired as a secretKeyRef — it never lands
+	// in rendered values).
+	PasswordSecret *KubernetesTemporalPasswordSecret `protobuf:"bytes,4,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
+	// *
+	// Replication factor used ONLY when `create_databases` creates the
+	// keyspace (SimpleStrategy). Empty = 3. Existing keyspaces keep
+	// their own replication settings.
+	ReplicationFactor *int32 `protobuf:"varint,5,opt,name=replication_factor,json=replicationFactor,proto3,oneof" json:"replication_factor,omitempty"`
+	// *
+	// Local datacenter name for keyspace creation and driver locality.
+	// Empty = the driver default.
+	Datacenter string `protobuf:"bytes,6,opt,name=datacenter,proto3" json:"datacenter,omitempty"`
+	// *
+	// TLS towards Cassandra.
+	Tls           *KubernetesTemporalDatabaseTls `protobuf:"bytes,7,opt,name=tls,proto3" json:"tls,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalCassandra) Reset() {
+	*x = KubernetesTemporalCassandra{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalCassandra) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalCassandra) ProtoMessage() {}
+
+func (x *KubernetesTemporalCassandra) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalCassandra.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalCassandra) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesTemporalCassandra) GetHosts() []string {
+	if x != nil {
+		return x.Hosts
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalCassandra) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalCassandra) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalCassandra) GetPasswordSecret() *KubernetesTemporalPasswordSecret {
+	if x != nil {
+		return x.PasswordSecret
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalCassandra) GetReplicationFactor() int32 {
+	if x != nil && x.ReplicationFactor != nil {
+		return *x.ReplicationFactor
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalCassandra) GetDatacenter() string {
+	if x != nil {
+		return x.Datacenter
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalCassandra) GetTls() *KubernetesTemporalDatabaseTls {
+	if x != nil {
+		return x.Tls
+	}
+	return nil
+}
+
+// *
+// A store password read from an existing Kubernetes Secret. Defaults
+// compose a KubernetesPostgres resource's application-user Secret.
+type KubernetesTemporalPasswordSecret struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Secret name. Accepts a literal or a reference to a
+	// KubernetesPostgres resource (its `<cluster>-app` credential
+	// Secret, maintained by the operator across failovers). KNOW THIS
+	// (a Kubernetes constraint, not a chart one): a secretKeyRef can
+	// only read Secrets in the workload's OWN namespace — co-locate
+	// Temporal with its database or replicate the Secret.
+	SecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// *
+	// Key within the Secret holding the password. Empty = "password"
+	// (the key a KubernetesPostgres application Secret uses).
+	SecretKey     *string `protobuf:"bytes,2,opt,name=secret_key,json=secretKey,proto3,oneof" json:"secret_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalPasswordSecret) Reset() {
+	*x = KubernetesTemporalPasswordSecret{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesTemporalFrontendIngressEndpoint) String() string {
+func (x *KubernetesTemporalPasswordSecret) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesTemporalFrontendIngressEndpoint) ProtoMessage() {}
+func (*KubernetesTemporalPasswordSecret) ProtoMessage() {}
 
-func (x *KubernetesTemporalFrontendIngressEndpoint) ProtoReflect() protoreflect.Message {
+func (x *KubernetesTemporalPasswordSecret) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -613,58 +944,58 @@ func (x *KubernetesTemporalFrontendIngressEndpoint) ProtoReflect() protoreflect.
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesTemporalFrontendIngressEndpoint.ProtoReflect.Descriptor instead.
-func (*KubernetesTemporalFrontendIngressEndpoint) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesTemporalPasswordSecret.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalPasswordSecret) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *KubernetesTemporalFrontendIngressEndpoint) GetEnabled() bool {
+func (x *KubernetesTemporalPasswordSecret) GetSecretName() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Enabled
+		return x.SecretName
 	}
-	return false
+	return nil
 }
 
-func (x *KubernetesTemporalFrontendIngressEndpoint) GetGrpcHostname() string {
-	if x != nil {
-		return x.GrpcHostname
-	}
-	return ""
-}
-
-func (x *KubernetesTemporalFrontendIngressEndpoint) GetHttpHostname() string {
-	if x != nil {
-		return x.HttpHostname
+func (x *KubernetesTemporalPasswordSecret) GetSecretKey() string {
+	if x != nil && x.SecretKey != nil {
+		return *x.SecretKey
 	}
 	return ""
 }
 
-// web ui ingress endpoint configuration for HTTP-only access
-type KubernetesTemporalWebUiIngressEndpoint struct {
+// *
+// A store password read from an existing Kubernetes Secret. Defaults
+// compose a KubernetesMysql resource's credential Secret.
+type KubernetesTemporalMysqlPasswordSecret struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// flag to enable or disable web ui ingress
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// the full hostname for HTTP access via Gateway API (e.g., "temporal-ui.example.com")
-	// required when enabled is true
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	// *
+	// Secret name. Accepts a literal or a reference to a
+	// KubernetesMysql resource (its operator-maintained credential
+	// Secret). Same-namespace constraint applies (secretKeyRef).
+	SecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// *
+	// Key within the Secret holding the declared user's password (on a
+	// KubernetesMysql credential Secret the keys are per-user, e.g.
+	// "root").
+	SecretKey     string `protobuf:"bytes,2,opt,name=secret_key,json=secretKey,proto3" json:"secret_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesTemporalWebUiIngressEndpoint) Reset() {
-	*x = KubernetesTemporalWebUiIngressEndpoint{}
+func (x *KubernetesTemporalMysqlPasswordSecret) Reset() {
+	*x = KubernetesTemporalMysqlPasswordSecret{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesTemporalWebUiIngressEndpoint) String() string {
+func (x *KubernetesTemporalMysqlPasswordSecret) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesTemporalWebUiIngressEndpoint) ProtoMessage() {}
+func (*KubernetesTemporalMysqlPasswordSecret) ProtoMessage() {}
 
-func (x *KubernetesTemporalWebUiIngressEndpoint) ProtoReflect() protoreflect.Message {
+func (x *KubernetesTemporalMysqlPasswordSecret) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -676,99 +1007,137 @@ func (x *KubernetesTemporalWebUiIngressEndpoint) ProtoReflect() protoreflect.Mes
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesTemporalWebUiIngressEndpoint.ProtoReflect.Descriptor instead.
-func (*KubernetesTemporalWebUiIngressEndpoint) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesTemporalMysqlPasswordSecret.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalMysqlPasswordSecret) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *KubernetesTemporalWebUiIngressEndpoint) GetEnabled() bool {
+func (x *KubernetesTemporalMysqlPasswordSecret) GetSecretName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SecretName
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalMysqlPasswordSecret) GetSecretKey() string {
+	if x != nil {
+		return x.SecretKey
+	}
+	return ""
+}
+
+// *
+// TLS settings towards a database. Server-certificate FILE mounts
+// (private CAs, client certs) additionally need the certificate
+// volumes mounted via `helm_values` (`server.additionalVolumes` +
+// `server.additionalVolumeMounts` + the store's `tls.caFile`) — the
+// typed fields cover managed databases that present
+// publicly-verifiable or unverified certificates.
+type KubernetesTemporalDatabaseTls struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Connect with TLS.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Verify the server hostname against its certificate. Only
+	// meaningful with `enabled: true`.
+	HostVerification bool `protobuf:"varint,2,opt,name=host_verification,json=hostVerification,proto3" json:"host_verification,omitempty"`
+	// *
+	// Expected server name (SNI) when it differs from the connect host
+	// — required by some serverless/proxied database offerings.
+	ServerName    string `protobuf:"bytes,3,opt,name=server_name,json=serverName,proto3" json:"server_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalDatabaseTls) Reset() {
+	*x = KubernetesTemporalDatabaseTls{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalDatabaseTls) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalDatabaseTls) ProtoMessage() {}
+
+func (x *KubernetesTemporalDatabaseTls) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalDatabaseTls.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalDatabaseTls) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesTemporalDatabaseTls) GetEnabled() bool {
 	if x != nil {
 		return x.Enabled
 	}
 	return false
 }
 
-func (x *KubernetesTemporalWebUiIngressEndpoint) GetHostname() string {
+func (x *KubernetesTemporalDatabaseTls) GetHostVerification() bool {
 	if x != nil {
-		return x.Hostname
+		return x.HostVerification
+	}
+	return false
+}
+
+func (x *KubernetesTemporalDatabaseTls) GetServerName() string {
+	if x != nil {
+		return x.ServerName
 	}
 	return ""
 }
 
 // *
-// Dynamic configuration values for Temporal server runtime behavior.
-// These settings control workflow execution limits without requiring server restart.
-// When not specified, Temporal uses its default values.
-//
-// Two types of limits:
-// - **History limits**: Control total workflow history size and event count
-// - **Blob limits**: Control individual payload sizes (markers, signals, activity I/O)
-//
-// Example:
-// ```yaml
-// dynamic_config:
-//
-//	history_size_limit_error: 104857600  # 100 MB total history
-//	history_count_limit_error: 102400    # 100K events
-//	blob_size_limit_error: 10485760      # 10 MB per payload (for large IaC diffs)
-//	blob_size_limit_warn: 5242880        # 5 MB warning threshold
-//
-// ```
-type KubernetesTemporalDynamicConfig struct {
+// The visibility store on its own SQL server (see the database
+// message for when this is required vs optional).
+type KubernetesTemporalVisibility struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// Maximum size in bytes for workflow execution history.
-	// When a workflow exceeds this limit, Temporal terminates it with reason "Workflow history size exceeds limit."
-	// Default: 52428800 (50 MB). Increase for workflows with large payloads.
-	HistorySizeLimitError *int64 `protobuf:"varint,1,opt,name=history_size_limit_error,json=historySizeLimitError,proto3,oneof" json:"history_size_limit_error,omitempty"`
-	// *
-	// Maximum number of events in workflow execution history.
-	// When a workflow exceeds this limit, Temporal terminates it with reason "Workflow history size exceeds limit."
-	// Default: 51200 events. Increase for workflows with many activities/signals.
-	// Consider using ContinueAsNew pattern as an alternative.
-	HistoryCountLimitError *int64 `protobuf:"varint,2,opt,name=history_count_limit_error,json=historyCountLimitError,proto3,oneof" json:"history_count_limit_error,omitempty"`
-	// *
-	// Warning threshold for history size in bytes.
-	// Temporal logs warnings when workflows approach this limit.
-	// Default: 10485760 (10 MB, ~20% of error limit).
-	HistorySizeLimitWarn *int64 `protobuf:"varint,3,opt,name=history_size_limit_warn,json=historySizeLimitWarn,proto3,oneof" json:"history_size_limit_warn,omitempty"`
-	// *
-	// Warning threshold for history event count.
-	// Temporal logs warnings when workflows approach this limit.
-	// Default: 10240 (~20% of error limit).
-	HistoryCountLimitWarn *int64 `protobuf:"varint,4,opt,name=history_count_limit_warn,json=historyCountLimitWarn,proto3,oneof" json:"history_count_limit_warn,omitempty"`
-	// *
-	// Maximum size in bytes for a single blob/payload (marker details, signal data, activity I/O).
-	// When a payload exceeds this limit, Temporal rejects it with "exceeds size limit" error.
-	// This is different from history_size_limit which controls total workflow history size.
-	// Default: 2097152 (2 MB). Increase for workflows that send large payloads like IaC diffs.
+	// Exactly one SQL backend for visibility.
 	//
-	// Example: Set to 10485760 (10 MB) to support large Pulumi diffs.
-	BlobSizeLimitError *int64 `protobuf:"varint,5,opt,name=blob_size_limit_error,json=blobSizeLimitError,proto3,oneof" json:"blob_size_limit_error,omitempty"`
+	// Types that are valid to be assigned to Backend:
+	//
+	//	*KubernetesTemporalVisibility_Postgres
+	//	*KubernetesTemporalVisibility_Mysql
+	Backend isKubernetesTemporalVisibility_Backend `protobuf_oneof:"backend"`
 	// *
-	// Warning threshold for blob/payload size in bytes.
-	// Temporal logs warnings when payloads approach this limit.
-	// Default: 524288 (512 KB, ~25% of error limit).
-	BlobSizeLimitWarn *int64 `protobuf:"varint,6,opt,name=blob_size_limit_warn,json=blobSizeLimitWarn,proto3,oneof" json:"blob_size_limit_warn,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Visibility database name on THIS server. Empty = the parent
+	// database block's `visibility_database_name` (default
+	// "temporal_visibility").
+	DatabaseName  *string `protobuf:"bytes,3,opt,name=database_name,json=databaseName,proto3,oneof" json:"database_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesTemporalDynamicConfig) Reset() {
-	*x = KubernetesTemporalDynamicConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[7]
+func (x *KubernetesTemporalVisibility) Reset() {
+	*x = KubernetesTemporalVisibility{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesTemporalDynamicConfig) String() string {
+func (x *KubernetesTemporalVisibility) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesTemporalDynamicConfig) ProtoMessage() {}
+func (*KubernetesTemporalVisibility) ProtoMessage() {}
 
-func (x *KubernetesTemporalDynamicConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[7]
+func (x *KubernetesTemporalVisibility) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -779,84 +1148,74 @@ func (x *KubernetesTemporalDynamicConfig) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesTemporalDynamicConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesTemporalDynamicConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{7}
+// Deprecated: Use KubernetesTemporalVisibility.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalVisibility) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *KubernetesTemporalDynamicConfig) GetHistorySizeLimitError() int64 {
-	if x != nil && x.HistorySizeLimitError != nil {
-		return *x.HistorySizeLimitError
+func (x *KubernetesTemporalVisibility) GetBackend() isKubernetesTemporalVisibility_Backend {
+	if x != nil {
+		return x.Backend
 	}
-	return 0
+	return nil
 }
 
-func (x *KubernetesTemporalDynamicConfig) GetHistoryCountLimitError() int64 {
-	if x != nil && x.HistoryCountLimitError != nil {
-		return *x.HistoryCountLimitError
+func (x *KubernetesTemporalVisibility) GetPostgres() *KubernetesTemporalPostgres {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesTemporalVisibility_Postgres); ok {
+			return x.Postgres
+		}
 	}
-	return 0
+	return nil
 }
 
-func (x *KubernetesTemporalDynamicConfig) GetHistorySizeLimitWarn() int64 {
-	if x != nil && x.HistorySizeLimitWarn != nil {
-		return *x.HistorySizeLimitWarn
+func (x *KubernetesTemporalVisibility) GetMysql() *KubernetesTemporalMysql {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesTemporalVisibility_Mysql); ok {
+			return x.Mysql
+		}
 	}
-	return 0
+	return nil
 }
 
-func (x *KubernetesTemporalDynamicConfig) GetHistoryCountLimitWarn() int64 {
-	if x != nil && x.HistoryCountLimitWarn != nil {
-		return *x.HistoryCountLimitWarn
+func (x *KubernetesTemporalVisibility) GetDatabaseName() string {
+	if x != nil && x.DatabaseName != nil {
+		return *x.DatabaseName
 	}
-	return 0
+	return ""
 }
 
-func (x *KubernetesTemporalDynamicConfig) GetBlobSizeLimitError() int64 {
-	if x != nil && x.BlobSizeLimitError != nil {
-		return *x.BlobSizeLimitError
-	}
-	return 0
+type isKubernetesTemporalVisibility_Backend interface {
+	isKubernetesTemporalVisibility_Backend()
 }
 
-func (x *KubernetesTemporalDynamicConfig) GetBlobSizeLimitWarn() int64 {
-	if x != nil && x.BlobSizeLimitWarn != nil {
-		return *x.BlobSizeLimitWarn
-	}
-	return 0
+type KubernetesTemporalVisibility_Postgres struct {
+	// PostgreSQL visibility store.
+	Postgres *KubernetesTemporalPostgres `protobuf:"bytes,1,opt,name=postgres,proto3,oneof"`
 }
+
+type KubernetesTemporalVisibility_Mysql struct {
+	// MySQL 8 visibility store.
+	Mysql *KubernetesTemporalMysql `protobuf:"bytes,2,opt,name=mysql,proto3,oneof"`
+}
+
+func (*KubernetesTemporalVisibility_Postgres) isKubernetesTemporalVisibility_Backend() {}
+
+func (*KubernetesTemporalVisibility_Mysql) isKubernetesTemporalVisibility_Backend() {}
 
 // *
-// Per-service replica and resource configuration for a Temporal service.
-// Allows configuring replicas and CPU/memory resources independently for each service.
-//
-// Example:
-// ```yaml
-// replicas: 3
-// resources:
-//
-//	limits:
-//	  cpu: "2000m"
-//	  memory: "4Gi"
-//	requests:
-//	  cpu: "500m"
-//	  memory: "1Gi"
-//
-// ```
+// Sizing for one Temporal server service.
 type KubernetesTemporalServiceConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// Number of replicas for this service.
-	// Higher replica counts provide better availability and throughput.
-	// Default: 1 for development, recommend 3+ for production.
+	// Number of replicas. Empty = 1. All four services scale
+	// horizontally; history is the stateful heavy-lifter (shard
+	// ownership redistributes across its replicas).
 	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
 	// *
-	// Container resources (CPU and memory) for this service.
-	// Resource requirements vary by service type:
-	// - history: Most resource-intensive, handles workflow state
-	// - matching: Task dispatch, moderate resources
-	// - frontend: API gateway, moderate resources
-	// - worker: Internal workflows, light resources
+	// Container resources. Typical production starting points: history
+	// is the most demanding (workflow state caches), frontend and
+	// matching moderate, worker light.
 	Resources     *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -864,7 +1223,7 @@ type KubernetesTemporalServiceConfig struct {
 
 func (x *KubernetesTemporalServiceConfig) Reset() {
 	*x = KubernetesTemporalServiceConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -876,7 +1235,7 @@ func (x *KubernetesTemporalServiceConfig) String() string {
 func (*KubernetesTemporalServiceConfig) ProtoMessage() {}
 
 func (x *KubernetesTemporalServiceConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -889,7 +1248,7 @@ func (x *KubernetesTemporalServiceConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesTemporalServiceConfig.ProtoReflect.Descriptor instead.
 func (*KubernetesTemporalServiceConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *KubernetesTemporalServiceConfig) GetReplicas() int32 {
@@ -907,45 +1266,16 @@ func (x *KubernetesTemporalServiceConfig) GetResources() *kubernetes.ContainerRe
 }
 
 // *
-// Service-level configuration for all Temporal services.
-// Allows fine-tuning replica counts and resources for each Temporal service independently.
-//
-// Temporal consists of four core services:
-// - **frontend**: API gateway for client requests (gRPC/HTTP)
-// - **history**: Manages workflow state and execution (most resource-intensive)
-// - **matching**: Task queue management and worker dispatch
-// - **worker**: Runs internal Temporal system workflows
-//
-// Example:
-// ```yaml
-// services:
-//
-//	frontend:
-//	  replicas: 2
-//	  resources:
-//	    requests:
-//	      cpu: "200m"
-//	      memory: "512Mi"
-//	history:
-//	  replicas: 3
-//	  resources:
-//	    requests:
-//	      cpu: "500m"
-//	      memory: "1Gi"
-//	    limits:
-//	      cpu: "2000m"
-//	      memory: "4Gi"
-//
-// ```
+// Per-service sizing for the four Temporal server services.
 type KubernetesTemporalServices struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Frontend service configuration (API gateway for gRPC/HTTP requests)
+	// The frontend service — the gRPC/HTTP API gateway clients and workers connect to.
 	Frontend *KubernetesTemporalServiceConfig `protobuf:"bytes,1,opt,name=frontend,proto3" json:"frontend,omitempty"`
-	// History service configuration (manages workflow state, most resource-intensive)
+	// The history service — owns workflow state and the history shards; the most resource-intensive.
 	History *KubernetesTemporalServiceConfig `protobuf:"bytes,2,opt,name=history,proto3" json:"history,omitempty"`
-	// Matching service configuration (task queue management and dispatch)
+	// The matching service — task-queue management and dispatch to workers.
 	Matching *KubernetesTemporalServiceConfig `protobuf:"bytes,3,opt,name=matching,proto3" json:"matching,omitempty"`
-	// Worker service configuration (internal Temporal system workflows)
+	// The worker service — Temporal's internal system workflows.
 	Worker        *KubernetesTemporalServiceConfig `protobuf:"bytes,4,opt,name=worker,proto3" json:"worker,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -953,7 +1283,7 @@ type KubernetesTemporalServices struct {
 
 func (x *KubernetesTemporalServices) Reset() {
 	*x = KubernetesTemporalServices{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -965,7 +1295,7 @@ func (x *KubernetesTemporalServices) String() string {
 func (*KubernetesTemporalServices) ProtoMessage() {}
 
 func (x *KubernetesTemporalServices) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -978,7 +1308,7 @@ func (x *KubernetesTemporalServices) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesTemporalServices.ProtoReflect.Descriptor instead.
 func (*KubernetesTemporalServices) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *KubernetesTemporalServices) GetFrontend() *KubernetesTemporalServiceConfig {
@@ -1009,71 +1339,757 @@ func (x *KubernetesTemporalServices) GetWorker() *KubernetesTemporalServiceConfi
 	return nil
 }
 
+// *
+// The Temporal Web UI.
+type KubernetesTemporalWebUi struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Deploy the Web UI. Empty = true (the chart default). The UI is
+	// read-mostly; workflows are driven through the frontend gRPC API.
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// *
+	// UI replicas. Empty = 1 (the UI is stateless — scale freely).
+	Replicas *int32 `protobuf:"varint,2,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// Container resources for the UI.
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,3,opt,name=resources,proto3" json:"resources,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalWebUi) Reset() {
+	*x = KubernetesTemporalWebUi{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalWebUi) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalWebUi) ProtoMessage() {}
+
+func (x *KubernetesTemporalWebUi) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalWebUi.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalWebUi) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *KubernetesTemporalWebUi) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesTemporalWebUi) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalWebUi) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+// *
+// A Temporal namespace created declaratively after install.
+type KubernetesTemporalNamespace struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Namespace name (e.g. "default", "payments").
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// *
+	// Workflow-execution retention period — how long CLOSED workflow
+	// histories stay queryable before deletion (archival, when
+	// configured, keeps them beyond this). Duration with a d/h/m
+	// suffix. Empty = "3d".
+	Retention     *string `protobuf:"bytes,2,opt,name=retention,proto3,oneof" json:"retention,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalNamespace) Reset() {
+	*x = KubernetesTemporalNamespace{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalNamespace) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalNamespace) ProtoMessage() {}
+
+func (x *KubernetesTemporalNamespace) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalNamespace.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalNamespace) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *KubernetesTemporalNamespace) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalNamespace) GetRetention() string {
+	if x != nil && x.Retention != nil {
+		return *x.Retention
+	}
+	return ""
+}
+
+// *
+// Runtime limits pushed through Temporal's dynamic config (applied
+// without server restarts). Two limit families: HISTORY limits bound
+// a workflow's total event history; BLOB limits bound individual
+// payloads (activity inputs/outputs, signals, markers). When a
+// workflow exceeds an error limit, Temporal terminates it; warn
+// limits only log.
+type KubernetesTemporalDynamicConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Maximum workflow history size in bytes before termination.
+	// Upstream default: 50 MB. Long-running workflows with large
+	// payloads should raise this or use ContinueAsNew.
+	HistorySizeLimitError *int64 `protobuf:"varint,1,opt,name=history_size_limit_error,json=historySizeLimitError,proto3,oneof" json:"history_size_limit_error,omitempty"`
+	// *
+	// Warning threshold for history size in bytes. Upstream default:
+	// 10 MB.
+	HistorySizeLimitWarn *int64 `protobuf:"varint,2,opt,name=history_size_limit_warn,json=historySizeLimitWarn,proto3,oneof" json:"history_size_limit_warn,omitempty"`
+	// *
+	// Maximum workflow history event count before termination.
+	// Upstream default: 51200.
+	HistoryCountLimitError *int64 `protobuf:"varint,3,opt,name=history_count_limit_error,json=historyCountLimitError,proto3,oneof" json:"history_count_limit_error,omitempty"`
+	// *
+	// Warning threshold for history event count. Upstream default:
+	// 10240.
+	HistoryCountLimitWarn *int64 `protobuf:"varint,4,opt,name=history_count_limit_warn,json=historyCountLimitWarn,proto3,oneof" json:"history_count_limit_warn,omitempty"`
+	// *
+	// Maximum size in bytes of a single payload (activity input/output,
+	// signal, marker). Upstream default: 2 MB. Raise for workflows
+	// passing large blobs — better yet, pass references to object
+	// storage.
+	BlobSizeLimitError *int64 `protobuf:"varint,5,opt,name=blob_size_limit_error,json=blobSizeLimitError,proto3,oneof" json:"blob_size_limit_error,omitempty"`
+	// *
+	// Warning threshold for payload size in bytes. Upstream default:
+	// 512 KB.
+	BlobSizeLimitWarn *int64 `protobuf:"varint,6,opt,name=blob_size_limit_warn,json=blobSizeLimitWarn,proto3,oneof" json:"blob_size_limit_warn,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalDynamicConfig) Reset() {
+	*x = KubernetesTemporalDynamicConfig{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalDynamicConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalDynamicConfig) ProtoMessage() {}
+
+func (x *KubernetesTemporalDynamicConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalDynamicConfig.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalDynamicConfig) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *KubernetesTemporalDynamicConfig) GetHistorySizeLimitError() int64 {
+	if x != nil && x.HistorySizeLimitError != nil {
+		return *x.HistorySizeLimitError
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalDynamicConfig) GetHistorySizeLimitWarn() int64 {
+	if x != nil && x.HistorySizeLimitWarn != nil {
+		return *x.HistorySizeLimitWarn
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalDynamicConfig) GetHistoryCountLimitError() int64 {
+	if x != nil && x.HistoryCountLimitError != nil {
+		return *x.HistoryCountLimitError
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalDynamicConfig) GetHistoryCountLimitWarn() int64 {
+	if x != nil && x.HistoryCountLimitWarn != nil {
+		return *x.HistoryCountLimitWarn
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalDynamicConfig) GetBlobSizeLimitError() int64 {
+	if x != nil && x.BlobSizeLimitError != nil {
+		return *x.BlobSizeLimitError
+	}
+	return 0
+}
+
+func (x *KubernetesTemporalDynamicConfig) GetBlobSizeLimitWarn() int64 {
+	if x != nil && x.BlobSizeLimitWarn != nil {
+		return *x.BlobSizeLimitWarn
+	}
+	return 0
+}
+
+// *
+// Archival of closed workflow histories and visibility records to
+// long-term storage. Enables both history and visibility archival
+// with read access; per-namespace states beyond that ride
+// `helm_values`.
+//
+// CLOUD CREDENTIALS: the s3 provider uses the pods' ambient AWS
+// credentials (IRSA/instance profile — attach identity via
+// `helm_values` ServiceAccount annotations or pod env); gcs uses
+// Workload Identity/ADC. Nothing credential-bearing is rendered.
+type KubernetesTemporalArchival struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Exactly one storage provider.
+	//
+	// Types that are valid to be assigned to Provider:
+	//
+	//	*KubernetesTemporalArchival_S3
+	//	*KubernetesTemporalArchival_Gcs
+	//	*KubernetesTemporalArchival_Filestore
+	Provider isKubernetesTemporalArchival_Provider `protobuf_oneof:"provider"`
+	// *
+	// Archival URI for workflow HISTORIES, scheme matching the provider
+	// (s3://bucket[/prefix], gs://bucket[/prefix], file:///path).
+	// Becomes the namespace default — every Temporal namespace archives
+	// here unless overridden per namespace.
+	HistoryUri string `protobuf:"bytes,4,opt,name=history_uri,json=historyUri,proto3" json:"history_uri,omitempty"`
+	// *
+	// Archival URI for VISIBILITY records, scheme matching the provider.
+	VisibilityUri string `protobuf:"bytes,5,opt,name=visibility_uri,json=visibilityUri,proto3" json:"visibility_uri,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalArchival) Reset() {
+	*x = KubernetesTemporalArchival{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalArchival) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalArchival) ProtoMessage() {}
+
+func (x *KubernetesTemporalArchival) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalArchival.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalArchival) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *KubernetesTemporalArchival) GetProvider() isKubernetesTemporalArchival_Provider {
+	if x != nil {
+		return x.Provider
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalArchival) GetS3() *KubernetesTemporalArchivalS3 {
+	if x != nil {
+		if x, ok := x.Provider.(*KubernetesTemporalArchival_S3); ok {
+			return x.S3
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalArchival) GetGcs() *KubernetesTemporalArchivalGcs {
+	if x != nil {
+		if x, ok := x.Provider.(*KubernetesTemporalArchival_Gcs); ok {
+			return x.Gcs
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalArchival) GetFilestore() *KubernetesTemporalArchivalFilestore {
+	if x != nil {
+		if x, ok := x.Provider.(*KubernetesTemporalArchival_Filestore); ok {
+			return x.Filestore
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalArchival) GetHistoryUri() string {
+	if x != nil {
+		return x.HistoryUri
+	}
+	return ""
+}
+
+func (x *KubernetesTemporalArchival) GetVisibilityUri() string {
+	if x != nil {
+		return x.VisibilityUri
+	}
+	return ""
+}
+
+type isKubernetesTemporalArchival_Provider interface {
+	isKubernetesTemporalArchival_Provider()
+}
+
+type KubernetesTemporalArchival_S3 struct {
+	// Amazon S3 (or S3-compatible endpoints configured via helm_values).
+	S3 *KubernetesTemporalArchivalS3 `protobuf:"bytes,1,opt,name=s3,proto3,oneof"`
+}
+
+type KubernetesTemporalArchival_Gcs struct {
+	// Google Cloud Storage.
+	Gcs *KubernetesTemporalArchivalGcs `protobuf:"bytes,2,opt,name=gcs,proto3,oneof"`
+}
+
+type KubernetesTemporalArchival_Filestore struct {
+	// A filesystem path INSIDE the history pods — dev/test only (the
+	// path is a pod-local mount unless you add a shared volume via
+	// helm_values); histories archived here do not survive pod loss.
+	Filestore *KubernetesTemporalArchivalFilestore `protobuf:"bytes,3,opt,name=filestore,proto3,oneof"`
+}
+
+func (*KubernetesTemporalArchival_S3) isKubernetesTemporalArchival_Provider() {}
+
+func (*KubernetesTemporalArchival_Gcs) isKubernetesTemporalArchival_Provider() {}
+
+func (*KubernetesTemporalArchival_Filestore) isKubernetesTemporalArchival_Provider() {}
+
+// *
+// S3 archival provider.
+type KubernetesTemporalArchivalS3 struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// AWS region of the archival bucket(s).
+	Region        string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalArchivalS3) Reset() {
+	*x = KubernetesTemporalArchivalS3{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalArchivalS3) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalArchivalS3) ProtoMessage() {}
+
+func (x *KubernetesTemporalArchivalS3) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalArchivalS3.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalArchivalS3) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *KubernetesTemporalArchivalS3) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+// *
+// GCS archival provider (no provider-level settings — the bucket
+// rides the URIs; credentials are ambient).
+type KubernetesTemporalArchivalGcs struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalArchivalGcs) Reset() {
+	*x = KubernetesTemporalArchivalGcs{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalArchivalGcs) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalArchivalGcs) ProtoMessage() {}
+
+func (x *KubernetesTemporalArchivalGcs) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalArchivalGcs.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalArchivalGcs) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+// *
+// Filestore archival provider (no provider-level settings — the
+// directory rides the URIs).
+type KubernetesTemporalArchivalFilestore struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalArchivalFilestore) Reset() {
+	*x = KubernetesTemporalArchivalFilestore{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalArchivalFilestore) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalArchivalFilestore) ProtoMessage() {}
+
+func (x *KubernetesTemporalArchivalFilestore) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalArchivalFilestore.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalArchivalFilestore) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+// *
+// Pod scheduling applied to the server services, schema Jobs,
+// admin-tools and Web UI pods. Per-service scheduling (e.g. pinning
+// only history to dedicated nodes) rides `helm_values`.
+type KubernetesTemporalScheduling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Node selector for all Temporal pods.
+	NodeSelector map[string]string `protobuf:"bytes,1,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for all Temporal pods.
+	Tolerations   []*kubernetes.WorkloadToleration `protobuf:"bytes,2,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalScheduling) Reset() {
+	*x = KubernetesTemporalScheduling{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalScheduling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalScheduling) ProtoMessage() {}
+
+func (x *KubernetesTemporalScheduling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalScheduling.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalScheduling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *KubernetesTemporalScheduling) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalScheduling) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
+// *
+// Container image overrides (air-gap/mirror support). Each override
+// replaces the repository and/or tag while everything else about the
+// deployment stays identical. Empty tag = the chart's pinned tag for
+// `chart_version`.
+type KubernetesTemporalImages struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// The Temporal server image (upstream: temporalio/server). Used by
+	// all four services.
+	Server *kubernetes.ContainerImage `protobuf:"bytes,1,opt,name=server,proto3" json:"server,omitempty"`
+	// *
+	// The Web UI image (upstream: temporalio/ui).
+	WebUi *kubernetes.ContainerImage `protobuf:"bytes,2,opt,name=web_ui,json=webUi,proto3" json:"web_ui,omitempty"`
+	// *
+	// The admin-tools image (upstream: temporalio/admin-tools). Also
+	// runs the schema and namespace Jobs — needed even with
+	// `admin_tools_enabled: false`.
+	AdminTools    *kubernetes.ContainerImage `protobuf:"bytes,3,opt,name=admin_tools,json=adminTools,proto3" json:"admin_tools,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesTemporalImages) Reset() {
+	*x = KubernetesTemporalImages{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesTemporalImages) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesTemporalImages) ProtoMessage() {}
+
+func (x *KubernetesTemporalImages) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesTemporalImages.ProtoReflect.Descriptor instead.
+func (*KubernetesTemporalImages) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *KubernetesTemporalImages) GetServer() *kubernetes.ContainerImage {
+	if x != nil {
+		return x.Server
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalImages) GetWebUi() *kubernetes.ContainerImage {
+	if x != nil {
+		return x.WebUi
+	}
+	return nil
+}
+
+func (x *KubernetesTemporalImages) GetAdminTools() *kubernetes.ContainerImage {
+	if x != nil {
+		return x.AdminTools
+	}
+	return nil
+}
+
 var File_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kubernetestemporal/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestemporal.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a7dev/planton/provider/kubernetes/kubernetes_secret.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x83\t\n" +
+	"@dev/planton/provider/kubernetes/kubernetestemporal/v1/spec.proto\x125dev.planton.provider.kubernetes.kubernetestemporal.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd4\f\n" +
 	"\x16KubernetesTemporalSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12{\n" +
-	"\bdatabase\x18\x04 \x01(\v2W.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfigB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12$\n" +
-	"\x0edisable_web_ui\x18\x05 \x01(\bR\fdisableWebUi\x12B\n" +
-	"\x1denable_embedded_elasticsearch\x18\x06 \x01(\bR\x1benableEmbeddedElasticsearch\x126\n" +
-	"\x17enable_monitoring_stack\x18\a \x01(\bR\x15enableMonitoringStack\x129\n" +
-	"\x12cassandra_replicas\x18\b \x01(\x05B\x05\x8a\xa6\x1d\x011H\x00R\x11cassandraReplicas\x88\x01\x01\x12j\n" +
-	"\aingress\x18\t \x01(\v2P.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngressR\aingress\x12\x95\x01\n" +
-	"\x16external_elasticsearch\x18\n" +
-	" \x01(\v2^.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalElasticsearchR\x15externalElasticsearch\x12\x18\n" +
-	"\aversion\x18\v \x01(\tR\aversion\x12}\n" +
-	"\x0edynamic_config\x18\f \x01(\v2V.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDynamicConfigR\rdynamicConfig\x12>\n" +
-	"\x12num_history_shards\x18\r \x01(\x05B\v\xbaH\b\x1a\x06\x18\x80\x80\x01(\x01H\x01R\x10numHistoryShards\x88\x01\x01\x12m\n" +
-	"\bservices\x18\x0e \x01(\v2Q.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServicesR\bservicesB\x15\n" +
-	"\x13_cassandra_replicasB\x15\n" +
-	"\x13_num_history_shards\"\x87\x04\n" +
-	" KubernetesTemporalDatabaseConfig\x12z\n" +
-	"\abackend\x18\x01 \x01(\x0e2X.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseBackendB\x06\xbaH\x03\xc8\x01\x01R\abackend\x12\x86\x01\n" +
-	"\x11external_database\x18\x02 \x01(\v2Y.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalDatabaseR\x10externalDatabase\x126\n" +
-	"\rdatabase_name\x18\x06 \x01(\tB\f\x8a\xa6\x1d\btemporalH\x00R\fdatabaseName\x88\x01\x01\x12E\n" +
-	"\x0fvisibility_name\x18\a \x01(\tB\x17\x8a\xa6\x1d\x13temporal_visibilityH\x01R\x0evisibilityName\x88\x01\x01\x129\n" +
-	"\x19disable_auto_schema_setup\x18\b \x01(\bR\x16disableAutoSchemaSetupB\x10\n" +
-	"\x0e_database_nameB\x12\n" +
-	"\x10_visibility_name\"\xbf\x01\n" +
-	"\"KubernetesTemporalExternalDatabase\x12\x12\n" +
-	"\x04host\x18\x01 \x01(\tR\x04host\x12\x12\n" +
-	"\x04port\x18\x02 \x01(\x05R\x04port\x12\x1a\n" +
-	"\busername\x18\x03 \x01(\tR\busername\x12U\n" +
-	"\bpassword\x18\x04 \x01(\v29.dev.planton.provider.kubernetes.KubernetesSensitiveValueR\bpassword\"\xbc\x01\n" +
-	"'KubernetesTemporalExternalElasticsearch\x12\x12\n" +
-	"\x04host\x18\x01 \x01(\tR\x04host\x12\x12\n" +
-	"\x04port\x18\x02 \x01(\x05R\x04port\x12\x12\n" +
-	"\x04user\x18\x03 \x01(\tR\x04user\x12U\n" +
-	"\bpassword\x18\x04 \x01(\v29.dev.planton.provider.kubernetes.KubernetesSensitiveValueR\bpassword\"\x8f\x02\n" +
-	"\x19KubernetesTemporalIngress\x12|\n" +
-	"\bfrontend\x18\x01 \x01(\v2`.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalFrontendIngressEndpointR\bfrontend\x12t\n" +
-	"\x06web_ui\x18\x02 \x01(\v2].dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalWebUiIngressEndpointR\x05webUi\"\xbb\x02\n" +
-	")KubernetesTemporalFrontendIngressEndpoint\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12#\n" +
-	"\rgrpc_hostname\x18\x02 \x01(\tR\fgrpcHostname\x12#\n" +
-	"\rhttp_hostname\x18\x03 \x01(\tR\fhttpHostname:\xa9\x01\xbaH\xa5\x01\x1a\xa2\x01\n" +
-	",spec.ingress.frontend.grpc_hostname.required\x12Cfrontend.grpc_hostname is required when frontend ingress is enabled\x1a-!this.enabled || size(this.grpc_hostname) > 0\"\xf5\x01\n" +
-	"&KubernetesTemporalWebUiIngressEndpoint\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname:\x94\x01\xbaH\x90\x01\x1a\x8d\x01\n" +
-	"%spec.ingress.web_ui.hostname.required\x12:web_ui.hostname is required when web ui ingress is enabled\x1a(!this.enabled || size(this.hostname) > 0\"\xee\x04\n" +
-	"\x1fKubernetesTemporalDynamicConfig\x12G\n" +
-	"\x18history_size_limit_error\x18\x01 \x01(\x03B\t\xbaH\x06\"\x04(\x80\x80@H\x00R\x15historySizeLimitError\x88\x01\x01\x12H\n" +
-	"\x19history_count_limit_error\x18\x02 \x01(\x03B\b\xbaH\x05\"\x03(\xe8\aH\x01R\x16historyCountLimitError\x88\x01\x01\x12E\n" +
-	"\x17history_size_limit_warn\x18\x03 \x01(\x03B\t\xbaH\x06\"\x04(\x80\x80 H\x02R\x14historySizeLimitWarn\x88\x01\x01\x12F\n" +
-	"\x18history_count_limit_warn\x18\x04 \x01(\x03B\b\xbaH\x05\"\x03(\xf4\x03H\x03R\x15historyCountLimitWarn\x88\x01\x01\x12A\n" +
-	"\x15blob_size_limit_error\x18\x05 \x01(\x03B\t\xbaH\x06\"\x04(\x80\x80@H\x04R\x12blobSizeLimitError\x88\x01\x01\x12?\n" +
-	"\x14blob_size_limit_warn\x18\x06 \x01(\x03B\t\xbaH\x06\"\x04(\x80\x80\x10H\x05R\x11blobSizeLimitWarn\x88\x01\x01B\x1b\n" +
-	"\x19_history_size_limit_errorB\x1c\n" +
-	"\x1a_history_count_limit_errorB\x1a\n" +
-	"\x18_history_size_limit_warnB\x1b\n" +
-	"\x19_history_count_limit_warnB\x18\n" +
-	"\x16_blob_size_limit_errorB\x17\n" +
-	"\x15_blob_size_limit_warn\"\xad\x01\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x123\n" +
+	"\rchart_version\x18\x03 \x01(\tB\t\x8a\xa6\x1d\x051.6.0H\x00R\fchartVersion\x88\x01\x01\x12u\n" +
+	"\bdatabase\x18\x04 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12E\n" +
+	"\x12num_history_shards\x18\x05 \x01(\x05B\x12\xbaH\b\x1a\x06\x18\x80\x80\x01(\x01\x8a\xa6\x1d\x03512H\x01R\x10numHistoryShards\x88\x01\x01\x12m\n" +
+	"\bservices\x18\x06 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServicesR\bservices\x12:\n" +
+	"\x19internal_frontend_enabled\x18\a \x01(\bR\x17internalFrontendEnabled\x12e\n" +
+	"\x06web_ui\x18\b \x01(\v2N.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalWebUiR\x05webUi\x12=\n" +
+	"\x13admin_tools_enabled\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x11adminToolsEnabled\x88\x01\x01\x12\x83\x01\n" +
+	"\x13temporal_namespaces\x18\n" +
+	" \x03(\v2R.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalNamespaceR\x12temporalNamespaces\x12}\n" +
+	"\x0edynamic_config\x18\v \x01(\v2V.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDynamicConfigR\rdynamicConfig\x12m\n" +
+	"\barchival\x18\f \x01(\v2Q.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchivalR\barchival\x126\n" +
+	"\x17service_monitor_enabled\x18\r \x01(\bR\x15serviceMonitorEnabled\x12e\n" +
+	"\tlog_level\x18\x0e \x01(\tBC\xbaH8r624^(debug|info|warn|error)(,(debug|info|warn|error))*$\x8a\xa6\x1d\x04infoH\x03R\blogLevel\x88\x01\x01\x12s\n" +
+	"\n" +
+	"scheduling\x18\x0f \x01(\v2S.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSchedulingR\n" +
+	"scheduling\x12g\n" +
+	"\x06images\x18\x10 \x01(\v2O.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalImagesR\x06images\x12\x1f\n" +
+	"\vhelm_values\x18\x11 \x01(\tR\n" +
+	"helmValuesB\x10\n" +
+	"\x0e_chart_versionB\x15\n" +
+	"\x13_num_history_shardsB\x16\n" +
+	"\x14_admin_tools_enabledB\f\n" +
+	"\n" +
+	"_log_level\"\xd8\b\n" +
+	"\x1aKubernetesTemporalDatabase\x12o\n" +
+	"\bpostgres\x18\x01 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPostgresH\x00R\bpostgres\x12f\n" +
+	"\x05mysql\x18\x02 \x01(\v2N.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysqlH\x00R\x05mysql\x12r\n" +
+	"\tcassandra\x18\x03 \x01(\v2R.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalCassandraH\x00R\tcassandra\x12U\n" +
+	"\rdatabase_name\x18\x04 \x01(\tB+\xbaH\x1cr\x1a2\x18^[a-zA-Z_][a-zA-Z0-9_]*$\x8a\xa6\x1d\btemporalH\x01R\fdatabaseName\x88\x01\x01\x12u\n" +
+	"\x18visibility_database_name\x18\x05 \x01(\tB6\xbaH\x1cr\x1a2\x18^[a-zA-Z_][a-zA-Z0-9_]*$\x8a\xa6\x1d\x13temporal_visibilityH\x02R\x16visibilityDatabaseName\x88\x01\x01\x12s\n" +
+	"\n" +
+	"visibility\x18\x06 \x01(\v2S.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalVisibilityR\n" +
+	"visibility\x12)\n" +
+	"\x10create_databases\x18\a \x01(\bR\x0fcreateDatabases\x12*\n" +
+	"\x11skip_schema_setup\x18\b \x01(\bR\x0fskipSchemaSetup:\x91\x02\xbaH\x8d\x02\x1a\x8a\x02\n" +
+	"/spec.database.cassandra.requires_sql_visibility\x12\xa8\x01the cassandra backend requires a `visibility` SQL block — Temporal removed Cassandra visibility support in v1.21, so the search index must live in PostgreSQL or MySQL\x1a,!has(this.cassandra) || has(this.visibility)B\x10\n" +
+	"\abackend\x12\x05\xbaH\x02\b\x01B\x10\n" +
+	"\x0e_database_nameB\x1b\n" +
+	"\x19_visibility_database_name\"\xd5\x05\n" +
+	"\x1aKubernetesTemporalPostgres\x12p\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
+	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x045432H\x00R\x04port\x88\x01\x01\x12\"\n" +
+	"\busername\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12\x88\x01\n" +
+	"\x0fpassword_secret\x18\x04 \x01(\v2W.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPasswordSecretB\x06\xbaH\x03\xc8\x01\x01R\x0epasswordSecret\x12/\n" +
+	"\tmax_conns\x18\x05 \x01(\x05B\r\xbaH\x04\x1a\x02 \x00\x8a\xa6\x1d\x0220H\x01R\bmaxConns\x88\x01\x01\x128\n" +
+	"\x0emax_idle_conns\x18\x06 \x01(\x05B\r\xbaH\x04\x1a\x02 \x00\x8a\xa6\x1d\x0220H\x02R\fmaxIdleConns\x88\x01\x01\x12U\n" +
+	"\x11max_conn_lifetime\x18\a \x01(\tB$\xbaH\x1br\x192\x17^\\d+(\\.\\d+)?(ms|s|m|h)$\x8a\xa6\x1d\x021hH\x03R\x0fmaxConnLifetime\x88\x01\x01\x12f\n" +
+	"\x03tls\x18\b \x01(\v2T.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseTlsR\x03tlsB\a\n" +
+	"\x05_portB\f\n" +
+	"\n" +
+	"_max_connsB\x11\n" +
+	"\x0f_max_idle_connsB\x14\n" +
+	"\x12_max_conn_lifetime\"\xdc\x05\n" +
+	"\x17KubernetesTemporalMysql\x12u\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\a\x92\xd4a\x1estatus.outputs.primary_serviceR\x04host\x12,\n" +
+	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x043306H\x00R\x04port\x88\x01\x01\x12\"\n" +
+	"\busername\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12\x8d\x01\n" +
+	"\x0fpassword_secret\x18\x04 \x01(\v2\\.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysqlPasswordSecretB\x06\xbaH\x03\xc8\x01\x01R\x0epasswordSecret\x12/\n" +
+	"\tmax_conns\x18\x05 \x01(\x05B\r\xbaH\x04\x1a\x02 \x00\x8a\xa6\x1d\x0220H\x01R\bmaxConns\x88\x01\x01\x128\n" +
+	"\x0emax_idle_conns\x18\x06 \x01(\x05B\r\xbaH\x04\x1a\x02 \x00\x8a\xa6\x1d\x0220H\x02R\fmaxIdleConns\x88\x01\x01\x12U\n" +
+	"\x11max_conn_lifetime\x18\a \x01(\tB$\xbaH\x1br\x192\x17^\\d+(\\.\\d+)?(ms|s|m|h)$\x8a\xa6\x1d\x021hH\x03R\x0fmaxConnLifetime\x88\x01\x01\x12f\n" +
+	"\x03tls\x18\b \x01(\v2T.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseTlsR\x03tlsB\a\n" +
+	"\x05_portB\f\n" +
+	"\n" +
+	"_max_connsB\x11\n" +
+	"\x0f_max_idle_connsB\x14\n" +
+	"\x12_max_conn_lifetime\"\x84\x04\n" +
+	"\x1bKubernetesTemporalCassandra\x12\x1e\n" +
+	"\x05hosts\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x05hosts\x12,\n" +
+	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x049042H\x00R\x04port\x88\x01\x01\x12\"\n" +
+	"\busername\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12\x88\x01\n" +
+	"\x0fpassword_secret\x18\x04 \x01(\v2W.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPasswordSecretB\x06\xbaH\x03\xc8\x01\x01R\x0epasswordSecret\x12@\n" +
+	"\x12replication_factor\x18\x05 \x01(\x05B\f\xbaH\x04\x1a\x02 \x00\x8a\xa6\x1d\x013H\x01R\x11replicationFactor\x88\x01\x01\x12\x1e\n" +
+	"\n" +
+	"datacenter\x18\x06 \x01(\tR\n" +
+	"datacenter\x12f\n" +
+	"\x03tls\x18\a \x01(\v2T.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseTlsR\x03tlsB\a\n" +
+	"\x05_portB\x15\n" +
+	"\x13_replication_factor\"\xb6\x02\n" +
+	" KubernetesTemporalPasswordSecret\x12\x87\x01\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\n" +
+	"secretName\x12y\n" +
+	"\n" +
+	"secret_key\x18\x02 \x01(\tBU\x8a\xa6\x1d\bpassword\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x00R\tsecretKey\x88\x01\x01B\r\n" +
+	"\v_secret_key\"\xa6\x02\n" +
+	"%KubernetesTemporalMysqlPasswordSecret\x12\x8c\x01\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\x88\xd4a\x88\a\x92\xd4a(status.outputs.root_password_secret.nameR\n" +
+	"secretName\x12n\n" +
+	"\n" +
+	"secret_key\x18\x02 \x01(\tBO\xbaH\x03\xc8\x01\x01\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialR\tsecretKey\"\xe3\x02\n" +
+	"\x1dKubernetesTemporalDatabaseTls\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12+\n" +
+	"\x11host_verification\x18\x02 \x01(\bR\x10hostVerification\x12\x1f\n" +
+	"\vserver_name\x18\x03 \x01(\tR\n" +
+	"serverName:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
+	"4spec.database.tls.host_verification.requires_enabled\x12qhost_verification is meaningless without enabled: true — hostname verification only applies to a TLS connection\x1a'!this.host_verification || this.enabled\"\xe6\x02\n" +
+	"\x1cKubernetesTemporalVisibility\x12o\n" +
+	"\bpostgres\x18\x01 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPostgresH\x00R\bpostgres\x12f\n" +
+	"\x05mysql\x18\x02 \x01(\v2N.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysqlH\x00R\x05mysql\x12I\n" +
+	"\rdatabase_name\x18\x03 \x01(\tB\x1f\xbaH\x1cr\x1a2\x18^[a-zA-Z_][a-zA-Z0-9_]*$H\x01R\fdatabaseName\x88\x01\x01B\x10\n" +
+	"\abackend\x12\x05\xbaH\x02\b\x01B\x10\n" +
+	"\x0e_database_name\"\xad\x01\n" +
 	"\x1fKubernetesTemporalServiceConfig\x12*\n" +
 	"\breplicas\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x01H\x00R\breplicas\x88\x01\x01\x12Q\n" +
 	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\v\n" +
@@ -1082,13 +2098,58 @@ const file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawD
 	"\bfrontend\x18\x01 \x01(\v2V.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfigR\bfrontend\x12p\n" +
 	"\ahistory\x18\x02 \x01(\v2V.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfigR\ahistory\x12r\n" +
 	"\bmatching\x18\x03 \x01(\v2V.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfigR\bmatching\x12n\n" +
-	"\x06worker\x18\x04 \x01(\v2V.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfigR\x06worker*\x83\x01\n" +
-	"!KubernetesTemporalDatabaseBackend\x124\n" +
-	"0kubernetes_temporal_database_backend_unspecified\x10\x00\x12\r\n" +
-	"\tcassandra\x10\x01\x12\x0e\n" +
+	"\x06worker\x18\x04 \x01(\v2V.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfigR\x06worker\"\xda\x01\n" +
+	"\x17KubernetesTemporalWebUi\x12'\n" +
+	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12*\n" +
+	"\breplicas\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x14(\x01H\x01R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x03 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\n" +
 	"\n" +
-	"postgresql\x10\x02\x12\t\n" +
-	"\x05mysql\x10\x03B\xaf\x03\n" +
+	"\b_enabledB\v\n" +
+	"\t_replicas\"\xb0\x01\n" +
+	"\x1bKubernetesTemporalNamespace\x12=\n" +
+	"\x04name\x18\x01 \x01(\tB)\xbaH&\xc8\x01\x01r!2\x1f^[a-zA-Z][a-zA-Z0-9._-]{1,231}$R\x04name\x12D\n" +
+	"\tretention\x18\x02 \x01(\tB!\xbaH\x18r\x162\x14^\\d+(\\.\\d+)?(m|h|d)$\x8a\xa6\x1d\x023dH\x00R\tretention\x88\x01\x01B\f\n" +
+	"\n" +
+	"_retention\"\xee\x04\n" +
+	"\x1fKubernetesTemporalDynamicConfig\x12G\n" +
+	"\x18history_size_limit_error\x18\x01 \x01(\x03B\t\xbaH\x06\"\x04(\x80\x80@H\x00R\x15historySizeLimitError\x88\x01\x01\x12E\n" +
+	"\x17history_size_limit_warn\x18\x02 \x01(\x03B\t\xbaH\x06\"\x04(\x80\x80 H\x01R\x14historySizeLimitWarn\x88\x01\x01\x12H\n" +
+	"\x19history_count_limit_error\x18\x03 \x01(\x03B\b\xbaH\x05\"\x03(\xe8\aH\x02R\x16historyCountLimitError\x88\x01\x01\x12F\n" +
+	"\x18history_count_limit_warn\x18\x04 \x01(\x03B\b\xbaH\x05\"\x03(\xf4\x03H\x03R\x15historyCountLimitWarn\x88\x01\x01\x12A\n" +
+	"\x15blob_size_limit_error\x18\x05 \x01(\x03B\t\xbaH\x06\"\x04(\x80\x80@H\x04R\x12blobSizeLimitError\x88\x01\x01\x12?\n" +
+	"\x14blob_size_limit_warn\x18\x06 \x01(\x03B\t\xbaH\x06\"\x04(\x80\x80\x10H\x05R\x11blobSizeLimitWarn\x88\x01\x01B\x1b\n" +
+	"\x19_history_size_limit_errorB\x1a\n" +
+	"\x18_history_size_limit_warnB\x1c\n" +
+	"\x1a_history_count_limit_errorB\x1b\n" +
+	"\x19_history_count_limit_warnB\x18\n" +
+	"\x16_blob_size_limit_errorB\x17\n" +
+	"\x15_blob_size_limit_warn\"\xf5\b\n" +
+	"\x1aKubernetesTemporalArchival\x12e\n" +
+	"\x02s3\x18\x01 \x01(\v2S.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchivalS3H\x00R\x02s3\x12h\n" +
+	"\x03gcs\x18\x02 \x01(\v2T.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchivalGcsH\x00R\x03gcs\x12z\n" +
+	"\tfilestore\x18\x03 \x01(\v2Z.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchivalFilestoreH\x00R\tfilestore\x12'\n" +
+	"\vhistory_uri\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"historyUri\x12-\n" +
+	"\x0evisibility_uri\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rvisibilityUri:\x9e\x05\xbaH\x9a\x05\x1a\xd1\x01\n" +
+	"\x1bspec.archival.s3.uri_scheme\x12Nwith the s3 provider, history_uri and visibility_uri must use the s3:// scheme\x1ab!has(this.s3) || (this.history_uri.startsWith('s3://') && this.visibility_uri.startsWith('s3://'))\x1a\xd4\x01\n" +
+	"\x1cspec.archival.gcs.uri_scheme\x12Owith the gcs provider, history_uri and visibility_uri must use the gs:// scheme\x1ac!has(this.gcs) || (this.history_uri.startsWith('gs://') && this.visibility_uri.startsWith('gs://'))\x1a\xec\x01\n" +
+	"\"spec.archival.filestore.uri_scheme\x12Wwith the filestore provider, history_uri and visibility_uri must use the file:// scheme\x1am!has(this.filestore) || (this.history_uri.startsWith('file://') && this.visibility_uri.startsWith('file://'))B\x11\n" +
+	"\bprovider\x12\x05\xbaH\x02\b\x01\">\n" +
+	"\x1cKubernetesTemporalArchivalS3\x12\x1e\n" +
+	"\x06region\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\"\x1f\n" +
+	"\x1dKubernetesTemporalArchivalGcs\"%\n" +
+	"#KubernetesTemporalArchivalFilestore\"\xc3\x02\n" +
+	"\x1cKubernetesTemporalScheduling\x12\x8a\x01\n" +
+	"\rnode_selector\x18\x01 \x03(\v2e.dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xfd\x01\n" +
+	"\x18KubernetesTemporalImages\x12G\n" +
+	"\x06server\x18\x01 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x06server\x12F\n" +
+	"\x06web_ui\x18\x02 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05webUi\x12P\n" +
+	"\vadmin_tools\x18\x03 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\n" +
+	"adminToolsB\xaf\x03\n" +
 	"9com.dev.planton.provider.kubernetes.kubernetestemporal.v1B\tSpecProtoP\x01Zlgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestemporal/v1;kubernetestemporalv1\xa2\x02\x05DPPKK\xaa\x025Dev.Planton.Provider.Kubernetes.Kubernetestemporal.V1\xca\x025Dev\\Planton\\Provider\\Kubernetes\\Kubernetestemporal\\V1\xe2\x02ADev\\Planton\\Provider\\Kubernetes\\Kubernetestemporal\\V1\\GPBMetadata\xea\x02:Dev::Planton::Provider::Kubernetes::Kubernetestemporal::V1b\x06proto3"
 
 var (
@@ -1103,47 +2164,79 @@ func file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDe
 	return file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_goTypes = []any{
-	(KubernetesTemporalDatabaseBackend)(0),            // 0: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseBackend
-	(*KubernetesTemporalSpec)(nil),                    // 1: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec
-	(*KubernetesTemporalDatabaseConfig)(nil),          // 2: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfig
-	(*KubernetesTemporalExternalDatabase)(nil),        // 3: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalDatabase
-	(*KubernetesTemporalExternalElasticsearch)(nil),   // 4: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalElasticsearch
-	(*KubernetesTemporalIngress)(nil),                 // 5: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngress
-	(*KubernetesTemporalFrontendIngressEndpoint)(nil), // 6: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalFrontendIngressEndpoint
-	(*KubernetesTemporalWebUiIngressEndpoint)(nil),    // 7: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalWebUiIngressEndpoint
-	(*KubernetesTemporalDynamicConfig)(nil),           // 8: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDynamicConfig
-	(*KubernetesTemporalServiceConfig)(nil),           // 9: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
-	(*KubernetesTemporalServices)(nil),                // 10: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices
-	(*v1.StringValueOrRef)(nil),                       // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.KubernetesSensitiveValue)(nil),       // 12: dev.planton.provider.kubernetes.KubernetesSensitiveValue
-	(*kubernetes.ContainerResources)(nil),             // 13: dev.planton.provider.kubernetes.ContainerResources
+	(*KubernetesTemporalSpec)(nil),                // 0: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec
+	(*KubernetesTemporalDatabase)(nil),            // 1: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabase
+	(*KubernetesTemporalPostgres)(nil),            // 2: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPostgres
+	(*KubernetesTemporalMysql)(nil),               // 3: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysql
+	(*KubernetesTemporalCassandra)(nil),           // 4: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalCassandra
+	(*KubernetesTemporalPasswordSecret)(nil),      // 5: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPasswordSecret
+	(*KubernetesTemporalMysqlPasswordSecret)(nil), // 6: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysqlPasswordSecret
+	(*KubernetesTemporalDatabaseTls)(nil),         // 7: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseTls
+	(*KubernetesTemporalVisibility)(nil),          // 8: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalVisibility
+	(*KubernetesTemporalServiceConfig)(nil),       // 9: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
+	(*KubernetesTemporalServices)(nil),            // 10: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices
+	(*KubernetesTemporalWebUi)(nil),               // 11: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalWebUi
+	(*KubernetesTemporalNamespace)(nil),           // 12: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalNamespace
+	(*KubernetesTemporalDynamicConfig)(nil),       // 13: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDynamicConfig
+	(*KubernetesTemporalArchival)(nil),            // 14: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchival
+	(*KubernetesTemporalArchivalS3)(nil),          // 15: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchivalS3
+	(*KubernetesTemporalArchivalGcs)(nil),         // 16: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchivalGcs
+	(*KubernetesTemporalArchivalFilestore)(nil),   // 17: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchivalFilestore
+	(*KubernetesTemporalScheduling)(nil),          // 18: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalScheduling
+	(*KubernetesTemporalImages)(nil),              // 19: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalImages
+	nil,                                           // 20: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),                   // 21: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),         // 22: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),         // 23: dev.planton.provider.kubernetes.WorkloadToleration
+	(*kubernetes.ContainerImage)(nil),             // 24: dev.planton.provider.kubernetes.ContainerImage
 }
 var file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_depIdxs = []int32{
-	11, // 0: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 1: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.database:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfig
-	5,  // 2: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngress
-	4,  // 3: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.external_elasticsearch:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalElasticsearch
-	8,  // 4: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.dynamic_config:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDynamicConfig
-	10, // 5: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.services:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices
-	0,  // 6: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfig.backend:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseBackend
-	3,  // 7: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseConfig.external_database:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalDatabase
-	12, // 8: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalDatabase.password:type_name -> dev.planton.provider.kubernetes.KubernetesSensitiveValue
-	12, // 9: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalExternalElasticsearch.password:type_name -> dev.planton.provider.kubernetes.KubernetesSensitiveValue
-	6,  // 10: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngress.frontend:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalFrontendIngressEndpoint
-	7,  // 11: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalIngress.web_ui:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalWebUiIngressEndpoint
-	13, // 12: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	9,  // 13: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.frontend:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
-	9,  // 14: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.history:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
-	9,  // 15: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.matching:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
-	9,  // 16: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.worker:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	21, // 0: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.database:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabase
+	10, // 2: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.services:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices
+	11, // 3: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.web_ui:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalWebUi
+	12, // 4: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.temporal_namespaces:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalNamespace
+	13, // 5: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.dynamic_config:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDynamicConfig
+	14, // 6: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.archival:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchival
+	18, // 7: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalScheduling
+	19, // 8: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalSpec.images:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalImages
+	2,  // 9: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabase.postgres:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPostgres
+	3,  // 10: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabase.mysql:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysql
+	4,  // 11: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabase.cassandra:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalCassandra
+	8,  // 12: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabase.visibility:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalVisibility
+	21, // 13: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPostgres.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 14: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPostgres.password_secret:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPasswordSecret
+	7,  // 15: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPostgres.tls:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseTls
+	21, // 16: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysql.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 17: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysql.password_secret:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysqlPasswordSecret
+	7,  // 18: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysql.tls:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseTls
+	5,  // 19: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalCassandra.password_secret:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPasswordSecret
+	7,  // 20: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalCassandra.tls:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalDatabaseTls
+	21, // 21: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 22: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysqlPasswordSecret.secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 23: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalVisibility.postgres:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalPostgres
+	3,  // 24: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalVisibility.mysql:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalMysql
+	22, // 25: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	9,  // 26: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.frontend:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
+	9,  // 27: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.history:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
+	9,  // 28: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.matching:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
+	9,  // 29: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServices.worker:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalServiceConfig
+	22, // 30: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalWebUi.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	15, // 31: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchival.s3:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchivalS3
+	16, // 32: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchival.gcs:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchivalGcs
+	17, // 33: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchival.filestore:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalArchivalFilestore
+	20, // 34: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalScheduling.NodeSelectorEntry
+	23, // 35: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	24, // 36: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalImages.server:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	24, // 37: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalImages.web_ui:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	24, // 38: dev.planton.provider.kubernetes.kubernetestemporal.v1.KubernetesTemporalImages.admin_tools:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	39, // [39:39] is the sub-list for method output_type
+	39, // [39:39] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_init() }
@@ -1152,22 +2245,40 @@ func file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_init(
 		return
 	}
 	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[1].OneofWrappers = []any{
+		(*KubernetesTemporalDatabase_Postgres)(nil),
+		(*KubernetesTemporalDatabase_Mysql)(nil),
+		(*KubernetesTemporalDatabase_Cassandra)(nil),
+	}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[8].OneofWrappers = []any{
+		(*KubernetesTemporalVisibility_Postgres)(nil),
+		(*KubernetesTemporalVisibility_Mysql)(nil),
+	}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[11].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes[14].OneofWrappers = []any{
+		(*KubernetesTemporalArchival_S3)(nil),
+		(*KubernetesTemporalArchival_Gcs)(nil),
+		(*KubernetesTemporalArchival_Filestore)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   10,
+			NumEnums:      0,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_kubernetes_kubernetestemporal_v1_spec_proto = out.File

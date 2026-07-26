@@ -1,0 +1,56 @@
+# The kind-honest full surface: a 3-server JetStream cluster (the chart
+# schedules without anti-affinity, so one kind node carries all three),
+# flat authenticated users with subject permissions (module-generated
+# passwords in the <name>-auth Secret), the WebSocket listener, the
+# metrics exporter and sizing. The verifier additionally proves THE AUTH
+# GATE: it connects AS the first declared user (credential read from the
+# auth Secret — the paired-credential contract) and an unauthenticated
+# connection must be REJECTED (no no_auth_user declared here).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesNats
+metadata:
+  name: e2e-nats-full
+spec:
+  namespace:
+    value: e2e-nats-full
+  createNamespace: true
+  cluster:
+    enabled: true
+    replicas: 3
+  jetStream:
+    diskSize: 2Gi
+    memoryStoreMaxSize: 256Mi
+  auth:
+    users:
+      - username: orders-service
+        permissions:
+          publishAllow:
+            - "orders.>"
+            - "e2e.>"
+          subscribeAllow:
+            - "orders.>"
+            - "e2e.>"
+            - "_INBOX.>"
+      - username: auditor
+        permissions:
+          subscribeAllow:
+            - ">"
+          publishDeny:
+            - ">"
+  websocket:
+    enabled: true
+  metrics:
+    exporterEnabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+  helmValues: |
+    natsBox:
+      podTemplate:
+        merge:
+          metadata:
+            labels:
+              e2e-lane: full-surface

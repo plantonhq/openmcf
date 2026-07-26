@@ -8,10 +8,10 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-pipelines-and-dashboard"
+  - slug: "01-operator"
     rank: "01"
-    title: "Tekton Operator with Pipelines, Triggers, and Dashboard"
-    excerpt: "This preset deploys the Tekton Operator with all three core components enabled: Pipelines, Triggers, and Dashboard. The operator manages the lifecycle of Tekton components in fixed namespaces..."
+    title: "Tekton Operator preset"
+    excerpt: "The complete install, which is deliberately tiny: the operator is a lifecycle manager, not the product. It brings the Tekton CRDs and the controller that turns a `TektonConfig` declaration into..."
 ---
 
 # Tekton Operator Presets

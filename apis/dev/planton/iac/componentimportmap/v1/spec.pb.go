@@ -415,9 +415,17 @@ type FromClusterSecretKey struct {
 	// Appended to metadata.name to form the Secret's name.
 	NameSuffix string `protobuf:"bytes,1,opt,name=name_suffix,json=nameSuffix,proto3" json:"name_suffix,omitempty"`
 	// The Secret .data key holding the value.
-	Key           string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Key string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	// When true, the Secret .data key is the ADDRESS'S OWN INSTANCE KEY
+	// instead of the static `key` — for keyed resource collections whose
+	// per-instance credentials live under manifest-driven Secret keys
+	// (the canonical case: one random_password per declared user, keyed
+	// by username, materialized into a Secret with one key per username).
+	// A declaration may set either `key` or this flag; the flag wins when
+	// both are present and the context carries an address key.
+	KeyFromAddressKey bool `protobuf:"varint,3,opt,name=key_from_address_key,json=keyFromAddressKey,proto3" json:"key_from_address_key,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *FromClusterSecretKey) Reset() {
@@ -464,6 +472,13 @@ func (x *FromClusterSecretKey) GetKey() string {
 	return ""
 }
 
+func (x *FromClusterSecretKey) GetKeyFromAddressKey() bool {
+	if x != nil {
+		return x.KeyFromAddressKey
+	}
+	return false
+}
+
 var File_dev_planton_iac_componentimportmap_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
@@ -486,11 +501,12 @@ const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\aliteral\x18\a \x01(\tH\x00R\aliteral\x129\n" +
 	"\x18from_address_key_segment\x18\b \x01(\x05H\x00R\x15fromAddressKeySegment\x12t\n" +
 	"\x17from_cluster_secret_key\x18\t \x01(\v2;.dev.planton.iac.componentimportmap.v1.FromClusterSecretKeyH\x00R\x14fromClusterSecretKeyB\b\n" +
-	"\x06source\"I\n" +
+	"\x06source\"z\n" +
 	"\x14FromClusterSecretKey\x12\x1f\n" +
 	"\vname_suffix\x18\x01 \x01(\tR\n" +
 	"nameSuffix\x12\x10\n" +
-	"\x03key\x18\x02 \x01(\tR\x03keyB\xcd\x02\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\x12/\n" +
+	"\x14key_from_address_key\x18\x03 \x01(\bR\x11keyFromAddressKeyB\xcd\x02\n" +
 	")com.dev.planton.iac.componentimportmap.v1B\tSpecProtoP\x01Z\\github.com/plantonhq/planton/apis/dev/planton/iac/componentimportmap/v1;componentimportmapv1\xa2\x02\x04DPIC\xaa\x02%Dev.Planton.Iac.Componentimportmap.V1\xca\x02%Dev\\Planton\\Iac\\Componentimportmap\\V1\xe2\x021Dev\\Planton\\Iac\\Componentimportmap\\V1\\GPBMetadata\xea\x02)Dev::Planton::Iac::Componentimportmap::V1b\x06proto3"
 
 var (

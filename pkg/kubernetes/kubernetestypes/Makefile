@@ -70,11 +70,6 @@ keycloak_release=25.0.4
 #(empty CRD file, stale generated types). Keep the full tag name here.
 altinity_operator_release=release-0.27.2
 
-#https://github.com/nats-io/nack/releases
-#https://github.com/nats-io/nack/tree/main/deploy
-#Note: Using 'main' branch as CRDs are not published as release assets
-nack_release=v0.21.1
-
 #https://github.com/aws/karpenter-provider-aws/tree/v1.14.0/pkg/apis/crds
 #Note: the karpenter/karpenter-crd Helm charts are OCI-served
 #(public.ecr.aws/karpenter); the repo-tag vendored Chart.yaml lags the
@@ -181,16 +176,12 @@ gen-altinity-operator:
 # posture as the cert-manager issuer kinds), so the generated packages
 # would have no consumer.
 
-.PHONY: gen-nack
-gen-nack:
-	crd2pulumi --force --goPath=nack https://raw.githubusercontent.com/nats-io/nack/${nack_release}/deploy/crds.yml
-
 .PHONY: gen-rabbitmq-cluster-operator
 gen-rabbitmq-cluster-operator:
 	crd2pulumi --force --goPath=rabbitmqoperator https://raw.githubusercontent.com/rabbitmq/cluster-operator/${rabbitmq_cluster_operator_release}/config/crd/bases/rabbitmq.com_rabbitmqclusters.yaml
 
 .PHONY: gen
-gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-external-secrets gen-opensearch-operator gen-keycloak gen-altinity-operator gen-nack gen-rabbitmq-cluster-operator
+gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-external-secrets gen-opensearch-operator gen-keycloak gen-altinity-operator gen-rabbitmq-cluster-operator
 
 .PHONY: build
 build: clean gen

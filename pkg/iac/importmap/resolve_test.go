@@ -329,6 +329,64 @@ func TestResolveValues_FromAddressKeySegment(t *testing.T) {
 	}
 }
 
+func TestResolveValues_FromClusterSecretKey_KeyFromAddressKey(t *testing.T) {
+	// Keyed resource collections whose per-instance credentials live
+	// under manifest-driven Secret keys (one random_password per
+	// declared user, keyed by username): the Secret KEY is the
+	// address's own instance key, so one declaration serves every
+	// instance of the collection.
+	m := &componentv1.ComponentImportMap{
+		Spec: &componentv1.ComponentImportMapSpec{
+			Values: []*componentv1.ImportValue{
+				{
+					Name: "user_password_value",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromClusterSecretKey{
+							FromClusterSecretKey: &componentv1.FromClusterSecretKey{
+								NameSuffix:        "-auth",
+								KeyFromAddressKey: true,
+							},
+						}},
+					},
+				},
+			},
+		},
+	}
+	names := []string{"user_password_value"}
+
+	var gotSecret, gotKey string
+	resolved, unresolved := ResolveValues(m, names, ResolveContext{
+		MetadataName: "messaging",
+		AddressKey:   "orders-service",
+		ReadClusterSecret: func(secretName, key string) (string, error) {
+			gotSecret, gotKey = secretName, key
+			return "u53r-s3cr3t", nil
+		},
+	})
+	if len(unresolved) != 0 {
+		t.Errorf("keyed: unresolved = %v; want none", unresolved)
+	}
+	if resolved["user_password_value"] != "u53r-s3cr3t" {
+		t.Errorf("keyed: resolved = %q; want the reader's value", resolved["user_password_value"])
+	}
+	if gotSecret != "messaging-auth" || gotKey != "orders-service" {
+		t.Errorf("keyed: reader called with (%q, %q); want (messaging-auth, orders-service)", gotSecret, gotKey)
+	}
+
+	// Without an address key the flag cannot resolve — the value falls
+	// back to unresolved (the ask-the-user path), never to a wrong key.
+	_, unresolved = ResolveValues(m, names, ResolveContext{
+		MetadataName: "messaging",
+		ReadClusterSecret: func(secretName, key string) (string, error) {
+			t.Errorf("reader must not be consulted without an address key (called with %q/%q)", secretName, key)
+			return "", nil
+		},
+	})
+	if len(unresolved) != 1 {
+		t.Errorf("no address key: unresolved = %v; want the one name", unresolved)
+	}
+}
+
 func TestResolveValues_FromClusterSecretKey(t *testing.T) {
 	// An import ID that IS secret material (a random_password's value): the
 	// arm reads the module-materialized Secret through the context's
