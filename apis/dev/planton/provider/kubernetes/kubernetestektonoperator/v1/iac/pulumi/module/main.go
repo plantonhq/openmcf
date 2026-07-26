@@ -28,6 +28,19 @@ import (
 // field management. The Terraform twin applies with
 // server_side_apply = true.
 //
+// ORDERING: the manifest applies as THREE dependency-chained groups —
+// namespace → workloads → CRDs — because destroy runs the reverse:
+// the CRDs delete FIRST, while the operator Deployments still run. CRD
+// deletion drains every CR, and the operator's runtime InstallerSets
+// carry a finalizer only the LIVE operator can process (its webhook
+// maintains one for itself even with zero TektonConfigs) — deleting the
+// CRDs and the operator in one flat pass wedges the tektoninstallersets
+// CRD in Terminating until the provider's delete await times out
+// (verified live on both engines). The operator tolerates starting
+// before its CRDs exist: knative-style controllers crash-retry until
+// their informers sync. The Terraform twin encodes the same chain with
+// depends_on.
+//
 // DESTROY SEMANTICS: every document deletes with the resource, INCLUDING
 // the CRDs — which cascade-deletes any TektonConfig on the cluster.
 // Always destroy the KubernetesTekton resource FIRST while the operator
@@ -42,18 +55,50 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetestektonoperatorv1.Kuber
 		return errors.Wrap(err, "failed to set up kubernetes provider")
 	}
 
-	manifest, err := pulumiyaml.NewConfigFile(ctx, locals.ResourceName,
-		&pulumiyaml.ConfigFileArgs{
-			File: ManifestURL(),
-			Transformations: []pulumiyaml.Transformation{
-				autoInstallTransformation(),
-				deploymentTransformation(locals.Spec),
-			},
+	partitions, err := fetchManifestPartitions(ManifestURL())
+	if err != nil {
+		return errors.Wrap(err, "failed to fetch the tekton-operator release manifest")
+	}
+
+	transformations := []pulumiyaml.Transformation{
+		autoInstallTransformation(),
+		deploymentTransformation(locals.Spec),
+	}
+
+	namespaceGroup, err := pulumiyaml.NewConfigGroup(ctx, locals.ResourceName+"-namespace",
+		&pulumiyaml.ConfigGroupArgs{
+			YAML:            []string{partitions.NamespaceYaml},
+			Transformations: transformations,
 		},
 		pulumi.Provider(kubernetesProvider))
 	if err != nil {
-		return errors.Wrap(err, "failed to apply the tekton-operator release manifest")
+		return errors.Wrap(err, "failed to apply the tekton-operator namespace")
 	}
 
-	return exportOutputs(ctx, locals, manifest)
+	workloadsGroup, err := pulumiyaml.NewConfigGroup(ctx, locals.ResourceName,
+		&pulumiyaml.ConfigGroupArgs{
+			YAML: []string{partitions.WorkloadsYaml},
+			// skipAwait rides ONLY this group — see the transformation's
+			// rationale (nothing webhook-shaped here can become ready
+			// before the CRDs group applies).
+			Transformations: append([]pulumiyaml.Transformation{skipAwaitTransformation()}, transformations...),
+		},
+		pulumi.Provider(kubernetesProvider),
+		pulumi.DependsOn([]pulumi.Resource{namespaceGroup}))
+	if err != nil {
+		return errors.Wrap(err, "failed to apply the tekton-operator workloads")
+	}
+
+	crdsGroup, err := pulumiyaml.NewConfigGroup(ctx, locals.ResourceName+"-crds",
+		&pulumiyaml.ConfigGroupArgs{
+			YAML:            []string{partitions.CrdsYaml},
+			Transformations: transformations,
+		},
+		pulumi.Provider(kubernetesProvider),
+		pulumi.DependsOn([]pulumi.Resource{workloadsGroup}))
+	if err != nil {
+		return errors.Wrap(err, "failed to apply the tekton-operator CRDs")
+	}
+
+	return exportOutputs(ctx, locals, crdsGroup)
 }

@@ -5,12 +5,19 @@ metadata:
 spec:
   tier: 2
   # Rebuilt from the pre-program shell onto the official argo-cd chart
-  # 10.2.1 and offline-validated (spec tests, both engines' plan/preview
-  # proofs across full, minimal and external-redis shapes); the live
-  # lanes have not run yet — they run the session-API login proof on
-  # every lane and the behavioral-gitops lane's live Application sync +
-  # server-pod-replacement state proof.
-  status: pending_proof
+  # 10.2.1. Offline-validated (spec tests, both engines' plan/preview
+  # proofs across full, minimal and external-redis shapes) and
+  # live-proven on the kind lanes: the session-API login + authenticated
+  # applications round-trip on every lane, and the behavioral-gitops
+  # proof — an API-declared Application auto-syncs a public repository
+  # into the namespace and stays Synced/Healthy through a server-pod
+  # replacement. Both CRD destroy postures are asserted live (keep=false
+  # lanes: CRDs leave with the release; the behavioral lane: kept CRDs
+  # survive destroy, then verifier-removed for shared-cluster hygiene).
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   # Seven components plus the redis-secret-init hook; the gitops lane
   # additionally clones and syncs a public repository. The budget covers
   # that cold start on the shared cluster.

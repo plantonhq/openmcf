@@ -1,0 +1,46 @@
+# =============================================================================
+# E2E Tier-Wiring Guard
+# =============================================================================
+# Fails the PR when a Kubernetes component with a runnable E2E profile is not
+# fully wired into the E2E tiers: both engine test entrypoints must exist in
+# e2e/kubernetes_test.go, and each entrypoint's base name must appear in a
+# Makefile e2e-test-kubernetes-tier* -run regex. The wiring is three
+# hand-maintained copies of one fact and the drift is SILENT — a missing
+# entrypoint makes the tier regex (and the generated CI matrix regex) match
+# nothing for that kind, so its lane never runs while a green profile claims
+# it does. See hack/guards/ensure_e2e_tier_wiring.sh.
+# =============================================================================
+
+name: lint.e2e-tier-wiring
+
+on:
+  pull_request:
+    paths:
+      - 'e2e/kubernetes_test.go'
+      - 'Makefile'
+      - 'apis/dev/planton/provider/kubernetes/**/v1/e2e/profile.yaml'
+      - 'hack/guards/ensure_e2e_tier_wiring.sh'
+      - '.github/workflows/lint.e2e-tier-wiring.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'e2e/kubernetes_test.go'
+      - 'Makefile'
+      - 'apis/dev/planton/provider/kubernetes/**/v1/e2e/profile.yaml'
+      - 'hack/guards/ensure_e2e_tier_wiring.sh'
+      - '.github/workflows/lint.e2e-tier-wiring.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-tier-wiring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify E2E tier wiring
+        run: bash ./hack/guards/ensure_e2e_tier_wiring.sh

@@ -254,6 +254,22 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 
 	fmt.Printf("  [import-rt] %d resources re-imported blind; plan proposes no real change (%d config-only updates tolerated)\n",
 		len(addresses), tolerated)
+
+	// 5. Reconcile the imported state the way a real adopter does: import →
+	// APPLY → operate. An import cannot read CONFIG-ONLY attributes back
+	// from the cluster, so the freshly-imported state carries them
+	// null/false — and since this state replaces the deployed one for the
+	// DESTROY phase, any delete semantics riding a config-only attribute
+	// silently degrade (verified live: a kubectl_manifest `wait = true`
+	// delete returned instantly from imported state and wedged an
+	// operator-finalizer drain, while the same config blocked correctly
+	// from applied state). Applying the just-proven plan writes those
+	// attributes into state; the oracle above already guarantees the apply
+	// changes nothing real.
+	if _, err := tt.RunTerraformCommandE(tc.T, &planOpts, "apply", "-input=false", "-auto-approve", planOpts.PlanFilePath); err != nil {
+		return errors.Wrap(err, "reconcile-apply after the re-import (import → apply → operate)")
+	}
+
 	return nil
 }
 

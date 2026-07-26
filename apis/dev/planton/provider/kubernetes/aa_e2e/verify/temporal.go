@@ -155,8 +155,14 @@ func (v *TemporalVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) 
 	return nil
 }
 
-// proveWebUi drives an HTTP GET through the UI Service — the UI serves
-// its SPA at / once it can reach the frontend.
+// proveWebUi drives an HTTP GET through the UI Service against the UI
+// server's OWN api (`GET /api/v1/settings` — the ui-server registers it
+// unconditionally and answers its SettingsResponse JSON, whose
+// DefaultNamespace key is part of that contract). Asserting the app's
+// own API is the honest identity proof: the SPA document at / is an
+// opaque asset bundle whose text content (even the product name) is an
+// upstream implementation detail — verified live: the 2.52.0 index.html
+// carries no "temporal" substring at all.
 func (v *TemporalVerifier) proveWebUi(ctx context.Context, kubeconfig string) error {
 	const uiPort = "18233"
 	cancel, err := startPortForward(ctx, kubeconfig, "svc/"+v.Name+"-web", v.Namespace, uiPort+":8080")
@@ -165,14 +171,14 @@ func (v *TemporalVerifier) proveWebUi(ctx context.Context, kubeconfig string) er
 	}
 	defer cancel()
 
-	body, err := httpBearerRoundTrip(ctx, "GET", "http://127.0.0.1:"+uiPort+"/", "", 3*time.Minute)
+	body, err := httpBearerRoundTrip(ctx, "GET", "http://127.0.0.1:"+uiPort+"/api/v1/settings", "", 3*time.Minute)
 	if err != nil {
-		return errors.Wrap(err, "the web UI HTTP round-trip failed")
+		return errors.Wrap(err, "the web UI settings-API round-trip failed")
 	}
-	if !strings.Contains(strings.ToLower(body), "temporal") {
-		return errors.Errorf("the web UI answered without recognizable content: %s", firstLines(body, 2))
+	if !strings.Contains(body, "DefaultNamespace") {
+		return errors.Errorf("the web UI settings API answered without the SettingsResponse contract: %s", firstLines(body, 2))
 	}
-	fmt.Printf("  [verify] WEB UI: HTTP 200 with UI content\n")
+	fmt.Printf("  [verify] WEB UI: the UI server's settings API answered its SettingsResponse contract\n")
 	return nil
 }
 

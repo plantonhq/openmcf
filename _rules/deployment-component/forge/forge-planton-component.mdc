@@ -628,6 +628,48 @@ budget then expires "unable to retrieve" what was retrieved on the first
 try (caught live). Convert the pushed ID's bytes to base64 for the success
 check; keep hex only for human-facing log lines.
 
+**Verifier proof objects are deleted CONFIRMED, never fire-and-forget —
+controllers add finalizers to objects they observe.** A `--wait=false`
+delete in a cleanup defer looks clean and leaks: sidecar services
+(archival watchers, result recorders) attach their own finalizers to
+workload CRs, and a proof object still pending such a finalizer when the
+destroy phase kills its processor can never finish deleting — it wedges
+its namespace in Terminating and poisons every later lane on the shared
+cluster (caught live: a proof run's archival finalizer held a namespace
+for half an hour). Cleanup = issue the delete, POLL the object gone
+within a bounded budget while the stack that serves the finalizer is
+still alive, and strip finalizers as the last resort — a verifier-owned
+proof object's durability guarantees are meaningless on its way out.
+
+**A web UI's identity is proven through its own API, never brand text in
+the SPA document.** A modern UI's index.html is an opaque asset bundle —
+its text content (even the product name) is an upstream build detail that
+changes without notice (caught live: a UI whose document carries no
+product-identifying text at all). Read the UI server's source at the pin
+for an unconditional API route (a settings/config endpoint) and assert
+its response CONTRACT (a known JSON key), not its wording.
+
+**A chart's CRD posture is read from WHERE the CRDs live, never assumed
+from chart ownership language.** `crds/` directory = Helm's install-once
+posture: created on first install, never upgraded, NEVER removed on
+uninstall — destroy must assert the CRDs SURVIVE (caught live: a destroy
+assertion built on "release-owned CRDs delete with the release" failed
+against a chart whose CRDs ride `crds/` and are untouched by uninstall).
+Templated CRDs (in `templates/`) are release-owned and delete/keep per
+their annotations; hook-applied CRDs follow the hook's own posture. The
+posture claim in the spec/docs/verifier must cite which of the three the
+chart actually uses at the pin.
+
+**Scenarios needing owner-arranged external credentials declare them with
+the `planton.dev/e2e-required-env` annotation.** Unset `${E2E_ENV:...}`
+tokens fail expansion LOUDLY by design (right when a batch bootstrap was
+supposed to export them, wrong for credentials only a human can arrange —
+a sandbox account PAT, an external tenant). The annotation lists the
+variables (comma-separated); lanes then SKIP the scenario with the reason
+wherever they are absent — an honest, self-documenting deferral that
+keeps CI green — and run it live wherever the owner exported them. Record
+the matching deferred-E2E row with the unblock.
+
 **One-way-hash credentials in E2E artifacts must be VERIFIED pairings.** When
 a scenario or fixture carries a one-way hash (a bcrypt htpasswd tenant
 password, a pre-hashed basic-auth entry) whose PLAINTEXT a verifier must use

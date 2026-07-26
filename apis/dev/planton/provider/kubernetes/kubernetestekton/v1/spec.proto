@@ -62,9 +62,12 @@ message KubernetesTektonSpec {
 
   /**
    * Namespace the Tekton components install into. The operator
-   * creates and owns it. Empty = `tekton-pipelines` (the upstream
-   * default). IMMUTABLE: changing it on an existing installation is
-   * rejected by the operator's webhook — destroy and recreate instead.
+   * creates and owns it — INCLUDING deletion: tearing this resource
+   * down removes the target namespace with the components (verified
+   * live), so never point it at a namespace carrying anything else.
+   * Empty = `tekton-pipelines` (the upstream default). IMMUTABLE:
+   * changing it on an existing installation is rejected by the
+   * operator's webhook — destroy and recreate instead.
    */
   optional string target_namespace = 2 [
     (dev.planton.shared.options.default) = "tekton-pipelines",

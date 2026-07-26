@@ -5,16 +5,25 @@ metadata:
 spec:
   tier: 3
   # Rebuilt as the TektonConfig declaration the Tekton Operator (the
-  # registry prerequisite, harness-installed first) reconciles, and
-  # offline-validated (spec tests, both engines' plan/preview proofs
-  # across all/basic/full shapes); the live lanes have not run yet —
-  # they prove TektonConfig Ready, the per-profile component rollouts
-  # (dashboard present on `all`, ABSENT on `basic`), a verifier-owned
-  # TaskRun run to Succeeded on every lane, and the destroy-by-design
-  # posture: TektonConfig deletion completes while the operator still
-  # runs (the finalizer-processing ordering the two-kind grain exists
-  # for). KNOW THIS: the operator pulls component images at first
-  # reconcile (internet-at-install on a cold cluster) and the full
-  # teardown takes minutes — the budget covers both.
-  status: pending_proof
+  # registry prerequisite, harness-installed first) reconciles.
+  # Offline-validated (spec tests, both engines' plan/preview proofs
+  # across all/basic/full shapes) and live-proven on the kind lanes:
+  # TektonConfig Ready, the per-profile component rollouts (dashboard
+  # present on `all`, ABSENT on `basic`), a verifier-owned TaskRun run
+  # to Succeeded on every lane, and the destroy-by-design posture —
+  # TektonConfig deletion completes while the operator still runs, the
+  # InstallerSet cascade converges to zero (the operator's own webhook
+  # InstallerSet excluded: it belongs to the OPERATOR's lifetime), and
+  # the operator DELETES the target namespace with the teardown
+  # (live-observed). KNOW THIS: the operator pulls component images at
+  # first reconcile (internet-at-install on a cold cluster) and the
+  # full teardown takes minutes — the budget covers both. Tekton
+  # Results guards TaskRuns with an archival finalizer — the verifier
+  # confirms its proof TaskRun fully deleted while the results watcher
+  # lives (an unconfirmed deletion wedged the target namespace in
+  # Terminating, verified live).
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 25

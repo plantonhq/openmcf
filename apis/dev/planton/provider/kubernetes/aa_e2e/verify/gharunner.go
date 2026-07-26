@@ -81,15 +81,19 @@ func (v *GhaRunnerScaleSetControllerVerifier) VerifyAbsent(ctx context.Context, 
 	if err := KubectlResourceAbsent(ctx, kubeconfig, "deployment", v.Name, v.Namespace); err != nil {
 		return err
 	}
-	// The chart-owned CRD posture: destroying the controller removes the
-	// CRDs (and with them every runner scale set — the spec's CRD note
-	// carries the warning).
+	// The crds/-directory posture: Helm installs the four
+	// actions.github.com CRDs once and NEVER removes them — destroy
+	// must LEAVE them on the cluster (verified live at chart 0.14.2;
+	// the pre-proof design claim that they delete with the release was
+	// wrong). Kept CRDs carry no release ownership metadata, so later
+	// installs adopt them cleanly — the same designed keep the
+	// monitoring stack's CRDs prove.
 	for _, crd := range ghaRunnerCrds {
-		if err := KubectlResourceAbsent(ctx, kubeconfig, "crd", crd, ""); err != nil {
-			return errors.Wrapf(err, "CRD %s must delete with the controller (the chart-owned posture)", crd)
+		if err := KubectlResourceExists(ctx, kubeconfig, "crd", crd, ""); err != nil {
+			return errors.Wrapf(err, "CRD %s must SURVIVE the controller destroy (the crds/-directory keep posture)", crd)
 		}
 	}
-	fmt.Printf("  [verify] DESTROY: controller workloads and actions.github.com CRDs gone (the chart-owned posture)\n")
+	fmt.Printf("  [verify] DESTROY: controller workloads gone; actions.github.com CRDs KEPT (the designed crds/-directory posture)\n")
 	return nil
 }
 

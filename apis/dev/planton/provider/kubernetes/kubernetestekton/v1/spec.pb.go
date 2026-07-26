@@ -68,9 +68,12 @@ type KubernetesTektonSpec struct {
 	Profile *string `protobuf:"bytes,1,opt,name=profile,proto3,oneof" json:"profile,omitempty"`
 	// *
 	// Namespace the Tekton components install into. The operator
-	// creates and owns it. Empty = `tekton-pipelines` (the upstream
-	// default). IMMUTABLE: changing it on an existing installation is
-	// rejected by the operator's webhook — destroy and recreate instead.
+	// creates and owns it — INCLUDING deletion: tearing this resource
+	// down removes the target namespace with the components (verified
+	// live), so never point it at a namespace carrying anything else.
+	// Empty = `tekton-pipelines` (the upstream default). IMMUTABLE:
+	// changing it on an existing installation is rejected by the
+	// operator's webhook — destroy and recreate instead.
 	TargetNamespace *string `protobuf:"bytes,2,opt,name=target_namespace,json=targetNamespace,proto3,oneof" json:"target_namespace,omitempty"`
 	// *
 	// Extra labels and annotations for the operator-created target

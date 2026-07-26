@@ -176,7 +176,7 @@ func (v *NatsVerifier) VerifyExists(ctx context.Context, kubeconfig string) erro
 	// THE PERSISTENCE PROOF — a marker stored in a file-backed stream
 	// and read back (plus the pod-replacement arm on the behavioral
 	// lane).
-	return v.proveJetStream(ctx, kubeconfig, conn, url, options)
+	return v.proveJetStream(ctx, kubeconfig, conn, options)
 }
 
 func (v *NatsVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) error {
@@ -278,7 +278,7 @@ func (v *NatsVerifier) proveAuthGate(url string) error {
 // proveJetStream stores a marker in a verifier-owned file-backed stream
 // and reads it back; the durability arm replaces the server pod between
 // store and read.
-func (v *NatsVerifier) proveJetStream(ctx context.Context, kubeconfig string, conn *natsclient.Conn, url string, options []natsclient.Option) error {
+func (v *NatsVerifier) proveJetStream(ctx context.Context, kubeconfig string, conn *natsclient.Conn, options []natsclient.Option) error {
 	js, err := natsjetstream.New(conn)
 	if err != nil {
 		return errors.Wrap(err, "building the JetStream context")
@@ -345,7 +345,19 @@ func (v *NatsVerifier) proveJetStream(ctx context.Context, kubeconfig string, co
 		return errors.Wrap(err, "the nats server pod did not recover after deletion")
 	}
 
-	recovered, err := natsConnectRetry(url, options, 3*time.Minute)
+	// kubectl port-forward is a single-pod tunnel: it binds one backing
+	// pod at establish time and goes dead when that pod is deleted —
+	// verified live: reconnecting through the original tunnel after the
+	// replacement burns the whole retry budget with "no servers
+	// available". The reconnect gets its OWN fresh tunnel.
+	const recoveredPort = "14223"
+	cancelRecovered, err := startPortForward(ctx, kubeconfig, "svc/"+v.Name, v.Namespace, recoveredPort+":4222")
+	if err != nil {
+		return errors.Wrap(err, "re-establishing the port-forward after the pod replacement")
+	}
+	defer cancelRecovered()
+
+	recovered, err := natsConnectRetry("nats://127.0.0.1:"+recoveredPort, options, 3*time.Minute)
 	if err != nil {
 		return errors.Wrap(err, "reconnecting after the pod replacement")
 	}

@@ -5,14 +5,20 @@ metadata:
 spec:
   tier: 3
   # Rebuilt on the official gha-runner-scale-set OCI chart 0.14.2 with
-  # secret-native GitHub auth and offline-validated (spec tests, both
-  # engines' plan/preview proofs across placeholder/live/mode shapes);
-  # the live lanes have not run yet. The minimal lane is install-grade
-  # by design (placeholder credential — proves the materialized Secret,
-  # the rendered AutoscalingRunnerSet and the controller observing it);
-  # the behavioral-github lane owns the REGISTRATION proof (listener
-  # Running + an idle runner online) and requires a real GitHub
-  # credential through the fenced env tokens
-  # PLANTON_E2E_GITHUB_REPO_PATH + PLANTON_E2E_GITHUB_TOKEN.
-  status: pending_proof
+  # secret-native GitHub auth. Offline-validated (spec tests, both
+  # engines' plan/preview proofs across placeholder/live/mode shapes)
+  # and live-proven on the kind lanes via the minimal scenario —
+  # install-grade by design (placeholder credential: the materialized
+  # `<name>-github-auth` Secret, the rendered AutoscalingRunnerSet, the
+  # controller OBSERVING it, and the destroy exercising the chart's
+  # cleanup finalizers). The behavioral-github lane owns the
+  # REGISTRATION proof (listener Running + an idle runner online); it
+  # declares its owner-arranged credentials via the required-env
+  # annotation (PLANTON_E2E_GITHUB_REPO_PATH +
+  # PLANTON_E2E_GITHUB_TOKEN) and SKIPS honestly wherever they are not
+  # exported — the deferred-E2E ledger carries the row.
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 15

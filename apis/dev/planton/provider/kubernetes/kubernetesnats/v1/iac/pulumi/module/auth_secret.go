@@ -44,11 +44,22 @@ func authSecret(ctx *pulumi.Context,
 		allUsers = append(allUsers, users...)
 	}
 	for _, u := range allUsers {
+		// LETTERS ONLY, and longer to compensate the smaller alphabet
+		// (40 letters ≈ 228 bits). The server RESOLVES the $NATS_PW_<i>
+		// env reference and RE-PARSES the resolved value through its own
+		// config parser (verified live: a generated password with a
+		// digit/symbol prefix crash-loops every server with "variable
+		// reference for 'NATS_PW_0' ... could not be parsed"). Digits can
+		// lex as numbers, and '-' '#' '$' '{' quotes are all structural
+		// tokens — a pure-letter password is the only shape the parser
+		// can never misread. Twin: the TF module's random_password with
+		// the same alphabet.
 		createdPassword, err := random.NewRandomPassword(ctx,
 			fmt.Sprintf("auth-password-%s", u.Username),
 			&random.RandomPasswordArgs{
-				Length:  pulumi.Int(24),
+				Length:  pulumi.Int(40),
 				Special: pulumi.Bool(false),
+				Numeric: pulumi.Bool(false),
 			},
 			generationShapeIgnores)
 		if err != nil {

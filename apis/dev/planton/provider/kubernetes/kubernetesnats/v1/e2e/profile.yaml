@@ -9,11 +9,16 @@ spec:
   # the bundled-operator-and-CR class; JetStream persistent by default;
   # module-generated user credentials wired through env-var config
   # references) and offline-validated (spec tests, both engines'
-  # plan/preview proofs across full, minimal and accounts shapes). The
-  # pre-rebuild pulumi-only green belonged to the OLD surface and is
-  # honestly RESET — the live lanes for the rebuilt surface have not run
-  # yet: they run the nats.go pub/sub + JetStream store/read proofs and
-  # the auth gate on every lane, and the behavioral-durability lane's
-  # pod-replacement marker-survival proof.
-  status: pending_proof
+  # plan/preview proofs across full, minimal and accounts shapes) and
+  # live-proven on the kind lanes: the nats.go pub/sub + JetStream
+  # store/read proofs and the auth gate (unauthenticated connection
+  # REJECTED) on every authenticated lane — the full-surface lane runs
+  # JetStream AS a publish-allowlisted user through the granted
+  # $JS.API.>/$JS.ACK.> subjects — and the behavioral-durability proof:
+  # the stored marker survives a UID-verified server pod replacement
+  # through the JetStream PVC.
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 15

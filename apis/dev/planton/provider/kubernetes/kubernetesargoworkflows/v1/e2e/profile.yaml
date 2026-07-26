@@ -4,13 +4,19 @@ metadata:
   name: kubernetesargoworkflows
 spec:
   tier: 2
-  # Forged on the official argo-workflows chart 1.0.23 and
-  # offline-validated (spec tests, both engines' plan/preview proofs
-  # across full, minimal and alternate-arm shapes); the live lanes have
-  # not run yet — they run the submit→Succeeded engine proof on every
-  # lane and the behavioral-resilience lane's controller-pod-replacement
-  # recovery proof. KNOW THIS: the default CRD arm's hook Job DOWNLOADS
-  # the full-schema CRDs from the chart's GitHub release at install time
-  # (internet-at-install).
-  status: pending_proof
+  # Forged on the official argo-workflows chart 1.0.23.
+  # Offline-validated (spec tests, both engines' plan/preview proofs
+  # across full, minimal and alternate-arm shapes) and live-proven on
+  # the kind lanes: the runner-identity /api/v1/version round-trip and
+  # a verifier-owned Workflow run to Succeeded on every lane, and the
+  # behavioral-resilience proof — a fresh workflow completes after a
+  # controller-pod replacement. workflows.argoproj.io KEPT on every
+  # destroy (the hook-applied CRDs carry no Helm ownership — the
+  # designed shared-cluster posture, destroy-asserted). KNOW THIS: the
+  # default CRD arm's hook Job DOWNLOADS the full-schema CRDs from the
+  # chart's GitHub release at install time (internet-at-install).
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 20

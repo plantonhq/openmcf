@@ -31,8 +31,19 @@ resource "kubernetes_namespace_v1" "nats" {
 resource "random_password" "user" {
   for_each = { for u in local.all_users_meta : u.username => u }
 
-  length  = 24
+  # LETTERS ONLY, and longer to compensate the smaller alphabet
+  # (40 letters ≈ 228 bits — far past any practical bar). The server
+  # RESOLVES the $NATS_PW_<i> env reference and RE-PARSES the resolved
+  # value through its own config parser (verified live: a generated
+  # password with a digit/symbol prefix crash-loops every server with
+  # "variable reference for 'NATS_PW_0' ... could not be parsed").
+  # Digits can lex as numbers, and '-' '#' '$' '{' quotes are all
+  # structural tokens — a pure-letter password is the only shape the
+  # parser can never misread. Twin: the Pulumi module's RandomPassword
+  # with the same alphabet.
+  length  = 40
   special = false
+  numeric = false
 
   # The generation-shape arguments are ignored after creation so an
   # IMPORTED credential never silently regenerates: rotation stays an

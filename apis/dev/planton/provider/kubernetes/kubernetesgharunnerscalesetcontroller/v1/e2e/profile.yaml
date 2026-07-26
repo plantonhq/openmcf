@@ -5,12 +5,16 @@ metadata:
 spec:
   tier: 4
   # Rebuilt on the official gha-runner-scale-set-controller OCI chart
-  # 0.14.2 (was 0.13.1) and offline-validated (spec tests, both engines'
-  # plan/preview proofs); the live lanes have not run yet — the
-  # pre-rebuild green claim covered the old surface and was honestly
-  # reset. The lanes prove the controller rollout (both replicas on the
-  # full-surface lane) and the actions.github.com CRDs established;
-  # destroy removes everything INCLUDING the CRDs (the chart-owned CRD
-  # posture).
-  status: pending_proof
+  # 0.14.2 (was 0.13.1). Offline-validated (spec tests, both engines'
+  # plan/preview proofs) and live-proven on the kind lanes: the
+  # controller rollout (both replicas on the full-surface lane) and the
+  # actions.github.com CRDs established. Destroy KEEPS the CRDs — they
+  # ride the chart's crds/ directory (install-once, never removed by
+  # Helm; verified live — the pre-proof claim that they delete with the
+  # release was wrong), the same designed keep the monitoring stack's
+  # CRDs prove; destroy-asserted.
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 15

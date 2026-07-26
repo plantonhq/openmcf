@@ -44,11 +44,15 @@ const (
 // runner scale sets to reference it explicitly (the scale set kind's
 // `controller_service_account` field).
 //
-// CRD LIFECYCLE: the chart installs the actions.github.com CRDs
-// (AutoscalingRunnerSet, EphemeralRunner, ...) with the release and
-// they are REMOVED with it — destroying the controller cascade-deletes
-// every runner scale set on the cluster. Destroy
-// KubernetesGhaRunnerScaleSet resources first.
+// CRD LIFECYCLE: the chart ships the actions.github.com CRDs
+// (AutoscalingRunnerSet, EphemeralRunner, ...) in its crds/ directory —
+// Helm installs them on first install and NEVER removes them:
+// destroying the controller keeps the CRDs (and any declared runner
+// scale sets' objects) on the cluster (verified live). Runner scale
+// sets stop reconciling without a controller, so still destroy
+// KubernetesGhaRunnerScaleSet resources first; a later controller
+// install adopts the kept CRDs cleanly (they carry no release
+// ownership metadata).
 type KubernetesGhaRunnerScaleSetControllerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *

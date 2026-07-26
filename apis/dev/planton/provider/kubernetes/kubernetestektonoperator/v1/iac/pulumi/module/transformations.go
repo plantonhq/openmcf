@@ -6,6 +6,35 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// skipAwaitTransformation marks every resource in the WORKLOADS group
+// with the provider's skip-await annotation. The group applies BEFORE
+// the CRDs group (the destroy-ordering chain in Resources), and nothing
+// webhook-shaped in it can become ready until the CRDs exist: the
+// webhook binary FATALS at startup until the tektoninstallersets CRD is
+// served (webhook_init.go deletes/creates its own webhook InstallerSet
+// unconditionally — verified in the operator source and live), so
+// awaiting the webhook Deployment deadlocks the chain, and awaiting the
+// webhook Service deadlocks one layer later on its empty endpoints
+// (also verified live). Everything converges once the CRDs land
+// (kubelet backoff restarts the pods); the component's E2E verifier
+// owns rollout readiness. The Terraform twin sets
+// wait_for_rollout = false on the same group for the same reason.
+func skipAwaitTransformation() func(state map[string]interface{}, opts ...pulumi.ResourceOption) {
+	return func(state map[string]interface{}, _ ...pulumi.ResourceOption) {
+		metadata, _ := state["metadata"].(map[string]interface{})
+		if metadata == nil {
+			metadata = map[string]interface{}{}
+			state["metadata"] = metadata
+		}
+		annotations, _ := metadata["annotations"].(map[string]interface{})
+		if annotations == nil {
+			annotations = map[string]interface{}{}
+			metadata["annotations"] = annotations
+		}
+		annotations["pulumi.com/skipAwait"] = "true"
+	}
+}
+
 // autoInstallTransformation ALWAYS patches the tekton-config-defaults
 // ConfigMap's AUTOINSTALL_COMPONENTS key to "false" (the release ships
 // "true"). This is a design invariant, not a knob: with auto-install on,

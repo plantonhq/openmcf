@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	componentv1 "github.com/plantonhq/planton/apis/dev/planton/qa/componente2eprofile/v1"
@@ -908,6 +909,18 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 	} else if !ok {
 		t.Skipf("scenario %s/%s does not run on engine %s (per %s)",
 			component, scenario.Name, engine, runner.ScenarioEnginesAnnotation)
+	}
+
+	// Scenarios needing owner-arranged external credentials (the
+	// e2e-required-env annotation) skip honestly where the environment
+	// does not carry the arrangement — unset ${E2E_ENV:...} tokens would
+	// otherwise fail expansion loudly, turning a deferral into a false
+	// failure on every lane without the tokens (CI included).
+	if missing, err := runner.ScenarioMissingRequiredEnv(scenario.ManifestPath); err != nil {
+		t.Fatalf("reading required-env declaration for scenario %s/%s: %v", component, scenario.Name, err)
+	} else if len(missing) > 0 {
+		t.Skipf("scenario %s/%s needs owner-arranged environment variables that are unset: %s (per %s)",
+			component, scenario.Name, strings.Join(missing, ", "), runner.ScenarioRequiredEnvAnnotation)
 	}
 
 	// Route the scenario to the cluster its manifest asks for (the

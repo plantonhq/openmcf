@@ -663,6 +663,54 @@ Based on scenario:
   manifest's own cross-references (webhook client configs, certificate
   DNS names, CA-injection annotations) are NOT configurable — document
   them as the upstream contract instead of rewriting the reference graph.
+- **A manifest bundle that packs an operator WITH its CRDs applies as
+  THREE ordered groups — namespace ← workloads ← CRDs — on BOTH
+  engines; a flat one-pass apply is wrong in both directions** (verified
+  live, both engines): at CREATE, parallel application races namespaced
+  documents against the Namespace ("unable to create new content...")
+  and passes only on scheduling luck; at DESTROY, deleting the CRDs in
+  the same pass as the operator wedges any CRD whose CRs carry
+  operator-processed finalizers — operators routinely maintain RUNTIME
+  CRs of their own (a webhook's self-owned installer object exists even
+  with zero user CRs), so the drain needs the operator ALIVE. The chain
+  gives destroy the reverse order: CRDs drain FIRST (delete-waited)
+  while the operator runs, then workloads, then the namespace awaited
+  to fully gone (a fixed install namespace still Terminating fails the
+  next install). Terraform: three `kubectl_manifest` resources with
+  `depends_on`, `wait = true` on the namespace + CRD groups, and
+  `wait_for_rollout = false` on the workloads group. Pulumi: three
+  chained classic-yaml ConfigGroups with a group-scoped skipAwait
+  transformation on the workloads group — awaiting ANY workload-group
+  resource deadlocks the chain when the operator binary requires its
+  CRDs at startup (a webhook that fatals until its CRD is served blocks
+  its Deployment await, and skipping only Deployments moves the
+  deadlock to the webhook Service's endpoints await; verified live).
+  The E2E verifier owns rollout readiness in both engines.
+- **CONFIG-ONLY attributes (delete-waits, cascade modes, lifecycle
+  knobs) DEGRADE to defaults in any freshly-imported state — never let
+  correctness ride an attribute the importer cannot read back without a
+  reconcile-apply**: an import stores only what the cluster/API
+  returns, so `wait`/`delete_cascade`-class arguments come back
+  null/false and a destroy from that state silently skips every
+  delete-wait the module's teardown ordering depends on (verified
+  live: a namespace delete-wait that blocked correctly from applied
+  state returned instantly from imported state and wedged an
+  operator-finalizer drain). The adopter workflow is import → APPLY →
+  operate — the reconcile apply writes config-only attributes into
+  state; the E2E import round-trip performs the same reconcile-apply
+  after its zero-change plan proof for exactly this reason.
+- **A generated credential that a server resolves through its OWN
+  config/env re-parsing must use a parser-safe alphabet — letters
+  only, length compensating entropy**: some servers substitute env-var
+  references in config and re-PARSE the resolved value as a config
+  token (verified live: a config parser lexing a random password —
+  digit-led tokens as numbers, `#`/`$`/braces/quotes as structure —
+  crash-loops every server INTERMITTENTLY, flaky by draw, because each
+  apply generates a fresh password and only some draws contain a
+  breaking shape). Read the server's config parser at the pin whenever
+  a generated secret is injected via an env reference the config
+  consumes; a pure-letter value is the only shape a token lexer can
+  never misread.
 - **A chart's default image reference can point at a DELETED registry —
   probe pullability at the pin, never trust the default**: verified
   live with a sidecar image whose entire upstream registry namespace
