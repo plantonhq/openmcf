@@ -8,20 +8,14 @@ import (
 
 // buildHelmValues renders the typed spec into the chart-values map, merges
 // the helm_values escape hatch over it with Helm -f semantics, and
-// re-pins the two fullnames LAST — the exact semantic twin of the
-// Terraform module's values = [typed, helm_values, re-pin] document list.
+// re-pins the fullname LAST — the exact semantic twin of the Terraform
+// module's values = [typed, helm_values, re-pin] document list.
 //
-// SECRET DISCIPLINE (load-bearing): the bundled ClickHouse admin password
-// is deliberately ABSENT here — Resources injects it as a Pulumi secret
-// Output after this merge (the set_sensitive twin), so it never rides a
-// plain values map and never appears in a preview diff. KNOW THIS about
-// the upstream grain: the chart renders that password into the
-// ClickHouseInstallation object's user section and into literal container
-// env — anyone with read access on the namespace's CHI/pods can see it.
-// What the module guarantees is that the chart's publicly-documented
-// default password NEVER ships and the credential is unique per install.
-// The external arm is fully secret-native (existingSecret → secretKeyRef),
-// and the SMTP password rides a valueFrom secretKeyRef env entry.
+// SECRET DISCIPLINE (load-bearing): the ClickHouse password is NEVER
+// declared or rendered — the chart reads it from the referenced Secret
+// (existingSecret → secretKeyRef), so it appears in no values map and no
+// preview diff. The SMTP password rides a valueFrom secretKeyRef env
+// entry — a reference, never material.
 func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 	spec := locals.Spec
 
@@ -32,10 +26,7 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 	// ---- globals ---------------------------------------------------------
 	// Every chart image here is the SPLIT registry+repository form and its
 	// registry key defers to global.imageRegistry — one override reaches
-	// the SigNoz server, the collector, ClickHouse, the bundled operator
-	// and its metrics exporter, and ZooKeeper. The bundled arm's UDF init
-	// container image (alpine) follows its own chart key — helm_values
-	// territory, documented on the spec field.
+	// the SigNoz server, the collector and the schema migrator.
 	global := map[string]interface{}{}
 	if spec.ImageRegistry != "" {
 		global["imageRegistry"] = spec.ImageRegistry
@@ -55,13 +46,12 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		values["global"] = global
 	}
 
-	// ---- database arm ------------------------------------------------------
-	if locals.IsExternal {
-		values["clickhouse"] = map[string]interface{}{"enabled": false}
-		values["externalClickhouse"] = externalClickHouseValues(spec.GetExternalClickhouse())
-	} else {
-		values["clickhouse"] = managedClickHouseValues(locals, spec.GetManagedClickhouse())
-	}
+	// ---- the clickhouse connection (composed, never bundled) ---------------
+	// `clickhouse.enabled: false` is a CONSTANT of this component's
+	// design: nothing ClickHouse-related ever installs — the telemetry
+	// store is the composed KubernetesClickHouse the connection points at.
+	values["clickhouse"] = map[string]interface{}{"enabled": false}
+	values["externalClickhouse"] = clickHouseConnectionValues(spec.GetClickhouse())
 
 	// ---- scheduling (server + collector + migrator) -------------------------
 	var nodeSelector map[string]interface{}
@@ -104,164 +94,45 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		values = mergeMaps(values, overrides)
 	}
 
-	// Re-pin the fullnames LAST — the one deliberate exception to the
+	// Re-pin the fullname LAST — the one deliberate exception to the
 	// escape hatch's last-word contract. Every child name — and the
-	// exported outputs built from them — derives from these fullnames;
-	// letting an override move them would break every output.
+	// exported outputs built from them — derives from this fullname;
+	// letting an override move it would break every output.
 	values["fullnameOverride"] = locals.ReleaseName
-	if !locals.IsExternal {
-		clickhouse, ok := values["clickhouse"].(map[string]interface{})
-		if !ok {
-			clickhouse = map[string]interface{}{}
-			values["clickhouse"] = clickhouse
-		}
-		clickhouse["fullnameOverride"] = locals.ClickHouseFullname
-	}
 
 	return values, nil
 }
 
-// managedClickHouseValues renders the bundled arm (capacity and topology;
-// SigNoz owns everything inside it). The admin password is injected by
-// Resources as a secret Output — never here.
-func managedClickHouseValues(locals *Locals, managed *kubernetessignozv1.KubernetesSignozManagedClickHouse) map[string]interface{} {
-	shards := int32(1)
-	replicas := int32(1)
-	diskSize := vars.DefaultClickHouseDiskSize
-	zookeeperReplicas := int32(1)
-
-	clickhouse := map[string]interface{}{
-		"enabled":          true,
-		"fullnameOverride": locals.ClickHouseFullname,
-	}
-
-	persistence := map[string]interface{}{
-		"enabled": true,
-	}
-
-	if managed != nil {
-		if managed.Shards != nil {
-			shards = managed.GetShards()
-		}
-		if managed.Replicas != nil {
-			replicas = managed.GetReplicas()
-		}
-		if managed.GetDiskSize() != "" {
-			diskSize = managed.GetDiskSize()
-		}
-		if managed.StorageClass.GetValue() != "" {
-			persistence["storageClass"] = managed.StorageClass.GetValue()
-		}
-		if resources := resourcesMap(managed.GetResources()); resources != nil {
-			clickhouse["resources"] = resources
-		}
-		if len(managed.AllowedNetworkIps) > 0 {
-			ips := make([]interface{}, 0, len(managed.AllowedNetworkIps))
-			for _, ip := range managed.AllowedNetworkIps {
-				ips = append(ips, ip)
-			}
-			clickhouse["allowedNetworkIps"] = ips
-		}
-		if zk := managed.GetZookeeper(); zk != nil {
-			if zk.Replicas != nil {
-				zookeeperReplicas = zk.GetReplicas()
-			}
-		}
-		if cold := coldStorageValues(managed.GetColdStorage()); cold != nil {
-			clickhouse["coldStorage"] = cold
-		}
-	}
-
-	persistence["size"] = diskSize
-	clickhouse["persistence"] = persistence
-	clickhouse["layout"] = map[string]interface{}{
-		"shardsCount":   shards,
-		"replicasCount": replicas,
-	}
-
-	zookeeper := map[string]interface{}{
-		"replicaCount": zookeeperReplicas,
-	}
-	if managed != nil {
-		if zk := managed.GetZookeeper(); zk != nil {
-			if resources := resourcesMap(zk.GetResources()); resources != nil {
-				zookeeper["resources"] = resources
-			}
-		}
-	}
-	clickhouse["zookeeper"] = zookeeper
-
-	return clickhouse
-}
-
-// coldStorageValues renders the cold-storage arm: keyless IRSA (role
-// annotations on the ClickHouse service account) XOR declared keys
-// (rendered by the chart into ClickHouse's storage configuration — the
-// upstream grain, taught on the spec field).
-func coldStorageValues(cold *kubernetessignozv1.KubernetesSignozColdStorage) map[string]interface{} {
-	if cold == nil {
-		return nil
-	}
-	if s3 := cold.GetS3(); s3 != nil {
-		out := map[string]interface{}{
-			"enabled":  true,
-			"type":     "s3",
-			"endpoint": s3.Endpoint,
-		}
-		if s3.IrsaRoleArn != "" {
-			out["role"] = map[string]interface{}{
-				"enabled": true,
-				"annotations": map[string]interface{}{
-					"eks.amazonaws.com/role-arn": s3.IrsaRoleArn,
-				},
-			}
-		} else {
-			out["accessKey"] = s3.AccessKey
-			out["secretAccess"] = s3.SecretKey
-		}
-		return out
-	}
-	if gcs := cold.GetGcs(); gcs != nil {
-		return map[string]interface{}{
-			"enabled":      true,
-			"type":         "gcs",
-			"endpoint":     gcs.Endpoint,
-			"accessKey":    gcs.AccessKey,
-			"secretAccess": gcs.SecretKey,
-		}
-	}
-	return nil
-}
-
-// externalClickHouseValues renders the bring-your-own arm — fully
-// secret-native: the chart wires the referenced Secret as a secretKeyRef.
-func externalClickHouseValues(external *kubernetessignozv1.KubernetesSignozExternalClickHouse) map[string]interface{} {
-	clusterName := external.ClusterName.GetValue()
+// clickHouseConnectionValues renders the composed telemetry-store
+// connection — fully secret-native: the chart wires the referenced
+// Secret as a secretKeyRef.
+func clickHouseConnectionValues(clickhouse *kubernetessignozv1.KubernetesSignozClickHouse) map[string]interface{} {
+	clusterName := clickhouse.ClusterName.GetValue()
 	if clusterName == "" {
 		clusterName = "cluster"
 	}
 	tcpPort := int32(9000)
-	if external.TcpPort != nil {
-		tcpPort = external.GetTcpPort()
+	if clickhouse.TcpPort != nil {
+		tcpPort = clickhouse.GetTcpPort()
 	}
 	httpPort := int32(8123)
-	if external.HttpPort != nil {
-		httpPort = external.GetHttpPort()
+	if clickhouse.HttpPort != nil {
+		httpPort = clickhouse.GetHttpPort()
 	}
 
 	out := map[string]interface{}{
-		"host":                      external.Host.GetValue(),
+		"host":                      clickhouse.Host.GetValue(),
 		"cluster":                   clusterName,
 		"tcpPort":                   tcpPort,
 		"httpPort":                  httpPort,
-		"user":                      external.Username,
-		"existingSecret":            external.PasswordSecret.SecretName.GetValue(),
-		"existingSecretPasswordKey": external.PasswordSecret.SecretKey,
+		"user":                      clickhouse.Username,
+		"existingSecret":            clickhouse.PasswordSecret.SecretName.GetValue(),
+		"existingSecretPasswordKey": clickhouse.PasswordSecret.SecretKey,
 	}
-	if external.Secure {
+	if clickhouse.Secure {
 		out["secure"] = true
 	}
-	if external.Verify {
+	if clickhouse.Verify {
 		out["verify"] = true
 	}
 	return out

@@ -20,9 +20,9 @@
       "name": "Tier 2 Pulumi",
       "tier": 2,
       "engine": "pulumi",
-      "timeout": 285,
-      "run_regex": "Test(KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesLocust|KubernetesLoki|KubernetesNats|KubernetesNeo4j|KubernetesQdrant|KubernetesSeaweedFs|KubernetesTempo)_Pulumi",
-      "component_count": 9
+      "timeout": 255,
+      "run_regex": "Test(KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesLocust|KubernetesLoki|KubernetesNeo4j|KubernetesQdrant|KubernetesSeaweedFs|KubernetesTempo)_Pulumi",
+      "component_count": 8
     },
     {
       "name": "Tier 2 Terraform",
@@ -36,17 +36,17 @@
       "name": "Tier 3 Pulumi",
       "tier": 3,
       "engine": "pulumi",
-      "timeout": 225,
-      "run_regex": "Test(KubernetesClickHouse|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesRabbitMq|KubernetesSolr|KubernetesSolrOperator)_Pulumi",
-      "component_count": 6
+      "timeout": 260,
+      "run_regex": "Test(KubernetesClickHouse|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesRabbitMq|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator)_Pulumi",
+      "component_count": 7
     },
     {
       "name": "Tier 3 Terraform",
       "tier": 3,
       "engine": "terraform",
-      "timeout": 225,
-      "run_regex": "Test(KubernetesClickHouse|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesRabbitMq|KubernetesSolr|KubernetesSolrOperator)_Terraform",
-      "component_count": 6
+      "timeout": 260,
+      "run_regex": "Test(KubernetesClickHouse|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesRabbitMq|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator)_Terraform",
+      "component_count": 7
     },
     {
       "name": "Tier 4 Pulumi",

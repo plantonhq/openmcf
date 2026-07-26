@@ -18,6 +18,8 @@ func TestKubernetesSignoz(t *testing.T) {
 
 func int32Ptr(i int32) *int32 { return &i }
 
+func stringPtr(s string) *string { return &s }
+
 func literal(value string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
 		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
@@ -36,13 +38,13 @@ func valueFrom(kind cloudresourcekind.CloudResourceKind, name, fieldPath string)
 	}
 }
 
-// testExternalClickHouse returns an external-database arm shaped like a
-// KubernetesClickHouse composition with literal values.
-func testExternalClickHouse() *KubernetesSignozExternalClickHouse {
-	return &KubernetesSignozExternalClickHouse{
+// testClickHouse returns the required telemetry-store connection shaped
+// like a KubernetesClickHouse composition with literal values.
+func testClickHouse() *KubernetesSignozClickHouse {
+	return &KubernetesSignozClickHouse{
 		Host:     literal("clickhouse-analytics.data.svc.cluster.local"),
 		Username: "signoz",
-		PasswordSecret: &KubernetesSignozExternalClickHousePassword{
+		PasswordSecret: &KubernetesSignozClickHousePassword{
 			SecretName: literal("analytics-clickhouse-auth"),
 			SecretKey:  "signoz",
 		},
@@ -60,13 +62,14 @@ var _ = ginkgo.Describe("KubernetesSignoz Validation Tests", func() {
 				Name: "observe",
 			},
 			Spec: &KubernetesSignozSpec{
-				Namespace: literal("observability"),
+				Namespace:  literal("observability"),
+				Clickhouse: testClickHouse(),
 			},
 		}
 	})
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.It("minimal spec should not return a validation error (every optional block omitted)", func() {
+		ginkgo.It("minimal spec (namespace + clickhouse connection) should not return a validation error", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
@@ -75,98 +78,28 @@ var _ = ginkgo.Describe("KubernetesSignoz Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("a fully declared managed-clickhouse arm should be valid", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{
-					Shards:            int32Ptr(2),
-					Replicas:          int32Ptr(2),
-					DiskSize:          stringPtr("100Gi"),
-					AllowedNetworkIps: []string{"10.0.0.0/8"},
-					Zookeeper: &KubernetesSignozZookeeper{
-						Replicas: int32Ptr(3),
-					},
+		ginkgo.It("a clickhouse connection composed entirely from KubernetesClickHouse references should be valid", func() {
+			input.Spec.Clickhouse = &KubernetesSignozClickHouse{
+				Host:        valueFrom(cloudresourcekind.CloudResourceKind_KubernetesClickHouse, "analytics", "status.outputs.service_name"),
+				ClusterName: valueFrom(cloudresourcekind.CloudResourceKind_KubernetesClickHouse, "analytics", "status.outputs.cluster_name"),
+				Username:    "signoz",
+				PasswordSecret: &KubernetesSignozClickHousePassword{
+					SecretName: valueFrom(cloudresourcekind.CloudResourceKind_KubernetesClickHouse, "analytics", "status.outputs.auth_secret_name"),
+					SecretKey:  "signoz",
 				},
 			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("managed clickhouse with keyless IRSA cold storage should be valid", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{
-					ColdStorage: &KubernetesSignozColdStorage{
-						Backend: &KubernetesSignozColdStorage_S3{
-							S3: &KubernetesSignozColdStorageS3{
-								Endpoint:    "https://telemetry-cold.s3-us-east-1.amazonaws.com/data/",
-								IrsaRoleArn: "arn:aws:iam::123456789012:role/signoz-cold-storage",
-							},
-						},
-					},
-				},
-			}
+		ginkgo.It("a clickhouse connection over verified TLS should be valid", func() {
+			input.Spec.Clickhouse.Secure = true
+			input.Spec.Clickhouse.Verify = true
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("managed clickhouse with declared-key S3 cold storage should be valid", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{
-					ColdStorage: &KubernetesSignozColdStorage{
-						Backend: &KubernetesSignozColdStorage_S3{
-							S3: &KubernetesSignozColdStorageS3{
-								Endpoint:  "https://telemetry-cold.s3-us-east-1.amazonaws.com/data/",
-								AccessKey: "AKIAEXAMPLE",
-								SecretKey: "secretmaterial",
-							},
-						},
-					},
-				},
-			}
-			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
-		})
-
-		ginkgo.It("managed clickhouse with GCS cold storage should be valid", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{
-					ColdStorage: &KubernetesSignozColdStorage{
-						Backend: &KubernetesSignozColdStorage_Gcs{
-							Gcs: &KubernetesSignozColdStorageGcs{
-								Endpoint:  "https://storage.googleapis.com/telemetry-cold/data/",
-								AccessKey: "GOOGEXAMPLE",
-								SecretKey: "secretmaterial",
-							},
-						},
-					},
-				},
-			}
-			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
-		})
-
-		ginkgo.It("an external clickhouse with literal values should be valid", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ExternalClickhouse{
-				ExternalClickhouse: testExternalClickHouse(),
-			}
-			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
-		})
-
-		ginkgo.It("an external clickhouse composed entirely from KubernetesClickHouse references should be valid", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ExternalClickhouse{
-				ExternalClickhouse: &KubernetesSignozExternalClickHouse{
-					Host:        valueFrom(cloudresourcekind.CloudResourceKind_KubernetesClickHouse, "analytics", "status.outputs.service_name"),
-					ClusterName: valueFrom(cloudresourcekind.CloudResourceKind_KubernetesClickHouse, "analytics", "status.outputs.cluster_name"),
-					Username:    "signoz",
-					PasswordSecret: &KubernetesSignozExternalClickHousePassword{
-						SecretName: valueFrom(cloudresourcekind.CloudResourceKind_KubernetesClickHouse, "analytics", "status.outputs.auth_secret_name"),
-						SecretKey:  "signoz",
-					},
-				},
-			}
-			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
-		})
-
-		ginkgo.It("an external clickhouse over verified TLS should be valid", func() {
-			external := testExternalClickHouse()
-			external.Secure = true
-			external.Verify = true
-			input.Spec.Database = &KubernetesSignozSpec_ExternalClickhouse{ExternalClickhouse: external}
+		ginkgo.It("explicit non-default clickhouse ports should be valid", func() {
+			input.Spec.Clickhouse.TcpPort = int32Ptr(19000)
+			input.Spec.Clickhouse.HttpPort = int32Ptr(18123)
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
@@ -200,6 +133,15 @@ var _ = ginkgo.Describe("KubernetesSignoz Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
+		ginkgo.It("collector receiver toggles should be valid", func() {
+			jaegerOff := false
+			input.Spec.OtelCollector = &KubernetesSignozOtelCollector{
+				JaegerReceiverEnabled: &jaegerOff,
+				ZipkinReceiverEnabled: true,
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
 		ginkgo.It("collector autoscaling with sane bounds should be valid", func() {
 			input.Spec.OtelCollector = &KubernetesSignozOtelCollector{
 				Autoscaling: &KubernetesSignozOtelCollectorAutoscaling{
@@ -215,147 +157,48 @@ var _ = ginkgo.Describe("KubernetesSignoz Validation Tests", func() {
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.It("an even zookeeper replica count should fail (quorum teaching)", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{
-					Zookeeper: &KubernetesSignozZookeeper{Replicas: int32Ptr(2)},
-				},
-			}
+		ginkgo.It("a spec without the clickhouse connection should fail (composed, never bundled)", func() {
+			input.Spec.Clickhouse = nil
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("zero clickhouse shards should fail", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{Shards: int32Ptr(0)},
-			}
+		ginkgo.It("a clickhouse connection without a host should fail", func() {
+			input.Spec.Clickhouse.Host = nil
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("a malformed clickhouse disk size should fail", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{DiskSize: stringPtr("twenty-gigs")},
-			}
+		ginkgo.It("a clickhouse connection without a username should fail", func() {
+			input.Spec.Clickhouse.Username = ""
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("S3 cold storage with BOTH a role and declared keys should fail", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{
-					ColdStorage: &KubernetesSignozColdStorage{
-						Backend: &KubernetesSignozColdStorage_S3{
-							S3: &KubernetesSignozColdStorageS3{
-								Endpoint:    "https://telemetry-cold.s3.amazonaws.com/data/",
-								IrsaRoleArn: "arn:aws:iam::123456789012:role/signoz",
-								AccessKey:   "AKIAEXAMPLE",
-								SecretKey:   "secretmaterial",
-							},
-						},
-					},
-				},
-			}
+		ginkgo.It("a clickhouse connection without a password secret should fail", func() {
+			input.Spec.Clickhouse.PasswordSecret = nil
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("S3 cold storage with NO auth posture should fail", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{
-					ColdStorage: &KubernetesSignozColdStorage{
-						Backend: &KubernetesSignozColdStorage_S3{
-							S3: &KubernetesSignozColdStorageS3{
-								Endpoint: "https://telemetry-cold.s3.amazonaws.com/data/",
-							},
-						},
-					},
-				},
-			}
+		ginkgo.It("a password secret without a key should fail", func() {
+			input.Spec.Clickhouse.PasswordSecret.SecretKey = ""
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("S3 cold storage with only HALF a key pair should fail", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{
-					ColdStorage: &KubernetesSignozColdStorage{
-						Backend: &KubernetesSignozColdStorage_S3{
-							S3: &KubernetesSignozColdStorageS3{
-								Endpoint:  "https://telemetry-cold.s3.amazonaws.com/data/",
-								AccessKey: "AKIAEXAMPLE",
-							},
-						},
-					},
-				},
-			}
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("S3 cold storage without an endpoint should fail", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{
-					ColdStorage: &KubernetesSignozColdStorage{
-						Backend: &KubernetesSignozColdStorage_S3{
-							S3: &KubernetesSignozColdStorageS3{
-								IrsaRoleArn: "arn:aws:iam::123456789012:role/signoz",
-							},
-						},
-					},
-				},
-			}
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("GCS cold storage without keys should fail", func() {
-			input.Spec.Database = &KubernetesSignozSpec_ManagedClickhouse{
-				ManagedClickhouse: &KubernetesSignozManagedClickHouse{
-					ColdStorage: &KubernetesSignozColdStorage{
-						Backend: &KubernetesSignozColdStorage_Gcs{
-							Gcs: &KubernetesSignozColdStorageGcs{
-								Endpoint: "https://storage.googleapis.com/telemetry-cold/data/",
-							},
-						},
-					},
-				},
-			}
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("an external clickhouse without a host should fail", func() {
-			external := testExternalClickHouse()
-			external.Host = nil
-			input.Spec.Database = &KubernetesSignozSpec_ExternalClickhouse{ExternalClickhouse: external}
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("an external clickhouse without a username should fail", func() {
-			external := testExternalClickHouse()
-			external.Username = ""
-			input.Spec.Database = &KubernetesSignozSpec_ExternalClickhouse{ExternalClickhouse: external}
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("an external clickhouse without a password secret should fail", func() {
-			external := testExternalClickHouse()
-			external.PasswordSecret = nil
-			input.Spec.Database = &KubernetesSignozSpec_ExternalClickhouse{ExternalClickhouse: external}
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("an external clickhouse password secret without a key should fail", func() {
-			external := testExternalClickHouse()
-			external.PasswordSecret.SecretKey = ""
-			input.Spec.Database = &KubernetesSignozSpec_ExternalClickhouse{ExternalClickhouse: external}
+		ginkgo.It("a password secret without a name should fail", func() {
+			input.Spec.Clickhouse.PasswordSecret.SecretName = nil
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
 		ginkgo.It("certificate verification without TLS should fail", func() {
-			external := testExternalClickHouse()
-			external.Verify = true
-			input.Spec.Database = &KubernetesSignozSpec_ExternalClickhouse{ExternalClickhouse: external}
+			input.Spec.Clickhouse.Verify = true
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("an out-of-range external clickhouse port should fail", func() {
-			external := testExternalClickHouse()
-			external.TcpPort = int32Ptr(70000)
-			input.Spec.Database = &KubernetesSignozSpec_ExternalClickhouse{ExternalClickhouse: external}
+		ginkgo.It("an out-of-range clickhouse tcp port should fail", func() {
+			input.Spec.Clickhouse.TcpPort = int32Ptr(70000)
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("a zero clickhouse http port should fail", func() {
+			input.Spec.Clickhouse.HttpPort = int32Ptr(0)
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
@@ -412,5 +255,3 @@ var _ = ginkgo.Describe("KubernetesSignoz Validation Tests", func() {
 		})
 	})
 })
-
-func stringPtr(s string) *string { return &s }

@@ -17,52 +17,9 @@ variable "spec" {
     namespace        = string
     create_namespace = optional(bool, false)
     chart_version    = optional(string)
-    # Exactly one database arm. Absent = the bundled ClickHouse with
-    # defaults (the documented appliance posture).
-    managed_clickhouse = optional(object({
-      shards        = optional(number)
-      replicas      = optional(number)
-      disk_size     = optional(string)
-      storage_class = optional(string, "")
-      resources = optional(object({
-        limits = optional(object({
-          cpu    = optional(string, "")
-          memory = optional(string, "")
-        }))
-        requests = optional(object({
-          cpu    = optional(string, "")
-          memory = optional(string, "")
-        }))
-      }))
-      allowed_network_ips = optional(list(string), [])
-      zookeeper = optional(object({
-        replicas = optional(number)
-        resources = optional(object({
-          limits = optional(object({
-            cpu    = optional(string, "")
-            memory = optional(string, "")
-          }))
-          requests = optional(object({
-            cpu    = optional(string, "")
-            memory = optional(string, "")
-          }))
-        }))
-      }))
-      cold_storage = optional(object({
-        s3 = optional(object({
-          endpoint      = string
-          irsa_role_arn = optional(string, "")
-          access_key    = optional(string, "")
-          secret_key    = optional(string, "")
-        }))
-        gcs = optional(object({
-          endpoint   = string
-          access_key = string
-          secret_key = string
-        }))
-      }))
-    }))
-    external_clickhouse = optional(object({
+    # The ClickHouse SigNoz stores telemetry in — required, composed,
+    # never bundled (nothing ClickHouse-related installs).
+    clickhouse = object({
       host         = string
       cluster_name = optional(string, "")
       tcp_port     = optional(number)
@@ -74,7 +31,7 @@ variable "spec" {
       })
       secure = optional(bool, false)
       verify = optional(bool, false)
-    }))
+    })
     server = optional(object({
       disk_size     = optional(string)
       storage_class = optional(string, "")

@@ -502,8 +502,18 @@ message KubernetesClickHouseUser {
 
   /**
    * Networks the user may connect from, as IPs/CIDRs (e.g.
-   * "10.0.0.0/8") or "::/0" for anywhere. Empty = the upstream default
-   * ("::/0" — any network; the password is the only gate).
+   * "10.0.0.0/8") or "::/0" for anywhere. KNOW THIS (verified live):
+   * empty is NOT ClickHouse's own any-network default — the operator
+   * normalizes a user declared without networks to a restrictive
+   * fence (the cluster's own pods by host_regexp, plus ::1 and
+   * 127.0.0.1), and ClickHouse reports the network rejection as
+   * "Authentication failed: password is incorrect, or there is no
+   * user with such name" — indistinguishable from a wrong password.
+   * Port-forwarded connections arrive as localhost and slip through
+   * the fence, which is why a smoke test can pass while every
+   * in-cluster client fails. Declare networks explicitly for every
+   * user a workload connects as (e.g. "0.0.0.0/0" and "::/0" when the
+   * password is the gate).
    */
   repeated string networks = 5;
 

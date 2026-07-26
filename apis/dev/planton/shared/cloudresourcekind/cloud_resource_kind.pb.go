@@ -1000,6 +1000,9 @@ const (
 	CloudResourceKind_KubernetesHarbor            CloudResourceKind = 956
 	CloudResourceKind_KubernetesJenkins           CloudResourceKind = 957
 	// 970–989: Kubernetes app platforms
+	// KubernetesPostgres is a prerequisite because the recommended (and
+	// E2E-proven) database composition backs Temporal's default and
+	// visibility stores with a CloudNativePG cluster.
 	CloudResourceKind_KubernetesTemporal CloudResourceKind = 970
 	CloudResourceKind_KubernetesNats     CloudResourceKind = 971
 	CloudResourceKind_KubernetesLocust   CloudResourceKind = 972
@@ -2677,7 +2680,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xe8\xe4\x01\n" +
+	"\x02v1\x10\x01*\xec\xe4\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3134,8 +3137,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"%KubernetesGhaRunnerScaleSetController\x10\xba\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sgharsc\x129\n" +
 	"\x1bKubernetesGhaRunnerScaleSet\x10\xbb\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8sgharss:\x02\xba\a\x12(\n" +
 	"\x10KubernetesHarbor\x10\xbc\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8shrbr\x12(\n" +
-	"\x11KubernetesJenkins\x10\xbd\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sjkn\x12*\n" +
-	"\x12KubernetesTemporal\x10\xca\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8stprl\x12&\n" +
+	"\x11KubernetesJenkins\x10\xbd\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sjkn\x12.\n" +
+	"\x12KubernetesTemporal\x10\xca\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8stprl:\x02\x85\a\x12&\n" +
 	"\x0eKubernetesNats\x10\xcb\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8snats\x12'\n" +
 	"\x10KubernetesLocust\x10\xcc\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sloc\x124\n" +
 	"\x1eDigitalOceanAppPlatformService\x10\xb0\t\x1a\x0f\xa2\xf7\x04\v\b\x11\x10\x01\"\x05doapp\x12(\n" +

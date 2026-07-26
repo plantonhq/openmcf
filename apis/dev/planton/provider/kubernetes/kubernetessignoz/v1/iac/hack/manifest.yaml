@@ -1,12 +1,11 @@
-# Full-surface offline-proof manifest: the bundled ClickHouse arm at a
-# replicated 2x2 layout with a 3-node ZooKeeper quorum, keyless IRSA cold
-# storage, a fully tuned server (SMTP with a Secret-referenced password,
-# external URL, an advanced env entry), the collector with autoscaling and
-# every receiver toggle exercised (zipkin ON — the non-default), a
-# private-mirror image registry with a pull secret, scheduling, and an
-# escape-hatch entry — so the offline tofu plan and pulumi preview proofs
-# cover the full typed surface. Placeholder values; never applied to a
-# real cluster.
+# Full-surface offline-proof manifest: the composed ClickHouse connection
+# over verified TLS with a Secret-referenced password, a fully tuned
+# server (SMTP with a Secret-referenced password, external URL, an
+# advanced env entry), the collector with autoscaling and every receiver
+# toggle exercised (zipkin ON — the non-default), a private-mirror image
+# registry with a pull secret, scheduling, and an escape-hatch entry — so
+# the offline tofu plan and pulumi preview proofs cover the full typed
+# surface. Placeholder values; never applied to a real cluster.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
@@ -16,32 +15,20 @@ spec:
     value: signoz-hack
   createNamespace: true
   chartVersion: 0.133.0
-  managedClickhouse:
-    shards: 2
-    replicas: 2
-    diskSize: 100Gi
-    storageClass:
-      value: gp3
-    resources:
-      requests:
-        cpu: 500m
-        memory: 1Gi
-      limits:
-        cpu: "2"
-        memory: 4Gi
-    allowedNetworkIps:
-      - 10.0.0.0/8
-      - 172.16.0.0/12
-    zookeeper:
-      replicas: 3
-      resources:
-        requests:
-          cpu: 100m
-          memory: 256Mi
-    coldStorage:
-      s3:
-        endpoint: https://telemetry-cold.s3-us-east-1.amazonaws.com/data/
-        irsaRoleArn: arn:aws:iam::123456789012:role/signoz-cold-storage
+  clickhouse:
+    host:
+      value: clickhouse-analytics.signoz-hack.svc.cluster.local
+    clusterName:
+      value: analytics
+    tcpPort: 9440
+    httpPort: 8443
+    username: signoz
+    passwordSecret:
+      secretName:
+        value: analytics-clickhouse-auth
+      secretKey: signoz
+    secure: true
+    verify: true
   server:
     diskSize: 2Gi
     storageClass:

@@ -2,18 +2,12 @@
 # has an exact twin in the Pulumi module's locals.go / values.go — keep
 # them in lockstep.
 #
-# SECRET DISCIPLINE (load-bearing): the bundled ClickHouse admin password
-# is module-GENERATED (random_password in main.tf) and reaches the chart
-# through set_sensitive — never through these values, so it never appears
-# in a plan diff or a values document. KNOW THIS about the upstream grain:
-# the chart renders that password into the ClickHouseInstallation object's
-# user section and into literal container env — anyone with read access on
-# the namespace's CHI/pods can see it. The module cannot change that; what
-# it guarantees is that the chart's publicly-documented default password
-# NEVER ships and the credential is unique per install. The external arm
-# is fully secret-native (existingSecret → secretKeyRef). The SMTP
-# password rides a valueFrom secretKeyRef env entry (the chart's flexible
-# env structure) — a reference, never material.
+# SECRET DISCIPLINE (load-bearing): the ClickHouse password is NEVER
+# declared or rendered — the chart reads it from the referenced Secret
+# (existingSecret → secretKeyRef), so it appears in no values document
+# and no plan diff. The SMTP password rides a valueFrom secretKeyRef env
+# entry (the chart's flexible env structure) — a reference, never
+# material.
 #
 # HCL DISCIPLINE (applies to every conditional object below): conditional
 # entries are written as `key = cond ? value : null` inside ONE object
@@ -38,13 +32,15 @@ locals {
 
   namespace = var.spec.namespace
 
-  # Child names compose the ClickHouseInstallation's operator-generated
-  # StatefulSets: `chi-<name>-clickhouse-cluster-0-0` is 27 characters of
-  # scaffolding around the resource name inside Kubernetes' 63-character
-  # cap. The helm_release precondition (main.tf) fails the plan loudly;
-  # this flag is its condition (twin: the Pulumi module's MaxNameLength
-  # guard).
-  max_name_length    = 30
+  # The longest fullname-derived child is the collector Deployment
+  # (`<name>-otel-collector`, a 15-character suffix) whose pod names add
+  # a 16-character replica-set + pod suffix inside Kubernetes'
+  # 63-character cap: 63 - 15 - 16 = 32. (The schema migrator's name is
+  # a FIXED chart string, not fullname-derived — it does not constrain
+  # this.) The helm_release precondition (main.tf) fails the plan
+  # loudly; this flag is its condition (twin: the Pulumi module's
+  # MaxNameLength guard).
+  max_name_length    = 32
   name_within_budget = length(local.release_name) <= local.max_name_length
 
   labels = merge(
@@ -58,110 +54,26 @@ locals {
     var.metadata.env != null && var.metadata.env != "" ? { "planton.ai/environment" = var.metadata.env } : {}
   )
 
-  # ---- database arm resolution -------------------------------------------
-  # Empty oneof = the bundled arm with defaults (the appliance posture).
-  is_external = try(var.spec.external_clickhouse, null) != null
+  # ---- the clickhouse connection (composed, never bundled) -----------------
+  # The chart's bundled clickhouse subchart stays permanently OFF; the
+  # connection renders into externalClickhouse. The password reaches the
+  # server through existingSecret/existingSecretPasswordKey — a
+  # secretKeyRef the chart wires, never a rendered value.
+  clickhouse = var.spec.clickhouse
 
-  # The bundled installation's fullname — pins the CHI name AND the client
-  # Service name the chart's own helpers derive (clickhouse.servicename
-  # honors clickhouse.fullnameOverride).
-  clickhouse_fullname = "${local.release_name}-clickhouse"
+  clickhouse_tcp_port  = coalesce(try(local.clickhouse.tcp_port, null), 9000)
+  clickhouse_http_port = coalesce(try(local.clickhouse.http_port, null), 8123)
 
-  # The module-owned Secret exporting the generated bundled credential
-  # (keys username/password). The chart itself offers no Secret for the
-  # bundled arm — this is the composition handle the outputs promise.
-  clickhouse_auth_secret_name = "${local.release_name}-clickhouse-auth"
-
-  # ---- bundled clickhouse rendering ----------------------------------------
-  managed = try(var.spec.managed_clickhouse, null)
-
-  managed_resources = local.is_external || try(local.managed.resources, null) == null ? null : { for rk, rv in {
-    requests = try(local.managed.resources.requests, null) == null ? null : { for qk, qv in {
-      cpu    = try(local.managed.resources.requests.cpu, "") != "" ? local.managed.resources.requests.cpu : null
-      memory = try(local.managed.resources.requests.memory, "") != "" ? local.managed.resources.requests.memory : null
-    } : qk => qv if qv != null }
-    limits = try(local.managed.resources.limits, null) == null ? null : { for lk, lv in {
-      cpu    = try(local.managed.resources.limits.cpu, "") != "" ? local.managed.resources.limits.cpu : null
-      memory = try(local.managed.resources.limits.memory, "") != "" ? local.managed.resources.limits.memory : null
-    } : lk => lv if lv != null }
-  } : rk => rv if rv != null && rv != {} }
-
-  zookeeper_resources = local.is_external || try(local.managed.zookeeper.resources, null) == null ? null : { for rk, rv in {
-    requests = try(local.managed.zookeeper.resources.requests, null) == null ? null : { for qk, qv in {
-      cpu    = try(local.managed.zookeeper.resources.requests.cpu, "") != "" ? local.managed.zookeeper.resources.requests.cpu : null
-      memory = try(local.managed.zookeeper.resources.requests.memory, "") != "" ? local.managed.zookeeper.resources.requests.memory : null
-    } : qk => qv if qv != null }
-    limits = try(local.managed.zookeeper.resources.limits, null) == null ? null : { for lk, lv in {
-      cpu    = try(local.managed.zookeeper.resources.limits.cpu, "") != "" ? local.managed.zookeeper.resources.limits.cpu : null
-      memory = try(local.managed.zookeeper.resources.limits.memory, "") != "" ? local.managed.zookeeper.resources.limits.memory : null
-    } : lk => lv if lv != null }
-  } : rk => rv if rv != null && rv != {} }
-
-  # Cold storage: keyless IRSA (role annotations on the ClickHouse service
-  # account) XOR declared keys (rendered by the chart into ClickHouse's
-  # storage configuration — the upstream grain, taught on the spec field).
-  cold_s3  = local.is_external ? null : try(local.managed.cold_storage.s3, null)
-  cold_gcs = local.is_external ? null : try(local.managed.cold_storage.gcs, null)
-
-  cold_storage_block = local.cold_s3 == null && local.cold_gcs == null ? null : { for k, v in {
-    enabled  = true
-    type     = local.cold_s3 != null ? "s3" : "gcs"
-    endpoint = local.cold_s3 != null ? local.cold_s3.endpoint : local.cold_gcs.endpoint
-    accessKey = (
-      local.cold_s3 != null && try(local.cold_s3.access_key, "") != "" ? local.cold_s3.access_key :
-      local.cold_gcs != null ? local.cold_gcs.access_key : null
-    )
-    secretAccess = (
-      local.cold_s3 != null && try(local.cold_s3.secret_key, "") != "" ? local.cold_s3.secret_key :
-      local.cold_gcs != null ? local.cold_gcs.secret_key : null
-    )
-    role = local.cold_s3 != null && try(local.cold_s3.irsa_role_arn, "") != "" ? {
-      enabled     = true
-      annotations = { "eks.amazonaws.com/role-arn" = local.cold_s3.irsa_role_arn }
-    } : null
-  } : k => v if v != null }
-
-  # ONE pruned object serves both arms: `enabled` is always present and
-  # every bundled-arm key is null on the external arm — never a ternary
-  # whose branches carry different attribute sets (the HCL
-  # type-unification class this module's own first plan caught).
-  clickhouse_block = { for k, v in {
-    enabled          = !local.is_external
-    fullnameOverride = local.is_external ? null : local.clickhouse_fullname
-    layout = local.is_external ? null : {
-      shardsCount   = coalesce(try(local.managed.shards, null), 1)
-      replicasCount = coalesce(try(local.managed.replicas, null), 1)
-    }
-    persistence = local.is_external ? null : { for pk, pv in {
-      enabled      = true
-      size         = coalesce(try(local.managed.disk_size, null), "20Gi")
-      storageClass = try(local.managed.storage_class, "") != "" ? local.managed.storage_class : null
-    } : pk => pv if pv != null }
-    resources         = local.managed_resources
-    allowedNetworkIps = local.is_external ? null : (length(try(local.managed.allowed_network_ips, [])) > 0 ? local.managed.allowed_network_ips : null)
-    zookeeper = local.is_external ? null : { for zk, zv in {
-      replicaCount = coalesce(try(local.managed.zookeeper.replicas, null), 1)
-      resources    = local.zookeeper_resources
-    } : zk => zv if zv != null }
-    coldStorage = local.cold_storage_block
-  } : k => v if v != null }
-
-  # ---- external clickhouse rendering ---------------------------------------
-  external = try(var.spec.external_clickhouse, null)
-
-  external_tcp_port  = local.is_external ? coalesce(try(local.external.tcp_port, null), 9000) : 9000
-  external_http_port = local.is_external ? coalesce(try(local.external.http_port, null), 8123) : 8123
-
-  external_clickhouse_block = !local.is_external ? null : { for k, v in {
-    host                      = local.external.host
-    cluster                   = try(local.external.cluster_name, "") != "" ? local.external.cluster_name : "cluster"
-    tcpPort                   = local.external_tcp_port
-    httpPort                  = local.external_http_port
-    user                      = local.external.username
-    existingSecret            = local.external.password_secret.secret_name
-    existingSecretPasswordKey = local.external.password_secret.secret_key
-    secure                    = try(local.external.secure, false) ? true : null
-    verify                    = try(local.external.verify, false) ? true : null
+  clickhouse_connection_block = { for k, v in {
+    host                      = local.clickhouse.host
+    cluster                   = try(local.clickhouse.cluster_name, "") != "" ? local.clickhouse.cluster_name : "cluster"
+    tcpPort                   = local.clickhouse_tcp_port
+    httpPort                  = local.clickhouse_http_port
+    user                      = local.clickhouse.username
+    existingSecret            = local.clickhouse.password_secret.secret_name
+    existingSecretPasswordKey = local.clickhouse.password_secret.secret_key
+    secure                    = try(local.clickhouse.secure, false) ? true : null
+    verify                    = try(local.clickhouse.verify, false) ? true : null
   } : k => v if v != null }
 
   # ---- signoz server env ----------------------------------------------------
@@ -273,11 +185,11 @@ locals {
   )
 
   collector_ports = { for k, v in {
-    zipkin           = local.zipkin_enabled ? { enabled = true } : null
-    "jaeger-thrift"  = local.jaeger_enabled ? null : { enabled = false }
-    "jaeger-grpc"    = local.jaeger_enabled ? null : { enabled = false }
-    logsheroku       = local.http_logs_enabled ? null : { enabled = false }
-    logsjson         = local.http_logs_enabled ? null : { enabled = false }
+    zipkin          = local.zipkin_enabled ? { enabled = true } : null
+    "jaeger-thrift" = local.jaeger_enabled ? null : { enabled = false }
+    "jaeger-grpc"   = local.jaeger_enabled ? null : { enabled = false }
+    logsheroku      = local.http_logs_enabled ? null : { enabled = false }
+    logsjson        = local.http_logs_enabled ? null : { enabled = false }
   } : k => v if v != null }
 
   collector_config = { for k, v in {
@@ -292,23 +204,23 @@ locals {
 
   autoscaling = try(local.collector.autoscaling, null)
   autoscaling_block = try(local.autoscaling.enabled, false) ? { for k, v in {
-    enabled                        = true
-    minReplicas                    = coalesce(try(local.autoscaling.min_replicas, null), 1)
-    maxReplicas                    = coalesce(try(local.autoscaling.max_replicas, null), 11)
-    targetCPUUtilizationPercentage = try(local.autoscaling.target_cpu_utilization_percent, null)
+    enabled                           = true
+    minReplicas                       = coalesce(try(local.autoscaling.min_replicas, null), 1)
+    maxReplicas                       = coalesce(try(local.autoscaling.max_replicas, null), 11)
+    targetCPUUtilizationPercentage    = try(local.autoscaling.target_cpu_utilization_percent, null)
     targetMemoryUtilizationPercentage = try(local.autoscaling.target_memory_utilization_percent, null)
   } : k => v if v != null } : null
 
   otel_collector_block = { for k, v in {
-    replicaCount                     = coalesce(try(local.collector.replicas, null), 1)
-    resources                        = local.collector_resources
-    autoscaling                      = local.autoscaling_block
-    lowCardinalityExceptionGrouping  = try(local.collector.low_cardinality_exception_grouping, false) ? true : null
-    ports                            = length(local.collector_ports) > 0 ? local.collector_ports : null
-    config                           = local.collector_config
-    nodeSelector                     = length(local.node_selector) > 0 ? local.node_selector : null
-    tolerations                      = length(local.tolerations) > 0 ? local.tolerations : null
-    priorityClassName                = local.priority_class != "" ? local.priority_class : null
+    replicaCount                    = coalesce(try(local.collector.replicas, null), 1)
+    resources                       = local.collector_resources
+    autoscaling                     = local.autoscaling_block
+    lowCardinalityExceptionGrouping = try(local.collector.low_cardinality_exception_grouping, false) ? true : null
+    ports                           = length(local.collector_ports) > 0 ? local.collector_ports : null
+    config                          = local.collector_config
+    nodeSelector                    = length(local.node_selector) > 0 ? local.node_selector : null
+    tolerations                     = length(local.tolerations) > 0 ? local.tolerations : null
+    priorityClassName               = local.priority_class != "" ? local.priority_class : null
   } : k => v if v != null }
 
   migrator_block = { for k, v in {
@@ -318,11 +230,8 @@ locals {
 
   # ---- globals ---------------------------------------------------------------
   # Every chart image here is the SPLIT registry+repository form and its
-  # registry key defers to global.imageRegistry — one override reaches the
-  # SigNoz server, the collector, ClickHouse, the bundled operator and its
-  # metrics exporter, and ZooKeeper. The bundled arm's UDF init container
-  # image (alpine) follows its own chart key — helm_values territory,
-  # documented on the spec field.
+  # registry key defers to global.imageRegistry — one override reaches
+  # the SigNoz server, the collector and the schema migrator.
   global_block = { for k, v in {
     imageRegistry    = var.spec.image_registry != "" ? var.spec.image_registry : null
     clusterName      = var.spec.cluster_name != "" ? var.spec.cluster_name : null
@@ -330,15 +239,16 @@ locals {
   } : k => v if v != null }
 
   # ---- typed chart values (twin of the Pulumi module's buildHelmValues) -----
-  # The bundled admin password deliberately ABSENT: it travels via
-  # set_sensitive (main.tf) so it never appears in a values document.
+  # `clickhouse.enabled: false` is a CONSTANT of this component's design:
+  # nothing ClickHouse-related ever installs — the telemetry store is the
+  # composed KubernetesClickHouse the connection points at.
   helm_values = { for k, v in {
     fullnameOverride = local.release_name
     clusterName      = var.spec.cluster_name != "" ? var.spec.cluster_name : null
     global           = length(local.global_block) > 0 ? local.global_block : null
 
-    clickhouse          = local.clickhouse_block
-    externalClickhouse  = local.external_clickhouse_block
+    clickhouse         = { enabled = false }
+    externalClickhouse = local.clickhouse_connection_block
 
     signoz                 = local.signoz_block
     otelCollector          = local.otel_collector_block

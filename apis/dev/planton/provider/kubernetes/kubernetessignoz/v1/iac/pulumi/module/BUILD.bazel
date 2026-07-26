@@ -3,7 +3,6 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "module",
     srcs = [
-        "clickhouse_auth_secret.go",
         "helpers.go",
         "locals.go",
         "main.go",
@@ -24,7 +23,6 @@ go_library(
         "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/core/v1:core",
         "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/helm/v3:helm",
         "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/meta/v1:meta",
-        "@com_github_pulumi_pulumi_random_sdk_v4//go/random",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
         "@io_k8s_sigs_yaml//:yaml",
     ],

@@ -35,18 +35,18 @@ message KubernetesSignozStackOutputs {
   //http://signoz-main-otel-collector.observability.svc.cluster.local:4318
   string otlp_http_endpoint = 7;
 
-  //ClickHouse native-protocol endpoint SigNoz stores telemetry in.
-  //Bundled arm: the bundled installation's client Service; external
-  //arm: mirrors the declared host and port.
+  //ClickHouse native-protocol endpoint SigNoz stores telemetry in —
+  //a passthrough of the declared connection (this component installs
+  //no ClickHouse). Downstream kinds referencing it compose against
+  //the same store SigNoz uses.
   string clickhouse_endpoint = 8;
 
-  //ClickHouse username SigNoz connects as ("admin" on the bundled
-  //arm; the declared username on the external arm).
+  //ClickHouse username SigNoz connects as (mirrors the declared
+  //connection).
   string clickhouse_username = 9;
 
-  //Secret key holding that user's password. Bundled arm: the
-  //module-owned <name>-clickhouse-auth Secret (key "password",
-  //generated per install — the chart's public default never ships);
-  //external arm: the declared Secret reference.
+  //Secret key holding that user's password — the declared Secret
+  //reference, never module-owned; the Secret lives in the SigNoz
+  //namespace (a secretKeyRef cannot cross namespaces).
   dev.planton.provider.kubernetes.KubernetesSecretKey clickhouse_password_secret = 10;
 }

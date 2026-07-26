@@ -1,31 +1,33 @@
-# Kind-honest full surface: the bundled arm at single-node-honest sizing
-# with every fixture-free knob exercised — explicit capacity, the network
-# allow-list, cluster attribution, the collector's non-default receiver
-# posture (zipkin ON, jaeger OFF — proving the port toggles and the
-# pipeline lists move together), an advanced server env entry, and an
-# escape-hatch entry. The arms that need outside dependencies stay
-# plan-proven with deferred-ledger rows: SMTP (a Secret fixture),
-# cold storage (an object store + cloud identity), the external-clickhouse
-# arm (a composed KubernetesClickHouse fixture chain), and collector
-# autoscaling (metrics-server).
+# Kind-honest full surface: the composed connection plus every
+# fixture-free knob — explicit server sizing, cluster attribution, the
+# collector's NON-DEFAULT receiver posture (zipkin ON, jaeger OFF — the
+# port toggles and the pipeline lists derive from one spec field; the
+# verifier asserts the rendered Service has a zipkin port and no jaeger
+# ports), an advanced server env entry, and an escape-hatch entry. The
+# arms that need outside dependencies stay plan-proven with
+# deferred-ledger rows: SMTP (a Secret + mail-sink fixture), collector
+# autoscaling (metrics-server), and the TLS connection arm (a
+# certificate fixture on the composed ClickHouse).
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: e2e-signoz-full
 spec:
   namespace:
-    value: e2e-signoz-full
-  create_namespace: true
-  managed_clickhouse:
-    shards: 1
-    replicas: 1
-    disk_size: 5Gi
-    allowed_network_ips:
-      - 10.0.0.0/8
-      - 172.16.0.0/12
-      - 192.168.0.0/16
-    zookeeper:
-      replicas: 1
+    value: e2e-signoz
+  clickhouse:
+    host:
+      valueFrom:
+        name: e2e-signoz-ch
+    clusterName:
+      valueFrom:
+        name: e2e-signoz-ch
+    username: signoz
+    passwordSecret:
+      secretName:
+        valueFrom:
+          name: e2e-signoz-ch
+      secretKey: signoz
   server:
     disk_size: 1Gi
     external_url: http://e2e-signoz-full.example.com

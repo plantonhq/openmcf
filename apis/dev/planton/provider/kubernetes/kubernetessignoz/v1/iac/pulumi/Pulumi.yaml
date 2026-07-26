@@ -1,3 +1,3 @@
-name: kubernetes-signoz
+name: kubernetessignoz
 runtime: go
-description: SigNoz all-in-one observability platform installation from the official Helm chart with bundled or external ClickHouse arms, a module-generated database credential, OTLP/Jaeger/Zipkin ingestion toggles, collector autoscaling, and SMTP alerting on secret-safe wiring
+description: SigNoz all-in-one observability platform installation from the official Helm chart against a composed ClickHouse connection (secret-native, nothing database-related installs), with OTLP/Jaeger/Zipkin ingestion toggles, collector autoscaling, and SMTP alerting on secret-safe wiring

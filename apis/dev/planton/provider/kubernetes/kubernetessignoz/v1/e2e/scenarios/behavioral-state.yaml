@@ -1,16 +1,29 @@
 # THE state proof: register the first admin and push a span, DELETE the
-# SigNoz server pod (the component label fences the collector and
-# ClickHouse out of the blast radius), wait for a REPLACEMENT pod (a new
-# UID — status flapping Ready on the dying pod is not recovery), then sign
-# in AGAIN with the same credentials and retrieve the same trace by ID —
-# users and dashboards survive on the server's SQLite PersistentVolume,
-# telemetry survives in ClickHouse. The component defaults are the honest
-# shape for this on a single-node kind cluster.
+# SigNoz server pod (the component label fences the collector and the
+# composed ClickHouse out of the blast radius), wait for a REPLACEMENT
+# pod (a new UID — status flapping Ready on the dying pod is not
+# recovery), then sign in AGAIN with the same credentials and retrieve
+# the same trace by ID — users and dashboards survive on the server's
+# SQLite PersistentVolume, telemetry survives in the composed
+# ClickHouse (the storage-separation proof). The component defaults
+# against the fixture are the honest shape for this.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSignoz
 metadata:
   name: e2e-signoz-state
 spec:
   namespace:
-    value: e2e-signoz-state
-  create_namespace: true
+    value: e2e-signoz
+  clickhouse:
+    host:
+      valueFrom:
+        name: e2e-signoz-ch
+    clusterName:
+      valueFrom:
+        name: e2e-signoz-ch
+    username: signoz
+    passwordSecret:
+      secretName:
+        valueFrom:
+          name: e2e-signoz-ch
+      secretKey: signoz

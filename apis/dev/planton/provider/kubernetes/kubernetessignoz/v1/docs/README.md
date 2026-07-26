@@ -5,40 +5,50 @@
 One resource = one SigNoz Helm release (chart `signoz`,
 https://charts.signoz.io; the chart version tracks the application in
 lockstep). The release is named after `metadata.name`;
-`fullnameOverride` pins the server Service and `<name>-otel-collector`,
-and the bundled installation's fullname is pinned to
-`<name>-clickhouse` — several SigNoz instances coexist in one cluster
-and the exported outputs are deterministic. Keep the resource name at
-30 characters or fewer: the bundled ClickHouse wraps it in ~27
-characters of operator scaffolding (`chi-<name>-clickhouse-cluster-0-0`)
-inside Kubernetes' 63-character cap, and both modules fail loudly over
-the budget.
+`fullnameOverride` pins the server Service and `<name>-otel-collector`
+— several SigNoz instances coexist in one cluster and the exported
+outputs are deterministic. Keep the resource name at 32 characters or
+fewer: the collector Deployment (`<name>-otel-collector`) plus its pod
+suffixes must fit Kubernetes' 63-character cap, and both modules fail
+loudly over the budget.
 
 ## The database seam
 
-The `database` oneof is the load-bearing design choice. Empty or
-`managed_clickhouse` = the appliance: the chart's own ClickHouse stack
-(a namespace-fenced Altinity operator, the installation, ZooKeeper)
-with capacity/topology knobs only — deep ClickHouse control is
-deliberately NOT re-modeled here. `external_clickhouse` = composition:
-every field default-references a `KubernetesClickHouse` resource's
-outputs, nothing database-related installs, and the referenced user
-needs `access_management` plus cluster-wide DDL grants (SigNoz runs
-`ON CLUSTER` DDL and owns its schema migrations).
+The `clickhouse` connection is the load-bearing design choice: the
+telemetry store is COMPOSED, never bundled. Every field
+default-references a `KubernetesClickHouse` resource's outputs, nothing
+database-related installs, and the release carries no operator and no
+CRDs — uninstall is ordinary object deletion on both sides.
+
+Verified live, and the reason bundling is rejected rather than merely
+deprioritized: a chart that packs the ClickHouse operator and its
+installation into ONE release cannot uninstall cleanly — Helm deletes
+the operator within seconds while the installation's deletion finalizer
+waits for that same operator, and the release deadlocks until its
+timeout with the database orphaned. Upstream documents "delete the
+namespace" as the workaround. Separate components destroy in the
+correct order by construction.
+
+The composed ClickHouse's contract (taught on the spec fields):
+SigNoz's tested ClickHouse version (25.12.5 at chart 0.133.0 —
+verified live: older servers fail the schema migrations with
+UNKNOWN_SETTING), a keeper-backed coordination service (SigNoz
+migrates `ON CLUSTER`; explicit `managed_keeper` on single-replica
+topologies), a user with
+either no grants (unrestricted config-user semantics, verified live) or
+a grant set including `GRANT CLUSTER ON *.*`, explicit `networks` on
+that user (verified live: the operator fences a networks-less user to
+the ClickHouse pods and localhost, and the rejection reads as a
+password failure), and the password Secret in SigNoz's OWN namespace
+(secretKeyRef cannot cross namespaces — co-locate or replicate).
 
 ## Secret discipline
 
-The bundled arm's admin password is module-generated (random, 24 chars),
-reaches the chart outside the values documents (set_sensitive /
-a Pulumi secret Output), and is exported through the module-owned
-`<name>-clickhouse-auth` Secret. KNOW THE UPSTREAM GRAIN: the chart
-renders that password into the ClickHouseInstallation object and literal
-container env — namespace readers can see it; what the module guarantees
-is a unique per-install credential and that the chart's
-publicly-documented default never ships. The external arm and SMTP are
-fully secret-native (secretKeyRef wiring). Cold-storage keys, when
-declared instead of the IRSA role arm, render into ClickHouse's storage
-configuration — the spec field says so and recommends the keyless arm.
+Fully secret-native: the ClickHouse password reaches the server as a
+secretKeyRef (existingSecret / existingSecretPasswordKey — never a
+rendered value), and the SMTP password rides a valueFrom secretKeyRef
+env entry. No credential is generated, rendered, or owned by the
+modules.
 
 ## The collector's receiver contract
 
@@ -52,20 +62,21 @@ REPLACE under Helm merge — both modules always render them.
 The Terraform and Pulumi modules render byte-identical chart values from
 the same typed spec. Every chart image is the split registry+repository
 form deferring to `global.imageRegistry`, so one `image_registry` value
-re-points the server, collector, ClickHouse, operator, metrics-exporter
-and ZooKeeper images; the bundled arm's UDF init-container image follows
-its own chart key (`helm_values` territory).
+re-points the server, collector and schema-migrator images.
 
 ## Deliberate exclusions
 
-The `postgresql` and `signoz-otel-gateway` subcharts (enterprise/licensed
-surfaces, default off), the `redpanda` subchart (a banned license family
-— never modeled, never enabled), the server replica knob (community =
-single-writer SQLite), per-image tag overrides (the chart's tested
-pairing governs), and the `k8s-infra` telemetry-shipper chart (the
-shipping role belongs to `KubernetesOtelCollector`). All chart surfaces
-beyond the typed fields remain reachable through `helm_values` — never
-the primary interface.
+The bundled `clickhouse` subchart (permanently disabled — see the
+database seam), the `postgresql` and `signoz-otel-gateway` subcharts
+(enterprise/licensed surfaces, default off), the `redpanda` subchart (a
+banned license family — never modeled, never enabled), the server
+replica knob (community = single-writer SQLite), per-image tag
+overrides (the chart's tested pairing governs), and the `k8s-infra`
+telemetry-shipper chart (the shipping role belongs to
+`KubernetesOtelCollector`). Telemetry cold-storage tiering is a
+database concern and belongs on the component that owns the database.
+All chart surfaces beyond the typed fields remain reachable through
+`helm_values` — never the primary interface.
 
 ---
 

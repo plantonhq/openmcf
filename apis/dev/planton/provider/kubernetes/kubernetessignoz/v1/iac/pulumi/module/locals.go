@@ -16,9 +16,8 @@ import (
 type Locals struct {
 	Spec *kubernetessignozv1.KubernetesSignozSpec
 
-	// Resource-identity labels stamped on the module-created satellites
-	// (the namespace and the clickhouse-auth Secret — never injected into
-	// the chart's own resources; Helm owns those).
+	// Resource-identity labels stamped on the module-created namespace —
+	// never injected into the chart's own resources; Helm owns those.
 	Labels map[string]string
 
 	// Namespace SigNoz installs into (resolved literal from the spec's
@@ -35,21 +34,10 @@ type Locals struct {
 	// defaulting middleware ran.
 	ChartVersion string
 
-	// Whether the external-clickhouse arm is declared (empty oneof = the
-	// bundled arm with defaults — the appliance posture).
-	IsExternal bool
-
-	// The bundled installation's fullname (`<name>-clickhouse`) — pins
-	// the CHI name AND the client Service name the chart's own helpers
-	// derive.
-	ClickHouseFullname string
-
-	// The module-owned Secret exporting the generated bundled credential
-	// (`<name>-clickhouse-auth`, keys username/password). Empty contract
-	// on the external arm — the declared Secret is exported instead.
-	ClickHouseAuthSecretName string
-
 	// ---- exported composition handles (see outputs.go) -----------------
+	// The ClickHouse* handles are passthroughs of the DECLARED connection
+	// — this component installs no ClickHouse; downstream kinds
+	// referencing them compose against the same store SigNoz uses.
 	Service                      string
 	KubeEndpoint                 string
 	PortForwardCommand           string
@@ -91,11 +79,6 @@ func initializeLocals(_ *pulumi.Context, stackInput *kubernetessignozv1.Kubernet
 	namespace := spec.Namespace.GetValue()
 	releaseName := target.Metadata.Name
 
-	isExternal := spec.GetExternalClickhouse() != nil
-
-	clickHouseFullname := fmt.Sprintf("%s-clickhouse", releaseName)
-	clickHouseAuthSecretName := fmt.Sprintf("%s-clickhouse-auth", releaseName)
-
 	// The signoz Service carries the fullname itself; the collector
 	// Service appends the component name — both pinned via
 	// fullnameOverride.
@@ -108,22 +91,13 @@ func initializeLocals(_ *pulumi.Context, stackInput *kubernetessignozv1.Kubernet
 	otlpGrpc := fmt.Sprintf("%s.%s.svc.cluster.local:%d", collectorService, namespace, vars.OtlpGrpcPort)
 	otlpHttp := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", collectorService, namespace, vars.OtlpHttpPort)
 
-	clickHouseEndpoint := fmt.Sprintf("%s.%s.svc.cluster.local:%d",
-		clickHouseFullname, namespace, vars.ClickHouseTcpPort)
-	clickHouseUsername := vars.BundledClickHouseUser
-	passwordSecretName := clickHouseAuthSecretName
-	passwordSecretKey := "password"
-	if isExternal {
-		external := spec.GetExternalClickhouse()
-		tcpPort := int32(vars.ClickHouseTcpPort)
-		if external.TcpPort != nil {
-			tcpPort = external.GetTcpPort()
-		}
-		clickHouseEndpoint = fmt.Sprintf("%s:%d", external.Host.GetValue(), tcpPort)
-		clickHouseUsername = external.Username
-		passwordSecretName = external.PasswordSecret.SecretName.GetValue()
-		passwordSecretKey = external.PasswordSecret.SecretKey
+	// The declared connection, mirrored into the exported handles.
+	clickhouse := spec.GetClickhouse()
+	tcpPort := int32(vars.ClickHouseTcpPort)
+	if clickhouse.TcpPort != nil {
+		tcpPort = clickhouse.GetTcpPort()
 	}
+	clickHouseEndpoint := fmt.Sprintf("%s:%d", clickhouse.Host.GetValue(), tcpPort)
 
 	return &Locals{
 		Spec:                         spec,
@@ -131,9 +105,6 @@ func initializeLocals(_ *pulumi.Context, stackInput *kubernetessignozv1.Kubernet
 		Namespace:                    namespace,
 		ReleaseName:                  releaseName,
 		ChartVersion:                 chartVersion,
-		IsExternal:                   isExternal,
-		ClickHouseFullname:           clickHouseFullname,
-		ClickHouseAuthSecretName:     clickHouseAuthSecretName,
 		Service:                      service,
 		KubeEndpoint:                 kubeEndpoint,
 		PortForwardCommand:           portForward,
@@ -141,8 +112,8 @@ func initializeLocals(_ *pulumi.Context, stackInput *kubernetessignozv1.Kubernet
 		OtlpGrpcEndpoint:             otlpGrpc,
 		OtlpHttpEndpoint:             otlpHttp,
 		ClickHouseEndpoint:           clickHouseEndpoint,
-		ClickHouseUsername:           clickHouseUsername,
-		ClickHousePasswordSecretName: passwordSecretName,
-		ClickHousePasswordSecretKey:  passwordSecretKey,
+		ClickHouseUsername:           clickhouse.Username,
+		ClickHousePasswordSecretName: clickhouse.PasswordSecret.SecretName.GetValue(),
+		ClickHousePasswordSecretKey:  clickhouse.PasswordSecret.SecretKey,
 	}
 }

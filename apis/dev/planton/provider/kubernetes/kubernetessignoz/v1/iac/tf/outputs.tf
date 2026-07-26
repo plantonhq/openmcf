@@ -1,7 +1,9 @@
 # Stack outputs — identical names and derivations in the Pulumi module's
-# outputs.go / main.go exports. Every child name derives from the two
-# fullnames pinned via fullnameOverride (the release name and
-# `<name>-clickhouse`).
+# outputs.go / main.go exports. Every child name derives from the
+# fullname pinned via fullnameOverride (the release name). The
+# clickhouse_* outputs are passthroughs of the DECLARED connection —
+# this component installs no ClickHouse; downstream kinds referencing
+# them compose against the same store SigNoz uses.
 
 output "namespace" {
   description = "Kubernetes namespace SigNoz runs in"
@@ -39,21 +41,19 @@ output "otlp_http_endpoint" {
 }
 
 output "clickhouse_endpoint" {
-  description = "ClickHouse native-protocol endpoint SigNoz stores telemetry in (bundled arm: the bundled installation's client Service; external arm: mirrors the declared host and port)"
-  value = local.is_external ? "${local.external.host}:${local.external_tcp_port}" : (
-    "${local.clickhouse_fullname}.${local.namespace}.svc.cluster.local:9000"
-  )
+  description = "ClickHouse native-protocol endpoint SigNoz stores telemetry in (mirrors the declared connection)"
+  value       = "${local.clickhouse.host}:${local.clickhouse_tcp_port}"
 }
 
 output "clickhouse_username" {
-  description = "ClickHouse username SigNoz connects as"
-  value       = local.is_external ? local.external.username : "admin"
+  description = "ClickHouse username SigNoz connects as (mirrors the declared connection)"
+  value       = local.clickhouse.username
 }
 
 output "clickhouse_password_secret" {
-  description = "Secret key holding the ClickHouse password (bundled arm: the module-owned <name>-clickhouse-auth Secret, key \"password\"; external arm: the declared Secret reference)"
+  description = "Secret key holding the ClickHouse password (the declared Secret reference — the Secret lives in the SigNoz namespace)"
   value = {
-    name = local.is_external ? local.external.password_secret.secret_name : local.clickhouse_auth_secret_name
-    key  = local.is_external ? local.external.password_secret.secret_key : "password"
+    name = local.clickhouse.password_secret.secret_name
+    key  = local.clickhouse.password_secret.secret_key
   }
 }

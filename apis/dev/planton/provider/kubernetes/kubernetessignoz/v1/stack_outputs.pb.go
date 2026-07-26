@@ -47,17 +47,17 @@ type KubernetesSignozStackOutputs struct {
 	// exporters here, e.g.
 	// http://signoz-main-otel-collector.observability.svc.cluster.local:4318
 	OtlpHttpEndpoint string `protobuf:"bytes,7,opt,name=otlp_http_endpoint,json=otlpHttpEndpoint,proto3" json:"otlp_http_endpoint,omitempty"`
-	// ClickHouse native-protocol endpoint SigNoz stores telemetry in.
-	// Bundled arm: the bundled installation's client Service; external
-	// arm: mirrors the declared host and port.
+	// ClickHouse native-protocol endpoint SigNoz stores telemetry in —
+	// a passthrough of the declared connection (this component installs
+	// no ClickHouse). Downstream kinds referencing it compose against
+	// the same store SigNoz uses.
 	ClickhouseEndpoint string `protobuf:"bytes,8,opt,name=clickhouse_endpoint,json=clickhouseEndpoint,proto3" json:"clickhouse_endpoint,omitempty"`
-	// ClickHouse username SigNoz connects as ("admin" on the bundled
-	// arm; the declared username on the external arm).
+	// ClickHouse username SigNoz connects as (mirrors the declared
+	// connection).
 	ClickhouseUsername string `protobuf:"bytes,9,opt,name=clickhouse_username,json=clickhouseUsername,proto3" json:"clickhouse_username,omitempty"`
-	// Secret key holding that user's password. Bundled arm: the
-	// module-owned <name>-clickhouse-auth Secret (key "password",
-	// generated per install — the chart's public default never ships);
-	// external arm: the declared Secret reference.
+	// Secret key holding that user's password — the declared Secret
+	// reference, never module-owned; the Secret lives in the SigNoz
+	// namespace (a secretKeyRef cannot cross namespaces).
 	ClickhousePasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,10,opt,name=clickhouse_password_secret,json=clickhousePasswordSecret,proto3" json:"clickhouse_password_secret,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache

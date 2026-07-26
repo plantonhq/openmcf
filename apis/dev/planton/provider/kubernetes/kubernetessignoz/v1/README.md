@@ -21,26 +21,49 @@ Not the right component when:
   (`KubernetesIngress`, the Gateway API kinds) over the exported
   service handles.
 
-## Database arms
+## The database is composed, never bundled
 
-- **Bundled** (default) — the chart deploys and owns a ClickHouse stack:
-  a namespace-fenced Altinity operator, the installation, and ZooKeeper.
-  The appliance posture: capacity and topology knobs only. The admin
-  password is module-GENERATED per install (the chart's
-  publicly-documented default never ships) and exported through the
-  `<name>-clickhouse-auth` Secret.
-- **External** — bring your own ClickHouse; nothing database-related
-  installs. The fields default-reference a `KubernetesClickHouse`
-  resource's outputs (client Service, cluster name, auth Secret), so the
-  composition is one `valueFrom` per field. Declare the SigNoz user
-  there with `access_management` and cluster-wide DDL grants — SigNoz
-  creates and migrates its own databases.
+SigNoz stores every trace, metric and log in ClickHouse — a required,
+separate component. Run a `KubernetesClickHouse` (with its
+`KubernetesAltinityOperator`) and wire it through `clickhouse`; the
+fields default-reference that kind's outputs (client Service, cluster
+name, auth Secret), so the composition is one `valueFrom` per field.
+Any reachable ClickHouse also works with literal values.
 
-**Co-existence warning (bundled arm):** the bundled Altinity operator is
-namespace-fenced, and the clickhouse.altinity.com CRDs install only when
-absent and are KEPT on uninstall. On a cluster that also runs
-`KubernetesAltinityOperator`, keep this component in its own namespace
-and that operator's watch fenced away from it.
+Why composed: the database — and your telemetry — outlives SigNoz
+reinstalls; upgrades roll independently; deep ClickHouse control
+(users, profiles, quotas, keeper topology) lives on the component that
+owns it. And verified live: a chart-bundled database cannot uninstall
+cleanly — the operator and its installation die in the same Helm
+release, and the installation's deletion finalizer deadlocks with
+nobody left to process it. Composition removes that failure by
+construction.
+
+What the composed ClickHouse needs:
+
+- **SigNoz's tested version** — run the ClickHouse at the version
+  SigNoz's chart pairs with (25.12.5 at chart 0.133.0). Verified
+  live: the schema migrations use settings newer ClickHouse ships,
+  and an older server (e.g. 25.3) fails them with
+  `Unknown setting 'object_serialization_version'`.
+- **Coordination** — SigNoz runs its schema migrations `ON CLUSTER`,
+  and distributed DDL requires a keeper: on a single-replica
+  `KubernetesClickHouse`, declare `coordination.type: managed_keeper`
+  explicitly (bare 1x1 topologies default to none).
+- **A user** — the simplest honest posture is a user declared with NO
+  grants (verified live: unrestricted config-user access, which covers
+  the migrator). A constrained user needs `GRANT CLUSTER ON *.*` plus
+  CREATE/DROP/INSERT/SELECT on the `signoz_*` databases.
+- **Explicit `networks` on that user** — verified live: a user
+  declared without networks is fenced by the operator to the
+  ClickHouse pods and localhost, and SigNoz's pods are rejected with
+  what reads as a password failure ("Authentication failed"). Declare
+  `networks` (e.g. `0.0.0.0/0` + `::/0` when the password is the
+  gate).
+- **Co-location or a replicated Secret** — SigNoz reads the password
+  through a `secretKeyRef`, which cannot cross namespaces: deploy
+  SigNoz into the ClickHouse namespace (the default composition) or
+  replicate the Secret.
 
 ## Single-instance truth
 
@@ -53,8 +76,8 @@ ingestion collector scales horizontally (replicas or the HPA arm).
 ## Retention
 
 Telemetry retention is managed inside SigNoz (UI → Settings → General),
-not in this spec — size the bundled arm's `disk_size` for the retention
-you set there.
+not in this spec — size the composed ClickHouse's `disk_size` for the
+retention you set there.
 
 ---
 

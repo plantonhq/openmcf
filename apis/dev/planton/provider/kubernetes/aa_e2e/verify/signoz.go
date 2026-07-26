@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"strings"
 	"time"
@@ -16,27 +17,25 @@ import (
 
 // SignozVerifier checks a SigNoz install to the point a customer could
 // run their observability on it: the server StatefulSet ready, the
-// ingestion collector rolled out, the bundled ClickHouse installation
-// reconciled (bundled arm), the server's own health endpoint OK (it
-// answers only with a working telemetry-store connection), and a LIVE
-// product-grade round-trip — the first admin user REGISTERED through the
-// product's own API, a session opened, a span pushed over OTLP/HTTP to
-// the collector, and the trace retrieved BY ID through the authenticated
-// query API (an observability platform that cannot ingest and answer for
-// a trace is not an observability platform).
+// ingestion collector rolled out, the server's own health endpoint OK
+// (it answers only with a working connection to the COMPOSED ClickHouse
+// — this component installs no database), and a LIVE product-grade
+// round-trip — the first admin user REGISTERED through the product's
+// own API, a session opened, a span pushed over OTLP/HTTP to the
+// collector, and the trace retrieved BY ID through the authenticated
+// query API (an observability platform that cannot ingest and answer
+// for a trace is not an observability platform).
 //
 // The behavioral-state scenario (recognized by name) additionally DELETES
 // the server pod after the first query, waits for a REPLACEMENT pod (a
 // new UID — status flapping Ready on the dying pod is not recovery),
 // signs in AGAIN with the same credentials (users/dashboards live in the
 // server's SQLite on the PVC — the state proof), and re-queries the trace
-// (telemetry lives in ClickHouse — the storage-separation proof).
+// (telemetry lives in the composed ClickHouse — the storage-separation
+// proof).
 type SignozVerifier struct {
 	Namespace string
 	Name      string
-	// BundledClickHouse asserts the chart-owned ClickHouseInstallation
-	// and the module-owned auth Secret (the composition handle).
-	BundledClickHouse bool
 	// StateProof switches on the pod-replacement re-login + re-query arm.
 	StateProof bool
 	// Receiver posture, asserted against the collector Service's RENDERED
@@ -46,32 +45,6 @@ type SignozVerifier struct {
 	// the observable half of that single-derivation contract.
 	ExpectZipkinPort *bool
 	ExpectJaegerPort *bool
-}
-
-// signozClickHouseCrds is the exact CRD set the bundled clickhouse
-// subchart ships in crds/ at the pin — Helm installs them skip-if-exists
-// and KEEPS them on uninstall (inherent crds/ posture), so ClickHouse
-// installations elsewhere in the cluster outlive any one SigNoz release.
-// The destroy phase asserts they SURVIVE. (The Altinity operator's own
-// chart additionally ships the clickhouse-keeper CRD; this subchart
-// vintage does not.)
-var signozClickHouseCrds = []string{
-	"clickhouseinstallations.clickhouse.altinity.com",
-	"clickhouseinstallationtemplates.clickhouse.altinity.com",
-	"clickhouseoperatorconfigurations.clickhouse.altinity.com",
-}
-
-// signozBundledClickHouse reports whether the bundled ClickHouse deploys:
-// the external_clickhouse arm absent means the empty-oneof default — the
-// bundled appliance (both manifest key forms tolerated).
-func signozBundledClickHouse(spec map[string]interface{}) bool {
-	if _, ok := spec["external_clickhouse"]; ok {
-		return false
-	}
-	if _, ok := spec["externalClickhouse"]; ok {
-		return false
-	}
-	return true
 }
 
 // SignozReceiverPosture derives the receiver-port expectations from the
@@ -132,20 +105,6 @@ func (v *SignozVerifier) VerifyExists(ctx context.Context, kubeconfig string) er
 		return err
 	}
 
-	// The bundled ClickHouse: the chart-owned installation object and
-	// the module-owned credential Secret (the composition handle the
-	// outputs promise).
-	if v.BundledClickHouse {
-		if err := KubectlResourceExists(ctx, kubeconfig,
-			"clickhouseinstallations.clickhouse.altinity.com", v.Name+"-clickhouse", v.Namespace); err != nil {
-			return errors.Wrap(err, "the bundled ClickHouseInstallation not found")
-		}
-		if err := KubectlResourceExists(ctx, kubeconfig,
-			"secret", v.Name+"-clickhouse-auth", v.Namespace); err != nil {
-			return errors.Wrap(err, "the module-owned clickhouse auth secret not found")
-		}
-	}
-
 	return v.proveIngestQuery(ctx, kubeconfig)
 }
 
@@ -187,24 +146,12 @@ func (v *SignozVerifier) assertReceiverPorts(ctx context.Context, kubeconfig, se
 	return nil
 }
 
+// VerifyAbsent asserts the release's workloads are gone. The release
+// ships no operator and no CRDs (the composed ClickHouse is a separate
+// component with its own lifecycle), so uninstall is ordinary object
+// deletion — nothing survives by design.
 func (v *SignozVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) error {
-	if err := KubectlResourceAbsent(ctx, kubeconfig, "statefulset", v.Name, v.Namespace); err != nil {
-		return err
-	}
-	// The keep posture is DESIGNED behavior, not tolerated residue: the
-	// bundled subchart ships these CRDs via crds/ (skip-if-exists, kept
-	// on uninstall), so they must SURVIVE destroy — a missing CRD here
-	// means the lifecycle regressed and every ClickHouseInstallation in
-	// the cluster just lost its API.
-	if v.BundledClickHouse {
-		for _, crd := range signozClickHouseCrds {
-			if err := KubectlResourceExists(ctx, kubeconfig, "crd", crd, ""); err != nil {
-				return errors.Wrapf(err, "CRD %q should SURVIVE uninstall (the crds/ keep posture) but is gone", crd)
-			}
-		}
-		fmt.Printf("  [verify] DESTROY: release workloads gone; clickhouse.altinity.com CRDs kept (designed posture)\n")
-	}
-	return nil
+	return KubectlResourceAbsent(ctx, kubeconfig, "statefulset", v.Name, v.Namespace)
 }
 
 // proveIngestQuery runs the product-grade round-trip: health → first-admin
@@ -220,12 +167,6 @@ func (v *SignozVerifier) proveIngestQuery(ctx context.Context, kubeconfig string
 		return errors.Wrap(err, "starting port-forward to the signoz API")
 	}
 	defer apiCancel()
-
-	otlpCancel, err := startPortForward(ctx, kubeconfig, "svc/"+v.Name+"-otel-collector", v.Namespace, otlpPort+":4318")
-	if err != nil {
-		return errors.Wrap(err, "starting port-forward to the collector's OTLP receiver")
-	}
-	defer otlpCancel()
 
 	apiBase := "http://127.0.0.1:" + apiPort
 	otlpBase := "http://127.0.0.1:" + otlpPort
@@ -269,7 +210,13 @@ func (v *SignozVerifier) proveIngestQuery(ctx context.Context, kubeconfig string
 	}
 	fmt.Printf("  [verify] LOGIN: session opened (access token issued)\n")
 
-	// Push one span with a deterministic trace ID over OTLP/HTTP.
+	// Push one span with a deterministic trace ID over OTLP/HTTP. The
+	// collector tunnel is established FRESH here — never earlier, and
+	// re-established between attempts: kubectl port-forward is a
+	// single-pod tunnel that dies silently when its pod restarts or the
+	// stream drops, and a tunnel opened before the minutes of health/
+	// register/login above was dead by push time (verified live — every
+	// retry read connection refused on the local port).
 	traceId := fmt.Sprintf("%032x", time.Now().UnixNano())
 	spanId := fmt.Sprintf("%016x", time.Now().UnixNano())
 	startNs := time.Now().UnixNano()
@@ -288,9 +235,25 @@ func (v *SignozVerifier) proveIngestQuery(ctx context.Context, kubeconfig string
         }]
       }]
     }`, traceId, spanId, startNs, startNs+int64(time.Millisecond))
-	if _, err := httpRoundTrip(ctx, http.MethodPost, otlpBase+"/v1/traces",
-		"application/json", pushBody, 5*time.Minute); err != nil {
-		return errors.Wrap(err, "pushing the proof span to the collector over OTLP")
+	pushDeadline := time.Now().Add(5 * time.Minute)
+	for {
+		var pushErr error
+		otlpCancel, err := startPortForward(ctx, kubeconfig,
+			"svc/"+v.Name+"-otel-collector", v.Namespace, otlpPort+":4318")
+		if err != nil {
+			pushErr = errors.Wrap(err, "starting port-forward to the collector's OTLP receiver")
+		} else {
+			_, pushErr = httpRoundTrip(ctx, http.MethodPost, otlpBase+"/v1/traces",
+				"application/json", pushBody, 30*time.Second)
+			otlpCancel()
+		}
+		if pushErr == nil {
+			break
+		}
+		if time.Now().After(pushDeadline) {
+			return errors.Wrap(pushErr, "pushing the proof span to the collector over OTLP")
+		}
+		time.Sleep(10 * time.Second)
 	}
 	fmt.Printf("  [verify] PUSH: proof span (trace %s) accepted by the collector\n", traceId)
 
@@ -327,15 +290,25 @@ func (v *SignozVerifier) proveIngestQuery(ctx context.Context, kubeconfig string
 }
 
 // login opens a session through the product's sessions API and returns
-// the bearer access token.
+// the bearer access token. Login is a TWO-step flow at the pin,
+// mirroring the product's own login page: resolve the user's org
+// through the OPEN session-context route, then post the email_password
+// session WITH that orgId — PostableEmailPasswordSession rejects a
+// missing orgId at unmarshal ("orgID is required", caught live; the
+// request type's own UnmarshalJSON enforces it before authentication
+// runs).
 func (v *SignozVerifier) login(ctx context.Context, apiBase string) (string, error) {
-	loginBody := fmt.Sprintf(`{"email": %q, "password": %q}`, signozE2eEmail, signozE2ePassword)
 	deadline := time.Now().Add(3 * time.Minute)
 	var lastErr error
 	for time.Now().Before(deadline) {
-		// The sessions route at the pin: POST /api/v2/sessions/email_password
-		// (request PostableEmailPasswordSession, response GettableToken —
-		// verified in the app source at v0.133.0).
+		orgID, err := v.sessionOrgID(ctx, apiBase)
+		if err != nil {
+			lastErr = errors.Wrap(err, "resolving the org through the session-context route")
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		loginBody := fmt.Sprintf(`{"email": %q, "password": %q, "orgId": %q}`,
+			signozE2eEmail, signozE2ePassword, orgID)
 		body, err := httpRoundTrip(ctx, http.MethodPost, apiBase+"/api/v2/sessions/email_password",
 			"application/json", loginBody, 30*time.Second)
 		if err == nil {
@@ -349,6 +322,37 @@ func (v *SignozVerifier) login(ctx context.Context, apiBase string) (string, err
 		time.Sleep(5 * time.Second)
 	}
 	return "", lastErr
+}
+
+// sessionOrgID resolves the org the e2e user belongs to through the
+// open session-context route (GET /api/v2/sessions/context?email=&ref=)
+// — the same pre-login discovery the product's login page performs.
+// The ref parameter only needs to parse as a URL.
+func (v *SignozVerifier) sessionOrgID(ctx context.Context, apiBase string) (string, error) {
+	u := apiBase + "/api/v2/sessions/context?email=" + url.QueryEscape(signozE2eEmail) +
+		"&ref=" + url.QueryEscape(apiBase)
+	body, err := httpRoundTrip(ctx, http.MethodGet, u, "", "", 30*time.Second)
+	if err != nil {
+		return "", err
+	}
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &parsed); err != nil {
+		return "", errors.Wrap(err, "parsing the session context")
+	}
+	payload := parsed
+	if data, _ := parsed["data"].(map[string]interface{}); data != nil {
+		payload = data
+	}
+	orgs, _ := payload["orgs"].([]interface{})
+	if len(orgs) == 0 {
+		return "", errors.Errorf("session context lists no orgs for the e2e user: %s", firstLines(body, 3))
+	}
+	first, _ := orgs[0].(map[string]interface{})
+	id, _ := first["id"].(string)
+	if id == "" {
+		return "", errors.Errorf("session context org carried no id: %s", firstLines(body, 3))
+	}
+	return id, nil
 }
 
 // queryTrace retrieves the trace by ID through the authenticated query

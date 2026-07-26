@@ -3282,10 +3282,14 @@ enum CloudResourceKind {
     id_prefix: "k8sjkn"
   }];
   // 970–989: Kubernetes app platforms
+  // KubernetesPostgres is a prerequisite because the recommended (and
+  // E2E-proven) database composition backs Temporal's default and
+  // visibility stores with a CloudNativePG cluster.
   KubernetesTemporal = 970 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8stprl"
+    prerequisites: [KubernetesPostgres]
   }];
   KubernetesNats = 971 [(kind_meta) = {
     provider: kubernetes
