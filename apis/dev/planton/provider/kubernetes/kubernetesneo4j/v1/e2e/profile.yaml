@@ -4,10 +4,8 @@ metadata:
   name: kubernetesneo4j
 spec:
   tier: 2
-  status: deferred
-  deferred_reason: "LoadBalancer service cannot get IP on kind"
+  status: green
   validated_provisioners:
     - pulumi
-  timeout_minutes: 15
-  limitations:
-    - "requires cloud LB controller or MetalLB"
+    - terraform
+  timeout_minutes: 25

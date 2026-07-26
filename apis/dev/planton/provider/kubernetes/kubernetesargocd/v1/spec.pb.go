@@ -10,6 +10,7 @@ import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -24,19 +25,172 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **KubernetesArgocdSpec** defines the configuration for deploying Argo CD on a Kubernetes cluster.
-// This message specifies the parameters needed to create and manage an Argo CD deployment within a Kubernetes environment.
-// It includes container specifications and ingress settings to control resource allocation and external access.
+// *
+// **KubernetesArgocdSpec** deploys Argo CD — the declarative GitOps
+// continuous-delivery controller — from the official `argo-cd` Helm
+// chart (https://argoproj.github.io/argo-helm).
+//
+// WHAT GETS INSTALLED: the application controller (reconciles
+// Applications against Git), the API/UI server, the repo server
+// (clones and renders manifests), the ApplicationSet controller
+// (templated app generation), the notifications controller (on by
+// default), Dex (SSO broker, on by default), and a Redis used as a
+// throwaway cache — bundled single-pod by default, switchable to the
+// redis-ha subchart or an external endpoint via `redis`.
+//
+// FIRST LOGIN: on first start Argo CD generates an admin password into
+// the fixed-name Secret `argocd-initial-admin-secret` (key `password`)
+// in the install namespace — exported as an output handle. Because the
+// name is fixed by the application, ONE generated-password Argo CD per
+// namespace; a second instance needs its own namespace. Rotate by
+// changing the password through the CLI/API and deleting that Secret.
+//
+// DECLARING APPLICATIONS: this kind installs the CONTROL PLANE only.
+// Applications, AppProjects and ApplicationSets are Kubernetes custom
+// resources declared like any other manifest (KubernetesManifest, a
+// chart, or Argo CD's own UI/CLI) once the control plane runs.
+//
+// REPOSITORY CREDENTIALS: private-repo credentials are Kubernetes
+// Secrets labeled `argocd.argoproj.io/secret-type: repository` (or
+// `repo-creds` for credential templates) that Argo CD discovers
+// natively — compose them from KubernetesSecret or
+// KubernetesExternalSecret; nothing in this spec transports Git
+// credentials. `repositories` below registers PUBLIC (anonymous)
+// repositories only.
+//
+// EXPOSURE: services stay ClusterIP; expose the server via first-class
+// kinds (KubernetesIngress, Gateway API kinds) over the exported
+// service handle. When exposure terminates TLS in front of Argo CD,
+// set `server.insecure` so the server speaks plain HTTP behind the
+// proxy, and set `domain` so SSO redirects and CLI hints carry the
+// public name.
+//
+// The typed fields below cover the chart's meaningful configuration
+// surface; `helm_values` remains as the escape hatch for chart values
+// beyond them (merged last, Helm `-f` semantics, identical on both
+// engines) — extensions, per-component overrides, notification
+// templates — a safety valve, never the primary interface. Never put
+// secret material in `helm_values`; every credential path in this spec
+// rides existing Secrets.
 type KubernetesArgocdSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// The container specifications for the Argo CD deployment.
-	Container *KubernetesArgocdContainer `protobuf:"bytes,4,opt,name=container,proto3" json:"container,omitempty"`
-	// The ingress configuration for the Argo CD deployment.
-	Ingress       *KubernetesArgocdIngress `protobuf:"bytes,5,opt,name=ingress,proto3" json:"ingress,omitempty"`
+	// *
+	// Namespace to install into. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the resource.
+	// When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (e.g. "10.2.1" — chart 10.2.1 ships
+	// Argo CD v3.4.5). Versions must exist as SERVED charts in the
+	// repository index (https://argoproj.github.io/argo-helm).
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// Enable the local `admin` user. Default true — with it comes the
+	// generated `argocd-initial-admin-secret` (see the FIRST LOGIN note
+	// on the spec). Disable only AFTER SSO works, or the UI locks
+	// everyone out.
+	AdminEnabled *bool `protobuf:"varint,4,opt,name=admin_enabled,json=adminEnabled,proto3,oneof" json:"admin_enabled,omitempty"`
+	// *
+	// The public domain users reach Argo CD at (e.g.
+	// "argocd.example.com" — name only, no scheme). SSO redirect URLs,
+	// CLI login hints and notification links embed it — set it whenever
+	// exposure is composed in front of this Argo CD. Empty = the chart's
+	// placeholder ("argocd.example.com").
+	Domain string `protobuf:"bytes,5,opt,name=domain,proto3" json:"domain,omitempty"`
+	// *
+	// The application controller — the reconciliation engine. Scale
+	// replicas only when sharding across many target clusters (each
+	// replica owns a shard; the chart wires the shard count
+	// automatically).
+	Controller *KubernetesArgocdComponent `protobuf:"bytes,6,opt,name=controller,proto3" json:"controller,omitempty"`
+	// *
+	// The API/UI server.
+	Server *KubernetesArgocdServer `protobuf:"bytes,7,opt,name=server,proto3" json:"server,omitempty"`
+	// *
+	// The repo server — clones repositories and renders manifests. The
+	// component to scale first when sync latency grows with many apps.
+	RepoServer *KubernetesArgocdScalableComponent `protobuf:"bytes,8,opt,name=repo_server,json=repoServer,proto3" json:"repo_server,omitempty"`
+	// *
+	// The ApplicationSet controller (always installed by the chart).
+	ApplicationSet *KubernetesArgocdComponent `protobuf:"bytes,9,opt,name=application_set,json=applicationSet,proto3" json:"application_set,omitempty"`
+	// *
+	// The notifications controller — delivers sync/health events to
+	// chat/webhook/email services. Chart default: enabled. Notifier
+	// credentials ride Secrets referenced from the notifications
+	// configuration (`$<secret-name>:<key>` indirection) — configure
+	// notifiers via `helm_values` (`notifications.notifiers`, templates,
+	// triggers).
+	Notifications *KubernetesArgocdToggleableComponent `protobuf:"bytes,10,opt,name=notifications,proto3" json:"notifications,omitempty"`
+	// *
+	// Dex — the bundled SSO broker for connector-based logins (GitHub,
+	// LDAP, SAML, ...). Chart default: enabled. Only does something once
+	// `sso.dex_config` declares connectors; disable when using direct
+	// OIDC (`sso.oidc`) or admin-only access.
+	Dex *KubernetesArgocdToggleableComponent `protobuf:"bytes,11,opt,name=dex,proto3" json:"dex,omitempty"`
+	// *
+	// The commit server — the manifest-hydration (rendered-manifests)
+	// feature. Chart default: disabled.
+	CommitServer *KubernetesArgocdToggleableComponent `protobuf:"bytes,12,opt,name=commit_server,json=commitServer,proto3" json:"commit_server,omitempty"`
+	// *
+	// The Redis cache arm. Empty = the chart's bundled single-pod Redis —
+	// right for most installs (the cache is disposable; losing it costs a
+	// re-sync, not state).
+	Redis *KubernetesArgocdRedis `protobuf:"bytes,13,opt,name=redis,proto3" json:"redis,omitempty"`
+	// *
+	// Single sign-on configuration (direct OIDC or Dex connectors).
+	Sso *KubernetesArgocdSso `protobuf:"bytes,14,opt,name=sso,proto3" json:"sso,omitempty"`
+	// *
+	// Argo CD's own RBAC (who may do what INSIDE Argo CD — distinct from
+	// Kubernetes RBAC).
+	Rbac *KubernetesArgocdRbac `protobuf:"bytes,15,opt,name=rbac,proto3" json:"rbac,omitempty"`
+	// *
+	// Allow `argocd exec` / the UI terminal into managed pods. Default
+	// false — an interactive shell through the API server is a serious
+	// capability; enable deliberately and pair with an RBAC `exec` rule.
+	ExecEnabled bool `protobuf:"varint,16,opt,name=exec_enabled,json=execEnabled,proto3" json:"exec_enabled,omitempty"`
+	// *
+	// How often Argo CD polls repositories for new commits, as a Go
+	// duration (e.g. "120s", "3m"). Empty = the chart default (120s with
+	// up to 60s jitter). Lower = faster syncs, more repo-server and Git
+	// load; webhook-driven setups can raise it.
+	ReconciliationTimeout string `protobuf:"bytes,17,opt,name=reconciliation_timeout,json=reconciliationTimeout,proto3" json:"reconciliation_timeout,omitempty"`
+	// *
+	// PUBLIC (anonymous) repositories registered declaratively. For
+	// credentialed repositories see the REPOSITORY CREDENTIALS note on
+	// the spec — credentials are composed as labeled Secrets, never
+	// transported through this spec.
+	Repositories []*KubernetesArgocdRepository `protobuf:"bytes,18,rep,name=repositories,proto3" json:"repositories,omitempty"`
+	// *
+	// CRD lifecycle. The chart templates the Application/AppProject/
+	// ApplicationSet CRDs and keeps them on uninstall by default —
+	// deleting CRDs cascades to every Application in the cluster.
+	Crds *KubernetesArgocdCrds `protobuf:"bytes,19,opt,name=crds,proto3" json:"crds,omitempty"`
+	// *
+	// Create ServiceMonitors for every component's /metrics (requires the
+	// Prometheus Operator CRDs — deploy KubernetesKubePrometheusStack
+	// first). Chart default: false.
+	ServiceMonitorsEnabled bool `protobuf:"varint,20,opt,name=service_monitors_enabled,json=serviceMonitorsEnabled,proto3" json:"service_monitors_enabled,omitempty"`
+	// *
+	// Override the Argo CD image (air-gap path). One image serves all
+	// Argo CD components; Dex and Redis images stay chart-defaults
+	// (override via `helm_values` when mirroring those too).
+	Image *KubernetesArgocdImage `protobuf:"bytes,21,opt,name=image,proto3" json:"image,omitempty"`
+	// *
+	// Scheduling applied to ALL components (the chart's global block).
+	Scheduling *KubernetesArgocdScheduling `protobuf:"bytes,22,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
+	// *
+	// Escape hatch: additional chart values as a YAML document, merged
+	// LAST over everything the typed fields render (Helm `-f` semantics,
+	// identical on both engines). For the chart surface beyond the typed
+	// fields (per-component env/volumes, notifications notifiers and
+	// templates, server extensions, network policies, ...) — never the
+	// substitute for them. Do not put secrets here; credential material
+	// belongs in referenced Secrets.
+	HelmValues    string `protobuf:"bytes,23,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -85,104 +239,183 @@ func (x *KubernetesArgocdSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesArgocdSpec) GetContainer() *KubernetesArgocdContainer {
-	if x != nil {
-		return x.Container
-	}
-	return nil
-}
-
-func (x *KubernetesArgocdSpec) GetIngress() *KubernetesArgocdIngress {
-	if x != nil {
-		return x.Ingress
-	}
-	return nil
-}
-
-// *
-// KubernetesArgocdIngress defines ingress configuration for Argo CD.
-type KubernetesArgocdIngress struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Flag to enable or disable ingress.
-	// When enabled, creates appropriate ingress resources for external access.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// The full hostname for external access (e.g., "argocd.example.com").
-	// Required when enabled is true.
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesArgocdIngress) Reset() {
-	*x = KubernetesArgocdIngress{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesArgocdIngress) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesArgocdIngress) ProtoMessage() {}
-
-func (x *KubernetesArgocdIngress) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesArgocdIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesArgocdIngress) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *KubernetesArgocdIngress) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *KubernetesArgocdIngress) GetHostname() string {
-	if x != nil {
-		return x.Hostname
+func (x *KubernetesArgocdSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
 	}
 	return ""
 }
 
-// **KubernetesArgocdContainer** specifies the container configuration for the Argo CD application.
-// It includes resource allocations for CPU and memory to ensure the application runs efficiently.
-// Recommended defaults: CPU requests - 50m, Memory requests - 256Mi, CPU limits - 1, Memory limits - 1Gi.
-type KubernetesArgocdContainer struct {
+func (x *KubernetesArgocdSpec) GetAdminEnabled() bool {
+	if x != nil && x.AdminEnabled != nil {
+		return *x.AdminEnabled
+	}
+	return false
+}
+
+func (x *KubernetesArgocdSpec) GetDomain() string {
+	if x != nil {
+		return x.Domain
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdSpec) GetController() *KubernetesArgocdComponent {
+	if x != nil {
+		return x.Controller
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetServer() *KubernetesArgocdServer {
+	if x != nil {
+		return x.Server
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetRepoServer() *KubernetesArgocdScalableComponent {
+	if x != nil {
+		return x.RepoServer
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetApplicationSet() *KubernetesArgocdComponent {
+	if x != nil {
+		return x.ApplicationSet
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetNotifications() *KubernetesArgocdToggleableComponent {
+	if x != nil {
+		return x.Notifications
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetDex() *KubernetesArgocdToggleableComponent {
+	if x != nil {
+		return x.Dex
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetCommitServer() *KubernetesArgocdToggleableComponent {
+	if x != nil {
+		return x.CommitServer
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetRedis() *KubernetesArgocdRedis {
+	if x != nil {
+		return x.Redis
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetSso() *KubernetesArgocdSso {
+	if x != nil {
+		return x.Sso
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetRbac() *KubernetesArgocdRbac {
+	if x != nil {
+		return x.Rbac
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetExecEnabled() bool {
+	if x != nil {
+		return x.ExecEnabled
+	}
+	return false
+}
+
+func (x *KubernetesArgocdSpec) GetReconciliationTimeout() string {
+	if x != nil {
+		return x.ReconciliationTimeout
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdSpec) GetRepositories() []*KubernetesArgocdRepository {
+	if x != nil {
+		return x.Repositories
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetCrds() *KubernetesArgocdCrds {
+	if x != nil {
+		return x.Crds
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetServiceMonitorsEnabled() bool {
+	if x != nil {
+		return x.ServiceMonitorsEnabled
+	}
+	return false
+}
+
+func (x *KubernetesArgocdSpec) GetImage() *KubernetesArgocdImage {
+	if x != nil {
+		return x.Image
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetScheduling() *KubernetesArgocdScheduling {
+	if x != nil {
+		return x.Scheduling
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSpec) GetHelmValues() string {
+	if x != nil {
+		return x.HelmValues
+	}
+	return ""
+}
+
+// *
+// A component with replica and resource knobs.
+type KubernetesArgocdComponent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The CPU and memory resources allocated to the Argo CD container.
-	Resources     *kubernetes.ContainerResources `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Number of replicas. Empty = 1.
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// CPU and memory for the component's container. Empty = no
+	// requests/limits (the chart default).
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesArgocdContainer) Reset() {
-	*x = KubernetesArgocdContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[2]
+func (x *KubernetesArgocdComponent) Reset() {
+	*x = KubernetesArgocdComponent{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesArgocdContainer) String() string {
+func (x *KubernetesArgocdComponent) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesArgocdContainer) ProtoMessage() {}
+func (*KubernetesArgocdComponent) ProtoMessage() {}
 
-func (x *KubernetesArgocdContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[2]
+func (x *KubernetesArgocdComponent) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -193,37 +426,1276 @@ func (x *KubernetesArgocdContainer) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesArgocdContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesArgocdContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{2}
+// Deprecated: Use KubernetesArgocdComponent.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdComponent) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesArgocdContainer) GetResources() *kubernetes.ContainerResources {
+func (x *KubernetesArgocdComponent) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesArgocdComponent) GetResources() *kubernetes.ContainerResources {
 	if x != nil {
 		return x.Resources
 	}
 	return nil
 }
 
+// *
+// A component that can also scale on an HPA.
+type KubernetesArgocdScalableComponent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Number of replicas. Empty = 1. Ignored when `autoscaling` is
+	// enabled (the HPA owns the count).
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// CPU and memory for the component's container. Empty = no
+	// requests/limits (the chart default). Declare requests when
+	// autoscaling — a CPU-utilization HPA without a CPU request never
+	// scales.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Horizontal pod autoscaling (requires metrics-server on the
+	// cluster).
+	Autoscaling   *KubernetesArgocdAutoscaling `protobuf:"bytes,3,opt,name=autoscaling,proto3" json:"autoscaling,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdScalableComponent) Reset() {
+	*x = KubernetesArgocdScalableComponent{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdScalableComponent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdScalableComponent) ProtoMessage() {}
+
+func (x *KubernetesArgocdScalableComponent) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdScalableComponent.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdScalableComponent) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesArgocdScalableComponent) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesArgocdScalableComponent) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdScalableComponent) GetAutoscaling() *KubernetesArgocdAutoscaling {
+	if x != nil {
+		return x.Autoscaling
+	}
+	return nil
+}
+
+// *
+// The API/UI server.
+type KubernetesArgocdServer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Number of replicas. Empty = 1. Ignored when `autoscaling` is
+	// enabled.
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// CPU and memory for the server container. Empty = no requests/limits
+	// (the chart default).
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Horizontal pod autoscaling for the server (requires
+	// metrics-server).
+	Autoscaling *KubernetesArgocdAutoscaling `protobuf:"bytes,3,opt,name=autoscaling,proto3" json:"autoscaling,omitempty"`
+	// *
+	// Serve plain HTTP instead of the server's self-signed TLS. Set it
+	// when a composed ingress/gateway terminates TLS in front of Argo CD
+	// (the standard exposure pattern) — leaving the default self-signed
+	// listener behind a TLS-terminating proxy double-encrypts and breaks
+	// gRPC CLI traffic.
+	Insecure      bool `protobuf:"varint,4,opt,name=insecure,proto3" json:"insecure,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdServer) Reset() {
+	*x = KubernetesArgocdServer{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdServer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdServer) ProtoMessage() {}
+
+func (x *KubernetesArgocdServer) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdServer.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdServer) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesArgocdServer) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesArgocdServer) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdServer) GetAutoscaling() *KubernetesArgocdAutoscaling {
+	if x != nil {
+		return x.Autoscaling
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdServer) GetInsecure() bool {
+	if x != nil {
+		return x.Insecure
+	}
+	return false
+}
+
+// *
+// Autoscaling bounds.
+type KubernetesArgocdAutoscaling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Enable the HPA.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Minimum replicas. Empty = 1 (the chart default); the HA recipe uses
+	// 2.
+	MinReplicas *int32 `protobuf:"varint,2,opt,name=min_replicas,json=minReplicas,proto3,oneof" json:"min_replicas,omitempty"`
+	// *
+	// Maximum replicas. Empty = 5 (the chart default).
+	MaxReplicas   *int32 `protobuf:"varint,3,opt,name=max_replicas,json=maxReplicas,proto3,oneof" json:"max_replicas,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdAutoscaling) Reset() {
+	*x = KubernetesArgocdAutoscaling{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdAutoscaling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdAutoscaling) ProtoMessage() {}
+
+func (x *KubernetesArgocdAutoscaling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdAutoscaling.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdAutoscaling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesArgocdAutoscaling) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesArgocdAutoscaling) GetMinReplicas() int32 {
+	if x != nil && x.MinReplicas != nil {
+		return *x.MinReplicas
+	}
+	return 0
+}
+
+func (x *KubernetesArgocdAutoscaling) GetMaxReplicas() int32 {
+	if x != nil && x.MaxReplicas != nil {
+		return *x.MaxReplicas
+	}
+	return 0
+}
+
+// *
+// A component with an on/off switch.
+type KubernetesArgocdToggleableComponent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Enable the component. Empty = the chart default (notifications and
+	// dex: enabled; commit server: disabled).
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// *
+	// CPU and memory for the component's container. Empty = no
+	// requests/limits (the chart default).
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdToggleableComponent) Reset() {
+	*x = KubernetesArgocdToggleableComponent{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdToggleableComponent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdToggleableComponent) ProtoMessage() {}
+
+func (x *KubernetesArgocdToggleableComponent) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdToggleableComponent.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdToggleableComponent) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesArgocdToggleableComponent) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesArgocdToggleableComponent) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+// *
+// The Redis cache arm. Argo CD uses Redis as a disposable cache —
+// choose the arm by availability needs, not durability (no Argo CD
+// state lives here).
+type KubernetesArgocdRedis struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Arm:
+	//
+	//	*KubernetesArgocdRedis_Bundled
+	//	*KubernetesArgocdRedis_Ha
+	//	*KubernetesArgocdRedis_External
+	Arm           isKubernetesArgocdRedis_Arm `protobuf_oneof:"arm"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdRedis) Reset() {
+	*x = KubernetesArgocdRedis{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdRedis) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdRedis) ProtoMessage() {}
+
+func (x *KubernetesArgocdRedis) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdRedis.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdRedis) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesArgocdRedis) GetArm() isKubernetesArgocdRedis_Arm {
+	if x != nil {
+		return x.Arm
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdRedis) GetBundled() *KubernetesArgocdRedisBundled {
+	if x != nil {
+		if x, ok := x.Arm.(*KubernetesArgocdRedis_Bundled); ok {
+			return x.Bundled
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdRedis) GetHa() *KubernetesArgocdRedisHa {
+	if x != nil {
+		if x, ok := x.Arm.(*KubernetesArgocdRedis_Ha); ok {
+			return x.Ha
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdRedis) GetExternal() *KubernetesArgocdRedisExternal {
+	if x != nil {
+		if x, ok := x.Arm.(*KubernetesArgocdRedis_External); ok {
+			return x.External
+		}
+	}
+	return nil
+}
+
+type isKubernetesArgocdRedis_Arm interface {
+	isKubernetesArgocdRedis_Arm()
+}
+
+type KubernetesArgocdRedis_Bundled struct {
+	// *
+	// The chart's bundled single-pod Redis (the default when the whole
+	// block is empty).
+	Bundled *KubernetesArgocdRedisBundled `protobuf:"bytes,1,opt,name=bundled,proto3,oneof"`
+}
+
+type KubernetesArgocdRedis_Ha struct {
+	// *
+	// The redis-ha subchart: a 3-replica Sentinel cluster behind
+	// HAProxy. KNOW THIS: its pods carry a REQUIRED anti-affinity —
+	// the cluster needs at least 3 schedulable worker nodes or the
+	// pods stay Pending.
+	Ha *KubernetesArgocdRedisHa `protobuf:"bytes,2,opt,name=ha,proto3,oneof"`
+}
+
+type KubernetesArgocdRedis_External struct {
+	// *
+	// An external Redis-compatible endpoint (a managed cache or a
+	// KubernetesValkey resource).
+	External *KubernetesArgocdRedisExternal `protobuf:"bytes,3,opt,name=external,proto3,oneof"`
+}
+
+func (*KubernetesArgocdRedis_Bundled) isKubernetesArgocdRedis_Arm() {}
+
+func (*KubernetesArgocdRedis_Ha) isKubernetesArgocdRedis_Arm() {}
+
+func (*KubernetesArgocdRedis_External) isKubernetesArgocdRedis_Arm() {}
+
+// *
+// Bundled single-pod Redis.
+type KubernetesArgocdRedisBundled struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// CPU and memory for the Redis container. Empty = no requests/limits
+	// (the chart default).
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdRedisBundled) Reset() {
+	*x = KubernetesArgocdRedisBundled{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdRedisBundled) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdRedisBundled) ProtoMessage() {}
+
+func (x *KubernetesArgocdRedisBundled) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdRedisBundled.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdRedisBundled) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesArgocdRedisBundled) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+// *
+// The redis-ha subchart arm.
+type KubernetesArgocdRedisHa struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Number of Redis replicas. Empty = 3 (the subchart default — also
+	// the Sentinel quorum floor; do not go below it).
+	Replicas      *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdRedisHa) Reset() {
+	*x = KubernetesArgocdRedisHa{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdRedisHa) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdRedisHa) ProtoMessage() {}
+
+func (x *KubernetesArgocdRedisHa) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdRedisHa.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdRedisHa) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *KubernetesArgocdRedisHa) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+// *
+// External Redis endpoint.
+type KubernetesArgocdRedisExternal struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Redis host (name or FQDN, no port). Accepts a literal host or a
+	// reference to a KubernetesValkey resource (Valkey speaks the Redis
+	// protocol).
+	Host *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	// *
+	// Redis port. Empty = 6379.
+	Port *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// *
+	// Existing Secret holding the Redis credentials — key
+	// `redis-password` required by the chart's contract; add
+	// `redis-username` when the user is not `default`. Empty =
+	// unauthenticated Redis.
+	CredentialsSecretName string `protobuf:"bytes,3,opt,name=credentials_secret_name,json=credentialsSecretName,proto3" json:"credentials_secret_name,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdRedisExternal) Reset() {
+	*x = KubernetesArgocdRedisExternal{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdRedisExternal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdRedisExternal) ProtoMessage() {}
+
+func (x *KubernetesArgocdRedisExternal) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdRedisExternal.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdRedisExternal) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *KubernetesArgocdRedisExternal) GetHost() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Host
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdRedisExternal) GetPort() int32 {
+	if x != nil && x.Port != nil {
+		return *x.Port
+	}
+	return 0
+}
+
+func (x *KubernetesArgocdRedisExternal) GetCredentialsSecretName() string {
+	if x != nil {
+		return x.CredentialsSecretName
+	}
+	return ""
+}
+
+// *
+// Single sign-on. Two paths, matching Argo CD's own model: direct OIDC
+// against one identity provider, or Dex connectors for everything else
+// (GitHub, LDAP, SAML, Microsoft, ...). Configure one — configuring
+// both makes the login screen offer two SSO buttons.
+type KubernetesArgocdSso struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Direct OIDC against the identity provider (no Dex in the path).
+	Oidc *KubernetesArgocdOidc `protobuf:"bytes,1,opt,name=oidc,proto3" json:"oidc,omitempty"`
+	// *
+	// Dex connector configuration as YAML (the `connectors:` document
+	// from Dex's documentation). Requires the dex component enabled (the
+	// default). SECRET INDIRECTION: never inline client secrets — write
+	// `$<secret-name>:<key>` and Argo CD resolves it at runtime from a
+	// Secret in its namespace labeled `app.kubernetes.io/part-of:
+	// argocd` (compose that Secret from KubernetesSecret or
+	// KubernetesExternalSecret).
+	DexConfig     string `protobuf:"bytes,2,opt,name=dex_config,json=dexConfig,proto3" json:"dex_config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdSso) Reset() {
+	*x = KubernetesArgocdSso{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdSso) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdSso) ProtoMessage() {}
+
+func (x *KubernetesArgocdSso) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdSso.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdSso) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *KubernetesArgocdSso) GetOidc() *KubernetesArgocdOidc {
+	if x != nil {
+		return x.Oidc
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdSso) GetDexConfig() string {
+	if x != nil {
+		return x.DexConfig
+	}
+	return ""
+}
+
+// *
+// Direct OIDC configuration.
+type KubernetesArgocdOidc struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Display name on the login button (e.g. "Okta", "Azure AD").
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// *
+	// The OIDC issuer URL (e.g.
+	// "https://login.microsoftonline.com/<tenant>/v2.0").
+	Issuer string `protobuf:"bytes,2,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	// *
+	// The OAuth client ID registered for Argo CD.
+	ClientId string `protobuf:"bytes,3,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// *
+	// The OAuth client secret, read at runtime from an existing Secret in
+	// Argo CD's namespace. KNOW THIS: the referenced Secret must carry
+	// the label `app.kubernetes.io/part-of: argocd` or Argo CD refuses
+	// to read it. Empty = a public client (PKCE).
+	ClientSecretSecret *KubernetesArgocdSecretKeyRef `protobuf:"bytes,4,opt,name=client_secret_secret,json=clientSecretSecret,proto3" json:"client_secret_secret,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdOidc) Reset() {
+	*x = KubernetesArgocdOidc{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdOidc) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdOidc) ProtoMessage() {}
+
+func (x *KubernetesArgocdOidc) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdOidc.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdOidc) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *KubernetesArgocdOidc) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdOidc) GetIssuer() string {
+	if x != nil {
+		return x.Issuer
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdOidc) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdOidc) GetClientSecretSecret() *KubernetesArgocdSecretKeyRef {
+	if x != nil {
+		return x.ClientSecretSecret
+	}
+	return nil
+}
+
+// *
+// A reference to one key of an existing Secret (a reference, never
+// secret material).
+type KubernetesArgocdSecretKeyRef struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Secret name. The Secret must live in Argo CD's namespace.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// *
+	// Key within the Secret.
+	Key           string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdSecretKeyRef) Reset() {
+	*x = KubernetesArgocdSecretKeyRef{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdSecretKeyRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdSecretKeyRef) ProtoMessage() {}
+
+func (x *KubernetesArgocdSecretKeyRef) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdSecretKeyRef.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdSecretKeyRef) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *KubernetesArgocdSecretKeyRef) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdSecretKeyRef) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+// *
+// Argo CD's internal RBAC (maps SSO/local users to Argo CD roles).
+type KubernetesArgocdRbac struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Role every authenticated user falls back to when no policy
+	// matches (e.g. "role:readonly"). Empty = no fallback — users log in
+	// and see nothing until a policy grants them access (the safe
+	// default).
+	PolicyDefault string `protobuf:"bytes,1,opt,name=policy_default,json=policyDefault,proto3" json:"policy_default,omitempty"`
+	// *
+	// RBAC policy in Argo CD's CSV form — `p` rows grant, `g` rows bind
+	// groups/users to roles (e.g.
+	// "g, my-org:platform-team, role:admin").
+	PolicyCsv string `protobuf:"bytes,2,opt,name=policy_csv,json=policyCsv,proto3" json:"policy_csv,omitempty"`
+	// *
+	// OIDC token claims examined for group bindings. Empty = "[groups]".
+	Scopes        *string `protobuf:"bytes,3,opt,name=scopes,proto3,oneof" json:"scopes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdRbac) Reset() {
+	*x = KubernetesArgocdRbac{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdRbac) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdRbac) ProtoMessage() {}
+
+func (x *KubernetesArgocdRbac) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdRbac.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdRbac) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *KubernetesArgocdRbac) GetPolicyDefault() string {
+	if x != nil {
+		return x.PolicyDefault
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdRbac) GetPolicyCsv() string {
+	if x != nil {
+		return x.PolicyCsv
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdRbac) GetScopes() string {
+	if x != nil && x.Scopes != nil {
+		return *x.Scopes
+	}
+	return ""
+}
+
+// *
+// One PUBLIC repository registration.
+type KubernetesArgocdRepository struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Registration name (also the key of the rendered Secret; keep it
+	// DNS-label-ish).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// *
+	// Repository URL (e.g. "https://github.com/org/repo" or an
+	// "https://" Helm repository URL).
+	Url string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	// *
+	// Repository type. Empty = "git"; set "helm" for Helm repositories.
+	Type          *string `protobuf:"bytes,3,opt,name=type,proto3,oneof" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdRepository) Reset() {
+	*x = KubernetesArgocdRepository{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdRepository) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdRepository) ProtoMessage() {}
+
+func (x *KubernetesArgocdRepository) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdRepository.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdRepository) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *KubernetesArgocdRepository) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdRepository) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdRepository) GetType() string {
+	if x != nil && x.Type != nil {
+		return *x.Type
+	}
+	return ""
+}
+
+// *
+// CRD lifecycle.
+type KubernetesArgocdCrds struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Install (and upgrade) the Application/AppProject/ApplicationSet
+	// CRDs with the release. KNOW THIS: the chart TEMPLATES these CRDs,
+	// so they carry the installing release's Helm ownership metadata —
+	// and CRDs kept by a destroyed release still carry it. Disable
+	// whenever the cluster already has the CRDs (from another live
+	// release OR kept behind a destroyed one): a second release cannot
+	// adopt them and its install fails on ownership validation.
+	Install *bool `protobuf:"varint,1,opt,name=install,proto3,oneof" json:"install,omitempty"`
+	// *
+	// Keep the CRDs when this resource is destroyed (the chart stamps
+	// `helm.sh/resource-policy: keep`). Default true — REMOVING the CRDs
+	// DELETES EVERY Application, AppProject and ApplicationSet in the
+	// cluster with them. Turn off only on throwaway clusters.
+	Keep          *bool `protobuf:"varint,2,opt,name=keep,proto3,oneof" json:"keep,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdCrds) Reset() {
+	*x = KubernetesArgocdCrds{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdCrds) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdCrds) ProtoMessage() {}
+
+func (x *KubernetesArgocdCrds) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdCrds.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdCrds) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *KubernetesArgocdCrds) GetInstall() bool {
+	if x != nil && x.Install != nil {
+		return *x.Install
+	}
+	return false
+}
+
+func (x *KubernetesArgocdCrds) GetKeep() bool {
+	if x != nil && x.Keep != nil {
+		return *x.Keep
+	}
+	return false
+}
+
+// *
+// Image override.
+type KubernetesArgocdImage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Image repository including registry, e.g.
+	// "my.registry.com/argoproj/argocd". Empty = "quay.io/argoproj/argocd".
+	Repository string `protobuf:"bytes,1,opt,name=repository,proto3" json:"repository,omitempty"`
+	// *
+	// Image tag. Empty = the chart's appVersion for the pinned
+	// chart_version.
+	Tag string `protobuf:"bytes,2,opt,name=tag,proto3" json:"tag,omitempty"`
+	// *
+	// Name of an existing image-pull Secret in the namespace, for
+	// private mirrors (applied to all components).
+	PullSecretName string `protobuf:"bytes,3,opt,name=pull_secret_name,json=pullSecretName,proto3" json:"pull_secret_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdImage) Reset() {
+	*x = KubernetesArgocdImage{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdImage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdImage) ProtoMessage() {}
+
+func (x *KubernetesArgocdImage) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdImage.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdImage) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *KubernetesArgocdImage) GetRepository() string {
+	if x != nil {
+		return x.Repository
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdImage) GetTag() string {
+	if x != nil {
+		return x.Tag
+	}
+	return ""
+}
+
+func (x *KubernetesArgocdImage) GetPullSecretName() string {
+	if x != nil {
+		return x.PullSecretName
+	}
+	return ""
+}
+
+// *
+// Pod scheduling applied to all components.
+type KubernetesArgocdScheduling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Node selector for all Argo CD pods.
+	NodeSelector map[string]string `protobuf:"bytes,1,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for all Argo CD pods.
+	Tolerations []*kubernetes.WorkloadToleration `protobuf:"bytes,2,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	// *
+	// Priority class name for all Argo CD pods.
+	PriorityClassName string `protobuf:"bytes,3,opt,name=priority_class_name,json=priorityClassName,proto3" json:"priority_class_name,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *KubernetesArgocdScheduling) Reset() {
+	*x = KubernetesArgocdScheduling{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesArgocdScheduling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesArgocdScheduling) ProtoMessage() {}
+
+func (x *KubernetesArgocdScheduling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesArgocdScheduling.ProtoReflect.Descriptor instead.
+func (*KubernetesArgocdScheduling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *KubernetesArgocdScheduling) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdScheduling) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
+func (x *KubernetesArgocdScheduling) GetPriorityClassName() string {
+	if x != nil {
+		return x.PriorityClassName
+	}
+	return ""
+}
+
 var File_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetesargocd/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesargocd.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\x8b\x03\n" +
+	">dev/planton/provider/kubernetes/kubernetesargocd/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesargocd.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x96\x10\n" +
 	"\x14KubernetesArgocdSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12t\n" +
-	"\tcontainer\x18\x04 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12f\n" +
-	"\aingress\x18\x05 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdIngressR\aingress\"\xce\x01\n" +
-	"\x17KubernetesArgocdIngress\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
-	"\x1espec.ingress.hostname.required\x12,hostname is required when ingress is enabled\x1a(!this.enabled || size(this.hostname) > 0\"\x91\x01\n" +
-	"\x19KubernetesArgocdContainer\x12t\n" +
-	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB!\xba\xfb\xa4\x02\x1c\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100MiR\tresourcesB\xa1\x03\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
+	"\rchart_version\x18\x03 \x01(\tB\n" +
+	"\x8a\xa6\x1d\x0610.2.1H\x00R\fchartVersion\x88\x01\x01\x122\n" +
+	"\radmin_enabled\x18\x04 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\fadminEnabled\x88\x01\x01\x12\x16\n" +
+	"\x06domain\x18\x05 \x01(\tR\x06domain\x12n\n" +
+	"\n" +
+	"controller\x18\x06 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdComponentR\n" +
+	"controller\x12c\n" +
+	"\x06server\x18\a \x01(\v2K.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdServerR\x06server\x12w\n" +
+	"\vrepo_server\x18\b \x01(\v2V.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScalableComponentR\n" +
+	"repoServer\x12w\n" +
+	"\x0fapplication_set\x18\t \x01(\v2N.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdComponentR\x0eapplicationSet\x12~\n" +
+	"\rnotifications\x18\n" +
+	" \x01(\v2X.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdToggleableComponentR\rnotifications\x12j\n" +
+	"\x03dex\x18\v \x01(\v2X.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdToggleableComponentR\x03dex\x12}\n" +
+	"\rcommit_server\x18\f \x01(\v2X.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdToggleableComponentR\fcommitServer\x12`\n" +
+	"\x05redis\x18\r \x01(\v2J.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisR\x05redis\x12Z\n" +
+	"\x03sso\x18\x0e \x01(\v2H.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSsoR\x03sso\x12]\n" +
+	"\x04rbac\x18\x0f \x01(\v2I.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRbacR\x04rbac\x12!\n" +
+	"\fexec_enabled\x18\x10 \x01(\bR\vexecEnabled\x12M\n" +
+	"\x16reconciliation_timeout\x18\x11 \x01(\tB\x16\xbaH\x13r\x112\x0f^$|^\\d+(s|m|h)$R\x15reconciliationTimeout\x12s\n" +
+	"\frepositories\x18\x12 \x03(\v2O.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRepositoryR\frepositories\x12]\n" +
+	"\x04crds\x18\x13 \x01(\v2I.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdCrdsR\x04crds\x128\n" +
+	"\x18service_monitors_enabled\x18\x14 \x01(\bR\x16serviceMonitorsEnabled\x12`\n" +
+	"\x05image\x18\x15 \x01(\v2J.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdImageR\x05image\x12o\n" +
+	"\n" +
+	"scheduling\x18\x16 \x01(\v2O.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSchedulingR\n" +
+	"scheduling\x12\x1f\n" +
+	"\vhelm_values\x18\x17 \x01(\tR\n" +
+	"helmValuesB\x10\n" +
+	"\x0e_chart_versionB\x10\n" +
+	"\x0e_admin_enabled\"\xaa\x01\n" +
+	"\x19KubernetesArgocdComponent\x12-\n" +
+	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\v\n" +
+	"\t_replicas\"\xa6\x02\n" +
+	"!KubernetesArgocdScalableComponent\x12-\n" +
+	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12r\n" +
+	"\vautoscaling\x18\x03 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdAutoscalingR\vautoscalingB\v\n" +
+	"\t_replicas\"\xb7\x02\n" +
+	"\x16KubernetesArgocdServer\x12-\n" +
+	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12r\n" +
+	"\vautoscaling\x18\x03 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdAutoscalingR\vautoscaling\x12\x1a\n" +
+	"\binsecure\x18\x04 \x01(\bR\binsecureB\v\n" +
+	"\t_replicas\"\x8e\x03\n" +
+	"\x1bKubernetesArgocdAutoscaling\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x124\n" +
+	"\fmin_replicas\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\vminReplicas\x88\x01\x01\x124\n" +
+	"\fmax_replicas\x18\x03 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x015H\x01R\vmaxReplicas\x88\x01\x01:\xc6\x01\xbaH\xc2\x01\x1a\xbf\x01\n" +
+	"\x17spec.autoscaling.bounds\x12Fautoscaling max_replicas must be greater than or equal to min_replicas\x1a\\!has(this.max_replicas) || !has(this.min_replicas) || this.max_replicas >= this.min_replicasB\x0f\n" +
+	"\r_min_replicasB\x0f\n" +
+	"\r_max_replicas\"\xa3\x01\n" +
+	"#KubernetesArgocdToggleableComponent\x12\x1d\n" +
+	"\aenabled\x18\x01 \x01(\bH\x00R\aenabled\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\n" +
+	"\n" +
+	"\b_enabled\"\xdf\x02\n" +
+	"\x15KubernetesArgocdRedis\x12m\n" +
+	"\abundled\x18\x01 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisBundledH\x00R\abundled\x12^\n" +
+	"\x02ha\x18\x02 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisHaH\x00R\x02ha\x12p\n" +
+	"\bexternal\x18\x03 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisExternalH\x00R\bexternalB\x05\n" +
+	"\x03arm\"q\n" +
+	"\x1cKubernetesArgocdRedisBundled\x12Q\n" +
+	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\"U\n" +
+	"\x17KubernetesArgocdRedisHa\x12-\n" +
+	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x03\x8a\xa6\x1d\x013H\x00R\breplicas\x88\x01\x01B\v\n" +
+	"\t_replicas\"\xfd\x01\n" +
+	"\x1dKubernetesArgocdRedisExternal\x12m\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\x88\xd4a\x86\a\x92\xd4a\x16status.outputs.serviceR\x04host\x12,\n" +
+	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01\x8a\xa6\x1d\x046379H\x00R\x04port\x88\x01\x01\x126\n" +
+	"\x17credentials_secret_name\x18\x03 \x01(\tR\x15credentialsSecretNameB\a\n" +
+	"\x05_port\"\x93\x01\n" +
+	"\x13KubernetesArgocdSso\x12]\n" +
+	"\x04oidc\x18\x01 \x01(\v2I.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdOidcR\x04oidc\x12\x1d\n" +
+	"\n" +
+	"dex_config\x18\x02 \x01(\tR\tdexConfig\"\xfd\x01\n" +
+	"\x14KubernetesArgocdOidc\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1e\n" +
+	"\x06issuer\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06issuer\x12#\n" +
+	"\tclient_id\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bclientId\x12\x83\x01\n" +
+	"\x14client_secret_secret\x18\x04 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSecretKeyRefR\x12clientSecretSecret\"T\n" +
+	"\x1cKubernetesArgocdSecretKeyRef\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x18\n" +
+	"\x03key\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\"\x92\x01\n" +
+	"\x14KubernetesArgocdRbac\x12%\n" +
+	"\x0epolicy_default\x18\x01 \x01(\tR\rpolicyDefault\x12\x1d\n" +
+	"\n" +
+	"policy_csv\x18\x02 \x01(\tR\tpolicyCsv\x12)\n" +
+	"\x06scopes\x18\x03 \x01(\tB\f\x8a\xa6\x1d\b[groups]H\x00R\x06scopes\x88\x01\x01B\t\n" +
+	"\a_scopes\"\x8d\x01\n" +
+	"\x1aKubernetesArgocdRepository\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x18\n" +
+	"\x03url\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03url\x120\n" +
+	"\x04type\x18\x03 \x01(\tB\x17\xbaH\rr\vR\x03gitR\x04helm\x8a\xa6\x1d\x03gitH\x00R\x04type\x88\x01\x01B\a\n" +
+	"\x05_type\"w\n" +
+	"\x14KubernetesArgocdCrds\x12'\n" +
+	"\ainstall\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\ainstall\x88\x01\x01\x12!\n" +
+	"\x04keep\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x04keep\x88\x01\x01B\n" +
+	"\n" +
+	"\b_installB\a\n" +
+	"\x05_keep\"s\n" +
+	"\x15KubernetesArgocdImage\x12\x1e\n" +
+	"\n" +
+	"repository\x18\x01 \x01(\tR\n" +
+	"repository\x12\x10\n" +
+	"\x03tag\x18\x02 \x01(\tR\x03tag\x12(\n" +
+	"\x10pull_secret_name\x18\x03 \x01(\tR\x0epullSecretName\"\xed\x02\n" +
+	"\x1aKubernetesArgocdScheduling\x12\x86\x01\n" +
+	"\rnode_selector\x18\x01 \x03(\v2a.dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x12.\n" +
+	"\x13priority_class_name\x18\x03 \x01(\tR\x11priorityClassName\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xa1\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetesargocd.v1B\tSpecProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesargocd/v1;kubernetesargocdv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetesargocd.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetesargocd\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetesargocd\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetesargocd::V1b\x06proto3"
 
 var (
@@ -238,24 +1710,67 @@ func file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDesc
 	return file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_goTypes = []any{
-	(*KubernetesArgocdSpec)(nil),          // 0: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec
-	(*KubernetesArgocdIngress)(nil),       // 1: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdIngress
-	(*KubernetesArgocdContainer)(nil),     // 2: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdContainer
-	(*v1.StringValueOrRef)(nil),           // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil), // 4: dev.planton.provider.kubernetes.ContainerResources
+	(*KubernetesArgocdSpec)(nil),                // 0: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec
+	(*KubernetesArgocdComponent)(nil),           // 1: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdComponent
+	(*KubernetesArgocdScalableComponent)(nil),   // 2: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScalableComponent
+	(*KubernetesArgocdServer)(nil),              // 3: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdServer
+	(*KubernetesArgocdAutoscaling)(nil),         // 4: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdAutoscaling
+	(*KubernetesArgocdToggleableComponent)(nil), // 5: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdToggleableComponent
+	(*KubernetesArgocdRedis)(nil),               // 6: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedis
+	(*KubernetesArgocdRedisBundled)(nil),        // 7: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisBundled
+	(*KubernetesArgocdRedisHa)(nil),             // 8: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisHa
+	(*KubernetesArgocdRedisExternal)(nil),       // 9: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisExternal
+	(*KubernetesArgocdSso)(nil),                 // 10: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSso
+	(*KubernetesArgocdOidc)(nil),                // 11: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdOidc
+	(*KubernetesArgocdSecretKeyRef)(nil),        // 12: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSecretKeyRef
+	(*KubernetesArgocdRbac)(nil),                // 13: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRbac
+	(*KubernetesArgocdRepository)(nil),          // 14: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRepository
+	(*KubernetesArgocdCrds)(nil),                // 15: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdCrds
+	(*KubernetesArgocdImage)(nil),               // 16: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdImage
+	(*KubernetesArgocdScheduling)(nil),          // 17: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScheduling
+	nil,                                         // 18: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),                 // 19: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),       // 20: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),       // 21: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdContainer
-	1, // 2: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdIngress
-	4, // 3: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	19, // 0: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.controller:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdComponent
+	3,  // 2: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.server:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdServer
+	2,  // 3: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.repo_server:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScalableComponent
+	1,  // 4: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.application_set:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdComponent
+	5,  // 5: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.notifications:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdToggleableComponent
+	5,  // 6: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.dex:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdToggleableComponent
+	5,  // 7: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.commit_server:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdToggleableComponent
+	6,  // 8: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.redis:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedis
+	10, // 9: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.sso:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSso
+	13, // 10: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.rbac:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRbac
+	14, // 11: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.repositories:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRepository
+	15, // 12: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.crds:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdCrds
+	16, // 13: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.image:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdImage
+	17, // 14: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScheduling
+	20, // 15: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdComponent.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	20, // 16: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScalableComponent.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	4,  // 17: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScalableComponent.autoscaling:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdAutoscaling
+	20, // 18: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdServer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	4,  // 19: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdServer.autoscaling:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdAutoscaling
+	20, // 20: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdToggleableComponent.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	7,  // 21: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedis.bundled:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisBundled
+	8,  // 22: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedis.ha:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisHa
+	9,  // 23: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedis.external:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisExternal
+	20, // 24: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisBundled.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	19, // 25: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdRedisExternal.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 26: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSso.oidc:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdOidc
+	12, // 27: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdOidc.client_secret_secret:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSecretKeyRef
+	18, // 28: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScheduling.NodeSelectorEntry
+	21, // 29: dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	30, // [30:30] is the sub-list for method output_type
+	30, // [30:30] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_init() }
@@ -263,13 +1778,29 @@ func file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_init() 
 	if File_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[6].OneofWrappers = []any{
+		(*KubernetesArgocdRedis_Bundled)(nil),
+		(*KubernetesArgocdRedis_Ha)(nil),
+		(*KubernetesArgocdRedis_External)(nil),
+	}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[14].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesargocd_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

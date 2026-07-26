@@ -1,20 +1,25 @@
-# Standard Altinity ClickHouse Operator
+# Standard preset
 
-This preset deploys the Altinity ClickHouse Operator with recommended default resources. The operator manages the lifecycle of ClickHouse clusters on Kubernetes, enabling declarative creation and management of ClickHouse installations.
+The one-per-cluster engine install: the Altinity operator watching
+every namespace, with real operator credentials and modest container
+sizing. Declare it once; every KubernetesClickHouse resource in the
+cluster is reconciled by this single install.
 
-## When to Use
+Two defaults are deliberately overridden. The chart's own watch scope
+is the operator's namespace only — almost never what a platform wants,
+so this preset watches everything (`.*` — entries are regular
+expressions; narrow the list on multi-tenant clusters where teams
+must not see each other's databases). And the operator's credentials
+— the login it uses on every ClickHouse cluster it manages — default
+to a publicly documented username/password pair upstream; this preset
+forces the conversation by shipping a placeholder you must replace.
 
-- You need to run ClickHouse databases on Kubernetes
-- You want operator-managed ClickHouse cluster lifecycle (create, scale, backup, upgrade)
-- Standard resource allocation is sufficient for the operator control plane
+CRD lifecycle needs no decision here: the chart installs the four
+CRDs on first install, the built-in hook upgrades them on chart
+upgrades, and uninstalling the operator never deletes them — running
+ClickHouse clusters and their data survive an operator removal.
 
-## Key Configuration Choices
+The first thing to change is the password; the second, on shared
+clusters, is the watch list.
 
-- **Namespace** (`altinity-system`) -- dedicated namespace isolates the operator from workloads it manages
-- **Create namespace** (`true`) -- namespace is created automatically if it does not exist
-- **Resource requests** (`100m` CPU, `256Mi` memory) -- conservative baseline for the operator pod
-- **Resource limits** (`1000m` CPU, `1Gi` memory) -- sufficient headroom for reconciliation spikes
-
-## Placeholders to Replace
-
-No placeholders -- this preset is directly deployable with sensible defaults.
+See [01-standard.yaml](./01-standard.yaml) for the manifest.

@@ -1,0 +1,3 @@
+name: kubernetes-kube-prometheus-stack
+runtime: go
+description: kube-prometheus-stack installation from the official Helm chart — Prometheus Operator, a persistent Prometheus with cluster-wide monitor discovery and cloud remote-write arms, Alertmanager, kube-state-metrics, node-exporter, curated rules and the bundled Grafana

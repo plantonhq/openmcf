@@ -1,0 +1,45 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesQdrant
+metadata:
+  name: rag-qdrant
+spec:
+  namespace:
+    value: rag
+  create_namespace: true
+  # A generated read-write key even on a single node: the RAG
+  # ingestion pipeline and the retrieval service both cross service
+  # boundaries — unauthenticated is a dev-only posture. The key lives
+  # in the chart-owned <name>-apikey Secret (key `api-key`), exported
+  # in the stack outputs.
+  api_key:
+    generate: true
+  # Sized for a typical RAG corpus: Qdrant keeps hot segments and
+  # HNSW indexes in RAM, so memory — not disk — is what bounds how
+  # many embeddings serve at full speed. 8Gi comfortably holds a
+  # corpus in the several-million-vector range at common embedding
+  # dimensions; quantization (a collection-level setting) stretches
+  # it further.
+  resources:
+    requests:
+      cpu: "1"
+      memory: 8Gi
+    limits:
+      cpu: "2"
+      memory: 8Gi
+  # Vectors, payloads and the WAL. Disk runs well ahead of RAM needs.
+  storage:
+    size: 20Gi
+  # RAG stores are rebuilt from source documents in principle, but a
+  # snapshot restores in minutes what re-embedding takes hours (and
+  # API spend) to redo. Sized like storage, per upstream guidance.
+  snapshots:
+    size: 20Gi
+  # Engine tuning rides the escape hatch: the chart renders `config:`
+  # verbatim into the engine's production.yaml. Bulk ingestion
+  # batches embeddings aggressively — raise the REST/gRPC request
+  # size ceiling from the engine's 32MB default so oversized upsert
+  # batches fail less often at the door. Never put secrets here.
+  helm_values: |
+    config:
+      service:
+        max_request_size_mb: 64

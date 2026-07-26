@@ -1,0 +1,101 @@
+# The tuned surface on kind-honest sizing: retention time+size trimming,
+# external labels, the remote-write receiver, explicit scrape/evaluation
+# intervals, per-component resources, grafana persistence, an alertmanager
+# route document (null receiver — no notification credentials in a lane),
+# the CONTROL-PLANE SCRAPER POSTURE with its matching rule-group disables
+# (on kind the controller-manager/scheduler/etcd metrics bind to localhost
+# and kube-proxy's port is fenced — the same shape the managed-cloud
+# presets teach, proven here as a real target-health outcome), and the
+# release-fenced discovery arm (the chart's own default, exercised so both
+# discovery modes are live-proven).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKubePrometheusStack
+metadata:
+  name: e2e-kps-full
+spec:
+  namespace:
+    value: e2e-kps-full
+  create_namespace: true
+  prometheus:
+    retention: 2d
+    retention_size: 3GiB
+    disk_size: 5Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1.5Gi
+    external_labels:
+      cluster: e2e-kind
+    scrape_interval: 30s
+    evaluation_interval: 30s
+    enable_remote_write_receiver: true
+    discovery: release_managed_only
+  alertmanager:
+    retention: 24h
+    disk_size: 1Gi
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+    config_yaml: |
+      route:
+        group_by:
+          - namespace
+        receiver: "null"
+        routes:
+          - receiver: "null"
+            matchers:
+              - alertname = "Watchdog"
+      receivers:
+        - name: "null"
+  grafana:
+    storage:
+      size: 2Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  operator:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  exporters:
+    kube_state_metrics_resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+    node_exporter_resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 250m
+        memory: 128Mi
+  control_plane_scrapers:
+    kube_controller_manager: false
+    kube_etcd: false
+    kube_scheduler: false
+    kube_proxy: false
+  default_rules:
+    disabled_groups:
+      - etcd
+      - kubeControllerManager
+      - kubeSchedulerAlerting
+      - kubeSchedulerRecording
+      - kubeProxy

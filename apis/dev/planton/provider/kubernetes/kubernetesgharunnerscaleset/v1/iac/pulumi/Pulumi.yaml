@@ -1,7 +1,3 @@
-name: planton
-description: Deploys a GitHub Actions Runner Scale Set on Kubernetes
-runtime:
-  name: go
-#  options:
-#    binary: ./main
-
+name: kubernetes-gha-runner-scale-set
+runtime: go
+description: An autoscaling fleet of self-hosted GitHub Actions runners for one repository, organization or enterprise — secret-native GitHub auth, container modes for Docker builds, and the runs-on name workflows target

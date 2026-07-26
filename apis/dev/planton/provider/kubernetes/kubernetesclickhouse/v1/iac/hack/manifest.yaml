@@ -1,16 +1,23 @@
 apiVersion: kubernetes.planton.dev/v1
-kind: ClickHouseKubernetes
+kind: KubernetesClickHouse
 metadata:
-  name: clickhousekubernetes-demo
+  name: clickhouse-dev
 spec:
-  container:
-    replicas: 1
-    isPersistenceEnabled: true
-    diskSize: 8Gi
-    resources:
-      requests:
-        cpu: 100m
-        memory: 256Mi
-      limits:
-        cpu: 1000m
-        memory: 2Gi
+  namespace:
+    value: clickhouse-dev
+  createNamespace: true
+  version: "25.3"
+  shards: 1
+  replicas: 2
+  diskSize: 10Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  users:
+    - name: app
+      password:
+        value: Ch4ngeMe-app

@@ -1,69 +1,53 @@
-# NATS on Kubernetes
+# Kubernetes NATS
 
-The **NatsKubernetes** component in Planton provides a streamlined and reliable way to deploy and manage NATS
-clusters on Kubernetes environments. By simplifying NATS deployment complexities, it integrates seamlessly into
-Planton’s multi-cloud deployment ecosystem, offering consistent operations across AWS, GCP, Azure, and other
-Kubernetes-supported platforms.
+## When NOT to Use This
 
-## Purpose and Functionality
+**One resource is ONE NATS system** — the lightweight, high-speed
+messaging server (pub/sub, request/reply, queue groups) with JetStream
+persistence (streams, consumers, key-value and object stores) from the
+official `nats` Helm chart.
 
-* **Robust NATS Cluster Deployment**: Deploy scalable and highly available NATS clusters effortlessly using standardized
-  Kubernetes manifests.
-* **Built-in JetStream Support**: Optionally enable JetStream for reliable streaming and message persistence, with easy
-  configuration for resource allocation and storage.
-* **Flexible Authentication Schemes**: Secure your NATS clusters using configurable authentication mechanisms, including
-  Bearer Token and Basic Authentication.
-* **Integrated TLS Encryption**: Enable TLS encryption with minimal configuration to ensure secure communication across
-  your messaging infrastructure.
-* **External Access via Ingress**: Seamlessly expose NATS clusters externally through Kubernetes ingress controllers or
-  load balancers, allowing secure, managed external client connectivity.
+Not the right component when:
 
-## Key Benefits
+- **You want to declare the streams it carries** — streams, consumers
+  and KV buckets are data-plane objects with their own lifecycle:
+  create them from applications (any NATS SDK), the `nats` CLI, or the
+  bundled nats-box pod. This kind deploys the SERVER, never your
+  streams.
+- **You need the Kafka ecosystem** — partitioned logs with consumer
+  groups, Connect pipelines and schema registries are
+  `KubernetesKafka` territory. JetStream persists and replays
+  messages, but it is not a drop-in Kafka.
+- **AMQP routing topologies** — exchanges, bindings and per-queue
+  dead-lettering are `KubernetesRabbitMq` territory.
 
-* **Simplified Management**: Consolidates NATS cluster operations into easy-to-use YAML manifests, validated by
-  Planton’s Protobuf schemas.
-* **Scalable by Default**: Provides sensible default configurations optimized for production use, with easy adjustments
-  for specific requirements.
-* **Unified Multi-Cloud Experience**: Utilizes Planton’s standardized APIs and CLI workflows, ensuring repeatable
-  and consistent deployments across various cloud environments.
-* **Enhanced Security**: Built-in options for authentication and TLS encryption make securing your message
-  infrastructure straightforward and reliable.
+## The auth model and where passwords live
 
-Below is a minimal YAML example demonstrating a basic deployment of a NATS cluster with JetStream enabled, secure
-authentication, and external ingress access (note the use of **camel-case** keys):
+With `auth` unset the server accepts unauthenticated connections —
+fine inside a trusted cluster network, never for anything reachable
+from outside. Declare flat `users` or multi-tenant `accounts` (never
+both — enforced on the spec) and the module GENERATES every password
+into the `<name>-auth` Secret, one key per username. The server reads
+each password from a Secret-backed environment variable, so no
+credential ever appears in the rendered config or Helm values; point
+workloads' secretKeyRefs at the same Secret.
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: NatsKubernetes
-metadata:
-  name: exampleNats
-spec:
-  namespace:
-    value: "nats-system"
-  create_namespace: true
-  serverContainer:
-    replicas: 3
-    resources:
-      requests:
-        cpu: "100m"
-        memory: "256Mi"
-      limits:
-        cpu: "1000m"
-        memory: "2Gi"
-    diskSize: "10Gi"
-  disableJetStream: false
-  auth:
-    enabled: true
-    scheme: bearerToken
-  tlsEnabled: true
-  ingress:
-    enabled: true
-    hostname: nats.example.com
-  disableNatsBox: false
-```
+## JetStream is on by default
 
-Leverage the **NatsKubernetes** component to rapidly deploy robust, secure, and highly available NATS clusters within
-your Planton multi-cloud strategy, enabling efficient and secure message-driven architectures.
+Each server gets a persistent file-store volume, so published messages
+survive pod restarts — this kind's posture is persistent messaging
+(the chart's raw default is off; disable explicitly for a pure
+fire-and-forget broker). A single server is a complete JetStream
+deployment for dev; REPLICATED (R3) streams need `cluster` enabled
+with at least 3 servers — replicas can never exceed the server count.
+
+## Exposure
+
+The client Service stays ClusterIP by default; in-cluster clients
+connect through the exported `client_endpoint`. For external clients,
+set `service` to LoadBalancer with your cloud's annotations, or enable
+`websocket` behind first-class exposure kinds. Nothing in this kind
+does ingress.
 
 ---
 

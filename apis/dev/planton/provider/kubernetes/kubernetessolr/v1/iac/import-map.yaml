@@ -1,0 +1,41 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetessolr
+spec:
+  # One kubectl_manifest — the SolrCloud CR, named after metadata.name —
+  # plus the optional anchor namespace. Everything the operator creates
+  # from the CR (the StatefulSet, services, the provided ZooKeeper
+  # ensemble, security secrets) is operator-owned and never imported.
+  values:
+    - name: api_version
+      derivations:
+        - literal: solr.apache.org/v1beta1
+      where_to_find: >-
+        Always "solr.apache.org/v1beta1" — the CR's group/version (the
+        operator's API is beta pre-1.0).
+    - name: kind
+      derivations:
+        - literal: SolrCloud
+      where_to_find: Always "SolrCloud" — the CR kind this module applies.
+    - name: name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: cluster_name
+      where_to_find: >-
+        The SolrCloud CR's metadata.name (equals the Planton resource
+        name) — `kubectl get solrcloud -A` (NAME column).
+    - name: namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        The cluster's namespace — `kubectl get solrcloud -A`
+        (NAMESPACE column).
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the cluster's
+        namespace itself.

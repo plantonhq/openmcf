@@ -1,0 +1,399 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskafkaui.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesKafkaUiSpec** declares a kafbat UI installation — the
+ * Apache-2.0 web console for Kafka. One installation observes and
+ * manages MANY clusters: browse topics and live messages, inspect
+ * consumer groups and lag, view/register schemas through a connected
+ * schema registry, and monitor Connect pipes — the console teams
+ * coming off Confluent expect.
+ *
+ * Deployed from the served `kafka-ui` Helm chart. Each `clusters`
+ * entry wires one Kafka cluster (plus its optional schema registry
+ * and Connect clusters) into the console — the FKs compose directly
+ * with KubernetesKafka, KubernetesKarapace and
+ * KubernetesKafkaConnect siblings.
+ *
+ * EXPOSURE composes from first-class kinds (KubernetesIngress /
+ * Gateway API) against the exported service handles — never embedded
+ * here. Anyone who can reach the Service can act with the console's
+ * permissions: enable `auth` (or keep the Service internal) before
+ * any shared exposure, and set `read_only` on clusters the console
+ * should observe but never mutate.
+ */
+message KubernetesKafkaUiSpec {
+  /**
+   * Namespace for the console. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version (the SERVED chart at
+   * https://ui.charts.kafbat.io — pick versions from the repository
+   * index, not the source tree's Chart.yaml). Empty = the module's
+   * pinned default.
+   */
+  string chart_version = 3;
+
+  /**
+   * The Kafka clusters this console connects to. Cluster names must
+   * be unique — they are the console's display and API identifiers.
+   */
+  repeated KubernetesKafkaUiCluster clusters = 4 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "spec.clusters.unique_names"
+      message: "cluster names must be unique within the console"
+      expression: "this.map(c, c.name).unique()"
+    }
+  ];
+
+  /**
+   * Console login. Omitted = NO authentication — anyone reaching the
+   * Service has full console access; acceptable only for
+   * cluster-internal evaluation.
+   */
+  KubernetesKafkaUiAuth auth = 5;
+
+  /**
+   * Number of console replicas. The console is stateless — replicas
+   * are an availability measure.
+   */
+  optional int32 replicas = 6 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * CPU/memory for the console pods.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 7;
+
+  /**
+   * Service exposure: "ClusterIP" (default), "NodePort", or
+   * "LoadBalancer". Prefer ClusterIP + a composed
+   * Ingress/Gateway.
+   */
+  optional string service_type = 8 [
+    (dev.planton.shared.options.default) = "ClusterIP",
+    (buf.validate.field).cel = {
+      id: "spec.service_type_enum"
+      message: "service_type must be ClusterIP, NodePort, or LoadBalancer"
+      expression: "this == '' || this in ['ClusterIP', 'NodePort', 'LoadBalancer']"
+    }
+  ];
+
+  /**
+   * Service port the console is reachable on.
+   */
+  optional int32 service_port = 9 [
+    (dev.planton.shared.options.default) = "80",
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  /**
+   * Node selector for the console pods.
+   */
+  map<string, string> node_selector = 10;
+
+  /**
+   * Tolerations for the console pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 11;
+
+  /**
+   * Container image registry override (air-gapped mirrors). Empty =
+   * ghcr.io.
+   */
+  string image_registry = 12;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f`
+   * semantics, identical on both engines). For the chart surface
+   * beyond the typed fields (probes, security contexts, extra
+   * volumes, OAuth2/LDAP login, ...) — never the substitute for
+   * them. Do not put secrets here.
+   */
+  string helm_values = 13;
+}
+
+/**
+ * One Kafka cluster wired into the console.
+ */
+message KubernetesKafkaUiCluster {
+  /**
+   * Display/API name for this cluster inside the console (e.g.
+   * "production", "staging").
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.clusters.name.format"
+      message: "cluster name may use alphanumerics, '.', '_' and '-'"
+      expression: "this.matches('^[a-zA-Z0-9._-]+$')"
+    }
+  ];
+
+  /**
+   * Bootstrap address of the cluster, as host:port. Accepts a
+   * literal address or a reference to a KubernetesKafka resource,
+   * which resolves to its in-cluster bootstrap endpoint.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bootstrap_servers = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint"
+  ];
+
+  /**
+   * Observe-only: hide every mutating action (topic create/delete,
+   * message produce, config edits) for this cluster. The right
+   * posture for production clusters on a shared console.
+   */
+  bool read_only = 3;
+
+  /**
+   * TLS trust for the cluster connection: a Secret holding the CA
+   * certificate. For a Strimzi-managed cluster, reference the
+   * KubernetesKafka resource to trust its cluster CA. Omitted =
+   * plaintext.
+   */
+  KubernetesKafkaUiClusterTls tls = 4;
+
+  /**
+   * SASL credentials for the cluster connection. Must match the
+   * target listener's authentication type.
+   */
+  KubernetesKafkaUiClusterSasl sasl = 5;
+
+  /**
+   * Schema registry serving this cluster — enables schema browsing
+   * and schema-aware message rendering. Reference a
+   * KubernetesKarapace sibling's endpoint.
+   */
+  KubernetesKafkaUiSchemaRegistry schema_registry = 6;
+
+  /**
+   * Connect clusters attached to this Kafka cluster — enables
+   * connector monitoring and management from the console.
+   */
+  repeated KubernetesKafkaUiConnectCluster kafka_connect = 7 [(buf.validate.field).cel = {
+    id: "spec.clusters.kafka_connect.unique_names"
+    message: "Connect cluster names must be unique within a cluster entry"
+    expression: "this.map(k, k.name).unique()"
+  }];
+
+  /**
+   * Additional Kafka client properties for this cluster's connection
+   * (e.g. request timeouts). Values are configuration strings.
+   * Security properties are operator-owned by the typed tls/sasl
+   * blocks — never put credentials here.
+   */
+  map<string, string> properties = 8;
+}
+
+/**
+ * Cluster-connection TLS trust.
+ */
+message KubernetesKafkaUiClusterTls {
+  /**
+   * Name of the Secret holding the CA certificate to trust. Accepts
+   * a literal Secret name or a reference to a KubernetesKafka
+   * resource, which resolves to that cluster's CA certificate
+   * Secret. The module mounts it and renders the truststore
+   * configuration.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ca_secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_ca_cert_secret_name"
+  ];
+
+  /**
+   * The CA certificate's key within the Secret. Strimzi cluster CA
+   * Secrets carry "ca.crt".
+   */
+  optional string ca_certificate = 2 [(dev.planton.shared.options.default) = "ca.crt"];
+}
+
+/**
+ * Cluster-connection SASL credentials.
+ */
+message KubernetesKafkaUiClusterSasl {
+  /**
+   * SASL mechanism: "PLAIN", "SCRAM-SHA-256", or "SCRAM-SHA-512"
+   * (Strimzi scram-sha-512 listeners pair with SCRAM-SHA-512).
+   */
+  string mechanism = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.clusters.sasl.mechanism_enum"
+      message: "mechanism must be PLAIN, SCRAM-SHA-256, or SCRAM-SHA-512"
+      expression: "this in ['PLAIN', 'SCRAM-SHA-256', 'SCRAM-SHA-512']"
+    }
+  ];
+
+  /**
+   * SASL username.
+   */
+  string username = 2 [(buf.validate.field).required = true];
+
+  /**
+   * SASL password, from a key within a Secret — reference a
+   * KubernetesKafkaUser resource (scram-sha-512 authentication) to
+   * use its operator-generated Secret. The module wires it into the
+   * console through a Secret-backed environment variable; it never
+   * lands in the rendered configuration as plaintext.
+   */
+  KubernetesKafkaUiPasswordSecret password_secret = 3 [(buf.validate.field).required = true];
+}
+
+/**
+ * A password source — one key within a Secret.
+ */
+message KubernetesKafkaUiPasswordSecret {
+  /**
+   * Name of the Secret. Accepts a literal Secret name or a reference
+   * to a KubernetesKafkaUser resource, which resolves to its
+   * credential Secret.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafkaUser,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name"
+  ];
+
+  /**
+   * The key within the Secret whose value is the password.
+   * KubernetesKafkaUser credential Secrets carry it under
+   * "password".
+   */
+  optional string key = 2 [(dev.planton.shared.options.default) = "password"];
+}
+
+/**
+ * A schema registry connection.
+ */
+message KubernetesKafkaUiSchemaRegistry {
+  /**
+   * Registry URL. Accepts a literal URL or a reference to a
+   * KubernetesKarapace resource, which resolves to its in-cluster
+   * endpoint.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef url = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKarapace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.endpoint"
+  ];
+
+  /**
+   * HTTP Basic username, when the registry requires it.
+   */
+  string username = 2;
+
+  /**
+   * HTTP Basic password source, when the registry requires it.
+   */
+  KubernetesKafkaUiPasswordSecret password_secret = 3;
+}
+
+/**
+ * A Connect cluster connection.
+ */
+message KubernetesKafkaUiConnectCluster {
+  /**
+   * Display name for this Connect cluster inside the console.
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Connect REST API address. Accepts a literal URL or a reference
+   * to a KubernetesKafkaConnect resource, which resolves to its
+   * in-cluster REST endpoint.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef address = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafkaConnect,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.rest_api_endpoint"
+  ];
+
+  /**
+   * HTTP Basic username, when the Connect API sits behind one.
+   */
+  string username = 3;
+
+  /**
+   * HTTP Basic password source, when the Connect API sits behind
+   * one.
+   */
+  KubernetesKafkaUiPasswordSecret password_secret = 4;
+}
+
+/**
+ * Console login.
+ */
+message KubernetesKafkaUiAuth {
+  /**
+   * Authentication type: "login_form" (ONE username/password account
+   * — the app's form login authenticates against Spring's single
+   * default security user; it has no multi-user store, verified in
+   * the app source). Multi-user, OAuth2/OIDC and LDAP login ride the
+   * chart's own Spring configuration through helm_values —
+   * deliberately not typed here.
+   */
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "spec.auth.type_enum"
+      message: "auth type must be login_form (OAuth2/LDAP compose through helm_values)"
+      expression: "this == 'login_form'"
+    }
+  ];
+
+  /**
+   * The console's single login account (login_form).
+   */
+  KubernetesKafkaUiUser user = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * One console user account.
+ */
+message KubernetesKafkaUiUser {
+  /**
+   * Login username.
+   */
+  string username = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Login password — declared here, materialized by the module into
+   * a Secret-backed environment variable (never plaintext in the
+   * rendered chart values).
+   */
+  string password = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}

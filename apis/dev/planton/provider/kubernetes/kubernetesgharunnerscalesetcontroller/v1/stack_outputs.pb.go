@@ -21,25 +21,24 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesGhaRunnerScaleSetControllerStackOutputs describes the outputs from deploying the
-// GitHub Actions Runner Scale Set Controller on Kubernetes.
+// *
+// Outputs exported after installing the runner scale set controller.
 type KubernetesGhaRunnerScaleSetControllerStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Namespace where the controller is deployed.
+	// *
+	// Namespace the controller runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Name of the Helm release.
+	// *
+	// Helm release name (equals metadata.name).
 	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
-	// Version of the deployed Helm chart.
-	ChartVersion string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3" json:"chart_version,omitempty"`
-	// Name of the controller deployment.
-	DeploymentName string `protobuf:"bytes,4,opt,name=deployment_name,json=deploymentName,proto3" json:"deployment_name,omitempty"`
-	// Name of the controller service account.
-	ServiceAccountName string `protobuf:"bytes,5,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
-	// Controller metrics endpoint (if metrics are enabled).
-	// Format: <service>.<namespace>.svc.cluster.local:<port>
-	MetricsEndpoint string `protobuf:"bytes,6,opt,name=metrics_endpoint,json=metricsEndpoint,proto3" json:"metrics_endpoint,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// *
+	// Name of the controller's ServiceAccount — what a
+	// KubernetesGhaRunnerScaleSet references in
+	// `controller_service_account` when this controller watches a
+	// single namespace.
+	ServiceAccountName string `protobuf:"bytes,3,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesGhaRunnerScaleSetControllerStackOutputs) Reset() {
@@ -86,30 +85,9 @@ func (x *KubernetesGhaRunnerScaleSetControllerStackOutputs) GetReleaseName() str
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerStackOutputs) GetChartVersion() string {
-	if x != nil {
-		return x.ChartVersion
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetControllerStackOutputs) GetDeploymentName() string {
-	if x != nil {
-		return x.DeploymentName
-	}
-	return ""
-}
-
 func (x *KubernetesGhaRunnerScaleSetControllerStackOutputs) GetServiceAccountName() string {
 	if x != nil {
 		return x.ServiceAccountName
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetControllerStackOutputs) GetMetricsEndpoint() string {
-	if x != nil {
-		return x.MetricsEndpoint
 	}
 	return ""
 }
@@ -118,14 +96,11 @@ var File_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v
 
 const file_dev_planton_provider_kubernetes_kubernetesgharunnerscalesetcontroller_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"\\dev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1/stack_outputs.proto\x12Hdev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1\"\x9f\x02\n" +
+	"\\dev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1/stack_outputs.proto\x12Hdev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1\"\xa6\x01\n" +
 	"1KubernetesGhaRunnerScaleSetControllerStackOutputs\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
-	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12#\n" +
-	"\rchart_version\x18\x03 \x01(\tR\fchartVersion\x12'\n" +
-	"\x0fdeployment_name\x18\x04 \x01(\tR\x0edeploymentName\x120\n" +
-	"\x14service_account_name\x18\x05 \x01(\tR\x12serviceAccountName\x12)\n" +
-	"\x10metrics_endpoint\x18\x06 \x01(\tR\x0fmetricsEndpointB\xbd\x04\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x120\n" +
+	"\x14service_account_name\x18\x03 \x01(\tR\x12serviceAccountNameB\xbd\x04\n" +
 	"Lcom.dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1B\x11StackOutputsProtoP\x01Z\x92\x01github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgharunnerscalesetcontroller/v1;kubernetesgharunnerscalesetcontrollerv1\xa2\x02\x05DPPKK\xaa\x02HDev.Planton.Provider.Kubernetes.Kubernetesgharunnerscalesetcontroller.V1\xca\x02HDev\\Planton\\Provider\\Kubernetes\\Kubernetesgharunnerscalesetcontroller\\V1\xe2\x02TDev\\Planton\\Provider\\Kubernetes\\Kubernetesgharunnerscalesetcontroller\\V1\\GPBMetadata\xea\x02MDev::Planton::Provider::Kubernetes::Kubernetesgharunnerscalesetcontroller::V1b\x06proto3"
 
 var (

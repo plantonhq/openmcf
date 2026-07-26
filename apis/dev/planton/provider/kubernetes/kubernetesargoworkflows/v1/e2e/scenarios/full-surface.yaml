@@ -1,0 +1,45 @@
+# Every fixture-free knob exercised on the kind cluster: a claimed
+# controller instance ID (the verifier labels its proof Workflows with
+# the app's own controller-instanceid contract — an instanced controller
+# reconciles ONLY matching workflows, so completion under the claim IS
+# the proof), parallelism caps, retention, a custom runner
+# ServiceAccount name, per-component resources, explicit server auth
+# modes, and explicit CRD keep semantics.
+#
+# Kind-honest exclusions: the artifact repository (an object-store
+# fixture — the SeaweedFS composition), the workflow archive (a Postgres
+# fixture) and SSO — all plan-proven; deferred-ledger rows carry them.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesArgoWorkflows
+metadata:
+  name: e2e-argowf-full
+spec:
+  namespace:
+    value: e2e-argowf-full
+  create_namespace: true
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    instance_id: e2e-proof
+    parallelism: 20
+    namespace_parallelism: 5
+  server:
+    enabled: true
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    auth_modes:
+      - client
+  workflow_service_account: e2e-pipeline-runner
+  retention_policy:
+    completed: 5
+    failed: 2
+    errored: 2
+  crds:
+    install: true
+    keep: true

@@ -1,0 +1,3 @@
+name: kubernetes-seaweedfs
+runtime: go
+description: SeaweedFS S3-compatible object store installation from the official Helm chart with PVC-backed master/volume/filer tiers, a chart-owned S3 credentials Secret, typed bucket creation, and an authenticated admin console

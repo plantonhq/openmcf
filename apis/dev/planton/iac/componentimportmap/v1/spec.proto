@@ -78,5 +78,49 @@ message ImportValueDerivation {
     // them as literals. Never use a literal for anything a user could vary
     // per resource -- that is what the other derivations are for.
     string literal = 7;
+    // One "//"-delimited segment (0-based) of the enumerated address's
+    // instance key -- for modules that apply a MULTI-GVK manifest bundle
+    // through one for_each resource keyed by each document's own composed
+    // identity ("apiVersion//kind//name[//namespace]"): every placeholder
+    // of the composed import ID is then a segment of the key itself, and
+    // per-document values (a bundle spans many apiVersion/kind pairs)
+    // cannot be literals. An index past the key's segment count resolves
+    // to "" so an optional trailing segment (the cluster-scoped 3-part
+    // form) drops out of the ID's bracketed group. The delimiter is fixed
+    // to "//" -- the kubectl composed-ID delimiter this arm exists for
+    // (an apiVersion can itself contain a single slash).
+    int32 from_address_key_segment = 8;
+    // One key of a convention-named Kubernetes Secret in the deployed
+    // resource's own namespace -- for import IDs that ARE secret
+    // material the module materialized into a Secret: the canonical
+    // case is a random_password resource, whose import ID is the
+    // password value itself (the random provider keeps no cloud state).
+    // Only cluster-connected resolution contexts can serve this arm
+    // (the E2E round-trip reads through the cluster credentials it
+    // already holds; a disconnected context leaves the value unresolved
+    // and falls back to asking with where_to_find). The resolved value
+    // is SECRET MATERIAL: it exists to feed the import command and must
+    // never be logged or persisted by the resolving context.
+    FromClusterSecretKey from_cluster_secret_key = 9;
   }
+}
+
+// FromClusterSecretKey locates one data key of a convention-named
+// Kubernetes Secret -- "<metadata.name><name_suffix>", the same naming
+// convention from_metadata_name_suffix serves -- in the deployed
+// resource's namespace (bound by the resolving context, which knows the
+// deployment it is importing).
+message FromClusterSecretKey {
+  // Appended to metadata.name to form the Secret's name.
+  string name_suffix = 1;
+  // The Secret .data key holding the value.
+  string key = 2;
+  // When true, the Secret .data key is the ADDRESS'S OWN INSTANCE KEY
+  // instead of the static `key` — for keyed resource collections whose
+  // per-instance credentials live under manifest-driven Secret keys
+  // (the canonical case: one random_password per declared user, keyed
+  // by username, materialized into a Secret with one key per username).
+  // A declaration may set either `key` or this flag; the flag wins when
+  // both are present and the context carries an address key.
+  bool key_from_address_key = 3;
 }

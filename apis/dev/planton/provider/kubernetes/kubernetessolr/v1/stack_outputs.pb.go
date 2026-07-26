@@ -21,32 +21,37 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// solr-kubernetes stack outputs
+// kubernetes-solr stack outputs
 type KubernetesSolrStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which solr-kubernetes is created.
+	// namespace the cluster runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for solr-kubernetes dashboard.
-	// ex: main-solr-kubernetes-common
-	// in the above example, "main" is the name of the solr-kubernetes
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open solr-kubernetes from developers laptop.
-	// this might come handy when solr-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining solr_kubernetes_kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/solr_kubernetes_kubernetes_service -n kubernetes_namespace 8080:80
-	// running the command from this attribute makes it possible to access solr-kubernetes using http://localhost:8080/solr
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint that can be used by clients running in the same kubernetes cluster.
-	// ex: http://main-solrkubernetes-common.<namespace-name>:8983/solr
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open solr-kubernetes from clients outside kubernetes.
-	// ex: https://slk8s-planton-pcs-dev-main.data.dev.planton.live:6379/redis
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// internal endpoint to open solr-kubernetes from clients inside kubernetes.
-	// ex: https://slk8s-planton-pcs-dev-main.data-internal.dev.planton.live:6379/redis
-	InternalHostname string `protobuf:"bytes,6,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// name of the SolrCloud resource (= metadata.name).
+	ClusterName string `protobuf:"bytes,2,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	// name of the common Service fronting all Solr nodes
+	// (the operator names it `<name>-solrcloud-common`).
+	CommonServiceName string `protobuf:"bytes,3,opt,name=common_service_name,json=commonServiceName,proto3" json:"common_service_name,omitempty"`
+	// in-cluster base URL of the cluster,
+	// e.g. http://main-solrcloud-common.search.svc.cluster.local
+	// (the common service listens on port 80, or 443 with TLS).
+	InternalEndpoint string `protobuf:"bytes,4,opt,name=internal_endpoint,json=internalEndpoint,proto3" json:"internal_endpoint,omitempty"`
+	// name of the operator-generated basic-auth Secret
+	// (`<name>-solrcloud-basic-auth`, kubernetes.io/basic-auth with
+	// username/password fields — the operator's READ-ONLY k8s-oper user).
+	// The admin and solr users' passwords live in the sibling
+	// `<name>-solrcloud-security-bootstrap` Secret (one key per user);
+	// use its `admin` key for administrative API calls. Empty when
+	// security is disabled or a user-provided basic_auth_secret is in
+	// play.
+	BasicAuthSecretName string `protobuf:"bytes,5,opt,name=basic_auth_secret_name,json=basicAuthSecretName,proto3" json:"basic_auth_secret_name,omitempty"`
+	// ZooKeeper connection string the cluster uses (host:port/chroot).
+	ZookeeperConnectionString string `protobuf:"bytes,6,opt,name=zookeeper_connection_string,json=zookeeperConnectionString,proto3" json:"zookeeper_connection_string,omitempty"`
+	// command to port-forward the common service to a developer
+	// laptop, e.g.
+	// kubectl port-forward svc/main-solrcloud-common -n search 8983:80
+	PortForwardCommand string `protobuf:"bytes,7,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesSolrStackOutputs) Reset() {
@@ -86,9 +91,37 @@ func (x *KubernetesSolrStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesSolrStackOutputs) GetService() string {
+func (x *KubernetesSolrStackOutputs) GetClusterName() string {
 	if x != nil {
-		return x.Service
+		return x.ClusterName
+	}
+	return ""
+}
+
+func (x *KubernetesSolrStackOutputs) GetCommonServiceName() string {
+	if x != nil {
+		return x.CommonServiceName
+	}
+	return ""
+}
+
+func (x *KubernetesSolrStackOutputs) GetInternalEndpoint() string {
+	if x != nil {
+		return x.InternalEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesSolrStackOutputs) GetBasicAuthSecretName() string {
+	if x != nil {
+		return x.BasicAuthSecretName
+	}
+	return ""
+}
+
+func (x *KubernetesSolrStackOutputs) GetZookeeperConnectionString() string {
+	if x != nil {
+		return x.ZookeeperConnectionString
 	}
 	return ""
 }
@@ -100,39 +133,19 @@ func (x *KubernetesSolrStackOutputs) GetPortForwardCommand() string {
 	return ""
 }
 
-func (x *KubernetesSolrStackOutputs) GetKubeEndpoint() string {
-	if x != nil {
-		return x.KubeEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesSolrStackOutputs) GetExternalHostname() string {
-	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesSolrStackOutputs) GetInternalHostname() string {
-	if x != nil {
-		return x.InternalHostname
-	}
-	return ""
-}
-
 var File_dev_planton_provider_kubernetes_kubernetessolr_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetessolr_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/kubernetes/kubernetessolr/v1/stack_outputs.proto\x121dev.planton.provider.kubernetes.kubernetessolr.v1\"\x85\x02\n" +
+	"Edev/planton/provider/kubernetes/kubernetessolr/v1/stack_outputs.proto\x121dev.planton.provider.kubernetes.kubernetessolr.v1\"\xe1\x02\n" +
 	"\x1aKubernetesSolrStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\x06 \x01(\tR\x10internalHostnameB\x9b\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\fcluster_name\x18\x02 \x01(\tR\vclusterName\x12.\n" +
+	"\x13common_service_name\x18\x03 \x01(\tR\x11commonServiceName\x12+\n" +
+	"\x11internal_endpoint\x18\x04 \x01(\tR\x10internalEndpoint\x123\n" +
+	"\x16basic_auth_secret_name\x18\x05 \x01(\tR\x13basicAuthSecretName\x12>\n" +
+	"\x1bzookeeper_connection_string\x18\x06 \x01(\tR\x19zookeeperConnectionString\x120\n" +
+	"\x14port_forward_command\x18\a \x01(\tR\x12portForwardCommandB\x9b\x03\n" +
 	"5com.dev.planton.provider.kubernetes.kubernetessolr.v1B\x11StackOutputsProtoP\x01Zdgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessolr/v1;kubernetessolrv1\xa2\x02\x05DPPKK\xaa\x021Dev.Planton.Provider.Kubernetes.Kubernetessolr.V1\xca\x021Dev\\Planton\\Provider\\Kubernetes\\Kubernetessolr\\V1\xe2\x02=Dev\\Planton\\Provider\\Kubernetes\\Kubernetessolr\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Kubernetes::Kubernetessolr::V1b\x06proto3"
 
 var (

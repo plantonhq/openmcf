@@ -127,7 +127,6 @@ use_repo(
     "com_github_stretchr_testify",
     "com_github_zyedidia_clipboard",
     "in_gopkg_yaml_v3",
-    "io_k8s_api",
     "io_k8s_sigs_kustomize_api",
     "io_k8s_sigs_kustomize_kyaml",
     "io_k8s_sigs_yaml",

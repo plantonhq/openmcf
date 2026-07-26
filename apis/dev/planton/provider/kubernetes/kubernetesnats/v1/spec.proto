@@ -4,340 +4,560 @@ package dev.planton.provider.kubernetes.kubernetesnats.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
 import "dev/planton/shared/options/options.proto";
-import "google/protobuf/descriptor.proto";
 
-// custom option to store default values for the server container message
-extend google.protobuf.FieldOptions {
-  KubernetesNatsServerContainer default_server_container = 525001;
-}
-
-// NatsKubernetes spec holds the 80-20 configuration for a nats cluster on kubernetes.
+/**
+ * **KubernetesNatsSpec** deploys NATS — the lightweight, high-speed
+ * messaging system (pub/sub, request/reply, queue groups) with
+ * JetStream persistence (streams, consumers, key-value and object
+ * stores) — from the official `nats` Helm chart
+ * (https://nats-io.github.io/k8s/helm/charts/).
+ *
+ * WHAT GETS INSTALLED: the NATS server StatefulSet (with a config
+ * hot-reload sidecar), its client Service, and by default the
+ * nats-box utility pod (a shell with the `nats` CLI pre-configured
+ * for this deployment).
+ *
+ * JETSTREAM IS ON BY DEFAULT here (the chart leaves it off): each
+ * server gets a persistent volume for stream data, so published
+ * messages survive pod restarts. A single server is a complete
+ * JetStream deployment for dev; REPLICATED streams (R3) need
+ * `cluster` enabled with at least 3 servers.
+ *
+ * SECURITY: with `auth` unset the server accepts unauthenticated
+ * connections — fine inside a trusted cluster network, never for
+ * anything reachable from outside. Declare users (flat, or grouped
+ * into accounts for multi-tenant isolation) and the module GENERATES
+ * their passwords, exports them in the `<name>-auth` Secret (one key
+ * per username), and wires the server to read them from environment —
+ * no password ever lands in the rendered config or Helm values.
+ *
+ * EXPOSURE: the client Service is ClusterIP by default; clients in
+ * the cluster connect through `client_endpoint`. For external
+ * clients, set `service` to LoadBalancer with your cloud's
+ * annotations, or use `websocket` behind first-class exposure kinds.
+ *
+ * DECLARING STREAMS: this kind deploys the SERVER. Streams, consumers
+ * and KV buckets are data-plane objects — create them from
+ * applications (any NATS SDK), the nats CLI, or nats-box. A
+ * declarative stream-as-resource surface (the NACK controller) is a
+ * separate concern this kind deliberately does not bundle.
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `helm_values` remains as the escape hatch for chart values
+ * beyond them (merged last, Helm `-f` semantics, identical on both
+ * engines) — gateways (superclusters), the JWT/operator auth mode and
+ * its resolver, per-listener TLS, raw nats.conf keys via the chart's
+ * config merge — a safety valve, never the primary interface. Never
+ * put secret material in `helm_values`: chart config values render
+ * into a ConfigMap; every credential path in this spec rides Secrets
+ * and environment expansion instead.
+ */
 message KubernetesNatsSpec {
-  // Kubernetes Namespace
-  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
   ];
 
-  // flag to indicate if the namespace should be created
-  bool create_namespace = 3;
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
 
-  // server container settings (replicas, resources, disk).
-  KubernetesNatsServerContainer server_container = 4 [(default_server_container) = {
-    replicas: 1
-    resources: {
-      limits: {
-        cpu: "1000m"
-        memory: "2Gi"
-      }
-      requests: {
-        cpu: "100m"
-        memory: "256Mi"
-      }
-    }
-    disk_size: "10Gi"
-  }];
+  /**
+   * Helm chart version to install (e.g. "2.14.2" — the chart and the
+   * NATS server move in version lockstep, so chart 2.14.2 runs
+   * nats-server 2.14.2). Versions must exist as SERVED charts in the
+   * repository index (https://nats-io.github.io/k8s/helm/charts/).
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "2.14.2"];
 
-  // disable jet-stream persistence
-  bool disable_jet_stream = 5;
-  // authentication settings for the nats cluster.
+  /**
+   * Multi-server clustering (full-mesh routes between servers). Empty
+   * = a single server — a complete deployment for dev and modest
+   * workloads. Enable for HA and for replicated JetStream streams
+   * (stream replicas can never exceed the server count).
+   */
+  KubernetesNatsCluster cluster = 4;
+
+  /**
+   * JetStream — the persistence layer (streams, consumers, KV/object
+   * stores). ON by default with a persistent file store; core NATS
+   * pub/sub works either way.
+   */
+  KubernetesNatsJetStream jet_stream = 5;
+
+  /**
+   * Client authentication. Empty = UNAUTHENTICATED — any client that
+   * can reach the Service connects with full access. Declare flat
+   * `users` or multi-tenant `accounts` (never both); passwords are
+   * module-generated and exported via the `<name>-auth` Secret.
+   */
   KubernetesNatsAuth auth = 6;
-  // tls settings for the nats cluster.
-  bool tls_enabled = 7;
-  // optional ingress configuration for external access.
-  KubernetesNatsIngress ingress = 8;
-  // toggle to deploy the nats-box utility pod.
-  bool disable_nats_box = 9;
 
-  // NACK JetStream controller configuration (opt-in).
-  // When enabled, deploys the NACK controller alongside NATS for managing
-  // streams and consumers via Kubernetes CRDs.
-  KubernetesNatsNackController nack_controller = 10;
+  /**
+   * TLS on the client listener (port 4222). Websocket, cluster and
+   * leafnode listener TLS ride `helm_values` (each listener has its
+   * own tls block in the chart).
+   */
+  KubernetesNatsTls tls = 7;
 
-  // JetStream streams to create.
-  // Requires nack_controller.enabled = true.
-  // Streams are created as Kubernetes custom resources managed by NACK.
-  repeated KubernetesNatsStream streams = 11;
+  /**
+   * The WebSocket listener — NATS over websockets for browser clients
+   * and networks that only pass HTTP. Off by default.
+   */
+  KubernetesNatsWebsocket websocket = 8;
 
-  // NATS Helm chart version.
-  // To check available versions: helm search repo nats/nats --versions
-  // Chart repository: https://nats-io.github.io/k8s/
-  optional string nats_helm_chart_version = 12 [(dev.planton.shared.options.default) = "2.12.3"];
-}
+  /**
+   * The MQTT listener — IoT devices speak MQTT 3.1.1 directly to
+   * NATS, bridged into JetStream. Requires `jet_stream` (MQTT
+   * sessions and retained messages live in JetStream). Off by
+   * default.
+   */
+  KubernetesNatsMqtt mqtt = 9;
 
-// server container settings for the nats stateful-set.
-message KubernetesNatsServerContainer {
-  // number of nats replicas; use an odd value for quorum.
-  int32 replicas = 1 [(buf.validate.field).int32 = {gt: 0}];
+  /**
+   * The leafnode listener — edge/remote NATS servers extend this
+   * deployment by connecting as leaf nodes (the hub side). Off by
+   * default.
+   */
+  KubernetesNatsLeafnodes leafnodes = 10;
 
-  // cpu and memory resources for each pod.
-  dev.planton.provider.kubernetes.ContainerResources resources = 2;
+  /**
+   * Prometheus metrics. The server's monitoring endpoint (port 8222)
+   * is always on in-pod; this block adds the prometheus-nats-exporter
+   * sidecar and, optionally, a PodMonitor for operator-based scraping.
+   */
+  KubernetesNatsMetrics metrics = 11;
 
-  // pvc size for jet-stream file store (e.g. "10Gi").
-  string disk_size = 3 [
-    (buf.validate.field).required = true,
-    (dev.planton.shared.options.recommended_default) = "1Gi"
-  ];
-}
+  /**
+   * Deploy the nats-box utility pod — a shell with the `nats` CLI
+   * pre-wired to this deployment (contexts, credentials). Enabled by
+   * default, matching the chart; the go-to surface for creating
+   * streams and debugging.
+   */
+  optional bool nats_box_enabled = 12 [(dev.planton.shared.options.default) = "true"];
 
-// KubernetesNatsAuthScheme is the authentication scheme for the nats cluster.
-enum KubernetesNatsAuthScheme {
-  nats_kubernetes_auth_scheme_unspecified = 0;
-  // bearer token authentication
-  bearer_token = 1;
-  // basic auth authentication
-  basic_auth = 2;
-}
+  /**
+   * Container resources for each NATS server. Empty = the chart's
+   * defaults (no requests — fine for dev). When `jet_stream` uses a
+   * memory store, set a memory limit comfortably above
+   * `memory_store_max_size`.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 13;
 
-// configuration for an unauthenticated ("no-auth") user.
-message KubernetesNatsNoAuthUser {
-  // enables the unauthenticated user when true.
-  bool enabled = 1;
-  // subjects on which the unauthenticated user may publish.
-  // at least one subject must be specified when enabled is true.
-  repeated string publish_subjects = 2;
-}
+  /**
+   * The client Service's exposure shape. Empty = ClusterIP (in-cluster
+   * clients only).
+   */
+  KubernetesNatsService service = 14;
 
-// KubernetesNatsAuth holds the authentication configuration for the nats cluster.
-message KubernetesNatsAuth {
-  // toggle to enable authentication for the nats cluster.
-  bool enabled = 1;
-  // authentication scheme for the nats cluster.
-  KubernetesNatsAuthScheme scheme = 2;
-  // optional no-auth user configuration.
-  KubernetesNatsNoAuthUser no_auth_user = 3;
-}
+  /**
+   * Pod scheduling for the NATS server pods.
+   */
+  KubernetesNatsScheduling scheduling = 15;
 
-// KubernetesNatsIngress defines ingress configuration for NATS external access.
-message KubernetesNatsIngress {
-  // Flag to enable or disable ingress.
-  // When enabled, creates a LoadBalancer service for external access.
-  bool enabled = 1;
+  /**
+   * Container image overrides for air-gapped clusters and private
+   * mirrors. Empty = the chart's pinned upstream images.
+   */
+  KubernetesNatsImages images = 16;
 
-  // The full hostname for external access (e.g., "nats.example.com").
-  // This hostname will be configured via external-dns annotations.
-  // Required when enabled is true.
-  string hostname = 2;
+  /**
+   * Additional Helm values merged LAST (Helm `-f` semantics, identical
+   * on both engines) — the escape hatch for chart values the typed
+   * fields do not model: gateways, the JWT resolver, per-listener TLS,
+   * raw nats.conf keys through `config.merge`, pod-template patches.
+   * YAML document as a string. Never put secret material here (config
+   * values render into a ConfigMap); credentials belong in the typed
+   * auth model, which keeps them in Secrets.
+   */
+  string helm_values = 17;
 
   option (buf.validate.message).cel = {
-    id: "spec.ingress.hostname.required"
-    expression: "!this.enabled || size(this.hostname) > 0"
-    message: "hostname is required when ingress is enabled"
+    id: "spec.mqtt.requires_jetstream"
+    message: "mqtt requires jet_stream to be enabled — MQTT sessions and retained messages are stored in JetStream, and the server refuses to start MQTT without it"
+    expression: "!has(this.mqtt) || !this.mqtt.enabled || !has(this.jet_stream) || !has(this.jet_stream.enabled) || this.jet_stream.enabled"
   };
 }
 
-// KubernetesNatsNackController configures the NACK JetStream controller.
-// NACK (NATS Controllers for Kubernetes) is the official operator for managing
-// JetStream resources (Streams, Consumers, KeyValue, ObjectStore) via CRDs.
-message KubernetesNatsNackController {
-  // Enable the NACK JetStream controller.
-  // When enabled, NACK will be deployed alongside NATS and can manage
-  // Stream/Consumer resources declaratively via Kubernetes CRDs.
+/**
+ * Multi-server clustering.
+ */
+message KubernetesNatsCluster {
+  /**
+   * Enable clustering (a full mesh of routes across the StatefulSet's
+   * servers).
+   */
   bool enabled = 1;
 
-  // Enable control-loop mode for the NACK controller.
-  // Required for KeyValue and ObjectStore support.
-  // Also provides more reliable state enforcement.
-  bool enable_control_loop = 2;
-
-  // NACK Helm chart version.
-  // To check available versions: helm search repo nats/nack --versions
-  // Chart repository: https://nats-io.github.io/k8s/
-  optional string helm_chart_version = 3 [(dev.planton.shared.options.default) = "0.31.1"];
-
-  // NACK app version (GitHub release tag).
-  // Used for fetching CRDs from: https://github.com/nats-io/nack/releases
-  // Note: App version differs from chart version. Check "APP VERSION" column in:
-  // helm search repo nats/nack --versions
-  optional string app_version = 4 [(dev.planton.shared.options.default) = "0.21.1"];
+  /**
+   * Number of NATS servers. Use an odd count — JetStream placement
+   * uses RAFT groups, and odd counts tolerate the most failures per
+   * server added (3 tolerates 1 down, 5 tolerates 2). Minimum 2 when
+   * clustering with JetStream (the chart's own floor); 3 is the
+   * smallest count that keeps replicated streams available through a
+   * pod loss. Empty = 3.
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32 = {
+      gte: 2
+      lte: 9
+    }
+  ];
 }
 
-// ============================================================================
-// Stream Enum Wrappers
-// Wrapper messages scope enum values to avoid protobuf C++ scoping conflicts.
-// This allows using clean NATS-native values like "file", "memory", "limits".
-// ============================================================================
+/**
+ * JetStream persistence.
+ */
+message KubernetesNatsJetStream {
+  /**
+   * Enable JetStream. Empty = true — this kind's default posture is
+   * persistent messaging (the chart's raw default is off).
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
 
-// Wrapper for stream storage backend enum.
-message StreamStorageEnum {
-  enum Value {
-    unspecified = 0;
-    // File-based storage (persistent, survives restarts).
-    file = 1;
-    // Memory-based storage (ephemeral, faster).
-    memory = 2;
-  }
+  /**
+   * Size of each server's persistent volume for the file store —
+   * where stream data lives. Empty = "10Gi" (the chart default).
+   */
+  optional string disk_size = 2 [
+    (dev.planton.shared.options.default) = "10Gi",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"
+  ];
+
+  /**
+   * Storage class for the JetStream volumes. Empty = the cluster's
+   * default class.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * Cap on total file-store usage per server (e.g. "8Gi"). Empty =
+   * the volume size (the chart derives it from the PVC).
+   */
+  optional string max_file_store = 4 [(buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"];
+
+  /**
+   * Enable the in-memory store tier and cap its size per server
+   * (e.g. "1Gi"). Memory streams are fast and ephemeral — data is
+   * gone on pod restart. Empty = memory store disabled. The server's
+   * memory limit must comfortably exceed this.
+   */
+  optional string memory_store_max_size = 5 [(buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"];
 }
 
-// Wrapper for stream retention policy enum.
-message StreamRetentionEnum {
-  enum Value {
-    unspecified = 0;
-    // Messages kept based on limits (max_age, max_bytes, max_msgs).
-    limits = 1;
-    // Messages removed when no consumers have interest.
-    interest = 2;
-    // Work queue: messages removed once acknowledged.
-    workqueue = 3;
-  }
+/**
+ * Client authentication. Declare EITHER flat `users` (one shared
+ * namespace of subjects) OR `accounts` (isolated subject namespaces —
+ * NATS's multi-tenancy). Passwords are always module-generated and
+ * exported via the `<name>-auth` Secret, one key per username; the
+ * server reads each password from environment (a Secret-backed env
+ * var), so no credential ever appears in the rendered config.
+ */
+message KubernetesNatsAuth {
+  /**
+   * Flat users on the global account.
+   */
+  repeated KubernetesNatsUser users = 1;
+
+  /**
+   * Multi-tenant accounts, each with its own users and an isolated
+   * subject namespace (messages never cross accounts unless you add
+   * exports/imports via `helm_values`).
+   */
+  repeated KubernetesNatsAccount accounts = 2;
+
+  /**
+   * Username connections WITHOUT credentials are treated as (the
+   * "guest" identity). Must be one of the declared usernames — scope
+   * what anonymous clients may do through THAT user's permissions.
+   * Empty = unauthenticated connections are rejected outright.
+   */
+  string no_auth_user = 3;
+
+  option (buf.validate.message).cel = {
+    id: "spec.auth.users_xor_accounts"
+    message: "declare flat `users` or multi-tenant `accounts`, never both — with accounts defined, every user must belong to an account (nats-server rejects a config mixing top-level authorization users with accounts)"
+    expression: "this.users.size() == 0 || this.accounts.size() == 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.auth.at_least_one_surface"
+    message: "auth is declared but empty — declare `users` or `accounts` (or omit auth entirely for an unauthenticated server)"
+    expression: "this.users.size() > 0 || this.accounts.size() > 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.auth.no_auth_user_declared"
+    message: "no_auth_user must be one of the declared usernames (in users or in an account)"
+    expression: "this.no_auth_user == '' || this.users.exists(u, u.username == this.no_auth_user) || this.accounts.exists(a, a.users.exists(u, u.username == this.no_auth_user))"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.auth.unique_usernames"
+    message: "usernames must be unique across the whole auth block (including across accounts) — each becomes a key in the generated auth Secret"
+    expression: "this.users.map(u, u.username).unique() && this.accounts.all(a, a.users.map(u, u.username).unique()) && this.accounts.all(a, a.users.all(u, this.accounts.exists_one(b, b.users.exists(v, v.username == u.username))))"
+  };
 }
 
-// Wrapper for stream discard policy enum.
-message StreamDiscardEnum {
-  enum Value {
-    unspecified = 0;
-    // Discard old messages when limits reached.
-    old = 1;
-    // Reject new messages when limits reached.
-    // Note: Named "new_msgs" instead of "new" because "new" is a reserved keyword in Java.
-    // IaC modules convert this to "new" when sending to NACK CRDs.
-    new_msgs = 2;
-  }
+/**
+ * One NATS user. The password is module-generated and exported under
+ * this username's key in the `<name>-auth` Secret.
+ */
+message KubernetesNatsUser {
+  /**
+   * Username (also the key in the auth Secret).
+   */
+  string username = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$"
+  ];
+
+  /**
+   * Subject-level permissions. Empty = full publish/subscribe on the
+   * user's account.
+   */
+  KubernetesNatsPermissions permissions = 2;
 }
 
-// ============================================================================
-// Consumer Enum Wrappers
-// ============================================================================
+/**
+ * Subject-level permissions for a user. Subjects support NATS
+ * wildcards (`orders.*`, `events.>`). Allow and deny can be combined
+ * — deny wins on overlap.
+ */
+message KubernetesNatsPermissions {
+  // Subjects the user MAY publish to.
+  repeated string publish_allow = 1;
 
-// Wrapper for consumer delivery policy enum.
-message ConsumerDeliverPolicyEnum {
-  enum Value {
-    unspecified = 0;
-    // Deliver all messages from the beginning.
-    all = 1;
-    // Deliver starting from the last message.
-    last = 2;
-    // Deliver only new messages (after consumer creation).
-    // Note: Named "new_msgs" instead of "new" because "new" is a reserved keyword in Java.
-    // IaC modules convert this to "new" when sending to NACK CRDs.
-    new_msgs = 3;
-  }
+  // Subjects the user may NOT publish to.
+  repeated string publish_deny = 2;
+
+  // Subjects the user MAY subscribe to.
+  repeated string subscribe_allow = 3;
+
+  // Subjects the user may NOT subscribe to.
+  repeated string subscribe_deny = 4;
 }
 
-// Wrapper for consumer acknowledgment policy enum.
-message ConsumerAckPolicyEnum {
-  enum Value {
-    unspecified = 0;
-    // No acknowledgment required.
-    none = 1;
-    // Acknowledge all previous messages.
-    all = 2;
-    // Explicit acknowledgment required for each message.
-    explicit = 3;
-  }
-}
-
-// Wrapper for consumer replay policy enum.
-message ConsumerReplayPolicyEnum {
-  enum Value {
-    unspecified = 0;
-    // Replay messages at the original rate they were published.
-    original = 1;
-    // Replay messages as fast as possible.
-    instant = 2;
-  }
-}
-
-// ============================================================================
-// Stream and Consumer Messages
-// ============================================================================
-
-// KubernetesNatsStream configures a JetStream stream.
-// Streams are the core storage layer in JetStream, capturing and storing messages
-// published to specific subjects.
-message KubernetesNatsStream {
-  // A unique name for the stream.
-  // Must be between 1-255 characters, alphanumeric with allowed: - _ .
+/**
+ * One NATS account — an isolated subject namespace (multi-tenancy).
+ */
+message KubernetesNatsAccount {
+  /**
+   * Account name.
+   */
   string name = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 255
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$"
   ];
 
-  // List of subjects to consume, supports wildcards (e.g., "orders.*", "events.>").
-  repeated string subjects = 2 [(buf.validate.field).repeated.min_items = 1];
+  /**
+   * Users belonging to this account. At least one — an account
+   * nobody can connect to configures nothing.
+   */
+  repeated KubernetesNatsUser users = 2 [(buf.validate.field).repeated.min_items = 1];
 
-  // Storage backend for the stream (file or memory).
-  StreamStorageEnum.Value storage = 3;
-
-  // Number of replicas for the stream (odd number recommended for quorum).
-  int32 replicas = 4 [(buf.validate.field).int32 = {
-    gte: 1
-    lte: 5
-  }];
-
-  // Retention policy for the stream (limits, interest, or workqueue).
-  StreamRetentionEnum.Value retention = 5;
-
-  // Maximum age of messages in the stream (e.g., "24h", "7d").
-  // Empty string means unlimited.
-  string max_age = 6;
-
-  // Maximum size of the stream in bytes. -1 for unlimited.
-  int64 max_bytes = 7;
-
-  // Maximum number of messages in the stream. -1 for unlimited.
-  int64 max_msgs = 8;
-
-  // Maximum message size in bytes. -1 for unlimited.
-  int32 max_msg_size = 9;
-
-  // Maximum number of consumers allowed. -1 for unlimited.
-  int32 max_consumers = 10;
-
-  // Discard policy when limits are reached (old or new).
-  StreamDiscardEnum.Value discard = 11;
-
-  // Description of the stream.
-  string description = 12;
-
-  // Consumers for this stream.
-  repeated KubernetesNatsConsumer consumers = 13;
+  /**
+   * Let this account use JetStream (streams/consumers/KV are
+   * per-account with `accounts` defined). Requires `jet_stream` on
+   * the spec.
+   */
+  bool jet_stream_enabled = 3;
 }
 
-// KubernetesNatsConsumer configures a JetStream consumer.
-// Consumers define how messages are delivered and acknowledged from a stream.
-message KubernetesNatsConsumer {
-  // The durable name of the consumer.
-  // Must be unique within the stream.
-  string durable_name = 1 [
+/**
+ * TLS on the client listener. Expects a standard kubernetes.io/tls
+ * Secret (keys tls.crt/tls.key — the shape cert-manager produces).
+ */
+message KubernetesNatsTls {
+  /**
+   * Name of the existing TLS Secret in the install namespace.
+   * Accepts a literal name or a KubernetesCertificate reference.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 255
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_name"
   ];
 
-  // Delivery policy for the consumer (all, last, or new).
-  ConsumerDeliverPolicyEnum.Value deliver_policy = 2;
+  /**
+   * Require clients to present certificates signed by the CA (mutual
+   * TLS). The CA bundle must be present in the Secret (`ca.crt` —
+   * cert-manager includes it) for verification to work.
+   */
+  bool verify_clients = 2;
+}
 
-  // Acknowledgment policy for the consumer (none, all, or explicit).
-  ConsumerAckPolicyEnum.Value ack_policy = 3;
+/**
+ * The WebSocket listener.
+ */
+message KubernetesNatsWebsocket {
+  /**
+   * Enable NATS over WebSocket.
+   */
+  bool enabled = 1;
 
-  // Filter subject for the consumer (supports wildcards).
-  // Only messages matching this subject will be delivered.
-  string filter_subject = 4;
+  /**
+   * WebSocket port. Empty = 8080.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "8080",
+    (buf.validate.field).int32.gt = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
+}
 
-  // Deliver subject for push-based consumers.
-  // If empty, creates a pull-based consumer.
-  string deliver_subject = 5;
+/**
+ * The MQTT listener (requires JetStream — enforced on the spec).
+ */
+message KubernetesNatsMqtt {
+  /**
+   * Enable the MQTT bridge.
+   */
+  bool enabled = 1;
 
-  // Queue group name for load balancing across multiple consumers.
-  string deliver_group = 6;
+  /**
+   * MQTT port. Empty = 1883.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "1883",
+    (buf.validate.field).int32.gt = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
+}
 
-  // Maximum number of unacknowledged messages.
-  int32 max_ack_pending = 7;
+/**
+ * The leafnode listener (this deployment as the hub).
+ */
+message KubernetesNatsLeafnodes {
+  /**
+   * Accept leafnode connections.
+   */
+  bool enabled = 1;
 
-  // Maximum number of delivery attempts. -1 for unlimited.
-  int32 max_deliver = 8;
+  /**
+   * Leafnode port. Empty = 7422.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "7422",
+    (buf.validate.field).int32.gt = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
+}
 
-  // Time to wait for acknowledgment (e.g., "30s", "1m").
-  string ack_wait = 9;
+/**
+ * Prometheus metrics.
+ */
+message KubernetesNatsMetrics {
+  /**
+   * Run the prometheus-nats-exporter sidecar (scrape endpoint on port
+   * 7777 of each server pod).
+   */
+  bool exporter_enabled = 1;
 
-  // Replay policy for the consumer (original or instant).
-  ConsumerReplayPolicyEnum.Value replay_policy = 10;
+  /**
+   * Create a PodMonitor so a Prometheus Operator scrapes the
+   * exporter. Requires the Prometheus Operator CRDs on the cluster —
+   * a KubernetesKubePrometheusStack composes naturally. Requires
+   * `exporter_enabled`.
+   */
+  bool pod_monitor_enabled = 2;
 
-  // Description of the consumer.
-  string description = 11;
+  option (buf.validate.message).cel = {
+    id: "spec.metrics.pod_monitor.requires_exporter"
+    message: "pod_monitor_enabled requires exporter_enabled — the PodMonitor scrapes the exporter sidecar's endpoint"
+    expression: "!this.pod_monitor_enabled || this.exporter_enabled"
+  };
+}
+
+/**
+ * The client Service's exposure shape.
+ */
+message KubernetesNatsService {
+  /**
+   * Service type.
+   */
+  enum ServiceType {
+    // ClusterIP (the default) — in-cluster clients only; compose
+    // external exposure from first-class kinds or switch the type
+    // below.
+    cluster_ip = 0;
+
+    // LoadBalancer — the cloud provisions an external address;
+    // combine with `annotations` for the cloud's LB controller
+    // (internal LBs, NLB mode, external-dns hostnames).
+    load_balancer = 1;
+
+    // NodePort — every cluster node forwards a high port.
+    node_port = 2;
+  }
+
+  /**
+   * Service type. Default ClusterIP.
+   */
+  ServiceType type = 1;
+
+  /**
+   * Annotations on the client Service — the cloud-integration surface
+   * (LB class/scheme, external-dns hostnames, internal-LB flags).
+   */
+  map<string, string> annotations = 2;
+}
+
+/**
+ * Pod scheduling for the NATS server pods (nats-box schedules
+ * anywhere).
+ */
+message KubernetesNatsScheduling {
+  /**
+   * Node selector for the server pods.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for the server pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+}
+
+/**
+ * Container image overrides (air-gap/mirror support). The chart
+ * splits registry from repository internally; give each override as
+ * a full repository reference (e.g. "mirror.example.com/nats") and
+ * the modules place the pieces correctly. Empty tag = the chart's
+ * pinned tag for `chart_version`.
+ */
+message KubernetesNatsImages {
+  /**
+   * The NATS server image (upstream: nats, alpine tag).
+   */
+  dev.planton.provider.kubernetes.ContainerImage nats = 1;
+
+  /**
+   * The config-reloader sidecar image (upstream:
+   * natsio/nats-server-config-reloader).
+   */
+  dev.planton.provider.kubernetes.ContainerImage reloader = 2;
+
+  /**
+   * The metrics exporter image (upstream:
+   * natsio/prometheus-nats-exporter).
+   */
+  dev.planton.provider.kubernetes.ContainerImage exporter = 3;
+
+  /**
+   * The nats-box image (upstream: natsio/nats-box).
+   */
+  dev.planton.provider.kubernetes.ContainerImage nats_box = 4;
 }

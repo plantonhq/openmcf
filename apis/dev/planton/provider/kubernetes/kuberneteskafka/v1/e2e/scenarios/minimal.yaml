@@ -1,29 +1,42 @@
+# The dev shape: one dual-role node (KRaft controller + broker in one
+# pod), one plaintext internal listener, single-node replication settings.
+# The smallest declarable Kafka that actually serves.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKafka
 metadata:
-  name: e2e-kafka-minimal
+  name: e2e-kaf-minimal
 spec:
   namespace:
-    value: e2e-kafka-minimal
+    value: e2e-kaf-minimal
   create_namespace: true
-  broker_container:
-    replicas: 1
-    resources:
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 50m
-        memory: 128Mi
-    disk_size: 1Gi
-  zookeeper_container:
-    replicas: 1
-    resources:
-      limits:
-        cpu: 250m
-        memory: 256Mi
-      requests:
-        cpu: 50m
-        memory: 64Mi
-    disk_size: 1Gi
-  is_deploy_kafka_ui: false
+  node_pools:
+    - name: dual
+      roles:
+        - controller
+        - broker
+      replicas: 1
+      storage:
+        size: 2Gi
+        delete_claim: true
+      resources:
+        requests:
+          cpu: 250m
+          memory: 1Gi
+        limits:
+          cpu: "1"
+          memory: 1536Mi
+  listeners:
+    - name: plain
+      port: 9092
+      tls: false
+  # Single-node replication: every internal topic and default at RF 1
+  # (the cluster cannot place a second replica anywhere).
+  config:
+    default.replication.factor: "1"
+    min.insync.replicas: "1"
+    offsets.topic.replication.factor: "1"
+    transaction.state.log.replication.factor: "1"
+    transaction.state.log.min.isr: "1"
+  jvm:
+    xms: 512m
+    xmx: 512m

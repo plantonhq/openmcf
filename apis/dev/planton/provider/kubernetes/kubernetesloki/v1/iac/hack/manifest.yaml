@@ -1,0 +1,87 @@
+# Full-surface offline-proof manifest: simple-scalable tiers on an
+# S3-compatible object store (credentials via Secret + env expansion),
+# derived-schema override, retention with the compactor, ingestion limits,
+# the gateway's multi-tenant basic-auth path (bcrypt hashes), tuned caches,
+# the ruler firing at an Alertmanager, ServiceMonitor, a private-mirror
+# image registry with a pull secret, scheduling, and an escape-hatch entry
+# — so the offline tofu plan and pulumi preview proofs cover the full typed
+# surface incl. the split/combined image forms. Placeholder values; never
+# applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesLoki
+metadata:
+  name: loki-hack
+spec:
+  namespace:
+    value: loki-hack
+  createNamespace: true
+  chartVersion: 18.5.4
+  simpleScalable:
+    writeReplicas: 3
+    readReplicas: 3
+    backendReplicas: 3
+    diskSize: 20Gi
+    storageClass:
+      value: gp3
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+  storage:
+    s3:
+      bucket: loki-chunks
+      rulerBucket: loki-ruler
+      endpoint: http://objects-filer.storage.svc.cluster.local:8333
+      forcePathStyle: true
+      insecure: true
+      credentials:
+        accessKeyIdSecret:
+          name: loki-s3
+          key: access-key-id
+        secretAccessKeySecret:
+          name: loki-s3
+          key: secret-access-key
+  retentionPeriod: 744h
+  limits:
+    ingestionRateMb: 8
+    ingestionBurstSizeMb: 12
+    maxGlobalStreamsPerUser: 10000
+    maxQueryLookback: 720h
+  multiTenancy:
+    enabled: true
+    tenants:
+      - name: team-a
+        passwordHash: "$2y$10$7O40CaY1yz7fu9O24k2/u.ct/wELYHRBsn25v/7AyuQ8E8hrLqpva"
+  gateway:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  caching:
+    chunksCacheMemoryMb: 256
+    resultsCacheMemoryMb: 128
+  ruler:
+    enabled: true
+    alertmanagerUrl:
+      value: http://monitoring-kube-prometheus-alertmanager.observability.svc.cluster.local:9093
+  serviceMonitorEnabled: true
+  imageRegistry: mirror.example.com
+  imagePullSecrets:
+    - mirror-pull
+  scheduling:
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: observability
+        effect: NoSchedule
+    priorityClassName: system-cluster-critical
+  helmValues: |
+    loki:
+      podLabels:
+        team: observability

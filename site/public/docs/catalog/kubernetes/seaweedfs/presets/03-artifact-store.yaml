@@ -1,0 +1,37 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSeaweedFs
+metadata:
+  name: artifact-store
+spec:
+  namespace:
+    value: artifacts
+  create_namespace: true
+  # Moderate sizing: single node of each tier, with the volume tier
+  # (the only one that grows with stored bytes) sized for artifact
+  # churn. The S3 gateway stays embedded on the filer — artifact
+  # traffic rarely needs a separately scaled API Deployment.
+  volume:
+    data_volume:
+      size: 100Gi
+  filer:
+    data_volume:
+      size: 10Gi
+  # The bucket-centric shape: buckets are declared where the store is
+  # declared, created by the chart's install hook, and typed per
+  # policy. Removing an entry later does NOT delete the bucket or its
+  # data — bucket deletion is a data operation, never an IaC one.
+  s3:
+    buckets:
+      # CI artifacts expire themselves: SeaweedFS TTL syntax, 1-255
+      # followed by m|h|d|w|M|y. Objects older than 30 days go away
+      # without a cleanup job.
+      - name: ci-artifacts
+        ttl: 30d
+      # Release artifacts keep every version: overwriting a released
+      # object preserves the prior one behind S3 versioning.
+      - name: release-artifacts
+        versioning: true
+      # Public assets allow unauthenticated READS (serve them behind
+      # your ingress); writes still require credentials.
+      - name: public-assets
+        anonymous_read: true

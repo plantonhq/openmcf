@@ -1,192 +1,177 @@
-##############################################
-# locals.tf
+# Computed values for the KubernetesGhaRunnerScaleSet module. Every
+# resolution here has an exact twin in the Pulumi module — keep them in
+# lockstep: same rendered chart values, same materialized Secret, same
+# outputs.
 #
-# Local variables for KubernetesGhaRunnerScaleSet
-##############################################
+# HCL DISCIPLINE: conditional keys are contributed via merge() of
+# `cond ? { key = value } : {}` singleton maps — a ternary whose branches
+# are differently-shaped objects fails plan-time type unification.
+# Optional nested blocks are read with try(): HCL's && does NOT
+# short-circuit.
 
 locals {
-  # Chart configuration
-  # For OCI charts, the full URL must be passed as the chart parameter
-  # (repository doesn't work with OCI registries in Terraform helm_release)
-  chart_oci     = "oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set"
-  chart_version = var.spec.helm_chart_version
+  # Pinned OCI registry path and chart name; chart_version resolves to
+  # the pinned default when unset. Keep it EQUAL to the controller
+  # kind's — GitHub supports controller and scale set charts only at
+  # matching versions.
+  helm_oci_repo         = "oci://ghcr.io/actions/actions-runner-controller-charts"
+  helm_chart_name       = "gha-runner-scale-set"
+  default_chart_version = "0.14.2"
+  chart_version         = try(var.spec.chart_version, "") != "" ? var.spec.chart_version : local.default_chart_version
 
-  # Derived values
-  namespace       = var.spec.namespace.value
-  release_name    = var.metadata.name
-  create_namespace = var.spec.create_namespace
+  namespace    = var.spec.namespace
+  release_name = var.metadata.name
 
-  # Runner scale set name (defaults to release name)
-  runner_scale_set_name = coalesce(var.spec.runner_scale_set_name, var.metadata.name)
+  # The GitHub-visible fleet name — the exact `runs-on:` value.
+  # spec.runner_scale_set_name, falling back to metadata.name. The chart
+  # fails installs past 45 characters (main.tf precondition catches it
+  # at plan).
+  runner_scale_set_name = try(var.spec.runner_scale_set_name, "") != "" ? var.spec.runner_scale_set_name : var.metadata.name
 
-  # Labels for Kubernetes resources
+  # The credential Secret the chart reads BY NAME: the user's own Secret
+  # (existing-Secret arm) or the module-materialized
+  # `<name>-github-auth` (declared arms) — credential material never
+  # rides rendered chart values (Pulumi twin: githubAuthSecret).
+  materialize_auth_secret = try(var.spec.auth.existing_secret_name, "") == ""
+  github_auth_secret_name = local.materialize_auth_secret ? "${var.metadata.name}-github-auth" : var.spec.auth.existing_secret_name
+
+  # The materialized Secret's data — the chart's pre-defined-secret key
+  # contract (github_token for a PAT; github_app_* for an App). Exactly
+  # one arm is populated (spec CEL).
+  github_auth_secret_data = merge(
+    try(var.spec.auth.pat, null) != null ? {
+      github_token = var.spec.auth.pat.token
+    } : {},
+    try(var.spec.auth.github_app, null) != null ? {
+      github_app_id              = var.spec.auth.github_app.app_id
+      github_app_installation_id = var.spec.auth.github_app.installation_id
+      github_app_private_key     = var.spec.auth.github_app.private_key
+    } : {}
+  )
+
+  # Planton governance labels for the module-created satellites (the
+  # namespace, the materialized Secret — never injected into the chart's
+  # own resources; Helm owns those).
   labels = merge(
     {
-      "planton.dev/resource"      = "true"
-      "planton.dev/resource-name" = var.metadata.name
-      "planton.dev/resource-kind" = "KubernetesGhaRunnerScaleSet"
+      "planton.ai/resource"      = "true"
+      "planton.ai/resource-name" = var.metadata.name
+      "planton.ai/resource-kind" = "KubernetesGhaRunnerScaleSet"
     },
-    var.metadata.id != "" ? { "planton.dev/resource-id" = var.metadata.id } : {},
-    var.metadata.org != "" ? { "planton.dev/organization" = var.metadata.org } : {},
-    var.metadata.env != "" ? { "planton.dev/environment" = var.metadata.env } : {},
-    var.spec.labels
+    try(var.metadata.id, "") != "" ? { "planton.ai/resource-id" = var.metadata.id } : {},
+    try(var.metadata.org, "") != "" ? { "planton.ai/organization" = var.metadata.org } : {},
+    try(var.metadata.env, "") != "" ? { "planton.ai/environment" = var.metadata.env } : {}
   )
 
-  # Container mode mapping
-  container_mode_type = lookup({
-    "DIND"                = "dind"
-    "KUBERNETES"          = "kubernetes"
-    "KUBERNETES_NO_VOLUME" = "kubernetes-novolume"
-    "DEFAULT"             = ""
-  }, var.spec.container_mode.type, "")
-
-  # GitHub authentication type
-  use_pat_token       = var.spec.github.pat_token != null
-  use_github_app      = var.spec.github.github_app != null
-  use_existing_secret = var.spec.github.existing_secret_name != null && var.spec.github.existing_secret_name != ""
-
-  github_secret_name = local.use_existing_secret ? var.spec.github.existing_secret_name : "${local.release_name}-github-secret"
-
-  # Scaling configuration
-  min_runners = try(var.spec.scaling.min_runners, 0)
-  max_runners = try(var.spec.scaling.max_runners, 5)
-
-  # Build Helm values
-  helm_values = {
-    githubConfigUrl = var.spec.github.config_url
-
-    # GitHub secret configuration
-    githubConfigSecret = local.use_existing_secret ? local.github_secret_name : (
-      local.use_pat_token ? {
-        github_token = var.spec.github.pat_token.token
-      } : (
-        local.use_github_app ? {
-          github_app_id              = var.spec.github.github_app.app_id
-          github_app_installation_id = var.spec.github.github_app.installation_id
-          github_app_private_key     = base64decode(var.spec.github.github_app.private_key_base64)
-        } : null
-      )
-    )
-
-    # Scaling
-    minRunners = local.min_runners
-    maxRunners = local.max_runners
-
-    # Runner group and name
-    runnerGroup        = var.spec.runner_group != "" ? var.spec.runner_group : null
-    runnerScaleSetName = local.runner_scale_set_name
-
-    # Labels and annotations
-    labels      = length(var.spec.labels) > 0 ? var.spec.labels : null
-    annotations = length(var.spec.annotations) > 0 ? var.spec.annotations : null
-  }
-
-  # Container mode values
-  container_mode_values = local.container_mode_type != "" ? {
-    containerMode = merge(
-      { type = local.container_mode_type },
-      local.container_mode_type == "kubernetes" && var.spec.container_mode.work_volume_claim != null ? {
-        kubernetesModeWorkVolumeClaim = {
-          accessModes = var.spec.container_mode.work_volume_claim.access_modes
-          storageClassName = var.spec.container_mode.work_volume_claim.storage_class != "" ? var.spec.container_mode.work_volume_claim.storage_class : null
-          resources = {
-            requests = {
-              storage = var.spec.container_mode.work_volume_claim.size
-            }
+  # ---- container mode ---------------------------------------------------------------
+  container_mode_block = try(var.spec.container_mode, null) == null ? null : merge(
+    { type = var.spec.container_mode.mode },
+    try(var.spec.container_mode.kubernetes_work_volume, null) != null ? {
+      kubernetesModeWorkVolumeClaim = {
+        accessModes      = ["ReadWriteOnce"]
+        storageClassName = var.spec.container_mode.kubernetes_work_volume.storage_class
+        resources = {
+          requests = {
+            storage = var.spec.container_mode.kubernetes_work_volume.size
           }
         }
-      } : {}
-    )
-  } : {}
-
-  # Controller service account values
-  controller_sa_values = try(var.spec.controller_service_account.name, "") != "" || try(var.spec.controller_service_account.namespace, "") != "" ? {
-    controllerServiceAccount = {
-      name      = try(var.spec.controller_service_account.name, null)
-      namespace = try(var.spec.controller_service_account.namespace, null)
-    }
-  } : {}
-
-  # Template spec for runner container
-  runner_spec = var.spec.runner != null ? {
-    template = {
-      spec = merge(
-        # Containers
-        {
-          containers = [
-            merge(
-              {
-                name    = "runner"
-                command = ["/home/runner/run.sh"]
-              },
-              try(var.spec.runner.image.repository, "") != "" ? {
-                image = "${var.spec.runner.image.repository}${try(var.spec.runner.image.tag, "") != "" ? ":${var.spec.runner.image.tag}" : ""}"
-              } : {},
-              try(var.spec.runner.image.pull_policy, "") != "" ? {
-                imagePullPolicy = var.spec.runner.image.pull_policy
-              } : {},
-              try(var.spec.runner.resources, null) != null ? {
-                resources = {
-                  requests = try(var.spec.runner.resources.requests, null) != null ? {
-                    cpu    = try(var.spec.runner.resources.requests.cpu, null)
-                    memory = try(var.spec.runner.resources.requests.memory, null)
-                  } : null
-                  limits = try(var.spec.runner.resources.limits, null) != null ? {
-                    cpu    = try(var.spec.runner.resources.limits.cpu, null)
-                    memory = try(var.spec.runner.resources.limits.memory, null)
-                  } : null
-                }
-              } : {},
-              length(try(var.spec.runner.env, [])) > 0 ? {
-                env = [for e in var.spec.runner.env : {
-                  name  = e.name
-                  value = e.value
-                }]
-              } : {},
-              length(var.spec.persistent_volumes) > 0 || length(try(var.spec.runner.volume_mounts, [])) > 0 ? {
-                volumeMounts = concat(
-                  [for pv in var.spec.persistent_volumes : {
-                    name      = pv.name
-                    mountPath = pv.mount_path
-                    readOnly  = pv.read_only
-                  }],
-                  [for vm in try(var.spec.runner.volume_mounts, []) : {
-                    name      = vm.name
-                    mountPath = vm.mount_path
-                    readOnly  = vm.read_only
-                    subPath   = vm.sub_path != "" ? vm.sub_path : null
-                  }]
-                )
-              } : {}
-            )
-          ]
-        },
-        # Volumes for persistent volumes
-        length(var.spec.persistent_volumes) > 0 ? {
-          volumes = [for pv in var.spec.persistent_volumes : {
-            name = pv.name
-            persistentVolumeClaim = {
-              claimName = "${local.release_name}-${pv.name}"
-            }
-          }]
-        } : {},
-        # Image pull secrets
-        length(var.spec.image_pull_secrets) > 0 ? {
-          imagePullSecrets = [for s in var.spec.image_pull_secrets : { name = s }]
-        } : {}
-      )
-    }
-  } : {}
-
-  # Final Helm values
-  helm_values_final = merge(
-    local.helm_values,
-    local.container_mode_values,
-    local.controller_sa_values,
-    local.runner_spec
+      }
+    } : {}
   )
 
-  # PVC names for output
-  pvc_names = [for pv in var.spec.persistent_volumes : "${local.release_name}-${pv.name}"]
-}
+  # ---- the runner container -----------------------------------------------------------
+  # Rendered ONLY when customized: Helm values LISTS replace (never
+  # merge), so any override must re-state the chart's own container
+  # contract — name `runner` (the chart applies its mode wiring to the
+  # container with exactly that name) and the run.sh command.
+  runner_customized = try(var.spec.runner, null) != null && (try(var.spec.runner.image, "") != "" || try(var.spec.runner.resources, null) != null)
 
+  runner_resources = try(var.spec.runner.resources, null) == null ? null : {
+    for k, v in {
+      requests = try(var.spec.runner.resources.requests, null) == null ? null : {
+        for rk, rv in {
+          cpu    = var.spec.runner.resources.requests.cpu
+          memory = var.spec.runner.resources.requests.memory
+        } : rk => rv if rv != null && rv != ""
+      }
+      limits = try(var.spec.runner.resources.limits, null) == null ? null : {
+        for rk, rv in {
+          cpu    = var.spec.runner.resources.limits.cpu
+          memory = var.spec.runner.resources.limits.memory
+        } : rk => rv if rv != null && rv != ""
+      }
+    } : k => v if v != null
+  }
+
+  runner_template_block = !local.runner_customized ? null : {
+    spec = {
+      containers = [
+        merge(
+          {
+            name    = "runner"
+            image   = try(var.spec.runner.image, "") != "" ? var.spec.runner.image : "ghcr.io/actions/actions-runner:latest"
+            command = ["/home/runner/run.sh"]
+          },
+          local.runner_resources != null ? { resources = local.runner_resources } : {}
+        )
+      ]
+    }
+  }
+
+  # ---- proxy ------------------------------------------------------------------------------
+  proxy_block = try(var.spec.proxy, null) == null ? null : merge(
+    try(var.spec.proxy.http, null) != null ? {
+      http = merge(
+        { url = var.spec.proxy.http.url },
+        try(var.spec.proxy.http.credential_secret_name, "") != "" ? { credentialSecretRef = var.spec.proxy.http.credential_secret_name } : {}
+      )
+    } : {},
+    try(var.spec.proxy.https, null) != null ? {
+      https = merge(
+        { url = var.spec.proxy.https.url },
+        try(var.spec.proxy.https.credential_secret_name, "") != "" ? { credentialSecretRef = var.spec.proxy.https.credential_secret_name } : {}
+      )
+    } : {},
+    length(try(var.spec.proxy.no_proxy, [])) > 0 ? { noProxy = var.spec.proxy.no_proxy } : {}
+  )
+
+  # ---- GitHub Enterprise Server private CA -------------------------------------------------
+  github_server_tls_block = try(var.spec.github_server_tls, null) == null ? null : merge(
+    {
+      certificateFrom = {
+        configMapKeyRef = {
+          name = var.spec.github_server_tls.config_map_name
+          key  = try(var.spec.github_server_tls.key, "") != "" ? var.spec.github_server_tls.key : "ca.crt"
+        }
+      }
+    },
+    try(var.spec.github_server_tls.runner_mount_path, "") != "" ? { runnerMountPath = var.spec.github_server_tls.runner_mount_path } : {}
+  )
+
+  # ---- typed chart values (Pulumi twin: buildHelmValues) -------------------------------------
+  # githubConfigSecret always renders as a Secret NAME (the chart's
+  # pre-defined-secret form) — the secret discipline. The runner scale
+  # set name is rendered explicitly (never left to the release-name
+  # default) so the exported runs-on handle and the rendered chart agree
+  # by construction.
+  typed_helm_values = merge(
+    {
+      githubConfigUrl    = var.spec.github_config_url
+      githubConfigSecret = local.github_auth_secret_name
+      runnerScaleSetName = local.runner_scale_set_name
+    },
+    try(var.spec.runner_group, "") != "" ? { runnerGroup = var.spec.runner_group } : {},
+    try(var.spec.min_runners, null) != null ? { minRunners = var.spec.min_runners } : {},
+    try(var.spec.max_runners, null) != null ? { maxRunners = var.spec.max_runners } : {},
+    local.container_mode_block != null ? { containerMode = local.container_mode_block } : {},
+    local.runner_template_block != null ? { template = local.runner_template_block } : {},
+    local.proxy_block != null ? { proxy = local.proxy_block } : {},
+    local.github_server_tls_block != null ? { githubServerTLS = local.github_server_tls_block } : {},
+    try(var.spec.controller_service_account, null) != null ? {
+      controllerServiceAccount = {
+        namespace = var.spec.controller_service_account.namespace
+        name      = var.spec.controller_service_account.name
+      }
+    } : {}
+  )
+}

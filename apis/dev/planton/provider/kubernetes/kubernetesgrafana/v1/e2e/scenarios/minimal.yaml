@@ -1,18 +1,13 @@
+# The component defaults on their own: a single ephemeral replica with
+# chart-generated admin credentials — the verifier reads the chart-owned
+# `<name>` Secret (the lookup-stable generate arm's first live proof),
+# asserts /api/health reports a working database and authenticates
+# against the API as the admin.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGrafana
 metadata:
-  name: e2e-grafana-minimal
+  name: e2e-grafana-min
 spec:
   namespace:
-    value: e2e-grafana-minimal
+    value: e2e-grafana-min
   create_namespace: true
-  container:
-    resources:
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      limits:
-        cpu: 500m
-        memory: 256Mi
-  ingress:
-    enabled: false

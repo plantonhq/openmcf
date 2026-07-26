@@ -2,32 +2,30 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesgrafana.v1;
 
-//grafana-kubernetes stack outputs.
+//grafana-kubernetes stack outputs
 message KubernetesGrafanaStackOutputs {
-  //kubernetes namespace in which grafana-kubernetes is created.
+  //namespace Grafana runs in.
   string namespace = 1;
 
-  //kubernetes service name for grafana-kubernetes.
-  //ex: main-grafana-kubernetes
-  //in the above example, "main" is the name of the grafana-kubernetes
-  string service = 2;
+  //Helm release name (= metadata.name). The modules pin the chart's
+  //fullname to it, so the Service and Secret names derive from it.
+  string release_name = 2;
 
-  //command to setup port-forwarding to open grafana-kubernetes from developers laptop.
-  //this might come handy when grafana-kubernetes ingress is disabled for security reasons.
-  //this is rendered by combining grafana_kubernetes_kubernetes_service and kubernetes_namespace
-  //ex: kubectl port-forward svc/grafana_kubernetes_kubernetes_service -n kubernetes_namespace 6379:6379
-  //running the command from this attribute makes it possible to access grafana-kubernetes using http://localhost:8080/grafana
-  string port_forward_command = 3;
+  //name of the Grafana Service (port 80 → container 3000).
+  string service = 3;
 
-  //kubernetes endpoint to connect to grafana-kubernetes from the web browser.
-  //ex: main-grafana-kubernetes.namespace.svc.cluster.local:6379
-  string kube_endpoint = 4;
+  //in-cluster endpoint for browsers behind composed exposure and for
+  //in-cluster API clients,
+  //e.g. http://dashboards.observability.svc.cluster.local
+  string endpoint = 4;
 
-  //public endpoint to open grafana-kubernetes from clients outside kubernetes.
-  //ex: https://gfnk8s-planton-pcs-dev-main.data.dev.planton.live
-  string external_hostname = 5;
+  //name of the Secret holding the admin credentials — `<name>`, keys
+  //`admin-user` / `admin-password` (the chart generates it once and
+  //keeps it stable across upgrades; when spec.admin_secret points at an
+  //existing Secret, that name is echoed here instead).
+  string admin_secret_name = 5;
 
-  //internal endpoint to open grafana-kubernetes from clients outside kubernetes.
-  //ex: https://gfnk8s-planton-pcs-dev-main.data-internal.dev.planton.live
-  string internal_hostname = 6;
+  //command to port-forward the Grafana UI to a developer laptop,
+  //e.g. kubectl port-forward svc/dashboards -n observability 3000:80
+  string port_forward_command = 6;
 }

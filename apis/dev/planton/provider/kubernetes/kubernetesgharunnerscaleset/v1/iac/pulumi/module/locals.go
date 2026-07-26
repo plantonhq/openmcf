@@ -1,7 +1,6 @@
 package module
 
 import (
-	"encoding/base64"
 	"strconv"
 
 	kubernetesgharunnerscalesetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1"
@@ -10,242 +9,93 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Locals holds all derived configuration for the runner scale set deployment.
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	KubernetesGhaRunnerScaleSet *kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSet
-	KubeLabels                  map[string]string
-	Namespace                   string
-	CreateNamespace             bool
-	ReleaseName                 string
-	ChartVersion                string
+	Spec *kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetSpec
 
-	// GitHub configuration
-	GitHubConfigURL     string
-	GitHubSecretName    string
-	UseExistingSecret   bool
-	PatToken            string
-	GitHubAppID         string
-	GitHubAppInstallID  string
-	GitHubAppPrivateKey string
+	// Resource-identity labels stamped on the module-created satellites
+	// (the namespace, the materialized credential Secret — never
+	// injected into the chart's own resources; Helm owns those).
+	Labels map[string]string
 
-	// Scaling
-	MinRunners int32
-	MaxRunners int32
+	// Namespace the scale set installs into (resolved literal from the
+	// spec's value-or-ref).
+	Namespace string
 
-	// Runner group and name
-	RunnerGroup        string
+	// Helm release name — metadata.name. Many scale sets can coexist
+	// (one per repo/org registration); each is its own release.
+	ReleaseName string
+
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
+	ChartVersion string
+
+	// RunnerScaleSetName is the GitHub-visible fleet name — the exact
+	// `runs-on:` value. spec.runner_scale_set_name, falling back to
+	// metadata.name. Capped at 45 characters (fail-loud in main.go —
+	// the chart's own template fails past it).
 	RunnerScaleSetName string
 
-	// Container mode
-	ContainerModeType           string
-	WorkVolumeClaimStorageClass string
-	WorkVolumeClaimSize         string
-	WorkVolumeClaimAccessModes  []string
+	// GithubAuthSecretName is the Secret the chart reads the GitHub
+	// credential from: the user's own Secret (existing-Secret arm) or
+	// the module-materialized `<name>-github-auth` (declared arms).
+	GithubAuthSecretName string
 
-	// Runner container
-	RunnerImageRepository string
-	RunnerImageTag        string
-	RunnerImagePullPolicy string
-	RunnerCpuRequests     string
-	RunnerCpuLimits       string
-	RunnerMemoryRequests  string
-	RunnerMemoryLimits    string
-	RunnerEnvVars         map[string]string
-	RunnerVolumeMounts    []*kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetVolumeMount
-
-	// Persistent volumes
-	PersistentVolumes []*kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetPersistentVolume
-
-	// Controller service account
-	ControllerServiceAccountName      string
-	ControllerServiceAccountNamespace string
-
-	// Other
-	ImagePullSecrets []string
-	Labels           map[string]string
-	Annotations      map[string]string
+	// MaterializeAuthSecret is true on the declared PAT / GitHub App
+	// arms — the module creates the Secret so credential material never
+	// rides rendered chart values.
+	MaterializeAuthSecret bool
 }
 
-func initializeLocals(ctx *pulumi.Context, in *kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetStackInput) *Locals {
-	var l Locals
-	l.KubernetesGhaRunnerScaleSet = in.Target
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetStackInput) *Locals {
+	target := stackInput.Target
+	spec := target.Spec
 
-	// Initialize labels
-	l.KubeLabels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
-		kuberneteslabelkeys.ResourceName: in.Target.Metadata.Name,
+		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesGhaRunnerScaleSet.String(),
 	}
-
-	if id := in.Target.Metadata.Id; id != "" {
-		l.KubeLabels[kuberneteslabelkeys.ResourceId] = id
+	if target.Metadata.Id != "" {
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-	if org := in.Target.Metadata.Org; org != "" {
-		l.KubeLabels[kuberneteslabelkeys.Organization] = org
+	if target.Metadata.Org != "" {
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-	if env := in.Target.Metadata.Env; env != "" {
-		l.KubeLabels[kuberneteslabelkeys.Environment] = env
-	}
-
-	// Namespace configuration
-	if ns := in.Target.Spec.Namespace; ns != nil && ns.GetValue() != "" {
-		l.Namespace = ns.GetValue()
-	} else {
-		l.Namespace = "gha-runners"
-	}
-	l.CreateNamespace = in.Target.Spec.CreateNamespace
-
-	// Release name
-	l.ReleaseName = in.Target.Metadata.Name
-
-	// Chart version
-	if v := in.Target.Spec.HelmChartVersion; v != nil {
-		l.ChartVersion = *v
-	} else {
-		l.ChartVersion = DefaultChartVersion
+	if target.Metadata.Env != "" {
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// GitHub configuration
-	if gh := in.Target.Spec.Github; gh != nil {
-		l.GitHubConfigURL = gh.ConfigUrl
-
-		switch auth := gh.Auth.(type) {
-		case *kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetGitHubConfig_PatToken:
-			if auth.PatToken != nil {
-				l.PatToken = auth.PatToken.Token
-			}
-		case *kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetGitHubConfig_GithubApp:
-			if auth.GithubApp != nil {
-				l.GitHubAppID = auth.GithubApp.AppId
-				l.GitHubAppInstallID = auth.GithubApp.InstallationId
-				l.GitHubAppPrivateKey = decodeBase64(auth.GithubApp.PrivateKeyBase64)
-			}
-		case *kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetGitHubConfig_ExistingSecretName:
-			l.GitHubSecretName = auth.ExistingSecretName
-			l.UseExistingSecret = true
-		}
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	// Generate secret name if not using existing
-	if !l.UseExistingSecret {
-		l.GitHubSecretName = l.ReleaseName + "-github-secret"
+	runnerScaleSetName := spec.GetRunnerScaleSetName()
+	if runnerScaleSetName == "" {
+		runnerScaleSetName = target.Metadata.Name
 	}
 
-	// Scaling configuration
-	l.MinRunners = 0
-	l.MaxRunners = 5
-	if s := in.Target.Spec.Scaling; s != nil {
-		if s.MinRunners != nil {
-			l.MinRunners = *s.MinRunners
-		}
-		if s.MaxRunners != nil {
-			l.MaxRunners = *s.MaxRunners
-		}
+	githubAuthSecretName := spec.GetAuth().GetExistingSecretName()
+	materialize := false
+	if githubAuthSecretName == "" {
+		githubAuthSecretName = target.Metadata.Name + vars.GithubAuthSecretSuffix
+		materialize = true
 	}
 
-	// Runner group and name
-	l.RunnerGroup = in.Target.Spec.GetRunnerGroup()
-	l.RunnerScaleSetName = in.Target.Spec.RunnerScaleSetName
-	if l.RunnerScaleSetName == "" {
-		l.RunnerScaleSetName = l.ReleaseName
+	return &Locals{
+		Spec:                  spec,
+		Labels:                labels,
+		Namespace:             spec.Namespace.GetValue(),
+		ReleaseName:           target.Metadata.Name,
+		ChartVersion:          chartVersion,
+		RunnerScaleSetName:    runnerScaleSetName,
+		GithubAuthSecretName:  githubAuthSecretName,
+		MaterializeAuthSecret: materialize,
 	}
-
-	// Container mode
-	if cm := in.Target.Spec.ContainerMode; cm != nil {
-		l.ContainerModeType = containerModeTypeToString(cm.Type)
-
-		if cm.WorkVolumeClaim != nil {
-			l.WorkVolumeClaimStorageClass = cm.WorkVolumeClaim.StorageClass
-			l.WorkVolumeClaimSize = cm.WorkVolumeClaim.Size
-			l.WorkVolumeClaimAccessModes = cm.WorkVolumeClaim.AccessModes
-			if len(l.WorkVolumeClaimAccessModes) == 0 {
-				l.WorkVolumeClaimAccessModes = []string{"ReadWriteOnce"}
-			}
-		}
-	}
-
-	// Runner configuration
-	if r := in.Target.Spec.Runner; r != nil {
-		if r.Image != nil {
-			l.RunnerImageRepository = r.Image.GetRepository()
-			l.RunnerImageTag = r.Image.GetTag()
-			l.RunnerImagePullPolicy = r.Image.GetPullPolicy()
-		}
-		if r.Resources != nil {
-			if r.Resources.Requests != nil {
-				l.RunnerCpuRequests = r.Resources.Requests.Cpu
-				l.RunnerMemoryRequests = r.Resources.Requests.Memory
-			}
-			if r.Resources.Limits != nil {
-				l.RunnerCpuLimits = r.Resources.Limits.Cpu
-				l.RunnerMemoryLimits = r.Resources.Limits.Memory
-			}
-		}
-		if len(r.Env) > 0 {
-			l.RunnerEnvVars = make(map[string]string)
-			for _, e := range r.Env {
-				l.RunnerEnvVars[e.Name] = e.Value
-			}
-		}
-		l.RunnerVolumeMounts = r.VolumeMounts
-	}
-
-	// Persistent volumes
-	l.PersistentVolumes = in.Target.Spec.PersistentVolumes
-
-	// Controller service account
-	if csa := in.Target.Spec.ControllerServiceAccount; csa != nil {
-		l.ControllerServiceAccountName = csa.Name
-		l.ControllerServiceAccountNamespace = csa.Namespace
-	}
-
-	// Other configuration
-	l.ImagePullSecrets = in.Target.Spec.ImagePullSecrets
-	l.Labels = in.Target.Spec.Labels
-	l.Annotations = in.Target.Spec.Annotations
-
-	// Export outputs
-	ctx.Export(OpNamespace, pulumi.String(l.Namespace))
-	ctx.Export(OpReleaseName, pulumi.String(l.ReleaseName))
-	ctx.Export(OpChartVersion, pulumi.String(l.ChartVersion))
-	ctx.Export(OpRunnerScaleSetName, pulumi.String(l.RunnerScaleSetName))
-	ctx.Export(OpGitHubConfigURL, pulumi.String(l.GitHubConfigURL))
-	ctx.Export(OpGitHubSecretName, pulumi.String(l.GitHubSecretName))
-	ctx.Export(OpMinRunners, pulumi.Int(l.MinRunners))
-	ctx.Export(OpMaxRunners, pulumi.Int(l.MaxRunners))
-	ctx.Export(OpContainerMode, pulumi.String(l.ContainerModeType))
-
-	// Export PVC names
-	var pvcNames []string
-	for _, pv := range l.PersistentVolumes {
-		pvcNames = append(pvcNames, l.ReleaseName+"-"+pv.Name)
-	}
-	ctx.Export(OpPvcNames, pulumi.ToStringArray(pvcNames))
-
-	return &l
-}
-
-func containerModeTypeToString(t kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType) string {
-	switch t {
-	case kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetContainerMode_DIND:
-		return "dind"
-	case kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetContainerMode_KUBERNETES:
-		return "kubernetes"
-	case kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetContainerMode_KUBERNETES_NO_VOLUME:
-		return "kubernetes-novolume"
-	case kubernetesgharunnerscalesetv1.KubernetesGhaRunnerScaleSetContainerMode_DEFAULT:
-		return ""
-	default:
-		return ""
-	}
-}
-
-// decodeBase64 decodes a base64 encoded string.
-// Returns empty string if decoding fails.
-func decodeBase64(encoded string) string {
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return ""
-	}
-	return string(decoded)
 }

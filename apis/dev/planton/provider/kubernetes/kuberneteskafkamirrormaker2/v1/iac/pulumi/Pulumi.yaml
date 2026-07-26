@@ -1,0 +1,3 @@
+name: kubernetes-kafka-mirror-maker2
+runtime: go
+description: Strimzi-operator-managed MirrorMaker 2 replication engine — the KafkaMirrorMaker2 custom resource mirroring topics and consumer-group offsets from one or more source Kafka clusters into a target cluster

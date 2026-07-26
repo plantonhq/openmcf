@@ -1,0 +1,82 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kuberneteskafka
+spec:
+  # The module renders TWO kubectl_manifest resource families — the Kafka
+  # CR (a singleton) and one KafkaNodePool per pool (for_each keyed by the
+  # POOL NAME) — plus the optional metrics ConfigMap and anchor namespace.
+  # The two CR families carry different apiVersion/kind/name derivations,
+  # so their rows are scoped per Terraform logical resource name.
+  values:
+    # ── the Kafka CR (singleton resource "kafka") ───────────────────────
+    - name: api_version
+      tofu_resource_name: kafka
+      derivations:
+        - literal: kafka.strimzi.io/v1
+      where_to_find: Always "kafka.strimzi.io/v1" — the CR's group/version.
+    - name: kind
+      tofu_resource_name: kafka
+      derivations:
+        - literal: Kafka
+      where_to_find: Always "Kafka" — the cluster CR kind this module applies.
+    - name: name
+      tofu_resource_name: kafka
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: cluster_name
+      where_to_find: >-
+        The Kafka CR's metadata.name (equals the Planton resource name) —
+        `kubectl get kafka -A` (NAME column).
+    # ── the KafkaNodePool CRs (for_each resource "node_pools") ──────────
+    # Keyed by the pool's OWN NAME, so the name derives blind from the
+    # state address key.
+    - name: api_version
+      tofu_resource_name: node_pools
+      derivations:
+        - literal: kafka.strimzi.io/v1
+      where_to_find: Always "kafka.strimzi.io/v1" — the CR's group/version.
+    - name: kind
+      tofu_resource_name: node_pools
+      derivations:
+        - literal: KafkaNodePool
+      where_to_find: Always "KafkaNodePool" — the pool CR kind this module applies.
+    - name: name
+      tofu_resource_name: node_pools
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        Each pool CR's metadata.name is the spec's pool name (the for_each
+        key) — `kubectl get kafkanodepool -n <namespace>` (NAME column).
+    # ── shared namespace segment for every namespaced object ────────────
+    - name: namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        The cluster's namespace — `kubectl get kafka -A` (NAMESPACE column).
+    # ── the module-owned metrics ConfigMap (count-indexed singleton) ─────
+    # Deterministic name "<metadata.name>-kafka-metrics"; count-indexed, so
+    # from_address_key cannot serve it — the scoped suffix derivation does.
+    - name: config_map_name
+      tofu_resource_name: kafka_metrics
+      derivations:
+        - from_metadata_name_suffix: "-kafka-metrics"
+      where_to_find: >-
+        Present only when metrics.enabled; always
+        "<resource-name>-kafka-metrics" —
+        `kubectl get configmap -n <namespace>`.
+    - name: config_map_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the cluster.
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the cluster's
+        namespace itself.

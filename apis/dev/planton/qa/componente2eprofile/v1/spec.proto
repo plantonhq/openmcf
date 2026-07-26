@@ -28,6 +28,15 @@ message ComponentE2EProfileSpec {
     // so CI matrices built from green components never schedule lanes that
     // can only skip.
     real_cluster = 5;
+    // Fully authored and offline-validated (specs, both engine modules,
+    // scenarios, verifiers, static gates) but the live lanes have not yet
+    // run. Skipped everywhere like `deferred`, and excluded from CI matrices,
+    // until a proving session executes the lanes and flips the profile to
+    // `green` (or to `real_cluster`/`deferred` with a reason). Deliberately
+    // distinct from `deferred`, which records a KNOWN failure — a component
+    // awaiting its first proof has not failed anything. While a profile
+    // carries this status, validated_provisioners stays empty.
+    pending_proof = 6;
   }
 
   // Dependency tier within the provider (1 = simplest, higher = more dependencies).

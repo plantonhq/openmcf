@@ -2,33 +2,34 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kuberneteskafka.v1;
 
-import "dev/planton/provider/kubernetes/kubernetes.proto";
-
-//kafka-kubernetes stack outputs
+/**
+ * **KubernetesKafkaStackOutputs** — the composition handles a deployed
+ * Kafka cluster exports. Workloads compose against the bootstrap
+ * endpoint; KubernetesKafkaTopic / KubernetesKafkaUser resources
+ * compose against the cluster name; TLS clients fetch the cluster CA
+ * from the exported Secret.
+ */
 message KubernetesKafkaStackOutputs {
-  //name of the kubernetes namespace in which the kafka-kubernetes is created.
+  // Namespace the cluster runs in.
   string namespace = 1;
 
-  //sasl user name of kafka-kubernetes.
-  string username = 2;
+  // Cluster name (`metadata.name`) — the value of the
+  // strimzi.io/cluster label that binds KafkaNodePool, KafkaTopic and
+  // KafkaUser resources to this cluster.
+  string cluster_name = 2;
 
-  //kubernetes secret key for the password.
-  dev.planton.provider.kubernetes.KubernetesSecretKey password_secret = 3;
+  // Name of the bootstrap Service for internal listeners
+  // (`<cluster>-kafka-bootstrap`).
+  string bootstrap_service_name = 3;
 
-  //external hostname of kafka bootstrap server.
-  string bootstrap_server_external_hostname = 4;
+  // In-cluster bootstrap address for the FIRST internal-type listener
+  // (`<cluster>-kafka-bootstrap.<namespace>.svc.cluster.local:<port>`)
+  // — the value workloads put in bootstrap.servers. Empty when the
+  // cluster declares no internal listener.
+  string internal_bootstrap_endpoint = 4;
 
-  //internal hostname of kafka bootstrap server.
-  string bootstrap_server_internal_hostname = 5;
-
-  //external url of schema registry.
-  //this is set to empty when schema registry is not enabled.
-  string schema_registry_external_url = 6;
-
-  //internal url of schema registry.
-  //this is set to empty when schema registry is not enabled.
-  string schema_registry_internal_url = 7;
-
-  //external url to access kafka ui.
-  string kafka_ui_external_url = 8;
+  // Name of the Secret holding the cluster CA certificate
+  // (`<cluster>-cluster-ca-cert`, key `ca.crt`) — what TLS clients
+  // add to their truststore.
+  string cluster_ca_cert_secret_name = 5;
 }

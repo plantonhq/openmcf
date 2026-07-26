@@ -7,7 +7,6 @@
 package kuberneteskafkav1
 
 import (
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -22,29 +21,34 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// kafka-kubernetes stack outputs
+// *
+// **KubernetesKafkaStackOutputs** — the composition handles a deployed
+// Kafka cluster exports. Workloads compose against the bootstrap
+// endpoint; KubernetesKafkaTopic / KubernetesKafkaUser resources
+// compose against the cluster name; TLS clients fetch the cluster CA
+// from the exported Secret.
 type KubernetesKafkaStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// name of the kubernetes namespace in which the kafka-kubernetes is created.
+	// Namespace the cluster runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// sasl user name of kafka-kubernetes.
-	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	// kubernetes secret key for the password.
-	PasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,3,opt,name=password_secret,json=passwordSecret,proto3" json:"password_secret,omitempty"`
-	// external hostname of kafka bootstrap server.
-	BootstrapServerExternalHostname string `protobuf:"bytes,4,opt,name=bootstrap_server_external_hostname,json=bootstrapServerExternalHostname,proto3" json:"bootstrap_server_external_hostname,omitempty"`
-	// internal hostname of kafka bootstrap server.
-	BootstrapServerInternalHostname string `protobuf:"bytes,5,opt,name=bootstrap_server_internal_hostname,json=bootstrapServerInternalHostname,proto3" json:"bootstrap_server_internal_hostname,omitempty"`
-	// external url of schema registry.
-	// this is set to empty when schema registry is not enabled.
-	SchemaRegistryExternalUrl string `protobuf:"bytes,6,opt,name=schema_registry_external_url,json=schemaRegistryExternalUrl,proto3" json:"schema_registry_external_url,omitempty"`
-	// internal url of schema registry.
-	// this is set to empty when schema registry is not enabled.
-	SchemaRegistryInternalUrl string `protobuf:"bytes,7,opt,name=schema_registry_internal_url,json=schemaRegistryInternalUrl,proto3" json:"schema_registry_internal_url,omitempty"`
-	// external url to access kafka ui.
-	KafkaUiExternalUrl string `protobuf:"bytes,8,opt,name=kafka_ui_external_url,json=kafkaUiExternalUrl,proto3" json:"kafka_ui_external_url,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Cluster name (`metadata.name`) — the value of the
+	// strimzi.io/cluster label that binds KafkaNodePool, KafkaTopic and
+	// KafkaUser resources to this cluster.
+	ClusterName string `protobuf:"bytes,2,opt,name=cluster_name,json=clusterName,proto3" json:"cluster_name,omitempty"`
+	// Name of the bootstrap Service for internal listeners
+	// (`<cluster>-kafka-bootstrap`).
+	BootstrapServiceName string `protobuf:"bytes,3,opt,name=bootstrap_service_name,json=bootstrapServiceName,proto3" json:"bootstrap_service_name,omitempty"`
+	// In-cluster bootstrap address for the FIRST internal-type listener
+	// (`<cluster>-kafka-bootstrap.<namespace>.svc.cluster.local:<port>`)
+	// — the value workloads put in bootstrap.servers. Empty when the
+	// cluster declares no internal listener.
+	InternalBootstrapEndpoint string `protobuf:"bytes,4,opt,name=internal_bootstrap_endpoint,json=internalBootstrapEndpoint,proto3" json:"internal_bootstrap_endpoint,omitempty"`
+	// Name of the Secret holding the cluster CA certificate
+	// (`<cluster>-cluster-ca-cert`, key `ca.crt`) — what TLS clients
+	// add to their truststore.
+	ClusterCaCertSecretName string `protobuf:"bytes,5,opt,name=cluster_ca_cert_secret_name,json=clusterCaCertSecretName,proto3" json:"cluster_ca_cert_secret_name,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *KubernetesKafkaStackOutputs) Reset() {
@@ -84,51 +88,30 @@ func (x *KubernetesKafkaStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesKafkaStackOutputs) GetUsername() string {
+func (x *KubernetesKafkaStackOutputs) GetClusterName() string {
 	if x != nil {
-		return x.Username
+		return x.ClusterName
 	}
 	return ""
 }
 
-func (x *KubernetesKafkaStackOutputs) GetPasswordSecret() *kubernetes.KubernetesSecretKey {
+func (x *KubernetesKafkaStackOutputs) GetBootstrapServiceName() string {
 	if x != nil {
-		return x.PasswordSecret
-	}
-	return nil
-}
-
-func (x *KubernetesKafkaStackOutputs) GetBootstrapServerExternalHostname() string {
-	if x != nil {
-		return x.BootstrapServerExternalHostname
+		return x.BootstrapServiceName
 	}
 	return ""
 }
 
-func (x *KubernetesKafkaStackOutputs) GetBootstrapServerInternalHostname() string {
+func (x *KubernetesKafkaStackOutputs) GetInternalBootstrapEndpoint() string {
 	if x != nil {
-		return x.BootstrapServerInternalHostname
+		return x.InternalBootstrapEndpoint
 	}
 	return ""
 }
 
-func (x *KubernetesKafkaStackOutputs) GetSchemaRegistryExternalUrl() string {
+func (x *KubernetesKafkaStackOutputs) GetClusterCaCertSecretName() string {
 	if x != nil {
-		return x.SchemaRegistryExternalUrl
-	}
-	return ""
-}
-
-func (x *KubernetesKafkaStackOutputs) GetSchemaRegistryInternalUrl() string {
-	if x != nil {
-		return x.SchemaRegistryInternalUrl
-	}
-	return ""
-}
-
-func (x *KubernetesKafkaStackOutputs) GetKafkaUiExternalUrl() string {
-	if x != nil {
-		return x.KafkaUiExternalUrl
+		return x.ClusterCaCertSecretName
 	}
 	return ""
 }
@@ -137,16 +120,13 @@ var File_dev_planton_provider_kubernetes_kuberneteskafka_v1_stack_outputs_proto 
 
 const file_dev_planton_provider_kubernetes_kuberneteskafka_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kuberneteskafka/v1/stack_outputs.proto\x122dev.planton.provider.kubernetes.kuberneteskafka.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\x85\x04\n" +
+	"Fdev/planton/provider/kubernetes/kuberneteskafka/v1/stack_outputs.proto\x122dev.planton.provider.kubernetes.kuberneteskafka.v1\"\x92\x02\n" +
 	"\x1bKubernetesKafkaStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\x12]\n" +
-	"\x0fpassword_secret\x18\x03 \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x0epasswordSecret\x12K\n" +
-	"\"bootstrap_server_external_hostname\x18\x04 \x01(\tR\x1fbootstrapServerExternalHostname\x12K\n" +
-	"\"bootstrap_server_internal_hostname\x18\x05 \x01(\tR\x1fbootstrapServerInternalHostname\x12?\n" +
-	"\x1cschema_registry_external_url\x18\x06 \x01(\tR\x19schemaRegistryExternalUrl\x12?\n" +
-	"\x1cschema_registry_internal_url\x18\a \x01(\tR\x19schemaRegistryInternalUrl\x121\n" +
-	"\x15kafka_ui_external_url\x18\b \x01(\tR\x12kafkaUiExternalUrlB\xa2\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\fcluster_name\x18\x02 \x01(\tR\vclusterName\x124\n" +
+	"\x16bootstrap_service_name\x18\x03 \x01(\tR\x14bootstrapServiceName\x12>\n" +
+	"\x1binternal_bootstrap_endpoint\x18\x04 \x01(\tR\x19internalBootstrapEndpoint\x12<\n" +
+	"\x1bcluster_ca_cert_secret_name\x18\x05 \x01(\tR\x17clusterCaCertSecretNameB\xa2\x03\n" +
 	"6com.dev.planton.provider.kubernetes.kuberneteskafka.v1B\x11StackOutputsProtoP\x01Zfgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskafka/v1;kuberneteskafkav1\xa2\x02\x05DPPKK\xaa\x022Dev.Planton.Provider.Kubernetes.Kuberneteskafka.V1\xca\x022Dev\\Planton\\Provider\\Kubernetes\\Kuberneteskafka\\V1\xe2\x02>Dev\\Planton\\Provider\\Kubernetes\\Kuberneteskafka\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Kubernetes::Kuberneteskafka::V1b\x06proto3"
 
 var (
@@ -163,16 +143,14 @@ func file_dev_planton_provider_kubernetes_kuberneteskafka_v1_stack_outputs_proto
 
 var file_dev_planton_provider_kubernetes_kuberneteskafka_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_kubernetes_kuberneteskafka_v1_stack_outputs_proto_goTypes = []any{
-	(*KubernetesKafkaStackOutputs)(nil),    // 0: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStackOutputs
-	(*kubernetes.KubernetesSecretKey)(nil), // 1: dev.planton.provider.kubernetes.KubernetesSecretKey
+	(*KubernetesKafkaStackOutputs)(nil), // 0: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStackOutputs
 }
 var file_dev_planton_provider_kubernetes_kuberneteskafka_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.kubernetes.kuberneteskafka.v1.KubernetesKafkaStackOutputs.password_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kuberneteskafka_v1_stack_outputs_proto_init() }

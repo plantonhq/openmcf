@@ -1,0 +1,57 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafkaConnect
+metadata:
+  name: cdc-connect
+spec:
+  namespace:
+    value: kafka
+  bootstrap_servers:
+    value: events-kafka-bootstrap.kafka.svc.cluster.local:9093
+  replicas: 3
+  # The PREBUILT-IMAGE arm: an image that already carries the
+  # connector plugins (an example reference — point it at the
+  # Debezium Connect image or your own bake). Mutually exclusive with
+  # `build`: when build is set the operator runs the image IT builds.
+  image: quay.io/example/debezium-connect:3.1
+  # TLS trust: the target cluster's CA Secret (a KubernetesKafka
+  # reference in an infra chart — <cluster>-cluster-ca-cert, ca.crt).
+  tls:
+    trusted_certificates:
+      - secret_name:
+          value: events-cluster-ca-cert
+        certificate: ca.crt
+  # SCRAM credentials from a KubernetesKafkaUser's operator-generated
+  # Secret (key "password") — the credential rides the Secret, never
+  # the manifest.
+  authentication:
+    type: scram-sha-512
+    username: cdc-connect
+    password_secret:
+      secret_name:
+        value: cdc-connect
+      password: password
+  config:
+    # Production posture: internal topics at RF 3.
+    config.storage.replication.factor: "3"
+    offset.storage.replication.factor: "3"
+    status.storage.replication.factor: "3"
+    # Debezium emits structured change events — JSON without schemas
+    # is the lean default; swap for Avro converters when a schema
+    # registry (KubernetesKarapace) is in play.
+    key.converter: org.apache.kafka.connect.json.JsonConverter
+    value.converter: org.apache.kafka.connect.json.JsonConverter
+    key.converter.schemas.enable: "false"
+    value.converter.schemas.enable: "false"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1536Mi
+    limits:
+      cpu: "2"
+      memory: 3Gi
+  jvm:
+    # Equal xms/xmx — no heap resizing pauses in production.
+    xms: 1g
+    xmx: 1g
+  metrics:
+    enabled: true

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesopensearchoperator.v1;
+
+import "dev/planton/provider/kubernetes/kubernetesopensearchoperator/v1/api.proto";
+import "dev/planton/provider/kubernetes/provider.proto";
+
+//kubernetes-open-search-operator stack-input
+message KubernetesOpenSearchOperatorStackInput {
+  //target cloud-resource
+  KubernetesOpenSearchOperator target = 1;
+  //provider-config
+  dev.planton.provider.kubernetes.KubernetesProviderConfig provider_config = 2;
+}

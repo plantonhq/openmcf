@@ -3,38 +3,35 @@ package module
 import (
 	"github.com/pkg/errors"
 	kubernetesstrimzikafkaoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstrimzikafkaoperator/v1"
-	pulumikubernetes "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
-	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
-	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
+	kubernetescorev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
+	kubernetesmeta "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// namespace conditionally creates the Kubernetes namespace based on the
-// create_namespace flag.
-// Returns the created namespace resource (or nil when create_namespace is false).
-// Terraform equivalent: kubernetes_namespace resource with count.
+// namespace conditionally creates the installation namespace based on the
+// create_namespace flag. Returns the created namespace resource (or nil when
+// create_namespace is false — the namespace must then already exist).
+// Terraform equivalent: kubernetes_namespace_v1 with count.
 func namespace(ctx *pulumi.Context,
-	target *kubernetesstrimzikafkaoperatorv1.KubernetesStrimziKafkaOperator,
-	l *locals,
-	kubernetesProvider *pulumikubernetes.Provider,
-) (*corev1.Namespace, error) {
-	if !target.Spec.CreateNamespace {
+	stackInput *kubernetesstrimzikafkaoperatorv1.KubernetesStrimziKafkaOperatorStackInput,
+	locals *Locals,
+	kubernetesProvider pulumi.ProviderResource,
+) (*kubernetescorev1.Namespace, error) {
+	if !stackInput.Target.Spec.CreateNamespace {
 		return nil, nil
 	}
 
-	createdNamespace, err := corev1.NewNamespace(
-		ctx,
-		l.namespace,
-		&corev1.NamespaceArgs{
-			Metadata: metav1.ObjectMetaPtrInput(&metav1.ObjectMetaArgs{
-				Name:   pulumi.String(l.namespace),
-				Labels: l.labels,
-			}),
-		},
-		pulumi.Provider(kubernetesProvider),
-	)
+	createdNamespace, err := kubernetescorev1.NewNamespace(ctx,
+		locals.Namespace,
+		&kubernetescorev1.NamespaceArgs{
+			Metadata: kubernetesmeta.ObjectMetaPtrInput(
+				&kubernetesmeta.ObjectMetaArgs{
+					Name:   pulumi.String(locals.Namespace),
+					Labels: pulumi.ToStringMap(locals.Labels),
+				}),
+		}, pulumi.Provider(kubernetesProvider))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create %s namespace", l.namespace)
+		return nil, errors.Wrapf(err, "failed to create %s namespace", locals.Namespace)
 	}
 
 	return createdNamespace, nil

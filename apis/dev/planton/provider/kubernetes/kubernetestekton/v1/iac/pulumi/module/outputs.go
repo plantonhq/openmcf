@@ -1,14 +1,26 @@
 package module
 
-// Output keys are defined in locals.go as constants (OpNamespace, OpPipelineVersion, etc.)
-// This file documents the stack outputs for reference.
+import (
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
 
-// Stack Outputs:
-//
-// - namespace: The namespace where Tekton is installed (always "tekton-pipelines")
-// - pipeline_version: The version of Tekton Pipelines deployed
-// - dashboard_version: The version of Tekton Dashboard deployed (if enabled)
-// - dashboard_internal_endpoint: Internal cluster endpoint for the dashboard
-// - dashboard_external_hostname: External hostname for the dashboard (if ingress enabled)
-// - port_forward_dashboard_command: kubectl port-forward command for local access
-// - cloud_events_sink_url: The CloudEvents sink URL (if configured)
+// Output name constants — one per KubernetesTektonStackOutputs field.
+const (
+	OpNamespace             = "namespace"
+	OpProfile               = "profile"
+	OpDashboardService      = "dashboard_service"
+	OpDashboardKubeEndpoint = "dashboard_kube_endpoint"
+	OpPortForwardCommand    = "port_forward_command"
+)
+
+// exportOutputs publishes the resolved installation handles. The
+// dashboard handles are empty strings unless the profile installs the
+// dashboard (`all`) — the locals resolve that once for both engines.
+func exportOutputs(ctx *pulumi.Context, locals *Locals) error {
+	ctx.Export(OpNamespace, pulumi.String(locals.TargetNamespace))
+	ctx.Export(OpProfile, pulumi.String(locals.Profile))
+	ctx.Export(OpDashboardService, pulumi.String(locals.DashboardService))
+	ctx.Export(OpDashboardKubeEndpoint, pulumi.String(locals.DashboardKubeEndpoint))
+	ctx.Export(OpPortForwardCommand, pulumi.String(locals.PortForwardCommand))
+	return nil
+}

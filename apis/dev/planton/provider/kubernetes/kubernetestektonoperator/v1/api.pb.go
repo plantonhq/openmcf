@@ -23,8 +23,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesTektonOperator is the top-level resource for deploying Tekton Operator on a Kubernetes cluster.
-// Tekton Operator manages the lifecycle of Tekton components including Pipelines, Triggers, and Dashboard.
+// KubernetesTektonOperator installs the Tekton Operator — the lifecycle
+// manager that reconciles a TektonConfig declaration (a KubernetesTekton
+// resource) into running Tekton components. One install per cluster;
+// installing the operator alone deploys no Tekton components.
 type KubernetesTektonOperator struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

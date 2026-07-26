@@ -1,188 +1,133 @@
-# ClickHouse Kubernetes Terraform Module
+# KubernetesClickHouse Terraform Module
 
-## Overview
+Deploys one operator-managed ClickHouse cluster: the optional namespace,
+the auth Secret (when users are declared), the conditional managed
+ClickHouseKeeperInstallation, and the `clickhouse.altinity.com/v1`
+ClickHouseInstallation CR. The custom resources apply through
+`kubectl_manifest` (alekc/kubectl provider, server-side apply), which
+needs no cluster connection at plan time — the cluster can be planned
+before the Altinity operator's CRDs exist.
 
-This Terraform module deploys production-grade ClickHouse clusters on Kubernetes using the **Altinity ClickHouse Operator**. The operator provides enterprise-level features including automated upgrades, scaling, backup, and recovery.
+Prerequisites at apply time: the Altinity ClickHouse operator
+(`KubernetesAltinityOperator`) watching the deployment namespace.
 
-## Key Features
+## Module Behavior
 
-- **Operator-Based Deployment**: Uses the Altinity ClickHouse Operator for production-grade cluster management
-- **CRD-Native**: Deploys ClickHouseInstallation custom resources that the operator reconciles
-- **Flexible Namespace Management**: Conditionally creates and manages a namespace or deploys into existing namespaces based on the `create_namespace` flag
-- **Persistence**: Configurable persistent volumes for data storage with flexible sizing
-- **Clustering**: Optional sharding and replication for distributed deployments
-- **ZooKeeper Integration**: Auto-managed ZooKeeper for cluster coordination, or configure external ZooKeeper
-- **Security**: Auto-generated URL-safe passwords stored in Kubernetes Secrets
-- **Ingress**: Optional LoadBalancer service with custom hostname for external access
-- **Version Control**: Pin specific ClickHouse versions for stability
-- **Production-Ready**: Leverages official ClickHouse images from clickhouse.com
+- **One CHI, everything else operator-created** — every shard×replica
+  host is its own single-pod StatefulSet + headless Service
+  (`chi-<name>-<cluster>-<shard>-<replica>`), the per-cluster Service is
+  `cluster-<name>-<cluster>`, and the cluster-wide client Service is
+  `clickhouse-<name>` (the `service_name` output; native protocol 9000,
+  HTTP 8123). There are NO ingress resources by design — every generated
+  Service is ClusterIP; exposure composes from first-class kinds
+  referencing the exported handles.
+- **Coordination resolves automatically** — with `coordination` unset,
+  the module deploys a managed ClickHouse Keeper
+  (ClickHouseKeeperInstallation `<name>-keeper`, client Service
+  `keeper-<name>-keeper`) whenever the topology needs one (replicas > 1
+  or shards > 1) and none otherwise. `managed_keeper` forces it,
+  `external_keeper`/`external_zookeeper` render explicit
+  `zookeeper.nodes` (plus optional `root`/`identity`), `none` omits the
+  section entirely. The managed Keeper is wired through the CHI's native
+  keeper reference — the operator resolves the endpoints itself.
+- **Passwords never appear in the CHI** — the module writes each user's
+  (already-resolved) password into the `<name>-clickhouse-auth` Secret,
+  one key per user name, and the CHI's path-keyed users section
+  references the keys via `valueFrom.secretKeyRef`. KNOW THIS
+  (upstream-documented): secret-sourced passwords reach ClickHouse
+  through pod environment variables, so rotating the Secret alone does
+  not re-render config — bump any spec field to roll a rotation out.
+- **Unset optionals are omitted** — the rendered CR bodies are
+  null-pruned so the apiserver applies the CRD's own defaults.
+  Presence-sensitive sections render only on divergence:
+  `secret.auto: "true"` only when `auto_inter_node_secret` (default
+  true) AND the topology has more than one host;
+  `storageManagement.reclaimPolicy: Retain` only when
+  `retain_volumes_on_delete`; `podDistribution` (ShardAntiAffinity) only
+  when `spread_replicas_across_nodes`; `stop: "yes"` only when
+  `stopped`. The CRD's StringBool fields render as strings, counts as
+  YAML numbers, `access_management` as the number 1.
+- **The client serviceTemplate exists only when it has something to
+  carry** — `service_annotations` renders serviceTemplate "client" with
+  `generateName: clickhouse-{chi}` (pinning the operator's own default
+  name, so annotating never renames the Service) and type ClusterIP.
+- **Path-keyed passthrough is the upstream's native model** —
+  `settings`, `files`, and the flattened `profiles`/`quotas` bundles
+  (`<bundle>/<path>` = value) land verbatim in the CHI's own maps.
+- **The CHI podTemplate takes ONE image string** — the shared
+  ContainerImage folds into `repo:tag`, defaulting to
+  `clickhouse/clickhouse-server:<version>` (never the operator's
+  implicit `latest`); `image.pull_secret_name` joins
+  `image_pull_secrets`, deduplicated.
+- **The module (not the operator) owns namespace creation** —
+  `create_namespace` drives a `kubernetes_namespace_v1` resource
+  carrying the standard governance labels.
 
-## Prerequisites
+## Resources
 
-The **Altinity ClickHouse Operator** must be installed on your Kubernetes cluster before using this module. Install the operator using the `ClickhouseOperatorKubernetes` module.
-
-## Namespace Management
-
-This module provides flexible namespace management through the `create_namespace` flag:
-
-- **`create_namespace = true`**: The module creates and manages the namespace with appropriate labels
-- **`create_namespace = false`**: Deploy into an existing namespace (namespace must exist before applying)
-
-**When to use `create_namespace = true`:**
-- Component should own the namespace lifecycle
-- Dedicated namespace for this ClickHouse deployment
-- Want automatic label management
-
-**When to use `create_namespace = false`:**
-- Namespace is managed by another Terraform module or tool
-- Deploying multiple components into a shared namespace
-- Namespace has special configuration (quotas, policies) managed externally
+| Resource | Condition |
+|---|---|
+| `kubernetes_namespace_v1.namespace` | `spec.create_namespace` |
+| `kubernetes_secret_v1.auth` | `spec.users` non-empty |
+| `kubectl_manifest.keeper` | coordination resolves to a managed Keeper |
+| `kubectl_manifest.clickhouse_installation` | always |
 
 ## Usage
 
-### Basic Standalone Example
-
-```hcl
-module "clickhouse" {
-  source = "./path/to/this/module"
-
-  metadata = {
-    name = "my-clickhouse"
-    org  = "my-org"
-    env  = "production"
-  }
-
-  spec = {
-    namespace        = "clickhouse-prod"
-    create_namespace = true
-    cluster_name     = "production-analytics"
-    version          = "24.8"
-    
-    container = {
-      replicas               = 1
-      persistence_enabled = true
-      disk_size              = "50Gi"
-      resources = {
-        requests = {
-          cpu    = "500m"
-          memory = "1Gi"
-        }
-        limits = {
-          cpu    = "2000m"
-          memory = "4Gi"
-        }
-      }
-    }
-    
-    ingress = {
-      enabled  = true
-      hostname = "clickhouse.example.com"
-    }
-  }
-}
+```bash
+planton tofu apply --manifest kubernetes-click-house.yaml
 ```
 
-### With Distributed Clustering
+## Local Development
 
-```hcl
-module "clickhouse_cluster" {
-  source = "./path/to/this/module"
-
-  metadata = {
-    name = "clickhouse-cluster"
-  }
-
-  spec = {
-    container = {
-      replicas               = 3
-      persistence_enabled = true
-      disk_size              = "100Gi"
-      resources = {
-        requests = {
-          cpu    = "1000m"
-          memory = "2Gi"
-        }
-        limits = {
-          cpu    = "4000m"
-          memory = "8Gi"
-        }
-      }
-    }
-    cluster = {
-      is_enabled    = true
-      shard_count   = 3
-      replica_count = 2
-    }
-  }
-}
+```bash
+tofu init -backend=false
+tofu validate
+tofu plan -var-file=terraform.tfvars.json
+tofu apply -var-file=terraform.tfvars.json
 ```
 
-## Requirements
+The full-surface hack manifest for offline proofs lives in `../hack/`.
 
-- Terraform >= 1.0
-- Kubernetes cluster with kubectl access
-- **Altinity ClickHouse Operator** installed on the cluster
+## Inputs
 
-## Providers
+See `variables.tf` for the full variable specification (generated from
+the spec proto). The spec arrives from the proto→tfvars converter in
+snake_case with every `StringValueOrRef` foreign key — `namespace`
+(KubernetesNamespace), `storage_class` and the managed-Keeper
+`coordination.keeper.storage_class` (KubernetesStorageClass), each
+user's `password` — resolved to a literal string before Terraform runs.
+Enum fields arrive as the proto enum value names (e.g. "managed_keeper",
+"external_zookeeper").
 
-| Name | Version |
-|------|---------|
-| kubernetes | ~> 2.35 |
-| random | ~> 3.5 |
+## State Import
 
-## Password Security
-
-The module generates a 20-character random password using **URL-safe special characters only** (`-` and `_`).
-
-**Why URL-safe characters matter:**
-
-Characters like `+`, `=`, `/`, `&`, `?`, `#` cause problems when passwords are used in URL-encoded connection strings like `tcp://host:port/?password=XXX`. The `+` character is particularly problematic as it's decoded as a space by URL parsers.
-
-See: https://github.com/Altinity/clickhouse-operator/issues/1883
-
-## Resources Created
-
-- `kubernetes_namespace_v1.clickhouse_namespace` - Dedicated namespace
-- `random_password.clickhouse_password` - Auto-generated URL-safe password
-- `kubernetes_secret_v1.clickhouse_password` - Password secret
-- `kubernetes_manifest.clickhouse_installation` - ClickHouseInstallation CRD
-- `kubernetes_service_v1.ingress_external_lb` - LoadBalancer (if ingress enabled)
-
-The operator then reconciles the ClickHouseInstallation to create:
-- StatefulSets for ClickHouse pods
-- Services for cluster communication
-- ConfigMaps with ClickHouse configuration
-- ZooKeeper (if clustering is enabled)
+Existing deployments can be adopted into state. `kubectl_manifest` uses
+the composed import ID `apiVersion//kind//name//namespace`; every name
+is deterministic (the CHI is `metadata.name`, the Keeper
+`<name>-keeper`, the auth Secret `<name>-clickhouse-auth`), so the whole
+family imports blind.
 
 ## Outputs
 
-| Name | Description |
-|------|-------------|
-| namespace | The namespace in which ClickHouse is deployed |
-| service | The base name of the ClickHouse service |
-| kube_endpoint | Internal DNS name of the ClickHouse service |
-| port_forward_command | Command to port-forward to ClickHouse |
-| external_hostname | External hostname (if ingress enabled) |
-| username | ClickHouse username |
-| password_secret_name | Name of the password Secret |
-| password_secret_key | Key within the password Secret |
+| Output | Description |
+|--------|-------------|
+| `namespace` | Namespace the cluster runs in |
+| `chi_name` | Name of the ClickHouseInstallation resource (equals `metadata.name`) |
+| `cluster_name` | Logical ClickHouse cluster name (the `ON CLUSTER` / remote_servers target) |
+| `service_name` | The cluster-wide client Service (`clickhouse-<name>`) |
+| `tcp_endpoint` | In-cluster native-protocol endpoint (`<svc>.<namespace>.svc.cluster.local:9000`) |
+| `http_endpoint` | In-cluster HTTP interface endpoint (`http://<svc>.<namespace>.svc.cluster.local:8123`) |
+| `auth_secret_name` | `<name>-clickhouse-auth` — empty when no users are declared |
+| `keeper_name` | `<name>-keeper` — empty when coordination is external or none |
+| `keeper_service_name` | `keeper-<keeper_name>` — empty when coordination is external or none |
+| `port_forward_command` | Port-forward command for workstation access |
 
-## Testing
+## Parity
 
-```bash
-# Initialize
-terraform init
-
-# Plan
-terraform plan -var-file=hack/terraform.tfvars
-
-# Apply
-terraform apply -var-file=hack/terraform.tfvars -auto-approve
-
-# Destroy
-terraform destroy -var-file=hack/terraform.tfvars -auto-approve
-```
-
-## License
-
-Apache 2.0
+This module is the behavioral twin of the Pulumi module
+(`../pulumi/module/`): same rendered CR bodies (null-pruned,
+presence-sensitive sections on divergence, StringBool strings), same
+coordination auto-resolution, same module-owned constants (image
+defaulting, template names "server"/"data"/"logs"/"client", Keeper
+cluster name "keeper"), same outputs — keep them in lockstep.

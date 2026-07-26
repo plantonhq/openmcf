@@ -1,0 +1,71 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesnats
+spec:
+  # NATS installs as one Helm release NAMED AFTER metadata.name
+  # (fullnameOverride pins every child name — `<name>`, `<name>-headless`,
+  # `<name>-box` — the same way), plus the optional anchor namespace and,
+  # when auth is declared, the module-materialized `<name>-auth`
+  # credentials Secret (count-indexed, one data key per username) with one
+  # random_password companion PER DECLARED USER (for_each keyed by
+  # username; imported by VALUE — the random provider keeps no cloud
+  # state). A referenced TLS Secret is never owned by this module — it
+  # travels with the referenced Secret.
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    # ── the module-materialized auth Secret ──────────────────────────────
+    # Deterministic name "<metadata.name>-auth"; count-indexed, so
+    # from_address_key cannot serve it — the scoped suffix derivation
+    # does. Present only when auth declares users or accounts.
+    - name: secret_name
+      tofu_resource_name: auth
+      derivations:
+        - from_stack_output: auth_secret_name
+        - from_metadata_name_suffix: "-auth"
+      where_to_find: >-
+        Always "<resource-name>-auth" when auth is declared —
+        `kubectl get secrets -n <namespace>` (one data key per username).
+    - name: secret_namespace
+      tofu_resource_name: auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the per-user password companions ─────────────────────────────────
+    # random_password.user is for_each keyed by USERNAME; each instance's
+    # import ID is that user's password VALUE, read from the auth Secret
+    # under the username key — the address key names the key, so one row
+    # serves every declared user (the from_cluster_secret_key arm executes
+    # exactly the human recipe below when the resolving context holds
+    # cluster credentials).
+    - name: password_value
+      tofu_resource_name: user
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-auth"
+            key_from_address_key: true
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-auth -n <namespace>
+        -o jsonpath='{.data.<username>}' | base64 -d
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

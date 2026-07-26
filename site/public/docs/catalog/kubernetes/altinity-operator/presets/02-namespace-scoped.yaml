@@ -1,0 +1,25 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesAltinityOperator
+metadata:
+  name: team-clickhouse-operator
+spec:
+  namespace:
+    value: team-data
+  create_namespace: true
+  # Watch exactly one namespace and hold only namespace-scoped RBAC:
+  # the operator can neither see nor touch anything outside team-data.
+  # The tenancy posture for shared clusters.
+  watch_namespaces:
+    - team-data
+  namespace_scoped_rbac: true
+  operator_credentials:
+    username: clickhouse_operator
+    password:
+      value: change-me-operator-password
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

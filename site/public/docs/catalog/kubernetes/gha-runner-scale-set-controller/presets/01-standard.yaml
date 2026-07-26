@@ -1,16 +1,12 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSetController
 metadata:
-  name: my-gha-runner-controller
+  name: arc
 spec:
   namespace:
-    value: gha-runner-system
-  createNamespace: true
-  container:
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
+    value: arc-system
+  create_namespace: true
+  # Everything else is the chart's defaults: one replica watching all
+  # namespaces — every KubernetesGhaRunnerScaleSet on the cluster is
+  # served by this one controller (the sane default; fence with
+  # flags.watch_single_namespace only for hard multi-tenancy).

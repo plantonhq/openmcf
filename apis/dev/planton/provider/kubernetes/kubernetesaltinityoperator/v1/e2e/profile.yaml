@@ -8,4 +8,4 @@ spec:
   validated_provisioners:
     - pulumi
     - terraform
-  timeout_minutes: 15
+  timeout_minutes: 20

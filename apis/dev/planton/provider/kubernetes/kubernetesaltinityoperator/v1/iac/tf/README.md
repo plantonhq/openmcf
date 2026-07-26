@@ -1,291 +1,147 @@
 # KubernetesAltinityOperator Terraform Module
 
-## Overview
+Installs the Altinity ClickHouse operator from the official
+`altinity-clickhouse-operator` Helm chart
+(`https://docs.altinity.com/clickhouse-operator/`) as a single Helm
+release named after `metadata.name`. The typed spec renders into chart
+values in `locals.tf` (`local.typed_values`); the `helm_values` escape
+hatch is passed as a SECOND values document the provider merges over
+the first with Helm `-f` semantics — the exact semantic twin of the
+Pulumi module's `buildHelmValues` + `mergeMaps`.
 
-This Terraform module deploys the Altinity ClickHouse Operator to a Kubernetes cluster. The operator enables the management of ClickHouse database clusters within Kubernetes using custom resources.
+## Module Behavior
 
-## Key Features
+- **The CHART (not the module) owns the CRDs** — the four CRDs ship in
+  the chart's `crds/` directory, so Helm installs them on first install
+  and NEVER deletes them on uninstall (keep-on-uninstall is inherent:
+  removing the operator never cascade-deletes `ClickHouseInstallation`
+  resources or their data). CRD UPGRADES are carried by the chart's
+  pre-install/pre-upgrade hook job (`crdHook`, enabled by default),
+  which server-side-applies the CRDs on every install and upgrade. The
+  module vendors nothing and leaves `skip_crds` false — unlike sibling
+  operator modules whose charts template CRDs release-owned.
+- **`fullnameOverride` is pinned to `metadata.name`** and re-pinned
+  AFTER the `helm_values` merge — the one deliberate exception to the
+  escape hatch's last-word contract. The Deployment, the credentials
+  Secret and the metrics Service names (and the exported outputs built
+  from them) all derive from the fullname. Keep the resource name at 39
+  characters or fewer: the longest generated child name
+  (`<fullname>-keeper-templatesd-files`) adds 24 characters against the
+  Kubernetes 63-character cap.
+- **The pinned default chart version is 0.27.2** — chart versions track
+  operator releases one-to-one (chart 0.27.2 = operator image 0.27.2);
+  pick versions from the SERVED repository index
+  (`https://docs.altinity.com/clickhouse-operator/index.yaml`).
+- **Readiness is verified at install time** — `wait` + `atomic` +
+  `cleanup_on_fail` with a 600s timeout. An operator that never becomes
+  ready (an unpullable image from a private mirror is the classic case)
+  fails THIS apply with a readiness timeout instead of surfacing later
+  as ClickHouse clusters that never reconcile.
+- **The module (not Helm) owns namespace creation** —
+  `create_namespace` drives a `kubernetes_namespace_v1` resource
+  carrying the standard governance labels;
+  `helm_release.create_namespace` is always false.
 
-### Terraform-Based Deployment
-- **HCL Configuration**: Uses standard Terraform HCL for infrastructure definition
-- **State Management**: Leverages Terraform state for tracking operator deployment
-- **Provider Integration**: Integrates with Kubernetes and Helm providers seamlessly
+## Values Mapping
 
-### Operator Management
-- **Helm Chart Deployment**: Deploys using the official Altinity Helm chart
-- **CRD Installation**: Automatically installs ClickHouse Custom Resource Definitions
-- **Resource Configuration**: Configurable CPU and memory resources for the operator pod
-- **Namespace Isolation**: Creates dedicated namespace for the operator
+| Spec field | Chart value |
+|---|---|
+| `watch_namespaces` | `watchNamespaces` (entries are regexps) |
+| `namespace_scoped_rbac` | `rbac.namespaceScoped` |
+| `operator_credentials.username` | `secret.username` |
+| `operator_credentials.password` | `secret.password` |
+| `metrics.enabled` | `metrics.enabled` |
+| `metrics.resources` | `metrics.resources` |
+| `crd_hook.enabled` | `crdHook.enabled` |
+| `crd_hook.image.repo` / `.tag` | `crdHook.image.repository` / `.tag` |
+| `resources` | `operator.resources` |
+| `image.repo` / `.tag` | `operator.image.repository` / `.tag` |
+| `service_monitor_enabled` | `serviceMonitor.enabled` |
+| `node_selector` | `nodeSelector` |
+| `tolerations` | `tolerations` |
+| `image_pull_secrets` | `imagePullSecrets` (list of `{name}`) |
+| (always) | `fullnameOverride: <metadata.name>` |
+| `helm_values` | merged LAST, Helm `-f` semantics (`fullnameOverride` re-pinned after it) |
 
-### Infrastructure as Code
-- **Declarative Configuration**: Define desired state using Terraform syntax
-- **Version Control**: Track changes to operator configuration in Git
-- **Reproducible Deployments**: Consistently deploy across environments
+## Rendering Quirks
 
-## Prerequisites
+- **Chart-default-matching values render only on divergence** — every
+  key renders only when the spec carries a value, so an empty spec
+  installs the chart exactly as upstream ships it (except the
+  always-pinned `fullnameOverride`), and the rendered values carry no
+  empty sections.
+- **The `secret` block is omitted ENTIRELY when `operator_credentials`
+  is absent** — the chart then provisions its publicly documented
+  default credentials (`clickhouse_operator` /
+  `clickhouse_operator_password`), which is why the spec calls unset
+  UNSAFE FOR PRODUCTION. When present, the proto's username default
+  (`clickhouse_operator`) resolves in `locals.tf`, so a password-only
+  spec still names the standard operator user.
+- **The image overrides deep-merge per half** —
+  `operator.image.repository` / `operator.image.tag` (and the crdHook
+  pair) render independently, leaving the chart's `registry`,
+  `pullPolicy` and the appVersion-derived default tag intact.
+- **The `resources` keys render only when the spec sets them** — the
+  chart ships no default requests/limits, and Helm deep-merges per key,
+  so a partial spec block overrides only the halves it carries.
+- **The presence-tracked toggles render on presence** —
+  `metrics.enabled` and `crdHook.enabled` (both true-defaulted in the
+  chart) render whenever the spec carries a value; the plain bools
+  (`rbac.namespaceScoped`, `serviceMonitor.enabled`, both
+  false-defaulted) render only when true.
+- **Pull secrets render as the raw Kubernetes object list**
+  (`imagePullSecrets: [{name: ...}]`) — the chart pipes the list
+  straight into the operator pod spec.
+- **Null-prune idiom throughout** — conditional entries are written as
+  `key = cond ? value : null` inside one object literal and pruned, so
+  numbers and booleans keep their types in the rendered YAML.
 
-- Terraform >= 1.0
-- Kubernetes cluster with appropriate access
-- kubectl configured with cluster access
-- Helm provider configured
+## Resources
 
-## Module Structure
-
-```
-tf/
-├── main.tf          # Main resources (namespace, Helm release)
-├── provider.tf      # Provider configurations (Kubernetes, Helm)
-├── variables.tf     # Input variables
-└── README.md        # This file
-```
-
-## Resources Created
-
-1. **Kubernetes Namespace**: `kubernetes-altinity-operator`
-2. **Helm Release**: Deploys the Altinity ClickHouse Operator
-3. **CRDs**: ClickHouseInstallation and related custom resources
-
-## Input Variables
-
-### metadata
-Metadata for the resource, including name and labels.
-
-**Type**: `object`
-
-**Fields**:
-- `name` (string, required): Name of the operator deployment
-- `id` (string, optional): Unique identifier
-- `org` (string, optional): Organization name
-- `env` (string, optional): Environment name
-- `labels` (map(string), optional): Key-value labels
-- `tags` (list(string), optional): List of tags
-- `version` (object, optional): Version information
-
-### spec
-Specification for the operator deployment.
-
-**Type**: `object`
-
-**Fields**:
-- `container` (object, required): Container specifications
-  - `resources` (object, required): Resource allocations
-    - `limits` (object): Maximum resources
-      - `cpu` (string): CPU limit (e.g., "1000m")
-      - `memory` (string): Memory limit (e.g., "1Gi")
-    - `requests` (object): Guaranteed resources
-      - `cpu` (string): CPU request (e.g., "100m")
-      - `memory` (string): Memory request (e.g., "256Mi")
-
-## Outputs
-
-### namespace
-The Kubernetes namespace where the operator is deployed.
-
-**Type**: `string`
-
-**Value**: `kubernetes-altinity-operator`
+| Resource | Condition |
+|---|---|
+| `kubernetes_namespace_v1.altinity_operator` | `spec.create_namespace` |
+| `helm_release.altinity_operator` | always |
 
 ## Usage
 
-### Basic Example
-
-```hcl
-module "kubernetes_altinity_operator" {
-  source = "./tf"
-
-  metadata = {
-    name = "kubernetes-altinity-operator-prod"
-  }
-
-  spec = {
-    container = {
-      resources = {
-        requests = {
-          cpu    = "100m"
-          memory = "256Mi"
-        }
-        limits = {
-          cpu    = "1000m"
-          memory = "1Gi"
-        }
-      }
-    }
-  }
-}
+```bash
+planton tofu apply --manifest altinity-operator.yaml
 ```
 
-### With Custom Resources
-
-```hcl
-module "kubernetes_altinity_operator_large" {
-  source = "./tf"
-
-  metadata = {
-    name = "kubernetes-altinity-operator-large"
-    labels = {
-      environment = "production"
-      team        = "data-platform"
-    }
-  }
-
-  spec = {
-    container = {
-      resources = {
-        requests = {
-          cpu    = "200m"
-          memory = "512Mi"
-        }
-        limits = {
-          cpu    = "2000m"
-          memory = "2Gi"
-        }
-      }
-    }
-  }
-}
-```
-
-## Deployment
-
-### Initialize Terraform
+## Local Development
 
 ```bash
-terraform init
+tofu init -backend=false
+tofu validate
+tofu plan -var-file=terraform.tfvars.json
+tofu apply -var-file=terraform.tfvars.json
 ```
 
-### Plan Changes
+## Inputs
 
-```bash
-terraform plan -var-file="operator.tfvars"
-```
+See `variables.tf` for the full variable specification (generated from
+the spec proto). The spec arrives from the proto→tfvars converter in
+snake_case with the StringValueOrRef foreign keys — `namespace`
+(KubernetesNamespace) and `operator_credentials.password` — resolved to
+literal strings before Terraform runs.
 
-### Apply Configuration
+## Outputs
 
-```bash
-terraform apply -var-file="operator.tfvars"
-```
+| Output | Description |
+|--------|-------------|
+| `namespace` | Namespace the operator runs in |
+| `release_name` | Helm release name of the operator (`metadata.name`) |
+| `deployment_name` | The operator Deployment name — the chart names it exactly the fullname, which the module pins to `metadata.name` |
+| `credentials_secret_name` | The chart-managed credentials Secret (keys `username`/`password`) — named exactly the fullname; created unconditionally by the chart (with the documented defaults when `operator_credentials` is unset) |
+| `metrics_endpoint` | `http://<name>-metrics.<namespace>.svc.cluster.local:8888/metrics` — the chart's `<fullname>-metrics` Service carries the 8888 `ch-metrics` port only while `metrics.enabled`; empty when the exporter is disabled |
 
-### Destroy Resources
+## Parity
 
-```bash
-terraform destroy -var-file="operator.tfvars"
-```
-
-## Verification
-
-After deployment, verify the operator is running:
-
-```bash
-# Check operator pod
-kubectl get pods -n kubernetes-altinity-operator
-
-# Check operator logs
-kubectl logs -n kubernetes-altinity-operator -l app.kubernetes.io/name=altinity-clickhouse-operator
-
-# Verify CRDs
-kubectl get crds | grep clickhouse
-```
-
-## Configuration
-
-### Helm Chart Configuration
-
-The module configures the Helm chart with the following defaults:
-
-- **Chart Repository**: `https://docs.altinity.com/clickhouse-operator/`
-- **Chart Name**: `altinity-clickhouse-operator`
-- **Chart Version**: `0.23.6`
-- **Timeout**: 300 seconds
-- **Atomic**: true (rollback on failure)
-- **Cleanup on Fail**: true
-
-### Resource Defaults
-
-Default resource allocations:
-- **CPU Request**: 100m
-- **Memory Request**: 256Mi
-- **CPU Limit**: 1000m
-- **Memory Limit**: 1Gi
-
-## Troubleshooting
-
-### Helm Release Failed
-
-Check Helm release status:
-```bash
-helm list -n kubernetes-altinity-operator
-helm status -n kubernetes-altinity-operator altinity-clickhouse-operator
-```
-
-### CRDs Not Installed
-
-Verify CRD installation setting:
-```bash
-kubectl get crds | grep clickhouse
-```
-
-The module sets `operator.createCRD=true` by default.
-
-### Resource Limits Too Low
-
-If the operator is resource-constrained, increase the limits in your variables file:
-
-```hcl
-spec = {
-  container = {
-    resources = {
-      limits = {
-        cpu    = "2000m"
-        memory = "2Gi"
-      }
-    }
-  }
-}
-```
-
-## Integration with Other Modules
-
-After deploying the operator, you can deploy ClickHouse clusters using:
-- Terraform ClickHouse module
-- ClickHouseInstallation CRDs directly
-- ClickHouseKubernetes Planton resource
-
-## State Management
-
-### Local Backend
-
-For development, use local state:
-
-```hcl
-terraform {
-  backend "local" {
-    path = "terraform.tfstate"
-  }
-}
-```
-
-### Remote Backend (Recommended for Production)
-
-For production, use remote state:
-
-```hcl
-terraform {
-  backend "s3" {
-    bucket = "my-terraform-state"
-    key    = "kubernetes-altinity-operator/terraform.tfstate"
-    region = "us-west-2"
-  }
-}
-```
-
-## Contributing
-
-Contributions are welcome! Please ensure:
-- All variables are properly documented
-- Examples are tested and working
-- README is updated with new features
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
+Kept in lockstep with the Pulumi module (`../pulumi/module/`): same
+chart identity and pinned default version (0.27.2), same
+`metadata.name` release name, same values rendering (the pinned and
+re-pinned `fullnameOverride`, the divergence-only blocks, the
+omit-when-absent secret, the per-half image overrides), same
+chart-owned CRD posture (`skip_crds` false on both engines), same
+atomic/wait posture, same outputs.

@@ -24,36 +24,84 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesTektonOperatorSpec defines the configuration for deploying the Tekton Operator on a Kubernetes cluster.
-// Tekton Operator manages the lifecycle of Tekton components including Pipelines, Triggers, and Dashboard.
-// This message specifies the parameters needed to install and configure the Tekton Operator.
+// *
+// **KubernetesTektonOperatorSpec** installs the Tekton Operator — the
+// lifecycle manager that turns a `TektonConfig` declaration into
+// running Tekton components (Pipelines, Triggers, Dashboard, Chains),
+// managing their installation, upgrades and removal through
+// `TektonInstallerSet` resources.
 //
-// IMPORTANT: Namespace Behavior
-// Unlike other Kubernetes components in Planton, the Tekton Operator uses fixed namespaces
-// that are managed by the operator itself:
-// - The Tekton Operator is installed in the 'tekton-operator' namespace
-// - Tekton components (Pipelines, Triggers, Dashboard) are installed in the 'tekton-pipelines' namespace
-// These namespaces are automatically created and managed by the Tekton Operator and cannot be customized.
-// See: https://tekton.dev/docs/operator/tektonconfig/
+// This component installs the MANAGER only. What Tekton actually runs
+// on the cluster — which components, in which namespace, with which
+// pipeline feature flags and pruner policy — is declared with a
+// KubernetesTekton resource (exactly one per cluster), which this
+// operator reconciles. The operator is installed with automatic
+// component installation DISABLED so that the KubernetesTekton
+// declaration is the single owner of the cluster's TektonConfig —
+// installing the operator alone deploys no Tekton components.
+//
+// DISTRIBUTION AND VERSION: the operator's official distribution is
+// the single-file release manifest (`release.yaml` attached to each
+// GitHub release), which the modules fetch from the release tag they
+// are pinned to and apply per document. The in-repo Helm chart is
+// unpublished (version "devel") and is not a distribution channel.
+// The spec deliberately has NO version field: the installed operator
+// (and the TektonConfig schema the KubernetesTekton kind renders
+// against) is pinned to the release this catalog was designed
+// against — a user-selectable version would silently drift the
+// TektonConfig surface away from what the catalog models.
+//
+// NAMESPACE IS FIXED: the release manifest installs into
+// `tekton-operator`, and that name is baked into the manifest's own
+// cross-references (webhook Service, RBAC subjects). Exactly ONE
+// install per cluster is the upstream contract.
+//
+// CRD LIFECYCLE: the 14 `operator.tekton.dev` CRDs are documents of
+// the applied manifest — they install and are REMOVED with the
+// resource. Destroying the operator therefore deletes the CRDs, which
+// cascade-deletes any TektonConfig on the cluster. Always destroy the
+// KubernetesTekton resource FIRST (its deletion waits for the
+// operator to tear down the component installations cleanly); the
+// operator must still be running for that teardown to complete —
+// TektonInstallerSet resources carry finalizers only the operator can
+// process, and removing the operator first strands them.
 type KubernetesTektonOperatorSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The container specifications for the Tekton Operator deployment.
-	Container *KubernetesTektonOperatorSpecContainer `protobuf:"bytes,2,opt,name=container,proto3" json:"container,omitempty"`
-	// Configuration for which Tekton components to install.
-	Components *KubernetesTektonOperatorComponents `protobuf:"bytes,3,opt,name=components,proto3" json:"components,omitempty"`
-	// The version of the Tekton Operator to deploy.
-	// https://github.com/tektoncd/operator/releases
-	// https://operatorhub.io/operator/tektoncd-operator
-	OperatorVersion string `protobuf:"bytes,4,opt,name=operator_version,json=operatorVersion,proto3" json:"operator_version,omitempty"`
-	// Dashboard ingress configuration for exposing the dashboard via Gateway API.
-	// When enabled, creates Certificate, Gateway, and HTTPRoute resources.
-	DashboardIngress *KubernetesTektonOperatorDashboardIngress `protobuf:"bytes,5,opt,name=dashboard_ingress,json=dashboardIngress,proto3" json:"dashboard_ingress,omitempty"`
-	// CloudEvents sink URL for pipeline notifications.
-	// When configured, Tekton sends CloudEvents for TaskRun and PipelineRun lifecycle events.
-	// Example: "http://my-receiver.my-namespace.svc.cluster.local/tekton/events"
-	CloudEventsSinkUrl string `protobuf:"bytes,6,opt,name=cloud_events_sink_url,json=cloudEventsSinkUrl,proto3" json:"cloud_events_sink_url,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// *
+	// Override the operator image (air-gap / private-mirror path).
+	// Applied to both containers of the operator Deployment
+	// (`tekton-operator-lifecycle` and
+	// `tekton-operator-cluster-operations` share one image). Empty =
+	// the release manifest's digest-pinned image
+	// (`ghcr.io/tektoncd/operator/operator-*` at the release tag).
+	OperatorImage *kubernetes.ContainerImage `protobuf:"bytes,1,opt,name=operator_image,json=operatorImage,proto3" json:"operator_image,omitempty"`
+	// *
+	// Override the operator webhook image (air-gap / private-mirror
+	// path). Empty = the release manifest's digest-pinned image
+	// (`ghcr.io/tektoncd/operator/webhook-*` at the release tag).
+	WebhookImage *kubernetes.ContainerImage `protobuf:"bytes,2,opt,name=webhook_image,json=webhookImage,proto3" json:"webhook_image,omitempty"`
+	// *
+	// Resources for the operator Deployment's containers (applied to
+	// both). Empty = the release manifest's defaults (none set — the
+	// operator runs unbounded; set requests on production clusters
+	// with resource quotas).
+	OperatorResources *kubernetes.ContainerResources `protobuf:"bytes,3,opt,name=operator_resources,json=operatorResources,proto3" json:"operator_resources,omitempty"`
+	// *
+	// Resources for the webhook container. Empty = the release
+	// manifest's defaults (none set).
+	WebhookResources *kubernetes.ContainerResources `protobuf:"bytes,4,opt,name=webhook_resources,json=webhookResources,proto3" json:"webhook_resources,omitempty"`
+	// *
+	// Node selector for the operator and webhook pods.
+	NodeSelector map[string]string `protobuf:"bytes,5,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for the operator and webhook pods.
+	Tolerations []*kubernetes.WorkloadToleration `protobuf:"bytes,6,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	// *
+	// Names of image-pull secrets (in the tekton-operator namespace)
+	// for pulling the operator images from a private mirror.
+	ImagePullSecrets []string `protobuf:"bytes,7,rep,name=image_pull_secrets,json=imagePullSecrets,proto3" json:"image_pull_secrets,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *KubernetesTektonOperatorSpec) Reset() {
@@ -86,240 +134,71 @@ func (*KubernetesTektonOperatorSpec) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *KubernetesTektonOperatorSpec) GetContainer() *KubernetesTektonOperatorSpecContainer {
+func (x *KubernetesTektonOperatorSpec) GetOperatorImage() *kubernetes.ContainerImage {
 	if x != nil {
-		return x.Container
+		return x.OperatorImage
 	}
 	return nil
 }
 
-func (x *KubernetesTektonOperatorSpec) GetComponents() *KubernetesTektonOperatorComponents {
+func (x *KubernetesTektonOperatorSpec) GetWebhookImage() *kubernetes.ContainerImage {
 	if x != nil {
-		return x.Components
+		return x.WebhookImage
 	}
 	return nil
 }
 
-func (x *KubernetesTektonOperatorSpec) GetOperatorVersion() string {
+func (x *KubernetesTektonOperatorSpec) GetOperatorResources() *kubernetes.ContainerResources {
 	if x != nil {
-		return x.OperatorVersion
-	}
-	return ""
-}
-
-func (x *KubernetesTektonOperatorSpec) GetDashboardIngress() *KubernetesTektonOperatorDashboardIngress {
-	if x != nil {
-		return x.DashboardIngress
+		return x.OperatorResources
 	}
 	return nil
 }
 
-func (x *KubernetesTektonOperatorSpec) GetCloudEventsSinkUrl() string {
+func (x *KubernetesTektonOperatorSpec) GetWebhookResources() *kubernetes.ContainerResources {
 	if x != nil {
-		return x.CloudEventsSinkUrl
-	}
-	return ""
-}
-
-// KubernetesTektonOperatorSpecContainer specifies the container configuration for the Tekton Operator.
-// It includes resource allocations for CPU and memory to ensure the operator runs efficiently.
-type KubernetesTektonOperatorSpecContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The CPU and memory resources allocated to the Tekton Operator container.
-	Resources     *kubernetes.ContainerResources `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesTektonOperatorSpecContainer) Reset() {
-	*x = KubernetesTektonOperatorSpecContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesTektonOperatorSpecContainer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesTektonOperatorSpecContainer) ProtoMessage() {}
-
-func (x *KubernetesTektonOperatorSpecContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesTektonOperatorSpecContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesTektonOperatorSpecContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *KubernetesTektonOperatorSpecContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
+		return x.WebhookResources
 	}
 	return nil
 }
 
-// KubernetesTektonOperatorComponents specifies which Tekton components should be installed by the operator.
-// At least one component must be enabled.
-type KubernetesTektonOperatorComponents struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable Tekton Pipelines component for running CI/CD pipelines.
-	// Pipelines is the core component and is typically always enabled.
-	Pipelines bool `protobuf:"varint,1,opt,name=pipelines,proto3" json:"pipelines,omitempty"`
-	// Enable Tekton Triggers component for event-driven pipeline execution.
-	// Triggers allows pipelines to be started by external events like webhooks.
-	Triggers bool `protobuf:"varint,2,opt,name=triggers,proto3" json:"triggers,omitempty"`
-	// Enable Tekton Dashboard for a web-based UI to view and manage pipelines.
-	Dashboard     bool `protobuf:"varint,3,opt,name=dashboard,proto3" json:"dashboard,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesTektonOperatorComponents) Reset() {
-	*x = KubernetesTektonOperatorComponents{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesTektonOperatorComponents) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesTektonOperatorComponents) ProtoMessage() {}
-
-func (x *KubernetesTektonOperatorComponents) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_msgTypes[2]
+func (x *KubernetesTektonOperatorSpec) GetNodeSelector() map[string]string {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+		return x.NodeSelector
 	}
-	return mi.MessageOf(x)
+	return nil
 }
 
-// Deprecated: Use KubernetesTektonOperatorComponents.ProtoReflect.Descriptor instead.
-func (*KubernetesTektonOperatorComponents) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesTektonOperatorComponents) GetPipelines() bool {
+func (x *KubernetesTektonOperatorSpec) GetTolerations() []*kubernetes.WorkloadToleration {
 	if x != nil {
-		return x.Pipelines
+		return x.Tolerations
 	}
-	return false
+	return nil
 }
 
-func (x *KubernetesTektonOperatorComponents) GetTriggers() bool {
+func (x *KubernetesTektonOperatorSpec) GetImagePullSecrets() []string {
 	if x != nil {
-		return x.Triggers
+		return x.ImagePullSecrets
 	}
-	return false
-}
-
-func (x *KubernetesTektonOperatorComponents) GetDashboard() bool {
-	if x != nil {
-		return x.Dashboard
-	}
-	return false
-}
-
-// KubernetesTektonOperatorDashboardIngress configures ingress for the Tekton Dashboard.
-// When enabled, exposes the dashboard via Kubernetes Gateway API with TLS termination.
-type KubernetesTektonOperatorDashboardIngress struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable dashboard ingress.
-	// When true, creates Certificate, Gateway, and HTTPRoute resources.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// Hostname for the dashboard ingress.
-	// Example: "tekton-dashboard.example.com"
-	// The ClusterIssuer name is derived from the domain portion of the hostname.
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesTektonOperatorDashboardIngress) Reset() {
-	*x = KubernetesTektonOperatorDashboardIngress{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesTektonOperatorDashboardIngress) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesTektonOperatorDashboardIngress) ProtoMessage() {}
-
-func (x *KubernetesTektonOperatorDashboardIngress) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesTektonOperatorDashboardIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesTektonOperatorDashboardIngress) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *KubernetesTektonOperatorDashboardIngress) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *KubernetesTektonOperatorDashboardIngress) GetHostname() string {
-	if x != nil {
-		return x.Hostname
-	}
-	return ""
+	return nil
 }
 
 var File_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kubernetestektonoperator/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetestektonoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a(dev/planton/shared/options/options.proto\"\xb3\x04\n" +
-	"\x1cKubernetesTektonOperatorSpec\x12\x88\x01\n" +
-	"\tcontainer\x18\x02 \x01(\v2b.dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12\x87\x01\n" +
-	"\n" +
-	"components\x18\x03 \x01(\v2_.dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorComponentsB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"components\x126\n" +
-	"\x10operator_version\x18\x04 \x01(\tB\v\x8a\xa6\x1d\av0.78.0R\x0foperatorVersion\x12\x92\x01\n" +
-	"\x11dashboard_ingress\x18\x05 \x01(\v2e.dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorDashboardIngressR\x10dashboardIngress\x121\n" +
-	"\x15cloud_events_sink_url\x18\x06 \x01(\tR\x12cloudEventsSinkUrl\"\x9f\x01\n" +
-	"%KubernetesTektonOperatorSpecContainer\x12v\n" +
-	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB#\xba\xfb\xa4\x02\x1e\n" +
-	"\r\n" +
-	"\x04500m\x12\x05512Mi\x12\r\n" +
-	"\x04100m\x12\x05128MiR\tresources\"\xa5\x02\n" +
-	"\"KubernetesTektonOperatorComponents\x12\x1c\n" +
-	"\tpipelines\x18\x01 \x01(\bR\tpipelines\x12\x1a\n" +
-	"\btriggers\x18\x02 \x01(\bR\btriggers\x12\x1c\n" +
-	"\tdashboard\x18\x03 \x01(\bR\tdashboard:\xa6\x01\xbaH\xa2\x01\x1a\x9f\x01\n" +
-	"\x17components.at_least_one\x12Qat least one Tekton component (pipelines, triggers, or dashboard) must be enabled\x1a1this.pipelines || this.triggers || this.dashboard\"`\n" +
-	"(KubernetesTektonOperatorDashboardIngress\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostnameB\xd9\x03\n" +
+	"Fdev/planton/provider/kubernetes/kubernetestektonoperator/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetestektonoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a(dev/planton/shared/options/options.proto\"\xb7\x06\n" +
+	"\x1cKubernetesTektonOperatorSpec\x12V\n" +
+	"\x0eoperator_image\x18\x01 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\roperatorImage\x12T\n" +
+	"\rwebhook_image\x18\x02 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\fwebhookImage\x12b\n" +
+	"\x12operator_resources\x18\x03 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\x11operatorResources\x12`\n" +
+	"\x11webhook_resources\x18\x04 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\x10webhookResources\x12\x90\x01\n" +
+	"\rnode_selector\x18\x05 \x03(\v2k.dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x06 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x12x\n" +
+	"\x12image_pull_secrets\x18\a \x03(\tBJ\xaa\xa6\x1dFNames of existing Kubernetes Secrets (references), not secret materialR\x10imagePullSecrets\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xd9\x03\n" +
 	"?com.dev.planton.provider.kubernetes.kubernetestektonoperator.v1B\tSpecProtoP\x01Zxgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestektonoperator/v1;kubernetestektonoperatorv1\xa2\x02\x05DPPKK\xaa\x02;Dev.Planton.Provider.Kubernetes.Kubernetestektonoperator.V1\xca\x02;Dev\\Planton\\Provider\\Kubernetes\\Kubernetestektonoperator\\V1\xe2\x02GDev\\Planton\\Provider\\Kubernetes\\Kubernetestektonoperator\\V1\\GPBMetadata\xea\x02@Dev::Planton::Provider::Kubernetes::Kubernetestektonoperator::V1b\x06proto3"
 
 var (
@@ -334,24 +213,26 @@ func file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto
 	return file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_goTypes = []any{
-	(*KubernetesTektonOperatorSpec)(nil),             // 0: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec
-	(*KubernetesTektonOperatorSpecContainer)(nil),    // 1: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainer
-	(*KubernetesTektonOperatorComponents)(nil),       // 2: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorComponents
-	(*KubernetesTektonOperatorDashboardIngress)(nil), // 3: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorDashboardIngress
-	(*kubernetes.ContainerResources)(nil),            // 4: dev.planton.provider.kubernetes.ContainerResources
+	(*KubernetesTektonOperatorSpec)(nil),  // 0: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec
+	nil,                                   // 1: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.NodeSelectorEntry
+	(*kubernetes.ContainerImage)(nil),     // 2: dev.planton.provider.kubernetes.ContainerImage
+	(*kubernetes.ContainerResources)(nil), // 3: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil), // 4: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.container:type_name -> dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainer
-	2, // 1: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.components:type_name -> dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorComponents
-	3, // 2: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.dashboard_ingress:type_name -> dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorDashboardIngress
-	4, // 3: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpecContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	2, // 0: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.operator_image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	2, // 1: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.webhook_image:type_name -> dev.planton.provider.kubernetes.ContainerImage
+	3, // 2: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.operator_resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	3, // 3: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.webhook_resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	1, // 4: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.NodeSelectorEntry
+	4, // 5: dev.planton.provider.kubernetes.kubernetestektonoperator.v1.KubernetesTektonOperatorSpec.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_init() }
@@ -365,7 +246,7 @@ func file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

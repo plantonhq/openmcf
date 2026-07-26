@@ -1,56 +1,22 @@
-##############################################
-# outputs.tf
-#
-# Output values for KubernetesGhaRunnerScaleSet
-##############################################
+# Stack outputs — identical names and derivations in the Pulumi module
+# (KubernetesGhaRunnerScaleSetStackOutputs).
 
 output "namespace" {
-  description = "Namespace where the runner scale set is deployed"
+  description = "Namespace the scale set (listener + runner pods) runs in"
   value       = local.namespace
 }
 
 output "release_name" {
-  description = "Name of the Helm release"
+  description = "Helm release name (equals metadata.name)"
   value       = local.release_name
 }
 
-output "chart_version" {
-  description = "Version of the deployed Helm chart"
-  value       = local.chart_version
-}
-
 output "runner_scale_set_name" {
-  description = "Name of the runner scale set as registered with GitHub"
+  description = "Name the fleet registered under in GitHub — the exact value workflows put in runs-on to target this fleet"
   value       = local.runner_scale_set_name
 }
 
 output "github_config_url" {
-  description = "GitHub configuration URL"
-  value       = var.spec.github.config_url
+  description = "The GitHub URL the fleet serves (repository, organization or enterprise)"
+  value       = var.spec.github_config_url
 }
-
-output "github_secret_name" {
-  description = "Name of the Kubernetes secret containing GitHub credentials"
-  value       = local.github_secret_name
-}
-
-output "pvc_names" {
-  description = "Names of PVCs created for persistent volumes"
-  value       = local.pvc_names
-}
-
-output "min_runners" {
-  description = "Minimum runners configured"
-  value       = local.min_runners
-}
-
-output "max_runners" {
-  description = "Maximum runners configured"
-  value       = local.max_runners
-}
-
-output "container_mode" {
-  description = "Container mode type used"
-  value       = local.container_mode_type
-}
-

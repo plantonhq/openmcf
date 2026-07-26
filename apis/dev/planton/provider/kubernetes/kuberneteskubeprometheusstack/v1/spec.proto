@@ -1,0 +1,844 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskubeprometheusstack.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesKubePrometheusStackSpec** deploys the kube-prometheus-stack —
+ * the industry-standard cluster monitoring bundle — from the official
+ * `kube-prometheus-stack` Helm chart
+ * (https://prometheus-community.github.io/helm-charts). One install gives
+ * the Prometheus Operator, a Prometheus server declared through it, an
+ * Alertmanager, the kube-state-metrics and node-exporter metric sources,
+ * a curated set of Kubernetes alerting/recording rules, and a bundled
+ * Grafana pre-loaded with the matching dashboards.
+ *
+ * GRAIN: one stack per cluster is the norm. The chart installs the
+ * monitoring.coreos.com CRDs (ServiceMonitor, PodMonitor, PrometheusRule,
+ * Prometheus, Alertmanager, ...) which are cluster-scoped singletons — a
+ * second stack on the same cluster must set `skip_crds` and scope its
+ * monitor discovery, which is an advanced posture, not the default.
+ *
+ * NAMING: keep the resource name at 26 characters or fewer. The chart
+ * SILENTLY truncates its fullname at 26 characters (its own headroom for
+ * the longest child name it derives), and the modules pin the fullname to
+ * the resource name so service names like `<name>-prometheus` and
+ * `<name>-grafana` are predictable — a longer name would be truncated and
+ * break that naming contract. Both modules fail loudly instead of letting
+ * the chart truncate.
+ *
+ * CRD LIFECYCLE: the CRDs ship in a subchart whose `crds/` directory Helm
+ * installs ONCE and never touches again — chart upgrades do NOT upgrade
+ * CRDs, and uninstall KEEPS them (ServiceMonitors and rules across the
+ * cluster survive removal of the stack). When bumping `chart_version`
+ * across operator minors, enable `crd_upgrade_job` for that upgrade (a
+ * pre-upgrade hook that server-side-applies the new CRD bundle) or apply
+ * the new CRDs manually before upgrading.
+ *
+ * DISCOVERY: by default this component discovers EVERY ServiceMonitor,
+ * PodMonitor, PrometheusRule, Probe and ScrapeConfig in the cluster —
+ * deliberately wider than the chart's own default (which only discovers
+ * objects labeled by its release, upstream's most-tripped-over behavior).
+ * Cluster-wide discovery is what makes every catalog component's
+ * `service_monitor_enabled` toggle and any user-authored monitor light up
+ * without extra wiring. Set `discovery` to `release_managed_only` to get
+ * the chart's fenced default back.
+ *
+ * MANAGED CLOUDS: on EKS/GKE/AKS the control plane is invisible to the
+ * cluster — the controller-manager, scheduler, etcd and (on some
+ * distributions) kube-proxy scrape targets can never be reached, leaving
+ * permanently-down targets and firing alerts. Disable those scrapers via
+ * `control_plane_scrapers` (the per-cloud presets show the exact set).
+ *
+ * EXPOSURE: every UI/API stays ClusterIP; expose Grafana or Prometheus
+ * via first-class kinds (KubernetesIngress, Gateway API kinds) over the
+ * exported service handles.
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `helm_values` remains as the escape hatch for chart values
+ * beyond them (merged last, Helm `-f` semantics, identical on both
+ * engines) — Thanos sidecar/ruler scale-out, windows monitoring, per-arm
+ * webhook tuning, additional alertmanager templates — a safety valve,
+ * never the primary interface.
+ */
+message KubernetesKubePrometheusStackSpec {
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "87.19.1" — chart 87.19.1 pairs
+   * with Prometheus Operator v0.92.1). Versions must exist as SERVED
+   * charts in the repository index
+   * (https://prometheus-community.github.io/helm-charts). KNOW THIS:
+   * bumping the chart version does NOT upgrade the CRDs (see the CRD
+   * LIFECYCLE note above) — pair upgrades across operator minors with
+   * `crd_upgrade_job`.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "87.19.1"];
+
+  /**
+   * Skip installing the monitoring.coreos.com CRDs. Set ONLY when the
+   * CRDs are owned elsewhere (a second stack on the cluster, or a
+   * GitOps-managed CRD bundle). With the CRDs absent the install fails —
+   * this is a bring-your-own-CRDs arm, not a lighter install.
+   */
+  bool skip_crds = 4;
+
+  /**
+   * Run the chart's CRD upgrade hook (a pre-install/pre-upgrade Job that
+   * server-side-applies the chart's CRD bundle). Chart default: off.
+   * Enable for chart upgrades that cross operator versions — Helm never
+   * upgrades the `crds/`-directory CRDs on its own. The hook runs kubectl
+   * from `registry.k8s.io/kubectl` (tag = the cluster's Kubernetes
+   * version); override its images via `helm_values` for air-gapped
+   * registries.
+   */
+  bool crd_upgrade_job = 5;
+
+  /**
+   * The Prometheus server (rendered as a Prometheus CR the operator
+   * reconciles into a StatefulSet). Empty = single replica, 10-day
+   * retention, a 50Gi persistent volume and cluster-wide discovery.
+   */
+  KubernetesKubePrometheusStackPrometheus prometheus = 6;
+
+  /**
+   * Alertmanager (rendered as an Alertmanager CR). Deployed by default —
+   * disable only when alerts are routed to an external Alertmanager.
+   */
+  KubernetesKubePrometheusStackAlertmanager alertmanager = 7;
+
+  /**
+   * The bundled Grafana, pre-provisioned with the stack's dashboards and
+   * a datasource pointing at this Prometheus. Deployed by default. For a
+   * standalone Grafana composed with multiple datasources, disable this
+   * and deploy KubernetesGrafana instead.
+   */
+  KubernetesKubePrometheusStackGrafana grafana = 8;
+
+  /**
+   * The Prometheus Operator itself (the controller that reconciles the
+   * Prometheus/Alertmanager CRs and admission-validates rules).
+   */
+  KubernetesKubePrometheusStackOperator operator = 9;
+
+  /**
+   * The bundled metric sources: kube-state-metrics (object-state metrics)
+   * and node-exporter (per-node host metrics, a DaemonSet). Both on by
+   * default — the stack's own dashboards and rules assume them.
+   */
+  KubernetesKubePrometheusStackExporters exporters = 10;
+
+  /**
+   * Scrape toggles for the Kubernetes control-plane components. All on by
+   * default — the right shape for self-managed clusters (kubeadm, kind,
+   * datacenter). On managed clouds disable the unreachable ones (see the
+   * MANAGED CLOUDS note above; the per-cloud presets carry the exact set).
+   */
+  KubernetesKubePrometheusStackControlPlaneScrapers control_plane_scrapers = 11;
+
+  /**
+   * The chart's curated Kubernetes alerting/recording rules (rendered as
+   * PrometheusRule objects).
+   */
+  KubernetesKubePrometheusStackDefaultRules default_rules = 12;
+
+  /**
+   * Registry that replaces the registry part of EVERY image the stack
+   * pulls (operator, prometheus, alertmanager, exporters, grafana,
+   * webhook-certgen sidecars) — the air-gap/private-mirror path. Empty =
+   * each image's upstream registry (quay.io, registry.k8s.io, docker.io,
+   * ghcr.io).
+   */
+  string image_registry = 13;
+
+  /**
+   * Names of existing image-pull Secrets applied to every workload the
+   * stack creates (chart `global.imagePullSecrets`). The Secrets must
+   * already exist in the namespace.
+   */
+  repeated string image_pull_secrets = 14 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing image-pull Secrets (references), not secret material"];
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged LAST
+   * over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (Thanos sidecar/ruler, windows monitoring, ingress-per-replica,
+   * scrape classes, additional alertmanager template files, per-component
+   * securityContexts, ...) — never the substitute for them. Do not put
+   * secrets here; secret material belongs in the typed secret references.
+   */
+  string helm_values = 15;
+}
+
+/**
+ * The Prometheus server configuration.
+ */
+message KubernetesKubePrometheusStackPrometheus {
+  /**
+   * Number of Prometheus replicas. Each replica scrapes and stores the
+   * FULL target set independently (this is HA duplication, not sharding)
+   * — queries against the Service may see either replica. 2 is the HA
+   * pair; deduplicated long-term storage across replicas is the Thanos
+   * surface (`helm_values`).
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * How long samples are kept, as a Prometheus duration (e.g. "10d",
+   * "36h", "2w"). Retention ends when EITHER this or `retention_size` is
+   * reached.
+   */
+  optional string retention = 2 [
+    (dev.planton.shared.options.default) = "10d",
+    (buf.validate.field).string.pattern = "^[0-9]+(ms|s|m|h|d|w|y)$"
+  ];
+
+  /**
+   * Maximum on-disk size of the TSDB, as a Prometheus byte size (e.g.
+   * "45GiB", "500MB"). Size it BELOW the volume's `disk_size` — when the
+   * volume itself fills up, Prometheus crash-loops instead of trimming.
+   * Empty = no size-based trimming.
+   */
+  string retention_size = 3 [(buf.validate.field).cel = {
+    id: "spec.prometheus.retention_size"
+    message: "retention_size must be a Prometheus byte size like '45GiB' or '500MB' (units B, KB, MB, GB, TB, PB, EB, KiB, MiB, GiB, TiB, PiB, EiB)"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?(B|KB|MB|GB|TB|PB|EB|KiB|MiB|GiB|TiB|PiB|EiB)$')"
+  }];
+
+  /**
+   * Size of the persistent TSDB volume PER replica (e.g. "50Gi").
+   * KNOW THIS: the chart's own default is an emptyDir — every metric
+   * vanishes on pod restart — so this component provisions a
+   * PersistentVolumeClaim by default instead. Kubernetes cannot shrink
+   * PVCs; plan for growth. Ignored when `ephemeral` is true.
+   */
+  optional string disk_size = 4 [
+    (dev.planton.shared.options.default) = "50Gi",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"
+  ];
+
+  /**
+   * Storage class for the TSDB volumes. Accepts a literal name or a
+   * reference to a KubernetesStorageClass resource. Empty = the cluster's
+   * default storage class. Ignored when `ephemeral` is true.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * Run WITHOUT persistent storage (the chart's own emptyDir default):
+   * all metrics vanish with each pod restart. Throwaway dev/test
+   * clusters only.
+   */
+  bool ephemeral = 6;
+
+  /**
+   * CPU and memory for the Prometheus container. Memory scales with
+   * active series count — undersized limits are the most common cause of
+   * a crash-looping Prometheus on busy clusters. Empty = no
+   * requests/limits (the chart default).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 7;
+
+  /**
+   * Labels attached to every sample and alert leaving this Prometheus
+   * (federation, remote write, Alertmanager). Convention: a `cluster`
+   * label naming the cluster — multi-cluster backends key on it.
+   */
+  map<string, string> external_labels = 8;
+
+  /**
+   * Default interval between scrapes, as a Prometheus duration (e.g.
+   * "30s"). Empty = the Prometheus default (30s). Individual monitors
+   * may override per target.
+   */
+  string scrape_interval = 9 [(buf.validate.field).cel = {
+    id: "spec.prometheus.scrape_interval"
+    message: "scrape_interval must be a Prometheus duration like '30s' or '1m'"
+    expression: "this == '' || this.matches('^[0-9]+(ms|s|m|h|d|w|y)$')"
+  }];
+
+  /**
+   * Default interval between rule evaluations, as a Prometheus duration.
+   * Empty = the operator default (30s).
+   */
+  string evaluation_interval = 10 [(buf.validate.field).cel = {
+    id: "spec.prometheus.evaluation_interval"
+    message: "evaluation_interval must be a Prometheus duration like '30s' or '1m'"
+    expression: "this == '' || this.matches('^[0-9]+(ms|s|m|h|d|w|y)$')"
+  }];
+
+  /**
+   * Which ServiceMonitor/PodMonitor/PrometheusRule/Probe/ScrapeConfig
+   * objects this Prometheus discovers. Default `all_monitors` — see the
+   * DISCOVERY note on the spec.
+   */
+  optional KubernetesKubePrometheusStackMonitorDiscovery discovery = 11 [
+    (dev.planton.shared.options.default) = "all_monitors",
+    (buf.validate.field).enum.defined_only = true
+  ];
+
+  /**
+   * Ship samples to remote/long-term backends as they are scraped —
+   * Grafana Cloud/Mimir, Amazon Managed Prometheus (SigV4), Azure
+   * Monitor, Thanos Receive, VictoriaMetrics.
+   */
+  repeated KubernetesKubePrometheusStackRemoteWrite remote_write = 12;
+
+  /**
+   * Accept remote-write pushes from OTHER Prometheus servers or agents on
+   * this server's `/api/v1/write` (turns this Prometheus into an
+   * aggregation point).
+   */
+  bool enable_remote_write_receiver = 13;
+
+  /**
+   * Raw Prometheus scrape_config entries (YAML list) appended to the
+   * generated configuration — the seam for exotic SD mechanisms no
+   * monitor object models. Entries here are outside the operator's
+   * validation: a syntax error stalls config reload. Prefer ScrapeConfig
+   * objects (discovered per `discovery`) when they can express the job.
+   */
+  string additional_scrape_configs = 14;
+
+  /**
+   * Scheduling for the Prometheus pods.
+   */
+  KubernetesKubePrometheusStackScheduling scheduling = 15;
+
+  option (buf.validate.message).cel = {
+    id: "spec.prometheus.ephemeral.excludes_storage"
+    message: "ephemeral: true runs on emptyDir — a non-default disk_size or a storage_class must not be set with it"
+    // The default-value tolerance is deliberate: the platform's
+    // defaulting middleware stamps disk_size "50Gi" onto every manifest,
+    // so an ephemeral manifest that never declared a disk size would
+    // otherwise become unexpressible. The module ignores the defaulted
+    // value when ephemeral is true.
+    expression: "!this.ephemeral || ((!has(this.disk_size) || this.disk_size == '50Gi') && !has(this.storage_class))"
+  };
+}
+
+/**
+ * **KubernetesKubePrometheusStackMonitorDiscovery** is the discovery
+ * fence for monitor/rule objects.
+ */
+enum KubernetesKubePrometheusStackMonitorDiscovery {
+  // Unspecified. Defaults to all_monitors.
+  kubernetes_kube_prometheus_stack_monitor_discovery_unspecified = 0;
+
+  // Discover every ServiceMonitor/PodMonitor/PrometheusRule/Probe/
+  // ScrapeConfig in the cluster, whoever created it — what makes other
+  // components' service_monitor toggles and user-authored monitors work
+  // with zero extra wiring. The component default.
+  all_monitors = 1;
+
+  // The chart's own fenced default: discover only objects carrying this
+  // release's label. For multi-tenant clusters running several
+  // Prometheus servers with deliberate ownership boundaries.
+  release_managed_only = 2;
+}
+
+/**
+ * One remote-write destination.
+ */
+message KubernetesKubePrometheusStackRemoteWrite {
+  /**
+   * The remote write URL (e.g.
+   * "https://aps-workspaces.us-east-1.amazonaws.com/workspaces/ws-.../api/v1/remote_write").
+   */
+  string url = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Name for this remote-write queue — shows up in Prometheus'
+   * queue metrics; required when declaring more than one destination.
+   */
+  string name = 2;
+
+  /**
+   * Authentication for the destination. Empty = unauthenticated (or
+   * ambient — SigV4 with no keys uses the pod's IRSA/instance identity).
+   */
+  oneof auth {
+    /**
+     * HTTP basic auth. The password is read from an existing Secret.
+     */
+    KubernetesKubePrometheusStackRemoteWriteBasicAuth basic_auth = 3;
+
+    /**
+     * Bearer-token auth (e.g. Grafana Cloud API tokens). The token is
+     * read from an existing Secret.
+     */
+    KubernetesKubePrometheusStackSecretKeyRef bearer_token_secret = 4;
+
+    /**
+     * AWS SigV4 signing — Amazon Managed Prometheus. With no keys
+     * declared the pod's ambient identity signs (IRSA on EKS — the
+     * keyless posture).
+     */
+    KubernetesKubePrometheusStackRemoteWriteSigv4 sigv4 = 5;
+
+    /**
+     * Azure AD managed-identity auth — Azure Monitor managed Prometheus.
+     */
+    KubernetesKubePrometheusStackRemoteWriteAzureAd azure_ad = 6;
+  }
+}
+
+/**
+ * Basic auth for a remote-write destination.
+ */
+message KubernetesKubePrometheusStackRemoteWriteBasicAuth {
+  /**
+   * Username (e.g. the Grafana Cloud metrics instance ID).
+   */
+  string username = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Existing Secret holding the password.
+   */
+  KubernetesKubePrometheusStackSecretKeyRef password_secret = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * AWS SigV4 signing for a remote-write destination.
+ */
+message KubernetesKubePrometheusStackRemoteWriteSigv4 {
+  /**
+   * AWS region of the destination workspace (e.g. "us-east-1").
+   */
+  string region = 1 [(buf.validate.field).required = true];
+
+  /**
+   * IAM role to assume before signing. Empty = sign as the pod's own
+   * identity (IRSA — the recommended keyless posture on EKS).
+   */
+  string role_arn = 2;
+
+  /**
+   * Existing Secret holding a static access key ID. Declare together
+   * with `secret_key_secret` only when ambient identity is unavailable —
+   * prefer keyless.
+   */
+  KubernetesKubePrometheusStackSecretKeyRef access_key_secret = 3;
+
+  /**
+   * Existing Secret holding the static secret access key.
+   */
+  KubernetesKubePrometheusStackSecretKeyRef secret_key_secret = 4;
+
+  option (buf.validate.message).cel = {
+    id: "spec.remote_write.sigv4.keys_pair"
+    message: "declare both access_key_secret and secret_key_secret, or neither (keyless)"
+    expression: "has(this.access_key_secret) == has(this.secret_key_secret)"
+  };
+}
+
+/**
+ * Azure AD auth for a remote-write destination.
+ */
+message KubernetesKubePrometheusStackRemoteWriteAzureAd {
+  /**
+   * Client ID of the managed identity that writes to the Azure Monitor
+   * workspace (workload identity on AKS).
+   */
+  string managed_identity_client_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Azure cloud. Empty = "AzurePublic" (others: "AzureChina",
+   * "AzureGovernment").
+   */
+  string cloud = 2;
+}
+
+/**
+ * A reference to one key of an existing Secret (a reference, never
+ * secret material).
+ */
+message KubernetesKubePrometheusStackSecretKeyRef {
+  /**
+   * Secret name. The Secret must live in the stack's namespace —
+   * Prometheus mounts it from there.
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key within the Secret.
+   */
+  string key = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * Alertmanager configuration.
+ */
+message KubernetesKubePrometheusStackAlertmanager {
+  /**
+   * Deploy Alertmanager. Default true. Disable only when this
+   * Prometheus sends alerts to an Alertmanager it does not own
+   * (declare the external endpoints via `helm_values`).
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Number of Alertmanager replicas. Multiple replicas gossip into one
+   * notification cluster (deduplicated alerts); 3 is the quorum-safe HA
+   * count.
+   */
+  optional int32 replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * How long Alertmanager keeps its notification state, as a Prometheus
+   * duration (silences and dedup state survive restarts through the data
+   * volume).
+   */
+  optional string retention = 3 [
+    (dev.planton.shared.options.default) = "120h",
+    (buf.validate.field).string.pattern = "^[0-9]+(ms|s|m|h|d|w|y)$"
+  ];
+
+  /**
+   * Size of the persistent state volume PER replica (silences,
+   * notification log). The chart's own default is an emptyDir — silences
+   * vanish on restart — so this component provisions a small PVC by
+   * default. Ignored when `ephemeral` is true.
+   */
+  optional string disk_size = 4 [
+    (dev.planton.shared.options.default) = "2Gi",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"
+  ];
+
+  /**
+   * Storage class for the state volumes. Empty = the cluster's default
+   * class. Ignored when `ephemeral` is true.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+
+  /**
+   * Run WITHOUT persistent state (the chart's own emptyDir default):
+   * silences and the notification log vanish with each pod restart.
+   */
+  bool ephemeral = 6;
+
+  /**
+   * CPU and memory for the Alertmanager container. Empty = no
+   * requests/limits (the chart default). Alertmanager is light — small
+   * requests suffice.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 7;
+
+  /**
+   * The Alertmanager configuration document (route/receivers/
+   * inhibit_rules) as YAML — where notification destinations (Slack,
+   * PagerDuty, email, webhooks) are declared. Empty = the chart's
+   * default: everything routes to a "null" receiver (alerts are visible
+   * in the UIs and APIs but notify nobody), with the always-firing
+   * Watchdog alert routed separately as the dead-man's-switch hook.
+   * KNOW THIS: webhook URLs and API keys in this document are
+   * credentials — reference them with Alertmanager's `_file` fields and
+   * mount the Secret via `helm_values`, or manage the whole document as
+   * an AlertmanagerConfig object instead of inlining tokens here.
+   */
+  string config_yaml = 8;
+
+  /**
+   * Scheduling for the Alertmanager pods.
+   */
+  KubernetesKubePrometheusStackScheduling scheduling = 9;
+
+  option (buf.validate.message).cel = {
+    id: "spec.alertmanager.ephemeral.excludes_storage"
+    message: "ephemeral: true runs on emptyDir — a non-default disk_size or a storage_class must not be set with it"
+    // Default-value tolerance: the defaulting middleware stamps
+    // disk_size "2Gi" onto every manifest (see the Prometheus block's
+    // twin rule).
+    expression: "!this.ephemeral || ((!has(this.disk_size) || this.disk_size == '2Gi') && !has(this.storage_class))"
+  };
+}
+
+/**
+ * The bundled Grafana.
+ */
+message KubernetesKubePrometheusStackGrafana {
+  /**
+   * Deploy the bundled Grafana. Default true — it arrives pre-wired
+   * with a datasource for this Prometheus and the stack's dashboard set.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Read the admin credentials from an existing Secret. Empty = the
+   * chart generates a random admin password ONCE at first install
+   * (stable across upgrades) and keeps it in its own
+   * `<name>-grafana` Secret — keys `admin-user` / `admin-password`;
+   * the Secret name lands in the stack outputs.
+   */
+  KubernetesKubePrometheusStackGrafanaAdminSecret admin_secret = 2;
+
+  /**
+   * Provision the stack's curated dashboard set (Kubernetes cluster,
+   * node, workload, Prometheus and Alertmanager dashboards). Default
+   * true.
+   */
+  optional bool default_dashboards_enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Persistent storage for Grafana's own state (UI-authored dashboards,
+   * users, preferences). Empty = ephemeral (the chart default) — safe
+   * when everything is provisioned as code, wrong if people build
+   * dashboards in this UI by hand.
+   */
+  KubernetesKubePrometheusStackGrafanaStorage storage = 4;
+
+  /**
+   * CPU and memory for the Grafana container. Empty = no requests/limits
+   * (the chart default).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 5;
+}
+
+/**
+ * Existing admin-credentials Secret for the bundled Grafana.
+ */
+message KubernetesKubePrometheusStackGrafanaAdminSecret {
+  /**
+   * Secret name (a reference to an existing Kubernetes Secret, never
+   * secret material). Must exist BEFORE the install.
+   */
+  string name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key holding the admin username. Empty = "admin-user".
+   */
+  optional string user_key = 2 [(dev.planton.shared.options.default) = "admin-user"];
+
+  /**
+   * Key holding the admin password. Empty = "admin-password".
+   */
+  optional string password_key = 3 [
+    (dev.planton.shared.options.default) = "admin-password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Name of a key within an existing Secret, not secret material"
+  ];
+}
+
+/**
+ * Persistent storage for the bundled Grafana.
+ */
+message KubernetesKubePrometheusStackGrafanaStorage {
+  /**
+   * Volume size as a Kubernetes quantity (e.g. "10Gi").
+   */
+  optional string size = 1 [
+    (dev.planton.shared.options.default) = "10Gi",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$"
+  ];
+
+  /**
+   * Storage class for the PVC. Empty = the cluster's default class.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_class = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesStorageClass,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "metadata.name"
+  ];
+}
+
+/**
+ * The Prometheus Operator controller.
+ */
+message KubernetesKubePrometheusStackOperator {
+  /**
+   * CPU and memory for the operator container. Empty = no
+   * requests/limits (the chart default).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 1;
+
+  /**
+   * The operator's admission webhooks — they validate PrometheusRule and
+   * AlertmanagerConfig objects at admission so a malformed rule can never
+   * stall Prometheus' config reload.
+   */
+  KubernetesKubePrometheusStackAdmissionWebhooks admission_webhooks = 2;
+
+  /**
+   * Scheduling for the operator pod.
+   */
+  KubernetesKubePrometheusStackScheduling scheduling = 3;
+}
+
+/**
+ * Admission-webhook posture for the operator.
+ */
+message KubernetesKubePrometheusStackAdmissionWebhooks {
+  /**
+   * Turn the admission webhooks OFF entirely. Rules then fail at
+   * Prometheus config-reload time instead of at kubectl-apply time —
+   * accept only where the webhook's certificate machinery cannot run.
+   */
+  bool disabled = 1;
+
+  /**
+   * Let cert-manager issue and inject the webhook's serving certificate
+   * (an Issuer + Certificates rendered by the chart) instead of the
+   * default self-contained certgen hook Job. Requires
+   * KubernetesCertManager on the cluster.
+   */
+  bool cert_manager = 2;
+
+  option (buf.validate.message).cel = {
+    id: "spec.operator.admission_webhooks.arms"
+    message: "cert_manager configures the webhooks' certificate — it cannot be combined with disabled: true"
+    expression: "!(this.disabled && this.cert_manager)"
+  };
+}
+
+/**
+ * The bundled metric sources.
+ */
+message KubernetesKubePrometheusStackExporters {
+  /**
+   * Deploy kube-state-metrics (Deployment) — turns Kubernetes object
+   * state (deployments, pods, PVCs, jobs, ...) into metrics. The
+   * kubernetes-apps rules and dashboards are built on it. Default true.
+   */
+  optional bool kube_state_metrics_enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * CPU and memory for kube-state-metrics. Empty = chart defaults.
+   */
+  dev.planton.provider.kubernetes.ContainerResources kube_state_metrics_resources = 2;
+
+  /**
+   * Deploy node-exporter (DaemonSet on every node) — host-level CPU,
+   * memory, disk, filesystem and network metrics. The node rules and
+   * dashboards are built on it. Default true.
+   */
+  optional bool node_exporter_enabled = 3 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * CPU and memory for each node-exporter pod. Empty = chart defaults.
+   */
+  dev.planton.provider.kubernetes.ContainerResources node_exporter_resources = 4;
+}
+
+/**
+ * Control-plane scrape toggles. On managed clouds the components marked
+ * "managed clouds: disable" run on provider-internal machines the
+ * cluster network can never reach — leaving them on produces
+ * permanently-down targets and firing alerts (see the spec's MANAGED
+ * CLOUDS note; per-cloud presets carry the exact set).
+ */
+message KubernetesKubePrometheusStackControlPlaneScrapers {
+  /**
+   * Scrape the API server (reachable everywhere — managed clouds expose
+   * it through the kubernetes Service). Default true.
+   */
+  optional bool kube_api_server = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Scrape the kubelets (reachable everywhere — kubelets run on YOUR
+   * nodes). Default true.
+   */
+  optional bool kubelet = 2 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Scrape kube-controller-manager. Managed clouds (EKS/GKE/AKS):
+   * disable — it is provider-internal and unreachable. Default true.
+   */
+  optional bool kube_controller_manager = 3 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Scrape CoreDNS (runs as pods in kube-system — reachable everywhere).
+   * Default true.
+   */
+  optional bool core_dns = 4 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Scrape etcd. Managed clouds: disable — etcd is provider-internal.
+   * Default true.
+   */
+  optional bool kube_etcd = 5 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Scrape kube-scheduler. Managed clouds: disable — provider-internal.
+   * Default true.
+   */
+  optional bool kube_scheduler = 6 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Scrape kube-proxy. Reachable on most distributions (it runs on your
+   * nodes) BUT its metrics port binds to localhost by default on several
+   * managed platforms and on clusters whose CNI replaces kube-proxy
+   * entirely (Cilium kube-proxy-replacement) there is nothing to scrape
+   * — disable in those postures. Default true.
+   */
+  optional bool kube_proxy = 7 [(dev.planton.shared.options.default) = "true"];
+}
+
+/**
+ * The chart's curated rule set.
+ */
+message KubernetesKubePrometheusStackDefaultRules {
+  /**
+   * Render the curated PrometheusRule set (Kubernetes alerts +
+   * recording rules the dashboards depend on). Default true.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Names of rule GROUPS to leave out, from the chart's defaultRules.rules
+   * map (e.g. "etcd", "kubeProxy", "kubeControllerManager",
+   * "kubeSchedulerAlerting", "windows"). Pair with the
+   * control_plane_scrapers you disable — a scraper without its rule
+   * group silences the alerts that could never fire truthfully.
+   */
+  repeated string disabled_groups = 2;
+}
+
+/**
+ * Pod scheduling for one stack component.
+ */
+message KubernetesKubePrometheusStackScheduling {
+  /**
+   * Node selector for the component's pods.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for the component's pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+
+  /**
+   * Priority class name for the component's pods.
+   */
+  string priority_class_name = 3;
+}

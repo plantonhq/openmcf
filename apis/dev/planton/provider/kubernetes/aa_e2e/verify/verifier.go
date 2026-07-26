@@ -16,26 +16,7 @@ type ResourceVerifier interface {
 // do not expose a Kubernetes Service. Verification checks namespace + running
 // pods only (no service requirement).
 var operatorKinds = map[string]bool{
-	// Tier 2/3 fixture operators (tested since sessions 3-9)
-	"kubernetessolroperator":         true,
-	"kubernetesaltinityoperator":     true,
-	"kuberneteselasticoperator":      true,
 	"kubernetesstrimzikafkaoperator": true,
-	// Tier 4 operators with configurable namespace
-	"kubernetesgharunnerscalesetcontroller": true,
-	"kubernetesrookcephoperator":            true,
-}
-
-// crdWorkloadKinds lists manifest kind values (lowercased) for Tier 3
-// operator-dependent components. These create Custom Resources (e.g.,
-// Zalando Postgresql, Strimzi Kafka, ECK Elasticsearch) that are
-// reconciled by their prerequisite operator into pods and services.
-// Verification checks namespace + running pods + at least one service.
-var crdWorkloadKinds = map[string]bool{
-	"kuberneteskafka":         true,
-	"kuberneteselasticsearch": true,
-	"kubernetessolr":          true,
-	"kubernetesclickhouse":    true,
 }
 
 // helmTier2Kinds lists manifest kind values (lowercased) for Helm-based
@@ -44,18 +25,18 @@ var crdWorkloadKinds = map[string]bool{
 // (case-insensitive via lowercasing).
 var helmTier2Kinds = map[string]bool{
 	// Tier 2 Helm applications
-	"kubernetesnats":     true,
-	"kubernetesgrafana":  true,
-	"kubernetesneo4j":    true,
 	"kubernetesopenbao":  true,
 	"kubernetesopenfga":  true,
 	"kubernetesjenkins":  true,
-	"kubernetestemporal": true,
-	"kubernetesargocd":   true,
 	"kubernetesharbor":   true,
 	"kuberneteslocust":   true,
-	"kubernetessignoz":   true,
 	"kuberneteskeycloak": true,
+	// Helm applications with dedicated behavioral verifiers (the
+	// dispatch cases win; these rows are the generic fallback)
+	"kubernetesseaweedfs": true,
+	"kubernetesqdrant":    true,
+	"kubernetestemporal":  true,
+	"kubernetesnats":      true,
 }
 
 // crdInstallKinds maps manifest kind values (lowercased) to their expected CRD
@@ -443,6 +424,461 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			BackupStorage: mongodbFirstBackupStorage(spec),
 		}, nil
 
+	// A Strimzi-operator-managed KRaft Kafka cluster: the Kafka resource
+	// Ready + every node pod + the bootstrap Service. The
+	// behavioral-durability scenario (recognized by name) proves
+	// replicated durability through a live broker loss (produce with
+	// acks=all → kill a broker → consume during the outage → full
+	// recovery).
+	case "kuberneteskafka":
+		spec := manifestSpecMap(manifestPath)
+		firstPool, totalNodes := kafkaFirstPool(spec)
+		return &KafkaClusterVerifier{
+			Namespace:     info.Namespace,
+			ClusterName:   info.Name,
+			FirstPoolName: firstPool,
+			TotalNodes:    totalNodes,
+			BootstrapPort: kafkaFirstInternalPort(spec),
+			Durability:    strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// A declared Kafka topic: the KafkaTopic resource Ready (the topic
+	// operator reconciled it) AND kafka-topics --describe on the target
+	// cluster reporting the declared partition count — the reconcile
+	// proof runs on every lane.
+	case "kuberneteskafkatopic":
+		spec := manifestSpecMap(manifestPath)
+		topicName, _ := spec["topicName"].(string)
+		if topicName == "" {
+			// Scenario manifests are written in the proto's snake_case form.
+			topicName, _ = spec["topic_name"].(string)
+		}
+		if topicName == "" {
+			topicName = info.Name
+		}
+		return &KafkaTopicVerifier{
+			Namespace:   info.Namespace,
+			CrName:      info.Name,
+			TopicName:   topicName,
+			ClusterName: kafkaClusterRef(spec),
+			Partitions:  int(manifestSpecInt(manifestPath, "partitions", 0)),
+		}, nil
+
+	// A declared Kafka user: the KafkaUser resource Ready + the
+	// operator-generated credentials Secret. The behavioral-auth
+	// scenario (recognized by name) additionally produces and consumes
+	// AS THE USER through the cluster's scram listener — authentication
+	// and ACL authorization proven on the wire.
+	case "kuberneteskafkauser":
+		spec := manifestSpecMap(manifestPath)
+		aclTopic, aclGroup := kafkaUserAcl(spec)
+		return &KafkaUserVerifier{
+			Namespace:   info.Namespace,
+			Username:    info.Name,
+			ClusterName: kafkaClusterRef(spec),
+			AuthProof:   strings.Contains(manifestPath, "behavioral-auth"),
+			ScramPort:   9094,
+			AclTopic:    aclTopic,
+			AclGroup:    aclGroup,
+		}, nil
+
+	// A Strimzi-operator-managed Kafka Connect cluster: the KafkaConnect
+	// resource Ready + the Connect REST API Service.
+	case "kuberneteskafkaconnect":
+		return &KafkaConnectVerifier{
+			Namespace:   info.Namespace,
+			ConnectName: info.Name,
+		}, nil
+
+	// A declared connector on a Connect cluster: the KafkaConnector
+	// resource Ready. The behavioral-dataflow scenario (recognized by
+	// name) additionally consumes the connector's output topic on the
+	// Kafka fixture cluster and asserts real source content arrived —
+	// the pipe proven end-to-end.
+	case "kuberneteskafkaconnector":
+		return &KafkaConnectorVerifier{
+			Namespace:        info.Namespace,
+			ConnectorName:    info.Name,
+			DataFlow:         strings.Contains(manifestPath, "behavioral-dataflow"),
+			KafkaClusterName: kafkaEcosystemFixtureCluster,
+			SourceTopic:      connectorDataFlowSourceTopic,
+			MirroredTopic:    connectorDataFlowMirroredTopic,
+		}, nil
+
+	// A MirrorMaker 2 deployment: the KafkaMirrorMaker2 resource Ready.
+	// The behavioral-migration scenario (recognized by name) produces on
+	// the SOURCE fixture cluster and consumes from the TARGET fixture
+	// cluster — records crossing clusters is the migration proof.
+	case "kuberneteskafkamirrormaker2":
+		spec := manifestSpecMap(manifestPath)
+		return &KafkaMirrorMaker2Verifier{
+			Namespace:       info.Namespace,
+			MirrorMakerName: info.Name,
+			Migration:       strings.Contains(manifestPath, "behavioral-migration"),
+			SourceCluster:   kafkaEcosystemSourceCluster,
+			TargetCluster:   kafkaEcosystemFixtureCluster,
+			SourceAlias:     mirrorMaker2FirstSourceAlias(spec),
+		}, nil
+
+	// A Karapace schema registry: registry Deployment Available + Service
+	// + a LIVE register/fetch round-trip through the Confluent-compatible
+	// API on every lane (a registry that cannot persist schemas is not a
+	// registry).
+	case "kuberneteskarapace":
+		spec := manifestSpecMap(manifestPath)
+		return &KarapaceVerifier{
+			Namespace:    info.Namespace,
+			RegistryName: info.Name,
+			Port:         int(manifestSpecInt(manifestPath, "port", 8081)),
+			RestProxy:    karapaceRestProxyEnabled(spec),
+		}, nil
+
+	// A kafbat UI console: Deployment Available + Service + the console's
+	// own API answering. The behavioral-observe scenario additionally
+	// asserts the declared cluster is reported ONLINE; with-auth
+	// scenarios assert anonymous access is refused.
+	case "kuberneteskafkaui":
+		spec := manifestSpecMap(manifestPath)
+		clusterOnline := ""
+		if strings.Contains(manifestPath, "behavioral-observe") {
+			clusterOnline = kafkaUiFirstClusterName(spec)
+		}
+		return &KafkaUiVerifier{
+			Namespace:     info.Namespace,
+			ServiceName:   info.Name,
+			Port:          int(manifestSpecInt(manifestPath, "servicePort", 80)),
+			ClusterOnline: clusterOnline,
+			Authenticated: strings.Contains(manifestPath, "with-auth"),
+		}, nil
+
+	// The Altinity ClickHouse operator: the operator Deployment
+	// Available + the four chart-owned CRDs Established (kept on
+	// destroy by Helm's crds/ semantics).
+	case "kubernetesaltinityoperator":
+		return &AltinityOperatorInstallVerifier{
+			Namespace:   info.Namespace,
+			ReleaseName: info.Name,
+		}, nil
+
+	// The RabbitMQ Cluster Operator: Deployment Available + the
+	// RabbitmqCluster CRD Established + both admission webhook
+	// configurations present (their serving cert is cert-manager-issued
+	// — the operator's registry prerequisite). Every name is fixed by
+	// the release manifest, including the rabbitmq-system namespace; on
+	// destroy the CRD is asserted GONE (it is a document of the applied
+	// manifest, not a kept CRD).
+	case "kubernetesrabbitmqoperator":
+		return &RabbitMqOperatorInstallVerifier{}, nil
+
+	// An operator-managed RabbitMQ cluster: ClusterAvailable +
+	// AllReplicasReady conditions, the naming contract's Services and
+	// default-user Secret, plus a LIVE message round-trip through the
+	// management API on every lane. The behavioral-durability scenario
+	// (recognized by name) proves a quorum queue's marker survives a
+	// live broker loss.
+	case "kubernetesrabbitmq":
+		spec := manifestSpecMap(manifestPath)
+		replicas := 1
+		if n, ok := specInt(spec["replicas"]); ok && n > 0 {
+			replicas = n
+		}
+		return &RabbitMqClusterVerifier{
+			Namespace:   info.Namespace,
+			ClusterName: info.Name,
+			Replicas:    replicas,
+			Durability:  strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// An operator-managed ClickHouse cluster: status Completed with
+	// every declared host reconciled, the managed Keeper when the
+	// coordination calls for one, plus a LIVE SQL round-trip on every
+	// lane. The behavioral-durability scenario (recognized by name)
+	// proves replica-synced rows survive a live replica loss.
+	case "kubernetesclickhouse":
+		spec := manifestSpecMap(manifestPath)
+		clusterName, totalHosts, username, password, managedKeeper := clickhouseScenarioShape(spec)
+		return &ClickHouseInstallationVerifier{
+			Namespace:     info.Namespace,
+			ChiName:       info.Name,
+			ClusterName:   clusterName,
+			TotalHosts:    totalHosts,
+			Username:      username,
+			Password:      password,
+			ManagedKeeper: managedKeeper,
+			Durability:    strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// The OpenSearch Kubernetes Operator: controller-manager Available +
+	// the module-owned CRDs Established (kept on destroy by design).
+	case "kubernetesopensearchoperator":
+		return &OpenSearchOperatorInstallVerifier{
+			Namespace:   info.Namespace,
+			ReleaseName: info.Name,
+		}, nil
+
+	// An operator-managed OpenSearch cluster: phase RUNNING with every
+	// declared node available, plus a LIVE index/search round-trip on
+	// every lane. The behavioral-durability scenario (recognized by
+	// name) proves replicated data survives a live node loss.
+	case "kubernetesopensearch":
+		spec := manifestSpecMap(manifestPath)
+		firstPool, totalNodes := opensearchFirstPool(spec)
+		return &OpenSearchClusterVerifier{
+			Namespace:     info.Namespace,
+			ClusterName:   info.Name,
+			TotalNodes:    totalNodes,
+			FirstPoolName: firstPool,
+			HttpPort:      int(manifestSpecInt(manifestPath, "http_port", 9200)),
+			Durability:    strings.Contains(manifestPath, "behavioral-durability"),
+			Dashboards:    opensearchDashboardsEnabled(spec),
+		}, nil
+
+	// The Apache Solr Operator: operator Available + the module-owned
+	// CRDs (incl. the bundled zookeeper-operator's ZookeeperCluster)
+	// Established; kept on destroy by design.
+	case "kubernetessolroperator":
+		spec := manifestSpecMap(manifestPath)
+		return &SolrOperatorInstallVerifier{
+			Namespace:         info.Namespace,
+			ReleaseName:       info.Name,
+			ZookeeperOperator: solrZookeeperOperatorInstalled(spec),
+		}, nil
+
+	// An operator-managed SolrCloud: every node ready + the common
+	// Service. The behavioral-collection scenario (recognized by name)
+	// creates a collection, indexes a document and queries it back —
+	// the cluster proven working, not just running.
+	case "kubernetessolr":
+		spec := manifestSpecMap(manifestPath)
+		return &SolrCloudVerifier{
+			Namespace:   info.Namespace,
+			ClusterName: info.Name,
+			Replicas:    int(manifestSpecInt(manifestPath, "replicas", 3)),
+			Security:    solrSecurityEnabled(spec),
+			Behavioral:  strings.Contains(manifestPath, "behavioral-collection"),
+		}, nil
+
+	// A Neo4j server: the StatefulSet ready + the main Service, plus a
+	// LIVE Cypher write/read round-trip whenever credentials are
+	// A SeaweedFS object store: master + filer StatefulSets ready (the
+	// dedicated S3 gateway Deployment too when deployed), the `-s3`
+	// Service present, declared buckets created by the install hook, and
+	// a live S3 put/get round-trip with the chart-materialized
+	// credentials. The behavioral-durability scenario (recognized by
+	// name) proves object bytes survive a volume-server pod loss through
+	// the PVC.
+	case "kubernetesseaweedfs":
+		spec := manifestSpecMap(manifestPath)
+		return &SeaweedFsVerifier{
+			Namespace:             info.Namespace,
+			Name:                  info.Name,
+			DedicatedS3:           seaweedfsS3Dedicated(spec),
+			CredentialsSecretName: seaweedfsCredentialsSecret(spec, info.Name),
+			Buckets:               seaweedfsBuckets(spec),
+			AdminEnabled:          seaweedfsAdminEnabled(spec),
+			Durability:            strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// A kube-prometheus-stack: operator Deployment available, the
+	// operator-reconciled Prometheus StatefulSet at its declared count,
+	// Alertmanager/bundled-Grafana when enabled, and a LIVE metric-flow
+	// proof (a healthy kube-state-metrics target + a PromQL answer). The
+	// behavioral-alerting scenario (recognized by name) proves the
+	// pipeline end to end via the always-firing Watchdog alert in BOTH
+	// Prometheus and Alertmanager. Destroy asserts the crds-subchart
+	// keep posture (the monitoring CRDs must SURVIVE uninstall).
+	case "kuberneteskubeprometheusstack":
+		spec := manifestSpecMap(manifestPath)
+		return &KubePrometheusStackVerifier{
+			Namespace:            info.Namespace,
+			Name:                 info.Name,
+			PrometheusReplicas:   kpsReplicas(spec, "prometheus"),
+			AlertmanagerEnabled:  kpsHalfEnabled(spec, "alertmanager"),
+			AlertmanagerReplicas: kpsReplicas(spec, "alertmanager"),
+			GrafanaEnabled:       kpsHalfEnabled(spec, "grafana"),
+			Alerting:             strings.Contains(manifestPath, "behavioral-alerting"),
+		}, nil
+
+	// A standalone Grafana: Deployment available, /api/health reporting
+	// a working database, an AUTHENTICATED API round-trip as the admin
+	// credentials (read from the Secret — the credential-wiring proof),
+	// and every declared datasource provisioned. The
+	// behavioral-persistence scenario (recognized by name) proves a
+	// UI-authored dashboard survives a pod REPLACEMENT through the PVC.
+	case "kubernetesgrafana":
+		spec := manifestSpecMap(manifestPath)
+		return &GrafanaVerifier{
+			Namespace:        info.Namespace,
+			Name:             info.Name,
+			AdminSecretName:  grafanaAdminSecretName(spec, info.Name),
+			AdminUserKey:     grafanaAdminSecretKey(spec, "user_key"),
+			AdminPasswordKey: grafanaAdminSecretKey(spec, "password_key"),
+			Datasources:      grafanaDatasourceNames(spec),
+			Persistence:      strings.Contains(manifestPath, "behavioral-persistence"),
+		}, nil
+
+	// A Grafana Loki log store: the monolithic StatefulSet ready, the
+	// gateway Service present, and a LIVE push→LogQL round-trip (a line
+	// pushed through the gateway and returned by a LogQL query). With
+	// tenants declared the proof authenticates AS the first tenant —
+	// the gateway guards every push/query route and derives the tenant
+	// from the authenticated user, so the round-trip then proves the
+	// whole multi-tenant path. The behavioral-durability scenario
+	// (recognized by name) proves logs survive a pod loss through the
+	// PVC.
+	case "kubernetesloki":
+		spec := manifestSpecMap(manifestPath)
+		v := &LokiVerifier{
+			Namespace:      info.Namespace,
+			Name:           info.Name,
+			GatewayEnabled: lokiGatewayEnabled(spec),
+			Durability:     strings.Contains(manifestPath, "behavioral-durability"),
+		}
+		if tenant := lokiFirstTenantUser(spec); tenant != "" {
+			v.TenantUser = tenant
+			v.TenantPassword = lokiE2eTenantPassword
+		}
+		return v, nil
+
+	// A Grafana Tempo trace store: the StatefulSet ready, the Service
+	// present, and a LIVE OTLP-push→trace-by-ID round-trip. The
+	// behavioral-persistence scenario (recognized by name) proves traces
+	// survive a pod loss through the PVC.
+	case "kubernetestempo":
+		return &TempoVerifier{
+			Namespace:   info.Namespace,
+			Name:        info.Name,
+			Persistence: strings.Contains(manifestPath, "behavioral-persistence"),
+		}, nil
+
+	// A SigNoz observability platform: server StatefulSet + collector
+	// rolled out, health OK (answers only with a working connection to
+	// the COMPOSED ClickHouse — the registry-prerequisite fixture), and
+	// the product-grade round-trip — first-admin REGISTRATION through
+	// the product API, a session, an OTLP span push, and the trace
+	// retrieved by ID through the authenticated query API. The
+	// behavioral-state scenario (recognized by name) re-authenticates
+	// and re-queries AFTER a server pod replacement — users survive on
+	// the SQLite PVC, telemetry in the composed ClickHouse.
+	case "kubernetessignoz":
+		spec := manifestSpecMap(manifestPath)
+		zipkinPort, jaegerPort := SignozReceiverPosture(spec)
+		return &SignozVerifier{
+			Namespace:        info.Namespace,
+			Name:             info.Name,
+			StateProof:       strings.Contains(manifestPath, "behavioral-state"),
+			ExpectZipkinPort: zipkinPort,
+			ExpectJaegerPort: jaegerPort,
+		}, nil
+
+	// An Argo CD GitOps control plane: server + repo-server Deployments
+	// and the application-controller StatefulSet rolled out, the
+	// APPLICATION-generated initial admin Secret read as the credential
+	// proof, a session opened through the product's session API, and an
+	// authenticated applications round-trip. The behavioral-gitops
+	// scenario (recognized by name) runs THE GITOPS PROOF: an
+	// API-declared Application auto-syncs a public repo into the
+	// namespace (asserted on the synced workload), then survives a
+	// server pod replacement still Synced/Healthy. Destroy asserts the
+	// crds.keep posture (applications.argoproj.io must REMAIN).
+	case "kubernetesargocd":
+		spec := manifestSpecMap(manifestPath)
+		return &ArgoCdVerifier{
+			Namespace:      info.Namespace,
+			Name:           info.Name,
+			AdminEnabled:   argocdAdminEnabled(spec),
+			ServerInsecure: argocdServerInsecure(spec),
+			CrdsKeep:       argocdCrdsKeep(spec),
+			GitOpsProof:    strings.Contains(manifestPath, "behavioral-gitops"),
+		}, nil
+
+	// An Argo Workflows engine: the workflow controller (and the Argo
+	// server when enabled, with an authenticated version-API round-trip
+	// as the runner identity) rolled out, and THE ENGINE PROOF on every
+	// lane — a verifier-owned Workflow CR runs to Succeeded under the
+	// runner ServiceAccount. The behavioral-resilience scenario
+	// (recognized by name) replaces the controller pod and proves a
+	// fresh workflow still completes. Destroy asserts the crds.keep
+	// posture (workflows.argoproj.io must REMAIN).
+	case "kubernetesargoworkflows":
+		spec := manifestSpecMap(manifestPath)
+		return &ArgoWorkflowsVerifier{
+			Namespace:              info.Namespace,
+			Name:                   info.Name,
+			ServerEnabled:          argoWorkflowsServerEnabled(spec),
+			WorkflowServiceAccount: argoWorkflowsRunnerSA(spec),
+			InstanceId:             argoWorkflowsInstanceId(spec),
+			ResilienceProof:        strings.Contains(manifestPath, "behavioral-resilience"),
+		}, nil
+
+	// A Temporal workflow engine: all four server Deployments rolled
+	// out against the COMPOSED PostgreSQL (the registry-prerequisite
+	// fixture), the Web UI answering when enabled, and THE ENGINE PROOF
+	// on every lane — a real SDK worker connects through the frontend
+	// gRPC endpoint and a workflow EXECUTES TO COMPLETION with its
+	// result read back. The behavioral-state scenario (recognized by
+	// name) replaces the history and frontend pods and proves the
+	// completed workflow still describes (state lives in the database)
+	// plus a fresh workflow succeeds. Destroy is clean by design (no
+	// CRDs).
+	case "kubernetestemporal":
+		spec := manifestSpecMap(manifestPath)
+		return &TemporalVerifier{
+			Namespace:         info.Namespace,
+			Name:              info.Name,
+			WebUiEnabled:      temporalWebUiEnabled(spec),
+			TemporalNamespace: temporalFirstNamespace(spec),
+			StateProof:        strings.Contains(manifestPath, "behavioral-state"),
+		}, nil
+
+	// A NATS messaging system: the StatefulSet rolled out and THE
+	// MESSAGING PROOF on every lane — a real nats.go client completes a
+	// pub/sub round-trip (authenticated as the first declared user from
+	// the module-generated auth Secret when auth is on, with the auth
+	// gate asserted), and with JetStream on (the kind's default) a
+	// file-backed stream stores a marker a consumer reads back. The
+	// behavioral-durability scenario (recognized by name) proves the
+	// marker survives a server pod replacement through the JetStream
+	// PVC. Destroy is clean by design (no CRDs).
+	case "kubernetesnats":
+		spec := manifestSpecMap(manifestPath)
+		return &NatsVerifier{
+			Namespace:        info.Namespace,
+			Name:             info.Name,
+			JetStreamEnabled: natsJetStreamEnabled(spec),
+			FirstUsername:    natsFirstUsername(spec),
+			NoAuthUser:       natsNoAuthUser(spec),
+			NatsBoxEnabled:   natsBoxEnabled(spec),
+			DurabilityProof:  strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// A Qdrant vector database: replicas ready, the main Service
+	// present, and a live vector round-trip (collection create → upsert
+	// → similarity search asserting the nearest neighbour), carrying the
+	// declared API key when auth is on. The behavioral-persistence
+	// scenario (recognized by name) proves vectors survive pod loss
+	// through the PVC.
+	case "kubernetesqdrant":
+		spec := manifestSpecMap(manifestPath)
+		return &QdrantVerifier{
+			Namespace:        info.Namespace,
+			Name:             info.Name,
+			Replicas:         int(manifestSpecInt(manifestPath, "replicas", 1)),
+			ApiKeySecretName: qdrantApiKeySecretName(spec, info.Name),
+			Persistence:      strings.Contains(manifestPath, "behavioral-persistence"),
+		}, nil
+
+	// declared. The behavioral-persistence scenario (recognized by
+	// name) proves the data survives pod loss through the PVC.
+	case "kubernetesneo4j":
+		spec := manifestSpecMap(manifestPath)
+		return &Neo4jVerifier{
+			Namespace:      info.Namespace,
+			Name:           info.Name,
+			AuthSecretName: neo4jAuthSecretName(spec, info.Name),
+			Persistence:    strings.Contains(manifestPath, "behavioral-persistence"),
+		}, nil
+
 	// A Percona-operator-managed MySQL (XtraDB) cluster: the resource in
 	// state ready + the proxy's write Service. The behavioral-durability
 	// scenario proves Galera's synchronous replication through a live
@@ -647,20 +1083,61 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			ComponentName: info.Name,
 		}, nil
 
-	// Fixed-namespace components: the proto spec has no namespace field because
-	// the upstream tooling (Tekton, etc.) uses hardcoded namespaces. The manifest
-	// YAML cannot carry a namespace hint because protojson.Unmarshal rejects
-	// unknown fields. Namespace is therefore embedded here.
-	case "kubernetestekton":
-		return &HelmComponentVerifier{
-			Namespace:     "tekton-pipelines",
-			ComponentName: info.Name,
+	// The Tekton Operator: operator + webhook rolled out in the fixed
+	// tekton-operator namespace, the operator.tekton.dev CRDs
+	// established — and THE DESIGN INVARIANT proven: NO TektonConfig
+	// exists after install (auto-install is module-disabled; the
+	// KubernetesTekton declaration owns the configuration). Destroy
+	// asserts the manifest-bundle posture: everything gone, CRDs
+	// included.
+	case "kubernetestektonoperator":
+		return &TektonOperatorVerifier{
+			Name: info.Name,
 		}, nil
 
-	case "kubernetestektonoperator":
-		return &OperatorComponentVerifier{
-			Namespace:     "tekton-operator",
-			ComponentName: info.Name,
+	// A Tekton installation (the TektonConfig declaration the operator
+	// reconciles): TektonConfig Ready, the per-profile component
+	// rollouts asserted BOTH ways (dashboard on `all` only), the pruner
+	// CronJob when declared — and THE ENGINE PROOF on every lane: a
+	// verifier-owned TaskRun runs to Succeeded. Destroy asserts the
+	// operator-alive teardown the two-kind grain exists for: no
+	// TektonInstallerSet left behind.
+	case "kubernetestekton":
+		spec := manifestSpecMap(manifestPath)
+		return &TektonVerifier{
+			Name:            info.Name,
+			Profile:         tektonProfile(spec),
+			TargetNamespace: tektonTargetNamespace(spec),
+			PrunerDeclared:  tektonPrunerDeclared(spec),
+		}, nil
+
+	// The GitHub Actions runner scale set controller: the controller
+	// rolled out at the declared replica count and every
+	// actions.github.com CRD established. Destroy asserts the
+	// chart-owned CRD posture: the CRDs delete WITH the release.
+	case "kubernetesgharunnerscalesetcontroller":
+		spec := manifestSpecMap(manifestPath)
+		return &GhaRunnerScaleSetControllerVerifier{
+			Namespace: info.Namespace,
+			Name:      info.Name,
+			Replicas:  ghaControllerReplicas(spec),
+		}, nil
+
+	// A GitHub Actions runner scale set: the credential Secret present,
+	// the AutoscalingRunnerSet rendered and OBSERVED by the controller
+	// (the reconcile-attempt proof — no GitHub account needed). The
+	// behavioral-github scenario (recognized by name) adds THE
+	// REGISTRATION PROOF with a real credential from the fenced env
+	// tokens: listener Running + the declared idle runners online.
+	case "kubernetesgharunnerscaleset":
+		spec := manifestSpecMap(manifestPath)
+		return &GhaRunnerScaleSetVerifier{
+			Namespace:         info.Namespace,
+			Name:              info.Name,
+			ScaleSetName:      ghaScaleSetName(spec, info.Name),
+			AuthSecretName:    ghaAuthSecretName(spec, info.Name),
+			MinRunners:        ghaMinRunners(spec),
+			RegistrationProof: strings.Contains(manifestPath, "behavioral-github"),
 		}, nil
 
 	default:
@@ -726,12 +1203,6 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 		}
 		if operatorKinds[component] {
 			return &OperatorComponentVerifier{
-				Namespace:     info.Namespace,
-				ComponentName: info.Name,
-			}, nil
-		}
-		if crdWorkloadKinds[component] {
-			return &CRDWorkloadVerifier{
 				Namespace:     info.Namespace,
 				ComponentName: info.Name,
 			}, nil

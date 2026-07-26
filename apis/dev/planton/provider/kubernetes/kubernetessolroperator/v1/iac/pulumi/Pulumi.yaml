@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-solr-operator
+runtime: go
+description: Apache Solr Operator installation from the official solr-operator Helm chart — reconciles SolrCloud, SolrBackup, and SolrPrometheusExporter resources into running Solr clusters, with the module owning the operator CRDs (kept on uninstall)

@@ -1,0 +1,33 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesargoworkflows
+spec:
+  # Argo Workflows installs as one Helm release NAMED AFTER metadata.name
+  # (fullnameOverride pins every child name the same way), plus the
+  # optional anchor namespace. Artifact-store and archive-database
+  # credentials are REFERENCES to existing Secrets (the chart's secret
+  # selectors) — they travel with the referenced Secrets, so no Secret
+  # rows exist here.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

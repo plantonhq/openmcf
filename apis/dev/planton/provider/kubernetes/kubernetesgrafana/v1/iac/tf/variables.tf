@@ -1,65 +1,107 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name = string,
-    id = optional(string),
-    org = optional(string),
-    env = optional(string),
-    labels = optional(map(string)),
-    tags = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
-
 variable "spec" {
-  description = "spec"
+  description = "KubernetesGrafana specification"
   type = object({
-
-    # Kubernetes namespace to install Grafana.
-    namespace = string
-
-    # flag to indicate if the namespace should be created
+    namespace        = string
     create_namespace = optional(bool, false)
-
-    # The container specifications for the Grafana deployment.
-    container = object({
-
-      # The CPU and memory resources allocated to the Grafana container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-    })
-
-    # The ingress configuration for the Grafana deployment.
-    ingress = optional(object({
-
-      # A flag to enable or disable ingress.
-      enabled = optional(bool, false)
-
-      # The dns domain.
-      dns_domain = optional(string, "")
+    chart_version    = optional(string)
+    replicas         = optional(number)
+    resources = optional(object({
+      limits = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+      requests = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
     }))
+    admin_secret = optional(object({
+      name         = string
+      user_key     = optional(string)
+      password_key = optional(string)
+    }))
+    storage = optional(object({
+      size          = optional(string)
+      storage_class = optional(string, "")
+    }))
+    database = optional(object({
+      engine = string
+      host   = string
+      name   = string
+      user   = string
+      password_secret = object({
+        name = string
+        key  = string
+      })
+      ssl_mode = optional(string, "")
+    }))
+    datasources = optional(list(object({
+      name       = string
+      type       = optional(string)
+      url        = string
+      is_default = optional(bool, false)
+      uid        = optional(string, "")
+      basic_auth = optional(object({
+        username = string
+        password_secret = object({
+          name = string
+          key  = string
+        })
+      }))
+      json_data = optional(string, "")
+    })), [])
+    dashboard_sidecar_enabled = optional(bool)
+    community_dashboards = optional(list(object({
+      gnet_id    = number
+      revision   = optional(number, 0)
+      datasource = string
+    })), [])
+    plugins = optional(list(string), [])
+    server = optional(object({
+      root_url = optional(string, "")
+    }))
+    auth = optional(object({
+      anonymous_enabled  = optional(bool, false)
+      anonymous_org_role = optional(string)
+      disable_login_form = optional(bool, false)
+    }))
+    smtp = optional(object({
+      host                    = string
+      from_address            = optional(string, "")
+      from_name               = optional(string, "")
+      credentials_secret_name = optional(string, "")
+      skip_verify             = optional(bool, false)
+    }))
+    service_monitor_enabled = optional(bool, false)
+    image = optional(object({
+      repository       = optional(string, "")
+      tag              = optional(string, "")
+      pull_secret_name = optional(string, "")
+    }))
+    scheduling = optional(object({
+      node_selector = optional(map(string), {})
+      tolerations = optional(list(object({
+        key                = optional(string, "")
+        operator           = optional(string, "")
+        value              = optional(string, "")
+        effect             = optional(string, "")
+        toleration_seconds = optional(number)
+      })), [])
+      priority_class_name = optional(string, "")
+    }))
+    helm_values = optional(string, "")
   })
 }

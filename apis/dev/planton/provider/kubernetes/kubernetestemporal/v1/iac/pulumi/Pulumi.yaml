@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-temporal
+runtime: go
+description: Temporal installation from the official Helm chart on an external database (PostgreSQL/MySQL/Cassandra) with existingSecret credential wiring, per-service sizing, declarative namespaces, dynamic-config limits and archival

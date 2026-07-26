@@ -1,0 +1,29 @@
+# The OCI plugin-mount arm, live: a public OCI image mounted as a
+# Kubernetes image volume into the workers' plugin path. This proves the
+# cluster-dependent mechanism end-to-end (ImageVolume feature + runtime
+# support + the operator's volume wiring + workers starting with the
+# mount) — the part that can only fail live. The mounted image carries
+# no connector classes DELIBERATELY: no small, stable public connector
+# OCI artifact exists to pin (upstream's docs use placeholders), so
+# CLASS LOADING through this arm rides the deferred-E2E ledger;
+# class loading itself is proven by the stock-plugin data-flow lane.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafkaConnect
+metadata:
+  name: e2e-connect-ociplug
+spec:
+  namespace:
+    value: e2e-kaf-fix
+  bootstrap_servers:
+    valueFrom:
+      name: e2e-kaf-fix
+  replicas: 1
+  config:
+    config.storage.replication.factor: "-1"
+    offset.storage.replication.factor: "-1"
+    status.storage.replication.factor: "-1"
+  plugins:
+    - name: mount-proof
+      artifacts:
+        - reference: busybox:1.36
+          pull_policy: IfNotPresent

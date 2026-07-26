@@ -21,28 +21,32 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesTektonStackOutputs describes the outputs from a Tekton deployment.
+// *
+// Outputs exported after the Tekton installation converges — the
+// handles downstream resources and humans compose against.
 type KubernetesTektonStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The namespace where Tekton components are installed.
-	// This is always 'tekton-pipelines' for manifest-based deployments.
+	// *
+	// Namespace the Tekton components run in (the TektonConfig
+	// targetNamespace — `tekton-pipelines` unless overridden).
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// The version of Tekton Pipelines that was deployed.
-	PipelineVersion string `protobuf:"bytes,2,opt,name=pipeline_version,json=pipelineVersion,proto3" json:"pipeline_version,omitempty"`
-	// The version of Tekton Dashboard that was deployed (empty if dashboard is disabled).
-	DashboardVersion string `protobuf:"bytes,3,opt,name=dashboard_version,json=dashboardVersion,proto3" json:"dashboard_version,omitempty"`
-	// The internal cluster endpoint for the Tekton Dashboard service.
-	// Format: tekton-dashboard.tekton-pipelines.svc.cluster.local:9097
-	// Empty if dashboard is not enabled.
-	DashboardInternalEndpoint string `protobuf:"bytes,4,opt,name=dashboard_internal_endpoint,json=dashboardInternalEndpoint,proto3" json:"dashboard_internal_endpoint,omitempty"`
-	// The external hostname for the Tekton Dashboard (if ingress is enabled).
-	// This is the hostname configured in the Gateway/HTTPRoute resources.
-	DashboardExternalHostname string `protobuf:"bytes,5,opt,name=dashboard_external_hostname,json=dashboardExternalHostname,proto3" json:"dashboard_external_hostname,omitempty"`
-	// kubectl port-forward command to access the dashboard locally.
-	// Example: kubectl port-forward -n tekton-pipelines service/tekton-dashboard 9097:9097
-	PortForwardDashboardCommand string `protobuf:"bytes,6,opt,name=port_forward_dashboard_command,json=portForwardDashboardCommand,proto3" json:"port_forward_dashboard_command,omitempty"`
-	// The CloudEvents sink URL configured for pipeline notifications (if configured).
-	CloudEventsSinkUrl string `protobuf:"bytes,7,opt,name=cloud_events_sink_url,json=cloudEventsSinkUrl,proto3" json:"cloud_events_sink_url,omitempty"`
+	// *
+	// The installed profile (`lite`, `basic` or `all`).
+	Profile string `protobuf:"bytes,2,opt,name=profile,proto3" json:"profile,omitempty"`
+	// *
+	// Name of the dashboard Service (`tekton-dashboard`) in the target
+	// namespace — the backend handle exposure kinds (KubernetesIngress,
+	// KubernetesHttpRoute) reference. Empty unless profile is `all`.
+	DashboardService string `protobuf:"bytes,3,opt,name=dashboard_service,json=dashboardService,proto3" json:"dashboard_service,omitempty"`
+	// *
+	// In-cluster endpoint of the dashboard (e.g.
+	// "http://tekton-dashboard.tekton-pipelines.svc.cluster.local:9097").
+	// Empty unless profile is `all`.
+	DashboardKubeEndpoint string `protobuf:"bytes,4,opt,name=dashboard_kube_endpoint,json=dashboardKubeEndpoint,proto3" json:"dashboard_kube_endpoint,omitempty"`
+	// *
+	// Command to port-forward the dashboard to a workstation
+	// (http://localhost:9097). Empty unless profile is `all`.
+	PortForwardCommand string `protobuf:"bytes,5,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -84,44 +88,30 @@ func (x *KubernetesTektonStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesTektonStackOutputs) GetPipelineVersion() string {
+func (x *KubernetesTektonStackOutputs) GetProfile() string {
 	if x != nil {
-		return x.PipelineVersion
+		return x.Profile
 	}
 	return ""
 }
 
-func (x *KubernetesTektonStackOutputs) GetDashboardVersion() string {
+func (x *KubernetesTektonStackOutputs) GetDashboardService() string {
 	if x != nil {
-		return x.DashboardVersion
+		return x.DashboardService
 	}
 	return ""
 }
 
-func (x *KubernetesTektonStackOutputs) GetDashboardInternalEndpoint() string {
+func (x *KubernetesTektonStackOutputs) GetDashboardKubeEndpoint() string {
 	if x != nil {
-		return x.DashboardInternalEndpoint
+		return x.DashboardKubeEndpoint
 	}
 	return ""
 }
 
-func (x *KubernetesTektonStackOutputs) GetDashboardExternalHostname() string {
+func (x *KubernetesTektonStackOutputs) GetPortForwardCommand() string {
 	if x != nil {
-		return x.DashboardExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesTektonStackOutputs) GetPortForwardDashboardCommand() string {
-	if x != nil {
-		return x.PortForwardDashboardCommand
-	}
-	return ""
-}
-
-func (x *KubernetesTektonStackOutputs) GetCloudEventsSinkUrl() string {
-	if x != nil {
-		return x.CloudEventsSinkUrl
+		return x.PortForwardCommand
 	}
 	return ""
 }
@@ -130,15 +120,13 @@ var File_dev_planton_provider_kubernetes_kubernetestekton_v1_stack_outputs_proto
 
 const file_dev_planton_provider_kubernetes_kubernetestekton_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kubernetestekton/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kubernetestekton.v1\"\x8c\x03\n" +
+	"Gdev/planton/provider/kubernetes/kubernetestekton/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kubernetestekton.v1\"\xed\x01\n" +
 	"\x1cKubernetesTektonStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12)\n" +
-	"\x10pipeline_version\x18\x02 \x01(\tR\x0fpipelineVersion\x12+\n" +
-	"\x11dashboard_version\x18\x03 \x01(\tR\x10dashboardVersion\x12>\n" +
-	"\x1bdashboard_internal_endpoint\x18\x04 \x01(\tR\x19dashboardInternalEndpoint\x12>\n" +
-	"\x1bdashboard_external_hostname\x18\x05 \x01(\tR\x19dashboardExternalHostname\x12C\n" +
-	"\x1eport_forward_dashboard_command\x18\x06 \x01(\tR\x1bportForwardDashboardCommand\x121\n" +
-	"\x15cloud_events_sink_url\x18\a \x01(\tR\x12cloudEventsSinkUrlB\xa9\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
+	"\aprofile\x18\x02 \x01(\tR\aprofile\x12+\n" +
+	"\x11dashboard_service\x18\x03 \x01(\tR\x10dashboardService\x126\n" +
+	"\x17dashboard_kube_endpoint\x18\x04 \x01(\tR\x15dashboardKubeEndpoint\x120\n" +
+	"\x14port_forward_command\x18\x05 \x01(\tR\x12portForwardCommandB\xa9\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetestekton.v1B\x11StackOutputsProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestekton/v1;kubernetestektonv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetestekton.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetestekton\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetestekton\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetestekton::V1b\x06proto3"
 
 var (

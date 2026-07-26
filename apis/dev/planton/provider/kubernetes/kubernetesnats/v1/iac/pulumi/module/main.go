@@ -4,85 +4,110 @@ import (
 	"github.com/pkg/errors"
 	kubernetesnatsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnats/v1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
+	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Resources is the single entry-point consumed by the Planton
-// runtime.  It wires together noun-style helpers in a Terraform-like
-// top-down order so the flow is easy for DevOps engineers to follow.
-//
-// Deployment order (per ChatGPT guidance for avoiding race conditions):
-// 1. NATS Helm release
-// 2. NACK CRDs (explicit step, not via Helm)
-// 3. NACK controller Helm release
-// 4. Stream/Consumer custom resources
-func Resources(ctx *pulumi.Context,
-	stackInput *kubernetesnatsv1.KubernetesNatsStackInput) error {
-
-	// ----------------------------- locals ---------------------------------
+// Resources installs NATS from the official Helm chart as a real Helm
+// release. The typed spec renders into chart values (values.go); declared
+// users' passwords are module-generated into the `<name>-auth` Secret
+// BEFORE the release and reach the server as secretKeyRef env vars the
+// rendered config references (`$NATS_PW_<i>`) — nothing credential-bearing
+// transits values; the helm_values escape hatch merges last with Helm -f
+// semantics — the exact semantic twin of the Terraform module's
+// helm_release with values = [typed, helm_values].
+func Resources(ctx *pulumi.Context, stackInput *kubernetesnatsv1.KubernetesNatsStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	// ------------------------- kubernetes provider ------------------------
-	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(
-		ctx, stackInput.ProviderConfig, "kubernetes")
+	// FAIL LOUDLY on names past the chart's fullname budget: derived
+	// child names (`<fullname>-box-contents` is the longest, +13 chars)
+	// truncate SILENTLY at 63 characters past a 50-character fullname,
+	// breaking the naming contract every exported output is built on.
+	// Twin: the Terraform module's lifecycle precondition.
+	if len(locals.ReleaseName) > vars.FullnameBudget {
+		return errors.Errorf(
+			"resource name %q is %d characters — the nats chart derives child names from it and silently truncates past %d characters, which would break the naming contract; use a name of at most %d characters",
+			locals.ReleaseName, len(locals.ReleaseName), vars.FullnameBudget, vars.FullnameBudget)
+	}
+
+	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
+		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to set up kubernetes provider")
+		return errors.Wrap(err, "failed to create kubernetes provider")
 	}
 
 	// ------------------------------ namespace ----------------------------
-	// Conditionally create namespace based on create_namespace flag
 	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	// Build conditional namespace dependency (Pulumi equivalent of Terraform depends_on).
-	// When create_namespace is false, createdNamespace is nil and namespaceDeps is empty.
-	var namespaceDeps []pulumi.ResourceOption
+	var namespaceDep []pulumi.ResourceOption
 	if createdNamespace != nil {
-		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+		namespaceDep = append(namespaceDep, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
 	}
 
-	// ----------------------------- secrets --------------------------------
-	if err := tlsSecret(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create TLS secret")
-	}
-
-	// ------------------------------ NATS helm -----------------------------
-	// Step 1: Deploy NATS server (with JetStream enabled)
-	// Returns auth password for NACK controller (if basic_auth enabled)
-	natsHelmChart, authPassword, err := helmChart(ctx, locals, kubernetesProvider, namespaceDeps)
+	// ------------------------------ auth secret ---------------------------
+	// Materialized BEFORE the release: the server pods mount the
+	// passwords as env vars at first start.
+	createdAuthSecret, err := authSecret(ctx, locals, kubernetesProvider, namespaceDep)
 	if err != nil {
-		return errors.Wrap(err, "failed to deploy NATS Helm chart")
+		return errors.Wrap(err, "failed to create auth secret")
 	}
 
-	// ----------------------------- ingress --------------------------------
-	if err := ingress(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create external ingress")
+	releaseDeps := namespaceDep
+	if createdAuthSecret != nil {
+		releaseDeps = append(releaseDeps, pulumi.DependsOn([]pulumi.Resource{createdAuthSecret}))
 	}
 
-	// ----------------------------- NACK CRDs ------------------------------
-	// Step 2: Deploy NACK CRDs (explicit step for better control)
-	// CRDs must be registered before the controller can watch them
-	nackCrdsResource, err := nackCrds(ctx, locals, kubernetesProvider, natsHelmChart, namespaceDeps)
+	// ------------------------------ helm release --------------------------
+	mergedValues, err := buildHelmValues(locals)
 	if err != nil {
-		return errors.Wrap(err, "failed to deploy NACK CRDs")
+		return errors.Wrap(err, "failed to build helm values")
 	}
 
-	// --------------------------- NACK controller --------------------------
-	// Step 3: Deploy NACK controller (watches CRDs and reconciles to NATS)
-	// Pass auth password so NACK can connect to authenticated NATS server
-	nackControllerResource, err := nackController(ctx, locals, kubernetesProvider, nackCrdsResource, authPassword, namespaceDeps)
+	releaseArgs := &helmv3.ReleaseArgs{
+		Name:      pulumi.String(locals.ReleaseName),
+		Namespace: pulumi.String(locals.Namespace),
+		Chart:     pulumi.String(vars.HelmChartName),
+		Version:   pulumi.String(locals.ChartVersion),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(vars.HelmChartRepo),
+		},
+		Values: pulumi.ToMap(mergedValues),
+		// The module owns namespace creation (create_namespace flag).
+		CreateNamespace: pulumi.Bool(false),
+		// Wait for the StatefulSet to become Ready — a server that never
+		// starts (bad TLS Secret name, malformed config merge) should
+		// fail THIS deploy, not the first client connection. SkipAwait
+		// false is Helm --wait, stated explicitly to mirror the
+		// Terraform twin's `wait = true`.
+		SkipAwait:     pulumi.Bool(false),
+		Atomic:        pulumi.Bool(true),
+		CleanupOnFail: pulumi.Bool(true),
+		Timeout:       pulumi.Int(vars.HelmTimeoutSeconds),
+	}
+
+	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, releaseDeps...)
+
+	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, releaseArgs, opts...)
 	if err != nil {
-		return errors.Wrap(err, "failed to deploy NACK controller")
+		return errors.Wrap(err, "failed to install nats helm release")
 	}
 
-	// -------------------------- streams/consumers -------------------------
-	// Step 4: Create Stream/Consumer custom resources
-	// These depend on both CRDs (for schema) and controller (for reconciliation)
-	if err := streams(ctx, locals, kubernetesProvider, nackControllerResource, namespaceDeps); err != nil {
-		return errors.Wrap(err, "failed to create JetStream streams/consumers")
-	}
-
+	exportOutputs(ctx, locals)
 	return nil
+}
+
+// exportOutputs publishes the composition handles. The client Service is
+// `<name>` (fullnameOverride pins the fullname); the websocket endpoint
+// and auth Secret name are empty when their features are off.
+func exportOutputs(ctx *pulumi.Context, locals *Locals) {
+	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
+	ctx.Export(OpServiceName, pulumi.String(locals.ServiceName))
+	ctx.Export(OpHeadlessServiceName, pulumi.String(locals.HeadlessServiceName))
+	ctx.Export(OpClientEndpoint, pulumi.String(locals.ClientEndpoint))
+	ctx.Export(OpWebsocketEndpoint, pulumi.String(locals.WebsocketEndpoint))
+	ctx.Export(OpAuthSecretName, pulumi.String(locals.AuthSecretName))
+	ctx.Export(OpPortForwardCommand, pulumi.String(locals.PortForwardCommand))
 }

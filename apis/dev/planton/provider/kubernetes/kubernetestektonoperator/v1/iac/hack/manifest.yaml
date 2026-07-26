@@ -1,28 +1,35 @@
-# KubernetesTektonOperator - Test Manifest
-#
-# IMPORTANT: Tekton Operator uses fixed namespaces managed by the operator:
-# - 'tekton-operator' for the operator itself
-# - 'tekton-pipelines' for components (Pipelines, Triggers, Dashboard)
-# These namespaces are automatically created and cannot be customized.
-
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# typed override rendered at once (mirror images, both resource blocks,
+# scheduling, pull secrets).
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesTektonOperator
 metadata:
-  name: tekton-operator-test
-  labels:
-    app: tekton
-    environment: development
+  name: tekton-operator-full
 spec:
-  container:
-    resources:
-      requests:
-        cpu: "100m"
-        memory: "128Mi"
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
-  components:
-    pipelines: true
-    triggers: true
-    dashboard: true
-  # operator_version: "v0.78.0"  # Optional, defaults to v0.78.0
+  operatorImage:
+    repo: mirror.example.com/tektoncd/operator
+    tag: v0.80.0
+    pullSecretName: mirror-pull
+  webhookImage:
+    repo: mirror.example.com/tektoncd/operator-webhook
+    tag: v0.80.0
+  operatorResources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  webhookResources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  nodeSelector:
+    role: platform
+  tolerations:
+    - key: platform
+      operator: Exists
+      effect: NoSchedule
+  imagePullSecrets:
+    - mirror-pull
+    - extra-pull

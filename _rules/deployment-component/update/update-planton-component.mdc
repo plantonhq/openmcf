@@ -250,6 +250,25 @@ misconfigurations fail at validation rather than at deploy.
    resolves credentials at preview time, so the ambient chain must carry a
    live session (`aws sts get-caller-identity` proves it) even though
    nothing is created.
+   Know the offline proofs' blind spot: CR sections an operator copies
+   VERBATIM into core-API objects (pod templates, service templates,
+   volume-claim templates) must be authored to core-API validity, and
+   plan/preview CANNOT catch a violation — the operator materializes the
+   copy at reconcile time and only the API server rejects it (verified
+   live, twice in one CR: an explicit container entry without an image —
+   an explicit entry SUPPRESSES the operator's default-image injection —
+   and a ClusterIP service template without ports; both rendered clean
+   plans and previews, then stalled reconciliation with API rejections
+   only the operator's own log surfaced). When a module renders any
+   verbatim-copied template, cross-check the operator's template-copy
+   semantics in the pinned clone and author the template as if writing
+   the core object itself. A Helm-backed kind has the same class one
+   layer down: `helm.sh/v3:Release` renders chart templates only at
+   APPLY, so a chart requiring newer Helm template functions than the
+   provider's embedded SDK (e.g. `fromToml`, Helm >= 3.16) previews clean
+   and fails at install — verify the chart's template-function floor
+   against the engine's embedded Helm version (the provider clone's
+   go.mod is the authority) whenever adopting a newly-pinned chart.
 2. Updates Pulumi module based on your explanation, keeping comments at the module-comment bar (`architecture/deployment-component.md` §4.1)
 3. Updates Terraform module to maintain feature parity AND comment-quality parity (never strip module comments)
 4. Updates tests if needed
@@ -406,7 +425,12 @@ Based on scenario:
   produces an object, never a unified map. When a leaf map legitimately
   holds only same-typed strings (identity labels, secret data), plain
   merge with `cond ? {k = v} : {}` is safe — the hazard is mixed primitive
-  types.
+  types. The same plan-time trap hides in guard expressions:
+  `coalesce(x, {})` fails at PLAN with "all arguments must have the same
+  type" whenever `x` is a populated object (coalesce requires same-typed
+  arguments — an empty object literal is not the same type). Guard
+  nullable locals with a plain `x != null ?` and always-map locals with
+  `length(x) > 0 ?`; never `length(coalesce(x, {}))`.
 - **crd2pulumi cannot type a CRD field that is a map of NESTED objects**
   (name-keyed maps whose values are objects — e.g. backup-storage maps):
   it generates `map[string]map[string]string`, which structurally cannot
@@ -532,6 +556,131 @@ Based on scenario:
   families and add a `tofu_resource_name`-scoped declaration per singleton
   — deterministic satellite names are metadata.name plus a fixed suffix, so
   `from_metadata_name_suffix` derives each one blind.
+- **A module-generated credential (`random_password`) is import-mappable —
+  by VALUE, with two mandatory guards**: the random provider keeps no
+  cloud-side state, so its import ID is the password value itself, read
+  from the Secret the module materialized it into. The map row derives it
+  through `from_cluster_secret_key` (secret = metadata.name + suffix, plus
+  the data key) — cluster-connected contexts execute exactly the human
+  recipe the row's `where_to_find` gives; disconnected contexts fall back
+  to asking. Guard one: the resource declaration carries `lifecycle
+  ignore_changes` (TF) / `pulumi.IgnoreChanges` on ALL generation-shape
+  arguments — the importer assumes the provider's own generation defaults
+  (`special=true`, verified live) and every argument forces replacement,
+  so without the guard the first plan after ANY import proposes rotating
+  the live credential. Rotation stays an explicit verb, never plan
+  fallout. Guard two: the value is secret material — resolving contexts
+  redact it from progress lines, command echoes, and error wraps (the
+  round-trip harness does this whenever an id_format carries a
+  `from_cluster_secret_key`-derived placeholder).
+- **A COLLECTION of generated credentials is keyed by each credential's
+  IDENTITY (the username), never by list position — on BOTH engines**:
+  a positional key (`for_each` over an index, or an index-derived env
+  name) silently re-pairs passwords with usernames when the user list is
+  REORDERED — user B inherits user A's live password and vice versa, with
+  nothing in the plan that reads like a rotation. Keyed by username
+  (unique by CEL), reorders are no-ops and a rename is honestly a NEW
+  credential; positional names stay fine for derived plumbing that
+  carries no state (env-var names, config references) because they
+  re-render consistently on both sides of the pairing. The import map
+  then serves the whole collection with ONE row:
+  `from_cluster_secret_key` with `key_from_address_key: true` reads each
+  instance's value from the materialized Secret under the instance's own
+  address key — the username.
+- **Operator-owned CRs delete with BACKGROUND propagation, declared
+  explicitly on both engines**: the operator's finalizer IS the CR's
+  cascade — foreground propagation (the Pulumi provider's DEFAULT for
+  every resource, and `kubectl_manifest`'s default whenever `wait` is
+  set) deadlocks teardown when any involved operator keeps reconciling a
+  deleting child back to life (verified live: a foregroundDeletion
+  finalizer waiting on a child CR whose own operator recreates its
+  children — and the fixture uninstall then wedges on that operator's
+  pre-delete hook). Declare `delete_cascade = "Background"` on the TF
+  resource and the `pulumi.com/deletionPropagationPolicy: background`
+  annotation on the Pulumi CR, with twin comments.
+- **A chart arm that bundles an operator AND a CR it reconciles in ONE
+  release cannot uninstall cleanly — reject the arm, compose separate
+  kinds instead**: Helm uninstall issues every delete in one pass, so
+  the operator's Deployment dies seconds after the CR's delete while
+  the CR still carries that operator's finalizer — the release then
+  burns its full uninstall wait ("uninstallation completed with 1
+  error(s): context deadline exceeded"), the CR's children keep
+  running, and namespace deletion wedges on the same finalizer
+  (verified live, three lanes; the upstream README's own remedy was
+  "try deleting the namespace"). No values surface can sequence the
+  deletes — hooks and extra-manifest surfaces do not exist in such
+  charts, keep-annotations only relocate the deadlock, and operators
+  add finalizers unconditionally at reconcile. Audit UNINSTALL at the
+  pin before adopting any operator-bundling arm: identify who
+  processes each CR's finalizer after the operator dies in the same
+  pass — if nobody, model the dependency as a composed reference to
+  the catalog's separate operator + CR kinds, whose destroy order is
+  correct by construction. (Deletion still completes eventually via
+  the children's ownerReferences once the finalizer is CLEARED — the
+  manual unstick is a finalizer patch — but a component whose destroy
+  needs manual surgery is not shippable.)
+- **Module-owned keep-on-uninstall on Pulumi needs the CLASSIC `yaml`
+  package plus a transformation — `yaml/v2` cannot do it**: yaml/v2
+  components register remotely and their children are created
+  PROVIDER-side, beyond the reach of any SDK-side resource option or
+  transformation; the classic package's `GetChildOptions` forwards only
+  parent/version/pluginDownloadURL, so a plain `RetainOnDelete` on the
+  ConfigGroup silently retains only the component wrapper. Deliver the
+  option through a resource TRANSFORMATION on a classic-yaml ConfigGroup
+  (transformations propagate down the in-process parent chain) — the
+  semantic twin of `kubectl_manifest`'s `apply_only = true` ("Delete is
+  a no-op" in the provider source).
+- **Split multi-document YAML bundles on separator LINES, never the bare
+  `---` substring**: CRD schema description strings embed `---` (unix
+  permission strings, TODO markers), and a substring split corrupts the
+  documents — match `(?m)^---[ \t]*$` (or HCL `split("\n---", ...)`)
+  and parse-filter comment-only documents.
+- **Operators with NO Helm chart whose official distribution is a released
+  MANIFEST install from that manifest, fetched tag-pinned and applied per
+  document — never a community chart, never a hand-maintained copy.** The
+  module class: Terraform fetches via `data "http"` and applies one
+  `kubectl_manifest` `for_each` keyed by each document's own COMPOSED
+  IDENTITY (`apiVersion//kind//name[//namespace]`) — name-only keys
+  collide when a bundle reuses one name across kinds (a ServiceAccount
+  and a Deployment sharing the operator's name is the norm), and the
+  composed key doubles as the import ID: the map derives every
+  composed-ID placeholder via `from_address_key_segment` (0-based `//`
+  segments; the namespace segment resolves empty for cluster-scoped
+  documents and its bracketed group drops). Pulumi applies via the
+  CLASSIC `yaml` ConfigFile with the manifest URL plus a TRANSFORMATION
+  that patches the typed overrides onto the operator Deployment (env
+  appends, image/resources/placement) — the Terraform twin patches
+  through locals merges, and swapping the patched document into the
+  applied set uses `merge(all_docs, { (key) = patched })`, never a
+  per-element ternary (differently-shaped objects fail plan-time type
+  unification). Two more contracts: apply with SERVER-SIDE APPLY on both
+  engines when any document is large (a CRD past ~256 KB exceeds the
+  client-side last-applied-configuration annotation cap — verified at a
+  342 KB CRD), and give such kinds NO user-facing version field when a
+  typed SDK is generated from the bundle's CRD (the module pins the
+  release; a selectable version would drift the CRD schema away from the
+  typed resources built on it). Fixed names/namespaces baked into the
+  manifest's own cross-references (webhook client configs, certificate
+  DNS names, CA-injection annotations) are NOT configurable — document
+  them as the upstream contract instead of rewriting the reference graph.
+- **A chart's default image reference can point at a DELETED registry —
+  probe pullability at the pin, never trust the default**: verified
+  live with a sidecar image whose entire upstream registry namespace
+  was removed (the manifest endpoint returns not-found); every install
+  with the chart default then times out on a forever-unpullable pod.
+  At every chart pin/audit, HEAD each default image's registry manifest;
+  when a default is dead, the module re-points it at the maintainer's
+  live repository at the same tag (loudly commented, spec-noted,
+  helm_values-overridable).
+- **Charts truncate their FULLNAME but not the names built from it —
+  audit the longest child-name suffix**: Kubernetes caps object names at
+  63 characters; a chart whose fullname rule truncates at 63 can still
+  render a child Service/Deployment name (fullname + a 30-40 char
+  suffix) past the cap, failing the install at the API server for
+  ordinary release names (verified live). Compute the chart's longest
+  suffix; when the budget breaks realistic names, pin `fullnameOverride`
+  to metadata.name (the catalog's Helm-kind identity convention) and
+  record the resulting name-length budget on the spec.
 - **Helm cannot adopt CRDs that already exist without its ownership
   metadata**: a chart that templates CRDs fails to install onto a cluster
   where another tool (or a CRDs-only installer kind) already applied them
@@ -815,6 +964,18 @@ Update validates after each major change:
 3. Verify presets are consistent with current spec.proto (if presets exist)
 
 **Critical:** Component-specific tests must pass before proceeding. These tests validate that buf.validate rules work correctly.
+
+**Live-E2E phase and profile honesty.** An update that changes deployable
+behavior is complete only when the live lanes re-prove it — but the authoring
+and proving phases may be executed by different sessions (the forge rule's
+"Profile honesty" section carries the full mechanics). When the update session
+does not run the lanes itself, set `e2e/profile.yaml` to
+`status: pending_proof` (never leave a green profile claiming a surface the
+lanes have not re-proven) and hand the kind to a proving session; that session
+owns the kind completely while proving — including spec/preset/docs changes
+live evidence demands — and finishes by flipping the profile back to green,
+landing live-caught lessons on the surfaces their readers use, and
+regenerating the CI matrix.
 
 ## Progress Tracking
 

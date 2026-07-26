@@ -18,7 +18,6 @@ go_library(
         "@build_buf_gen_go_bufbuild_protovalidate_protocolbuffers_go//buf/validate",
         "@org_golang_google_protobuf//reflect/protoreflect",
         "@org_golang_google_protobuf//runtime/protoimpl",
-        "@org_golang_google_protobuf//types/descriptorpb",
     ],
 )
 
@@ -29,10 +28,10 @@ go_test(
     deps = [
         "//apis/dev/planton/provider/kubernetes",
         "//apis/dev/planton/shared",
+        "//apis/dev/planton/shared/cloudresourcekind",
         "//apis/dev/planton/shared/foreignkey/v1:foreignkey",
         "@build_buf_go_protovalidate//:protovalidate",
         "@com_github_onsi_ginkgo_v2//:ginkgo",
         "@com_github_onsi_gomega//:gomega",
-        "@org_golang_google_protobuf//proto",
     ],
 )

@@ -1,57 +1,55 @@
-# Overview
+# Kubernetes Argo CD
 
-The **Argo CD Kubernetes API Resource** provides a consistent and standardized interface for deploying and managing Argo CD instances on Kubernetes clusters within our infrastructure. This resource simplifies the process of setting up continuous delivery pipelines, allowing users to automate application deployments and manage application lifecycles efficiently.
+## When NOT to Use This
 
-## Purpose
+**One resource is ONE Argo CD control plane** — the declarative GitOps
+engine that keeps a cluster converged on what Git says.
 
-We developed this API resource to streamline the deployment and configuration of Argo CD on Kubernetes clusters. By offering a unified interface, it reduces the complexity involved in setting up GitOps workflows, enabling users to:
+Not the right component when:
 
-- **Automate Application Deployment**: Utilize Argo CD to continuously deploy applications from Git repositories to Kubernetes clusters.
-- **Simplify Configuration**: Abstract the complexities of setting up Argo CD, including resource allocation and access controls.
-- **Integrate Seamlessly**: Use existing Kubernetes cluster credentials and integrate with other Kubernetes resources.
-- **Optimize Resource Usage**: Configure CPU and memory resources for the Argo CD container to suit performance needs.
-- **Focus on Development**: Allow developers to concentrate on writing code rather than managing deployment processes.
+- **You want to declare the apps it delivers** — Applications,
+  AppProjects and ApplicationSets are plain custom resources once the
+  control plane runs; declare them via `KubernetesManifest`, a chart, or
+  Argo CD's own UI/CLI. This kind installs the engine, never your apps.
+- **You need workflow/pipeline execution** — that is
+  `KubernetesArgoWorkflows`. Argo CD converges state; it does not run
+  jobs.
+- **You expect a public endpoint out of the box** — everything is
+  ClusterIP; exposure composes from `KubernetesIngress` or Gateway kinds
+  over the exported `server_service` handle, with `server.insecure` set
+  when the edge terminates TLS.
 
-## Key Features
+## First login
 
-- **Consistent Interface**: Aligns with our existing APIs for deploying open-source software, microservices, and cloud infrastructure.
-- **Simplified Deployment**: Automates the provisioning of Argo CD instances, including necessary configurations and resource settings.
-- **Resource Configuration**: Allows customization of CPU and memory resources for the Argo CD container.
-- **Ingress Support**: Provides options to configure ingress specifications for network routing and access.
-- **Integration**: Works seamlessly with Kubernetes clusters using provided credentials.
-- **Flexible Namespace Management**: Supports both automatic namespace creation and use of pre-existing namespaces.
+Argo CD itself generates the admin password at first start into the
+fixed-name Secret `argocd-initial-admin-secret` (key `password`) —
+exported as an output handle. The name is fixed by the application, so
+ONE generated-password instance runs per namespace. Disable the local
+admin (`admin_enabled: false`) only AFTER SSO works.
 
-## Namespace Management
+## Credentials never ride the manifest
 
-The KubernetesArgoCD resource provides flexible namespace management to accommodate different operational requirements:
+The OIDC client secret and dex connector secrets use Argo CD's own
+`$<secret-name>:<key>` runtime indirection against Secrets labeled
+`app.kubernetes.io/part-of: argocd`; private-repo credentials are
+Secrets labeled `argocd.argoproj.io/secret-type: repository` composed
+from `KubernetesSecret`/`KubernetesExternalSecret`. The spec's
+`repositories` list registers PUBLIC repositories only.
 
-- **Automatic Creation** (`create_namespace: true`): The module creates and manages the namespace with appropriate labels and configurations. This is ideal for development environments and scenarios where the deployment tool has full cluster permissions.
+## The Redis arm
 
-- **External Management** (`create_namespace: false`): The module uses a pre-existing namespace that must be created before deployment. This is useful for:
-  - Environments where namespace creation requires elevated privileges
-  - Integration with namespace policies and resource quotas managed separately
-  - GitOps workflows where namespaces are managed by other tools or processes
-  - Multi-tenant clusters with strict namespace governance
+Argo CD's Redis is a disposable cache — losing it costs a re-sync,
+never state. Empty = the bundled single pod; `ha` = the three-node
+Sentinel subchart (needs three schedulable workers — its anti-affinity
+is required); `external` = a managed endpoint or a `KubernetesValkey`
+resource by reference.
 
-**Important**: When using `create_namespace: false`, ensure the specified namespace exists before deploying, or the deployment will fail with a namespace not found error.
+## CRDs
 
-## Use Cases
-
-- **Continuous Delivery (CD)**: Implement GitOps practices by syncing Kubernetes clusters with Git repositories.
-- **Multi-Cluster Management**: Deploy and manage applications across multiple Kubernetes clusters efficiently.
-- **Application Lifecycle Management**: Streamline the process of deploying, updating, and rolling back applications.
-- **Infrastructure as Code**: Maintain cluster and application configurations in version-controlled repositories.
-- **Development and Testing**: Set up consistent environments for development, staging, and testing deployments.
-
-## Future Enhancements
-
-As this resource is currently in a partial implementation phase, future updates will include:
-
-- **Advanced Configuration Options**: Support for additional Argo CD settings, plugins, and customization.
-- **Enhanced Security Features**: Integration with Kubernetes RBAC and secret management for secure deployments.
-- **Monitoring and Logging**: Improved support for logging, tracing, and monitoring using Kubernetes-native tools.
-- **Automation and CI/CD Integration**: Streamlined processes for integrating with continuous integration and deployment pipelines.
-- **Comprehensive Documentation**: Expanded usage examples, best practices, and troubleshooting guides.
+The chart templates the Application/AppProject/ApplicationSet CRDs with
+`crds.keep` defaulting true: destroying this resource leaves the CRDs
+(and every Application in the cluster) intact. Turning `keep` off
+cascades the delete to all of them — throwaway clusters only.
 
 ---
 

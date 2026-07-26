@@ -1,85 +1,170 @@
-# Overview
+# Kubernetes Grafana
 
-The **Grafana Kubernetes API resource** provides a consistent and streamlined interface for deploying and managing Grafana instances within Kubernetes environments as part of our cloud infrastructure. By abstracting the complexities of Grafana and Kubernetes configurations, this resource allows you to set up powerful visualization and monitoring tools effortlessly while ensuring consistency and compliance across different environments.
+## When NOT to Use This
 
-## Why We Created This API Resource
+**One resource is ONE standalone Grafana** — the composition hub you
+point at any mix of datasources and run independently of all of them.
 
-Monitoring and visualizing system metrics are crucial for maintaining the health and performance of applications. Deploying Grafana on Kubernetes can be complex due to various configuration options, resource management, and networking considerations. To simplify this process and promote a standardized approach, we developed this API resource. It enables you to:
+Not the right component when:
 
-- **Simplify Deployment**: Easily configure and deploy Grafana instances without dealing with low-level Kubernetes configurations.
-- **Ensure Consistency**: Maintain uniform Grafana deployments across different environments and teams.
-- **Enhance Productivity**: Reduce the time and effort required to set up monitoring tools, allowing your team to focus on application development.
-- **Optimize Resource Utilization**: Efficiently manage resources to ensure optimal performance and cost-effectiveness.
+- **All you need is dashboards for one kube-prometheus-stack** — its
+  bundled Grafana (on by default there, pre-wired with the stack's
+  datasource and dashboards) is the simpler path. Deploy this kind
+  when Grafana outlives any single stack: multiple datasources,
+  external state, HA.
+- **You expect metrics to exist because Grafana does** — Grafana
+  renders data, it stores none. A KubernetesKubePrometheusStack (or
+  Loki, Tempo, a database) is the data layer; its endpoint composes
+  here as a datasource.
+- **You expect a public endpoint out of the box** — the Service is
+  ClusterIP; exposure composes from first-class kinds
+  (KubernetesIngress, Gateway API kinds) over the service handle. Set
+  `server.root_url` when you do, or OAuth redirects and rendered
+  links point at localhost.
+- **You expect hand-built dashboards to survive by default** — the
+  chart default is EPHEMERAL: Grafana's embedded SQLite state
+  vanishes on pod restart. Declare `storage` (single instance) or
+  `database` (external Postgres/MySQL — also the HA requirement)
+  before anyone builds anything by hand.
 
-## Key Features
+## Overview
 
-### Environment Integration
+**KubernetesGrafana** deploys Grafana — the observability dashboard —
+from the official `grafana` Helm chart
+(https://grafana-community.github.io/helm-charts, the chart's current
+home; the old grafana.github.io repository stopped serving new
+versions at 10.5.x). Chart pinned 12.8.0, shipping Grafana 13.1.1.
 
-- **Environment Info**: Integrates seamlessly with our environment management system to deploy Grafana within specific environments.
-- **Stack Job Settings**: Supports custom stack-update settings for infrastructure-as-code deployments, ensuring consistent and repeatable provisioning processes.
+**The credentials contract**: the chart generates a random admin
+password ONCE at first install (stable across upgrades) into its own
+`<name>` Secret — keys `admin-user` / `admin-password` — unless
+`admin_secret` points at an existing Secret. Credentials never appear
+in rendered Helm values; the Secret name lands in the stack outputs.
 
-### Kubernetes Credential Management
+**Key design points:**
 
-- **Kubernetes Credential ID**: Utilizes specified Kubernetes credentials to ensure secure and authorized operations within Kubernetes clusters.
+- **State is the design decision.** Grafana keeps UI-authored
+  dashboards, users and preferences in an embedded SQLite database on
+  local disk. Three postures: ephemeral (the default — right when
+  everything is provisioned as code), `storage` (a ReadWriteOnce PVC
+  — one stateful instance), or `database` (external Postgres/MySQL —
+  durable AND the requirement for `replicas > 1`; SQLite cannot be
+  shared, so the spec enforces it). The database password rides an
+  existing Secret through environment expansion — never the rendered
+  config.
+- **Provisioning as code.** `datasources` render Grafana's
+  provisioning files — present from first boot. Each datasource URL
+  is a foreign key defaulting to KubernetesKubePrometheusStack (its
+  Prometheus endpoint) — the one-line wiring to cluster metrics.
+  Datasource basic-auth passwords ride Secrets through environment
+  expansion.
+- **The dashboard sidecar is the composition contract.** On by
+  default, it discovers any ConfigMap labeled `grafana_dashboard: "1"`
+  cluster-wide — other components and teams ship dashboards to this
+  Grafana without ever touching its spec. `community_dashboards`
+  imports grafana.com dashboards by ID (pin `revision` for
+  reproducible installs).
+- **Grafana 13 plugin truth.** Several once-core datasource plugins
+  (elasticsearch, cloudwatch) moved out of the core image — list them
+  in `plugins` to keep using them; the modules enable the chart's
+  bundled-plugin shadowing so installs succeed on the read-only image
+  directory.
+- **`helm_values` is the escape hatch** — merged LAST (Helm `-f`
+  semantics, identical engines) for LDAP/OAuth providers, the image
+  renderer, alerting provisioning, extra sidecars. Never for secrets:
+  the chart refuses to render secrets into its config ConfigMap, and
+  every typed credential rides Secrets + environment expansion
+  instead.
 
-### Customizable Grafana Deployment
+## Essential Configuration Fields
 
-#### Grafana Container Configuration
+### Required
 
-- **Container Resources**: Specify CPU and memory resources for the Grafana container to optimize performance according to your needs. Recommended defaults are:
-    - **CPU Requests**: `50m`
-    - **Memory Requests**: `256Mi`
-    - **CPU Limits**: `1`
-    - **Memory Limits**: `1Gi`
-- **Resource Optimization**: Adjust resource allocations to match the demands of your monitoring workloads, ensuring efficient use of cluster resources.
+- **`spec.namespace`**: namespace to install into — literal or a
+  KubernetesNamespace reference (`create_namespace` to own it)
 
-#### Ingress Configuration
+### Common
 
-- **Ingress Spec**: Configure ingress settings to expose the Grafana service outside the cluster, including:
-    - **Hostname**: Define the external URL through which Grafana will be accessible.
-    - **TLS Settings**: Enable TLS to secure connections to Grafana.
-    - **Ingress Annotations**: Customize ingress controller behavior with annotations (e.g., for specific ingress controllers like NGINX or Istio).
+- **`spec.chart_version`**: chart pin (default `12.8.0` = Grafana
+  13.1.1)
+- **`spec.replicas`**: instance count — above 1 REQUIRES `database`
+- **`spec.admin_secret`**: existing credentials Secret
+  (`name`, `user_key`, `password_key`); empty = chart-generated
+- **`spec.storage`**: PVC size + class for single-instance
+  persistence (mutually exclusive with `replicas > 1`)
+- **`spec.database`**: engine (postgres/mysql), host (literal or a
+  KubernetesPostgres reference), name, user, `password_secret`,
+  `ssl_mode`
+- **`spec.datasources`**: name, type (default prometheus), url
+  (literal or a KubernetesKubePrometheusStack reference),
+  `is_default`, `uid`, `basic_auth` (password via Secret),
+  `json_data`
+- **`spec.dashboard_sidecar_enabled` / `spec.community_dashboards` /
+  `spec.plugins`**: the dashboard/plugin surface
+- **`spec.server.root_url` / `spec.auth` / `spec.smtp`**: public URL,
+  anonymous access and login-form behavior, outbound email
+  (credentials via Secret)
+- **`spec.service_monitor_enabled`**: scrape Grafana's own /metrics
+  (requires the Prometheus Operator CRDs)
+- **`spec.image` / `spec.helm_values`**: the air-gap path and the
+  escape hatch
 
-### High Availability and Scalability
+## Stack Outputs
 
-- **Replicas**: While not explicitly specified, you can configure the number of replicas for the Grafana deployment to ensure high availability and handle increased load.
+| Output | Purpose |
+|---|---|
+| `namespace` | Namespace Grafana runs in |
+| `release_name` | Helm release name (= `metadata.name`) |
+| `service` | The Grafana Service (port 80 → container 3000; = the release name) |
+| `endpoint` | In-cluster URL (`http://<name>.<ns>.svc.cluster.local`) |
+| `admin_secret_name` | The credentials Secret — chart-owned `<name>`, or the referenced Secret echoed |
+| `port_forward_command` | Workstation access without composed exposure |
 
-### Integration with Monitoring Tools
+## Composing in Infra Charts
 
-- **Data Sources**: Integrate Grafana with various data sources (e.g., Prometheus, Elasticsearch) to visualize metrics and logs from your applications and infrastructure.
-- **Dashboards**: Deploy predefined or custom dashboards to monitor system health, performance metrics, and application-specific data.
+- **`spec.namespace`** is a foreign key (default kind
+  KubernetesNamespace); `storage.storage_class` references a
+  KubernetesStorageClass; `database.host` accepts a KubernetesPostgres
+  reference (its read-write endpoint); each datasource `url` accepts
+  a KubernetesKubePrometheusStack reference (its Prometheus
+  endpoint).
+- **Other components ship dashboards** by creating ConfigMaps labeled
+  `grafana_dashboard: "1"` — discovered cluster-wide by the sidecar,
+  no coupling to this resource.
+- **Exposure composes, never embeds**: a KubernetesIngress or Gateway
+  API route over `service`, with `server.root_url` set to the public
+  URL.
 
-## Benefits
+## Examples
 
-- **Simplified Deployment**: Abstracts the complexities of deploying Grafana on Kubernetes into an easy-to-use API resource.
-- **Consistency**: Ensures all Grafana deployments adhere to organizational standards for security, performance, and scalability.
-- **Scalability**: Allows for easy scaling of Grafana services to handle varying workloads and user demands.
-- **Resource Optimization**: Enables precise control over resource allocation for containers, optimizing performance and cost.
-- **Flexibility**: Customize Grafana configurations to meet specific monitoring requirements without compromising best practices.
-- **Enhanced Observability**: Provides a centralized platform for visualizing metrics and logs, improving system observability and facilitating proactive issue detection.
+The smallest declarable Grafana is a namespace alone — chart-generated
+credentials, ephemeral state, no datasources. The composed shape:
 
-## Namespace Management
+### Dashboards over a metrics stack, persistent
 
-The Grafana Kubernetes component provides flexible namespace management through the `create_namespace` flag in the spec:
-
-### Namespace Creation Control
-
-- **`create_namespace: true`**: The component will create a dedicated namespace for Grafana with appropriate resource labels for tracking and organization. All Grafana resources (helm chart, ingress, etc.) will be deployed into this created namespace. The namespace will be managed as part of the component's lifecycle.
-
-- **`create_namespace: false`** (default): The component will deploy Grafana resources into an existing namespace specified in the `namespace` field. The namespace must already exist before deployment. This is useful when you want to deploy multiple components into a shared namespace or when namespace creation is managed separately.
-
-### When to Use Each Option
-
-**Use `create_namespace: true` when:**
-- You want the component to fully manage its namespace lifecycle
-- You're deploying Grafana in isolation
-- You want automatic cleanup when the component is destroyed
-
-**Use `create_namespace: false` when:**
-- The namespace already exists and is managed separately
-- You're deploying multiple components into a shared namespace
-- You have existing namespace policies or quotas that should not be modified
-- You want to preserve the namespace when the component is destroyed
+```yaml
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGrafana
+metadata:
+  name: dashboards
+spec:
+  namespace:
+    value: observability
+  create_namespace: true
+  storage:
+    size: 10Gi
+  datasources:
+    - name: Prometheus
+      # The url is a foreign key: the reference resolves to the named
+      # stack's prometheus_endpoint output (kind defaults to
+      # KubernetesKubePrometheusStack). A literal `value:` works too.
+      url:
+        value_from:
+          name: cluster-metrics
+      is_default: true
+  server:
+    root_url: https://grafana.example.com
+```
 
 ---
 

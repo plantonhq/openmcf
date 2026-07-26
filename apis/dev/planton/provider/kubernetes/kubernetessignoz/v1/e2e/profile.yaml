@@ -3,12 +3,21 @@ kind: ComponentE2EProfile
 metadata:
   name: kubernetessignoz
 spec:
-  tier: 2
-  status: deferred
-  deferred_reason: "too heavy for default kind -- ClickHouse operator + StatefulSet + SigNoz + OTel collector (41 resources) exceed 20m deployment window"
+  tier: 3
+  # Composes the catalog's ClickHouse Lego blocks (registry
+  # prerequisites: AltinityOperator → ClickHouse, consumer-scoped
+  # fixtures) — nothing ClickHouse-related installs in the release
+  # itself. Offline-validated (spec tests, both engines' plan/preview
+  # proofs across full + minimal shapes) and live-proven on the kind
+  # lanes: the product-grade register→session→OTLP-push→trace-by-ID
+  # proof on every lane and the server-pod-replacement state proof
+  # (re-login off the SQLite PVC, trace re-queried from the composed
+  # ClickHouse).
+  status: green
   validated_provisioners:
     - pulumi
-  timeout_minutes: 15
-  limitations:
-    - "Managed ClickHouse works (not external-only as previously documented)"
-    - "Fixed bitnamilegacy/clickhouse image bug -- chart default clickhouse/clickhouse-server is correct"
+    - terraform
+  # The schema migrator gates on the composed ClickHouse answering
+  # (`migrate ready`) and then runs the full migration set; the budget
+  # covers that cold start on the shared cluster.
+  timeout_minutes: 30

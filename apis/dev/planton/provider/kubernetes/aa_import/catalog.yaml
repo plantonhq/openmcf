@@ -194,6 +194,32 @@ spec:
         - yaml_body
         - yaml_body_parsed
 
+    # --- Random (provider-local — no cluster state) ---------------------------
+    - terraform_type: random_password
+      pulumi_type: random:index/randomPassword:RandomPassword
+      id_format: "{password_value}"
+      # The random provider keeps no cloud-side state: import takes the
+      # password VALUE ITSELF as the ID (read it from the materialized
+      # credentials Secret the module wrote it into). Post-import, the
+      # provider derives length from the imported value; generation-shape
+      # arguments (special/upper/lower/numeric and the min_* counts) are
+      # config-only — they describe how a NEW value would be generated and
+      # cannot be recovered from the imported one. Because every one of
+      # them FORCES REPLACEMENT, modules declaring a random_password must
+      # carry lifecycle ignore_changes on all generation-shape arguments
+      # (both engines) — the importer assumes the provider defaults
+      # (special=true, verified live), so without the guard the first
+      # plan after an import proposes rotating the live credential.
+      config_only_attributes:
+        - special
+        - upper
+        - lower
+        - numeric
+        - min_special
+        - min_upper
+        - min_lower
+        - min_numeric
+
     # --- RBAC ----------------------------------------------------------------
     - terraform_type: kubernetes_role_v1
       pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:Role

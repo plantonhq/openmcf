@@ -8,10 +8,18 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-standard"
+  - slug: "01-default"
     rank: "01"
-    title: "Standard Strimzi Kafka Operator"
-    excerpt: "This preset deploys the Strimzi Kafka Operator with recommended default resources. Strimzi provides a way to run Apache Kafka on Kubernetes using custom resources for Kafka clusters, topics, users,..."
+    title: "Default"
+    excerpt: "This preset installs the Strimzi cluster operator in its standard posture: the pinned `strimzi-kafka-operator` chart, own-namespace watch scope, and the chart's own defaults for everything else..."
+  - slug: "02-cluster-wide"
+    rank: "02"
+    title: "Cluster-Wide"
+    excerpt: "This preset installs ONE Strimzi cluster operator that manages Kafka clusters in EVERY namespace — the platform-team posture: the operator lives in a dedicated control-plane namespace..."
+  - slug: "03-fenced-teams"
+    rank: "03"
+    title: "Fenced Teams"
+    excerpt: "This preset installs one Strimzi cluster operator with an EXPLICIT namespace fence: it reconciles Kafka clusters only in the listed team namespaces (plus its own installation namespace, which is..."
 ---
 
 # Strimzi Kafka Operator Presets

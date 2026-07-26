@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-nats
+runtime: go
+description: NATS installation from the official Helm chart with JetStream persistence on by default, module-generated user credentials wired through env-var config references, clustering, WebSocket/MQTT/leafnode listeners and TLS seams

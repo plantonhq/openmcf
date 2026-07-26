@@ -4,6 +4,7 @@
 package importmap
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -248,5 +249,203 @@ func TestResolveValues_TofuResourceNameScoping(t *testing.T) {
 		ResolveContext{StackOutputs: outputs, LogicalName: "base"})
 	if len(unresolved) != 0 || resolved["release_name"] != "istio-base" {
 		t.Errorf("fallback: resolved = %v, unresolved = %v; want release_name=istio-base", resolved, unresolved)
+	}
+}
+
+func TestResolveValues_FromAddressKeySegment(t *testing.T) {
+	// A module that applies a MULTI-GVK manifest bundle through one for_each
+	// resource keyed by each document's own composed identity
+	// (apiVersion//kind//name[//namespace]): every composed-ID placeholder is
+	// one "//"-delimited segment of the key itself. An index past the key's
+	// segment count resolves to "" so the optional namespace segment drops
+	// for cluster-scoped documents.
+	m := &componentv1.ComponentImportMap{
+		Spec: &componentv1.ComponentImportMapSpec{
+			Values: []*componentv1.ImportValue{
+				{
+					Name: "api_version",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromAddressKeySegment{FromAddressKeySegment: 0}},
+					},
+				},
+				{
+					Name: "kind",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromAddressKeySegment{FromAddressKeySegment: 1}},
+					},
+				},
+				{
+					Name: "name",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromAddressKeySegment{FromAddressKeySegment: 2}},
+					},
+				},
+				{
+					Name: "namespace",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromAddressKeySegment{FromAddressKeySegment: 3}},
+					},
+				},
+			},
+		},
+	}
+
+	names := []string{"api_version", "kind", "name", "namespace"}
+
+	// A namespaced document: all four segments resolve — apiVersion keeps
+	// its own single slash intact.
+	resolved, unresolved := ResolveValues(m, names,
+		ResolveContext{AddressKey: "apps/v1//Deployment//rabbitmq-cluster-operator//rabbitmq-system"})
+	want := map[string]string{
+		"api_version": "apps/v1",
+		"kind":        "Deployment",
+		"name":        "rabbitmq-cluster-operator",
+		"namespace":   "rabbitmq-system",
+	}
+	if len(unresolved) != 0 {
+		t.Errorf("namespaced: unresolved = %v; want none", unresolved)
+	}
+	for k, v := range want {
+		if resolved[k] != v {
+			t.Errorf("namespaced: resolved[%q] = %q; want %q", k, resolved[k], v)
+		}
+	}
+
+	// A cluster-scoped document: the namespace segment is past the key's
+	// count and stays unresolved (the ID's bracketed group drops it).
+	resolved, unresolved = ResolveValues(m, names,
+		ResolveContext{AddressKey: "apiextensions.k8s.io/v1//CustomResourceDefinition//rabbitmqclusters.rabbitmq.com"})
+	if resolved["kind"] != "CustomResourceDefinition" || resolved["name"] != "rabbitmqclusters.rabbitmq.com" {
+		t.Errorf("cluster-scoped: resolved = %v", resolved)
+	}
+	if len(unresolved) != 1 || unresolved[0] != "namespace" {
+		t.Errorf("cluster-scoped: unresolved = %v; want [namespace]", unresolved)
+	}
+
+	// An empty address key (a non-repeated resource) resolves nothing.
+	_, unresolved = ResolveValues(m, names, ResolveContext{})
+	if len(unresolved) != len(names) {
+		t.Errorf("empty key: unresolved = %v; want all %d names", unresolved, len(names))
+	}
+}
+
+func TestResolveValues_FromClusterSecretKey_KeyFromAddressKey(t *testing.T) {
+	// Keyed resource collections whose per-instance credentials live
+	// under manifest-driven Secret keys (one random_password per
+	// declared user, keyed by username): the Secret KEY is the
+	// address's own instance key, so one declaration serves every
+	// instance of the collection.
+	m := &componentv1.ComponentImportMap{
+		Spec: &componentv1.ComponentImportMapSpec{
+			Values: []*componentv1.ImportValue{
+				{
+					Name: "user_password_value",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromClusterSecretKey{
+							FromClusterSecretKey: &componentv1.FromClusterSecretKey{
+								NameSuffix:        "-auth",
+								KeyFromAddressKey: true,
+							},
+						}},
+					},
+				},
+			},
+		},
+	}
+	names := []string{"user_password_value"}
+
+	var gotSecret, gotKey string
+	resolved, unresolved := ResolveValues(m, names, ResolveContext{
+		MetadataName: "messaging",
+		AddressKey:   "orders-service",
+		ReadClusterSecret: func(secretName, key string) (string, error) {
+			gotSecret, gotKey = secretName, key
+			return "u53r-s3cr3t", nil
+		},
+	})
+	if len(unresolved) != 0 {
+		t.Errorf("keyed: unresolved = %v; want none", unresolved)
+	}
+	if resolved["user_password_value"] != "u53r-s3cr3t" {
+		t.Errorf("keyed: resolved = %q; want the reader's value", resolved["user_password_value"])
+	}
+	if gotSecret != "messaging-auth" || gotKey != "orders-service" {
+		t.Errorf("keyed: reader called with (%q, %q); want (messaging-auth, orders-service)", gotSecret, gotKey)
+	}
+
+	// Without an address key the flag cannot resolve — the value falls
+	// back to unresolved (the ask-the-user path), never to a wrong key.
+	_, unresolved = ResolveValues(m, names, ResolveContext{
+		MetadataName: "messaging",
+		ReadClusterSecret: func(secretName, key string) (string, error) {
+			t.Errorf("reader must not be consulted without an address key (called with %q/%q)", secretName, key)
+			return "", nil
+		},
+	})
+	if len(unresolved) != 1 {
+		t.Errorf("no address key: unresolved = %v; want the one name", unresolved)
+	}
+}
+
+func TestResolveValues_FromClusterSecretKey(t *testing.T) {
+	// An import ID that IS secret material (a random_password's value): the
+	// arm reads the module-materialized Secret through the context's
+	// cluster reader. Contexts without a reader (a disconnected wizard)
+	// leave the value unresolved so the ask-the-user fallback carries it.
+	m := &componentv1.ComponentImportMap{
+		Spec: &componentv1.ComponentImportMapSpec{
+			Values: []*componentv1.ImportValue{
+				{
+					Name: "admin_password_value",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromClusterSecretKey{
+							FromClusterSecretKey: &componentv1.FromClusterSecretKey{
+								NameSuffix: "-admin-auth",
+								Key:        "password",
+							},
+						}},
+					},
+				},
+			},
+		},
+	}
+	names := []string{"admin_password_value"}
+
+	// A cluster-connected context: the reader is consulted with the
+	// convention-composed Secret name and the declared key.
+	var gotSecret, gotKey string
+	resolved, unresolved := ResolveValues(m, names, ResolveContext{
+		MetadataName: "artifacts",
+		ReadClusterSecret: func(secretName, key string) (string, error) {
+			gotSecret, gotKey = secretName, key
+			return "s3cr3t-value", nil
+		},
+	})
+	if len(unresolved) != 0 {
+		t.Errorf("connected: unresolved = %v; want none", unresolved)
+	}
+	if resolved["admin_password_value"] != "s3cr3t-value" {
+		t.Errorf("connected: resolved = %q; want the reader's value", resolved["admin_password_value"])
+	}
+	if gotSecret != "artifacts-admin-auth" || gotKey != "password" {
+		t.Errorf("connected: reader called with (%q, %q); want (artifacts-admin-auth, password)", gotSecret, gotKey)
+	}
+
+	// No reader bound (a disconnected context): unresolved, never an error.
+	_, unresolved = ResolveValues(m, names, ResolveContext{MetadataName: "artifacts"})
+	if len(unresolved) != 1 {
+		t.Errorf("disconnected: unresolved = %v; want the one name", unresolved)
+	}
+
+	// A failing read resolves empty -- the Secret may legitimately not
+	// exist for variants referencing user-provided credentials.
+	_, unresolved = ResolveValues(m, names, ResolveContext{
+		MetadataName: "artifacts",
+		ReadClusterSecret: func(string, string) (string, error) {
+			return "", errors.New("not found")
+		},
+	})
+	if len(unresolved) != 1 {
+		t.Errorf("read failure: unresolved = %v; want the one name", unresolved)
 	}
 }

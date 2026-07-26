@@ -135,6 +135,214 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"namespace", "release_name"},
 		},
 		{
+			// KubernetesStrimziKafkaOperator: installation identity handles.
+			name: "KubernetesStrimziKafkaOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesStrimziKafkaOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":    "strimzi-system",
+				"release_name": "strimzi-op",
+			},
+			mustPopulate: []string{"namespace", "release_name"},
+		},
+		{
+			// KubernetesKafka: the Strimzi naming contract — the cluster
+			// binding name, the bootstrap Service, the in-cluster bootstrap
+			// address, and the cluster CA Secret handle.
+			name: "KubernetesKafka",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafka,
+			rawOutputs: map[string]interface{}{
+				"namespace":                   "team-alpha",
+				"cluster_name":                "orders-kafka",
+				"bootstrap_service_name":      "orders-kafka-kafka-bootstrap",
+				"internal_bootstrap_endpoint": "orders-kafka-kafka-bootstrap.team-alpha.svc.cluster.local:9092",
+				"cluster_ca_cert_secret_name": "orders-kafka-cluster-ca-cert",
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "bootstrap_service_name",
+				"internal_bootstrap_endpoint", "cluster_ca_cert_secret_name",
+			},
+		},
+		{
+			// KubernetesOpenSearchOperator: the install handles (release +
+			// controller Deployment).
+			name: "KubernetesOpenSearchOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesOpenSearchOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":       "opensearch-operator-system",
+				"release_name":    "os-op",
+				"deployment_name": "os-op-controller-manager",
+			},
+			mustPopulate: []string{"namespace", "release_name", "deployment_name"},
+		},
+		{
+			// KubernetesOpenSearch: the operator naming contract — the
+			// cluster Service (= the resource name), the https API
+			// endpoint (TLS in every posture), the bootstrapped admin
+			// Secret, and the Dashboards handles when enabled.
+			name: "KubernetesOpenSearch",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesOpenSearch,
+			rawOutputs: map[string]interface{}{
+				"namespace":                     "search",
+				"cluster_name":                  "product-search",
+				"service_name":                  "product-search",
+				"http_endpoint":                 "https://product-search.search.svc.cluster.local:9200",
+				"admin_credentials_secret_name": "product-search-admin-password",
+				"dashboards_service_name":       "product-search-dashboards",
+				"dashboards_endpoint":           "http://product-search-dashboards.search.svc.cluster.local:5601",
+				"port_forward_command":          "kubectl port-forward svc/product-search -n search 9200:9200",
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "service_name", "http_endpoint",
+			},
+		},
+		{
+			// KubernetesSolrOperator: the install handles.
+			name: "KubernetesSolrOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSolrOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":       "solr-operator-system",
+				"release_name":    "solr-op",
+				"deployment_name": "solr-op-solr-operator",
+			},
+			mustPopulate: []string{"namespace", "release_name", "deployment_name"},
+		},
+		{
+			// KubernetesSolr: the operator naming contract — the common
+			// Service, the in-cluster endpoint, the bootstrapped basic-auth
+			// Secret, and the ZooKeeper connection string.
+			name: "KubernetesSolr",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSolr,
+			rawOutputs: map[string]interface{}{
+				"namespace":                   "search",
+				"cluster_name":                "product-solr",
+				"common_service_name":         "product-solr-solrcloud-common",
+				"internal_endpoint":           "http://product-solr-solrcloud-common.search.svc.cluster.local",
+				"basic_auth_secret_name":      "product-solr-solrcloud-basic-auth",
+				"zookeeper_connection_string": "product-solr-solrcloud-zookeeper-client:2181/",
+				"port_forward_command":        "kubectl port-forward svc/product-solr-solrcloud-common -n search 8983:80",
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "common_service_name",
+				"internal_endpoint", "zookeeper_connection_string",
+			},
+		},
+		{
+			// KubernetesNeo4j: the server handles — the main Service (= the
+			// resource name), bolt/http endpoints, and the auth Secret.
+			name: "KubernetesNeo4j",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesNeo4j,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "graph",
+				"release_name":         "knowledge-graph",
+				"service_name":         "knowledge-graph",
+				"bolt_endpoint":        "neo4j://knowledge-graph.graph.svc.cluster.local:7687",
+				"http_endpoint":        "http://knowledge-graph.graph.svc.cluster.local:7474",
+				"auth_secret_name":     "knowledge-graph-auth",
+				"port_forward_command": "kubectl port-forward svc/knowledge-graph -n graph 7687:7687",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_name", "bolt_endpoint",
+				"http_endpoint",
+			},
+		},
+		{
+			// KubernetesKafkaTopic: the topic handle (the KAFKA name, which
+			// may differ from the resource name via spec.topic_name).
+			name: "KubernetesKafkaTopic",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaTopic,
+			rawOutputs: map[string]interface{}{
+				"namespace":  "team-alpha",
+				"topic_name": "orders.v1_events",
+			},
+			mustPopulate: []string{"namespace", "topic_name"},
+		},
+		{
+			// KubernetesKafkaUser: the principal name and the
+			// operator-generated credentials Secret handle.
+			name: "KubernetesKafkaUser",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaUser,
+			rawOutputs: map[string]interface{}{
+				"namespace":   "team-alpha",
+				"username":    "orders-service",
+				"secret_name": "orders-service",
+			},
+			mustPopulate: []string{"namespace", "username", "secret_name"},
+		},
+		{
+			// KubernetesKafkaConnect: the cluster-binding name (what
+			// KubernetesKafkaConnector resources bind to) and the Connect
+			// REST API handles.
+			name: "KubernetesKafkaConnect",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaConnect,
+			rawOutputs: map[string]interface{}{
+				"namespace":             "team-alpha",
+				"connect_name":          "orders-pipes",
+				"rest_api_service_name": "orders-pipes-connect-api",
+				"rest_api_endpoint":     "http://orders-pipes-connect-api.team-alpha.svc.cluster.local:8083",
+			},
+			mustPopulate: []string{
+				"namespace", "connect_name", "rest_api_service_name",
+				"rest_api_endpoint",
+			},
+		},
+		{
+			// KubernetesKafkaConnector: the connector's name inside its
+			// Connect cluster.
+			name: "KubernetesKafkaConnector",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaConnector,
+			rawOutputs: map[string]interface{}{
+				"namespace":      "team-alpha",
+				"connector_name": "orders-cdc",
+			},
+			mustPopulate: []string{"namespace", "connector_name"},
+		},
+		{
+			// KubernetesKafkaMirrorMaker2: the deployment identity and the
+			// engine's read-only REST endpoint.
+			name: "KubernetesKafkaMirrorMaker2",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaMirrorMaker2,
+			rawOutputs: map[string]interface{}{
+				"namespace":         "team-alpha",
+				"mirrormaker_name":  "msk-migration",
+				"rest_api_endpoint": "http://msk-migration-mirrormaker2-api.team-alpha.svc.cluster.local:8083",
+			},
+			mustPopulate: []string{"namespace", "mirrormaker_name", "rest_api_endpoint"},
+		},
+		{
+			// KubernetesKarapace: the registry endpoint (the
+			// schema.registry.url composition handle), the optional
+			// REST-proxy endpoint, and the schemas topic.
+			name: "KubernetesKarapace",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKarapace,
+			rawOutputs: map[string]interface{}{
+				"namespace":           "team-alpha",
+				"service_name":        "schemas",
+				"endpoint":            "http://schemas.team-alpha.svc.cluster.local:8081",
+				"rest_proxy_endpoint": "http://schemas-rest.team-alpha.svc.cluster.local:8082",
+				"schemas_topic":       "_schemas",
+			},
+			mustPopulate: []string{
+				"namespace", "service_name", "endpoint",
+				"rest_proxy_endpoint", "schemas_topic",
+			},
+		},
+		{
+			// KubernetesKafkaUi: the console Service handles exposure kinds
+			// attach to, plus the workstation port-forward convenience.
+			name: "KubernetesKafkaUi",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKafkaUi,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "team-alpha",
+				"service_name":         "console",
+				"endpoint":             "http://console.team-alpha.svc.cluster.local:80",
+				"port_forward_command": "kubectl port-forward -n team-alpha svc/console 8080:80",
+			},
+			mustPopulate: []string{
+				"namespace", "service_name", "endpoint",
+				"port_forward_command",
+			},
+		},
+		{
 			// KubernetesPostgres: the CloudNativePG naming contract — the
 			// three traffic services, the rw endpoint, and the credential
 			// Secret handles (nested objects that flatten to
@@ -994,6 +1202,313 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{
 				"namespace", "release_name", "version", "app_version",
 				"status", "revision",
+			},
+		},
+		{
+			// KubernetesAltinityOperator: the served-chart naming contract —
+			// release, Deployment (= chart fullname), the chart-managed
+			// operator-credentials Secret, and the metrics-exporter endpoint.
+			name: "KubernetesAltinityOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesAltinityOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":               "clickhouse-operator-system",
+				"release_name":            "altinity-op",
+				"deployment_name":         "altinity-op",
+				"credentials_secret_name": "altinity-op",
+				"metrics_endpoint":        "http://altinity-op-metrics.clickhouse-operator-system.svc.cluster.local:8888/metrics",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "deployment_name",
+				"credentials_secret_name", "metrics_endpoint",
+			},
+		},
+		{
+			// KubernetesClickHouse: the operator naming contract — CHI and
+			// cluster identity, the cluster-wide client Service with both
+			// protocol endpoints, the module-managed auth Secret, and the
+			// managed Keeper handles.
+			name: "KubernetesClickHouse",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesClickHouse,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "analytics",
+				"chi_name":             "events-ch",
+				"cluster_name":         "analytics",
+				"service_name":         "clickhouse-events-ch",
+				"tcp_endpoint":         "clickhouse-events-ch.analytics.svc.cluster.local:9000",
+				"http_endpoint":        "http://clickhouse-events-ch.analytics.svc.cluster.local:8123",
+				"auth_secret_name":     "events-ch-clickhouse-auth",
+				"keeper_name":          "events-ch-keeper",
+				"keeper_service_name":  "keeper-events-ch-keeper",
+				"port_forward_command": "kubectl port-forward svc/clickhouse-events-ch -n analytics 8123:8123",
+			},
+			mustPopulate: []string{
+				"namespace", "chi_name", "cluster_name", "service_name",
+				"tcp_endpoint", "http_endpoint", "auth_secret_name",
+				"keeper_name", "keeper_service_name", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesSeaweedFs: the chart naming contract — release, the
+			// S3/filer/master Service handles, both credential Secrets
+			// (chart-owned S3, module-generated admin), and the endpoints.
+			name: "KubernetesSeaweedFs",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSeaweedFs,
+			rawOutputs: map[string]interface{}{
+				"namespace":                  "object-store",
+				"release_name":               "artifacts",
+				"s3_endpoint":                "http://artifacts-s3.object-store.svc.cluster.local:8333",
+				"s3_credentials_secret_name": "artifacts-s3-secret",
+				"filer_service_name":         "artifacts-filer",
+				"master_service_name":        "artifacts-master",
+				"admin_endpoint":             "http://artifacts-admin.object-store.svc.cluster.local:23646",
+				"admin_auth_secret_name":     "artifacts-admin-auth",
+				"port_forward_command":       "kubectl port-forward svc/artifacts-s3 -n object-store 8333:8333",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "s3_endpoint",
+				"s3_credentials_secret_name", "filer_service_name",
+				"master_service_name", "admin_endpoint",
+				"admin_auth_secret_name", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesQdrant: the chart naming contract — release, the
+			// main Service with REST and gRPC endpoints, and the chart-owned
+			// API-key Secret handles (read-write + read-only).
+			name: "KubernetesQdrant",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesQdrant,
+			rawOutputs: map[string]interface{}{
+				"namespace":                     "vector-search",
+				"release_name":                  "embeddings",
+				"service_name":                  "embeddings",
+				"http_endpoint":                 "http://embeddings.vector-search.svc.cluster.local:6333",
+				"grpc_endpoint":                 "embeddings.vector-search.svc.cluster.local:6334",
+				"api_key_secret_name":           "embeddings-apikey",
+				"read_only_api_key_secret_name": "embeddings-apikey",
+				"port_forward_command":          "kubectl port-forward svc/embeddings -n vector-search 6333:6333",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_name", "http_endpoint",
+				"grpc_endpoint", "api_key_secret_name",
+				"read_only_api_key_secret_name", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesRabbitMqOperator: the release manifest's fixed
+			// handles (namespace, Deployment, metrics endpoint, the CRD the
+			// manifest installs and deletes with the resource).
+			name: "KubernetesRabbitMqOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesRabbitMqOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":        "rabbitmq-system",
+				"deployment_name":  "rabbitmq-cluster-operator",
+				"metrics_endpoint": "http://rabbitmq-cluster-operator-metrics-service.rabbitmq-system.svc.cluster.local:8080/metrics",
+				"crd_name":         "rabbitmqclusters.rabbitmq.com",
+			},
+			mustPopulate: []string{
+				"namespace", "deployment_name", "metrics_endpoint", "crd_name",
+			},
+		},
+		{
+			// KubernetesRabbitMq: the operator naming contract — the client
+			// and headless Services, both client endpoints, and the
+			// operator-generated default-user Secret handle.
+			name: "KubernetesRabbitMq",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesRabbitMq,
+			rawOutputs: map[string]interface{}{
+				"namespace":                "messaging",
+				"cluster_name":             "orders-mq",
+				"service_name":             "orders-mq",
+				"headless_service_name":    "orders-mq-nodes",
+				"amqp_endpoint":            "orders-mq.messaging.svc.cluster.local:5672",
+				"management_endpoint":      "http://orders-mq.messaging.svc.cluster.local:15672",
+				"default_user_secret_name": "orders-mq-default-user",
+				"port_forward_command":     "kubectl port-forward svc/orders-mq -n messaging 15672:15672",
+			},
+			mustPopulate: []string{
+				"namespace", "cluster_name", "service_name",
+				"headless_service_name", "amqp_endpoint",
+				"management_endpoint", "default_user_secret_name",
+				"port_forward_command",
+			},
+		},
+		{
+			// KubernetesKubePrometheusStack: the pinned-fullname naming contract —
+			// every child service derives from the resource name
+			// (`-prometheus`/`-alertmanager`/`-grafana`), the endpoints downstream
+			// datasources compose against, and the bundled Grafana's admin-Secret
+			// handle.
+			name: "KubernetesKubePrometheusStack",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKubePrometheusStack,
+			rawOutputs: map[string]interface{}{
+				"namespace":                       "observability",
+				"release_name":                    "monitoring",
+				"prometheus_service":              "monitoring-prometheus",
+				"prometheus_endpoint":             "http://monitoring-prometheus.observability.svc.cluster.local:9090",
+				"alertmanager_service":            "monitoring-alertmanager",
+				"alertmanager_endpoint":           "http://monitoring-alertmanager.observability.svc.cluster.local:9093",
+				"grafana_service":                 "monitoring-grafana",
+				"grafana_endpoint":                "http://monitoring-grafana.observability.svc.cluster.local",
+				"grafana_admin_secret_name":       "monitoring-grafana",
+				"prometheus_port_forward_command": "kubectl port-forward svc/monitoring-prometheus -n observability 9090:9090",
+				"grafana_port_forward_command":    "kubectl port-forward svc/monitoring-grafana -n observability 3000:80",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "prometheus_service",
+				"prometheus_endpoint", "alertmanager_service",
+				"alertmanager_endpoint", "grafana_service", "grafana_endpoint",
+				"grafana_admin_secret_name", "prometheus_port_forward_command",
+				"grafana_port_forward_command",
+			},
+		},
+		{
+			// KubernetesGrafana: the pinned-fullname naming contract — the Service
+			// and the chart-generated admin Secret share the resource name — plus
+			// the endpoint and port-forward composition handles.
+			name: "KubernetesGrafana",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGrafana,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "observability",
+				"release_name":         "dashboards",
+				"service":              "dashboards",
+				"endpoint":             "http://dashboards.observability.svc.cluster.local",
+				"admin_secret_name":    "dashboards",
+				"port_forward_command": "kubectl port-forward svc/dashboards -n observability 3000:80",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service", "endpoint",
+				"admin_secret_name", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesArgocd: the pinned-fullname naming contract — the server
+			// Service is `<name>-server` — plus the APPLICATION-owned initial
+			// admin Secret handle (fixed name, created by Argo CD itself at
+			// first start) and the endpoint/port-forward composition handles.
+			name: "KubernetesArgocd",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesArgocd,
+			rawOutputs: map[string]interface{}{
+				"namespace":                 "gitops",
+				"release_name":              "delivery",
+				"server_service":            "delivery-server",
+				"server_kube_endpoint":      "https://delivery-server.gitops.svc.cluster.local",
+				"initial_admin_secret_name": "argocd-initial-admin-secret",
+				"port_forward_command":      "kubectl port-forward svc/delivery-server -n gitops 8080:443",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "server_service",
+				"server_kube_endpoint", "initial_admin_secret_name",
+				"port_forward_command",
+			},
+		},
+		{
+			// KubernetesTektonOperator: the release manifest's fixed
+			// namespace — the one handle the manifest-bundle install exports.
+			name: "KubernetesTektonOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesTektonOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace": "tekton-operator",
+			},
+			mustPopulate: []string{"namespace"},
+		},
+		{
+			// KubernetesTekton: the resolved installation handles — target
+			// namespace, profile, and the dashboard Service handles exposure
+			// kinds compose against (populated on profile `all`).
+			name: "KubernetesTekton",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesTekton,
+			rawOutputs: map[string]interface{}{
+				"namespace":               "tekton-pipelines",
+				"profile":                 "all",
+				"dashboard_service":       "tekton-dashboard",
+				"dashboard_kube_endpoint": "http://tekton-dashboard.tekton-pipelines.svc.cluster.local:9097",
+				"port_forward_command":    "kubectl port-forward -n tekton-pipelines service/tekton-dashboard 9097:9097",
+			},
+			mustPopulate: []string{
+				"namespace", "profile", "dashboard_service",
+				"dashboard_kube_endpoint", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesGhaRunnerScaleSetController: the pinned-fullname
+			// naming contract — the controller ServiceAccount equals the
+			// release name — the handle fenced scale sets reference.
+			name: "KubernetesGhaRunnerScaleSetController",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGhaRunnerScaleSetController,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "arc-system",
+				"release_name":         "arc",
+				"service_account_name": "arc",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "service_account_name",
+			},
+		},
+		{
+			// KubernetesGhaRunnerScaleSet: the GitHub-visible fleet identity —
+			// the exact `runs-on:` value — plus the registration URL.
+			name: "KubernetesGhaRunnerScaleSet",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGhaRunnerScaleSet,
+			rawOutputs: map[string]interface{}{
+				"namespace":             "ci-runners",
+				"release_name":          "build-runners",
+				"runner_scale_set_name": "build-runners",
+				"github_config_url":     "https://github.com/my-org/my-repo",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "runner_scale_set_name",
+				"github_config_url",
+			},
+		},
+		{
+			// KubernetesArgoWorkflows: the pinned-fullname naming contract — the
+			// Argo server Service is `<name>-server` — plus the runner
+			// ServiceAccount handle (the identity to annotate for
+			// IRSA/workload identity) and the endpoint/port-forward handles.
+			name: "KubernetesArgoWorkflows",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesArgoWorkflows,
+			rawOutputs: map[string]interface{}{
+				"namespace":                "pipelines",
+				"release_name":             "runs",
+				"server_service":           "runs-server",
+				"server_kube_endpoint":     "http://runs-server.pipelines.svc.cluster.local:2746",
+				"workflow_service_account": "argo-workflow",
+				"port_forward_command":     "kubectl port-forward svc/runs-server -n pipelines 2746:2746",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "server_service",
+				"server_kube_endpoint", "workflow_service_account",
+				"port_forward_command",
+			},
+		},
+		{
+			// KubernetesSignoz: the pinned-fullname naming contract — the server
+			// Service (= the release name), the `<name>-otel-collector` ingestion
+			// handles, and the composed-ClickHouse connection passthroughs
+			// including the password Secret handle (nested name/key — the
+			// flat-vs-nested drift class this guard exists for).
+			name: "KubernetesSignoz",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSignoz,
+			rawOutputs: map[string]interface{}{
+				"namespace":              "observability",
+				"service":                "observe",
+				"kube_endpoint":          "http://observe.observability.svc.cluster.local:8080",
+				"port_forward_command":   "kubectl port-forward svc/observe -n observability 8080:8080",
+				"otel_collector_service": "observe-otel-collector",
+				"otlp_grpc_endpoint":     "observe-otel-collector.observability.svc.cluster.local:4317",
+				"otlp_http_endpoint":     "http://observe-otel-collector.observability.svc.cluster.local:4318",
+				"clickhouse_endpoint":    "clickhouse-telemetry.observability.svc.cluster.local:9000",
+				"clickhouse_username":    "signoz",
+				"clickhouse_password_secret": map[string]interface{}{
+					"name": "telemetry-clickhouse-auth",
+					"key":  "signoz",
+				},
+			},
+			mustPopulate: []string{
+				"namespace", "service", "kube_endpoint", "port_forward_command",
+				"otel_collector_service", "otlp_grpc_endpoint", "otlp_http_endpoint",
+				"clickhouse_endpoint", "clickhouse_username",
+				"clickhouse_password_secret",
 			},
 		},
 		{

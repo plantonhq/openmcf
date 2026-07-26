@@ -1,0 +1,3 @@
+name: kubernetes-qdrant
+runtime: go
+description: Qdrant vector database installation from the official Helm chart with chart-owned API-key Secrets, a certificate-Secret TLS seam, dual persistence (storage + snapshots), and Raft-clustered scaling by replica count

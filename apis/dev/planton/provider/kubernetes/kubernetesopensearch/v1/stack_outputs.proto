@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesopensearch.v1;
+
+//kubernetes-open-search stack outputs
+message KubernetesOpenSearchStackOutputs {
+  //namespace the cluster runs in.
+  string namespace = 1;
+
+  //name of the OpenSearchCluster resource (= metadata.name).
+  string cluster_name = 2;
+
+  //name of the cluster's main Service (all nodes; = metadata.name —
+  //the operator names the Service after the cluster's serviceName,
+  //which the modules pin to the resource name).
+  string service_name = 3;
+
+  //in-cluster HTTP API endpoint,
+  //e.g. https://main.search.svc.cluster.local:9200
+  //(https because the operator serves TLS on the HTTP layer by
+  //default).
+  string http_endpoint = 4;
+
+  //name of the operator-generated Secret holding the admin
+  //credentials (fields username/password),
+  //e.g. main-admin-password. Empty when a custom security config
+  //replaces the operator bootstrap.
+  string admin_credentials_secret_name = 5;
+
+  //name of the Dashboards Service (e.g. main-dashboards). Empty when
+  //dashboards are not enabled.
+  string dashboards_service_name = 6;
+
+  //in-cluster Dashboards endpoint,
+  //e.g. http://main-dashboards.search.svc.cluster.local:5601.
+  //Empty when dashboards are not enabled.
+  string dashboards_endpoint = 7;
+
+  //command to port-forward the cluster's HTTP API to a developer
+  //laptop, e.g.
+  //kubectl port-forward svc/main -n search 9200:9200
+  string port_forward_command = 8;
+}

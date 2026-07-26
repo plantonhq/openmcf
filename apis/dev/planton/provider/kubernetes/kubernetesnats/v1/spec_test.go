@@ -1,16 +1,15 @@
 package kubernetesnatsv1
 
 import (
-	"strings"
 	"testing"
 
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
+	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 func TestKubernetesNats(t *testing.T) {
@@ -18,7 +17,33 @@ func TestKubernetesNats(t *testing.T) {
 	ginkgo.RunSpecs(t, "KubernetesNats Suite")
 }
 
-var _ = ginkgo.Describe("KubernetesNats Custom Validation Tests", func() {
+func int32Ptr(i int32) *int32 { return &i }
+func boolPtr(b bool) *bool    { return &b }
+func strPtr(s string) *string { return &s }
+
+func literal(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+func valueFrom(kind cloudresourcekind.CloudResourceKind, name, fieldPath string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{
+				Kind:      kind,
+				Name:      name,
+				FieldPath: fieldPath,
+			},
+		},
+	}
+}
+
+func user(name string) *KubernetesNatsUser {
+	return &KubernetesNatsUser{Username: name}
+}
+
+var _ = ginkgo.Describe("KubernetesNats Validation Tests", func() {
 	var input *KubernetesNats
 
 	ginkgo.BeforeEach(func() {
@@ -26,595 +51,230 @@ var _ = ginkgo.Describe("KubernetesNats Custom Validation Tests", func() {
 			ApiVersion: "kubernetes.planton.dev/v1",
 			Kind:       "KubernetesNats",
 			Metadata: &shared.CloudResourceMetadata{
-				Name: "nats-demo",
+				Name: "messaging",
 			},
 			Spec: &KubernetesNatsSpec{
-				Namespace: &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-						Value: "nats-demo",
-					},
-				},
-				ServerContainer: &KubernetesNatsServerContainer{
-					Replicas: 3,      // satisfies gt:0
-					DiskSize: "10Gi", // required by proto but standard, so fine to include
-				},
-				DisableJetStream: false,
-				TlsEnabled:       false,
-				DisableNatsBox:   false,
+				Namespace: literal("nats"),
 			},
 		}
 	})
 
 	ginkgo.Describe("When valid input is passed", func() {
-		ginkgo.Context("with replicas greater than zero", func() {
-			ginkgo.It("should not return a validation error", func() {
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("minimal spec (every optional block omitted) should be valid", func() {
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with NACK controller enabled and streams configured", func() {
-			ginkgo.It("should not return a validation error", func() {
-				natsHelmVersion := "2.12.3"
-				nackHelmVersion := "0.31.1"
-				nackAppVersion := "0.21.1"
-				input.Spec.NatsHelmChartVersion = &natsHelmVersion
-				input.Spec.NackController = &KubernetesNatsNackController{
-					Enabled:           true,
-					EnableControlLoop: true,
-					HelmChartVersion:  &nackHelmVersion,
-					AppVersion:        &nackAppVersion,
-				}
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:      "orders",
-						Subjects:  []string{"orders.*", "orders.>"},
-						Storage:   StreamStorageEnum_file,
-						Replicas:  3,
-						Retention: StreamRetentionEnum_limits,
-						MaxAge:    "24h",
-						Consumers: []*KubernetesNatsConsumer{
-							{
-								DurableName:   "orders-processor",
-								DeliverPolicy: ConsumerDeliverPolicyEnum_all,
-								AckPolicy:     ConsumerAckPolicyEnum_explicit,
-								MaxAckPending: 100,
-								AckWait:       "30s",
-							},
-						},
-					},
-					{
-						Name:      "events",
-						Subjects:  []string{"events.>"},
-						Storage:   StreamStorageEnum_memory,
-						Replicas:  1,
-						Retention: StreamRetentionEnum_interest,
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("namespace as a reference should be valid", func() {
+			input.Spec.Namespace = valueFrom(cloudresourcekind.CloudResourceKind_KubernetesNamespace, "nats", "spec.name")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.Context("with ingress enabled and hostname provided", func() {
-			ginkgo.It("should not return a validation error", func() {
-				input.Spec.Ingress = &KubernetesNatsIngress{
-					Enabled:  true,
-					Hostname: "nats.example.com",
-				}
+		ginkgo.It("a 3-server cluster should be valid", func() {
+			input.Spec.Cluster = &KubernetesNatsCluster{Enabled: true, Replicas: int32Ptr(3)}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
 
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
+		ginkgo.It("jetstream sizing with a storage-class reference should be valid", func() {
+			input.Spec.JetStream = &KubernetesNatsJetStream{
+				DiskSize:           strPtr("20Gi"),
+				StorageClass:       valueFrom(cloudresourcekind.CloudResourceKind_KubernetesStorageClass, "fast-ssd", "metadata.name"),
+				MaxFileStore:       strPtr("18Gi"),
+				MemoryStoreMaxSize: strPtr("1Gi"),
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("flat users with permissions should be valid", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Users: []*KubernetesNatsUser{
+					{Username: "orders-service", Permissions: &KubernetesNatsPermissions{
+						PublishAllow:   []string{"orders.>"},
+						SubscribeAllow: []string{"orders.>", "_INBOX.>"},
+					}},
+					{Username: "auditor", Permissions: &KubernetesNatsPermissions{
+						SubscribeAllow: []string{">"},
+						PublishDeny:    []string{">"},
+					}},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("multi-tenant accounts should be valid", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Accounts: []*KubernetesNatsAccount{
+					{Name: "team-a", Users: []*KubernetesNatsUser{user("svc-a")}, JetStreamEnabled: true},
+					{Name: "team-b", Users: []*KubernetesNatsUser{user("svc-b")}},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("a no_auth_user naming a declared flat user should be valid", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Users:      []*KubernetesNatsUser{user("app"), user("guest")},
+				NoAuthUser: "guest",
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("a no_auth_user naming an account user should be valid", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Accounts: []*KubernetesNatsAccount{
+					{Name: "public", Users: []*KubernetesNatsUser{user("guest")}},
+				},
+				NoAuthUser: "guest",
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("tls with a certificate reference should be valid", func() {
+			input.Spec.Tls = &KubernetesNatsTls{
+				SecretName:    valueFrom(cloudresourcekind.CloudResourceKind_KubernetesCertificate, "nats-cert", "status.outputs.secret_name"),
+				VerifyClients: true,
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("websocket on a custom port should be valid", func() {
+			input.Spec.Websocket = &KubernetesNatsWebsocket{Enabled: true, Port: int32Ptr(9222)}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("mqtt with default jetstream should be valid", func() {
+			input.Spec.Mqtt = &KubernetesNatsMqtt{Enabled: true}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("mqtt with jetstream explicitly enabled should be valid", func() {
+			input.Spec.JetStream = &KubernetesNatsJetStream{Enabled: boolPtr(true)}
+			input.Spec.Mqtt = &KubernetesNatsMqtt{Enabled: true}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("leafnodes should be valid", func() {
+			input.Spec.Leafnodes = &KubernetesNatsLeafnodes{Enabled: true}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("metrics with exporter and pod monitor should be valid", func() {
+			input.Spec.Metrics = &KubernetesNatsMetrics{ExporterEnabled: true, PodMonitorEnabled: true}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("a LoadBalancer service with annotations should be valid", func() {
+			input.Spec.Service = &KubernetesNatsService{
+				Type: KubernetesNatsService_load_balancer,
+				Annotations: map[string]string{
+					"service.beta.kubernetes.io/aws-load-balancer-type": "nlb",
+					"external-dns.alpha.kubernetes.io/hostname":         "nats.example.com",
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("image overrides should be valid", func() {
+			input.Spec.Images = &KubernetesNatsImages{
+				Nats: &kubernetes.ContainerImage{Repo: "mirror.example.com/nats", Tag: "2.14.2-alpine"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
-		ginkgo.Context("with replicas equal to zero", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.ServerContainer.Replicas = 0
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("a cluster of 1 should fail (floor is 2)", func() {
+			input.Spec.Cluster = &KubernetesNatsCluster{Enabled: true, Replicas: int32Ptr(1)}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with empty namespace", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.Namespace = nil
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("a cluster of 10 should fail (cap is 9)", func() {
+			input.Spec.Cluster = &KubernetesNatsCluster{Enabled: true, Replicas: int32Ptr(10)}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with ingress enabled but no hostname", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.Ingress = &KubernetesNatsIngress{
-					Enabled:  true,
-					Hostname: "", // Empty hostname
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-				gomega.Expect(err.Error()).To(gomega.ContainSubstring("hostname"))
-			})
+		ginkgo.It("a bad jetstream disk size should fail", func() {
+			input.Spec.JetStream = &KubernetesNatsJetStream{DiskSize: strPtr("ten gigs")}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with stream missing required name", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.NackController = &KubernetesNatsNackController{
-					Enabled: true,
-				}
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     "", // Empty name
-						Subjects: []string{"orders.*"},
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("declaring users AND accounts together should fail", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Users:    []*KubernetesNatsUser{user("app")},
+				Accounts: []*KubernetesNatsAccount{{Name: "team-a", Users: []*KubernetesNatsUser{user("svc-a")}}},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with stream missing required subjects", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.NackController = &KubernetesNatsNackController{
-					Enabled: true,
-				}
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     "orders",
-						Subjects: []string{}, // Empty subjects
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("an empty auth block should fail", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with stream name exceeding max length", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.NackController = &KubernetesNatsNackController{
-					Enabled: true,
-				}
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     strings.Repeat("a", 256), // Exceeds 255 char limit
-						Subjects: []string{"orders.*"},
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("a no_auth_user that is not declared should fail", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Users:      []*KubernetesNatsUser{user("app")},
+				NoAuthUser: "guest",
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with stream replicas out of range", func() {
-			ginkgo.It("should return a validation error for replicas below minimum", func() {
-				input.Spec.NackController = &KubernetesNatsNackController{
-					Enabled: true,
-				}
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     "orders",
-						Subjects: []string{"orders.*"},
-						Replicas: 0, // Below minimum of 1
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-
-			ginkgo.It("should return a validation error for replicas above maximum", func() {
-				input.Spec.NackController = &KubernetesNatsNackController{
-					Enabled: true,
-				}
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     "orders",
-						Subjects: []string{"orders.*"},
-						Replicas: 6, // Above maximum of 5
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
+		ginkgo.It("duplicate flat usernames should fail", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Users: []*KubernetesNatsUser{user("app"), user("app")},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.Context("with consumer missing required durable_name", func() {
-			ginkgo.It("should return a validation error", func() {
-				input.Spec.NackController = &KubernetesNatsNackController{
-					Enabled: true,
-				}
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     "orders",
-						Subjects: []string{"orders.*"},
-						Consumers: []*KubernetesNatsConsumer{
-							{
-								DurableName: "", // Empty durable name
-							},
-						},
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).ToNot(gomega.BeNil())
-			})
-		})
-	})
-})
-
-var _ = ginkgo.Describe("KubernetesNats Stream Configuration Tests", func() {
-	var input *KubernetesNats
-
-	ginkgo.BeforeEach(func() {
-		input = &KubernetesNats{
-			ApiVersion: "kubernetes.planton.dev/v1",
-			Kind:       "KubernetesNats",
-			Metadata: &shared.CloudResourceMetadata{
-				Name: "nats-streams-test",
-			},
-			Spec: &KubernetesNatsSpec{
-				Namespace: &foreignkeyv1.StringValueOrRef{
-					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-						Value: "nats-streams",
-					},
-				},
-				ServerContainer: &KubernetesNatsServerContainer{
-					Replicas: 3,
-					DiskSize: "10Gi",
-				},
-				NackController: &KubernetesNatsNackController{
-					Enabled:           true,
-					EnableControlLoop: true,
-				},
-			},
-		}
-	})
-
-	ginkgo.Describe("Stream storage types", func() {
-		ginkgo.Context("with file storage", func() {
-			ginkgo.It("should validate successfully", func() {
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     "file-stream",
-						Subjects: []string{"file.>"},
-						Storage:  StreamStorageEnum_file,
-						Replicas: 3,
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with memory storage", func() {
-			ginkgo.It("should validate successfully", func() {
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     "memory-stream",
-						Subjects: []string{"memory.>"},
-						Storage:  StreamStorageEnum_memory,
-						Replicas: 1,
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-	})
-
-	ginkgo.Describe("Stream retention policies", func() {
-		ginkgo.Context("with limits retention", func() {
-			ginkgo.It("should validate successfully with time and size limits", func() {
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:      "limits-stream",
-						Subjects:  []string{"limits.>"},
-						Storage:   StreamStorageEnum_file,
-						Replicas:  1,
-						Retention: StreamRetentionEnum_limits,
-						MaxAge:    "7d",
-						MaxBytes:  1073741824, // 1GB
-						MaxMsgs:   1000000,
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with interest retention", func() {
-			ginkgo.It("should validate successfully", func() {
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:      "interest-stream",
-						Subjects:  []string{"interest.>"},
-						Storage:   StreamStorageEnum_memory,
-						Replicas:  1,
-						Retention: StreamRetentionEnum_interest,
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with workqueue retention", func() {
-			ginkgo.It("should validate successfully", func() {
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:      "workqueue-stream",
-						Subjects:  []string{"work.>"},
-						Storage:   StreamStorageEnum_file,
-						Replicas:  1,
-						Retention: StreamRetentionEnum_workqueue,
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-	})
-
-	ginkgo.Describe("Consumer configurations", func() {
-		ginkgo.Context("with pull consumer", func() {
-			ginkgo.It("should validate successfully", func() {
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     "pull-stream",
-						Subjects: []string{"pull.>"},
-						Storage:  StreamStorageEnum_file,
-						Replicas: 1,
-						Consumers: []*KubernetesNatsConsumer{
-							{
-								DurableName:   "pull-consumer",
-								DeliverPolicy: ConsumerDeliverPolicyEnum_all,
-								AckPolicy:     ConsumerAckPolicyEnum_explicit,
-								MaxAckPending: 1000,
-								MaxDeliver:    5,
-								AckWait:       "30s",
-							},
-						},
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with push consumer", func() {
-			ginkgo.It("should validate successfully", func() {
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     "push-stream",
-						Subjects: []string{"push.>"},
-						Storage:  StreamStorageEnum_file,
-						Replicas: 1,
-						Consumers: []*KubernetesNatsConsumer{
-							{
-								DurableName:    "push-consumer",
-								DeliverPolicy:  ConsumerDeliverPolicyEnum_new_msgs,
-								AckPolicy:      ConsumerAckPolicyEnum_explicit,
-								DeliverSubject: "deliver.push.consumer",
-								DeliverGroup:   "push-workers",
-								ReplayPolicy:   ConsumerReplayPolicyEnum_instant,
-							},
-						},
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-
-		ginkgo.Context("with filtered consumer", func() {
-			ginkgo.It("should validate successfully", func() {
-				input.Spec.Streams = []*KubernetesNatsStream{
-					{
-						Name:     "filtered-stream",
-						Subjects: []string{"events.>"},
-						Storage:  StreamStorageEnum_file,
-						Replicas: 1,
-						Consumers: []*KubernetesNatsConsumer{
-							{
-								DurableName:   "filtered-consumer",
-								FilterSubject: "events.orders.*",
-								AckPolicy:     ConsumerAckPolicyEnum_explicit,
-							},
-						},
-					},
-				}
-
-				err := protovalidate.Validate(input)
-				gomega.Expect(err).To(gomega.BeNil())
-			})
-		})
-	})
-})
-
-var _ = ginkgo.Describe("KubernetesNats Real-World Configuration Tests", func() {
-	ginkgo.Describe("GCP Dev NATS configuration", func() {
-		ginkgo.It("should validate a production-like configuration with multiple streams", func() {
-			natsHelmVersion := "2.12.3"
-			input := &KubernetesNats{
-				ApiVersion: "kubernetes.planton.dev/v1",
-				Kind:       "KubernetesNats",
-				Metadata: &shared.CloudResourceMetadata{
-					Name: "nats-gcp-dev",
-					Org:  "planton",
-					Env:  "gcp-dev",
-				},
-				Spec: &KubernetesNatsSpec{
-					Namespace: &foreignkeyv1.StringValueOrRef{
-						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-							Value: "planton-gcp-dev",
-						},
-					},
-					ServerContainer: &KubernetesNatsServerContainer{
-						Replicas: 1,
-						DiskSize: "10Gi",
-						Resources: &kubernetes.ContainerResources{
-							Limits: &kubernetes.CpuMemory{
-								Cpu:    "1000m",
-								Memory: "1Gi",
-							},
-							Requests: &kubernetes.CpuMemory{
-								Cpu:    "100m",
-								Memory: "100Mi",
-							},
-						},
-					},
-					Auth: &KubernetesNatsAuth{
-						Enabled: true,
-						Scheme:  KubernetesNatsAuthScheme_basic_auth,
-					},
-					Ingress: &KubernetesNatsIngress{
-						Enabled:  true,
-						Hostname: "nats-gcp-dev.planton.live",
-					},
-					NatsHelmChartVersion: &natsHelmVersion,
-					NackController: &KubernetesNatsNackController{
-						Enabled:           true,
-						EnableControlLoop: true,
-					},
-					Streams: []*KubernetesNatsStream{
-						{
-							Name:      "api-resources",
-							Subjects:  []string{"api-resources.>"},
-							Replicas:  1,
-							MaxAge:    "5m",
-							Storage:   StreamStorageEnum_file,
-							Retention: StreamRetentionEnum_limits,
-						},
-						{
-							Name:      "webhooks",
-							Subjects:  []string{"webhooks.>"},
-							Replicas:  1,
-							MaxAge:    "5m",
-							Storage:   StreamStorageEnum_file,
-							Retention: StreamRetentionEnum_limits,
-						},
-						{
-							Name:      "git-commits",
-							Subjects:  []string{"git-commits.>"},
-							Replicas:  1,
-							MaxAge:    "5m",
-							Storage:   StreamStorageEnum_file,
-							Retention: StreamRetentionEnum_limits,
-						},
-						{
-							Name:      "copilot-chats",
-							Subjects:  []string{"copilot-chats.>"},
-							Replicas:  1,
-							MaxAge:    "5m",
-							Storage:   StreamStorageEnum_file,
-							Retention: StreamRetentionEnum_limits,
-						},
-						{
-							Name:      "pipeline-status",
-							Subjects:  []string{"pipeline-status.>"},
-							Replicas:  1,
-							MaxAge:    "5m",
-							Storage:   StreamStorageEnum_file,
-							Retention: StreamRetentionEnum_limits,
-						},
-					},
+		ginkgo.It("the same username in two accounts should fail (auth Secret keys collide)", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Accounts: []*KubernetesNatsAccount{
+					{Name: "team-a", Users: []*KubernetesNatsUser{user("svc")}},
+					{Name: "team-b", Users: []*KubernetesNatsUser{user("svc")}},
 				},
 			}
-
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
-
-			// Verify the configuration has expected values
-			gomega.Expect(input.Spec.NackController.Enabled).To(gomega.BeTrue())
-			gomega.Expect(input.Spec.NackController.EnableControlLoop).To(gomega.BeTrue())
-			gomega.Expect(len(input.Spec.Streams)).To(gomega.Equal(5))
-		})
-	})
-})
-
-var _ = ginkgo.Describe("KubernetesNats Default Values Tests", func() {
-	ginkgo.Describe("Proto field default options", func() {
-		ginkgo.It("should have correct default for NATS Helm chart version", func() {
-			spec := &KubernetesNatsSpec{}
-			// Default is set via proto option, check the field descriptor
-			field := spec.ProtoReflect().Descriptor().Fields().ByName("nats_helm_chart_version")
-			gomega.Expect(field).ToNot(gomega.BeNil())
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("should have correct defaults for NACK controller", func() {
-			nackHelmVersion := "0.31.1"
-			nackAppVersion := "0.21.1"
-			controller := &KubernetesNatsNackController{
-				Enabled:          true,
-				HelmChartVersion: &nackHelmVersion,
-				AppVersion:       &nackAppVersion,
+		ginkgo.It("an account without users should fail", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Accounts: []*KubernetesNatsAccount{{Name: "team-a"}},
 			}
-
-			// Verify versions can be set
-			gomega.Expect(*controller.HelmChartVersion).To(gomega.Equal("0.31.1"))
-			gomega.Expect(*controller.AppVersion).To(gomega.Equal("0.21.1"))
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
-	})
-})
 
-var _ = ginkgo.Describe("KubernetesNats Proto Message Tests", func() {
-	ginkgo.Describe("Message cloning", func() {
-		ginkgo.It("should properly clone a KubernetesNats message", func() {
-			original := &KubernetesNats{
-				ApiVersion: "kubernetes.planton.dev/v1",
-				Kind:       "KubernetesNats",
-				Metadata: &shared.CloudResourceMetadata{
-					Name: "nats-clone-test",
-				},
-				Spec: &KubernetesNatsSpec{
-					Namespace: &foreignkeyv1.StringValueOrRef{
-						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
-							Value: "test-ns",
-						},
-					},
-					ServerContainer: &KubernetesNatsServerContainer{
-						Replicas: 3,
-						DiskSize: "10Gi",
-					},
-					NackController: &KubernetesNatsNackController{
-						Enabled: true,
-					},
-					Streams: []*KubernetesNatsStream{
-						{
-							Name:     "test-stream",
-							Subjects: []string{"test.>"},
-						},
-					},
-				},
+		ginkgo.It("mqtt with jetstream explicitly disabled should fail", func() {
+			input.Spec.JetStream = &KubernetesNatsJetStream{Enabled: boolPtr(false)}
+			input.Spec.Mqtt = &KubernetesNatsMqtt{Enabled: true}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("a pod monitor without the exporter should fail", func() {
+			input.Spec.Metrics = &KubernetesNatsMetrics{PodMonitorEnabled: true}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("tls without a secret name should fail", func() {
+			input.Spec.Tls = &KubernetesNatsTls{VerifyClients: true}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("a bad username should fail", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Users: []*KubernetesNatsUser{user("bad user!")},
 			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			cloned := proto.Clone(original).(*KubernetesNats)
+		ginkgo.It("a websocket port out of range should fail", func() {
+			input.Spec.Websocket = &KubernetesNatsWebsocket{Enabled: true, Port: int32Ptr(70000)}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
 
-			// Verify clone is independent
-			cloned.Spec.ServerContainer.Replicas = 5
-			gomega.Expect(original.Spec.ServerContainer.Replicas).To(gomega.Equal(int32(3)))
-			gomega.Expect(cloned.Spec.ServerContainer.Replicas).To(gomega.Equal(int32(5)))
-
-			// Verify stream is cloned
-			cloned.Spec.Streams[0].Name = "modified-stream"
-			gomega.Expect(original.Spec.Streams[0].Name).To(gomega.Equal("test-stream"))
-			gomega.Expect(cloned.Spec.Streams[0].Name).To(gomega.Equal("modified-stream"))
+		ginkgo.It("a bad account name should fail", func() {
+			input.Spec.Auth = &KubernetesNatsAuth{
+				Accounts: []*KubernetesNatsAccount{{Name: "team a", Users: []*KubernetesNatsUser{user("svc")}}},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 	})
 })

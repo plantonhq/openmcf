@@ -1,82 +1,82 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name = string,
-    id = optional(string),
-    org = optional(string),
-    env = optional(string),
-    labels = optional(map(string)),
-    tags = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
-
 variable "spec" {
-  description = "spec"
+  description = "KubernetesNeo4j specification"
   type = object({
-    # Kubernetes namespace to install the operator.
     namespace = string
-
-    # Flag to indicate if the namespace should be created
-    create_namespace = bool
-
-    # The container specifications for the Neo4j deployment.
-    container = object({
-
-      # The CPU and memory resources allocated to the Neo4j container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-
-      # Flag to enable or disable data persistence
-      persistence_enabled = optional(bool, false)
-
-      # Size of the persistent volume if persistence is enabled
-      disk_size = optional(string, "1Gi")
-    })
-
-    # Optional memory configuration for Neo4j
-    memory_config = optional(object({
-      # Maximum Java heap size
+    create_namespace = optional(bool, false)
+    chart_version = optional(string)
+    edition = optional(string)
+    accept_license_agreement = optional(bool, false)
+    auth = optional(object({
+      password = optional(string)
+      existing_secret = optional(string)
+    }))
+    cluster_name = optional(string, "")
+    resources = optional(object({
+      limits = optional(object({
+        cpu = optional(string, "")
+        memory = optional(string, "")
+      }))
+      requests = optional(object({
+        cpu = optional(string, "")
+        memory = optional(string, "")
+      }))
+    }))
+    data_volume = optional(object({
+      size = optional(string)
+      storage_class = optional(string, "")
+    }))
+    memory = optional(object({
+      heap_initial = optional(string, "")
       heap_max = optional(string, "")
-
-      # Page cache size for on-disk data
       page_cache = optional(string, "")
-    }), {
-      heap_max   = ""
-      page_cache = ""
-    })
-
-    # The ingress configuration for the Neo4j deployment.
-    ingress = object({
-
-      # A flag to enable or disable ingress.
-      enabled = bool
-
-      # The full hostname for external access.
-      hostname = string
-    })
+    }))
+    config = optional(map(string), {})
+    apoc_config = optional(map(string), {})
+    additional_jvm_arguments = optional(list(string), [])
+    use_default_jvm_arguments = optional(bool)
+    service = optional(object({
+      type = optional(string)
+      annotations = optional(map(string), {})
+    }))
+    ssl = optional(object({
+      bolt = optional(object({
+        secret = optional(string, "")
+      }))
+      https = optional(object({
+        secret = optional(string, "")
+      }))
+    }))
+    scheduling = optional(object({
+      node_selector = optional(map(string), {})
+      tolerations = optional(list(object({
+        key = optional(string, "")
+        operator = optional(string, "")
+        value = optional(string, "")
+        effect = optional(string, "")
+        toleration_seconds = optional(number)
+      })), [])
+      pod_anti_affinity = optional(bool)
+      priority_class_name = optional(string, "")
+    }))
+    service_monitor_enabled = optional(bool, false)
+    image = optional(object({
+      registry = optional(string, "")
+      repository = optional(string, "")
+      tag = optional(string, "")
+    }))
+    helm_values = optional(string, "")
   })
 }

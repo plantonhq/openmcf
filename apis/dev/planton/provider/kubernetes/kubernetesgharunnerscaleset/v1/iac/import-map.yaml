@@ -1,0 +1,49 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesgharunnerscaleset
+spec:
+  # The scale set installs as one Helm release NAMED AFTER metadata.name,
+  # plus the optional anchor namespace and — on the declared PAT /
+  # GitHub App arms only — the module-materialized `<name>-github-auth`
+  # credential Secret (count-indexed singleton, so its name derives from
+  # the fixed suffix). The existing-Secret arm imports NO Secret: the
+  # user's own Secret never enters this module's state.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    # ── the materialized credential Secret (declared arms only) ──────────
+    - name: secret_name
+      tofu_resource_name: github_auth
+      derivations:
+        - from_metadata_name_suffix: "-github-auth"
+      where_to_find: >-
+        Always "<resource-name>-github-auth" when the credential was
+        declared inline — `kubectl get secrets -n <namespace>` (key
+        github_token for a PAT; github_app_* keys for an App).
+    - name: secret_namespace
+      tofu_resource_name: github_auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.

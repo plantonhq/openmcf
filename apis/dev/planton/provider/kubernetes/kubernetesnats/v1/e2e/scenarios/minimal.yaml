@@ -1,20 +1,14 @@
+# The component defaults: a single server with JetStream persistence ON
+# (the kind's posture — the chart's raw default is off), no auth, the
+# nats-box utility pod. The verifier proves MESSAGING on every lane: the
+# StatefulSet rolled out → a real nats.go client completes a pub/sub
+# round-trip → a file-backed stream stores a marker a consumer reads
+# back.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNats
 metadata:
-  name: e2e-nats-minimal
+  name: e2e-nats-min
 spec:
   namespace:
-    value: e2e-nats-minimal
-  create_namespace: true
-  server_container:
-    replicas: 1
-    resources:
-      limits:
-        cpu: 500m
-        memory: 256Mi
-      requests:
-        cpu: 50m
-        memory: 64Mi
-    disk_size: 1Gi
-  disable_jet_stream: true
-  disable_nats_box: true
+    value: e2e-nats-min
+  createNamespace: true

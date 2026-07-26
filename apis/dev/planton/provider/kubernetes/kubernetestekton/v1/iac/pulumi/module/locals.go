@@ -3,7 +3,6 @@ package module
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	kubernetestektonv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestekton/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
@@ -11,141 +10,80 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Locals keeps all frequently-used values in one place – similar to a Terraform "locals {}" block.
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	Labels           map[string]string
 	KubernetesTekton *kubernetestektonv1.KubernetesTekton
+	Spec             *kubernetestektonv1.KubernetesTektonSpec
 
-	// Computed values
-	Namespace                 string
-	PipelineVersion           string
-	DashboardEnabled          bool
-	DashboardVersion          string
-	PipelineManifestURL       string
-	DashboardManifestURL      string
-	DashboardInternalEndpoint string
-	PortForwardDashboardCmd   string
-	CloudEventsSinkURL        string
+	// ResourceName keys the rendered CR in the Pulumi state (the CR's
+	// own name is the operator-required fixed `config` — see vars).
+	ResourceName string
 
-	// Ingress-related
-	IngressEnabled        bool
-	IngressHostname       string
-	CertSecretName        string
-	GatewayName           string
-	HttpRedirectRouteName string
-	HttpsRouteName        string
-	ClusterIssuerName     string
+	// Labels tie the CR back to the Planton resource.
+	Labels map[string]string
+
+	// Profile is the resolved profile (`all` when the spec leaves it
+	// empty — the operator's own default).
+	Profile string
+
+	// TargetNamespace is the resolved component namespace.
+	TargetNamespace string
+
+	// Dashboard handles — empty unless the profile installs the
+	// dashboard (`all`).
+	DashboardService      string
+	DashboardKubeEndpoint string
+	PortForwardCommand    string
 }
 
-// Output key constants for stack exports
-const (
-	OpNamespace                 = "namespace"
-	OpPipelineVersion           = "pipeline_version"
-	OpDashboardVersion          = "dashboard_version"
-	OpDashboardInternalEndpoint = "dashboard_internal_endpoint"
-	OpDashboardExternalHostname = "dashboard_external_hostname"
-	OpPortForwardDashboardCmd   = "port_forward_dashboard_command"
-	OpCloudEventsSinkURL        = "cloud_events_sink_url"
-)
-
-// initializeLocals builds the Locals struct and exports stack outputs.
-func initializeLocals(ctx *pulumi.Context,
-	stackInput *kubernetestektonv1.KubernetesTektonStackInput) *Locals {
-
-	locals := &Locals{}
-	locals.KubernetesTekton = stackInput.Target
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetestektonv1.KubernetesTektonStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	// -------------------------------- labels ---------------------------------
-	locals.Labels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesTekton.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// ---------------------------- namespace ----------------------------------
-	// Tekton always uses tekton-pipelines namespace
-	locals.Namespace = vars.TektonNamespace
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	// ---------------------------- versions -----------------------------------
-	locals.PipelineVersion = target.Spec.PipelineVersion
-	if locals.PipelineVersion == "" {
-		locals.PipelineVersion = "latest"
-	}
-	ctx.Export(OpPipelineVersion, pulumi.String(locals.PipelineVersion))
-
-	// Check if dashboard is enabled
-	locals.DashboardEnabled = target.Spec.Dashboard != nil && target.Spec.Dashboard.Enabled
-
-	// Get dashboard version
-	if target.Spec.Dashboard != nil && target.Spec.Dashboard.Version != "" {
-		locals.DashboardVersion = target.Spec.Dashboard.Version
-	} else {
-		locals.DashboardVersion = "latest"
-	}
-	if locals.DashboardEnabled {
-		ctx.Export(OpDashboardVersion, pulumi.String(locals.DashboardVersion))
+	profile := spec.GetProfile()
+	if profile == "" {
+		profile = "all"
 	}
 
-	// ---------------------------- manifest URLs ------------------------------
-	locals.PipelineManifestURL = fmt.Sprintf(vars.PipelineReleaseURLTemplate, locals.PipelineVersion)
-	locals.DashboardManifestURL = fmt.Sprintf(vars.DashboardReleaseURLTemplate, locals.DashboardVersion)
-
-	// ---------------------------- endpoints ----------------------------------
-	locals.DashboardInternalEndpoint = fmt.Sprintf("%s.%s.svc.cluster.local:%d",
-		vars.DashboardServiceName, locals.Namespace, vars.DashboardServicePort)
-
-	if locals.DashboardEnabled {
-		ctx.Export(OpDashboardInternalEndpoint, pulumi.String(locals.DashboardInternalEndpoint))
+	targetNamespace := spec.GetTargetNamespace()
+	if targetNamespace == "" {
+		targetNamespace = vars.DefaultTargetNamespace
 	}
 
-	// ---------------------------- port-forward cmd ---------------------------
-	locals.PortForwardDashboardCmd = fmt.Sprintf(
-		"kubectl port-forward -n %s service/%s 9097:9097",
-		locals.Namespace, vars.DashboardServiceName)
-
-	if locals.DashboardEnabled {
-		ctx.Export(OpPortForwardDashboardCmd, pulumi.String(locals.PortForwardDashboardCmd))
+	locals := &Locals{
+		KubernetesTekton: target,
+		Spec:             spec,
+		ResourceName:     target.Metadata.Name,
+		Labels:           labels,
+		Profile:          profile,
+		TargetNamespace:  targetNamespace,
 	}
 
-	// ---------------------------- cloud events -------------------------------
-	if target.Spec.CloudEvents != nil && target.Spec.CloudEvents.SinkUrl != "" {
-		locals.CloudEventsSinkURL = target.Spec.CloudEvents.SinkUrl
-		ctx.Export(OpCloudEventsSinkURL, pulumi.String(locals.CloudEventsSinkURL))
-	}
-
-	// ------------------------------- ingress ---------------------------------
-	if target.Spec.Dashboard != nil &&
-		target.Spec.Dashboard.Ingress != nil &&
-		target.Spec.Dashboard.Ingress.Enabled &&
-		target.Spec.Dashboard.Ingress.Hostname != "" {
-
-		locals.IngressEnabled = true
-		locals.IngressHostname = target.Spec.Dashboard.Ingress.Hostname
-		ctx.Export(OpDashboardExternalHostname, pulumi.String(locals.IngressHostname))
-
-		// Extract domain from hostname for ClusterIssuer name
-		hostnameParts := strings.Split(locals.IngressHostname, ".")
-		if len(hostnameParts) > 1 {
-			locals.ClusterIssuerName = strings.Join(hostnameParts[1:], ".")
-		}
-
-		// Computed resource names
-		locals.CertSecretName = fmt.Sprintf("%s-dashboard-cert", target.Metadata.Name)
-		locals.GatewayName = fmt.Sprintf("%s-dashboard-external", target.Metadata.Name)
-		locals.HttpRedirectRouteName = fmt.Sprintf("%s-dashboard-http-redirect", target.Metadata.Name)
-		locals.HttpsRouteName = fmt.Sprintf("%s-dashboard-https", target.Metadata.Name)
+	// The dashboard installs on profile `all` only.
+	if profile == "all" {
+		locals.DashboardService = vars.DashboardServiceName
+		locals.DashboardKubeEndpoint = fmt.Sprintf("http://%s.%s.svc.cluster.local:%d",
+			vars.DashboardServiceName, targetNamespace, vars.DashboardPort)
+		locals.PortForwardCommand = fmt.Sprintf(
+			"kubectl port-forward -n %s service/%s %d:%d",
+			targetNamespace, vars.DashboardServiceName, vars.DashboardPort, vars.DashboardPort)
 	}
 
 	return locals

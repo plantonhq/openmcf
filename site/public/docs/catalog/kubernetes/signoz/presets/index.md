@@ -8,10 +8,14 @@ provider: "kubernetes"
 icon: "package"
 order: 200
 presets:
-  - slug: "01-standard"
+  - slug: "01-dev"
     rank: "01"
-    title: "Standard SigNoz"
-    excerpt: "This preset deploys SigNoz -- an open-source observability platform providing traces, metrics, and logs in a single UI. Includes the SigNoz frontend/query service and OpenTelemetry Collector with..."
+    title: "SigNoz for development"
+    excerpt: "The smallest honest SigNoz: the component's defaults against a composed `KubernetesClickHouse` named `telemetry` in the same namespace — the whole platform (UI, API, alerting, the ingestion..."
+  - slug: "02-production"
+    rank: "02"
+    title: "SigNoz for production"
+    excerpt: "The destination posture: SigNoz runs the observability product; a `KubernetesClickHouse` (with its `KubernetesAltinityOperator`) runs the database — each with its own lifecycle, sizing and..."
 ---
 
 # SigNoz Presets

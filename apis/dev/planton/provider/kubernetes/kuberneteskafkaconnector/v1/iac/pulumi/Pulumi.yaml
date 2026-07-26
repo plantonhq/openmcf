@@ -1,0 +1,3 @@
+name: kubernetes-kafka-connector
+runtime: go
+description: Declarative Kafka Connect connector instance on the Strimzi KafkaConnector custom resource — reconciled onto the target Connect cluster's workers by the Strimzi operator

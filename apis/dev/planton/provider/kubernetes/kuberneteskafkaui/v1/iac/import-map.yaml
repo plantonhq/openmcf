@@ -1,0 +1,43 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kuberneteskafkaui
+spec:
+  # One Helm release named after metadata.name (fullnameOverride pins
+  # every chart-derived object the same way), plus the optional console
+  # Secret ("<name>-secrets", present only when auth is declared) and
+  # the optional anchor namespace.
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares
+        the resource's name (and fullnameOverride pins the derived
+        Deployment/Service the same way).
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    - name: secret_name
+      tofu_resource_name: console
+      derivations:
+        - from_metadata_name_suffix: "-secrets"
+      where_to_find: >-
+        Present only when auth is declared; always
+        "<resource-name>-secrets" — `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the console.
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the console's
+        namespace itself.

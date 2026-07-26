@@ -1,45 +1,47 @@
+# Stack outputs — identical names and derivations in the Pulumi module's
+# outputs.go / main.go exports.
+#
+# The frontend Service is `<name>-frontend` and the Web UI Service
+# `<name>-web` (fullnameOverride pins the chart's fullname to the resource
+# name; the chart appends each component's name); the web handles are
+# empty when the UI is disabled.
+
 output "namespace" {
-  description = "Kubernetes namespace where Temporal is deployed"
+  description = "Kubernetes namespace Temporal runs in"
   value       = local.namespace
 }
 
-output "frontend_service_name" {
-  description = "Service name for the Temporal frontend"
+output "frontend_service" {
+  description = "Name of the frontend Service (gRPC 7233 / HTTP 7243) — the handle exposure kinds route to"
   value       = local.frontend_service_name
 }
 
-output "ui_service_name" {
-  description = "Service name for the Temporal web UI"
-  value       = local.ui_service_name
-}
-
-output "port_forward_frontend_command" {
-  description = "Command to port-forward the frontend service"
-  value       = local.port_forward_frontend_command
-}
-
-output "port_forward_ui_command" {
-  description = "Command to port-forward the UI service"
-  value       = local.port_forward_ui_command
-}
-
 output "frontend_endpoint" {
-  description = "Internal cluster endpoint for the frontend (e.g. temporal-frontend.namespace.svc.cluster.local:7233)"
-  value       = local.frontend_endpoint
+  description = "In-cluster frontend gRPC endpoint — what Temporal SDK workers and clients dial"
+  value       = "${local.frontend_service_name}.${local.namespace}.svc.cluster.local:7233"
+}
+
+output "frontend_http_endpoint" {
+  description = "In-cluster frontend HTTP API endpoint (Temporal's HTTP/JSON API)"
+  value       = "http://${local.frontend_service_name}.${local.namespace}.svc.cluster.local:7243"
+}
+
+output "web_ui_service" {
+  description = "Name of the Web UI Service; empty when the UI is disabled"
+  value       = local.web_ui_service_name
 }
 
 output "web_ui_endpoint" {
-  description = "Internal cluster endpoint for the UI (e.g. temporal-ui.namespace.svc.cluster.local:8080)"
-  value       = local.web_ui_endpoint
+  description = "In-cluster Web UI endpoint; empty when the UI is disabled"
+  value       = local.web_ui_enabled ? "http://${local.web_ui_service_name}.${local.namespace}.svc.cluster.local:8080" : ""
 }
 
-output "external_frontend_hostname" {
-  description = "External hostname if load balancer is enabled for the frontend"
-  value       = local.external_frontend_hostname
+output "port_forward_frontend_command" {
+  description = "kubectl one-liner for reaching the frontend from a workstation when no exposure is composed"
+  value       = "kubectl port-forward svc/${local.frontend_service_name} -n ${local.namespace} 7233:7233"
 }
 
-output "external_ui_hostname" {
-  description = "External hostname for the UI if ingress is configured"
-  value       = local.external_ui_hostname
+output "port_forward_web_ui_command" {
+  description = "kubectl one-liner for reaching the Web UI from a workstation; empty when the UI is disabled"
+  value       = local.web_ui_enabled ? "kubectl port-forward svc/${local.web_ui_service_name} -n ${local.namespace} 8080:8080" : ""
 }
-

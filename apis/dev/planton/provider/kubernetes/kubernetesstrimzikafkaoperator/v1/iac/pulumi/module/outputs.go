@@ -1,5 +1,6 @@
 package module
 
 const (
-	OpNamespace = "namespace"
+	OpNamespace   = "namespace"
+	OpReleaseName = "release_name"
 )

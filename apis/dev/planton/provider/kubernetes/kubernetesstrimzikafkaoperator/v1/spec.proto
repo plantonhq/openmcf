@@ -4,39 +4,277 @@ package dev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
-import "dev/planton/provider/kubernetes/options.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
 
-// **KubernetesStrimziKafkaOperatorSpec** defines the configuration for deploying the Strimzi Kafka Operator on a Kubernetes cluster.
-// This message specifies the parameters needed to create and manage the operator deployment within a Kubernetes environment.
-// It includes container specifications to control resource allocation.
+/**
+ * **KubernetesStrimziKafkaOperatorSpec** installs the Strimzi cluster
+ * operator — the CNCF project that runs Apache Kafka on Kubernetes —
+ * from the official `strimzi-kafka-operator` Helm chart
+ * (https://strimzi.io/charts/). The operator reconciles `Kafka` custom
+ * resources (declared with KubernetesKafka) into KRaft-mode Kafka
+ * clusters, and its per-cluster entity operators reconcile
+ * `KafkaTopic` / `KafkaUser` resources (KubernetesKafkaTopic /
+ * KubernetesKafkaUser) into real topics and authenticated users.
+ *
+ * This component installs and configures the ENGINE. Kafka clusters
+ * themselves are declared with KubernetesKafka resources — one per
+ * cluster — which this operator reconciles.
+ *
+ * WATCH SCOPE: by default the operator watches ITS OWN namespace only
+ * (the chart default — Kafka clusters live beside their operator). Set
+ * `watch.any_namespace` for one operator managing Kafka clusters in
+ * every namespace, or `watch.namespaces` for a fenced set.
+ *
+ * CRD LIFECYCLE: the chart ships the Strimzi CRDs (Kafka,
+ * KafkaNodePool, KafkaTopic, KafkaUser, ...) in its Helm-native `crds/`
+ * directory — installed on first install, never upgraded or deleted by
+ * Helm. Uninstalling the release therefore NEVER cascade-deletes Kafka
+ * clusters (the upstream safety posture). The same posture means a
+ * `chart_version` upgrade runs new operator code against the EXISTING
+ * CRDs — apply the new release's CRDs yourself when an upgrade's
+ * release notes call for it (Strimzi minor upgrades regularly add CRD
+ * fields).
+ *
+ * MULTIPLE INSTALLS: a second operator in the same cluster (watching a
+ * disjoint namespace set) must set `create_global_resources` false in
+ * `helm_values` terms — the chart's fixed-name ClusterRoles are owned
+ * by the first release and a second install conflicts on them.
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `helm_values` remains as the escape hatch for chart values
+ * beyond them (merged last, Helm `-f` semantics, identical on both
+ * engines) — a safety valve, never the primary interface.
+ */
 message KubernetesStrimziKafkaOperatorSpec {
-  // Kubernetes Namespace
-  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+  /**
+   * Namespace to install the operator into. Accepts a literal namespace
+   * name or a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
   ];
 
-  // flag to indicate if the namespace should be created
-  bool create_namespace = 3;
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the resource.
+   * When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
 
-  // The container specifications for the Strimzi Kafka Operator deployment.
-  KubernetesStrimziKafkaOperatorSpecContainer container = 4 [(buf.validate.field).required = true];
+  /**
+   * Helm chart version to install (e.g. "1.1.0" — chart and operator
+   * versions move together for this chart; the chart pin governs).
+   * Versions must exist as SERVED charts in the repository index
+   * (https://strimzi.io/charts/) — the Chart.yaml inside the Strimzi
+   * source tree carries a build-time placeholder and never reflects
+   * the served version. Remember the `crds/`-directory posture: a
+   * version upgrade re-runs the release with the new chart but leaves
+   * the CRDs at their installed versions.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "1.1.0"];
+
+  /**
+   * Operator replica count. Chart default: 1. Extra replicas are
+   * leader-elected warm standbys for the OPERATOR itself — they add no
+   * reconciliation throughput.
+   */
+  optional int32 replicas = 4 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * What the operator watches. Omitted = its own namespace only (the
+   * chart default).
+   */
+  KubernetesStrimziKafkaOperatorWatch watch = 5;
+
+  /**
+   * Interval between full reconciliations of every watched resource,
+   * in milliseconds. Chart default: 120000 (2 minutes). The periodic
+   * pass repairs drift that event-driven reconciliation missed.
+   */
+  optional int32 full_reconciliation_interval_ms = 6 [
+    (dev.planton.shared.options.default) = "120000",
+    (buf.validate.field).int32.gte = 1000
+  ];
+
+  /**
+   * Timeout for internal operations (rolling a pod, waiting for a
+   * readiness gate) in milliseconds. Chart default: 300000
+   * (5 minutes). Raise on slow storage where broker restarts
+   * legitimately exceed it — an expired timeout fails the whole
+   * reconciliation.
+   */
+  optional int32 operation_timeout_ms = 7 [
+    (dev.planton.shared.options.default) = "300000",
+    (buf.validate.field).int32.gte = 1000
+  ];
+
+  /**
+   * Operator log level: ERROR, WARN, INFO (the chart default), DEBUG,
+   * or TRACE.
+   */
+  optional string log_level = 8 [
+    (dev.planton.shared.options.default) = "INFO",
+    (buf.validate.field).cel = {
+      id: "spec.log_level_enum"
+      message: "log level must be ERROR, WARN, INFO, DEBUG, or TRACE"
+      expression: "this == '' || this in ['ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE']"
+    }
+  ];
+
+  /**
+   * Strimzi feature gates, in the operator's own syntax: a
+   * comma-separated list of gate names each prefixed with `+` (enable)
+   * or `-` (disable), e.g. "+DummyGate,-OtherGate". Empty = the
+   * release defaults. Consult the pinned Strimzi release's
+   * documentation for the gates it recognizes — an unknown gate fails
+   * operator startup.
+   */
+  string feature_gates = 9;
+
+  /**
+   * Kubernetes cluster DNS domain the operator bakes into generated
+   * addresses (advertised listeners, certificates). Chart default:
+   * "cluster.local". Set only on clusters with a non-default DNS
+   * domain — a mismatch produces TLS certificates whose SANs do not
+   * match the service DNS names brokers advertise.
+   */
+  optional string kubernetes_service_dns_domain = 10 [(dev.planton.shared.options.default) = "cluster.local"];
+
+  /**
+   * Leader election between operator replicas. Chart default: true.
+   * Meaningful only with replicas above 1 — exactly one replica
+   * reconciles at a time.
+   */
+  optional bool leader_election_enabled = 11 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Generate NetworkPolicy resources for the Kafka clusters the
+   * operator manages (broker-to-broker, operator-to-broker and
+   * client-access policies). Chart default: true. Disable on clusters
+   * whose CNI does not enforce NetworkPolicy or where policies are
+   * managed externally — the generated policies are correct but
+   * inert on a non-enforcing CNI.
+   */
+  optional bool generate_network_policy = 12 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Generate PodDisruptionBudget resources for the Kafka pods the
+   * operator manages. Chart default: true. On a single-node cluster a
+   * generated PDB can block node drains of a 1-replica pool — disable
+   * only with that trade understood.
+   */
+  optional bool generate_pod_disruption_budget = 13 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Create the cluster-scoped RBAC the operator needs (ClusterRoles +
+   * bindings). Chart default: true. Set false only for a SECOND
+   * operator install in the same cluster — the fixed-name ClusterRoles
+   * are owned by the first release, and Helm fails a second install
+   * that tries to create them again.
+   */
+  optional bool create_global_resources = 14 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Operator container resources. Empty = the chart defaults (requests
+   * 200m/384Mi, limits 1000m/384Mi).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 15;
+
+  /**
+   * Node selector for the operator pod.
+   */
+  map<string, string> node_selector = 16;
+
+  /**
+   * Tolerations for the operator pod.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 17;
+
+  /**
+   * Names of image-pull secrets (in the installation namespace) for
+   * pulling images from a private mirror.
+   */
+  repeated string image_pull_secrets = 18 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing Kubernetes Secrets (references), not secret material"];
+
+  /**
+   * Override the registry/organization ALL Strimzi images are pulled
+   * from (the operator itself AND every operand image it deploys:
+   * Kafka, entity operators, Cruise Control, exporter). The air-gap /
+   * private-mirror path. Empty = the chart defaults
+   * (quay.io/strimzi at the chart version).
+   */
+  KubernetesStrimziKafkaOperatorImage image = 19;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f` semantics,
+   * identical on both engines). For the chart surface beyond the typed
+   * fields (per-component image overrides, extra env vars, security
+   * contexts, the operator's own PDB/NetworkPolicy, dashboards,
+   * aggregate roles, Connect build timeout, ...) — never the
+   * substitute for them. Do not put secrets here.
+   */
+  string helm_values = 20;
 }
 
-// **KubernetesStrimziKafkaOperatorSpecContainer** specifies the container configuration for the Strimzi Kafka Operator.
-// It includes resource allocations for CPU and memory to ensure the operator runs efficiently.
-message KubernetesStrimziKafkaOperatorSpecContainer {
-  // The CPU and memory resources allocated to the Strimzi Kafka Operator container.
-  dev.planton.provider.kubernetes.ContainerResources resources = 1 [(dev.planton.provider.kubernetes.default_container_resources) = {
-    limits: {
-      cpu: "1000m"
-      memory: "1Gi"
-    }
-    requests: {
-      cpu: "50m"
-      memory: "100Mi"
-    }
-  }];
+/**
+ * Operator watch scope. At most one of any_namespace / namespaces.
+ */
+message KubernetesStrimziKafkaOperatorWatch {
+  /**
+   * Watch every namespace in the cluster (rendered as the chart's
+   * watchAnyNamespace, cluster-wide RBAC). Chart default: false.
+   */
+  bool any_namespace = 1;
+
+  /**
+   * Watch exactly these namespaces (rendered as the chart's
+   * watchNamespaces list — the installation namespace is always
+   * watched in addition). Empty with any_namespace false = the
+   * operator's own namespace only.
+   *
+   * Every listed namespace MUST already exist: the chart templates
+   * RoleBindings into each one, and the install fails with
+   * "namespaces ... not found" otherwise (verified live — the chart
+   * does not create watched namespaces). Create them first, e.g. as
+   * KubernetesNamespace resources the install depends on.
+   */
+  repeated string namespaces = 2;
+
+  option (buf.validate.message).cel = {
+    id: "spec.watch.any_namespace_xor_namespaces"
+    message: "any_namespace and namespaces are mutually exclusive — a cluster-wide operator already watches everything"
+    expression: "!(this.any_namespace && this.namespaces.size() > 0)"
+  };
+}
+
+/**
+ * Strimzi image source override (applies to the operator AND all
+ * operand images it deploys).
+ */
+message KubernetesStrimziKafkaOperatorImage {
+  /**
+   * Image registry (the chart's defaultImageRegistry, e.g.
+   * "my-mirror.example.com"). Empty = "quay.io".
+   */
+  string registry = 1;
+
+  /**
+   * Image repository/organization within the registry (the chart's
+   * defaultImageRepository). Empty = "strimzi".
+   */
+  string repository = 2;
+
+  /**
+   * Image tag (the chart's defaultImageTag). Empty = the chart
+   * version.
+   */
+  string tag = 3;
 }

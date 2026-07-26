@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-aws-module-test
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-grafana
+runtime: go
+description: Grafana installation from the official Helm chart with chart-owned admin credentials, secret-safe datasource and dashboard provisioning, an external-database HA arm, and cluster-wide dashboard-ConfigMap discovery

@@ -1,3 +1,0 @@
-name: kubernetes-rook-ceph-operator
-runtime: go
-description: Pulumi module for deploying the Rook Ceph Operator on Kubernetes

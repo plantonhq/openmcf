@@ -1,0 +1,27 @@
+# The alternate arms in one manifest: keyless azure artifacts, the mysql
+# archive engine, a disabled server, and the air-gap CRD posture
+# (full_schema off = templated minified CRDs, no install-time download).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesArgoWorkflows
+metadata:
+  name: workflows-arms
+spec:
+  namespace:
+    value: workflows-arms
+  createNamespace: true
+  server:
+    enabled: false
+  artifactRepository:
+    azure:
+      endpoint: https://myaccount.blob.core.windows.net
+      container: artifacts
+  archive:
+    engine: mysql
+    host:
+      value: workflows-db.data.svc.cluster.local
+    port: 3306
+    database: argo
+    credentialsSecret:
+      name: workflows-mysql-app
+  crds:
+    fullSchema: false

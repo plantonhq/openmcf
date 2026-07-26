@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetesargoworkflows
+spec:
+  tier: 2
+  # Forged on the official argo-workflows chart 1.0.23 and
+  # offline-validated (spec tests, both engines' plan/preview proofs
+  # across full, minimal and alternate-arm shapes); the live lanes have
+  # not run yet — they run the submit→Succeeded engine proof on every
+  # lane and the behavioral-resilience lane's controller-pod-replacement
+  # recovery proof. KNOW THIS: the default CRD arm's hook Job DOWNLOADS
+  # the full-schema CRDs from the chart's GitHub release at install time
+  # (internet-at-install).
+  status: pending_proof
+  timeout_minutes: 20

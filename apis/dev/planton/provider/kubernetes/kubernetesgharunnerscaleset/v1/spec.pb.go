@@ -25,128 +25,120 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Container mode types.
-type KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType int32
-
-const (
-	KubernetesGhaRunnerScaleSetContainerMode_container_mode_type_unspecified KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType = 0
-	// Docker-in-Docker mode.
-	// Runners use a privileged DinD sidecar for Docker operations.
-	// Suitable for workflows that build/push Docker images.
-	// Requires privileged containers (may not be allowed in some clusters).
-	KubernetesGhaRunnerScaleSetContainerMode_DIND KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType = 1
-	// Kubernetes mode.
-	// Each job step runs as a separate Kubernetes pod.
-	// Uses container hooks for orchestration.
-	// Requires a work volume claim for the workspace.
-	KubernetesGhaRunnerScaleSetContainerMode_KUBERNETES KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType = 2
-	// Kubernetes mode without persistent volumes.
-	// Similar to KUBERNETES but doesn't use ephemeral volume claims.
-	// Use when the cluster doesn't support ephemeral volumes.
-	KubernetesGhaRunnerScaleSetContainerMode_KUBERNETES_NO_VOLUME KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType = 3
-	// Default mode.
-	// Runners execute workflows directly without special container features.
-	// Suitable for simple workflows that don't need Docker.
-	KubernetesGhaRunnerScaleSetContainerMode_DEFAULT KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType = 4
-)
-
-// Enum value maps for KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType.
-var (
-	KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType_name = map[int32]string{
-		0: "container_mode_type_unspecified",
-		1: "DIND",
-		2: "KUBERNETES",
-		3: "KUBERNETES_NO_VOLUME",
-		4: "DEFAULT",
-	}
-	KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType_value = map[string]int32{
-		"container_mode_type_unspecified": 0,
-		"DIND":                            1,
-		"KUBERNETES":                      2,
-		"KUBERNETES_NO_VOLUME":            3,
-		"DEFAULT":                         4,
-	}
-)
-
-func (x KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType) Enum() *KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType {
-	p := new(KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType)
-	*p = x
-	return p
-}
-
-func (x KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_enumTypes[0]
-}
-
-func (x KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType.Descriptor instead.
-func (KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{5, 0}
-}
-
-// KubernetesGhaRunnerScaleSetSpec defines configuration for deploying a GitHub Actions
-// Runner Scale Set on a Kubernetes cluster. Each scale set represents a pool of self-hosted
-// runners that can execute GitHub Actions workflows.
+// *
+// **KubernetesGhaRunnerScaleSetSpec** declares an autoscaling fleet of
+// self-hosted GitHub Actions runners for one GitHub repository,
+// organization or enterprise — from the official
+// `gha-runner-scale-set` chart (OCI,
+// ghcr.io/actions/actions-runner-controller-charts).
 //
-// Prerequisites:
-//   - The GitHub Actions Runner Scale Set Controller must be installed in the cluster
-//     (use KubernetesGhaRunnerScaleSetController component)
-//   - A GitHub PAT token or GitHub App credentials for authentication
+// PREREQUISITE: the runner scale set controller must be installed
+// first (declare a KubernetesGhaRunnerScaleSetController resource).
+// This kind renders an AutoscalingRunnerSet; the controller runs a
+// listener that long-polls GitHub for queued jobs and creates one
+// EPHEMERAL runner pod per job — each runner executes exactly one job
+// and is replaced.
 //
-// The runners scale dynamically based on workflow demand:
-// - Scale up when jobs are queued
-// - Scale down to minRunners when idle
+// HOW WORKFLOWS TARGET THIS FLEET: by NAME. The scale set registers in
+// GitHub under `runner_scale_set_name` (default: this resource's
+// metadata.name), and workflows select it with
+// `runs-on: <that name>` — runner labels beyond the name are not how
+// routing works in scale sets. The name may be at most 45 characters.
+//
+// AUTHENTICATION IS SECRET-NATIVE: the GitHub credential (a PAT or a
+// GitHub App) always lives in a Kubernetes Secret. Either reference an
+// existing Secret (`auth.existing_secret_name` — the recommended
+// posture) or declare the credential inline (`auth.pat` /
+// `auth.github_app`) and the module materializes the Secret — inline
+// values are marked sensitive and never rendered into chart values
+// (the chart reads the Secret by name).
+//
+// DOCKER BUILDS NEED A CONTAINER MODE: the default runner runs plain
+// jobs only. Set `container_mode.mode: dind` for `docker build`-style
+// jobs (runs a privileged Docker-in-Docker sidecar — the cluster must
+// allow privileged pods) or `kubernetes` for container jobs via the
+// Kubernetes container hook (no privilege, but requires a work volume
+// with a dynamic-provisioning StorageClass).
 type KubernetesGhaRunnerScaleSetSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace where the runner scale set will be installed.
-	// Multiple scale sets can be installed in different namespaces.
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Flag to indicate if the namespace should be created.
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// Version of the Helm chart to deploy.
-	// Chart versions match the runner image versions.
-	// https://github.com/actions/actions-runner-controller/releases
-	HelmChartVersion *string `protobuf:"bytes,4,opt,name=helm_chart_version,json=helmChartVersion,proto3,oneof" json:"helm_chart_version,omitempty"`
-	// GitHub configuration for connecting runners to GitHub.
-	Github *KubernetesGhaRunnerScaleSetGitHubConfig `protobuf:"bytes,5,opt,name=github,proto3" json:"github,omitempty"`
-	// Scaling configuration for the runner pool.
-	Scaling *KubernetesGhaRunnerScaleSetScaling `protobuf:"bytes,6,opt,name=scaling,proto3" json:"scaling,omitempty"`
-	// Runner group name in GitHub (organization or enterprise level).
-	// Defaults to "default" if not specified.
-	RunnerGroup *string `protobuf:"bytes,7,opt,name=runner_group,json=runnerGroup,proto3,oneof" json:"runner_group,omitempty"`
-	// Name of the runner scale set as it appears in GitHub.
-	// Defaults to the Helm release name (metadata.name) if not specified.
-	// This name is used as the runs-on label in workflow YAML.
-	RunnerScaleSetName string `protobuf:"bytes,8,opt,name=runner_scale_set_name,json=runnerScaleSetName,proto3" json:"runner_scale_set_name,omitempty"`
-	// Container mode for running workflows.
-	ContainerMode *KubernetesGhaRunnerScaleSetContainerMode `protobuf:"bytes,9,opt,name=container_mode,json=containerMode,proto3" json:"container_mode,omitempty"`
-	// Runner container configuration.
-	Runner *KubernetesGhaRunnerScaleSetRunner `protobuf:"bytes,10,opt,name=runner,proto3" json:"runner,omitempty"`
-	// Persistent volumes to attach to runner pods.
-	// Use this to persist build caches, dependencies, or workspace data across job runs.
-	// Each volume creates a PVC and mounts it to the specified path in runner pods.
-	PersistentVolumes []*KubernetesGhaRunnerScaleSetPersistentVolume `protobuf:"bytes,11,rep,name=persistent_volumes,json=persistentVolumes,proto3" json:"persistent_volumes,omitempty"`
-	// Controller service account configuration.
-	// Required when the controller is installed with watchSingleNamespace flag
-	// or when automatic controller discovery doesn't work.
-	ControllerServiceAccount *KubernetesGhaRunnerScaleSetControllerServiceAccount `protobuf:"bytes,12,opt,name=controller_service_account,json=controllerServiceAccount,proto3" json:"controller_service_account,omitempty"`
-	// Image pull secrets for private container registries.
-	ImagePullSecrets []string `protobuf:"bytes,13,rep,name=image_pull_secrets,json=imagePullSecrets,proto3" json:"image_pull_secrets,omitempty"`
-	// Labels to apply to all resources created by the scale set.
-	Labels map[string]string `protobuf:"bytes,14,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Annotations to apply to all resources created by the scale set.
-	Annotations   map[string]string `protobuf:"bytes,15,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Namespace to install into. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the
+	// resource. When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (e.g. "0.14.2"). Keep it EQUAL to
+	// the controller's chart_version — GitHub supports controller and
+	// scale set charts only at matching versions. Versions must exist
+	// as SERVED charts in the OCI registry.
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// GitHub URL the runners register against — a repository
+	// ("https://github.com/my-org/my-repo"), an organization
+	// ("https://github.com/my-org") or an enterprise
+	// ("https://github.com/enterprises/my-enterprise"). GitHub
+	// Enterprise Server URLs work the same way.
+	GithubConfigUrl string `protobuf:"bytes,4,opt,name=github_config_url,json=githubConfigUrl,proto3" json:"github_config_url,omitempty"`
+	// *
+	// GitHub credential the listener authenticates with. A GitHub App
+	// is the production posture (fine-grained, expiring tokens); a PAT
+	// is the quick start.
+	Auth *KubernetesGhaRunnerScaleSetAuth `protobuf:"bytes,5,opt,name=auth,proto3" json:"auth,omitempty"`
+	// *
+	// Name this fleet registers under in GitHub — the exact value
+	// workflows put in `runs-on`. Empty = this resource's
+	// metadata.name. At most 45 characters (a GitHub limit the chart
+	// enforces).
+	RunnerScaleSetName string `protobuf:"bytes,6,opt,name=runner_scale_set_name,json=runnerScaleSetName,proto3" json:"runner_scale_set_name,omitempty"`
+	// *
+	// Runner group this fleet joins. Runner groups exist on
+	// organizations/enterprises to control which repositories may use
+	// the fleet; the group must already exist in GitHub. Empty =
+	// "default".
+	RunnerGroup string `protobuf:"bytes,7,opt,name=runner_group,json=runnerGroup,proto3" json:"runner_group,omitempty"`
+	// *
+	// Minimum number of IDLE runners kept warm. The fleet holds
+	// min_runners + assigned jobs. Empty = 0 (fully scale-to-zero —
+	// cold-start latency of one pod schedule per job).
+	MinRunners *int32 `protobuf:"varint,8,opt,name=min_runners,json=minRunners,proto3,oneof" json:"min_runners,omitempty"`
+	// *
+	// Maximum number of runners the fleet scales to; additional queued
+	// jobs wait in GitHub. Empty = unbounded.
+	MaxRunners *int32 `protobuf:"varint,9,opt,name=max_runners,json=maxRunners,proto3,oneof" json:"max_runners,omitempty"`
+	// *
+	// How runner pods run jobs. Empty = the plain runner (no Docker
+	// daemon, no container jobs — shell/tool jobs only).
+	ContainerMode *KubernetesGhaRunnerScaleSetContainerMode `protobuf:"bytes,10,opt,name=container_mode,json=containerMode,proto3" json:"container_mode,omitempty"`
+	// *
+	// The runner container.
+	Runner *KubernetesGhaRunnerScaleSetRunner `protobuf:"bytes,11,opt,name=runner,proto3" json:"runner,omitempty"`
+	// *
+	// Outbound proxy for the listener and runner pods (clusters that
+	// reach GitHub through a proxy).
+	Proxy *KubernetesGhaRunnerScaleSetProxy `protobuf:"bytes,12,opt,name=proxy,proto3" json:"proxy,omitempty"`
+	// *
+	// Trust a private CA when talking to a GitHub Enterprise Server
+	// with a self-signed certificate.
+	GithubServerTls *KubernetesGhaRunnerScaleSetGithubServerTls `protobuf:"bytes,13,opt,name=github_server_tls,json=githubServerTls,proto3" json:"github_server_tls,omitempty"`
+	// *
+	// The controller install serving this fleet. LEAVE EMPTY on
+	// clusters with one cluster-wide controller (the chart discovers it
+	// at install time). REQUIRED when the controller was fenced with
+	// `flags.watch_single_namespace` — auto-discovery cannot see it.
+	ControllerServiceAccount *KubernetesGhaRunnerScaleSetControllerRef `protobuf:"bytes,14,opt,name=controller_service_account,json=controllerServiceAccount,proto3" json:"controller_service_account,omitempty"`
+	// *
+	// Escape hatch: additional chart values as a YAML document, merged
+	// LAST over everything the typed fields render (Helm `-f`
+	// semantics, identical on both engines). For the chart surface
+	// beyond the typed fields — the full runner pod `template` PodSpec,
+	// `listenerTemplate` sidecars, `listenerMetrics` histogram buckets,
+	// per-resource metadata — never the substitute for them. Do not put
+	// secrets here; the GitHub credential belongs in `auth`.
+	HelmValues    string `protobuf:"bytes,15,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -195,32 +187,25 @@ func (x *KubernetesGhaRunnerScaleSetSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesGhaRunnerScaleSetSpec) GetHelmChartVersion() string {
-	if x != nil && x.HelmChartVersion != nil {
-		return *x.HelmChartVersion
+func (x *KubernetesGhaRunnerScaleSetSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
 	}
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetSpec) GetGithub() *KubernetesGhaRunnerScaleSetGitHubConfig {
+func (x *KubernetesGhaRunnerScaleSetSpec) GetGithubConfigUrl() string {
 	if x != nil {
-		return x.Github
-	}
-	return nil
-}
-
-func (x *KubernetesGhaRunnerScaleSetSpec) GetScaling() *KubernetesGhaRunnerScaleSetScaling {
-	if x != nil {
-		return x.Scaling
-	}
-	return nil
-}
-
-func (x *KubernetesGhaRunnerScaleSetSpec) GetRunnerGroup() string {
-	if x != nil && x.RunnerGroup != nil {
-		return *x.RunnerGroup
+		return x.GithubConfigUrl
 	}
 	return ""
+}
+
+func (x *KubernetesGhaRunnerScaleSetSpec) GetAuth() *KubernetesGhaRunnerScaleSetAuth {
+	if x != nil {
+		return x.Auth
+	}
+	return nil
 }
 
 func (x *KubernetesGhaRunnerScaleSetSpec) GetRunnerScaleSetName() string {
@@ -228,6 +213,27 @@ func (x *KubernetesGhaRunnerScaleSetSpec) GetRunnerScaleSetName() string {
 		return x.RunnerScaleSetName
 	}
 	return ""
+}
+
+func (x *KubernetesGhaRunnerScaleSetSpec) GetRunnerGroup() string {
+	if x != nil {
+		return x.RunnerGroup
+	}
+	return ""
+}
+
+func (x *KubernetesGhaRunnerScaleSetSpec) GetMinRunners() int32 {
+	if x != nil && x.MinRunners != nil {
+		return *x.MinRunners
+	}
+	return 0
+}
+
+func (x *KubernetesGhaRunnerScaleSetSpec) GetMaxRunners() int32 {
+	if x != nil && x.MaxRunners != nil {
+		return *x.MaxRunners
+	}
+	return 0
 }
 
 func (x *KubernetesGhaRunnerScaleSetSpec) GetContainerMode() *KubernetesGhaRunnerScaleSetContainerMode {
@@ -244,77 +250,62 @@ func (x *KubernetesGhaRunnerScaleSetSpec) GetRunner() *KubernetesGhaRunnerScaleS
 	return nil
 }
 
-func (x *KubernetesGhaRunnerScaleSetSpec) GetPersistentVolumes() []*KubernetesGhaRunnerScaleSetPersistentVolume {
+func (x *KubernetesGhaRunnerScaleSetSpec) GetProxy() *KubernetesGhaRunnerScaleSetProxy {
 	if x != nil {
-		return x.PersistentVolumes
+		return x.Proxy
 	}
 	return nil
 }
 
-func (x *KubernetesGhaRunnerScaleSetSpec) GetControllerServiceAccount() *KubernetesGhaRunnerScaleSetControllerServiceAccount {
+func (x *KubernetesGhaRunnerScaleSetSpec) GetGithubServerTls() *KubernetesGhaRunnerScaleSetGithubServerTls {
+	if x != nil {
+		return x.GithubServerTls
+	}
+	return nil
+}
+
+func (x *KubernetesGhaRunnerScaleSetSpec) GetControllerServiceAccount() *KubernetesGhaRunnerScaleSetControllerRef {
 	if x != nil {
 		return x.ControllerServiceAccount
 	}
 	return nil
 }
 
-func (x *KubernetesGhaRunnerScaleSetSpec) GetImagePullSecrets() []string {
+func (x *KubernetesGhaRunnerScaleSetSpec) GetHelmValues() string {
 	if x != nil {
-		return x.ImagePullSecrets
+		return x.HelmValues
 	}
-	return nil
+	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetSpec) GetLabels() map[string]string {
-	if x != nil {
-		return x.Labels
-	}
-	return nil
-}
-
-func (x *KubernetesGhaRunnerScaleSetSpec) GetAnnotations() map[string]string {
-	if x != nil {
-		return x.Annotations
-	}
-	return nil
-}
-
-// KubernetesGhaRunnerScaleSetGitHubConfig defines GitHub connection settings.
-type KubernetesGhaRunnerScaleSetGitHubConfig struct {
+// *
+// GitHub credential. Exactly one arm.
+type KubernetesGhaRunnerScaleSetAuth struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// GitHub URL for where to configure runners.
-	// Examples:
-	// - Repository: https://github.com/myorg/myrepo
-	// - Organization: https://github.com/myorg
-	// - Enterprise: https://github.com/enterprises/myenterprise
-	ConfigUrl string `protobuf:"bytes,1,opt,name=config_url,json=configUrl,proto3" json:"config_url,omitempty"`
-	// Authentication method for GitHub.
-	// Use either pat_token or github_app, not both.
+	// Types that are valid to be assigned to Method:
 	//
-	// Types that are valid to be assigned to Auth:
-	//
-	//	*KubernetesGhaRunnerScaleSetGitHubConfig_PatToken
-	//	*KubernetesGhaRunnerScaleSetGitHubConfig_GithubApp
-	//	*KubernetesGhaRunnerScaleSetGitHubConfig_ExistingSecretName
-	Auth          isKubernetesGhaRunnerScaleSetGitHubConfig_Auth `protobuf_oneof:"auth"`
+	//	*KubernetesGhaRunnerScaleSetAuth_ExistingSecretName
+	//	*KubernetesGhaRunnerScaleSetAuth_Pat
+	//	*KubernetesGhaRunnerScaleSetAuth_GithubApp
+	Method        isKubernetesGhaRunnerScaleSetAuth_Method `protobuf_oneof:"method"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesGhaRunnerScaleSetGitHubConfig) Reset() {
-	*x = KubernetesGhaRunnerScaleSetGitHubConfig{}
+func (x *KubernetesGhaRunnerScaleSetAuth) Reset() {
+	*x = KubernetesGhaRunnerScaleSetAuth{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesGhaRunnerScaleSetGitHubConfig) String() string {
+func (x *KubernetesGhaRunnerScaleSetAuth) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesGhaRunnerScaleSetGitHubConfig) ProtoMessage() {}
+func (*KubernetesGhaRunnerScaleSetAuth) ProtoMessage() {}
 
-func (x *KubernetesGhaRunnerScaleSetGitHubConfig) ProtoReflect() protoreflect.Message {
+func (x *KubernetesGhaRunnerScaleSetAuth) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -326,110 +317,109 @@ func (x *KubernetesGhaRunnerScaleSetGitHubConfig) ProtoReflect() protoreflect.Me
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesGhaRunnerScaleSetGitHubConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetGitHubConfig) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesGhaRunnerScaleSetAuth.ProtoReflect.Descriptor instead.
+func (*KubernetesGhaRunnerScaleSetAuth) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesGhaRunnerScaleSetGitHubConfig) GetConfigUrl() string {
+func (x *KubernetesGhaRunnerScaleSetAuth) GetMethod() isKubernetesGhaRunnerScaleSetAuth_Method {
 	if x != nil {
-		return x.ConfigUrl
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetGitHubConfig) GetAuth() isKubernetesGhaRunnerScaleSetGitHubConfig_Auth {
-	if x != nil {
-		return x.Auth
+		return x.Method
 	}
 	return nil
 }
 
-func (x *KubernetesGhaRunnerScaleSetGitHubConfig) GetPatToken() *KubernetesGhaRunnerScaleSetPatToken {
+func (x *KubernetesGhaRunnerScaleSetAuth) GetExistingSecretName() string {
 	if x != nil {
-		if x, ok := x.Auth.(*KubernetesGhaRunnerScaleSetGitHubConfig_PatToken); ok {
-			return x.PatToken
-		}
-	}
-	return nil
-}
-
-func (x *KubernetesGhaRunnerScaleSetGitHubConfig) GetGithubApp() *KubernetesGhaRunnerScaleSetGitHubApp {
-	if x != nil {
-		if x, ok := x.Auth.(*KubernetesGhaRunnerScaleSetGitHubConfig_GithubApp); ok {
-			return x.GithubApp
-		}
-	}
-	return nil
-}
-
-func (x *KubernetesGhaRunnerScaleSetGitHubConfig) GetExistingSecretName() string {
-	if x != nil {
-		if x, ok := x.Auth.(*KubernetesGhaRunnerScaleSetGitHubConfig_ExistingSecretName); ok {
+		if x, ok := x.Method.(*KubernetesGhaRunnerScaleSetAuth_ExistingSecretName); ok {
 			return x.ExistingSecretName
 		}
 	}
 	return ""
 }
 
-type isKubernetesGhaRunnerScaleSetGitHubConfig_Auth interface {
-	isKubernetesGhaRunnerScaleSetGitHubConfig_Auth()
+func (x *KubernetesGhaRunnerScaleSetAuth) GetPat() *KubernetesGhaRunnerScaleSetAuthPat {
+	if x != nil {
+		if x, ok := x.Method.(*KubernetesGhaRunnerScaleSetAuth_Pat); ok {
+			return x.Pat
+		}
+	}
+	return nil
 }
 
-type KubernetesGhaRunnerScaleSetGitHubConfig_PatToken struct {
-	// Personal Access Token for authentication.
-	// The token must have appropriate permissions:
-	// - For repositories: repo scope
-	// - For organizations: admin:org scope
-	PatToken *KubernetesGhaRunnerScaleSetPatToken `protobuf:"bytes,2,opt,name=pat_token,json=patToken,proto3,oneof"`
+func (x *KubernetesGhaRunnerScaleSetAuth) GetGithubApp() *KubernetesGhaRunnerScaleSetAuthGithubApp {
+	if x != nil {
+		if x, ok := x.Method.(*KubernetesGhaRunnerScaleSetAuth_GithubApp); ok {
+			return x.GithubApp
+		}
+	}
+	return nil
 }
 
-type KubernetesGhaRunnerScaleSetGitHubConfig_GithubApp struct {
-	// GitHub App for authentication (recommended for organizations).
-	GithubApp *KubernetesGhaRunnerScaleSetGitHubApp `protobuf:"bytes,3,opt,name=github_app,json=githubApp,proto3,oneof"`
+type isKubernetesGhaRunnerScaleSetAuth_Method interface {
+	isKubernetesGhaRunnerScaleSetAuth_Method()
 }
 
-type KubernetesGhaRunnerScaleSetGitHubConfig_ExistingSecretName struct {
-	// Name of a pre-existing Kubernetes secret containing GitHub credentials.
-	// The secret must be in the same namespace as the runner scale set.
-	// For PAT: must have 'github_token' key
-	// For GitHub App: must have 'github_app_id', 'github_app_installation_id', 'github_app_private_key' keys
-	ExistingSecretName string `protobuf:"bytes,4,opt,name=existing_secret_name,json=existingSecretName,proto3,oneof"`
+type KubernetesGhaRunnerScaleSetAuth_ExistingSecretName struct {
+	// *
+	// Existing Secret in the install namespace holding the
+	// credential — key `github_token` for a PAT, or keys
+	// `github_app_id`, `github_app_installation_id`,
+	// `github_app_private_key` for a GitHub App. The recommended
+	// posture: the credential never rides a manifest.
+	ExistingSecretName string `protobuf:"bytes,1,opt,name=existing_secret_name,json=existingSecretName,proto3,oneof"`
 }
 
-func (*KubernetesGhaRunnerScaleSetGitHubConfig_PatToken) isKubernetesGhaRunnerScaleSetGitHubConfig_Auth() {
+type KubernetesGhaRunnerScaleSetAuth_Pat struct {
+	// *
+	// Declared PAT — the module materializes it as a Secret; the
+	// value never lands in rendered chart values.
+	Pat *KubernetesGhaRunnerScaleSetAuthPat `protobuf:"bytes,2,opt,name=pat,proto3,oneof"`
 }
 
-func (*KubernetesGhaRunnerScaleSetGitHubConfig_GithubApp) isKubernetesGhaRunnerScaleSetGitHubConfig_Auth() {
+type KubernetesGhaRunnerScaleSetAuth_GithubApp struct {
+	// *
+	// Declared GitHub App credential — the module materializes it as
+	// a Secret; the values never land in rendered chart values.
+	GithubApp *KubernetesGhaRunnerScaleSetAuthGithubApp `protobuf:"bytes,3,opt,name=github_app,json=githubApp,proto3,oneof"`
 }
 
-func (*KubernetesGhaRunnerScaleSetGitHubConfig_ExistingSecretName) isKubernetesGhaRunnerScaleSetGitHubConfig_Auth() {
+func (*KubernetesGhaRunnerScaleSetAuth_ExistingSecretName) isKubernetesGhaRunnerScaleSetAuth_Method() {
 }
 
-// KubernetesGhaRunnerScaleSetPatToken configures Personal Access Token authentication.
-type KubernetesGhaRunnerScaleSetPatToken struct {
+func (*KubernetesGhaRunnerScaleSetAuth_Pat) isKubernetesGhaRunnerScaleSetAuth_Method() {}
+
+func (*KubernetesGhaRunnerScaleSetAuth_GithubApp) isKubernetesGhaRunnerScaleSetAuth_Method() {}
+
+// *
+// Personal access token auth. The token needs `repo` scope for a
+// repository registration, or `admin:org` for an organization
+// registration (classic PAT), or the fine-grained
+// "Self-hosted runners" read/write permission.
+type KubernetesGhaRunnerScaleSetAuthPat struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The GitHub Personal Access Token.
-	// Must have appropriate permissions for the scope (repo, org, or enterprise).
+	// *
+	// The token (e.g. "ghp_..."). Sensitive — materialized into a
+	// Secret, never rendered into chart values.
 	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesGhaRunnerScaleSetPatToken) Reset() {
-	*x = KubernetesGhaRunnerScaleSetPatToken{}
+func (x *KubernetesGhaRunnerScaleSetAuthPat) Reset() {
+	*x = KubernetesGhaRunnerScaleSetAuthPat{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesGhaRunnerScaleSetPatToken) String() string {
+func (x *KubernetesGhaRunnerScaleSetAuthPat) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesGhaRunnerScaleSetPatToken) ProtoMessage() {}
+func (*KubernetesGhaRunnerScaleSetAuthPat) ProtoMessage() {}
 
-func (x *KubernetesGhaRunnerScaleSetPatToken) ProtoReflect() protoreflect.Message {
+func (x *KubernetesGhaRunnerScaleSetAuthPat) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -441,47 +431,53 @@ func (x *KubernetesGhaRunnerScaleSetPatToken) ProtoReflect() protoreflect.Messag
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesGhaRunnerScaleSetPatToken.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetPatToken) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesGhaRunnerScaleSetAuthPat.ProtoReflect.Descriptor instead.
+func (*KubernetesGhaRunnerScaleSetAuthPat) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *KubernetesGhaRunnerScaleSetPatToken) GetToken() string {
+func (x *KubernetesGhaRunnerScaleSetAuthPat) GetToken() string {
 	if x != nil {
 		return x.Token
 	}
 	return ""
 }
 
-// KubernetesGhaRunnerScaleSetGitHubApp configures GitHub App authentication.
-type KubernetesGhaRunnerScaleSetGitHubApp struct {
+// *
+// GitHub App auth. The App needs Self-hosted runners read/write
+// permission on the target (repository or organization) and must be
+// installed there.
+type KubernetesGhaRunnerScaleSetAuthGithubApp struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The GitHub App ID or Client ID.
+	// *
+	// The App ID (or client ID), as a string.
 	AppId string `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
-	// The GitHub App Installation ID.
+	// *
+	// The installation ID of the App on the target org/repo, as a
+	// string.
 	InstallationId string `protobuf:"bytes,2,opt,name=installation_id,json=installationId,proto3" json:"installation_id,omitempty"`
-	// The private key for the GitHub App (base64 encoded PEM format).
-	// The PEM file contents must be base64 encoded before providing here.
-	// Example: cat private-key.pem | base64
-	PrivateKeyBase64 string `protobuf:"bytes,3,opt,name=private_key_base64,json=privateKeyBase64,proto3" json:"private_key_base64,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// *
+	// The App's PEM private key. Sensitive — materialized into a
+	// Secret, never rendered into chart values.
+	PrivateKey    string `protobuf:"bytes,3,opt,name=private_key,json=privateKey,proto3" json:"private_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesGhaRunnerScaleSetGitHubApp) Reset() {
-	*x = KubernetesGhaRunnerScaleSetGitHubApp{}
+func (x *KubernetesGhaRunnerScaleSetAuthGithubApp) Reset() {
+	*x = KubernetesGhaRunnerScaleSetAuthGithubApp{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesGhaRunnerScaleSetGitHubApp) String() string {
+func (x *KubernetesGhaRunnerScaleSetAuthGithubApp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesGhaRunnerScaleSetGitHubApp) ProtoMessage() {}
+func (*KubernetesGhaRunnerScaleSetAuthGithubApp) ProtoMessage() {}
 
-func (x *KubernetesGhaRunnerScaleSetGitHubApp) ProtoReflect() protoreflect.Message {
+func (x *KubernetesGhaRunnerScaleSetAuthGithubApp) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -493,106 +489,57 @@ func (x *KubernetesGhaRunnerScaleSetGitHubApp) ProtoReflect() protoreflect.Messa
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesGhaRunnerScaleSetGitHubApp.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetGitHubApp) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesGhaRunnerScaleSetAuthGithubApp.ProtoReflect.Descriptor instead.
+func (*KubernetesGhaRunnerScaleSetAuthGithubApp) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *KubernetesGhaRunnerScaleSetGitHubApp) GetAppId() string {
+func (x *KubernetesGhaRunnerScaleSetAuthGithubApp) GetAppId() string {
 	if x != nil {
 		return x.AppId
 	}
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetGitHubApp) GetInstallationId() string {
+func (x *KubernetesGhaRunnerScaleSetAuthGithubApp) GetInstallationId() string {
 	if x != nil {
 		return x.InstallationId
 	}
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetGitHubApp) GetPrivateKeyBase64() string {
+func (x *KubernetesGhaRunnerScaleSetAuthGithubApp) GetPrivateKey() string {
 	if x != nil {
-		return x.PrivateKeyBase64
+		return x.PrivateKey
 	}
 	return ""
 }
 
-// KubernetesGhaRunnerScaleSetScaling defines autoscaling behavior.
-type KubernetesGhaRunnerScaleSetScaling struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Minimum number of idle runners to maintain.
-	// Set to 0 for scale-to-zero behavior (most cost-effective).
-	// Set higher for faster job startup at the cost of idle resources.
-	MinRunners *int32 `protobuf:"varint,1,opt,name=min_runners,json=minRunners,proto3,oneof" json:"min_runners,omitempty"`
-	// Maximum number of runners the scale set can scale up to.
-	// Limits concurrent job execution to prevent resource exhaustion.
-	MaxRunners    *int32 `protobuf:"varint,2,opt,name=max_runners,json=maxRunners,proto3,oneof" json:"max_runners,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesGhaRunnerScaleSetScaling) Reset() {
-	*x = KubernetesGhaRunnerScaleSetScaling{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGhaRunnerScaleSetScaling) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGhaRunnerScaleSetScaling) ProtoMessage() {}
-
-func (x *KubernetesGhaRunnerScaleSetScaling) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGhaRunnerScaleSetScaling.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetScaling) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *KubernetesGhaRunnerScaleSetScaling) GetMinRunners() int32 {
-	if x != nil && x.MinRunners != nil {
-		return *x.MinRunners
-	}
-	return 0
-}
-
-func (x *KubernetesGhaRunnerScaleSetScaling) GetMaxRunners() int32 {
-	if x != nil && x.MaxRunners != nil {
-		return *x.MaxRunners
-	}
-	return 0
-}
-
-// KubernetesGhaRunnerScaleSetContainerMode defines how workflows are executed.
+// *
+// How runner pods run jobs.
 type KubernetesGhaRunnerScaleSetContainerMode struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The container mode type.
-	Type KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType" json:"type,omitempty"`
-	// Work volume claim configuration for kubernetes mode.
-	// Required when type is KUBERNETES.
-	// This volume is used for the workspace where jobs run.
-	WorkVolumeClaim *KubernetesGhaRunnerScaleSetWorkVolumeClaim `protobuf:"bytes,2,opt,name=work_volume_claim,json=workVolumeClaim,proto3" json:"work_volume_claim,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// *
+	// `dind` = a privileged Docker-in-Docker sidecar per runner —
+	// `docker build`/`docker run` steps work; the cluster must allow
+	// privileged pods. `kubernetes` = container jobs run as separate
+	// pods via the Kubernetes container hook — no privilege, requires
+	// `kubernetes_work_volume`. `kubernetes-novolume` = the same hook
+	// without a shared work volume (jobs that never share files
+	// between containers).
+	Mode string `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`
+	// *
+	// The per-runner work volume for `kubernetes` mode (ignored
+	// otherwise). Each runner pod gets one ephemeral PersistentVolumeClaim
+	// of this shape; the StorageClass must provision dynamically.
+	KubernetesWorkVolume *KubernetesGhaRunnerScaleSetWorkVolume `protobuf:"bytes,2,opt,name=kubernetes_work_volume,json=kubernetesWorkVolume,proto3" json:"kubernetes_work_volume,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *KubernetesGhaRunnerScaleSetContainerMode) Reset() {
 	*x = KubernetesGhaRunnerScaleSetContainerMode{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -604,7 +551,7 @@ func (x *KubernetesGhaRunnerScaleSetContainerMode) String() string {
 func (*KubernetesGhaRunnerScaleSetContainerMode) ProtoMessage() {}
 
 func (x *KubernetesGhaRunnerScaleSetContainerMode) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -617,55 +564,54 @@ func (x *KubernetesGhaRunnerScaleSetContainerMode) ProtoReflect() protoreflect.M
 
 // Deprecated: Use KubernetesGhaRunnerScaleSetContainerMode.ProtoReflect.Descriptor instead.
 func (*KubernetesGhaRunnerScaleSetContainerMode) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *KubernetesGhaRunnerScaleSetContainerMode) GetType() KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType {
+func (x *KubernetesGhaRunnerScaleSetContainerMode) GetMode() string {
 	if x != nil {
-		return x.Type
+		return x.Mode
 	}
-	return KubernetesGhaRunnerScaleSetContainerMode_container_mode_type_unspecified
+	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetContainerMode) GetWorkVolumeClaim() *KubernetesGhaRunnerScaleSetWorkVolumeClaim {
+func (x *KubernetesGhaRunnerScaleSetContainerMode) GetKubernetesWorkVolume() *KubernetesGhaRunnerScaleSetWorkVolume {
 	if x != nil {
-		return x.WorkVolumeClaim
+		return x.KubernetesWorkVolume
 	}
 	return nil
 }
 
-// KubernetesGhaRunnerScaleSetWorkVolumeClaim configures the ephemeral work volume
-// for kubernetes container mode.
-type KubernetesGhaRunnerScaleSetWorkVolumeClaim struct {
+// *
+// The ephemeral work volume each `kubernetes`-mode runner claims.
+type KubernetesGhaRunnerScaleSetWorkVolume struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Storage class for the work volume.
-	// If not specified, uses the cluster's default storage class.
-	StorageClass string `protobuf:"bytes,1,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
-	// Size of the work volume (e.g., "10Gi", "100Gi").
-	// Should be large enough to hold the repository and build artifacts.
-	Size string `protobuf:"bytes,2,opt,name=size,proto3" json:"size,omitempty"`
-	// Access modes for the volume.
-	// Default: ["ReadWriteOnce"]
-	AccessModes   []string `protobuf:"bytes,3,rep,name=access_modes,json=accessModes,proto3" json:"access_modes,omitempty"`
+	// *
+	// StorageClass to provision from. Accepts a literal name or a
+	// reference to a KubernetesStorageClass resource. Must support
+	// dynamic provisioning.
+	StorageClass *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// *
+	// Requested size per runner (e.g. "1Gi").
+	Size          string `protobuf:"bytes,2,opt,name=size,proto3" json:"size,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesGhaRunnerScaleSetWorkVolumeClaim) Reset() {
-	*x = KubernetesGhaRunnerScaleSetWorkVolumeClaim{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[6]
+func (x *KubernetesGhaRunnerScaleSetWorkVolume) Reset() {
+	*x = KubernetesGhaRunnerScaleSetWorkVolume{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesGhaRunnerScaleSetWorkVolumeClaim) String() string {
+func (x *KubernetesGhaRunnerScaleSetWorkVolume) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesGhaRunnerScaleSetWorkVolumeClaim) ProtoMessage() {}
+func (*KubernetesGhaRunnerScaleSetWorkVolume) ProtoMessage() {}
 
-func (x *KubernetesGhaRunnerScaleSetWorkVolumeClaim) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[6]
+func (x *KubernetesGhaRunnerScaleSetWorkVolume) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -676,52 +622,46 @@ func (x *KubernetesGhaRunnerScaleSetWorkVolumeClaim) ProtoReflect() protoreflect
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesGhaRunnerScaleSetWorkVolumeClaim.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetWorkVolumeClaim) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{6}
+// Deprecated: Use KubernetesGhaRunnerScaleSetWorkVolume.ProtoReflect.Descriptor instead.
+func (*KubernetesGhaRunnerScaleSetWorkVolume) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *KubernetesGhaRunnerScaleSetWorkVolumeClaim) GetStorageClass() string {
+func (x *KubernetesGhaRunnerScaleSetWorkVolume) GetStorageClass() *v1.StringValueOrRef {
 	if x != nil {
 		return x.StorageClass
 	}
-	return ""
+	return nil
 }
 
-func (x *KubernetesGhaRunnerScaleSetWorkVolumeClaim) GetSize() string {
+func (x *KubernetesGhaRunnerScaleSetWorkVolume) GetSize() string {
 	if x != nil {
 		return x.Size
 	}
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetWorkVolumeClaim) GetAccessModes() []string {
-	if x != nil {
-		return x.AccessModes
-	}
-	return nil
-}
-
-// KubernetesGhaRunnerScaleSetRunner configures the runner container.
+// *
+// The runner container.
 type KubernetesGhaRunnerScaleSetRunner struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Custom runner image configuration.
-	// When not specified, uses the default ghcr.io/actions/actions-runner image.
-	Image *KubernetesGhaRunnerScaleSetRunnerImage `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
-	// CPU and memory resources for the runner container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// Environment variables to set in the runner container.
-	Env []*KubernetesGhaRunnerScaleSetEnvVar `protobuf:"bytes,3,rep,name=env,proto3" json:"env,omitempty"`
-	// Volume mounts for the runner container.
-	// Used to mount persistent volumes to specific paths.
-	VolumeMounts  []*KubernetesGhaRunnerScaleSetVolumeMount `protobuf:"bytes,4,rep,name=volume_mounts,json=volumeMounts,proto3" json:"volume_mounts,omitempty"`
+	// *
+	// Runner image (full reference). Empty =
+	// "ghcr.io/actions/actions-runner:latest" (the chart default —
+	// pin a tag on production fleets; "latest" changes under you).
+	Image string `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
+	// *
+	// CPU and memory for the runner container — sized for the JOBS the
+	// fleet runs, not for the runner agent (builds inherit these
+	// limits). Empty = no requests/limits.
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesGhaRunnerScaleSetRunner) Reset() {
 	*x = KubernetesGhaRunnerScaleSetRunner{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -733,7 +673,7 @@ func (x *KubernetesGhaRunnerScaleSetRunner) String() string {
 func (*KubernetesGhaRunnerScaleSetRunner) ProtoMessage() {}
 
 func (x *KubernetesGhaRunnerScaleSetRunner) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -746,14 +686,14 @@ func (x *KubernetesGhaRunnerScaleSetRunner) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use KubernetesGhaRunnerScaleSetRunner.ProtoReflect.Descriptor instead.
 func (*KubernetesGhaRunnerScaleSetRunner) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *KubernetesGhaRunnerScaleSetRunner) GetImage() *KubernetesGhaRunnerScaleSetRunnerImage {
+func (x *KubernetesGhaRunnerScaleSetRunner) GetImage() string {
 	if x != nil {
 		return x.Image
 	}
-	return nil
+	return ""
 }
 
 func (x *KubernetesGhaRunnerScaleSetRunner) GetResources() *kubernetes.ContainerResources {
@@ -763,52 +703,103 @@ func (x *KubernetesGhaRunnerScaleSetRunner) GetResources() *kubernetes.Container
 	return nil
 }
 
-func (x *KubernetesGhaRunnerScaleSetRunner) GetEnv() []*KubernetesGhaRunnerScaleSetEnvVar {
-	if x != nil {
-		return x.Env
-	}
-	return nil
-}
-
-func (x *KubernetesGhaRunnerScaleSetRunner) GetVolumeMounts() []*KubernetesGhaRunnerScaleSetVolumeMount {
-	if x != nil {
-		return x.VolumeMounts
-	}
-	return nil
-}
-
-// KubernetesGhaRunnerScaleSetRunnerImage configures a custom runner image.
-type KubernetesGhaRunnerScaleSetRunnerImage struct {
+// *
+// Outbound proxy configuration.
+type KubernetesGhaRunnerScaleSetProxy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Container image repository.
-	// Default: ghcr.io/actions/actions-runner
-	Repository *string `protobuf:"bytes,1,opt,name=repository,proto3,oneof" json:"repository,omitempty"`
-	// Image tag.
-	// When not specified, uses the chart appVersion (matches controller version).
-	// Default tag aligns with helm_chart_version default.
-	// https://github.com/actions/runner/pkgs/container/actions-runner
-	Tag *string `protobuf:"bytes,2,opt,name=tag,proto3,oneof" json:"tag,omitempty"`
-	// Image pull policy: Always, IfNotPresent, or Never.
-	// Default: IfNotPresent
-	PullPolicy    *string `protobuf:"bytes,3,opt,name=pull_policy,json=pullPolicy,proto3,oneof" json:"pull_policy,omitempty"`
+	// *
+	// Proxy for HTTP traffic.
+	Http *KubernetesGhaRunnerScaleSetProxyServer `protobuf:"bytes,1,opt,name=http,proto3" json:"http,omitempty"`
+	// *
+	// Proxy for HTTPS traffic.
+	Https *KubernetesGhaRunnerScaleSetProxyServer `protobuf:"bytes,2,opt,name=https,proto3" json:"https,omitempty"`
+	// *
+	// Hosts that bypass the proxy (e.g. in-cluster service names).
+	NoProxy       []string `protobuf:"bytes,3,rep,name=no_proxy,json=noProxy,proto3" json:"no_proxy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesGhaRunnerScaleSetRunnerImage) Reset() {
-	*x = KubernetesGhaRunnerScaleSetRunnerImage{}
+func (x *KubernetesGhaRunnerScaleSetProxy) Reset() {
+	*x = KubernetesGhaRunnerScaleSetProxy{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesGhaRunnerScaleSetProxy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesGhaRunnerScaleSetProxy) ProtoMessage() {}
+
+func (x *KubernetesGhaRunnerScaleSetProxy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesGhaRunnerScaleSetProxy.ProtoReflect.Descriptor instead.
+func (*KubernetesGhaRunnerScaleSetProxy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesGhaRunnerScaleSetProxy) GetHttp() *KubernetesGhaRunnerScaleSetProxyServer {
+	if x != nil {
+		return x.Http
+	}
+	return nil
+}
+
+func (x *KubernetesGhaRunnerScaleSetProxy) GetHttps() *KubernetesGhaRunnerScaleSetProxyServer {
+	if x != nil {
+		return x.Https
+	}
+	return nil
+}
+
+func (x *KubernetesGhaRunnerScaleSetProxy) GetNoProxy() []string {
+	if x != nil {
+		return x.NoProxy
+	}
+	return nil
+}
+
+// *
+// One proxy server.
+type KubernetesGhaRunnerScaleSetProxyServer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Proxy URL (e.g. "http://proxy.example.com:8080").
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	// *
+	// Existing Secret with keys `username` and `password` when the
+	// proxy requires authentication.
+	CredentialSecretName string `protobuf:"bytes,2,opt,name=credential_secret_name,json=credentialSecretName,proto3" json:"credential_secret_name,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *KubernetesGhaRunnerScaleSetProxyServer) Reset() {
+	*x = KubernetesGhaRunnerScaleSetProxyServer{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesGhaRunnerScaleSetRunnerImage) String() string {
+func (x *KubernetesGhaRunnerScaleSetProxyServer) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesGhaRunnerScaleSetRunnerImage) ProtoMessage() {}
+func (*KubernetesGhaRunnerScaleSetProxyServer) ProtoMessage() {}
 
-func (x *KubernetesGhaRunnerScaleSetRunnerImage) ProtoReflect() protoreflect.Message {
+func (x *KubernetesGhaRunnerScaleSetProxyServer) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -820,57 +811,60 @@ func (x *KubernetesGhaRunnerScaleSetRunnerImage) ProtoReflect() protoreflect.Mes
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesGhaRunnerScaleSetRunnerImage.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetRunnerImage) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesGhaRunnerScaleSetProxyServer.ProtoReflect.Descriptor instead.
+func (*KubernetesGhaRunnerScaleSetProxyServer) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *KubernetesGhaRunnerScaleSetRunnerImage) GetRepository() string {
-	if x != nil && x.Repository != nil {
-		return *x.Repository
+func (x *KubernetesGhaRunnerScaleSetProxyServer) GetUrl() string {
+	if x != nil {
+		return x.Url
 	}
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetRunnerImage) GetTag() string {
-	if x != nil && x.Tag != nil {
-		return *x.Tag
+func (x *KubernetesGhaRunnerScaleSetProxyServer) GetCredentialSecretName() string {
+	if x != nil {
+		return x.CredentialSecretName
 	}
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetRunnerImage) GetPullPolicy() string {
-	if x != nil && x.PullPolicy != nil {
-		return *x.PullPolicy
-	}
-	return ""
-}
-
-// KubernetesGhaRunnerScaleSetEnvVar defines an environment variable.
-type KubernetesGhaRunnerScaleSetEnvVar struct {
+// *
+// Private CA trust towards a GitHub Enterprise Server.
+type KubernetesGhaRunnerScaleSetGithubServerTls struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the environment variable.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Value of the environment variable.
-	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// *
+	// ConfigMap holding the CA certificate. Accepts a literal name or a
+	// reference to a KubernetesConfigMap resource.
+	ConfigMapName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=config_map_name,json=configMapName,proto3" json:"config_map_name,omitempty"`
+	// *
+	// Key in the ConfigMap holding the PEM certificate. Empty =
+	// "ca.crt".
+	Key *string `protobuf:"bytes,2,opt,name=key,proto3,oneof" json:"key,omitempty"`
+	// *
+	// Mount path in runner pods (e.g.
+	// "/usr/local/share/ca-certificates/"). When set, runners also get
+	// NODE_EXTRA_CA_CERTS pointed at the mounted certificate.
+	RunnerMountPath string `protobuf:"bytes,3,opt,name=runner_mount_path,json=runnerMountPath,proto3" json:"runner_mount_path,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
-func (x *KubernetesGhaRunnerScaleSetEnvVar) Reset() {
-	*x = KubernetesGhaRunnerScaleSetEnvVar{}
+func (x *KubernetesGhaRunnerScaleSetGithubServerTls) Reset() {
+	*x = KubernetesGhaRunnerScaleSetGithubServerTls{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesGhaRunnerScaleSetEnvVar) String() string {
+func (x *KubernetesGhaRunnerScaleSetGithubServerTls) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesGhaRunnerScaleSetEnvVar) ProtoMessage() {}
+func (*KubernetesGhaRunnerScaleSetGithubServerTls) ProtoMessage() {}
 
-func (x *KubernetesGhaRunnerScaleSetEnvVar) ProtoReflect() protoreflect.Message {
+func (x *KubernetesGhaRunnerScaleSetGithubServerTls) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -882,223 +876,64 @@ func (x *KubernetesGhaRunnerScaleSetEnvVar) ProtoReflect() protoreflect.Message 
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesGhaRunnerScaleSetEnvVar.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetEnvVar) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesGhaRunnerScaleSetGithubServerTls.ProtoReflect.Descriptor instead.
+func (*KubernetesGhaRunnerScaleSetGithubServerTls) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *KubernetesGhaRunnerScaleSetEnvVar) GetName() string {
+func (x *KubernetesGhaRunnerScaleSetGithubServerTls) GetConfigMapName() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetEnvVar) GetValue() string {
-	if x != nil {
-		return x.Value
-	}
-	return ""
-}
-
-// KubernetesGhaRunnerScaleSetVolumeMount defines how to mount a volume in the runner.
-type KubernetesGhaRunnerScaleSetVolumeMount struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the volume to mount (must match a persistent_volume name).
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Path within the container where the volume should be mounted.
-	MountPath string `protobuf:"bytes,2,opt,name=mount_path,json=mountPath,proto3" json:"mount_path,omitempty"`
-	// Whether the volume should be mounted read-only.
-	ReadOnly bool `protobuf:"varint,3,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
-	// Path within the volume to mount (subdirectory).
-	SubPath       string `protobuf:"bytes,4,opt,name=sub_path,json=subPath,proto3" json:"sub_path,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesGhaRunnerScaleSetVolumeMount) Reset() {
-	*x = KubernetesGhaRunnerScaleSetVolumeMount{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGhaRunnerScaleSetVolumeMount) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGhaRunnerScaleSetVolumeMount) ProtoMessage() {}
-
-func (x *KubernetesGhaRunnerScaleSetVolumeMount) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGhaRunnerScaleSetVolumeMount.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetVolumeMount) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *KubernetesGhaRunnerScaleSetVolumeMount) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetVolumeMount) GetMountPath() string {
-	if x != nil {
-		return x.MountPath
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetVolumeMount) GetReadOnly() bool {
-	if x != nil {
-		return x.ReadOnly
-	}
-	return false
-}
-
-func (x *KubernetesGhaRunnerScaleSetVolumeMount) GetSubPath() string {
-	if x != nil {
-		return x.SubPath
-	}
-	return ""
-}
-
-// KubernetesGhaRunnerScaleSetPersistentVolume defines a PVC to create and mount.
-// These volumes persist across runner pod restarts and job executions,
-// making them ideal for caching build dependencies.
-type KubernetesGhaRunnerScaleSetPersistentVolume struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the volume.
-	// Used to reference this volume in volume_mounts.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// Storage class for the PVC.
-	// If not specified, uses the cluster's default storage class.
-	StorageClass string `protobuf:"bytes,2,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
-	// Size of the volume (e.g., "10Gi", "100Gi").
-	Size string `protobuf:"bytes,3,opt,name=size,proto3" json:"size,omitempty"`
-	// Access modes for the PVC.
-	// Common values: "ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany"
-	// Default: ["ReadWriteOnce"]
-	AccessModes []string `protobuf:"bytes,4,rep,name=access_modes,json=accessModes,proto3" json:"access_modes,omitempty"`
-	// Mount path in the runner container.
-	// Where the volume will be mounted (e.g., "/home/runner/.cache").
-	MountPath string `protobuf:"bytes,5,opt,name=mount_path,json=mountPath,proto3" json:"mount_path,omitempty"`
-	// Whether to mount the volume as read-only.
-	ReadOnly      bool `protobuf:"varint,6,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesGhaRunnerScaleSetPersistentVolume) Reset() {
-	*x = KubernetesGhaRunnerScaleSetPersistentVolume{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[11]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesGhaRunnerScaleSetPersistentVolume) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesGhaRunnerScaleSetPersistentVolume) ProtoMessage() {}
-
-func (x *KubernetesGhaRunnerScaleSetPersistentVolume) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[11]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesGhaRunnerScaleSetPersistentVolume.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetPersistentVolume) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{11}
-}
-
-func (x *KubernetesGhaRunnerScaleSetPersistentVolume) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetPersistentVolume) GetStorageClass() string {
-	if x != nil {
-		return x.StorageClass
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetPersistentVolume) GetSize() string {
-	if x != nil {
-		return x.Size
-	}
-	return ""
-}
-
-func (x *KubernetesGhaRunnerScaleSetPersistentVolume) GetAccessModes() []string {
-	if x != nil {
-		return x.AccessModes
+		return x.ConfigMapName
 	}
 	return nil
 }
 
-func (x *KubernetesGhaRunnerScaleSetPersistentVolume) GetMountPath() string {
-	if x != nil {
-		return x.MountPath
+func (x *KubernetesGhaRunnerScaleSetGithubServerTls) GetKey() string {
+	if x != nil && x.Key != nil {
+		return *x.Key
 	}
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetPersistentVolume) GetReadOnly() bool {
+func (x *KubernetesGhaRunnerScaleSetGithubServerTls) GetRunnerMountPath() string {
 	if x != nil {
-		return x.ReadOnly
+		return x.RunnerMountPath
 	}
-	return false
+	return ""
 }
 
-// KubernetesGhaRunnerScaleSetControllerServiceAccount specifies the controller's
-// service account for creating RBAC bindings.
-type KubernetesGhaRunnerScaleSetControllerServiceAccount struct {
+// *
+// Explicit reference to the serving controller (single-namespace
+// fenced controllers only).
+type KubernetesGhaRunnerScaleSetControllerRef struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Namespace where the controller is installed.
+	// *
+	// Namespace the controller runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Name of the controller's service account.
+	// *
+	// The controller's ServiceAccount name — a
+	// KubernetesGhaRunnerScaleSetController exports it as
+	// `service_account_name`.
 	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerServiceAccount) Reset() {
-	*x = KubernetesGhaRunnerScaleSetControllerServiceAccount{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[12]
+func (x *KubernetesGhaRunnerScaleSetControllerRef) Reset() {
+	*x = KubernetesGhaRunnerScaleSetControllerRef{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerServiceAccount) String() string {
+func (x *KubernetesGhaRunnerScaleSetControllerRef) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesGhaRunnerScaleSetControllerServiceAccount) ProtoMessage() {}
+func (*KubernetesGhaRunnerScaleSetControllerRef) ProtoMessage() {}
 
-func (x *KubernetesGhaRunnerScaleSetControllerServiceAccount) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[12]
+func (x *KubernetesGhaRunnerScaleSetControllerRef) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1109,19 +944,19 @@ func (x *KubernetesGhaRunnerScaleSetControllerServiceAccount) ProtoReflect() pro
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesGhaRunnerScaleSetControllerServiceAccount.ProtoReflect.Descriptor instead.
-func (*KubernetesGhaRunnerScaleSetControllerServiceAccount) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{12}
+// Deprecated: Use KubernetesGhaRunnerScaleSetControllerRef.ProtoReflect.Descriptor instead.
+func (*KubernetesGhaRunnerScaleSetControllerRef) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerServiceAccount) GetNamespace() string {
+func (x *KubernetesGhaRunnerScaleSetControllerRef) GetNamespace() string {
 	if x != nil {
 		return x.Namespace
 	}
 	return ""
 }
 
-func (x *KubernetesGhaRunnerScaleSetControllerServiceAccount) GetName() string {
+func (x *KubernetesGhaRunnerScaleSetControllerRef) GetName() string {
 	if x != nil {
 		return x.Name
 	}
@@ -1132,112 +967,76 @@ var File_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_pro
 
 const file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Idev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/spec.proto\x12>dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x80\x0e\n" +
+	"Idev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1/spec.proto\x12>dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xd8\r\n" +
 	"\x1fKubernetesGhaRunnerScaleSetSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12=\n" +
-	"\x12helm_chart_version\x18\x04 \x01(\tB\n" +
-	"\x8a\xa6\x1d\x060.13.1H\x00R\x10helmChartVersion\x88\x01\x01\x12\x87\x01\n" +
-	"\x06github\x18\x05 \x01(\v2g.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfigB\x06\xbaH\x03\xc8\x01\x01R\x06github\x12|\n" +
-	"\ascaling\x18\x06 \x01(\v2b.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetScalingR\ascaling\x123\n" +
-	"\frunner_group\x18\a \x01(\tB\v\x8a\xa6\x1d\adefaultH\x01R\vrunnerGroup\x88\x01\x01\x121\n" +
-	"\x15runner_scale_set_name\x18\b \x01(\tR\x12runnerScaleSetName\x12\x97\x01\n" +
-	"\x0econtainer_mode\x18\t \x01(\v2h.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerModeB\x06\xbaH\x03\xc8\x01\x01R\rcontainerMode\x12y\n" +
-	"\x06runner\x18\n" +
-	" \x01(\v2a.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunnerR\x06runner\x12\x9a\x01\n" +
-	"\x12persistent_volumes\x18\v \x03(\v2k.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPersistentVolumeR\x11persistentVolumes\x12\xb1\x01\n" +
-	"\x1acontroller_service_account\x18\f \x01(\v2s.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetControllerServiceAccountR\x18controllerServiceAccount\x12s\n" +
-	"\x12image_pull_secrets\x18\r \x03(\tBE\xaa\xa6\x1dANames of existing Kubernetes imagePullSecrets, not secret values.R\x10imagePullSecrets\x12\x83\x01\n" +
-	"\x06labels\x18\x0e \x03(\v2k.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.LabelsEntryR\x06labels\x12\x92\x01\n" +
-	"\vannotations\x18\x0f \x03(\v2p.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.AnnotationsEntryR\vannotations\x1a9\n" +
-	"\vLabelsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a>\n" +
-	"\x10AnnotationsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x15\n" +
-	"\x13_helm_chart_versionB\x0f\n" +
-	"\r_runner_group\"\xad\x04\n" +
-	"'KubernetesGhaRunnerScaleSetGitHubConfig\x12\xb8\x01\n" +
-	"\n" +
-	"config_url\x18\x01 \x01(\tB\x98\x01\xbaH\x94\x01\xba\x01\x8d\x01\n" +
-	"\x16spec.github.config_url\x12%Config URL must be a valid GitHub URL\x1aLthis.startsWith('https://github.com/') || this.startsWith('https://github.')\xc8\x01\x01R\tconfigUrl\x12\x82\x01\n" +
-	"\tpat_token\x18\x02 \x01(\v2c.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPatTokenH\x00R\bpatToken\x12\x85\x01\n" +
-	"\n" +
-	"github_app\x18\x03 \x01(\v2d.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubAppH\x00R\tgithubApp\x122\n" +
-	"\x14existing_secret_name\x18\x04 \x01(\tH\x00R\x12existingSecretNameB\x06\n" +
-	"\x04auth\"G\n" +
-	"#KubernetesGhaRunnerScaleSetPatToken\x12 \n" +
-	"\x05token\x18\x01 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x05token\"\xb0\x01\n" +
-	"$KubernetesGhaRunnerScaleSetGitHubApp\x12\x1d\n" +
-	"\x06app_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05appId\x12/\n" +
-	"\x0finstallation_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0einstallationId\x128\n" +
-	"\x12private_key_base64\x18\x03 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x10privateKeyBase64\"\xac\x01\n" +
-	"\"KubernetesGhaRunnerScaleSetScaling\x122\n" +
-	"\vmin_runners\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x010H\x00R\n" +
-	"minRunners\x88\x01\x01\x122\n" +
-	"\vmax_runners\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x015H\x01R\n" +
-	"maxRunners\x88\x01\x01B\x0e\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
+	"\rchart_version\x18\x03 \x01(\tB\n" +
+	"\x8a\xa6\x1d\x060.14.2H\x00R\fchartVersion\x88\x01\x01\x12\xe1\x01\n" +
+	"\x11github_config_url\x18\x04 \x01(\tB\xb4\x01\xbaH\xb0\x01\xba\x01\xa9\x01\n" +
+	"\x16spec.github_config_url\x12Tgithub_config_url must be an http(s) URL of a repository, organization or enterprise\x1a9this.startsWith('https://') || this.startsWith('http://')\xc8\x01\x01R\x0fgithubConfigUrl\x12{\n" +
+	"\x04auth\x18\x05 \x01(\v2_.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuthB\x06\xbaH\x03\xc8\x01\x01R\x04auth\x12:\n" +
+	"\x15runner_scale_set_name\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x18-R\x12runnerScaleSetName\x12!\n" +
+	"\frunner_group\x18\a \x01(\tR\vrunnerGroup\x12-\n" +
+	"\vmin_runners\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x01R\n" +
+	"minRunners\x88\x01\x01\x12-\n" +
+	"\vmax_runners\x18\t \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x02R\n" +
+	"maxRunners\x88\x01\x01\x12\x8f\x01\n" +
+	"\x0econtainer_mode\x18\n" +
+	" \x01(\v2h.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerModeR\rcontainerMode\x12y\n" +
+	"\x06runner\x18\v \x01(\v2a.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunnerR\x06runner\x12v\n" +
+	"\x05proxy\x18\f \x01(\v2`.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetProxyR\x05proxy\x12\x96\x01\n" +
+	"\x11github_server_tls\x18\r \x01(\v2j.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGithubServerTlsR\x0fgithubServerTls\x12\xa6\x01\n" +
+	"\x1acontroller_service_account\x18\x0e \x01(\v2h.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetControllerRefR\x18controllerServiceAccount\x12\x1f\n" +
+	"\vhelm_values\x18\x0f \x01(\tR\n" +
+	"helmValues:\xaf\x01\xbaH\xab\x01\x1a\xa8\x01\n" +
+	"\x12spec.runner_bounds\x128max_runners must be greater than or equal to min_runners\x1aX!has(this.max_runners) || !has(this.min_runners) || this.max_runners >= this.min_runnersB\x10\n" +
+	"\x0e_chart_versionB\x0e\n" +
 	"\f_min_runnersB\x0e\n" +
-	"\f_max_runners\"\xd7\x03\n" +
-	"(KubernetesGhaRunnerScaleSetContainerMode\x12\x96\x01\n" +
-	"\x04type\x18\x01 \x01(\x0e2z.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.ContainerModeTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x96\x01\n" +
-	"\x11work_volume_claim\x18\x02 \x01(\v2j.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetWorkVolumeClaimR\x0fworkVolumeClaim\"y\n" +
-	"\x11ContainerModeType\x12#\n" +
-	"\x1fcontainer_mode_type_unspecified\x10\x00\x12\b\n" +
-	"\x04DIND\x10\x01\x12\x0e\n" +
+	"\f_max_runners\"\xbf\x04\n" +
+	"\x1fKubernetesGhaRunnerScaleSetAuth\x122\n" +
+	"\x14existing_secret_name\x18\x01 \x01(\tH\x00R\x12existingSecretName\x12v\n" +
+	"\x03pat\x18\x02 \x01(\v2b.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuthPatH\x00R\x03pat\x12\x89\x01\n" +
 	"\n" +
-	"KUBERNETES\x10\x02\x12\x18\n" +
-	"\x14KUBERNETES_NO_VOLUME\x10\x03\x12\v\n" +
-	"\aDEFAULT\x10\x04\"\xb7\x04\n" +
-	"*KubernetesGhaRunnerScaleSetWorkVolumeClaim\x12#\n" +
-	"\rstorage_class\x18\x01 \x01(\tR\fstorageClass\x12\xae\x01\n" +
-	"\x04size\x18\x02 \x01(\tB\x99\x01\xbaH\x95\x01\xba\x01\x8e\x01\n" +
-	"*spec.container_mode.work_volume_claim.size\x12<Size must be a valid Kubernetes quantity (e.g., 10Gi, 100Mi)\x1a\"this.matches('^[0-9]+[EPTGMK]i?$')\xc8\x01\x01R\x04size\x12\xb2\x02\n" +
-	"\faccess_modes\x18\x03 \x03(\tB\x8e\x02\xbaH\x8a\x02\xba\x01\x86\x02\n" +
-	"2spec.container_mode.work_volume_claim.access_modes\x12cAccess modes must be one of \"ReadWriteOnce\", \"ReadOnlyMany\", \"ReadWriteMany\", or \"ReadWriteOncePod\"\x1aksize(this) == 0 || this.all(m, m in [\"ReadWriteOnce\", \"ReadOnlyMany\", \"ReadWriteMany\", \"ReadWriteOncePod\"])R\vaccessModes\"\x95\x04\n" +
-	"!KubernetesGhaRunnerScaleSetRunner\x12|\n" +
-	"\x05image\x18\x01 \x01(\v2f.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunnerImageR\x05image\x12o\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB\x1c\xba\xfb\xa4\x02\x17\n" +
-	"\b\n" +
-	"\x012\x12\x034Gi\x12\v\n" +
-	"\x04500m\x12\x031GiR\tresources\x12s\n" +
-	"\x03env\x18\x03 \x03(\v2a.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetEnvVarR\x03env\x12\x8b\x01\n" +
-	"\rvolume_mounts\x18\x04 \x03(\v2f.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetVolumeMountR\fvolumeMounts\"\xf4\x01\n" +
-	"&KubernetesGhaRunnerScaleSetRunnerImage\x12G\n" +
-	"\n" +
-	"repository\x18\x01 \x01(\tB\"\x8a\xa6\x1d\x1eghcr.io/actions/actions-runnerH\x00R\n" +
-	"repository\x88\x01\x01\x12\"\n" +
-	"\x03tag\x18\x02 \x01(\tB\v\x8a\xa6\x1d\a2.331.0H\x01R\x03tag\x88\x01\x01\x126\n" +
-	"\vpull_policy\x18\x03 \x01(\tB\x10\x8a\xa6\x1d\fIfNotPresentH\x02R\n" +
-	"pullPolicy\x88\x01\x01B\r\n" +
-	"\v_repositoryB\x06\n" +
-	"\x04_tagB\x0e\n" +
-	"\f_pull_policy\"U\n" +
-	"!KubernetesGhaRunnerScaleSetEnvVar\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xa3\x01\n" +
-	"&KubernetesGhaRunnerScaleSetVolumeMount\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12%\n" +
-	"\n" +
-	"mount_path\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tmountPath\x12\x1b\n" +
-	"\tread_only\x18\x03 \x01(\bR\breadOnly\x12\x19\n" +
-	"\bsub_path\x18\x04 \x01(\tR\asubPath\"\xfc\x04\n" +
-	"+KubernetesGhaRunnerScaleSetPersistentVolume\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12#\n" +
-	"\rstorage_class\x18\x02 \x01(\tR\fstorageClass\x12\xa0\x01\n" +
-	"\x04size\x18\x03 \x01(\tB\x8b\x01\xbaH\x87\x01\xba\x01\x80\x01\n" +
-	"\x1cspec.persistent_volumes.size\x12<Size must be a valid Kubernetes quantity (e.g., 10Gi, 100Mi)\x1a\"this.matches('^[0-9]+[EPTGMK]i?$')\xc8\x01\x01R\x04size\x12\xa4\x02\n" +
-	"\faccess_modes\x18\x04 \x03(\tB\x80\x02\xbaH\xfc\x01\xba\x01\xf8\x01\n" +
-	"$spec.persistent_volumes.access_modes\x12cAccess modes must be one of \"ReadWriteOnce\", \"ReadOnlyMany\", \"ReadWriteMany\", or \"ReadWriteOncePod\"\x1aksize(this) == 0 || this.all(m, m in [\"ReadWriteOnce\", \"ReadOnlyMany\", \"ReadWriteMany\", \"ReadWriteOncePod\"])R\vaccessModes\x12%\n" +
-	"\n" +
-	"mount_path\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tmountPath\x12\x1b\n" +
-	"\tread_only\x18\x06 \x01(\bR\breadOnly\"g\n" +
-	"3KubernetesGhaRunnerScaleSetControllerServiceAccount\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04nameB\xee\x03\n" +
+	"github_app\x18\x03 \x01(\v2h.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuthGithubAppH\x00R\tgithubApp:\xd9\x01\xbaH\xd5\x01\x1a\xd2\x01\n" +
+	"\x10spec.auth.method\x12Ldeclare exactly one auth method — existing_secret_name, pat, or github_app\x1ap(has(this.existing_secret_name) && size(this.existing_secret_name) > 0) || has(this.pat) || has(this.github_app)B\b\n" +
+	"\x06method\"F\n" +
+	"\"KubernetesGhaRunnerScaleSetAuthPat\x12 \n" +
+	"\x05token\x18\x01 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x05token\"\xa7\x01\n" +
+	"(KubernetesGhaRunnerScaleSetAuthGithubApp\x12\x1d\n" +
+	"\x06app_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05appId\x12/\n" +
+	"\x0finstallation_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0einstallationId\x12+\n" +
+	"\vprivate_key\x18\x03 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\n" +
+	"privateKey\"\x88\x04\n" +
+	"(KubernetesGhaRunnerScaleSetContainerMode\x12C\n" +
+	"\x04mode\x18\x01 \x01(\tB/\xbaH,\xc8\x01\x01r'R\x04dindR\n" +
+	"kubernetesR\x13kubernetes-novolumeR\x04mode\x12\x9b\x01\n" +
+	"\x16kubernetes_work_volume\x18\x02 \x01(\v2e.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetWorkVolumeR\x14kubernetesWorkVolume:\xf8\x01\xbaH\xf4\x01\x1a\xf1\x01\n" +
+	"\x1fspec.container_mode.work_volume\x12lkubernetes container mode requires kubernetes_work_volume (dind and kubernetes-novolume must not declare it)\x1a`this.mode == 'kubernetes' ? has(this.kubernetes_work_volume) : !has(this.kubernetes_work_volume)\"\xf3\x01\n" +
+	"%KubernetesGhaRunnerScaleSetWorkVolume\x12u\n" +
+	"\rstorage_class\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xb0\x06\x92\xd4a\rmetadata.nameR\fstorageClass\x12S\n" +
+	"\x04size\x18\x02 \x01(\tB?\xbaH<\xc8\x01\x01r725^[0-9]+(\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$R\x04size\"\x8c\x01\n" +
+	"!KubernetesGhaRunnerScaleSetRunner\x12\x14\n" +
+	"\x05image\x18\x01 \x01(\tR\x05image\x12Q\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\"\xb7\x02\n" +
+	" KubernetesGhaRunnerScaleSetProxy\x12z\n" +
+	"\x04http\x18\x01 \x01(\v2f.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetProxyServerR\x04http\x12|\n" +
+	"\x05https\x18\x02 \x01(\v2f.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetProxyServerR\x05https\x12\x19\n" +
+	"\bno_proxy\x18\x03 \x03(\tR\anoProxy\"x\n" +
+	"&KubernetesGhaRunnerScaleSetProxyServer\x12\x18\n" +
+	"\x03url\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03url\x124\n" +
+	"\x16credential_secret_name\x18\x02 \x01(\tR\x14credentialSecretName\"\xfd\x01\n" +
+	"*KubernetesGhaRunnerScaleSetGithubServerTls\x12x\n" +
+	"\x0fconfig_map_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\xaa\x06\x92\xd4a\rmetadata.nameR\rconfigMapName\x12!\n" +
+	"\x03key\x18\x02 \x01(\tB\n" +
+	"\x8a\xa6\x1d\x06ca.crtH\x00R\x03key\x88\x01\x01\x12*\n" +
+	"\x11runner_mount_path\x18\x03 \x01(\tR\x0frunnerMountPathB\x06\n" +
+	"\x04_key\"l\n" +
+	"(KubernetesGhaRunnerScaleSetControllerRef\x12$\n" +
+	"\tnamespace\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tnamespace\x12\x1a\n" +
+	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04nameB\xee\x03\n" +
 	"Bcom.dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1B\tSpecProtoP\x01Z~github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgharunnerscaleset/v1;kubernetesgharunnerscalesetv1\xa2\x02\x05DPPKK\xaa\x02>Dev.Planton.Provider.Kubernetes.Kubernetesgharunnerscaleset.V1\xca\x02>Dev\\Planton\\Provider\\Kubernetes\\Kubernetesgharunnerscaleset\\V1\xe2\x02JDev\\Planton\\Provider\\Kubernetes\\Kubernetesgharunnerscaleset\\V1\\GPBMetadata\xea\x02CDev::Planton::Provider::Kubernetes::Kubernetesgharunnerscaleset::V1b\x06proto3"
 
 var (
@@ -1252,51 +1051,43 @@ func file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_pr
 	return file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_goTypes = []any{
-	(KubernetesGhaRunnerScaleSetContainerMode_ContainerModeType)(0), // 0: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.ContainerModeType
-	(*KubernetesGhaRunnerScaleSetSpec)(nil),                         // 1: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec
-	(*KubernetesGhaRunnerScaleSetGitHubConfig)(nil),                 // 2: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfig
-	(*KubernetesGhaRunnerScaleSetPatToken)(nil),                     // 3: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPatToken
-	(*KubernetesGhaRunnerScaleSetGitHubApp)(nil),                    // 4: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubApp
-	(*KubernetesGhaRunnerScaleSetScaling)(nil),                      // 5: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetScaling
-	(*KubernetesGhaRunnerScaleSetContainerMode)(nil),                // 6: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode
-	(*KubernetesGhaRunnerScaleSetWorkVolumeClaim)(nil),              // 7: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetWorkVolumeClaim
-	(*KubernetesGhaRunnerScaleSetRunner)(nil),                       // 8: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner
-	(*KubernetesGhaRunnerScaleSetRunnerImage)(nil),                  // 9: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunnerImage
-	(*KubernetesGhaRunnerScaleSetEnvVar)(nil),                       // 10: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetEnvVar
-	(*KubernetesGhaRunnerScaleSetVolumeMount)(nil),                  // 11: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetVolumeMount
-	(*KubernetesGhaRunnerScaleSetPersistentVolume)(nil),             // 12: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPersistentVolume
-	(*KubernetesGhaRunnerScaleSetControllerServiceAccount)(nil),     // 13: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetControllerServiceAccount
-	nil,                                   // 14: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.LabelsEntry
-	nil,                                   // 15: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.AnnotationsEntry
-	(*v1.StringValueOrRef)(nil),           // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil), // 17: dev.planton.provider.kubernetes.ContainerResources
+	(*KubernetesGhaRunnerScaleSetSpec)(nil),            // 0: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec
+	(*KubernetesGhaRunnerScaleSetAuth)(nil),            // 1: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuth
+	(*KubernetesGhaRunnerScaleSetAuthPat)(nil),         // 2: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuthPat
+	(*KubernetesGhaRunnerScaleSetAuthGithubApp)(nil),   // 3: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuthGithubApp
+	(*KubernetesGhaRunnerScaleSetContainerMode)(nil),   // 4: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode
+	(*KubernetesGhaRunnerScaleSetWorkVolume)(nil),      // 5: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetWorkVolume
+	(*KubernetesGhaRunnerScaleSetRunner)(nil),          // 6: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner
+	(*KubernetesGhaRunnerScaleSetProxy)(nil),           // 7: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetProxy
+	(*KubernetesGhaRunnerScaleSetProxyServer)(nil),     // 8: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetProxyServer
+	(*KubernetesGhaRunnerScaleSetGithubServerTls)(nil), // 9: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGithubServerTls
+	(*KubernetesGhaRunnerScaleSetControllerRef)(nil),   // 10: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetControllerRef
+	(*v1.StringValueOrRef)(nil),                        // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),              // 12: dev.planton.provider.kubernetes.ContainerResources
 }
 var file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_depIdxs = []int32{
-	16, // 0: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 1: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.github:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfig
-	5,  // 2: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.scaling:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetScaling
-	6,  // 3: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.container_mode:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode
-	8,  // 4: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.runner:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner
-	12, // 5: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.persistent_volumes:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPersistentVolume
-	13, // 6: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.controller_service_account:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetControllerServiceAccount
-	14, // 7: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.labels:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.LabelsEntry
-	15, // 8: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.AnnotationsEntry
-	3,  // 9: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfig.pat_token:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetPatToken
-	4,  // 10: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubConfig.github_app:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGitHubApp
-	0,  // 11: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.type:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.ContainerModeType
-	7,  // 12: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.work_volume_claim:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetWorkVolumeClaim
-	9,  // 13: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.image:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunnerImage
-	17, // 14: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	10, // 15: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.env:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetEnvVar
-	11, // 16: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.volume_mounts:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetVolumeMount
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	11, // 0: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.auth:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuth
+	4,  // 2: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.container_mode:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode
+	6,  // 3: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.runner:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner
+	7,  // 4: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.proxy:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetProxy
+	9,  // 5: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.github_server_tls:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGithubServerTls
+	10, // 6: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.controller_service_account:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetControllerRef
+	2,  // 7: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuth.pat:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuthPat
+	3,  // 8: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuth.github_app:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetAuthGithubApp
+	5,  // 9: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetContainerMode.kubernetes_work_volume:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetWorkVolume
+	11, // 10: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetWorkVolume.storage_class:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 11: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetRunner.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	8,  // 12: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetProxy.http:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetProxyServer
+	8,  // 13: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetProxy.https:type_name -> dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetProxyServer
+	11, // 14: dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetGithubServerTls.config_map_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_init() }
@@ -1306,25 +1097,23 @@ func file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_pr
 	}
 	file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[1].OneofWrappers = []any{
-		(*KubernetesGhaRunnerScaleSetGitHubConfig_PatToken)(nil),
-		(*KubernetesGhaRunnerScaleSetGitHubConfig_GithubApp)(nil),
-		(*KubernetesGhaRunnerScaleSetGitHubConfig_ExistingSecretName)(nil),
+		(*KubernetesGhaRunnerScaleSetAuth_ExistingSecretName)(nil),
+		(*KubernetesGhaRunnerScaleSetAuth_Pat)(nil),
+		(*KubernetesGhaRunnerScaleSetAuth_GithubApp)(nil),
 	}
-	file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   15,
+			NumEnums:      0,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto_msgTypes,
 	}.Build()
 	File_dev_planton_provider_kubernetes_kubernetesgharunnerscaleset_v1_spec_proto = out.File

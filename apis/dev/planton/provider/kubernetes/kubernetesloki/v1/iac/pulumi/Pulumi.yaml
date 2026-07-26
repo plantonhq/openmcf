@@ -1,0 +1,3 @@
+name: kubernetes-loki
+runtime: go
+description: Grafana Loki installation from the official Helm chart with monolithic and simple-scalable deployment modes, object-storage backends (S3/GCS/Azure) on secret-safe credential wiring, a derived index schema, compactor-driven retention, and an nginx gateway front door

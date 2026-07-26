@@ -1,0 +1,44 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesrabbitmq
+spec:
+  # The module renders ONE kubectl_manifest resource — the RabbitmqCluster
+  # CR named after metadata.name — plus the optional anchor namespace.
+  # Everything else (the StatefulSet, both Services, the default-user and
+  # erlang-cookie Secrets) is OPERATOR-created from the CR and never
+  # imported.
+  values:
+    # ── the RabbitmqCluster CR ───────────────────────────────────────────
+    - name: api_version
+      derivations:
+        - literal: rabbitmq.com/v1beta1
+      where_to_find: >-
+        Always "rabbitmq.com/v1beta1" — the CR's group/version at the
+        pinned operator release.
+    - name: kind
+      derivations:
+        - literal: RabbitmqCluster
+      where_to_find: Always "RabbitmqCluster" — the CR kind this module applies.
+    - name: name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: cluster_name
+      where_to_find: >-
+        The RabbitmqCluster's metadata.name (equals the Planton resource
+        name) — `kubectl get rabbitmqclusters -A` (NAME column).
+    - name: namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        The cluster's namespace — `kubectl get rabbitmqclusters -A`
+        (NAMESPACE column).
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the cluster's
+        namespace itself.

@@ -80,6 +80,20 @@ This shipped as a real defect across six GCP kinds before a review caught it.
 - Include a multi-digit case (e.g. `europe-west12`) in the spec test whenever a
   location pattern is introduced.
 
+EXCLUSION RULES AGAINST A DEFAULTED OPTIONAL MUST TOLERATE THE DEFAULT
+A mutual-exclusion CEL that forbids setting field B alongside arm A —
+written as `!this.a || !has(this.b)` — silently makes arm A UNEXPRESSIBLE
+when B is an `optional` field carrying a spec default: the platform's
+defaulting middleware stamps the default onto every manifest before
+validation, so `has(this.b)` is true for manifests that never declared B.
+Spec tests cannot catch it (they validate the raw message, not the
+defaulted one); the failure surfaces only at manifest validation. Tolerate
+exactly the default value — `!this.a || (!has(this.b) || this.b ==
+'<default>') …` — with a comment naming the middleware as the reason, have
+the module ignore the defaulted value when arm A is active, and add BOTH
+spec-test cases: arm A with the default value accepted, arm A with a
+non-default value rejected.
+
 NEGATED all() OVER AN OPTIONAL REPEATED FIELD IS VACUOUSLY VIOLATED
 CEL's `all()` over an EMPTY list is true, so an exclusivity rule written as
 `!this.all(x, <bad-shape>)` on a repeated field FIRES on every manifest that

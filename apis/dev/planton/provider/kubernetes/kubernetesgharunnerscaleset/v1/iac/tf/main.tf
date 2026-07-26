@@ -1,23 +1,25 @@
-##############################################
-# main.tf
+# KubernetesGhaRunnerScaleSet Terraform module.
 #
-# Main orchestration file for KubernetesGhaRunnerScaleSet
-# deployment using Terraform.
+# Deploys a GitHub Actions runner scale set from the official OCI chart
+# as a real Helm release: the AutoscalingRunnerSet the controller (a
+# KubernetesGhaRunnerScaleSetController install, the registry
+# prerequisite) reconciles into a listener and ephemeral runner pods.
 #
-# This module deploys a GitHub Actions Runner Scale Set
-# using the official Helm chart.
+# SECRET DISCIPLINE: on the declared PAT / GitHub App arms the module
+# materializes the credential as the `<name>-github-auth` Secret BEFORE
+# the release and passes only its NAME into chart values (the chart's
+# pre-defined-secret form) — credential material never rides rendered
+# values. The existing-Secret arm references the user's own Secret.
 #
-# Infrastructure Components:
-#  1. Kubernetes Namespace (if create_namespace is true)
-#  2. PVCs for persistent volumes
-#  3. Helm Release for the runner scale set
-#
-# After deployment, runners will register with GitHub
-# and start processing jobs from matching workflows.
-##############################################
+# NO HELM WAIT: the chart's workload is the AutoscalingRunnerSet custom
+# resource — the controller creates the listener AFTER the release
+# returns, and the listener needs valid GitHub credentials to come up.
+# The E2E verifier owns the listener-registered proof instead (the
+# CR-kind precedent).
 
-# Create namespace if requested
-resource "kubernetes_namespace" "this" {
+# The optional installation namespace. Created before the release; deleted
+# with the resource.
+resource "kubernetes_namespace_v1" "gha_runner_scale_set" {
   count = var.spec.create_namespace ? 1 : 0
 
   metadata {
@@ -26,46 +28,66 @@ resource "kubernetes_namespace" "this" {
   }
 }
 
-# Create PVCs for persistent volumes
-resource "kubernetes_persistent_volume_claim" "this" {
-  for_each = { for pv in var.spec.persistent_volumes : pv.name => pv }
+# The materialized GitHub credential (declared arms only) — the chart's
+# pre-defined-secret key contract. Pulumi twin: githubAuthSecret.
+resource "kubernetes_secret_v1" "github_auth" {
+  count = local.materialize_auth_secret ? 1 : 0
 
   metadata {
-    name      = "${local.release_name}-${each.value.name}"
+    name      = local.github_auth_secret_name
     namespace = local.namespace
     labels    = local.labels
   }
 
-  spec {
-    access_modes       = each.value.access_modes
-    storage_class_name = each.value.storage_class != "" ? each.value.storage_class : null
-
-    resources {
-      requests = {
-        storage = each.value.size
-      }
-    }
-  }
-
-  depends_on = [kubernetes_namespace.this]
-}
-
-# Deploy the runner scale set via Helm
-# For OCI charts, the full URL must be passed as the chart parameter
-# (repository doesn't work with OCI registries in Terraform helm_release)
-resource "helm_release" "this" {
-  name             = local.release_name
-  namespace        = local.namespace
-  create_namespace = false # We handle namespace creation ourselves
-
-  chart   = local.chart_oci
-  version = local.chart_version
-
-  values = [yamlencode(local.helm_values_final)]
+  data = local.github_auth_secret_data
 
   depends_on = [
-    kubernetes_namespace.this,
-    kubernetes_persistent_volume_claim.this
+    kubernetes_namespace_v1.gha_runner_scale_set,
   ]
 }
 
+resource "helm_release" "gha_runner_scale_set" {
+  name       = local.release_name
+  repository = local.helm_oci_repo
+  chart      = local.helm_chart_name
+  version    = local.chart_version
+  namespace  = local.namespace
+
+  # The module owns namespace creation (create_namespace flag).
+  create_namespace = false
+
+  # No Helm wait — see the module comment (the workload is a CR the
+  # controller reconciles after the release returns).
+  wait    = false
+  timeout = 300
+
+  # Documents merged in order by the provider (helm -f semantics): the
+  # typed rendering first, the user's escape hatch second — and
+  # githubConfigSecret re-pinned LAST, the one deliberate exception to
+  # the escape hatch's last-word contract (twin of the Pulumi module).
+  # The credential contract (a Secret NAME, never inline material) is
+  # load-bearing; letting an override move it would break the secret
+  # discipline.
+  values = concat(
+    [yamlencode(local.typed_helm_values)],
+    try(var.spec.helm_values, "") != "" ? [var.spec.helm_values] : [],
+    [yamlencode({ githubConfigSecret = local.github_auth_secret_name })]
+  )
+
+  lifecycle {
+    # FAIL LOUDLY past the chart's own scale-set-name budget: the chart
+    # template fails installs at >45 characters (a GitHub registration
+    # limit) — catch it at plan instead of mid-apply. The spec CEL caps
+    # the explicit field; this guard covers the metadata.name fallback.
+    # Twin: the Pulumi module's Resources() guard.
+    precondition {
+      condition     = length(local.runner_scale_set_name) <= 45
+      error_message = "GitHub caps runner scale set registrations at 45 characters — set spec.runner_scale_set_name (or a shorter metadata.name)."
+    }
+  }
+
+  depends_on = [
+    kubernetes_namespace_v1.gha_runner_scale_set,
+    kubernetes_secret_v1.github_auth,
+  ]
+}

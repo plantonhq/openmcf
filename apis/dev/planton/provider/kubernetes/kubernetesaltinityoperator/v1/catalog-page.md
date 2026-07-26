@@ -1,168 +1,136 @@
 # Kubernetes Altinity Operator
 
-Deploys the Altinity ClickHouse Operator on Kubernetes using the official `altinity-clickhouse-operator` Helm chart (v0.25.4). The operator installs ClickHouse-related CRDs and watches all namespaces, enabling declarative management of ClickHouse clusters across the entire Kubernetes cluster. Supports configurable CPU and memory resources for the operator pod and optional namespace creation.
+Installs the Altinity ClickHouse operator — the Apache-2.0 operator
+for running ClickHouse on Kubernetes — from the official
+`altinity-clickhouse-operator` Helm chart. The operator reconciles
+`ClickHouseInstallation` and `ClickHouseKeeperInstallation` custom
+resources (declared with KubernetesClickHouse) into running clusters
+with generated server configuration, rolling restarts, and per-host
+StatefulSets. This component installs and configures the engine;
+ClickHouse clusters are declared separately, one KubernetesClickHouse
+resource per cluster.
 
 ## What Gets Created
 
-When you deploy a KubernetesAltinityOperator resource, Planton provisions:
-
-- **Kubernetes Namespace** — created only when `createNamespace` is `true`
-- **Helm Release (Altinity ClickHouse Operator)** — deploys the `altinity-clickhouse-operator` chart (v0.25.4) from `https://docs.altinity.com/clickhouse-operator/`, with atomic rollback enabled, cleanup-on-fail, wait-for-jobs, and a 5-minute timeout; installs ClickHouse CRDs automatically (`createCRD: true`)
-- **Cluster-Wide Namespace Watch** — the operator is configured to watch all namespaces using the `".*"` regex pattern, so ClickHouseInstallation resources in any namespace are reconciled
-- **Standard Labels** — all created resources are labeled with the resource kind, name, organization, and environment for consistent discovery
+- **Namespace** (optional) — created and owned when `create_namespace`
+  is set
+- **The four ClickHouse CRDs** (`clickhouse.altinity.com` and
+  `clickhouse-keeper.altinity.com` API groups) — shipped in the
+  chart's `crds/` directory: Helm installs them on first install and
+  NEVER deletes them on uninstall, so destroying the operator never
+  cascade-deletes ClickHouse clusters or their data; the chart's
+  pre-install/pre-upgrade hook job server-side-applies them on every
+  install and upgrade
+- **Helm release** (official `altinity-clickhouse-operator` chart,
+  pinned 0.27.2, named `metadata.name`) — the operator Deployment
+  with the metrics-exporter sidecar, its RBAC, the chart-managed
+  credentials Secret, and the `<name>-metrics` Service
 
 ## Prerequisites
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, or set `createNamespace` to `true`
-- **Helm 3** support in the target cluster (provided by the Pulumi Kubernetes provider)
+- A Kubernetes namespace that already exists, or set
+  `create_namespace`
+- A real `operator_credentials` password outside throwaway
+  environments — the chart's fallback credentials are publicly
+  documented
+- For `service_monitor_enabled`: the Prometheus Operator CRDs on the
+  cluster
 
 ## Quick Start
 
-Create a file `altinity-operator.yaml`:
-
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesAltinityOperator
 metadata:
-  name: my-altinity-operator
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesAltinityOperator.my-altinity-operator
+  name: clickhouse-operator
 spec:
   namespace:
-    value: altinity-operator
-  createNamespace: true
-  container: {}
+    value: clickhouse-operator
+  create_namespace: true
+  watch_namespaces:
+    - ".*"
+  operator_credentials:
+    username: clickhouse_operator
+    password:
+      value: change-me-operator-password
 ```
 
-Deploy:
+The install waits for the operator to become Available. From that
+point, KubernetesClickHouse resources in any namespace reconcile into
+running clusters — because this manifest widens the watch scope to
+`[".*"]`; the chart default watches only the operator's own namespace.
 
-```shell
-planton apply -f altinity-operator.yaml
-```
+## Configuration
 
-This creates the Altinity ClickHouse Operator in the `altinity-operator` namespace with default resources (1000m CPU / 1Gi memory limit, 100m CPU / 256Mi memory request). The operator watches all namespaces for ClickHouseInstallation custom resources.
+### Chart and image pinning
 
-## Configuration Reference
+`chart_version` defaults to 0.27.2 — chart versions track operator
+releases one-to-one, so the chart version and the operator image tag
+move in lockstep. The `image` block overrides the operator image for
+air-gapped and private-mirror installs; keep the tag matched to the
+chart. The CRD hook's default image is `bitnami/kubectl:latest` —
+pullable today but frozen since Bitnami retired its public catalog, so
+long-lived and air-gapped installs should pin their own kubectl build
+via `crd_hook.image`.
 
-### Required Fields
+### Watch scope and RBAC
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `StringValueOrRef` | Kubernetes namespace for the operator deployment. Use `value` for a direct string or `valueFrom` to reference a KubernetesNamespace resource. | Required |
-| `container` | `object` | Container specification for the operator pod. Pass `{}` to accept all defaults. | Required |
+Empty `watch_namespaces` watches ONLY the operator's own namespace
+(the chart default). Entries are regular expressions — cover every
+namespace that will hold KubernetesClickHouse resources, or use
+`[".*"]` for cluster-wide; a fenced operator silently ignores clusters
+elsewhere. Pairing a single-namespace watch with
+`namespace_scoped_rbac` avoids cluster-wide RBAC entirely on shared
+clusters.
 
-### Optional Fields
+### Operator credentials
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
-| `container.resources.limits.cpu` | `string` | `"1000m"` | Maximum CPU allocation for the operator pod. |
-| `container.resources.limits.memory` | `string` | `"1Gi"` | Maximum memory allocation for the operator pod. |
-| `container.resources.requests.cpu` | `string` | `"100m"` | Minimum guaranteed CPU for the operator pod. |
-| `container.resources.requests.memory` | `string` | `"256Mi"` | Minimum guaranteed memory for the operator pod. |
+`operator_credentials` is the login the operator itself uses on every
+managed ClickHouse cluster (host management, schema propagation,
+metrics scraping), provisioned as a chart-managed Secret and
+auto-injected as a network-restricted user into every managed cluster.
+The password accepts a literal or a reference to another resource's
+output.
 
-## Examples
+### Metrics
 
-### Development Instance with Default Resources
+The metrics-exporter sidecar (enabled by default) serves Prometheus
+metrics for every managed cluster on port 8888, exported as
+`metrics_endpoint`. `service_monitor_enabled` adds a ServiceMonitor
+for Prometheus Operator scraping — enabling it without the Prometheus
+Operator CRDs fails the install.
 
-A minimal operator deployment for development or testing:
+### Escape hatch
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesAltinityOperator
-metadata:
-  name: dev-altinity
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesAltinityOperator.dev-altinity
-spec:
-  namespace:
-    value: altinity-dev
-  createNamespace: true
-  container:
-    resources:
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
-      requests:
-        cpu: "50m"
-        memory: "128Mi"
-```
-
-### Production Instance with Higher Resources
-
-An operator deployment sized for production workloads managing multiple ClickHouse clusters:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesAltinityOperator
-metadata:
-  name: prod-altinity
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesAltinityOperator.prod-altinity
-spec:
-  namespace:
-    value: altinity-system
-  createNamespace: true
-  container:
-    resources:
-      limits:
-        cpu: "2000m"
-        memory: "2Gi"
-      requests:
-        cpu: "250m"
-        memory: "512Mi"
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed namespace instead of hardcoding the name:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesAltinityOperator
-metadata:
-  name: platform-altinity
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesAltinityOperator.platform-altinity
-spec:
-  namespace:
-    valueFrom:
-      kind: KubernetesNamespace
-      name: platform-operators
-      field: spec.name
-  container:
-    resources:
-      limits:
-        cpu: "1000m"
-        memory: "1Gi"
-      requests:
-        cpu: "100m"
-        memory: "256Mi"
-```
+`helm_values` merges additional chart values LAST (Helm `-f`
+semantics) — except `fullnameOverride`, which the modules re-pin to
+the resource name after the merge (the chart fullname anchors every
+generated child name and exported output). Keep the resource name at
+39 characters or fewer — the longest generated child name adds 24
+characters against the Kubernetes 63-character cap.
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where the Altinity ClickHouse Operator is installed |
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the operator is installed into |
+| `release_name` | Helm release name (= `metadata.name`) |
+| `deployment_name` | The operator Deployment (= the chart fullname, pinned to the resource name) |
+| `credentials_secret_name` | Chart-managed Secret holding the operator's ClickHouse credentials |
+| `metrics_endpoint` | In-cluster Prometheus metrics URL for every managed cluster; empty when metrics are disabled |
 
 ## Related Components
 
-- [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) — provides the target namespace via `valueFrom` reference
-- [KubernetesClickhouse](/docs/catalog/kubernetes/kubernetesclickhouse) — deploy ClickHouse clusters managed by the Altinity operator
-- [KubernetesHelmRelease](/docs/catalog/kubernetes/kuberneteshelmrelease) — alternative for deploying Helm charts directly when a dedicated component is not available
+- [KubernetesClickHouse](/docs/catalog/kubernetes/kubernetesclickhouse)
+  — declares the ClickHouseInstallation (and managed-Keeper) resources
+  this operator reconciles
+- [KubernetesNamespace](/docs/catalog/kubernetes/kubernetesnamespace) —
+  provides the installation namespace via reference
+
+## Next Steps
+
+Declare a ClickHouse cluster with KubernetesClickHouse — shards,
+replicas, storage, Keeper coordination — and the operator reconciles
+it. If the operator was installed with a narrow `watch_namespaces`
+list, keep clusters inside the watched namespaces; they are silently
+ignored anywhere else.

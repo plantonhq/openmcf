@@ -1,0 +1,36 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGrafana
+metadata:
+  name: team-grafana
+spec:
+  namespace:
+    value: observability
+  create_namespace: true
+  # ONE stateful instance: the PVC carries the embedded SQLite
+  # database, so hand-built dashboards, users and preferences survive
+  # pod restarts. A ReadWriteOnce volume backs exactly one replica —
+  # scaling out later means moving state to an external database
+  # (the 03 preset), not raising replicas here.
+  storage:
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  datasources:
+    # Reference form: resolves to the named stack's Prometheus
+    # endpoint (the field's default kind is
+    # KubernetesKubePrometheusStack) and orders this Grafana after it.
+    - name: Prometheus
+      url:
+        value_from:
+          name: <stack-name>
+      is_default: true
+  # The public URL exposure will serve (compose a KubernetesIngress
+  # or Gateway API route over the exported service handle) — OAuth
+  # redirects and links in alert notifications embed it.
+  server:
+    root_url: https://grafana.<your-domain>

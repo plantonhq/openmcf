@@ -1,0 +1,32 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetestekton
+spec:
+  # The module renders exactly ONE resource: the cluster-scoped
+  # TektonConfig with the operator-required fixed name `config` (the
+  # webhook allows one per cluster). Every composed-ID segment is a
+  # literal — the 3-part cluster-scoped ID form
+  # `operator.tekton.dev/v1alpha1//TektonConfig//config`.
+  values:
+    - name: api_version
+      derivations:
+        - literal: operator.tekton.dev/v1alpha1
+      where_to_find: >-
+        Always "operator.tekton.dev/v1alpha1" — the CR's group/version.
+    - name: kind
+      derivations:
+        - literal: TektonConfig
+      where_to_find: Always "TektonConfig" — the CR kind this module applies.
+    - name: name
+      derivations:
+        - literal: config
+      where_to_find: >-
+        Always "config" — the operator's admission webhook requires the
+        one TektonConfig per cluster to carry exactly this name
+        (`kubectl get tektonconfig` shows it).
+    - name: namespace
+      where_to_find: >-
+        Not applicable — TektonConfig is cluster-scoped, so the composed
+        import ID has no namespace segment (the optional [//{namespace}]
+        group drops).

@@ -4,8 +4,10 @@ metadata:
   name: kubernetesgrafana
 spec:
   tier: 2
+  # Rebuilt from the pre-program shell (raw container + embedded ingress)
+  # onto the official grafana chart 12.8.0.
   status: green
   validated_provisioners:
     - pulumi
     - terraform
-  timeout_minutes: 15
+  timeout_minutes: 25

@@ -1,0 +1,124 @@
+# Full-surface development manifest: a two-source migration posture —
+# an MSK-style SCRAM source and a Confluent-style PLAIN source mirroring
+# into a TLS+SCRAM Strimzi target, both mirrors pinning
+# IdentityReplicationPolicy (original topic names), explicit group
+# identity, scope patterns, connector tuning with auto-restart, worker
+# resources/JVM/rack/metrics, and scheduling knobs. Not a
+# runnable-on-kind shape — the external bootstraps and zone-keyed rack
+# need real clusters.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKafkaMirrorMaker2
+metadata:
+  name: mm2-hack
+spec:
+  namespace:
+    value: kafka-hack
+  createNamespace: true
+  version: 4.3.0
+  replicas: 3
+  target:
+    alias: target
+    bootstrapServers:
+      value: kafka-hack-kafka-bootstrap.kafka-hack.svc.cluster.local:9094
+    tls:
+      trustedCertificates:
+        - secretName:
+            value: kafka-hack-cluster-ca-cert
+          certificate: ca.crt
+    authentication:
+      type: scram-sha-512
+      username: mm2-writer
+      passwordSecret:
+        secretName:
+          value: mm2-writer
+        password: password
+    groupId: mm2-hack-group
+    configStorageTopic: mm2-hack-configs
+    statusStorageTopic: mm2-hack-status
+    offsetStorageTopic: mm2-hack-offsets
+    config:
+      config.storage.replication.factor: "3"
+      offset.storage.replication.factor: "3"
+      status.storage.replication.factor: "3"
+  mirrors:
+    - source:
+        alias: prod-msk
+        bootstrapServers:
+          value: b-1.prod-msk.abc123.kafka.us-west-2.amazonaws.com:9096
+        tls:
+          trustedCertificates:
+            - secretName:
+                value: prod-msk-ca
+              pattern: "*.crt"
+        authentication:
+          type: scram-sha-512
+          username: mm2-reader
+          passwordSecret:
+            secretName:
+              value: prod-msk-credentials
+            password: password
+        config:
+          max.poll.records: "500"
+      topicsPattern: "orders.*,payments.*"
+      topicsExcludePattern: ".*\\.internal"
+      groupsPattern: ".*"
+      groupsExcludePattern: "console-consumer-.*"
+      sourceConnector:
+        tasksMax: 8
+        config:
+          replication.policy.class: org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+          refresh.topics.interval.seconds: "600"
+          sync.topic.acls.enabled: "false"
+        autoRestart:
+          enabled: true
+          maxRestarts: 10
+      checkpointConnector:
+        tasksMax: 2
+        config:
+          replication.policy.class: org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+          sync.group.offsets.enabled: "true"
+          refresh.groups.interval.seconds: "600"
+        autoRestart:
+          enabled: true
+    - source:
+        alias: confluent
+        bootstrapServers:
+          value: pkc-xxxxx.us-west2.gcp.confluent.cloud:9092
+        authentication:
+          type: plain
+          username: ABCDEFGH123456
+          passwordSecret:
+            secretName:
+              value: confluent-api-secret
+            password: password
+        config:
+          fetch.max.bytes: "52428800"
+      topicsPattern: "clickstream.*"
+      sourceConnector:
+        tasksMax: 4
+        config:
+          replication.policy.class: org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+      checkpointConnector:
+        config:
+          replication.policy.class: org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  jvm:
+    xms: 1g
+    xmx: 1g
+  rack:
+    topologyKey: topology.kubernetes.io/zone
+  metrics:
+    enabled: true
+  nodeSelector:
+    workload: kafka
+  tolerations:
+    - key: dedicated
+      operator: Equal
+      value: kafka
+      effect: NoSchedule

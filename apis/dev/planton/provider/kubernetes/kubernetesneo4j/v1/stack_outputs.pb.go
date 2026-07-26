@@ -21,22 +21,30 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Neo4jKubernetes Stack Outputs
+// kubernetes-neo4j stack outputs
 type KubernetesNeo4JStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Kubernetes namespace where the Neo4j instance is deployed.
+	// namespace the server runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// The in-cluster Service name for connecting via Bolt/HTTP.
-	// Example: "my-graph-db.default.svc.cluster.local"
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// Bolt URI (internal). For example: "bolt://my-graph-db:7687".
-	// If connecting externally, you might port-forward or set up an Ingress outside this spec.
-	BoltUriKubeEndpoint string `protobuf:"bytes,3,opt,name=bolt_uri_kube_endpoint,json=boltUriKubeEndpoint,proto3" json:"bolt_uri_kube_endpoint,omitempty"`
-	// HTTP URL for the Neo4j browser if enabled. Ex: "http://my-graph-db:7474".
-	// Also typically internal unless you manually expose it.
-	HttpUriKubeEndpoint string `protobuf:"bytes,4,opt,name=http_uri_kube_endpoint,json=httpUriKubeEndpoint,proto3" json:"http_uri_kube_endpoint,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Helm release name (= metadata.name).
+	ReleaseName string `protobuf:"bytes,2,opt,name=release_name,json=releaseName,proto3" json:"release_name,omitempty"`
+	// name of the main Neo4j Service (bolt/http/https ports).
+	ServiceName string `protobuf:"bytes,3,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	// in-cluster bolt endpoint drivers connect to,
+	// e.g. neo4j://main.graph.svc.cluster.local:7687
+	BoltEndpoint string `protobuf:"bytes,4,opt,name=bolt_endpoint,json=boltEndpoint,proto3" json:"bolt_endpoint,omitempty"`
+	// in-cluster HTTP API endpoint,
+	// e.g. http://main.graph.svc.cluster.local:7474
+	HttpEndpoint string `protobuf:"bytes,5,opt,name=http_endpoint,json=httpEndpoint,proto3" json:"http_endpoint,omitempty"`
+	// name of the Secret holding the admin credentials (the
+	// module-materialized `<name>-auth`, or the referenced existing
+	// secret). Empty when the chart generated a random password.
+	AuthSecretName string `protobuf:"bytes,6,opt,name=auth_secret_name,json=authSecretName,proto3" json:"auth_secret_name,omitempty"`
+	// command to port-forward bolt to a developer laptop, e.g.
+	// kubectl port-forward svc/main -n graph 7687:7687
+	PortForwardCommand string `protobuf:"bytes,7,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesNeo4JStackOutputs) Reset() {
@@ -76,23 +84,44 @@ func (x *KubernetesNeo4JStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesNeo4JStackOutputs) GetService() string {
+func (x *KubernetesNeo4JStackOutputs) GetReleaseName() string {
 	if x != nil {
-		return x.Service
+		return x.ReleaseName
 	}
 	return ""
 }
 
-func (x *KubernetesNeo4JStackOutputs) GetBoltUriKubeEndpoint() string {
+func (x *KubernetesNeo4JStackOutputs) GetServiceName() string {
 	if x != nil {
-		return x.BoltUriKubeEndpoint
+		return x.ServiceName
 	}
 	return ""
 }
 
-func (x *KubernetesNeo4JStackOutputs) GetHttpUriKubeEndpoint() string {
+func (x *KubernetesNeo4JStackOutputs) GetBoltEndpoint() string {
 	if x != nil {
-		return x.HttpUriKubeEndpoint
+		return x.BoltEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesNeo4JStackOutputs) GetHttpEndpoint() string {
+	if x != nil {
+		return x.HttpEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesNeo4JStackOutputs) GetAuthSecretName() string {
+	if x != nil {
+		return x.AuthSecretName
+	}
+	return ""
+}
+
+func (x *KubernetesNeo4JStackOutputs) GetPortForwardCommand() string {
+	if x != nil {
+		return x.PortForwardCommand
 	}
 	return ""
 }
@@ -101,12 +130,15 @@ var File_dev_planton_provider_kubernetes_kubernetesneo4j_v1_stack_outputs_proto 
 
 const file_dev_planton_provider_kubernetes_kubernetesneo4j_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kubernetesneo4j/v1/stack_outputs.proto\x122dev.planton.provider.kubernetes.kubernetesneo4j.v1\"\xbf\x01\n" +
+	"Fdev/planton/provider/kubernetes/kubernetesneo4j/v1/stack_outputs.proto\x122dev.planton.provider.kubernetes.kubernetesneo4j.v1\"\xa7\x02\n" +
 	"\x1bKubernetesNeo4jStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x123\n" +
-	"\x16bolt_uri_kube_endpoint\x18\x03 \x01(\tR\x13boltUriKubeEndpoint\x123\n" +
-	"\x16http_uri_kube_endpoint\x18\x04 \x01(\tR\x13httpUriKubeEndpointB\xa2\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\frelease_name\x18\x02 \x01(\tR\vreleaseName\x12!\n" +
+	"\fservice_name\x18\x03 \x01(\tR\vserviceName\x12#\n" +
+	"\rbolt_endpoint\x18\x04 \x01(\tR\fboltEndpoint\x12#\n" +
+	"\rhttp_endpoint\x18\x05 \x01(\tR\fhttpEndpoint\x12(\n" +
+	"\x10auth_secret_name\x18\x06 \x01(\tR\x0eauthSecretName\x120\n" +
+	"\x14port_forward_command\x18\a \x01(\tR\x12portForwardCommandB\xa2\x03\n" +
 	"6com.dev.planton.provider.kubernetes.kubernetesneo4j.v1B\x11StackOutputsProtoP\x01Zfgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesneo4j/v1;kubernetesneo4jv1\xa2\x02\x05DPPKK\xaa\x022Dev.Planton.Provider.Kubernetes.Kubernetesneo4j.V1\xca\x022Dev\\Planton\\Provider\\Kubernetes\\Kubernetesneo4j\\V1\xe2\x02>Dev\\Planton\\Provider\\Kubernetes\\Kubernetesneo4j\\V1\\GPBMetadata\xea\x027Dev::Planton::Provider::Kubernetes::Kubernetesneo4j::V1b\x06proto3"
 
 var (

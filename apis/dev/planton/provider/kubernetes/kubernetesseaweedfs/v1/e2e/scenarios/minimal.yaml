@@ -1,0 +1,12 @@
+# The component defaults on their own: 1/1/1 PVC-backed tiers with the S3
+# gateway EMBEDDED on the filer and auth ON — the verifier reads the
+# chart-generated `<name>-s3-secret`, creates its own proof bucket, and
+# proves a live S3 put/get round-trip.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSeaweedFs
+metadata:
+  name: e2e-swfs-min
+spec:
+  namespace:
+    value: e2e-swfs-min
+  create_namespace: true

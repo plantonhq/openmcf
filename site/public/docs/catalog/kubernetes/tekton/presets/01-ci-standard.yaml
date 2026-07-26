@@ -1,0 +1,17 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTekton
+metadata:
+  name: tekton
+spec:
+  # Profile `all` (the default): Pipelines + Triggers + Dashboard, plus
+  # Chains — the full CI control plane in the upstream default
+  # `tekton-pipelines` namespace.
+  pruner:
+    # Completed runs keep their pods until pruned — on a busy cluster
+    # that is unbounded growth. Daily cleanup keeping the newest 100 of
+    # each is a production floor, not an optimization.
+    schedule: "0 8 * * *"
+    resources:
+      - pipelinerun
+      - taskrun
+    keep: 100

@@ -1,0 +1,55 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesNeo4j
+metadata:
+  name: graphrag-neo4j
+spec:
+  namespace:
+    value: graphrag
+  create_namespace: true
+  edition: community
+  auth:
+    password: graphrag-change-me
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  # GraphRAG traffic is traversal-heavy reads: favor the page cache
+  # (graph data in memory) over a huge heap. Heap 1.5G + page cache
+  # 1.5G + ~1G overhead = the 4Gi container.
+  memory:
+    heap_initial: 1500M
+    heap_max: 1500M
+    page_cache: 1500M
+  data_volume:
+    size: 50Gi
+  # apoc.conf entries — the typed surface for the APOC plugin, the
+  # procedure library GraphRAG/agent-memory pipelines lean on
+  # (graph refactoring, batch loading, export). The enabled arms are
+  # OFF by default because they let procedures touch the server's
+  # filesystem; import/export stay inside the pod's import directory
+  # with use_neo4j_config.
+  apoc_config:
+    apoc.import.file.enabled: "true"
+    apoc.export.file.enabled: "true"
+    apoc.import.file.use_neo4j_config: "true"
+    apoc.trigger.enabled: "true"
+  # File-touching and trigger procedures are sandboxed unless
+  # explicitly unrestricted — scope the allowlist to apoc.*, never *.
+  config:
+    dbms.security.procedures.unrestricted: apoc.*
+  # Appended to the chart's default JVM arguments (kept — see
+  # use_default_jvm_arguments). A heap dump on OOM is the difference
+  # between diagnosing a runaway traversal and guessing.
+  additional_jvm_arguments:
+    - -XX:+HeapDumpOnOutOfMemoryError
+    - -XX:HeapDumpPath=/logs/neo4j.hprof
+  # APOC Core ships INSIDE the official image; listing it in
+  # NEO4J_PLUGINS makes the image entrypoint activate it at startup —
+  # no internet download. The env key has no typed field, so it rides
+  # the helm_values escape hatch.
+  helm_values: |
+    env:
+      NEO4J_PLUGINS: '["apoc"]'

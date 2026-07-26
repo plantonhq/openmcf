@@ -1,35 +1,30 @@
 package module
 
-// Module-level constants and configuration variables
 var vars = struct {
-	// Tekton namespace (fixed by Tekton manifests)
-	TektonNamespace string
+	// ApiVersion / Kind of the rendered custom resource.
+	ApiVersion string
+	Kind       string
 
-	// Tekton Pipelines manifest URL template
-	// Version is inserted: https://storage.googleapis.com/tekton-releases/pipeline/{version}/release.yaml
-	PipelineReleaseURLTemplate string
+	// TektonConfigName is the FIXED name of the rendered TektonConfig.
+	// The operator's admission webhook allows exactly one TektonConfig
+	// per cluster and requires this name — metadata.name of the Planton
+	// resource never reaches the CR (it keys the state identity only).
+	TektonConfigName string
 
-	// Tekton Dashboard manifest URL template
-	// Version is inserted: https://infra.tekton.dev/tekton-releases/dashboard/{version}/release.yaml
-	DashboardReleaseURLTemplate string
+	// DefaultTargetNamespace is the upstream default installation
+	// namespace for the Tekton components.
+	DefaultTargetNamespace string
 
-	// Dashboard service name (fixed by Tekton Dashboard manifest)
+	// DashboardServiceName / DashboardPort are the dashboard's fixed
+	// Service handles in the target namespace (installed on profile
+	// `all`).
 	DashboardServiceName string
-
-	// Dashboard service port
-	DashboardServicePort int
-
-	// Gateway API configuration
-	IstioIngressNamespace                      string
-	GatewayIngressClassName                    string
-	GatewayExternalLoadBalancerServiceHostname string
+	DashboardPort        int
 }{
-	TektonNamespace:                            "tekton-pipelines",
-	PipelineReleaseURLTemplate:                 "https://storage.googleapis.com/tekton-releases/pipeline/%s/release.yaml",
-	DashboardReleaseURLTemplate:                "https://infra.tekton.dev/tekton-releases/dashboard/%s/release.yaml",
-	DashboardServiceName:                       "tekton-dashboard",
-	DashboardServicePort:                       9097,
-	IstioIngressNamespace:                      "istio-ingress",
-	GatewayIngressClassName:                    "istio",
-	GatewayExternalLoadBalancerServiceHostname: "istio-ingress-gateway.istio-ingress.svc.cluster.local",
+	ApiVersion:             "operator.tekton.dev/v1alpha1",
+	Kind:                   "TektonConfig",
+	TektonConfigName:       "config",
+	DefaultTargetNamespace: "tekton-pipelines",
+	DashboardServiceName:   "tekton-dashboard",
+	DashboardPort:          9097,
 }

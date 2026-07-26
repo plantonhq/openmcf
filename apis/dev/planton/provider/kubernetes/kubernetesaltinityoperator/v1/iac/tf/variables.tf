@@ -1,50 +1,95 @@
+# Typed mirror of KubernetesAltinityOperatorSpec (spec.proto). The spec
+# arrives from the proto->tfvars converter in snake_case with every
+# StringValueOrRef foreign key -- `namespace` (KubernetesNamespace) and
+# `operator_credentials.password` -- resolved to a literal string before
+# Terraform runs.
+#
+# Presence-tracked proto optionals (chart_version, metrics.enabled,
+# crd_hook.enabled, operator_credentials.username) carry no optional()
+# default here — their proto defaults are resolved in locals.tf, so the
+# module renders the same resource whether or not the platform's
+# defaulting middleware ran.
+
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "Specification for the Altinity ClickHouse Operator deployment"
+  description = "KubernetesAltinityOperator specification"
   type = object({
-    # Kubernetes namespace to install the operator. Defaults to "kubernetes-altinity-operator" if not provided.
-    namespace = optional(string, "")
+    namespace             = string
+    create_namespace      = optional(bool, false)
+    chart_version         = optional(string)
+    watch_namespaces      = optional(list(string), [])
+    namespace_scoped_rbac = optional(bool, false)
 
-    # Flag to indicate if the namespace should be created. Defaults to false; the namespace must already exist.
-    create_namespace = optional(bool, false)
+    operator_credentials = optional(object({
+      username = optional(string)
+      password = string
+    }))
 
-    # The container specifications for the operator deployment.
-    container = object({
-      # The CPU and memory resources allocated to the operator container.
-      resources = object({
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
+    metrics = optional(object({
+      enabled = optional(bool)
+      resources = optional(object({
+        limits = optional(object({
+          cpu    = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu    = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+    }))
 
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
+    crd_hook = optional(object({
+      enabled = optional(bool)
+      image = optional(object({
+        repo             = optional(string, "")
+        tag              = optional(string, "")
+        pull_secret_name = optional(string, "")
+      }))
+    }))
 
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
+    resources = optional(object({
+      limits = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+      requests = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+    }))
 
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-    })
+    service_monitor_enabled = optional(bool, false)
+    node_selector           = optional(map(string), {})
+
+    tolerations = optional(list(object({
+      key                = optional(string, "")
+      operator           = optional(string, "")
+      value              = optional(string, "")
+      effect             = optional(string, "")
+      toleration_seconds = optional(number)
+    })), [])
+
+    image_pull_secrets = optional(list(string), [])
+
+    image = optional(object({
+      repo             = optional(string, "")
+      tag              = optional(string, "")
+      pull_secret_name = optional(string, "")
+    }))
+
+    helm_values = optional(string, "")
   })
 }
-

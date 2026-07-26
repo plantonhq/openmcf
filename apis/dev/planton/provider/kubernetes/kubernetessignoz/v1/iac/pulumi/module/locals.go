@@ -3,7 +3,6 @@ package module
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	kubernetessignozv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessignoz/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
@@ -11,146 +10,110 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds computed values derived from the stack input for use across
+// the module. Every resolution here has an exact twin in the Terraform
+// module's locals.tf — keep them in lockstep.
 type Locals struct {
-	KubernetesSignoz                  *kubernetessignozv1.KubernetesSignoz
-	Namespace                         string
-	KubernetesLabels                  map[string]string
-	SignozServiceName                 string
-	OtelCollectorServiceName          string
-	SignozKubeServiceFqdn             string
-	OtelCollectorGrpcFqdn             string
-	OtelCollectorHttpFqdn             string
-	KubePortForwardCommand            string
-	IngressExternalHostname           string
-	IngressHostnames                  []string
-	IngressCertClusterIssuerName      string
-	IngressCertSecretName             string
-	OtelCollectorExternalHttpHostname string
-	ClickhouseEndpoint                string
+	Spec *kubernetessignozv1.KubernetesSignozSpec
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	SignozCertificateName       string
-	SignozGatewayName           string
-	SignozHTTPRouteName         string
-	SignozHttpRedirectRouteName string
-	OtelCertificateName         string
-	OtelGatewayName             string
-	OtelHTTPRouteName           string
-	OtelHttpRedirectRouteName   string
+	// Resource-identity labels stamped on the module-created namespace —
+	// never injected into the chart's own resources; Helm owns those.
+	Labels map[string]string
+
+	// Namespace SigNoz installs into (resolved literal from the spec's
+	// value-or-ref).
+	Namespace string
+
+	// Helm release name — metadata.name, NOT a fixed chart name: several
+	// SigNoz instances can coexist. fullnameOverride pins every chart
+	// child name to it.
+	ReleaseName string
+
+	// Chart version resolved to the pinned default when unset, so both
+	// engines install the same chart whether or not the platform's
+	// defaulting middleware ran.
+	ChartVersion string
+
+	// ---- exported composition handles (see outputs.go) -----------------
+	// The ClickHouse* handles are passthroughs of the DECLARED connection
+	// — this component installs no ClickHouse; downstream kinds
+	// referencing them compose against the same store SigNoz uses.
+	Service                      string
+	KubeEndpoint                 string
+	PortForwardCommand           string
+	OtelCollectorService         string
+	OtlpGrpcEndpoint             string
+	OtlpHttpEndpoint             string
+	ClickHouseEndpoint           string
+	ClickHouseUsername           string
+	ClickHousePasswordSecretName string
+	ClickHousePasswordSecretKey  string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetessignozv1.KubernetesSignozStackInput) *Locals {
-	locals := &Locals{}
-
-	locals.KubernetesSignoz = stackInput.Target
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetessignozv1.KubernetesSignozStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	locals.KubernetesLabels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesSignoz.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.KubernetesLabels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.KubernetesLabels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.KubernetesLabels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// Get namespace from spec (required field)
-	locals.Namespace = target.Spec.Namespace.GetValue()
-
-	//export namespace
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	// Service names
-	locals.SignozServiceName = fmt.Sprintf("%s-signoz", target.Metadata.Name)
-	locals.OtelCollectorServiceName = fmt.Sprintf("%s-otel-collector", target.Metadata.Name)
-
-	//export service names
-	ctx.Export(OpSignozService, pulumi.String(locals.SignozServiceName))
-	ctx.Export(OpOtelCollectorService, pulumi.String(locals.OtelCollectorServiceName))
-
-	// Kubernetes FQDNs
-	locals.SignozKubeServiceFqdn = fmt.Sprintf("%s.%s.svc.cluster.local:%d",
-		locals.SignozServiceName, locals.Namespace, vars.SignozUIPort)
-	locals.OtelCollectorGrpcFqdn = fmt.Sprintf("%s.%s.svc.cluster.local:%d",
-		locals.OtelCollectorServiceName, locals.Namespace, vars.OtelGrpcPort)
-	locals.OtelCollectorHttpFqdn = fmt.Sprintf("%s.%s.svc.cluster.local:%d",
-		locals.OtelCollectorServiceName, locals.Namespace, vars.OtelHttpPort)
-
-	//export kubernetes endpoints
-	ctx.Export(OpKubeEndpoint, pulumi.String(locals.SignozKubeServiceFqdn))
-	ctx.Export(OpOtelCollectorGrpcEndpoint, pulumi.String(locals.OtelCollectorGrpcFqdn))
-	ctx.Export(OpOtelCollectorHttpEndpoint, pulumi.String(locals.OtelCollectorHttpFqdn))
-
-	// Port forward command
-	locals.KubePortForwardCommand = fmt.Sprintf("kubectl port-forward -n %s service/%s %d:%d",
-		locals.Namespace, locals.SignozServiceName, vars.SignozUIPort, vars.SignozUIPort)
-
-	//export kube-port-forward command
-	ctx.Export(OpPortForwardCommand, pulumi.String(locals.KubePortForwardCommand))
-
-	// ClickHouse outputs (only for self-managed)
-	if target.Spec.Database != nil && !target.Spec.Database.IsExternal {
-		locals.ClickhouseEndpoint = fmt.Sprintf("%s-clickhouse.%s.svc.cluster.local:8123",
-			target.Metadata.Name, locals.Namespace)
-		ctx.Export(OpClickhouseEndpoint, pulumi.String(locals.ClickhouseEndpoint))
-		ctx.Export(OpClickhouseUsername, pulumi.String("admin"))
-		ctx.Export(OpClickhousePasswordSecretName, pulumi.String(fmt.Sprintf("%s-clickhouse", target.Metadata.Name)))
-		ctx.Export(OpClickhousePasswordSecretKey, pulumi.String("admin-password"))
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	locals.SignozCertificateName = fmt.Sprintf("%s-signoz-cert", target.Metadata.Name)
-	locals.SignozGatewayName = fmt.Sprintf("%s-signoz-external-gateway", target.Metadata.Name)
-	locals.SignozHTTPRouteName = fmt.Sprintf("%s-signoz-https-route", target.Metadata.Name)
-	locals.SignozHttpRedirectRouteName = fmt.Sprintf("%s-signoz-http-redirect", target.Metadata.Name)
-	locals.OtelCertificateName = fmt.Sprintf("%s-otel-http-cert", target.Metadata.Name)
-	locals.OtelGatewayName = fmt.Sprintf("%s-otel-http-external-gateway", target.Metadata.Name)
-	locals.OtelHTTPRouteName = fmt.Sprintf("%s-otel-https-route", target.Metadata.Name)
-	locals.OtelHttpRedirectRouteName = fmt.Sprintf("%s-otel-http-redirect", target.Metadata.Name)
+	namespace := spec.Namespace.GetValue()
+	releaseName := target.Metadata.Name
 
-	// Ingress configuration for SigNoz UI
-	if target.Spec.Ingress != nil &&
-		target.Spec.Ingress.Ui != nil &&
-		target.Spec.Ingress.Ui.Enabled &&
-		target.Spec.Ingress.Ui.Hostname != "" {
-		locals.IngressExternalHostname = target.Spec.Ingress.Ui.Hostname
-		ctx.Export(OpExternalHostname, pulumi.String(locals.IngressExternalHostname))
+	// The signoz Service carries the fullname itself; the collector
+	// Service appends the component name — both pinned via
+	// fullnameOverride.
+	service := releaseName
+	kubeEndpoint := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", service, namespace, vars.ServerHttpPort)
+	portForward := fmt.Sprintf("kubectl port-forward svc/%s -n %s %d:%d",
+		service, namespace, vars.ServerHttpPort, vars.ServerHttpPort)
 
-		locals.IngressHostnames = []string{
-			locals.IngressExternalHostname,
-		}
+	collectorService := fmt.Sprintf("%s-otel-collector", releaseName)
+	otlpGrpc := fmt.Sprintf("%s.%s.svc.cluster.local:%d", collectorService, namespace, vars.OtlpGrpcPort)
+	otlpHttp := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", collectorService, namespace, vars.OtlpHttpPort)
 
-		// ClusterIssuer should already exist on the cluster
-		// Extract domain from hostname for ClusterIssuer name
-		// Typically managed by cluster administrator or created by Planton
-		hostnameParts := strings.Split(locals.IngressExternalHostname, ".")
-		if len(hostnameParts) > 1 {
-			locals.IngressCertClusterIssuerName = strings.Join(hostnameParts[1:], ".")
-		}
-
-		// Use computed name to avoid conflicts when multiple instances share a namespace
-		locals.IngressCertSecretName = locals.SignozCertificateName
+	// The declared connection, mirrored into the exported handles.
+	clickhouse := spec.GetClickhouse()
+	tcpPort := int32(vars.ClickHouseTcpPort)
+	if clickhouse.TcpPort != nil {
+		tcpPort = clickhouse.GetTcpPort()
 	}
+	clickHouseEndpoint := fmt.Sprintf("%s:%d", clickhouse.Host.GetValue(), tcpPort)
 
-	// Ingress configuration for OTel Collector
-	if target.Spec.Ingress != nil &&
-		target.Spec.Ingress.OtelCollector != nil &&
-		target.Spec.Ingress.OtelCollector.Enabled &&
-		target.Spec.Ingress.OtelCollector.Hostname != "" {
-		locals.OtelCollectorExternalHttpHostname = target.Spec.Ingress.OtelCollector.Hostname
-		ctx.Export(OpOtelCollectorExternalHttpHostname, pulumi.String(locals.OtelCollectorExternalHttpHostname))
+	return &Locals{
+		Spec:                         spec,
+		Labels:                       labels,
+		Namespace:                    namespace,
+		ReleaseName:                  releaseName,
+		ChartVersion:                 chartVersion,
+		Service:                      service,
+		KubeEndpoint:                 kubeEndpoint,
+		PortForwardCommand:           portForward,
+		OtelCollectorService:         collectorService,
+		OtlpGrpcEndpoint:             otlpGrpc,
+		OtlpHttpEndpoint:             otlpHttp,
+		ClickHouseEndpoint:           clickHouseEndpoint,
+		ClickHouseUsername:           clickhouse.Username,
+		ClickHousePasswordSecretName: clickhouse.PasswordSecret.SecretName.GetValue(),
+		ClickHousePasswordSecretKey:  clickhouse.PasswordSecret.SecretKey,
 	}
-
-	return locals
 }

@@ -1,12 +1,19 @@
 package module
 
-const (
-	OpNamespace                   = "namespace"
-	OpTektonConfigName            = "tekton_config_name"
-	OpPipelinesControllerService  = "pipelines_controller_service"
-	OpTriggersControllerService   = "triggers_controller_service"
-	OpDashboardService            = "dashboard_service"
-	OpDashboardPortForwardCommand = "dashboard_port_forward_command"
-	OpCloudEventsSinkURL          = "cloud_events_sink_url"
-	OpDashboardExternalHostname   = "dashboard_external_hostname"
+import (
+	pulumiyaml "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
+
+// Output name constants — one per KubernetesTektonOperatorStackOutputs
+// field.
+const (
+	OpNamespace = "namespace"
+)
+
+// exportOutputs publishes the release manifest's fixed handles (the
+// manifest resource is passed so the export carries its dependency).
+func exportOutputs(ctx *pulumi.Context, _ *Locals, _ *pulumiyaml.ConfigFile) error {
+	ctx.Export(OpNamespace, pulumi.String(vars.Namespace))
+	return nil
+}

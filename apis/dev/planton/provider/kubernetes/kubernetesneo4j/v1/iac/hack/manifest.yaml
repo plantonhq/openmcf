@@ -1,0 +1,61 @@
+# Full-surface offline-proof manifest: exercises the community edition, the
+# password auth arm (materialized as the neo4j-hack-auth Secret), a
+# dynamically-provisioned data volume with an explicit StorageClass, memory
+# tuning, extra neo4j.conf and apoc.conf entries, additional JVM arguments,
+# the ClusterIP service default with annotations, scheduling, and the
+# ServiceMonitor toggle (off) — so the offline tofu plan and pulumi preview
+# proofs cover the full typed surface. Resources honour the chart's floor
+# (500m CPU / 2Gi memory — the chart rejects installs below it).
+# Placeholder values; never applied to a real cluster.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesNeo4j
+metadata:
+  name: neo4j-hack
+spec:
+  namespace:
+    value: neo4j-hack
+  createNamespace: true
+  chartVersion: 2026.6.0
+  edition: community
+  auth:
+    password: hack-placeholder-password
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  dataVolume:
+    size: 20Gi
+    storageClass:
+      value: fast-ssd
+  memory:
+    heapInitial: 1G
+    heapMax: 1G
+    pageCache: 512M
+  config:
+    db.transaction.timeout: 30s
+    server.bolt.thread_pool_max_size: "400"
+  apocConfig:
+    apoc.trigger.enabled: "true"
+    apoc.import.file.enabled: "true"
+  additionalJvmArguments:
+    - "-XX:+HeapDumpOnOutOfMemoryError"
+    - "-XX:HeapDumpPath=/logs/neo4j.hprof"
+  useDefaultJvmArguments: true
+  service:
+    type: ClusterIP
+    annotations:
+      example.org/purpose: knowledge-graph
+  scheduling:
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: graph
+        effect: NoSchedule
+    podAntiAffinity: true
+    priorityClassName: system-cluster-critical
+  serviceMonitorEnabled: false

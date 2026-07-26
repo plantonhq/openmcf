@@ -8,217 +8,125 @@ componentName: "kubernetesneo4j"
 
 # Kubernetes Neo4j
 
-Deploys a single-node Neo4j Community instance on Kubernetes using the official Neo4j Helm chart, with automatic admin password generation, optional persistent storage via PersistentVolumeClaims, configurable heap and page-cache memory settings, and optional external access through a LoadBalancer Service with external-dns integration.
+Deploys a Neo4j graph database — the standard engine for knowledge
+graphs, GraphRAG and agent-memory architectures — from the official
+Neo4j Helm chart. One resource is one server: the community edition
+(the default) is single-instance by license, and Enterprise clustering
+is built from multiple resources sharing a `cluster_name`. Admin
+credentials materialize as a Kubernetes Secret the chart consumes
+(never plaintext in rendered values), storage is a persistent volume
+sized in the spec, memory tuning is typed, and the chart's default
+LoadBalancer exposure is deliberately overridden to ClusterIP —
+external reachability composes from ingress and gateway kinds.
+
+> **Why a graph database**: GraphRAG retrieval walks a knowledge graph
+> at query time; agent memory accumulates entities and relationships
+> across sessions. That relationship-shaped data is what a native
+> graph engine serves without the JOIN-depth penalty.
 
 ## What Gets Created
 
-When you deploy a KubernetesNeo4j resource, Planton provisions:
-
-- **Namespace** — created only when `createNamespace` is `true`
-- **Helm Release (Neo4j)** — deploys a single-node Neo4j Community instance via the official Neo4j Helm chart (version 2025.03.0), with configurable resource limits, persistence, and memory tuning
-- **Password Secret** — the Helm chart automatically generates a Kubernetes Secret named `{name}-auth` containing the admin password under the key `neo4j-password`
-- **Kubernetes Service** — an internal ClusterIP Service named `{name}-neo4j` exposing the Bolt (7687) and HTTP (7474) ports
-- **LoadBalancer Service** — created only when ingress is enabled, exposes Neo4j externally with an `external-dns.alpha.kubernetes.io/hostname` annotation for automatic DNS record creation
-- **PersistentVolumeClaim** — provisions persistent storage for the Neo4j data directory using the cluster default StorageClass
+- **Namespace** (optional) — created and owned when `create_namespace`
+  is set
+- **Auth Secret** (`<name>-auth`, when `auth.password` is declared) —
+  the chart's contract: one key, `NEO4J_AUTH`, value
+  `neo4j/<password>`; created BEFORE the release (the chart looks it
+  up at template time) and the only place the credential lands
+- **Helm release** (official `neo4j` chart, pinned 2026.6.0, named
+  `metadata.name`): the single-pod StatefulSet, the data
+  PersistentVolumeClaim (default 10Gi), the default ClusterIP Service
+  (bolt 7687, http 7474, https 7473), and the exposure Service —
+  pinned to ClusterIP instead of the chart's LoadBalancer default
 
 ## Prerequisites
 
-- **Kubernetes credentials** configured via environment variables or Planton provider config
-- **A Kubernetes namespace** that already exists, or set `createNamespace` to `true`
-- **A StorageClass** available in the cluster for persistent storage (most managed Kubernetes clusters provide a default)
-- **external-dns** running in the cluster if enabling ingress with a hostname
+- A Kubernetes namespace that already exists, or set
+  `create_namespace`
+- A StorageClass for the data volume (most managed clusters provide a
+  default; or reference a KubernetesStorageClass)
+- For `auth.existing_secret`: a Secret already carrying
+  `NEO4J_AUTH: neo4j/<password>` — it must exist before the install
+- For `ssl`: Secrets carrying `private.key`/`public.crt` (the chart's
+  expected keys — cert-manager Secrets carry `tls.key`/`tls.crt`;
+  bridge the key names explicitly)
+- For `edition: enterprise`: a valid Neo4j license and
+  `accept_license_agreement: true`
+- For `service_monitor_enabled`: the Prometheus Operator CRDs
 
 ## Quick Start
 
-Create a file `neo4j.yaml`:
-
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesNeo4j
 metadata:
-  name: my-graph-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesNeo4j.my-graph-db
-spec:
-  namespace: graph
-  createNamespace: true
-```
-
-Deploy:
-
-```shell
-planton apply -f neo4j.yaml
-```
-
-This creates a single-node Neo4j instance with default resource limits (1000m CPU, 1Gi memory), a 1Gi PersistentVolumeClaim, and an auto-generated admin password stored in a Kubernetes Secret.
-
-## Configuration Reference
-
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `namespace` | `string` | Kubernetes namespace for the Neo4j deployment. Can reference a KubernetesNamespace resource via `valueFrom`. | Required |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `createNamespace` | `bool` | `false` | When `true`, creates the namespace before deploying resources. |
-| `container.resources.limits.cpu` | `string` | `1000m` | Maximum CPU allocation for the Neo4j pod. |
-| `container.resources.limits.memory` | `string` | `1Gi` | Maximum memory allocation for the Neo4j pod. |
-| `container.resources.requests.cpu` | `string` | `50m` | Minimum guaranteed CPU for the Neo4j pod. |
-| `container.resources.requests.memory` | `string` | `100Mi` | Minimum guaranteed memory for the Neo4j pod. |
-| `container.persistenceEnabled` | `bool` | `false` | Enables persistent storage for the Neo4j data directory. When enabled, database files survive pod restarts via a PersistentVolumeClaim. |
-| `container.diskSize` | `string` | `1Gi` | Size of the PersistentVolumeClaim for Neo4j data. Must be a valid Kubernetes quantity (e.g., `1Gi`, `10Gi`). |
-| `memoryConfig.heapMax` | `string` | — | Maximum Java heap size for Neo4j (e.g., `1Gi`, `512m`). If omitted, Neo4j uses its internal default or auto-detection. |
-| `memoryConfig.pageCache` | `string` | — | Page cache size for on-disk data (e.g., `512m`). If omitted, Neo4j uses its internal default or auto-detection. |
-| `ingress.enabled` | `bool` | `false` | Creates a LoadBalancer Service with external-dns annotations exposing Neo4j externally. |
-| `ingress.hostname` | `string` | — | Hostname for external access (e.g., `neo4j.example.com`). Configured automatically via external-dns. Required when `ingress.enabled` is `true`. |
-
-## Examples
-
-### Development Neo4j without Persistence
-
-A lightweight Neo4j instance for local development and testing with reduced resources and no persistent storage:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesNeo4j
-metadata:
-  name: dev-graph
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.KubernetesNeo4j.dev-graph
-spec:
-  namespace: dev
-  createNamespace: true
-  container:
-    persistenceEnabled: false
-    resources:
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
-      requests:
-        cpu: "100m"
-        memory: "256Mi"
-```
-
-### Production Neo4j with Tuned Memory
-
-A production-grade Neo4j instance with larger disk, increased resource limits, and explicit heap and page-cache configuration:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesNeo4j
-metadata:
-  name: prod-graph
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesNeo4j.prod-graph
-spec:
-  namespace: production
-  container:
-    resources:
-      limits:
-        cpu: "4000m"
-        memory: "8Gi"
-      requests:
-        cpu: "1000m"
-        memory: "4Gi"
-    persistenceEnabled: true
-    diskSize: "50Gi"
-  memoryConfig:
-    heapMax: "4Gi"
-    pageCache: "2Gi"
-```
-
-### Neo4j with External Access
-
-Neo4j exposed outside the cluster via a LoadBalancer with automatic DNS management:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesNeo4j
-metadata:
-  name: shared-graph
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesNeo4j.shared-graph
-spec:
-  namespace: shared-services
-  container:
-    resources:
-      limits:
-        cpu: "2000m"
-        memory: "4Gi"
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-    persistenceEnabled: true
-    diskSize: "100Gi"
-  memoryConfig:
-    heapMax: "2Gi"
-    pageCache: "1Gi"
-  ingress:
-    enabled: true
-    hostname: neo4j.example.com
-```
-
-### Using Foreign Key References
-
-Reference an Planton-managed namespace instead of hardcoding the name:
-
-```yaml
-apiVersion: kubernetes.planton.dev/v1
-kind: KubernetesNeo4j
-metadata:
-  name: graph-db
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: prod.KubernetesNeo4j.graph-db
+  name: knowledge-graph
 spec:
   namespace:
-    valueFrom:
-      kind: KubernetesNamespace
-      name: app-namespace
-      field: spec.name
-  container:
-    persistenceEnabled: true
-    diskSize: "20Gi"
-  memoryConfig:
-    heapMax: "1Gi"
-    pageCache: "512m"
+    value: graph
+  create_namespace: true
+  auth:
+    password: <set-a-strong-password>
+  data_volume:
+    size: 50Gi
 ```
+
+Drivers connect at the exported `bolt_endpoint`
+(`neo4j://knowledge-graph.graph.svc.cluster.local:7687`) with the
+`neo4j` user's password from the `knowledge-graph-auth` Secret; the
+Browser rides the `http_endpoint` (port 7474).
+
+## Configuration
+
+### Editions and clustering
+
+`community` (default) runs exactly one instance — the spec rejects
+`cluster_name` on it. `enterprise` enables clustering: install one
+KubernetesNeo4j resource per member, all sharing `cluster_name`, each
+accepting the license agreement.
+
+### Sizing
+
+The chart rejects installs below its floor (500m CPU / 2Gi memory);
+empty `resources` uses the chart's own defaults. The typed `memory`
+block renders heap and page-cache into neo4j.conf; empty lets Neo4j
+auto-compute from container memory.
+
+### Exposure
+
+The default is in-cluster only (ClusterIP — a deliberate override of
+the chart's LoadBalancer default). Compose a KubernetesIngress or
+Gateway API route for HTTP/Browser; for external bolt drivers, use a
+TCP route or set `service.type: LoadBalancer` with cloud annotations.
 
 ## Stack Outputs
 
-After deployment, the following outputs are available in `status.outputs`:
-
-| Output | Type | Description |
-|--------|------|-------------|
-| `namespace` | `string` | Kubernetes namespace where Neo4j is deployed |
-| `service` | `string` | Kubernetes Service name for the Neo4j instance (format: `{name}-neo4j`) |
-| `bolt_uri_kube_endpoint` | `string` | Cluster-internal FQDN for Bolt connections (e.g., `my-graph-db-neo4j.graph.svc.cluster.local`) |
-| `port_forward_command` | `string` | kubectl port-forward command for local access to the Neo4j Browser on port 7474 |
-| `external_hostname` | `string` | Public hostname for external access, only set when ingress is enabled |
-| `username` | `string` | Neo4j admin username (always `neo4j`) |
-| `password_secret.name` | `string` | Name of the Kubernetes Secret containing the admin password (format: `{name}-auth`) |
-| `password_secret.key` | `string` | Key within the password Secret (always `neo4j-password`) |
+| Output | Description |
+|---|---|
+| `namespace` | Namespace the server runs in |
+| `release_name` | Helm release name (= `metadata.name`) |
+| `service_name` | Main Neo4j Service (bolt/http/https ports) |
+| `bolt_endpoint` | In-cluster bolt endpoint (`neo4j://...:7687`) |
+| `http_endpoint` | In-cluster HTTP API / Browser endpoint (port 7474) |
+| `auth_secret_name` | Secret holding the admin credentials (`<name>-auth`, or the referenced existing Secret); empty when the chart generated a random password |
+| `port_forward_command` | Workstation bolt access when no exposure is composed |
 
 ## Related Components
 
-- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) — provides the target namespace via `valueFrom` reference
-- [KubernetesDeployment](/docs/catalog/kubernetes/deployment) — application deployments that connect to Neo4j as a graph database backend
-- [KubernetesExternalDns](/docs/catalog/kubernetes/kubernetesexternaldns) — manages DNS records for the LoadBalancer ingress hostname
+- [KubernetesNamespace](/docs/catalog/kubernetes/namespace) —
+  provides the target namespace via reference
+- [KubernetesStorageClass](/docs/catalog/kubernetes/storage-class)
+  — backs the data volume via reference
+- [KubernetesCertificate](/docs/catalog/kubernetes/kubernetescertificate)
+  — issues TLS material for the `ssl` scopes (with the
+  `private.key`/`public.crt` key bridge)
+- [KubernetesIngress](/docs/catalog/kubernetes/ingress) —
+  composes HTTP/Browser exposure over the service handle
+
+## Next Steps
+
+Declare a real password (or an existing Secret) before anything
+depends on the instance — the random-password path logs it once and
+exports no Secret handle. Size the data volume and memory for the
+graph you expect, and compose exposure only where drivers live outside
+the cluster. For Enterprise clusters, add members as separate
+resources sharing `cluster_name`.

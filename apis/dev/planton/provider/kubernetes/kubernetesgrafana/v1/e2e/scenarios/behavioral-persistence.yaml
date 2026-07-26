@@ -1,0 +1,14 @@
+# THE persistence proof: create a dashboard through the API, DELETE the
+# pod, wait for a REPLACEMENT pod (a new UID — status flapping back Ready
+# on the dying pod is not recovery), and re-read the dashboard — state
+# surviving pod loss through the PVC is the proof.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGrafana
+metadata:
+  name: e2e-grafana-pers
+spec:
+  namespace:
+    value: e2e-grafana-pers
+  create_namespace: true
+  storage:
+    size: 2Gi
