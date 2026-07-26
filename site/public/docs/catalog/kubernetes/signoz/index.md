@@ -15,12 +15,12 @@ a trace store and a dashboard tool separately.
 
 ## Highlights
 
-- **The whole platform from one manifest** — UI, API, alerting, the
-  ingestion collector and (by default) a bundled ClickHouse stack, with
-  a module-generated database credential exported as a Secret handle.
-- **Bring your own ClickHouse** — point it at a `KubernetesClickHouse`
-  by reference (Service, cluster name, auth Secret) when the database
-  deserves its own lifecycle.
+- **One product, one UI** — server (UI, API, alerting), the ingestion
+  collector and the schema migrator from one manifest.
+- **Composes the ClickHouse Lego blocks** — point it at a
+  `KubernetesClickHouse` by reference (Service, cluster name, auth
+  Secret): the database and your telemetry get their own lifecycle,
+  their own scaling, and clean teardown on both sides.
 - **OTLP-first ingestion** — gRPC and HTTP endpoints exported as
   composition handles; Jaeger and Zipkin protocols for legacy emitters;
   the collector autoscales with ingest volume.
