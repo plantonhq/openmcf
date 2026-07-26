@@ -159,9 +159,11 @@ func Resources(ctx *pulumi.Context, stackInput *awseksclusterv1.AwsEksClusterSta
 			Enabled: pulumi.BoolPtr(true),
 		}
 	}
-	if spec.DeletionProtection {
-		clusterArgs.DeletionProtection = pulumi.BoolPtr(true)
-	}
+	// Always send the explicit boolean: the provider attribute is
+	// Optional+Computed, so leaving it unset means "keep the cluster's
+	// current value" -- omitting false would make protection impossible
+	// to turn off once enabled (and destroys would stay blocked forever).
+	clusterArgs.DeletionProtection = pulumi.BoolPtr(spec.DeletionProtection)
 	// Proto-optional: explicit false ("bring your own add-ons") must be
 	// distinguishable from unset (AWS defaults to true). Create-only.
 	if spec.BootstrapSelfManagedAddons != nil {

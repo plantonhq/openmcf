@@ -121,7 +121,11 @@ resource "aws_eks_cluster" "this" {
     }
   }
 
-  deletion_protection = var.spec.deletion_protection ? true : null
+  # Always send the explicit boolean: the provider attribute is
+  # Optional+Computed, so a null config means "keep the cluster's current
+  # value" -- omitting false would make protection impossible to turn off
+  # once enabled (and destroys would stay blocked forever).
+  deletion_protection = var.spec.deletion_protection
 
   # Proto-optional: explicit false ("bring your own add-ons") must be
   # distinguishable from unset (AWS defaults to true). Create-only.

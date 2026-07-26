@@ -41,9 +41,11 @@ func createLoadBalancer(ctx *pulumi.Context, locals *Locals, provider *oci.Provi
 		args.NetworkSecurityGroupIds = nsgIds
 	}
 
-	if spec.IsDeleteProtectionEnabled {
-		args.IsDeleteProtectionEnabled = pulumi.Bool(true)
-	}
+	// Always send the explicit boolean: the provider attribute is
+	// Optional+Computed, so leaving it unset means "keep the LB's
+	// current value" -- omitting false would make protection impossible
+	// to turn off once enabled (and destroys would stay blocked forever).
+	args.IsDeleteProtectionEnabled = pulumi.Bool(spec.IsDeleteProtectionEnabled)
 
 	if spec.IpMode != "" {
 		args.IpMode = pulumi.StringPtr(spec.IpMode)

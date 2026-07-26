@@ -6,7 +6,11 @@ resource "oci_load_balancer_load_balancer" "this" {
   freeform_tags  = local.freeform_tags
   is_private     = var.spec.is_private
 
-  is_delete_protection_enabled = var.spec.is_delete_protection_enabled ? true : null
+  # Always send the explicit boolean: the provider attribute is
+  # Optional+Computed, so a null config means "keep the LB's current
+  # value" -- omitting false would make protection impossible to turn
+  # off once enabled (and destroys would stay blocked forever).
+  is_delete_protection_enabled = var.spec.is_delete_protection_enabled
   ip_mode                      = var.spec.ip_mode != "" ? var.spec.ip_mode : null
   is_request_id_enabled        = var.spec.is_request_id_enabled ? true : null
   request_id_header            = var.spec.request_id_header != "" ? var.spec.request_id_header : null
