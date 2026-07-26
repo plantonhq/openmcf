@@ -4,6 +4,7 @@ package dev.planton.provider.kubernetes.kubernetesrbac.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
 
 /**
  * **KubernetesRbacSpec** defines a complete RBAC grant: "give these subjects these permissions
@@ -380,16 +381,21 @@ message KubernetesRbacServiceAccountSubject {
   dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesServiceAccount,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name",
+    (dev.planton.shared.options.diagram_label) = "grants to"
   ];
 
   /**
    * The ServiceAccount's namespace. When omitted, defaults to the grant's own namespace
    * (namespace scope). Cluster-scoped grants must set it explicitly — a ServiceAccount
    * always lives in some namespace, and cluster scope provides no default.
+   *
+   * containment_exempt: locates the SUBJECT being granted access, not the
+   * grant itself — the grant's own home is the scope's namespace field.
    */
   dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true
   ];
 }

@@ -819,9 +819,10 @@ const file_dev_planton_provider_kubernetes_kubernetesexternalsecret_v1_spec_prot
 	"\tdata_from\x18\a \x03(\v2].dev.planton.provider.kubernetes.kubernetesexternalsecret.v1.KubernetesExternalSecretDataFromR\bdataFrom:\x9d\x01\xbaH\x99\x01\x1a\x96\x01\n" +
 	"\x16xsec.data_or_data_from\x12KDeclare something to sync — at least one data entry or one data_from pull\x1a/size(this.data) > 0 || size(this.data_from) > 0B\x13\n" +
 	"\x11_refresh_intervalB\x11\n" +
-	"\x0f_refresh_policy\"\xed\x01\n" +
-	" KubernetesExternalSecretStoreRef\x12p\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc5\x06\x92\xd4a\x19status.outputs.store_nameR\x04name\x12N\n" +
+	"\x0f_refresh_policy\"\xfb\x01\n" +
+	" KubernetesExternalSecretStoreRef\x12~\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB6\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\n" +
+	"reads from\x88\xd4a\xc5\x06\x92\xd4a\x19status.outputs.store_nameR\x04name\x12N\n" +
 	"\x04kind\x18\x02 \x01(\tB5\xbaH#r!R\vSecretStoreR\x12ClusterSecretStore\x8a\xa6\x1d\vSecretStoreH\x00R\x04kind\x88\x01\x01B\a\n" +
 	"\x05_kind\"\xa5\x03\n" +
 	"\x1eKubernetesExternalSecretTarget\x12\x12\n" +

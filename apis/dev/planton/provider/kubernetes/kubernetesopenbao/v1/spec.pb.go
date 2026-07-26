@@ -543,10 +543,16 @@ func (*KubernetesOpenBaoAutoUnseal_Transit) isKubernetesOpenBaoAutoUnseal_Seal()
 type KubernetesOpenBaoGcpKmsSeal struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project containing the KMS keyring.
+	//
+	// containment_exempt: names where the unseal key lives — the server
+	// runs in the cluster, not the project.
 	Project *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
 	// GCP region where the KMS keyring lives (e.g., "asia-south1").
 	Region string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
 	// Name of the KMS keyring containing the auto-unseal key.
+	//
+	// containment_exempt: an unseal-key source the server calls out to —
+	// access, never placement.
 	KeyRing *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=key_ring,json=keyRing,proto3" json:"key_ring,omitempty"`
 	// Name of the crypto key within the keyring used to encrypt the master key.
 	CryptoKey *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=crypto_key,json=cryptoKey,proto3" json:"crypto_key,omitempty"`
@@ -913,13 +919,14 @@ const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDe
 	"\aaws_kms\x18\x02 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSealH\x00R\x06awsKms\x12\x82\x01\n" +
 	"\x0fazure_key_vault\x18\x03 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSealH\x00R\razureKeyVault\x12n\n" +
 	"\atransit\x18\x04 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSealH\x00R\atransitB\x06\n" +
-	"\x04seal\"\xcc\x04\n" +
-	"\x1bKubernetesOpenBaoGcpKmsSeal\x12v\n" +
-	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\aproject\x12\x1f\n" +
-	"\x06region\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12z\n" +
-	"\bkey_ring\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xb2\x05\x92\xd4a\x1cstatus.outputs.key_ring_nameR\akeyRing\x12y\n" +
+	"\x04seal\"\xf7\x04\n" +
+	"\x1bKubernetesOpenBaoGcpKmsSeal\x12z\n" +
+	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_id\x98\xd4a\x01R\aproject\x12\x1f\n" +
+	"\x06region\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x91\x01\n" +
+	"\bkey_ring\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBB\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x0funseal key ring\x88\xd4a\xb2\x05\x92\xd4a\x1cstatus.outputs.key_ring_name\x98\xd4a\x01R\akeyRing\x12\x87\x01\n" +
 	"\n" +
-	"crypto_key\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xb3\x05\x92\xd4a\x17status.outputs.key_nameR\tcryptoKey\x12\x9c\x01\n" +
+	"crypto_key\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\n" +
+	"unseal key\x88\xd4a\xb3\x05\x92\xd4a\x17status.outputs.key_nameR\tcryptoKey\x12\x9c\x01\n" +
 	"!workload_identity_service_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x1eworkloadIdentityServiceAccount\"\x9d\x01\n" +
 	"\x1bKubernetesOpenBaoAwsKmsSeal\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12%\n" +

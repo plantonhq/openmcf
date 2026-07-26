@@ -961,23 +961,31 @@ const (
 	CloudResourceKind_KubernetesPerconaMongoOperator  CloudResourceKind = 905
 	CloudResourceKind_KubernetesMongodb               CloudResourceKind = 906
 	CloudResourceKind_KubernetesStrimziKafkaOperator  CloudResourceKind = 907
-	CloudResourceKind_KubernetesKafka                 CloudResourceKind = 908
-	CloudResourceKind_KubernetesKafkaTopic            CloudResourceKind = 909
-	CloudResourceKind_KubernetesKafkaUser             CloudResourceKind = 910
-	CloudResourceKind_KubernetesKafkaConnect          CloudResourceKind = 911
-	CloudResourceKind_KubernetesKafkaConnector        CloudResourceKind = 912
-	CloudResourceKind_KubernetesKafkaMirrorMaker2     CloudResourceKind = 913
-	CloudResourceKind_KubernetesKarapace              CloudResourceKind = 914
-	CloudResourceKind_KubernetesKafkaUi               CloudResourceKind = 915
-	CloudResourceKind_KubernetesOpenSearchOperator    CloudResourceKind = 916
-	CloudResourceKind_KubernetesOpenSearch            CloudResourceKind = 917
-	CloudResourceKind_KubernetesAltinityOperator      CloudResourceKind = 918
-	CloudResourceKind_KubernetesClickHouse            CloudResourceKind = 919
-	CloudResourceKind_KubernetesSolrOperator          CloudResourceKind = 920
-	CloudResourceKind_KubernetesSolr                  CloudResourceKind = 921
-	CloudResourceKind_KubernetesNeo4j                 CloudResourceKind = 922
-	CloudResourceKind_KubernetesSeaweedFs             CloudResourceKind = 923
-	CloudResourceKind_KubernetesQdrant                CloudResourceKind = 924
+	// container_kind: a Strimzi Kafka cluster is a place in the provider's
+	// own model — KafkaTopic and KafkaUser declarations BELONG to one cluster
+	// (the strimzi.io/cluster label) and are drawn inside its box. Clients
+	// that merely talk to the cluster (Connect, MirrorMaker2, UI, Karapace)
+	// carry containment_exempt on their bootstrap/trust references.
+	CloudResourceKind_KubernetesKafka      CloudResourceKind = 908
+	CloudResourceKind_KubernetesKafkaTopic CloudResourceKind = 909
+	CloudResourceKind_KubernetesKafkaUser  CloudResourceKind = 910
+	// container_kind: a Connect cluster hosts the connectors deployed INTO
+	// it (KafkaConnector's strimzi.io/cluster label names its Connect
+	// cluster) — the same room shape as KubernetesKafka above.
+	CloudResourceKind_KubernetesKafkaConnect       CloudResourceKind = 911
+	CloudResourceKind_KubernetesKafkaConnector     CloudResourceKind = 912
+	CloudResourceKind_KubernetesKafkaMirrorMaker2  CloudResourceKind = 913
+	CloudResourceKind_KubernetesKarapace           CloudResourceKind = 914
+	CloudResourceKind_KubernetesKafkaUi            CloudResourceKind = 915
+	CloudResourceKind_KubernetesOpenSearchOperator CloudResourceKind = 916
+	CloudResourceKind_KubernetesOpenSearch         CloudResourceKind = 917
+	CloudResourceKind_KubernetesAltinityOperator   CloudResourceKind = 918
+	CloudResourceKind_KubernetesClickHouse         CloudResourceKind = 919
+	CloudResourceKind_KubernetesSolrOperator       CloudResourceKind = 920
+	CloudResourceKind_KubernetesSolr               CloudResourceKind = 921
+	CloudResourceKind_KubernetesNeo4j              CloudResourceKind = 922
+	CloudResourceKind_KubernetesSeaweedFs          CloudResourceKind = 923
+	CloudResourceKind_KubernetesQdrant             CloudResourceKind = 924
 	// The RabbitMQ Cluster Operator's release manifest ships admission
 	// webhooks whose serving certificate is a cert-manager Certificate —
 	// cert-manager must be running before the operator installs.
@@ -2680,7 +2688,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xec\xe4\x01\n" +
+	"\x02v1\x10\x01*\xf0\xe4\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3110,11 +3118,11 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x0fKubernetesMysql\x10\x88\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8smysql:\x02\x87\a\x12;\n" +
 	"\x1eKubernetesPerconaMongoOperator\x10\x89\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\fk8sprcnmdbop\x12,\n" +
 	"\x11KubernetesMongodb\x10\x8a\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8smdb:\x02\x89\a\x127\n" +
-	"\x1eKubernetesStrimziKafkaOperator\x10\x8b\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sstzop\x12*\n" +
-	"\x0fKubernetesKafka\x10\x8c\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8skaf:\x02\x8b\a\x122\n" +
+	"\x1eKubernetesStrimziKafkaOperator\x10\x8b\a\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sstzop\x12,\n" +
+	"\x0fKubernetesKafka\x10\x8c\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\x06k8skaf0\x01:\x02\x8b\a\x122\n" +
 	"\x14KubernetesKafkaTopic\x10\x8d\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skaftop:\x02\x8c\a\x121\n" +
-	"\x13KubernetesKafkaUser\x10\x8e\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafusr:\x02\x8c\a\x124\n" +
-	"\x16KubernetesKafkaConnect\x10\x8f\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafcon:\x02\x8c\a\x126\n" +
+	"\x13KubernetesKafkaUser\x10\x8e\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafusr:\x02\x8c\a\x126\n" +
+	"\x16KubernetesKafkaConnect\x10\x8f\a\x1a\x19\xa2\xf7\x04\x15\b\x13\x10\x01\"\tk8skafcon0\x01:\x02\x8c\a\x126\n" +
 	"\x18KubernetesKafkaConnector\x10\x90\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafcnr:\x02\x8f\a\x129\n" +
 	"\x1bKubernetesKafkaMirrorMaker2\x10\x91\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8skafmm2:\x02\x8c\a\x12.\n" +
 	"\x12KubernetesKarapace\x10\x92\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8skrpc:\x02\x8c\a\x12*\n" +

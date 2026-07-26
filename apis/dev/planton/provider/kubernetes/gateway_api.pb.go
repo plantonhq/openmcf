@@ -9,6 +9,7 @@ package kubernetes
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -1407,12 +1408,12 @@ var File_dev_planton_provider_kubernetes_gateway_api_proto protoreflect.FileDesc
 
 const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"\n" +
-	"1dev/planton/provider/kubernetes/gateway_api.proto\x12\x1fdev.planton.provider.kubernetes\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xca\x04\n" +
+	"1dev/planton/provider/kubernetes/gateway_api.proto\x12\x1fdev.planton.provider.kubernetes\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xda\x04\n" +
 	"#KubernetesGatewayApiParentReference\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
 	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12!\n" +
-	"\tnamespace\x18\x03 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12r\n" +
-	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x06\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04name\x12u\n" +
+	"\tnamespace\x18\x03 \x01(\tH\x02R\tnamespace\x88\x01\x01\x12\x81\x01\n" +
+	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\vattached to\x88\xd4a\xca\x06\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04name\x12u\n" +
 	"\fsection_name\x18\x05 \x01(\tBM\xbaHJrH\x10\x01\x18\xfd\x012A^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x03R\vsectionName\x88\x01\x01\x12$\n" +
 	"\x04port\x18\x06 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x04R\x04port\x88\x01\x01B\b\n" +
 	"\x06_groupB\a\n" +
@@ -1420,12 +1421,12 @@ const file_dev_planton_provider_kubernetes_gateway_api_proto_rawDesc = "" +
 	"\n" +
 	"_namespaceB\x0f\n" +
 	"\r_section_nameB\a\n" +
-	"\x05_port\"\xc6\x03\n" +
+	"\x05_port\"\xda\x03\n" +
 	"*KubernetesGatewayApiParentGatewayReference\x12i\n" +
 	"\x05group\x18\x01 \x01(\tBN\xbaHKrI\x18\xfd\x012D^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$H\x00R\x05group\x88\x01\x01\x12I\n" +
 	"\x04kind\x18\x02 \x01(\tB0\xbaH-r+\x10\x01\x18?2%^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$H\x01R\x04kind\x88\x01\x01\x12M\n" +
-	"\tnamespace\x18\x03 \x01(\tB*\xbaH'r%\x10\x01\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$H\x02R\tnamespace\x88\x01\x01\x12r\n" +
-	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xca\x06\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04nameB\b\n" +
+	"\tnamespace\x18\x03 \x01(\tB*\xbaH'r%\x10\x01\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$H\x02R\tnamespace\x88\x01\x01\x12\x85\x01\n" +
+	"\x04name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB=\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x0fextends gateway\x88\xd4a\xca\x06\x92\xd4a\x1bstatus.outputs.gateway_nameR\x04nameB\b\n" +
 	"\x06_groupB\a\n" +
 	"\x05_kindB\f\n" +
 	"\n" +

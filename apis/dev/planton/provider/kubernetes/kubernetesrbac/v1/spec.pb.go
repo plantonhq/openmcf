@@ -9,6 +9,7 @@ package kubernetesrbacv1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -856,6 +857,9 @@ type KubernetesRbacServiceAccountSubject struct {
 	// The ServiceAccount's namespace. When omitted, defaults to the grant's own namespace
 	// (namespace scope). Cluster-scoped grants must set it explicitly — a ServiceAccount
 	// always lives in some namespace, and cluster scope provides no default.
+	//
+	// containment_exempt: locates the SUBJECT being granted access, not the
+	// grant itself — the grant's own home is the scope's namespace field.
 	Namespace     *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -909,7 +913,7 @@ var File_dev_planton_provider_kubernetes_kubernetesrbac_v1_spec_proto protorefle
 
 const file_dev_planton_provider_kubernetes_kubernetesrbac_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/kubernetes/kubernetesrbac/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetesrbac.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xb2\x10\n" +
+	"<dev/planton/provider/kubernetes/kubernetesrbac/v1/spec.proto\x121dev.planton.provider.kubernetes.kubernetesrbac.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb2\x10\n" +
 	"\x12KubernetesRbacSpec\x12z\n" +
 	"\x0fnamespace_scope\x18\x02 \x01(\v2O.dev.planton.provider.kubernetes.kubernetesrbac.v1.KubernetesRbacNamespaceScopeH\x00R\x0enamespaceScope\x12t\n" +
 	"\rcluster_scope\x18\x03 \x01(\v2M.dev.planton.provider.kubernetes.kubernetesrbac.v1.KubernetesRbacClusterScopeH\x00R\fclusterScope\x12r\n" +
@@ -974,10 +978,10 @@ const file_dev_planton_provider_kubernetes_kubernetesrbac_v1_spec_proto_rawDesc 
 	"\x04user\x18\x02 \x01(\tH\x00R\x04user\x12\x16\n" +
 	"\x05group\x18\x03 \x01(\tH\x00R\x05group:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
 	"\x10subject_required\x12AExactly one subject must be set (service_account, user, or group)\x1aihas(this.service_account) || (has(this.user) && this.user != '') || (has(this.group) && this.group != '')B\t\n" +
-	"\asubject\"\xed\x01\n" +
-	"#KubernetesRbacServiceAccountSubject\x12`\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xab\x06\x92\xd4a\tspec.nameR\x04name\x12d\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespaceB\x93\x03\n" +
+	"\asubject\"\xfe\x01\n" +
+	"#KubernetesRbacServiceAccountSubject\x12m\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tgrants to\x88\xd4a\xab\x06\x92\xd4a\tspec.nameR\x04name\x12h\n" +
+	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x16\x88\xd4a\xa0\x06\x92\xd4a\tspec.name\x98\xd4a\x01R\tnamespaceB\x93\x03\n" +
 	"5com.dev.planton.provider.kubernetes.kubernetesrbac.v1B\tSpecProtoP\x01Zdgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrbac/v1;kubernetesrbacv1\xa2\x02\x05DPPKK\xaa\x021Dev.Planton.Provider.Kubernetes.Kubernetesrbac.V1\xca\x021Dev\\Planton\\Provider\\Kubernetes\\Kubernetesrbac\\V1\xe2\x02=Dev\\Planton\\Provider\\Kubernetes\\Kubernetesrbac\\V1\\GPBMetadata\xea\x026Dev::Planton::Provider::Kubernetes::Kubernetesrbac::V1b\x06proto3"
 
 var (

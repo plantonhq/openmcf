@@ -151,11 +151,16 @@ message KubernetesKarapaceKafka {
    * Bootstrap address of the Kafka cluster, as host:port. Accepts a
    * literal address or a reference to a KubernetesKafka resource,
    * which resolves to its in-cluster bootstrap endpoint.
+   *
+   * containment_exempt: the registry SERVES SCHEMAS FOR this
+   * cluster; it is not deployed inside it.
    */
   dev.planton.shared.foreignkey.v1.StringValueOrRef bootstrap_servers = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "schema registry for"
   ];
 
   /**
@@ -210,11 +215,16 @@ message KubernetesKarapaceKafkaTls {
    * a literal Secret name or a reference to a KubernetesKafka
    * resource, which resolves to that cluster's CA certificate
    * Secret.
+   *
+   * containment_exempt: trust material fetched FROM the cluster —
+   * access, never placement.
    */
   dev.planton.shared.foreignkey.v1.StringValueOrRef ca_secret_name = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_ca_cert_secret_name"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_ca_cert_secret_name",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "trusts"
   ];
 
   /**

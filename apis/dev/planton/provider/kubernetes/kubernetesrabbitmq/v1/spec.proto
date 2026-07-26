@@ -441,4 +441,3 @@ message KubernetesRabbitMqVaultBackend {
    */
   string pki_issuer_path = 4;
 }
-

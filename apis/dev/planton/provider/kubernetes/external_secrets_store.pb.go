@@ -423,6 +423,9 @@ type ExternalSecretsStoreGcp struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// GCP project the secrets live in. Accepts a literal project ID or a
 	// reference to a GcpProject resource's output.
+	//
+	// containment_exempt: names the project the store READS secrets from —
+	// the store itself lives in the cluster, not the project.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Regional Secret Manager endpoint (e.g. "us-central1") for regional
 	// secrets. Empty = the global endpoint.
@@ -1206,10 +1209,10 @@ const file_dev_planton_provider_kubernetes_external_secrets_store_proto_rawDesc 
 	"\x1fesostore.aws.static_keys_paired\x12Oaccess_key_id and secret_access_key form one credential — set both or neither\x1a<(this.access_key_id == '') == (this.secret_access_key == '')\x1a\xc4\x01\n" +
 	"\x1aesostore.aws.one_auth_mode\x12gChoose ONE authentication mode: a ServiceAccount reference (keyless) or static access keys — not both\x1a=!(has(this.service_account_name) && this.access_key_id != '')B\n" +
 	"\n" +
-	"\b_service\"\x9e\x05\n" +
-	"\x17ExternalSecretsStoreGcp\x12{\n" +
+	"\b_service\"\xa2\x05\n" +
+	"\x17ExternalSecretsStoreGcp\x12\x7f\n" +
 	"\n" +
-	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x1a\n" +
+	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_id\x98\xd4a\x01R\tprojectId\x12\x1a\n" +
 	"\blocation\x18\x02 \x01(\tR\blocation\x12\x92\x01\n" +
 	"\x14service_account_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x06\x92\xd4a#status.outputs.service_account_nameR\x12serviceAccountName\x12:\n" +
 	"\x19service_account_namespace\x18\x04 \x01(\tR\x17serviceAccountNamespace\x12=\n" +
