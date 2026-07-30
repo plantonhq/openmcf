@@ -147,6 +147,24 @@ func TestBuild_GcpGkeExecShape(t *testing.T) {
 	assert.Equal(t, testServiceAccountKey, env[execcredential.GkeServiceAccountKeyEnvVar])
 }
 
+// TestBuild_GcpGkeAmbientMode: with no service-account key on the connection, the
+// kubeconfig must not emit the key env entry -- an empty value would poison the
+// helper's ambient credential chain (GOOGLE_OAUTH_ACCESS_TOKEN / ADC).
+func TestBuild_GcpGkeAmbientMode(t *testing.T) {
+	rendered, err := Build(&kubernetesprovider.KubernetesProviderConfig{
+		Provider: kubernetesprovider.KubernetesProvider_gcp_gke,
+		GcpGke: &kubernetesprovider.KubernetesProviderConfigGcpGke{
+			ClusterEndpoint: "34.100.155.147",
+			ClusterCaData:   "dGVzdC1jYS1kYXRh",
+		},
+	}, testCredentialCommand)
+	require.NoError(t, err)
+
+	env := execEnvMap(t, parseKubeconfig(t, rendered))
+	assert.Equal(t, execcredential.ProviderGcpGke, env[execcredential.ProviderEnvVar])
+	assert.NotContains(t, env, execcredential.GkeServiceAccountKeyEnvVar)
+}
+
 // TestBuild_DigitalOceanDoksPassthrough: DOKS hands out a complete long-lived
 // kubeconfig; the builder must return it byte-for-byte.
 func TestBuild_DigitalOceanDoksPassthrough(t *testing.T) {

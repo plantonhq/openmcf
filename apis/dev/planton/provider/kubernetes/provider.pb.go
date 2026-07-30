@@ -198,6 +198,13 @@ type KubernetesProviderConfigGcpGke struct {
 	//
 	// This is the raw JSON downloaded from the GCP Console or generated via
 	// `gcloud iam service-accounts keys create`.
+	//
+	// Optional: when empty, tokens are minted from the ambient Google credential
+	// chain of the process -- GOOGLE_OAUTH_ACCESS_TOKEN when present (the token a
+	// Planton runner mints for a connection's named gcloud configuration), else
+	// Application Default Credentials (GOOGLE_APPLICATION_CREDENTIALS, Workload
+	// Identity, GCE metadata, or `gcloud auth application-default login`). Same
+	// contract as the EKS static-key fields and the AKS client_secret.
 	ServiceAccountKey string `protobuf:"bytes,3,opt,name=service_account_key,json=serviceAccountKey,proto3" json:"service_account_key,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
@@ -581,11 +588,11 @@ const file_dev_planton_provider_kubernetes_provider_proto_rawDesc = "" +
 	"\aaws_eks\x18\x03 \x01(\v2?.dev.planton.provider.kubernetes.KubernetesProviderConfigAwsEksR\x06awsEks\x12^\n" +
 	"\tazure_aks\x18\x04 \x01(\v2A.dev.planton.provider.kubernetes.KubernetesProviderConfigAzureAksR\bazureAks\x12w\n" +
 	"\x12digital_ocean_doks\x18\x05 \x01(\v2I.dev.planton.provider.kubernetes.KubernetesProviderConfigDigitalOceanDoksR\x10digitalOceanDoks\x12g\n" +
-	"\fself_managed\x18\x06 \x01(\v2D.dev.planton.provider.kubernetes.KubernetesProviderConfigSelfManagedR\vselfManaged\"\xbb\x01\n" +
+	"\fself_managed\x18\x06 \x01(\v2D.dev.planton.provider.kubernetes.KubernetesProviderConfigSelfManagedR\vselfManaged\"\xb3\x01\n" +
 	"\x1eKubernetesProviderConfigGcpGke\x121\n" +
 	"\x10cluster_endpoint\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fclusterEndpoint\x12.\n" +
-	"\x0fcluster_ca_data\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rclusterCaData\x126\n" +
-	"\x13service_account_key\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11serviceAccountKey\"\xb7\x06\n" +
+	"\x0fcluster_ca_data\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rclusterCaData\x12.\n" +
+	"\x13service_account_key\x18\x03 \x01(\tR\x11serviceAccountKey\"\xb7\x06\n" +
 	"\x1eKubernetesProviderConfigAwsEks\x12)\n" +
 	"\fcluster_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vclusterName\x121\n" +
 	"\x10cluster_endpoint\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0fclusterEndpoint\x12.\n" +

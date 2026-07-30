@@ -82,7 +82,12 @@ func buildGcpGke(c *kubernetesprovider.KubernetesProviderConfigGcpGke, credentia
 
 	env := []execEnvVar{
 		{Name: execcredential.ProviderEnvVar, Value: execcredential.ProviderGcpGke},
-		{Name: execcredential.GkeServiceAccountKeyEnvVar, Value: c.ServiceAccountKey},
+	}
+	// The service-account key is omitted entirely in ambient mode so the helper's own
+	// environment is never poisoned with empty values (same discipline as the EKS/AKS
+	// arms); the minter then falls back to GOOGLE_OAUTH_ACCESS_TOKEN or ADC.
+	if c.ServiceAccountKey != "" {
+		env = append(env, execEnvVar{Name: execcredential.GkeServiceAccountKeyEnvVar, Value: c.ServiceAccountKey})
 	}
 
 	return renderExecKubeconfig(c.ClusterEndpoint, c.ClusterCaData, credentialCommand, env)
