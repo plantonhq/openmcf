@@ -68,3 +68,21 @@ output "current_kubernetes_version" {
   description = "The Kubernetes version the control plane is actually running."
   value       = azurerm_kubernetes_cluster.main.current_kubernetes_version
 }
+
+# The CA certificate is public cluster identity (the TLS trust anchor), not
+# credential material. nonsensitive() deliberately unwraps the sensitivity it
+# inherits from the enclosing kube_config attribute so the platform's
+# cluster-connection materializer can read it as a plain stack output -- the
+# same posture as the EKS/GKE CA outputs.
+output "cluster_ca_certificate" {
+  description = "Base64-encoded cluster CA certificate (the standard kubeconfig certificate-authority-data format)."
+  value       = try(nonsensitive(azurerm_kubernetes_cluster.main.kube_config[0].cluster_ca_certificate), "")
+}
+
+# The applicability gate for token-based cluster connections: only an
+# Entra-integrated API server honors short-lived Entra bearer tokens, so the
+# materializer publishes a connection only when this reads "true".
+output "entra_integration_enabled" {
+  description = "\"true\" when the cluster is Entra ID (Azure AD) integrated, else \"false\"."
+  value       = var.spec.azure_active_directory_role_based_access_control != null ? "true" : "false"
+}

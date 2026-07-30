@@ -232,6 +232,23 @@ func TestBuild_AzureAksAmbientMode(t *testing.T) {
 	assert.NotContains(t, env, execcredential.AksClientSecretEnvVar)
 }
 
+// TestBuild_AzureAksAmbientModeWithTenant: the tenant is an identity coordinate,
+// not credential material -- it must travel in ambient mode (steering the minter's
+// chain on multi-tenant hosts) while the credential entries stay omitted.
+func TestBuild_AzureAksAmbientModeWithTenant(t *testing.T) {
+	config := aksConfig()
+	config.AzureAks.ClientId = ""
+	config.AzureAks.ClientSecret = ""
+
+	rendered, err := Build(config, testCredentialCommand)
+	require.NoError(t, err)
+
+	env := execEnvMap(t, parseKubeconfig(t, rendered))
+	assert.Equal(t, "11111111-2222-3333-4444-555555555555", env[execcredential.AksTenantIdEnvVar])
+	assert.NotContains(t, env, execcredential.AksClientIdEnvVar)
+	assert.NotContains(t, env, execcredential.AksClientSecretEnvVar)
+}
+
 // TestBuild_SelfManagedPassthrough: self-managed clusters (kind, on-prem, vSphere,
 // kubeconfig-only clouds) authenticate through the kubeconfig itself; the builder
 // must return it byte-for-byte.

@@ -15,4 +15,6 @@ const (
 	OpKubeletIdentityObjectId    = "kubelet_identity_object_id"
 	OpKubeletIdentityClientId    = "kubelet_identity_client_id"
 	OpCurrentKubernetesVersion   = "current_kubernetes_version"
+	OpClusterCaCertificate       = "cluster_ca_certificate"
+	OpEntraIntegrationEnabled    = "entra_integration_enabled"
 )

@@ -76,8 +76,23 @@ type AzureAksClusterStackOutputs struct {
 	// useful when kubernetes_version was left unset (AKS picked the
 	// latest recommended GA version).
 	CurrentKubernetesVersion string `protobuf:"bytes,13,opt,name=current_kubernetes_version,json=currentKubernetesVersion,proto3" json:"current_kubernetes_version,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Base64-encoded cluster Certificate Authority (CA) certificate -- the
+	// standard kubeconfig certificate-authority-data format. Public cluster
+	// identity (TLS trust anchor), not credential material: it is exported
+	// as a plain value even though the providers derive it from their
+	// sensitive kubeconfig attribute. Consumed (with fqdn) by the platform's
+	// cluster-connection materializer, mirroring the EKS/GKE contract.
+	ClusterCaCertificate string `protobuf:"bytes,14,opt,name=cluster_ca_certificate,json=clusterCaCertificate,proto3" json:"cluster_ca_certificate,omitempty"`
+	// "true" when the cluster is Entra ID (Azure AD) integrated -- i.e. the
+	// spec configures azure_active_directory_role_based_access_control --
+	// else "false". Entra integration is what makes the API server honor
+	// short-lived Entra bearer tokens, so this is the applicability gate the
+	// platform's cluster-connection materializer reads: token-based
+	// connections are only published for Entra-integrated clusters
+	// (local-accounts clusters connect through their kubeconfig instead).
+	EntraIntegrationEnabled string `protobuf:"bytes,15,opt,name=entra_integration_enabled,json=entraIntegrationEnabled,proto3" json:"entra_integration_enabled,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *AzureAksClusterStackOutputs) Reset() {
@@ -201,11 +216,25 @@ func (x *AzureAksClusterStackOutputs) GetCurrentKubernetesVersion() string {
 	return ""
 }
 
+func (x *AzureAksClusterStackOutputs) GetClusterCaCertificate() string {
+	if x != nil {
+		return x.ClusterCaCertificate
+	}
+	return ""
+}
+
+func (x *AzureAksClusterStackOutputs) GetEntraIntegrationEnabled() string {
+	if x != nil {
+		return x.EntraIntegrationEnabled
+	}
+	return ""
+}
+
 var File_dev_planton_provider_azure_azureakscluster_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_azure_azureakscluster_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Adev/planton/provider/azure/azureakscluster/v1/stack_outputs.proto\x12-dev.planton.provider.azure.azureakscluster.v1\"\xee\x04\n" +
+	"Adev/planton/provider/azure/azureakscluster/v1/stack_outputs.proto\x12-dev.planton.provider.azure.azureakscluster.v1\"\xe0\x05\n" +
 	"\x1bAzureAksClusterStackOutputs\x12\x1d\n" +
 	"\n" +
 	"cluster_id\x18\x01 \x01(\tR\tclusterId\x12!\n" +
@@ -222,7 +251,9 @@ const file_dev_planton_provider_azure_azureakscluster_v1_stack_outputs_proto_raw
 	" \x01(\tR\x1aclusterIdentityPrincipalId\x12;\n" +
 	"\x1akubelet_identity_object_id\x18\v \x01(\tR\x17kubeletIdentityObjectId\x12;\n" +
 	"\x1akubelet_identity_client_id\x18\f \x01(\tR\x17kubeletIdentityClientId\x12<\n" +
-	"\x1acurrent_kubernetes_version\x18\r \x01(\tR\x18currentKubernetesVersionB\x84\x03\n" +
+	"\x1acurrent_kubernetes_version\x18\r \x01(\tR\x18currentKubernetesVersion\x124\n" +
+	"\x16cluster_ca_certificate\x18\x0e \x01(\tR\x14clusterCaCertificate\x12:\n" +
+	"\x19entra_integration_enabled\x18\x0f \x01(\tR\x17entraIntegrationEnabledB\x84\x03\n" +
 	"1com.dev.planton.provider.azure.azureakscluster.v1B\x11StackOutputsProtoP\x01Zagithub.com/plantonhq/planton/apis/dev/planton/provider/azure/azureakscluster/v1;azureaksclusterv1\xa2\x02\x05DPPAA\xaa\x02-Dev.Planton.Provider.Azure.Azureakscluster.V1\xca\x02-Dev\\Planton\\Provider\\Azure\\Azureakscluster\\V1\xe2\x029Dev\\Planton\\Provider\\Azure\\Azureakscluster\\V1\\GPBMetadata\xea\x022Dev::Planton::Provider::Azure::Azureakscluster::V1b\x06proto3"
 
 var (

@@ -101,12 +101,17 @@ func buildAzureAks(c *kubernetesprovider.KubernetesProviderConfigAzureAks, crede
 	env := []execEnvVar{
 		{Name: execcredential.ProviderEnvVar, Value: execcredential.ProviderAzureAks},
 	}
+	// The tenant is an identity coordinate, not credential material -- it travels
+	// whenever set, independent of the credential arm: in ambient mode it steers
+	// the minter's chain to the right tenant on multi-tenant hosts.
+	if c.TenantId != "" {
+		env = append(env, execEnvVar{Name: execcredential.AksTenantIdEnvVar, Value: c.TenantId})
+	}
 	// The service-principal credential rides dedicated env entries; omitted entirely
 	// in ambient-chain mode so the helper's own environment is never poisoned with
 	// empty values (same discipline as the EKS arm).
 	if c.ClientSecret != "" {
 		env = append(env,
-			execEnvVar{Name: execcredential.AksTenantIdEnvVar, Value: c.TenantId},
 			execEnvVar{Name: execcredential.AksClientIdEnvVar, Value: c.ClientId},
 			execEnvVar{Name: execcredential.AksClientSecretEnvVar, Value: c.ClientSecret},
 		)

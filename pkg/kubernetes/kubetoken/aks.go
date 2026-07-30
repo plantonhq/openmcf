@@ -27,7 +27,8 @@ const aksTokenScope = aksServerAppID + "/.default"
 // authenticates instead (environment variables, managed identity, Azure CLI login).
 type AksTokenOptions struct {
 	// TenantID is the Entra tenant the service principal lives in. Required whenever
-	// ClientSecret is set; ignored in ambient mode (the chain knows its own tenant).
+	// ClientSecret is set; in ambient mode it optionally steers the chain to a
+	// specific tenant on multi-tenant hosts (empty keeps the chain's own default).
 	TenantID string
 
 	// ClientID identifies the service principal. Required whenever ClientSecret is set.
@@ -51,7 +52,15 @@ func MintAksToken(ctx context.Context, opts AksTokenOptions) (Token, error) {
 	if err != nil {
 		return Token{}, err
 	}
+	return MintAksTokenWithCredential(ctx, cred)
+}
 
+// MintAksTokenWithCredential mints the AKS token from an already-resolved Entra
+// credential -- the seam for callers that obtain their credential elsewhere (the
+// CloudOps Azure client resolves a delegate connection per its own auth mode into
+// an azcore.TokenCredential). Keeping the request here keeps the AKS
+// server-application scope private to this one minting seam.
+func MintAksTokenWithCredential(ctx context.Context, cred azcore.TokenCredential) (Token, error) {
 	token, err := cred.GetToken(ctx, policy.TokenRequestOptions{Scopes: []string{aksTokenScope}})
 	if err != nil {
 		return Token{}, errors.Wrap(err, "requesting an Entra access token for the AKS server application")

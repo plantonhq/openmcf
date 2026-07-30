@@ -230,6 +230,18 @@ func Resources(ctx *pulumi.Context, stackInput *azureaksclusterv1.AzureAksCluste
 	ctx.Export(OpKubeletIdentityObjectId, createdCluster.KubeletIdentity.ObjectId().Elem())
 	ctx.Export(OpKubeletIdentityClientId, createdCluster.KubeletIdentity.ClientId().Elem())
 	ctx.Export(OpCurrentKubernetesVersion, createdCluster.CurrentKubernetesVersion)
+	// The CA certificate is public cluster identity (the TLS trust anchor), not
+	// credential material. The secret flag it inherits from the provider's
+	// sensitive kube_config attribute is deliberately unwrapped so the
+	// platform's cluster-connection materializer can read it as a plain stack
+	// output -- the same posture as the EKS/GKE CA outputs.
+	ctx.Export(OpClusterCaCertificate, pulumi.Unsecret(
+		createdCluster.KubeConfigs.Index(pulumi.Int(0)).ClusterCaCertificate().Elem()))
+	// The applicability gate for token-based cluster connections: only an
+	// Entra-integrated API server honors short-lived Entra bearer tokens, so
+	// the materializer publishes a connection only when this reads "true".
+	ctx.Export(OpEntraIntegrationEnabled,
+		pulumi.String(strconv.FormatBool(spec.AzureActiveDirectoryRoleBasedAccessControl != nil)))
 
 	return nil
 }
