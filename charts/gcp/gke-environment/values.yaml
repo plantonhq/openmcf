@@ -165,6 +165,17 @@ params:
       - roles/monitoring.metricWriter
       - roles/stackdriver.resourceMetadata.writer
 
+  # ─── Kubernetes add-ons ──────────────────────────────────────────────────
+  - name: certManagerEnabled
+    description: >
+      Install Cert-Manager into the cluster in the same run — the proof of
+      one-run composition. The addon binds to the Kubernetes connection the
+      platform materializes when the cluster deploys (slug
+      <env>-<cluster_name>, credential minting delegated to this chart's own
+      GCP connection), so no manual connection setup and no key material.
+    type: bool
+    value: true
+
   # ─── Image registry ──────────────────────────────────────────────────────
   - name: registryEnabled
     description: >
