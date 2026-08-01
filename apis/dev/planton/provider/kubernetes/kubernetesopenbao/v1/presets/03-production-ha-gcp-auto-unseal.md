@@ -1,33 +1,30 @@
-# Production HA with GCP KMS Auto-Unseal
+# Production HA + GCP Cloud KMS auto-unseal preset
 
-This preset deploys OpenBao in high-availability mode with GCP Cloud KMS auto-unseal and GKE Workload Identity. Pods unseal automatically on every restart without human intervention, eliminating the availability gap caused by manual unsealing.
+The production-ha shape with the restart toil removed: the master key
+is wrapped by a Cloud KMS crypto key, so every server unseals ITSELF
+at startup — pod restarts, node replacements and scale events need no
+human with key shares. Credentials follow the keyless-first doctrine:
+the server ServiceAccount is annotated for GKE Workload Identity and
+the GCP service account needs
+`roles/cloudkms.cryptoKeyEncrypterDecrypter` on the crypto key; no
+static credential exists anywhere. (On EKS or AKS, switch the seal arm
+to `awsKms` / `azureKeyVault` and the annotation to the matching
+workload-identity seam.)
 
-## When to Use
+Initialization is STILL a one-time manual step — with auto-unseal it
+produces RECOVERY keys instead of unseal keys (custody them the same
+way; they authorize recovery operations, not unsealing). After that,
+the seal lifecycle is invisible in operation.
 
-- Production GKE deployments where zero-downtime recovery is required
-- Environments that cannot tolerate manual unseal intervention after pod restarts, rolling updates, or node failures
-- Teams already managing GCP KMS keyrings for encryption at rest
+Version horizon, known and accepted: at the pinned OpenBao 2.6.x the
+cloud KMS seals are built in but deprecated upstream — v2.7 moves them
+to external KMS plugins, and the module's rendering will follow when
+the chart pin crosses that line.
 
-## Key Configuration Choices
+Change first: the GCP project/key-ring/crypto-key references and the
+service-account email (a `GcpKmsKey` resource reference composes
+naturally), then everything the production-ha preset says about
+replicas, storage and snapshots.
 
-- **HA mode** with 3 replicas -- uses Raft consensus for leader election and data replication; tolerates 1 node failure
-- **GCP Cloud KMS auto-unseal** -- delegates master key protection to a symmetric encrypt/decrypt key in Cloud KMS; OpenBao encrypts its root key with the KMS key instead of Shamir splitting
-- **GKE Workload Identity** -- the Kubernetes service account is annotated with `iam.gke.io/gcp-service-account` so the pod authenticates to Cloud KMS without credential files
-- **TLS enabled** -- encrypts client-to-server and server-to-server communication
-- **UI enabled** with ingress -- web interface for managing secrets accessible at the specified hostname
-
-## Placeholders to Replace
-
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<gcp-project-id>` | GCP project containing the KMS keyring | GCP Console > Project selector |
-| `<gcp-region>` | Region of the KMS keyring (e.g., `asia-south1`) | GCP Console > KMS > Key rings |
-| `<kms-key-ring-name>` | Name of the KMS keyring | GCP Console > KMS > Key rings |
-| `<kms-crypto-key-name>` | Name of the crypto key within the keyring | GCP Console > KMS > Key ring > Keys |
-| `<gcp-service-account-email>` | GCP service account with `roles/cloudkms.cryptoKeyEncrypterDecrypter` and a Workload Identity binding | GCP Console > IAM > Service Accounts |
-| `<your-openbao.example.com>` | Hostname for the OpenBao UI and API | Your DNS provider |
-
-## Related Presets
-
-- **01-dev-mode** -- Simple single-server deployment for development
-- **02-production-ha** -- HA deployment without auto-unseal (manual Shamir unseal)
+See [03-production-ha-gcp-auto-unseal.yaml](./03-production-ha-gcp-auto-unseal.yaml)
+for the manifest.

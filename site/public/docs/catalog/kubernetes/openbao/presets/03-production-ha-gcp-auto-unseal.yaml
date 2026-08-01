@@ -1,36 +1,39 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenBao
 metadata:
-  name: my-openbao
+  name: openbao
 spec:
   namespace:
     value: openbao
   createNamespace: true
-  serverContainer:
+  server:
+    ha:
+      replicas: 3
     resources:
       requests:
         cpu: 250m
-        memory: 256Mi
+        memory: 512Mi
       limits:
-        cpu: 1000m
+        cpu: "1"
         memory: 1Gi
-    dataStorageSize: "50Gi"
-  highAvailability:
-    enabled: true
-    replicas: 3
+    dataStorage:
+      size: 10Gi
+    auditStorage:
+      size: 10Gi
   autoUnseal:
     gcpKms:
       project:
-        value: "<gcp-project-id>"
-      region: "<gcp-region>"
+        value: my-gcp-project
+      region: global
       keyRing:
-        value: "<kms-key-ring-name>"
+        value: openbao-unseal
       cryptoKey:
-        value: "<kms-crypto-key-name>"
+        value: openbao-unseal-key
       workloadIdentityServiceAccount:
-        value: "<gcp-service-account-email>"
+        value: openbao-unseal@my-gcp-project.iam.gserviceaccount.com
+  serviceAccount:
+    annotations:
+      iam.gke.io/gcp-service-account: openbao-unseal@my-gcp-project.iam.gserviceaccount.com
   uiEnabled: true
-  tlsEnabled: true
-  ingress:
+  metrics:
     enabled: true
-    hostname: "<your-openbao.example.com>"

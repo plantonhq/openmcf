@@ -4,156 +4,667 @@ package dev.planton.provider.kubernetes.kubernetesopenfga.v1;
 
 import "buf/validate/validate.proto";
 import "dev/planton/provider/kubernetes/kubernetes.proto";
-import "dev/planton/provider/kubernetes/kubernetes_secret.proto";
+import "dev/planton/provider/kubernetes/options.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
-import "google/protobuf/descriptor.proto";
-
-extend google.protobuf.FieldOptions {
-  KubernetesOpenFgaContainer default_container = 531001;
-}
+import "dev/planton/shared/options/options.proto";
 
 /**
- * **KubernetesOpenFgaSpec** defines the configuration for deploying OpenFGA on a Kubernetes cluster.
- * This message specifies the parameters needed to create and manage an OpenFGA deployment within a Kubernetes environment.
- * It includes container specifications, ingress settings, and data store configurations to control resource allocation,
- * external access, and backend storage options.
+ * **KubernetesOpenFgaSpec** installs OpenFGA — the CNCF authorization
+ * engine implementing Google-Zanzibar-style relationship-based access
+ * control — from the official `openfga` chart
+ * (https://openfga.github.io/helm-charts, chart 0.3.x = OpenFGA 1.18+).
+ *
+ * This component deploys the ENGINE (the OpenFGA server + its
+ * datastore wiring). Authorization DATA — stores, authorization
+ * models, relationship tuples — is managed through OpenFGA's own API
+ * against the exported endpoints (the platform's OpenFGA provider
+ * kinds OpenFgaStore / OpenFgaAuthorizationModel /
+ * OpenFgaRelationshipTuple compose naturally: deploy the server here,
+ * point an OpenFGA provider credential at `api_http_endpoint`, and
+ * declare the authorization data as first-class resources).
+ *
+ * PLAYGROUND, DELIBERATELY ABSENT: the chart ships its demo
+ * playground ENABLED by default; this module always disables it
+ * (verified at OpenFGA v1.18.1: upstream turned the playground off by
+ * default for security, the server REFUSES TO START when it is
+ * combined with any authentication method, and at this version it
+ * binds pod-local only — the chart's playground Service port cannot
+ * reach it anyway). Evaluate models with the `fga` CLI or the VS Code
+ * extension against the API instead.
+ *
+ * SCHEMA MIGRATIONS run as an init container in every server pod
+ * (`openfga migrate` — idempotent, embedded migrations, no network
+ * fetch). The chart's default hook-Job migration mode is not used:
+ * a post-install hook Job deadlocks engines that wait on rollout
+ * readiness, and its post-delete hook would dial the database during
+ * uninstall.
  */
 message KubernetesOpenFgaSpec {
-  // Kubernetes Namespace
-  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource. NOTE the datastore
+   * password rides a secretKeyRef, which can only read Secrets in
+   * this same namespace — co-locate OpenFGA with its database or
+   * replicate the credential Secret.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
   ];
 
-  // flag to indicate if the namespace should be created
-  bool create_namespace = 3;
-
-  // The container specifications for the OpenFGA deployment.
-  KubernetesOpenFgaContainer container = 4 [(default_container) = {
-    replicas: 1
-    resources: {
-      limits: {
-        cpu: "1000m"
-        memory: "1Gi"
-      }
-      requests: {
-        cpu: "50m"
-        memory: "100Mi"
-      }
-    }
-  }];
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
 
   /**
-   * The ingress configuration for the OpenFGA deployment.
+   * Helm chart version to install (e.g. "0.3.10" = OpenFGA v1.18.1).
+   * Versions must exist in the SERVED index at
+   * https://openfga.github.io/helm-charts.
    */
-  KubernetesOpenFgaIngress ingress = 5;
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "0.3.10"];
 
   /**
-   * The data store configuration for OpenFGA.
-   * This specifies the backend database engine and connection details.
+   * Server replicas. OpenFGA is stateless (all state lives in the
+   * datastore), so replicas scale reads and checks linearly. Ignored
+   * when hpa is enabled (the autoscaler owns the count), and forced
+   * to 1 on the memory datastore (each replica would hold its own
+   * divergent world).
    */
-  KubernetesOpenFgaDataStore datastore = 6 [(buf.validate.field).required = true];
-}
-
-/**
- * **KubernetesOpenFgaContainer** specifies the container configuration for the OpenFGA application.
- * It includes resource allocations for CPU and memory to ensure the application runs efficiently,
- * and the number of replicas for scaling purposes.
- * Recommended defaults: CPU requests - 50m, Memory requests - 256Mi, CPU limits - 1, Memory limits - 1Gi.
- */
-message KubernetesOpenFgaContainer {
-  // The number of OpenFGA replicas to deploy. This determines the level of concurrency and availability.
-  int32 replicas = 1;
-  //The CPU and memory resources allocated to the OpenFGA container.
-  dev.planton.provider.kubernetes.ContainerResources resources = 2;
-}
-
-/**
- * **KubernetesOpenFgaDataStore** represents the configuration for the OpenFGA data store in a Kubernetes deployment.
- * It specifies the type of database engine to use and connection details for connecting to the database.
- * The URI is constructed from these fields in the deployment modules, enabling secure password handling
- * via Kubernetes Secrets.
- */
-message KubernetesOpenFgaDataStore {
-  /**
-   * Specifies the type of data store engine to use.
-   * Allowed values are "mysql" for MySQL database and "postgres" for PostgreSQL database.
-   */
-  string engine = 1 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "spec.datastore.engine"
-      message: 'The datastore engine must be one of "postgres" and "mysql".'
-      expression: 'this in ["postgres", "mysql"]'
+  optional int32 replicas = 4 [
+    (dev.planton.shared.options.default) = "3",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 50
     }
   ];
 
   /**
-   * The hostname or endpoint of the database server.
+   * The datastore backing all authorization data.
    */
-  string host = 2 [(buf.validate.field).required = true];
+  KubernetesOpenFgaDatastore datastore = 5 [(buf.validate.field).required = true];
 
   /**
-   * The port number of the database server.
-   * Defaults to 5432 for PostgreSQL and 3306 for MySQL.
+   * API authentication. Unset = NO authentication — anyone who can
+   * reach the Service can read and write every store. Fine on a lab
+   * cluster, never in production.
    */
-  optional int32 port = 3 [
+  KubernetesOpenFgaAuthn authn = 6;
+
+  /**
+   * Prometheus metrics (chart default on, port 2112) and the
+   * optional ServiceMonitor.
+   */
+  KubernetesOpenFgaMetrics metrics = 7;
+
+  /**
+   * OpenTelemetry trace export.
+   */
+  KubernetesOpenFgaTracing tracing = 8;
+
+  /**
+   * Server log settings.
+   */
+  KubernetesOpenFgaLog log = 9;
+
+  /**
+   * Query limits and performance tuning. Every field maps to a
+   * server flag; empty fields keep the server's own defaults.
+   */
+  KubernetesOpenFgaTuning tuning = 10;
+
+  /**
+   * CPU and memory for the server container. The chart ships NO
+   * defaults at all; these are modest laboratory defaults — size
+   * real installs to check volume.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 11 [(dev.planton.provider.kubernetes.default_container_resources) = {
+    limits: {
+      cpu: "1000m"
+      memory: "512Mi"
+    }
+    requests: {
+      cpu: "100m"
+      memory: "128Mi"
+    }
+  }];
+
+  /**
+   * Horizontal pod autoscaling (CPU/memory targets). Not available on
+   * the memory datastore: the chart pins memory-engine replicas to 1
+   * only while autoscaling is OFF — an HPA would scale pods that each
+   * hold their own divergent authorization world.
+   */
+  KubernetesOpenFgaHpa hpa = 12;
+
+  option (buf.validate.message).cel = {
+    id: "spec.hpa.memory_engine"
+    expression: "!has(this.hpa) || !this.hpa.enabled || !has(this.datastore) || !has(this.datastore.memory)"
+    message: "Autoscaling on the memory datastore scales pods that each hold their own divergent in-memory authorization world — use postgres or mysql to scale out."
+  };
+
+  /**
+   * Pod scheduling constraints.
+   */
+  KubernetesOpenFgaScheduling scheduling = 13;
+
+  /**
+   * Annotations for the server ServiceAccount (the cloud
+   * workload-identity seam).
+   */
+  map<string, string> service_account_annotations = 14;
+
+  /**
+   * Advanced escape hatch: raw Helm values merged LAST (Helm `-f`
+   * semantics) over everything this spec renders — later keys win.
+   * KNOW THIS (verified at chart 0.3.10): the chart ships a CLOSED
+   * values schema (`additionalProperties: false`) — a key the chart
+   * does not define fails the install outright, so this hatch can
+   * only override EXISTING chart values (extraEnvVars for the ~50
+   * server flags without values paths, TLS file wiring, sidecars),
+   * never invent new ones. The module re-pins `fullnameOverride`
+   * after the merge. YAML document as a string.
+   */
+  string helm_values = 15;
+}
+
+/**
+ * The OpenFGA datastore. Exactly one engine.
+ */
+message KubernetesOpenFgaDatastore {
+  oneof engine {
+    /**
+     * PostgreSQL — the recommended production engine. Defaults
+     * compose a KubernetesPostgres resource.
+     */
+    KubernetesOpenFgaPostgres postgres = 1;
+
+    /**
+     * MySQL 8. Defaults compose a KubernetesMysql resource.
+     */
+    KubernetesOpenFgaMysql mysql = 2;
+
+    /**
+     * In-memory — NEVER for real use: data is lost on every restart
+     * and replicas are forced to 1 (each pod would hold its own
+     * divergent authorization world). Exists as the zero-dependency
+     * evaluation arm.
+     */
+    KubernetesOpenFgaMemory memory = 3;
+  }
+
+  /**
+   * How long the schema-migration init container retries an
+   * unreachable database before failing (Go duration; the server's
+   * own default is "1m"). Widen when the database is provisioned
+   * concurrently with OpenFGA (a composed install's normal shape).
+   */
+  optional string migration_timeout = 4 [
+    (dev.planton.shared.options.default) = "3m",
+    (buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(ms|s|m|h)$"
+  ];
+
+  /**
+   * Connection pool: maximum open connections per replica.
+   * Empty = the server default (30).
+   */
+  optional int32 max_open_conns = 5 [(buf.validate.field).int32.gt = 0];
+
+  /**
+   * Connection pool: maximum idle connections per replica.
+   * Empty = the server default (10).
+   */
+  optional int32 max_idle_conns = 6 [(buf.validate.field).int32.gt = 0];
+
+  /**
+   * Maximum idle time for a pooled connection (Go duration).
+   */
+  optional string conn_max_idle_time = 7 [(buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(ms|s|m|h)$"];
+
+  /**
+   * Maximum lifetime of a pooled connection (Go duration).
+   */
+  optional string conn_max_lifetime = 8 [(buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(ms|s|m|h)$"];
+
+  option (buf.validate.message).cel = {
+    id: "spec.datastore.engine.required"
+    expression: "has(this.postgres) || has(this.mysql) || has(this.memory)"
+    message: "Pick a datastore engine: postgres (recommended), mysql, or memory (evaluation only)."
+  };
+}
+
+/**
+ * PostgreSQL datastore connection. The module renders the connection
+ * URI WITHOUT credentials and wires username/password as separate
+ * environment variables read from the Secret (the server gives
+ * flag-supplied credentials precedence over URI-embedded ones) —
+ * nothing credential-bearing ever lands in rendered Helm values.
+ */
+message KubernetesOpenFgaPostgres {
+  /**
+   * PostgreSQL host — a Service name (same namespace) or a full FQDN
+   * (cross-namespace or external). Accepts a literal or a reference
+   * to a KubernetesPostgres resource (its read-write Service —
+   * always the current primary). The port is declared separately.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.rw_service"
+  ];
+
+  /**
+   * PostgreSQL port. Empty = 5432.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "5432",
     (buf.validate.field).int32.gt = 0,
     (buf.validate.field).int32.lte = 65535
   ];
 
   /**
-   * The name of the database to connect to.
+   * Database to hold the OpenFGA schema (on a KubernetesPostgres:
+   * declare it at bootstrap via initdb, e.g. "openfga").
    */
-  string database = 4 [(buf.validate.field).required = true];
+  string database = 3 [(buf.validate.field).required = true];
 
   /**
-   * The username for authenticating to the database.
+   * Database username (on a KubernetesPostgres this is the bootstrap
+   * owner role — ownership covers everything the migrations need).
    */
-  string username = 5 [(buf.validate.field).required = true];
+  string username = 4 [(buf.validate.field).required = true];
 
   /**
-   * The password for authenticating to the database.
-   * Can be provided either as a plain string value or as a reference to an existing Kubernetes Secret.
-   *
-   * Using a secret reference is recommended for production deployments:
-   * ```yaml
-   * password:
-   *   secretRef:
-   *     name: openfga-db-credentials
-   *     key: password
-   * ```
-   *
-   * For development/testing, a plain string value can be used:
-   * ```yaml
-   * password:
-   *   stringValue: my-password
-   * ```
+   * The user's password, read from an existing Secret.
    */
-  dev.planton.provider.kubernetes.KubernetesSensitiveValue password = 6 [(buf.validate.field).required = true];
+  KubernetesOpenFgaPasswordSecret password_secret = 5 [(buf.validate.field).required = true];
 
   /**
-   * Whether to use SSL/TLS connection to the database.
-   * When enabled, adds sslmode=require (for PostgreSQL) or tls=true (for MySQL) to the connection string.
+   * Postgres sslmode for the connection (disable, require,
+   * verify-ca, verify-full). Empty = "disable" — the in-cluster
+   * plaintext default; set verify-full for external/managed
+   * databases.
    */
-  bool is_secure = 7;
+  optional string ssl_mode = 6 [
+    (dev.planton.shared.options.default) = "disable",
+    (buf.validate.field).cel = {
+      id: "spec.datastore.postgres.ssl_mode"
+      message: "sslmode must be one of: disable, require, verify-ca, verify-full."
+      expression: "this in [\"disable\", \"require\", \"verify-ca\", \"verify-full\"]"
+    }
+  ];
 }
 
 /**
- * KubernetesOpenFgaIngress defines the ingress configuration for OpenFGA.
+ * MySQL datastore connection (same credential mechanics as postgres).
  */
-message KubernetesOpenFgaIngress {
-  // Flag to enable or disable ingress.
-  bool enabled = 1;
+message KubernetesOpenFgaMysql {
+  /**
+   * MySQL host — a Service name (same namespace) or a full FQDN.
+   * Accepts a literal or a reference to a KubernetesMysql resource
+   * (its primary Service — writes always land on the current
+   * primary). The port is declared separately.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesMysql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_service"
+  ];
 
-  // The full hostname for external access (e.g., "openfga.example.com").
-  // Required when enabled is true.
-  string hostname = 2;
+  /**
+   * MySQL port. Empty = 3306.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "3306",
+    (buf.validate.field).int32.gt = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  /**
+   * Database to hold the OpenFGA schema.
+   */
+  string database = 3 [(buf.validate.field).required = true];
+
+  /**
+   * Database username.
+   */
+  string username = 4 [(buf.validate.field).required = true];
+
+  /**
+   * The user's password, read from an existing Secret.
+   */
+  KubernetesOpenFgaPasswordSecret password_secret = 5 [(buf.validate.field).required = true];
+}
+
+/** In-memory datastore marker (see the engine comment). */
+message KubernetesOpenFgaMemory {}
+
+/**
+ * A password read from an existing Kubernetes Secret. Defaults
+ * compose a KubernetesPostgres resource's application-user Secret.
+ */
+message KubernetesOpenFgaPasswordSecret {
+  /**
+   * Secret name. Accepts a literal or a reference to a
+   * KubernetesPostgres resource (its `<cluster>-app` credential
+   * Secret, maintained by the operator across failovers). KNOW THIS
+   * (a Kubernetes constraint, not a chart one): a secretKeyRef can
+   * only read Secrets in the workload's OWN namespace — co-locate
+   * OpenFGA with its database or replicate the Secret.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.password_secret.name"
+  ];
+
+  /**
+   * Key within the Secret holding the password. Empty = "password"
+   * (the key a KubernetesPostgres application Secret uses).
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * API authentication. Exactly one method when set.
+ */
+message KubernetesOpenFgaAuthn {
+  oneof method {
+    /**
+     * Static pre-shared API keys sent as `Authorization: Bearer <key>`.
+     */
+    KubernetesOpenFgaPresharedAuthn preshared = 1;
+
+    /**
+     * OIDC bearer tokens validated against an issuer.
+     */
+    KubernetesOpenFgaOidcAuthn oidc = 2;
+  }
+}
+
+/**
+ * Pre-shared-key authentication. Keys reach the server through a
+ * Kubernetes Secret in BOTH arms — the chart's plain-values key list
+ * (which renders keys into the Deployment manifest) is deliberately
+ * not modeled.
+ */
+message KubernetesOpenFgaPresharedAuthn {
+  /**
+   * Declare keys here and the module materializes them into a
+   * module-owned Secret (`<name>-authn-keys`) before the release;
+   * only the Secret NAME ever renders. Mutually exclusive with
+   * existing_keys_secret_name.
+   */
+  repeated string keys = 1 [(dev.planton.shared.options.sensitive) = true];
+
+  /**
+   * OR reference an existing Secret carrying the comma-separated key
+   * list under the data key `keys` (the chart's contract).
+   */
+  string existing_keys_secret_name = 2;
 
   option (buf.validate.message).cel = {
-    id: "spec.ingress.hostname.required"
-    expression: "!this.enabled || size(this.hostname) > 0"
-    message: "hostname is required when ingress is enabled"
+    id: "spec.authn.preshared.exactly_one_arm"
+    expression: "(size(this.keys) > 0) != (size(this.existing_keys_secret_name) > 0)"
+    message: "Provide the API keys exactly one way: declare them in `keys` (materialized into a managed Secret) or point `existing_keys_secret_name` at a Secret you maintain."
   };
+}
+
+/**
+ * OIDC authentication. The server hard-fails at startup when either
+ * field is empty (verified at v1.18.1 — audience validation became
+ * mandatory as a security fix), so both are required here.
+ */
+message KubernetesOpenFgaOidcAuthn {
+  /**
+   * Issuer URL (the server fetches its JWKS for token validation).
+   */
+  string issuer = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uri = true
+  ];
+
+  /**
+   * Required `aud` claim value.
+   */
+  string audience = 2 [(buf.validate.field).required = true];
+}
+
+/** Prometheus metrics. */
+message KubernetesOpenFgaMetrics {
+  /**
+   * Serve /metrics on port 2112. Empty = true (the chart default).
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Also create a ServiceMonitor (requires the Prometheus Operator
+   * CRDs on the cluster; the install FAILS without them).
+   */
+  bool service_monitor_enabled = 2;
+
+  /**
+   * Export per-RPC latency histograms (higher cardinality, better
+   * latency visibility).
+   */
+  bool enable_rpc_histograms = 3;
+}
+
+/** OpenTelemetry trace export. */
+message KubernetesOpenFgaTracing {
+  /**
+   * Enable OTLP trace export.
+   */
+  bool enabled = 1;
+
+  /**
+   * OTLP gRPC endpoint (host:port, e.g. a KubernetesOtelCollector or
+   * KubernetesSignoz collector Service). Required when enabled.
+   */
+  string otlp_endpoint = 2;
+
+  /**
+   * Sampling ratio 0.0–1.0. Empty = the server default (0.2).
+   */
+  optional string sample_ratio = 3 [(buf.validate.field).string.pattern = "^(0(\\.\\d+)?|1(\\.0+)?)$"];
+
+  option (buf.validate.message).cel = {
+    id: "spec.tracing.otlp_endpoint.required"
+    expression: "!this.enabled || size(this.otlp_endpoint) > 0"
+    message: "Tracing needs somewhere to send spans — set otlp_endpoint (host:port of an OTLP gRPC collector) when tracing is enabled."
+  };
+}
+
+/** Server log settings. */
+message KubernetesOpenFgaLog {
+  /**
+   * Log level: debug, info (default), warn, error, panic, fatal.
+   * The OpenFGA server itself also accepts "none", but the Helm chart's
+   * closed values schema rejects it, so it is not offered here.
+   */
+  optional string level = 1 [
+    (dev.planton.shared.options.default) = "info",
+    (buf.validate.field).cel = {
+      id: "spec.log.level"
+      message: "Log level must be one of: debug, info, warn, error, panic, fatal."
+      expression: "this in [\"debug\", \"info\", \"warn\", \"error\", \"panic\", \"fatal\"]"
+    }
+  ];
+
+  /**
+   * Log format: json (default) or text.
+   */
+  optional string format = 2 [
+    (dev.planton.shared.options.default) = "json",
+    (buf.validate.field).cel = {
+      id: "spec.log.format"
+      message: "Log format must be either \"json\" or \"text\"."
+      expression: "this in [\"json\", \"text\"]"
+    }
+  ];
+}
+
+/**
+ * Query limits and performance tuning. Empty fields keep the
+ * server's own defaults (noted per field, verified at v1.18.1).
+ */
+message KubernetesOpenFgaTuning {
+  /**
+   * Maximum tuples per single Write call. Server default: 100.
+   */
+  optional int32 max_tuples_per_write = 1 [(buf.validate.field).int32.gt = 0];
+
+  /**
+   * Maximum type definitions per authorization model. Server
+   * default: 100.
+   */
+  optional int32 max_types_per_authorization_model = 2 [(buf.validate.field).int32.gt = 0];
+
+  /**
+   * Maximum checks in one BatchCheck call. Server default: 50.
+   */
+  optional int32 max_checks_per_batch_check = 3 [(buf.validate.field).int32.gt = 0];
+
+  /**
+   * Deadline for ListObjects queries (Go duration). Server
+   * default: "3s".
+   */
+  optional string list_objects_deadline = 4 [(buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(ms|s|m|h)$"];
+
+  /**
+   * Maximum results from ListObjects. Server default: 1000.
+   */
+  optional int32 list_objects_max_results = 5 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * Deadline for ListUsers queries (Go duration). Server
+   * default: "3s".
+   */
+  optional string list_users_deadline = 6 [(buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(ms|s|m|h)$"];
+
+  /**
+   * Maximum results from ListUsers. Server default: 1000.
+   */
+  optional int32 list_users_max_results = 7 [(buf.validate.field).int32.gte = 0];
+
+  /**
+   * Global request timeout (Go duration). Server default: "3s".
+   */
+  optional string request_timeout = 8 [(buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(ms|s|m|h)$"];
+
+  /**
+   * Cache Check results for hot authorization paths.
+   */
+  KubernetesOpenFgaCheckQueryCache check_query_cache = 9;
+
+  /**
+   * Experimental server features. The chart's CLOSED values schema
+   * accepts exactly these four (the server knows more, but anything
+   * else fails the install with an opaque schema error — validated
+   * here instead): enable-check-optimizations, enable-access-control,
+   * enable-list-objects-optimizations, pipeline_list_objects.
+   * KNOW THIS (server contract at v1.18.1): the list REPLACES the
+   * server's own default experimental set (which ships
+   * "pipeline_list_objects" enabled) — declaring any value here drops
+   * the defaults unless you re-list them.
+   */
+  repeated string experimentals = 10 [(buf.validate.field).cel = {
+    id: "spec.tuning.experimentals"
+    message: "The chart's closed values schema accepts only: enable-check-optimizations, enable-access-control, enable-list-objects-optimizations, pipeline_list_objects."
+    expression: "this.all(f, f in [\"enable-check-optimizations\", \"enable-access-control\", \"enable-list-objects-optimizations\", \"pipeline_list_objects\"])"
+  }];
+}
+
+/** Check-result caching. */
+message KubernetesOpenFgaCheckQueryCache {
+  /**
+   * Enable the cache. Trades authorization-change propagation delay
+   * (up to ttl) for large Check throughput gains.
+   */
+  bool enabled = 1;
+
+  /**
+   * Maximum cached entries. Empty = the server default (10000).
+   */
+  optional int32 limit = 2 [(buf.validate.field).int32.gt = 0];
+
+  /**
+   * Entry time-to-live (Go duration). Empty = the server
+   * default ("10s").
+   */
+  optional string ttl = 3 [(buf.validate.field).string.pattern = "^\\d+(\\.\\d+)?(ms|s|m|h)$"];
+}
+
+/** Horizontal pod autoscaling. */
+message KubernetesOpenFgaHpa {
+  /**
+   * Enable the HorizontalPodAutoscaler (replicas then belongs to the
+   * autoscaler).
+   */
+  bool enabled = 1;
+
+  /**
+   * Minimum replicas. Empty = 1.
+   */
+  optional int32 min_replicas = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Maximum replicas. Empty = 10 (the platform default; the chart's
+   * own fallback when nothing renders is 100).
+   */
+  optional int32 max_replicas = 3 [
+    (dev.planton.shared.options.default) = "10",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Target average CPU utilization percent. Empty = 80.
+   */
+  optional int32 target_cpu_utilization_percent = 4 [
+    (dev.planton.shared.options.default) = "80",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 100
+    }
+  ];
+
+  /**
+   * Target average memory utilization percent. Empty = 80.
+   */
+  optional int32 target_memory_utilization_percent = 5 [
+    (dev.planton.shared.options.default) = "80",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 100
+    }
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "spec.hpa.replica_bounds"
+    expression: "!this.enabled || !has(this.min_replicas) || !has(this.max_replicas) || this.min_replicas <= this.max_replicas"
+    message: "The autoscaler's minimum replica count cannot exceed its maximum."
+  };
+}
+
+/** Pod scheduling constraints. */
+message KubernetesOpenFgaScheduling {
+  /**
+   * Schedule onto nodes carrying these labels.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for tainted nodes.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
 }

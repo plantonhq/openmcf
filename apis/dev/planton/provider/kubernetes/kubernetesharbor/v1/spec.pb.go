@@ -13,7 +13,6 @@ import (
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -27,106 +26,187 @@ const (
 )
 
 // *
-// **KubernetesHarborStorageType** enumerates the supported storage backends for Harbor artifacts.
-type KubernetesHarborStorageType int32
-
-const (
-	// unspecified should not be used
-	KubernetesHarborStorageType_kubernetes_harbor_storage_type_unspecified KubernetesHarborStorageType = 0
-	// Filesystem storage (PVC) - suitable for development only, not recommended for production HA
-	KubernetesHarborStorageType_filesystem KubernetesHarborStorageType = 1
-	// AWS S3 or S3-compatible object storage
-	KubernetesHarborStorageType_s3 KubernetesHarborStorageType = 2
-	// Google Cloud Storage
-	KubernetesHarborStorageType_gcs KubernetesHarborStorageType = 3
-	// Azure Blob Storage
-	KubernetesHarborStorageType_azure KubernetesHarborStorageType = 4
-	// Alibaba Cloud OSS
-	KubernetesHarborStorageType_oss KubernetesHarborStorageType = 5
-)
-
-// Enum value maps for KubernetesHarborStorageType.
-var (
-	KubernetesHarborStorageType_name = map[int32]string{
-		0: "kubernetes_harbor_storage_type_unspecified",
-		1: "filesystem",
-		2: "s3",
-		3: "gcs",
-		4: "azure",
-		5: "oss",
-	}
-	KubernetesHarborStorageType_value = map[string]int32{
-		"kubernetes_harbor_storage_type_unspecified": 0,
-		"filesystem": 1,
-		"s3":         2,
-		"gcs":        3,
-		"azure":      4,
-		"oss":        5,
-	}
-)
-
-func (x KubernetesHarborStorageType) Enum() *KubernetesHarborStorageType {
-	p := new(KubernetesHarborStorageType)
-	*p = x
-	return p
-}
-
-func (x KubernetesHarborStorageType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (KubernetesHarborStorageType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_enumTypes[0].Descriptor()
-}
-
-func (KubernetesHarborStorageType) Type() protoreflect.EnumType {
-	return &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_enumTypes[0]
-}
-
-func (x KubernetesHarborStorageType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use KubernetesHarborStorageType.Descriptor instead.
-func (KubernetesHarborStorageType) EnumDescriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{0}
-}
-
-// *
-// **KubernetesHarborSpec** defines the configuration for deploying Harbor cloud-native registry on Kubernetes.
-// Harbor is an open source registry that secures artifacts with policies and role-based access control,
-// ensures images are scanned and free from vulnerabilities, and signs images as trusted.
-// This spec supports both self-managed and external PostgreSQL and Redis configurations, enabling flexible
-// deployment patterns from simple single-node installations to production-grade high-availability clusters.
+// **KubernetesHarborSpec** installs Harbor — the CNCF-graduated
+// container registry that stores, signs, and scans OCI artifacts —
+// from the official `harbor` chart (https://helm.goharbor.io,
+// chart 1.19.x = Harbor 2.15.x).
+//
+// Harbor renders as a set of cooperating components: core (API +
+// auth), portal (web UI), registry (the OCI distribution backend,
+// with its registryctl sidecar deployment), jobservice (replication,
+// GC, scan jobs), the Trivy vulnerability scanner (on by default),
+// an optional Prometheus exporter, and an nginx front door that
+// terminates client traffic for every exposure mode this component
+// models. State lives in PostgreSQL, Redis, and the artifact storage
+// backend — each with an in-cluster arm for evaluation and an
+// external arm for production composition.
+//
+// CREDENTIALS ARE NEVER THE CHART DEFAULTS: the chart's documented
+// defaults (`Harbor12345` admin password, `changeit` database
+// password, `not-a-secure-key` encryption key,
+// `harbor_registry_user/harbor_registry_password` internal registry
+// credential) are public knowledge and never ship. Every internal
+// credential is generated per-install and delivered through
+// module-owned Secrets; the admin password is exported as the
+// `admin_password_secret` output — the credential handle.
+//
+// EXPOSURE COMPOSES (never embedded): this component always deploys
+// the chart's nginx proxy front door behind a ClusterIP, NodePort,
+// or LoadBalancer Service. The chart's `ingress` and Gateway API
+// `route` exposure types are deliberately not modeled — north-south
+// exposure composes from the catalog's exposure kinds pointed at the
+// exported front-door Service.
 type KubernetesHarborSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// The container specifications for Harbor Core (API server, authentication, webhook).
-	CoreContainer *KubernetesHarborContainer `protobuf:"bytes,4,opt,name=core_container,json=coreContainer,proto3" json:"core_container,omitempty"`
-	// The container specifications for Harbor Portal (web UI).
-	PortalContainer *KubernetesHarborContainer `protobuf:"bytes,5,opt,name=portal_container,json=portalContainer,proto3" json:"portal_container,omitempty"`
-	// The container specifications for Harbor Registry (Docker/OCI registry backend).
-	RegistryContainer *KubernetesHarborContainer `protobuf:"bytes,6,opt,name=registry_container,json=registryContainer,proto3" json:"registry_container,omitempty"`
-	// The container specifications for Harbor Jobservice (background job execution).
-	JobserviceContainer *KubernetesHarborContainer `protobuf:"bytes,7,opt,name=jobservice_container,json=jobserviceContainer,proto3" json:"jobservice_container,omitempty"`
-	// The database configuration for Harbor, supporting both self-managed and external PostgreSQL.
-	Database *KubernetesHarborDatabaseConfig `protobuf:"bytes,8,opt,name=database,proto3" json:"database,omitempty"`
-	// The cache configuration for Harbor, supporting both self-managed and external Redis.
-	Cache *KubernetesHarborCacheConfig `protobuf:"bytes,9,opt,name=cache,proto3" json:"cache,omitempty"`
-	// The object storage configuration for Harbor artifact storage.
-	Storage *KubernetesHarborStorageConfig `protobuf:"bytes,10,opt,name=storage,proto3" json:"storage,omitempty"`
-	// The ingress configuration for Harbor UI and registry endpoints.
-	Ingress *KubernetesHarborIngress `protobuf:"bytes,11,opt,name=ingress,proto3" json:"ingress,omitempty"`
 	// *
-	// A map of key-value pairs that provide additional customization options for the Harbor Helm chart.
-	// These values allow for further refinement of the deployment, such as enabling Trivy scanner,
-	// configuring Notary for image signing, or customizing authentication providers.
-	// For detailed information on available options, refer to the Helm chart documentation at:
-	// https://github.com/goharbor/harbor-helm
-	HelmValues    map[string]string `protobuf:"bytes,12,rep,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Namespace to install into. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource. NOTE the external
+	// database/cache credential Secrets are read from this same
+	// namespace (a Kubernetes constraint: secretKeyRef and the chart's
+	// template-time Secret reads are namespace-local) — co-locate
+	// Harbor with its database or replicate the credential Secret.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the
+	// resource. When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (e.g. "1.19.1" = Harbor 2.15.1).
+	// Versions must exist in the SERVED index at
+	// https://helm.goharbor.io.
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// The URL clients use to reach this Harbor —
+	// `protocol://host[:port]`, no trailing slash. THIS IS LOAD-BEARING
+	// FOR PUSHES AND PULLS, not a display setting: Harbor embeds it in
+	// the token-service URL returned to every OCI client, so `docker
+	// login/push/pull` FAIL AUTH when the address the client dialed
+	// does not match this value. Set it to the address the exposure in
+	// front of this component actually serves (the composed ingress /
+	// gateway hostname, the LoadBalancer address, or
+	// `http://localhost:<port>` for port-forward access). An `https://`
+	// URL with `expose.tls` disabled is legitimate exactly when TLS
+	// terminates in front of Harbor (composed ingress or cloud LB).
+	ExternalUrl string `protobuf:"bytes,4,opt,name=external_url,json=externalUrl,proto3" json:"external_url,omitempty"`
+	// *
+	// How the front door is exposed inside the cluster. Empty = a
+	// ClusterIP Service (compose exposure kinds in front of it).
+	Expose *KubernetesHarborExpose `protobuf:"bytes,5,opt,name=expose,proto3" json:"expose,omitempty"`
+	// *
+	// Admin ("admin" user) password source. Unset = the module
+	// GENERATES a random password and exports it via the
+	// `admin_password_secret` output — the recommended posture.
+	AdminAuth *KubernetesHarborAdminAuth `protobuf:"bytes,6,opt,name=admin_auth,json=adminAuth,proto3" json:"admin_auth,omitempty"`
+	// *
+	// The PostgreSQL database holding Harbor's metadata (projects,
+	// users, artifacts, scan results). Exactly one arm.
+	Database *KubernetesHarborDatabase `protobuf:"bytes,7,opt,name=database,proto3" json:"database,omitempty"`
+	// *
+	// The Redis cache backing sessions, job queues, and manifest
+	// caching. Exactly one arm.
+	Cache *KubernetesHarborCache `protobuf:"bytes,8,opt,name=cache,proto3" json:"cache,omitempty"`
+	// *
+	// Where the registry stores artifact blobs. Exactly one backend.
+	Storage *KubernetesHarborArtifactStorage `protobuf:"bytes,9,opt,name=storage,proto3" json:"storage,omitempty"`
+	// *
+	// The Trivy vulnerability scanner. Unset = ENABLED with the
+	// chart's defaults (Trivy is Harbor's built-in scanner and the
+	// chart ships it on) — set `enabled: false` to run scannerless.
+	Trivy *KubernetesHarborTrivy `protobuf:"bytes,10,opt,name=trivy,proto3" json:"trivy,omitempty"`
+	// *
+	// Sizing for the core component (API server, auth, webhooks).
+	// First-boot schema migrations run inside core's startup window —
+	// upstream budgets the startup probe at 360 × 10s.
+	Core *KubernetesHarborComponent `protobuf:"bytes,11,opt,name=core,proto3" json:"core,omitempty"`
+	// * Sizing for the portal component (web UI).
+	Portal *KubernetesHarborComponent `protobuf:"bytes,12,opt,name=portal,proto3" json:"portal,omitempty"`
+	// *
+	// Sizing for the registry component (the OCI distribution backend
+	// + its registryctl controller container). More than one replica
+	// on the `filesystem` storage backend requires the PVC access mode
+	// to be ReadWriteMany — enforced at validation.
+	Registry *KubernetesHarborComponent `protobuf:"bytes,13,opt,name=registry,proto3" json:"registry,omitempty"`
+	// * Sizing and job tuning for the jobservice component.
+	Jobservice *KubernetesHarborJobservice `protobuf:"bytes,14,opt,name=jobservice,proto3" json:"jobservice,omitempty"`
+	// *
+	// Sizing for the nginx front door (always deployed — it terminates
+	// client traffic for every exposure mode this component models).
+	Nginx *KubernetesHarborComponent `protobuf:"bytes,15,opt,name=nginx,proto3" json:"nginx,omitempty"`
+	// *
+	// TLS between Harbor's own components (core ↔ registry ↔
+	// jobservice ↔ portal ↔ trivy). Off by default — the usual
+	// in-cluster posture.
+	InternalTls *KubernetesHarborInternalTls `protobuf:"bytes,16,opt,name=internal_tls,json=internalTls,proto3" json:"internal_tls,omitempty"`
+	// *
+	// Prometheus metrics for core/registry/jobservice plus the
+	// dedicated exporter Deployment, and the optional ServiceMonitor.
+	Metrics *KubernetesHarborMetrics `protobuf:"bytes,17,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	// *
+	// The optional Redis-backed manifest/metadata cache layer
+	// (improves high-concurrency pull performance). Off by default
+	// (chart truth).
+	CacheLayer *KubernetesHarborCacheLayer `protobuf:"bytes,18,opt,name=cache_layer,json=cacheLayer,proto3" json:"cache_layer,omitempty"`
+	// *
+	// Outbound proxy for Trivy database updates and replication to
+	// registries that cannot be reached directly.
+	OutboundProxy *KubernetesHarborOutboundProxy `protobuf:"bytes,19,opt,name=outbound_proxy,json=outboundProxy,proto3" json:"outbound_proxy,omitempty"`
+	// *
+	// Component log level. Empty = "info".
+	LogLevel *string `protobuf:"bytes,20,opt,name=log_level,json=logLevel,proto3,oneof" json:"log_level,omitempty"`
+	// *
+	// Registry mirror for AIR-GAPPED installs: rewrites the registry
+	// host of every component image (the chart pins all components to
+	// `docker.io/goharbor/<component>:v<appVersion>`; this replaces
+	// `docker.io` — e.g. "mirror.example.com" pulls
+	// `mirror.example.com/goharbor/harbor-core:...`). The image
+	// REPOSITORY PATHS and TAGS stay chart-truth; mirror the
+	// goharbor/* images under the same paths.
+	ImageRegistry *string `protobuf:"bytes,21,opt,name=image_registry,json=imageRegistry,proto3,oneof" json:"image_registry,omitempty"`
+	// *
+	// Names of existing imagePullSecrets to attach to every component
+	// pod (for the mirror above or Docker Hub rate limits). The
+	// Secrets must already exist in the install namespace.
+	ImagePullSecrets []string `protobuf:"bytes,22,rep,name=image_pull_secrets,json=imagePullSecrets,proto3" json:"image_pull_secrets,omitempty"`
+	// *
+	// Name of an existing Secret carrying a `ca.crt` key, injected
+	// into the trust store of core/jobservice/registry/trivy — for
+	// artifact storage or replication endpoints serving self-signed
+	// certificates.
+	CaBundleSecretName *string `protobuf:"bytes,23,opt,name=ca_bundle_secret_name,json=caBundleSecretName,proto3,oneof" json:"ca_bundle_secret_name,omitempty"`
+	// *
+	// Keep the registry and jobservice PVCs when this resource is
+	// destroyed. Empty = TRUE (chart truth: the chart stamps
+	// `helm.sh/resource-policy: keep` on both PVCs by default, so
+	// artifact blobs and job logs survive uninstall for a reinstall to
+	// adopt). KNOW THIS: the INTERNAL database and Redis volumes are
+	// StatefulSet-template PVCs that Helm NEVER deletes regardless of
+	// this setting — plan on sweeping them explicitly when retiring an
+	// install for good.
+	KeepVolumesOnUninstall *bool `protobuf:"varint,24,opt,name=keep_volumes_on_uninstall,json=keepVolumesOnUninstall,proto3,oneof" json:"keep_volumes_on_uninstall,omitempty"`
+	// *
+	// Rollout strategy for the components with persistent volumes
+	// (registry, jobservice). Empty = "RollingUpdate". Set "Recreate"
+	// when their PVC access mode is ReadWriteOnce and the storage
+	// class cannot multi-attach — a rolling update would wedge the new
+	// pod on volume attach.
+	UpdateStrategy *string `protobuf:"bytes,25,opt,name=update_strategy,json=updateStrategy,proto3,oneof" json:"update_strategy,omitempty"`
+	// *
+	// Pod scheduling constraints, applied to EVERY Harbor component
+	// (core, portal, registry, jobservice, trivy, nginx, exporter, and
+	// the internal database/redis when those arms are active) — split
+	// placement would separate components that share volumes and
+	// fail over together. Per-component placement rides helm_values.
+	Scheduling *KubernetesHarborScheduling `protobuf:"bytes,26,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
+	// *
+	// Advanced escape hatch: raw Helm values merged LAST (Helm `-f`
+	// semantics) over everything this spec renders — later keys win.
+	// Use it for surfaces deliberately not modeled (per-component
+	// probes/placement, swift/oss storage backends, GDPR knobs, trace
+	// export, registry middleware). The module re-pins
+	// `fullnameOverride` and the exposure Service name after the
+	// merge. YAML document as a string.
+	HelmValues    string `protobuf:"bytes,27,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -175,98 +255,233 @@ func (x *KubernetesHarborSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesHarborSpec) GetCoreContainer() *KubernetesHarborContainer {
+func (x *KubernetesHarborSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
+	}
+	return ""
+}
+
+func (x *KubernetesHarborSpec) GetExternalUrl() string {
 	if x != nil {
-		return x.CoreContainer
+		return x.ExternalUrl
+	}
+	return ""
+}
+
+func (x *KubernetesHarborSpec) GetExpose() *KubernetesHarborExpose {
+	if x != nil {
+		return x.Expose
 	}
 	return nil
 }
 
-func (x *KubernetesHarborSpec) GetPortalContainer() *KubernetesHarborContainer {
+func (x *KubernetesHarborSpec) GetAdminAuth() *KubernetesHarborAdminAuth {
 	if x != nil {
-		return x.PortalContainer
+		return x.AdminAuth
 	}
 	return nil
 }
 
-func (x *KubernetesHarborSpec) GetRegistryContainer() *KubernetesHarborContainer {
-	if x != nil {
-		return x.RegistryContainer
-	}
-	return nil
-}
-
-func (x *KubernetesHarborSpec) GetJobserviceContainer() *KubernetesHarborContainer {
-	if x != nil {
-		return x.JobserviceContainer
-	}
-	return nil
-}
-
-func (x *KubernetesHarborSpec) GetDatabase() *KubernetesHarborDatabaseConfig {
+func (x *KubernetesHarborSpec) GetDatabase() *KubernetesHarborDatabase {
 	if x != nil {
 		return x.Database
 	}
 	return nil
 }
 
-func (x *KubernetesHarborSpec) GetCache() *KubernetesHarborCacheConfig {
+func (x *KubernetesHarborSpec) GetCache() *KubernetesHarborCache {
 	if x != nil {
 		return x.Cache
 	}
 	return nil
 }
 
-func (x *KubernetesHarborSpec) GetStorage() *KubernetesHarborStorageConfig {
+func (x *KubernetesHarborSpec) GetStorage() *KubernetesHarborArtifactStorage {
 	if x != nil {
 		return x.Storage
 	}
 	return nil
 }
 
-func (x *KubernetesHarborSpec) GetIngress() *KubernetesHarborIngress {
+func (x *KubernetesHarborSpec) GetTrivy() *KubernetesHarborTrivy {
 	if x != nil {
-		return x.Ingress
+		return x.Trivy
 	}
 	return nil
 }
 
-func (x *KubernetesHarborSpec) GetHelmValues() map[string]string {
+func (x *KubernetesHarborSpec) GetCore() *KubernetesHarborComponent {
+	if x != nil {
+		return x.Core
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetPortal() *KubernetesHarborComponent {
+	if x != nil {
+		return x.Portal
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetRegistry() *KubernetesHarborComponent {
+	if x != nil {
+		return x.Registry
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetJobservice() *KubernetesHarborJobservice {
+	if x != nil {
+		return x.Jobservice
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetNginx() *KubernetesHarborComponent {
+	if x != nil {
+		return x.Nginx
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetInternalTls() *KubernetesHarborInternalTls {
+	if x != nil {
+		return x.InternalTls
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetMetrics() *KubernetesHarborMetrics {
+	if x != nil {
+		return x.Metrics
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetCacheLayer() *KubernetesHarborCacheLayer {
+	if x != nil {
+		return x.CacheLayer
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetOutboundProxy() *KubernetesHarborOutboundProxy {
+	if x != nil {
+		return x.OutboundProxy
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetLogLevel() string {
+	if x != nil && x.LogLevel != nil {
+		return *x.LogLevel
+	}
+	return ""
+}
+
+func (x *KubernetesHarborSpec) GetImageRegistry() string {
+	if x != nil && x.ImageRegistry != nil {
+		return *x.ImageRegistry
+	}
+	return ""
+}
+
+func (x *KubernetesHarborSpec) GetImagePullSecrets() []string {
+	if x != nil {
+		return x.ImagePullSecrets
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetCaBundleSecretName() string {
+	if x != nil && x.CaBundleSecretName != nil {
+		return *x.CaBundleSecretName
+	}
+	return ""
+}
+
+func (x *KubernetesHarborSpec) GetKeepVolumesOnUninstall() bool {
+	if x != nil && x.KeepVolumesOnUninstall != nil {
+		return *x.KeepVolumesOnUninstall
+	}
+	return false
+}
+
+func (x *KubernetesHarborSpec) GetUpdateStrategy() string {
+	if x != nil && x.UpdateStrategy != nil {
+		return *x.UpdateStrategy
+	}
+	return ""
+}
+
+func (x *KubernetesHarborSpec) GetScheduling() *KubernetesHarborScheduling {
+	if x != nil {
+		return x.Scheduling
+	}
+	return nil
+}
+
+func (x *KubernetesHarborSpec) GetHelmValues() string {
 	if x != nil {
 		return x.HelmValues
 	}
-	return nil
+	return ""
 }
 
 // *
-// **KubernetesHarborContainer** specifies the container configuration for various Harbor components.
-// It includes settings such as the number of replicas, container image, and resource allocations.
-type KubernetesHarborContainer struct {
+// How the nginx front door is exposed. The chart's `ingress` and
+// Gateway API `route` exposure types are deliberately not modeled —
+// compose the catalog's exposure kinds in front of the exported
+// Service instead.
+type KubernetesHarborExpose struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The number of pods to deploy for this component.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to the container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// The container image configuration (repository and tag).
-	Image         *kubernetes.ContainerImage `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// *
+	// Service type for the front door. Empty = "ClusterIP".
+	// The Service is named after this resource (metadata.name) — the
+	// chart's default fixed name "harbor" would collide between two
+	// installs in one namespace.
+	ServiceType *string `protobuf:"bytes,1,opt,name=service_type,json=serviceType,proto3,oneof" json:"service_type,omitempty"`
+	// *
+	// TLS termination at the nginx front door.
+	Tls *KubernetesHarborExposeTls `protobuf:"bytes,2,opt,name=tls,proto3" json:"tls,omitempty"`
+	// *
+	// NodePort numbers when service_type is NodePort. Empty = the
+	// chart defaults (30002 http, 30003 https).
+	NodePorts *KubernetesHarborNodePorts `protobuf:"bytes,3,opt,name=node_ports,json=nodePorts,proto3" json:"node_ports,omitempty"`
+	// *
+	// Annotations for the front-door Service — THE CLOUD
+	// LOAD-BALANCER SURFACE when service_type is LoadBalancer (NLB
+	// class/scheme on EKS, internal-LB flags on GKE/AKS, any
+	// controller-specific tuning).
+	ServiceAnnotations map[string]string `protobuf:"bytes,4,rep,name=service_annotations,json=serviceAnnotations,proto3" json:"service_annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// LoadBalancer-only: restrict client CIDRs
+	// (loadBalancerSourceRanges).
+	SourceRanges []string `protobuf:"bytes,5,rep,name=source_ranges,json=sourceRanges,proto3" json:"source_ranges,omitempty"`
+	// *
+	// LoadBalancer-only: request a specific LB IP where the cloud
+	// supports assigning one.
+	LoadBalancerIp *string `protobuf:"bytes,6,opt,name=load_balancer_ip,json=loadBalancerIp,proto3,oneof" json:"load_balancer_ip,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
-func (x *KubernetesHarborContainer) Reset() {
-	*x = KubernetesHarborContainer{}
+func (x *KubernetesHarborExpose) Reset() {
+	*x = KubernetesHarborExpose{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesHarborContainer) String() string {
+func (x *KubernetesHarborExpose) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesHarborContainer) ProtoMessage() {}
+func (*KubernetesHarborExpose) ProtoMessage() {}
 
-func (x *KubernetesHarborContainer) ProtoReflect() protoreflect.Message {
+func (x *KubernetesHarborExpose) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -278,253 +493,550 @@ func (x *KubernetesHarborContainer) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesHarborContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborContainer) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesHarborExpose.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborExpose) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesHarborContainer) GetReplicas() int32 {
+func (x *KubernetesHarborExpose) GetServiceType() string {
+	if x != nil && x.ServiceType != nil {
+		return *x.ServiceType
+	}
+	return ""
+}
+
+func (x *KubernetesHarborExpose) GetTls() *KubernetesHarborExposeTls {
 	if x != nil {
-		return x.Replicas
+		return x.Tls
+	}
+	return nil
+}
+
+func (x *KubernetesHarborExpose) GetNodePorts() *KubernetesHarborNodePorts {
+	if x != nil {
+		return x.NodePorts
+	}
+	return nil
+}
+
+func (x *KubernetesHarborExpose) GetServiceAnnotations() map[string]string {
+	if x != nil {
+		return x.ServiceAnnotations
+	}
+	return nil
+}
+
+func (x *KubernetesHarborExpose) GetSourceRanges() []string {
+	if x != nil {
+		return x.SourceRanges
+	}
+	return nil
+}
+
+func (x *KubernetesHarborExpose) GetLoadBalancerIp() string {
+	if x != nil && x.LoadBalancerIp != nil {
+		return *x.LoadBalancerIp
+	}
+	return ""
+}
+
+// *
+// TLS at the front door.
+type KubernetesHarborExposeTls struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Terminate TLS at nginx. When false, nginx serves plain HTTP —
+	// pair with TLS termination in the composed exposure in front, or
+	// accept `--insecure-registry` clients on a lab install.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Name of an existing kubernetes.io/tls Secret (keys `tls.crt` /
+	// `tls.key`) — the cert-manager seam: accepts a literal or a
+	// reference to a KubernetesCertificate pointed at the front-door
+	// hostname. EMPTY WITH TLS ENABLED = the chart auto-generates a
+	// self-signed certificate — and regenerates it ON EVERY APPLY
+	// (helm `genCA` carries no state), so clients that pinned the
+	// previous cert break; auto mode is for labs only.
+	CertSecretName *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=cert_secret_name,json=certSecretName,proto3" json:"cert_secret_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborExposeTls) Reset() {
+	*x = KubernetesHarborExposeTls{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborExposeTls) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborExposeTls) ProtoMessage() {}
+
+func (x *KubernetesHarborExposeTls) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborExposeTls.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborExposeTls) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *KubernetesHarborExposeTls) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesHarborExposeTls) GetCertSecretName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.CertSecretName
+	}
+	return nil
+}
+
+// * NodePort numbers.
+type KubernetesHarborNodePorts struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// * HTTP node port. Empty = 30002 (chart default).
+	Http *int32 `protobuf:"varint,1,opt,name=http,proto3,oneof" json:"http,omitempty"`
+	// * HTTPS node port. Empty = 30003 (chart default).
+	Https         *int32 `protobuf:"varint,2,opt,name=https,proto3,oneof" json:"https,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborNodePorts) Reset() {
+	*x = KubernetesHarborNodePorts{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborNodePorts) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborNodePorts) ProtoMessage() {}
+
+func (x *KubernetesHarborNodePorts) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborNodePorts.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborNodePorts) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *KubernetesHarborNodePorts) GetHttp() int32 {
+	if x != nil && x.Http != nil {
+		return *x.Http
 	}
 	return 0
 }
 
-func (x *KubernetesHarborContainer) GetResources() *kubernetes.ContainerResources {
+func (x *KubernetesHarborNodePorts) GetHttps() int32 {
+	if x != nil && x.Https != nil {
+		return *x.Https
+	}
+	return 0
+}
+
+// *
+// Admin password source. Unset = module-generated (recommended).
+type KubernetesHarborAdminAuth struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Name of an existing Secret holding the admin password. Empty =
+	// the module generates a random password into a module-owned
+	// Secret (`<name>-admin-auth`) and exports it as the
+	// admin_password_secret output.
+	ExistingSecretName *string `protobuf:"bytes,1,opt,name=existing_secret_name,json=existingSecretName,proto3,oneof" json:"existing_secret_name,omitempty"`
+	// *
+	// Key within that Secret. Empty = "HARBOR_ADMIN_PASSWORD" (the
+	// chart's contract key).
+	ExistingSecretKey *string `protobuf:"bytes,2,opt,name=existing_secret_key,json=existingSecretKey,proto3,oneof" json:"existing_secret_key,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborAdminAuth) Reset() {
+	*x = KubernetesHarborAdminAuth{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborAdminAuth) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborAdminAuth) ProtoMessage() {}
+
+func (x *KubernetesHarborAdminAuth) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborAdminAuth.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborAdminAuth) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesHarborAdminAuth) GetExistingSecretName() string {
+	if x != nil && x.ExistingSecretName != nil {
+		return *x.ExistingSecretName
+	}
+	return ""
+}
+
+func (x *KubernetesHarborAdminAuth) GetExistingSecretKey() string {
+	if x != nil && x.ExistingSecretKey != nil {
+		return *x.ExistingSecretKey
+	}
+	return ""
+}
+
+// *
+// The PostgreSQL database. Exactly one arm.
+type KubernetesHarborDatabase struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Engine:
+	//
+	//	*KubernetesHarborDatabase_Internal
+	//	*KubernetesHarborDatabase_External
+	Engine        isKubernetesHarborDatabase_Engine `protobuf_oneof:"engine"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborDatabase) Reset() {
+	*x = KubernetesHarborDatabase{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborDatabase) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborDatabase) ProtoMessage() {}
+
+func (x *KubernetesHarborDatabase) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborDatabase.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborDatabase) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesHarborDatabase) GetEngine() isKubernetesHarborDatabase_Engine {
+	if x != nil {
+		return x.Engine
+	}
+	return nil
+}
+
+func (x *KubernetesHarborDatabase) GetInternal() *KubernetesHarborInternalDatabase {
+	if x != nil {
+		if x, ok := x.Engine.(*KubernetesHarborDatabase_Internal); ok {
+			return x.Internal
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesHarborDatabase) GetExternal() *KubernetesHarborExternalDatabase {
+	if x != nil {
+		if x, ok := x.Engine.(*KubernetesHarborDatabase_External); ok {
+			return x.External
+		}
+	}
+	return nil
+}
+
+type isKubernetesHarborDatabase_Engine interface {
+	isKubernetesHarborDatabase_Engine()
+}
+
+type KubernetesHarborDatabase_Internal struct {
+	// *
+	// The chart's in-cluster single-node PostgreSQL StatefulSet.
+	// EVALUATION-GRADE BY UPSTREAM'S OWN POSITION: one replica, no
+	// failover, no backups — fine for labs and small teams, never
+	// for production registries. The superuser password is
+	// module-generated (the chart's documented default never
+	// ships).
+	Internal *KubernetesHarborInternalDatabase `protobuf:"bytes,1,opt,name=internal,proto3,oneof"`
+}
+
+type KubernetesHarborDatabase_External struct {
+	// *
+	// An external PostgreSQL — the production arm. A
+	// KubernetesPostgres resource composes naturally (its outputs
+	// are the field defaults); any reachable PostgreSQL works.
+	External *KubernetesHarborExternalDatabase `protobuf:"bytes,2,opt,name=external,proto3,oneof"`
+}
+
+func (*KubernetesHarborDatabase_Internal) isKubernetesHarborDatabase_Engine() {}
+
+func (*KubernetesHarborDatabase_External) isKubernetesHarborDatabase_Engine() {}
+
+// * In-cluster PostgreSQL (evaluation-grade).
+type KubernetesHarborInternalDatabase struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// CPU/memory for the PostgreSQL container. The chart ships no
+	// defaults; these are modest laboratory defaults.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Data volume size (StatefulSet template PVC — immutable after
+	// creation, and NEVER deleted by uninstall). Empty = "1Gi" (chart
+	// default); size for artifact metadata growth on anything beyond
+	// a lab.
+	DiskSize *string `protobuf:"bytes,2,opt,name=disk_size,json=diskSize,proto3,oneof" json:"disk_size,omitempty"`
+	// * StorageClass for the data volume. Empty = the cluster default.
+	StorageClass *string `protobuf:"bytes,3,opt,name=storage_class,json=storageClass,proto3,oneof" json:"storage_class,omitempty"`
+	// *
+	// /dev/shm size limit — PostgreSQL uses shared memory for its
+	// shared_buffers. Empty = "512Mi" (chart default).
+	ShmSizeLimit  *string `protobuf:"bytes,4,opt,name=shm_size_limit,json=shmSizeLimit,proto3,oneof" json:"shm_size_limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborInternalDatabase) Reset() {
+	*x = KubernetesHarborInternalDatabase{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborInternalDatabase) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborInternalDatabase) ProtoMessage() {}
+
+func (x *KubernetesHarborInternalDatabase) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborInternalDatabase.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborInternalDatabase) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesHarborInternalDatabase) GetResources() *kubernetes.ContainerResources {
 	if x != nil {
 		return x.Resources
 	}
 	return nil
 }
 
-func (x *KubernetesHarborContainer) GetImage() *kubernetes.ContainerImage {
-	if x != nil {
-		return x.Image
-	}
-	return nil
-}
-
-// *
-// **KubernetesHarborDatabaseConfig** defines the PostgreSQL database configuration for Harbor.
-// It supports two deployment modes:
-// 1. Self-managed: Deploy PostgreSQL within the Kubernetes cluster (default).
-// 2. External: Connect to an existing external PostgreSQL instance.
-type KubernetesHarborDatabaseConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// Flag to enable using an external PostgreSQL database.
-	// When false (default), Harbor will deploy and manage its own PostgreSQL instance.
-	// When true, the external_database field must be configured.
-	IsExternal bool `protobuf:"varint,1,opt,name=is_external,json=isExternal,proto3" json:"is_external,omitempty"`
-	// *
-	// External PostgreSQL database connection details.
-	// This field is required when is_external is true and ignored when false.
-	ExternalDatabase *KubernetesHarborExternalPostgresql `protobuf:"bytes,2,opt,name=external_database,json=externalDatabase,proto3" json:"external_database,omitempty"`
-	// *
-	// Self-managed PostgreSQL configuration.
-	// This field is used when is_external is false and configures the in-cluster PostgreSQL deployment.
-	ManagedDatabase *KubernetesHarborManagedPostgresql `protobuf:"bytes,3,opt,name=managed_database,json=managedDatabase,proto3" json:"managed_database,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
-}
-
-func (x *KubernetesHarborDatabaseConfig) Reset() {
-	*x = KubernetesHarborDatabaseConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesHarborDatabaseConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesHarborDatabaseConfig) ProtoMessage() {}
-
-func (x *KubernetesHarborDatabaseConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesHarborDatabaseConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborDatabaseConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesHarborDatabaseConfig) GetIsExternal() bool {
-	if x != nil {
-		return x.IsExternal
-	}
-	return false
-}
-
-func (x *KubernetesHarborDatabaseConfig) GetExternalDatabase() *KubernetesHarborExternalPostgresql {
-	if x != nil {
-		return x.ExternalDatabase
-	}
-	return nil
-}
-
-func (x *KubernetesHarborDatabaseConfig) GetManagedDatabase() *KubernetesHarborManagedPostgresql {
-	if x != nil {
-		return x.ManagedDatabase
-	}
-	return nil
-}
-
-// *
-// **KubernetesHarborExternalPostgresql** defines connection parameters for an external PostgreSQL instance.
-// This allows Harbor to use a pre-existing PostgreSQL database instead of deploying one within the cluster.
-type KubernetesHarborExternalPostgresql struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The hostname or endpoint of the external PostgreSQL instance.
-	Host string `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
-	// The port for PostgreSQL (default is 5432).
-	Port *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
-	// The username for authenticating to PostgreSQL.
-	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
-	// The password for authenticating to PostgreSQL.
-	Password string `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
-	// The name of the database for Harbor Core (default is "registry").
-	CoreDatabase *string `protobuf:"bytes,5,opt,name=core_database,json=coreDatabase,proto3,oneof" json:"core_database,omitempty"`
-	// The name of the database for Clair (vulnerability scanner).
-	ClairDatabase *string `protobuf:"bytes,6,opt,name=clair_database,json=clairDatabase,proto3,oneof" json:"clair_database,omitempty"`
-	// The name of the database for Notary Server (image signing).
-	NotaryServerDatabase *string `protobuf:"bytes,7,opt,name=notary_server_database,json=notaryServerDatabase,proto3,oneof" json:"notary_server_database,omitempty"`
-	// The name of the database for Notary Signer (image signing).
-	NotarySignerDatabase *string `protobuf:"bytes,8,opt,name=notary_signer_database,json=notarySignerDatabase,proto3,oneof" json:"notary_signer_database,omitempty"`
-	// Whether to use SSL/TLS connection to PostgreSQL.
-	UseSsl        bool `protobuf:"varint,9,opt,name=use_ssl,json=useSsl,proto3" json:"use_ssl,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesHarborExternalPostgresql) Reset() {
-	*x = KubernetesHarborExternalPostgresql{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesHarborExternalPostgresql) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesHarborExternalPostgresql) ProtoMessage() {}
-
-func (x *KubernetesHarborExternalPostgresql) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesHarborExternalPostgresql.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborExternalPostgresql) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *KubernetesHarborExternalPostgresql) GetHost() string {
-	if x != nil {
-		return x.Host
+func (x *KubernetesHarborInternalDatabase) GetDiskSize() string {
+	if x != nil && x.DiskSize != nil {
+		return *x.DiskSize
 	}
 	return ""
 }
 
-func (x *KubernetesHarborExternalPostgresql) GetPort() int32 {
+func (x *KubernetesHarborInternalDatabase) GetStorageClass() string {
+	if x != nil && x.StorageClass != nil {
+		return *x.StorageClass
+	}
+	return ""
+}
+
+func (x *KubernetesHarborInternalDatabase) GetShmSizeLimit() string {
+	if x != nil && x.ShmSizeLimit != nil {
+		return *x.ShmSizeLimit
+	}
+	return ""
+}
+
+// * External PostgreSQL (production arm).
+type KubernetesHarborExternalDatabase struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// PostgreSQL host — a Service name (same namespace) or a full
+	// FQDN. Accepts a literal or a reference to a KubernetesPostgres
+	// resource (its read-write Service — always the current primary).
+	Host *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
+	// * PostgreSQL port. Empty = 5432.
+	Port *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
+	// *
+	// Database username (on a KubernetesPostgres this is the bootstrap
+	// owner role — ownership covers everything Harbor's migrations
+	// need).
+	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
+	// *
+	// Name of the Secret holding the user's password. THE CHART'S
+	// CONTRACT PINS THE KEY: the password must sit under the key
+	// `password` — which is EXACTLY the key a KubernetesPostgres
+	// application Secret uses, so its credential Secret composes
+	// as-is (the default below). For any other Secret, place the
+	// password under a `password` key. Read at install time from the
+	// install namespace.
+	PasswordSecretName *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=password_secret_name,json=passwordSecretName,proto3" json:"password_secret_name,omitempty"`
+	// *
+	// Database that holds Harbor's schema (must exist — on a
+	// KubernetesPostgres declare it at bootstrap via initdb). Empty =
+	// "registry" (chart default).
+	CoreDatabase *string `protobuf:"bytes,5,opt,name=core_database,json=coreDatabase,proto3,oneof" json:"core_database,omitempty"`
+	// *
+	// Postgres sslmode for the connection. Empty = "disable" — the
+	// in-cluster plaintext default; set verify-full for external or
+	// managed databases.
+	SslMode       *string `protobuf:"bytes,6,opt,name=ssl_mode,json=sslMode,proto3,oneof" json:"ssl_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborExternalDatabase) Reset() {
+	*x = KubernetesHarborExternalDatabase{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborExternalDatabase) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborExternalDatabase) ProtoMessage() {}
+
+func (x *KubernetesHarborExternalDatabase) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborExternalDatabase.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborExternalDatabase) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesHarborExternalDatabase) GetHost() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Host
+	}
+	return nil
+}
+
+func (x *KubernetesHarborExternalDatabase) GetPort() int32 {
 	if x != nil && x.Port != nil {
 		return *x.Port
 	}
 	return 0
 }
 
-func (x *KubernetesHarborExternalPostgresql) GetUsername() string {
+func (x *KubernetesHarborExternalDatabase) GetUsername() string {
 	if x != nil {
 		return x.Username
 	}
 	return ""
 }
 
-func (x *KubernetesHarborExternalPostgresql) GetPassword() string {
+func (x *KubernetesHarborExternalDatabase) GetPasswordSecretName() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Password
+		return x.PasswordSecretName
 	}
-	return ""
+	return nil
 }
 
-func (x *KubernetesHarborExternalPostgresql) GetCoreDatabase() string {
+func (x *KubernetesHarborExternalDatabase) GetCoreDatabase() string {
 	if x != nil && x.CoreDatabase != nil {
 		return *x.CoreDatabase
 	}
 	return ""
 }
 
-func (x *KubernetesHarborExternalPostgresql) GetClairDatabase() string {
-	if x != nil && x.ClairDatabase != nil {
-		return *x.ClairDatabase
+func (x *KubernetesHarborExternalDatabase) GetSslMode() string {
+	if x != nil && x.SslMode != nil {
+		return *x.SslMode
 	}
 	return ""
-}
-
-func (x *KubernetesHarborExternalPostgresql) GetNotaryServerDatabase() string {
-	if x != nil && x.NotaryServerDatabase != nil {
-		return *x.NotaryServerDatabase
-	}
-	return ""
-}
-
-func (x *KubernetesHarborExternalPostgresql) GetNotarySignerDatabase() string {
-	if x != nil && x.NotarySignerDatabase != nil {
-		return *x.NotarySignerDatabase
-	}
-	return ""
-}
-
-func (x *KubernetesHarborExternalPostgresql) GetUseSsl() bool {
-	if x != nil {
-		return x.UseSsl
-	}
-	return false
 }
 
 // *
-// **KubernetesHarborManagedPostgresql** defines configuration for a self-managed PostgreSQL deployment.
-// This supports simple single-node deployments suitable for development and testing.
-type KubernetesHarborManagedPostgresql struct {
+// The Redis cache. Exactly one arm.
+type KubernetesHarborCache struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The container specifications for PostgreSQL.
-	Container     *KubernetesHarborPostgresqlContainer `protobuf:"bytes,1,opt,name=container,proto3" json:"container,omitempty"`
+	// Types that are valid to be assigned to Engine:
+	//
+	//	*KubernetesHarborCache_Internal
+	//	*KubernetesHarborCache_External
+	Engine        isKubernetesHarborCache_Engine `protobuf_oneof:"engine"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesHarborManagedPostgresql) Reset() {
-	*x = KubernetesHarborManagedPostgresql{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[4]
+func (x *KubernetesHarborCache) Reset() {
+	*x = KubernetesHarborCache{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesHarborManagedPostgresql) String() string {
+func (x *KubernetesHarborCache) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesHarborManagedPostgresql) ProtoMessage() {}
+func (*KubernetesHarborCache) ProtoMessage() {}
 
-func (x *KubernetesHarborManagedPostgresql) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[4]
+func (x *KubernetesHarborCache) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -535,58 +1047,92 @@ func (x *KubernetesHarborManagedPostgresql) ProtoReflect() protoreflect.Message 
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesHarborManagedPostgresql.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborManagedPostgresql) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{4}
+// Deprecated: Use KubernetesHarborCache.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborCache) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *KubernetesHarborManagedPostgresql) GetContainer() *KubernetesHarborPostgresqlContainer {
+func (x *KubernetesHarborCache) GetEngine() isKubernetesHarborCache_Engine {
 	if x != nil {
-		return x.Container
+		return x.Engine
 	}
 	return nil
 }
 
-// *
-// **KubernetesHarborPostgresqlContainer** specifies the container configuration for PostgreSQL.
-// It includes replica count, resource allocations, and persistence settings.
-type KubernetesHarborPostgresqlContainer struct {
+func (x *KubernetesHarborCache) GetInternal() *KubernetesHarborInternalRedis {
+	if x != nil {
+		if x, ok := x.Engine.(*KubernetesHarborCache_Internal); ok {
+			return x.Internal
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesHarborCache) GetExternal() *KubernetesHarborExternalRedis {
+	if x != nil {
+		if x, ok := x.Engine.(*KubernetesHarborCache_External); ok {
+			return x.External
+		}
+	}
+	return nil
+}
+
+type isKubernetesHarborCache_Engine interface {
+	isKubernetesHarborCache_Engine()
+}
+
+type KubernetesHarborCache_Internal struct {
+	// *
+	// The chart's in-cluster single-node Redis StatefulSet —
+	// unauthenticated, no replication, evaluation-grade by
+	// upstream's own position.
+	Internal *KubernetesHarborInternalRedis `protobuf:"bytes,1,opt,name=internal,proto3,oneof"`
+}
+
+type KubernetesHarborCache_External struct {
+	// *
+	// An external Redis-compatible endpoint — the production arm. A
+	// KubernetesValkey resource composes naturally for the address
+	// (Valkey speaks the Redis protocol).
+	External *KubernetesHarborExternalRedis `protobuf:"bytes,2,opt,name=external,proto3,oneof"`
+}
+
+func (*KubernetesHarborCache_Internal) isKubernetesHarborCache_Engine() {}
+
+func (*KubernetesHarborCache_External) isKubernetesHarborCache_Engine() {}
+
+// * In-cluster Redis (evaluation-grade).
+type KubernetesHarborInternalRedis struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The number of PostgreSQL pods to deploy.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to the PostgreSQL container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// The container image configuration for PostgreSQL.
-	Image *kubernetes.ContainerImage `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
 	// *
-	// Flag to enable or disable data persistence for PostgreSQL.
-	// When enabled, data is persisted to a storage volume, allowing data to survive pod restarts.
-	// Defaults to true.
-	PersistenceEnabled bool `protobuf:"varint,4,opt,name=persistence_enabled,json=persistenceEnabled,proto3" json:"persistence_enabled,omitempty"`
+	// CPU/memory for the Redis container. The chart ships no
+	// defaults; these are modest laboratory defaults.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources,omitempty"`
 	// *
-	// The size of the persistent volume attached to each PostgreSQL pod (e.g., "20Gi").
-	// This attribute is ignored when persistence is not enabled.
-	// Note: This value cannot be modified after creation due to Kubernetes StatefulSet limitations.
-	DiskSize      string `protobuf:"bytes,5,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
+	// Data volume size (StatefulSet template PVC — never deleted by
+	// uninstall). Empty = "1Gi" (chart default).
+	DiskSize *string `protobuf:"bytes,2,opt,name=disk_size,json=diskSize,proto3,oneof" json:"disk_size,omitempty"`
+	// * StorageClass for the data volume. Empty = the cluster default.
+	StorageClass  *string `protobuf:"bytes,3,opt,name=storage_class,json=storageClass,proto3,oneof" json:"storage_class,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesHarborPostgresqlContainer) Reset() {
-	*x = KubernetesHarborPostgresqlContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[5]
+func (x *KubernetesHarborInternalRedis) Reset() {
+	*x = KubernetesHarborInternalRedis{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesHarborPostgresqlContainer) String() string {
+func (x *KubernetesHarborInternalRedis) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesHarborPostgresqlContainer) ProtoMessage() {}
+func (*KubernetesHarborInternalRedis) ProtoMessage() {}
 
-func (x *KubernetesHarborPostgresqlContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[5]
+func (x *KubernetesHarborInternalRedis) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -597,147 +1143,80 @@ func (x *KubernetesHarborPostgresqlContainer) ProtoReflect() protoreflect.Messag
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesHarborPostgresqlContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborPostgresqlContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{5}
+// Deprecated: Use KubernetesHarborInternalRedis.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborInternalRedis) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *KubernetesHarborPostgresqlContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesHarborPostgresqlContainer) GetResources() *kubernetes.ContainerResources {
+func (x *KubernetesHarborInternalRedis) GetResources() *kubernetes.ContainerResources {
 	if x != nil {
 		return x.Resources
 	}
 	return nil
 }
 
-func (x *KubernetesHarborPostgresqlContainer) GetImage() *kubernetes.ContainerImage {
-	if x != nil {
-		return x.Image
-	}
-	return nil
-}
-
-func (x *KubernetesHarborPostgresqlContainer) GetPersistenceEnabled() bool {
-	if x != nil {
-		return x.PersistenceEnabled
-	}
-	return false
-}
-
-func (x *KubernetesHarborPostgresqlContainer) GetDiskSize() string {
-	if x != nil {
-		return x.DiskSize
+func (x *KubernetesHarborInternalRedis) GetDiskSize() string {
+	if x != nil && x.DiskSize != nil {
+		return *x.DiskSize
 	}
 	return ""
 }
 
-// *
-// **KubernetesHarborCacheConfig** defines the Redis cache configuration for Harbor.
-// It supports two deployment modes:
-// 1. Self-managed: Deploy Redis within the Kubernetes cluster (default).
-// 2. External: Connect to an existing external Redis instance.
-type KubernetesHarborCacheConfig struct {
+func (x *KubernetesHarborInternalRedis) GetStorageClass() string {
+	if x != nil && x.StorageClass != nil {
+		return *x.StorageClass
+	}
+	return ""
+}
+
+// * External Redis (production arm).
+type KubernetesHarborExternalRedis struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
-	// Flag to enable using an external Redis cache.
-	// When false (default), Harbor will deploy and manage its own Redis instance.
-	// When true, the external_cache field must be configured.
-	IsExternal bool `protobuf:"varint,1,opt,name=is_external,json=isExternal,proto3" json:"is_external,omitempty"`
+	// Redis address as `host:port` — or, for Sentinel, a
+	// comma-separated `host:port` list of the sentinels (set
+	// sentinel_master_set alongside). Accepts a literal or a
+	// reference to a KubernetesValkey resource (its in-cluster
+	// endpoint output).
+	Addr *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
 	// *
-	// External Redis cache connection details.
-	// This field is required when is_external is true and ignored when false.
-	ExternalCache *KubernetesHarborExternalRedis `protobuf:"bytes,2,opt,name=external_cache,json=externalCache,proto3" json:"external_cache,omitempty"`
+	// The Sentinel master-set name — required when addr lists
+	// sentinels, empty for a plain Redis endpoint.
+	SentinelMasterSet *string `protobuf:"bytes,2,opt,name=sentinel_master_set,json=sentinelMasterSet,proto3,oneof" json:"sentinel_master_set,omitempty"`
 	// *
-	// Self-managed Redis configuration.
-	// This field is used when is_external is false and configures the in-cluster Redis deployment.
-	ManagedCache  *KubernetesHarborManagedRedis `protobuf:"bytes,3,opt,name=managed_cache,json=managedCache,proto3" json:"managed_cache,omitempty"`
+	// Redis username when ACLs are in play (on a KubernetesValkey this
+	// is one of its declared ACL usernames). Empty = the default user.
+	Username *string `protobuf:"bytes,3,opt,name=username,proto3,oneof" json:"username,omitempty"`
+	// *
+	// The user's password. Declare it here and the module materializes
+	// it into a module-owned Secret (`<name>-redis-auth`, the chart's
+	// REDIS_PASSWORD/REDIS_USERNAME contract keys) before the release
+	// — the password never rides rendered Helm values. Mutually
+	// exclusive with existing_secret_name. Empty with no
+	// existing_secret_name = an unauthenticated Redis.
+	Password *string `protobuf:"bytes,4,opt,name=password,proto3,oneof" json:"password,omitempty"`
+	// *
+	// Name of an existing Secret holding the credential under the
+	// chart's contract keys: `REDIS_PASSWORD` (and `REDIS_USERNAME`
+	// for ACL users). Read at install time from the install
+	// namespace. Mutually exclusive with password. NOTE for
+	// KubernetesValkey composition: Valkey's generated auth Secret
+	// keys passwords BY USERNAME, not by this contract — bridge with
+	// a Secret carrying REDIS_PASSWORD, or declare the same password
+	// on both sides.
+	ExistingSecretName *string `protobuf:"bytes,5,opt,name=existing_secret_name,json=existingSecretName,proto3,oneof" json:"existing_secret_name,omitempty"`
+	// *
+	// Use TLS (rediss://) for the connection. Server-authentication
+	// only — the chart does not support mTLS to Redis; a self-signed
+	// server rides ca_bundle_secret_name at the spec level.
+	TlsEnabled    bool `protobuf:"varint,6,opt,name=tls_enabled,json=tlsEnabled,proto3" json:"tls_enabled,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesHarborCacheConfig) Reset() {
-	*x = KubernetesHarborCacheConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesHarborCacheConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesHarborCacheConfig) ProtoMessage() {}
-
-func (x *KubernetesHarborCacheConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesHarborCacheConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborCacheConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *KubernetesHarborCacheConfig) GetIsExternal() bool {
-	if x != nil {
-		return x.IsExternal
-	}
-	return false
-}
-
-func (x *KubernetesHarborCacheConfig) GetExternalCache() *KubernetesHarborExternalRedis {
-	if x != nil {
-		return x.ExternalCache
-	}
-	return nil
-}
-
-func (x *KubernetesHarborCacheConfig) GetManagedCache() *KubernetesHarborManagedRedis {
-	if x != nil {
-		return x.ManagedCache
-	}
-	return nil
-}
-
-// *
-// **KubernetesHarborExternalRedis** defines connection parameters for an external Redis instance.
-// This allows Harbor to use a pre-existing Redis cache instead of deploying one within the cluster.
-type KubernetesHarborExternalRedis struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The hostname or endpoint of the external Redis instance (e.g., "redis.example.com:6379").
-	Host string `protobuf:"bytes,1,opt,name=host,proto3" json:"host,omitempty"`
-	// The port for Redis (default is 6379).
-	Port *int32 `protobuf:"varint,2,opt,name=port,proto3,oneof" json:"port,omitempty"`
-	// The username for authenticating to Redis (if ACLs are enabled).
-	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
-	// The password for authenticating to Redis.
-	Password string `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
-	// The Redis database index to use (default is 0).
-	DatabaseIndex *int32 `protobuf:"varint,5,opt,name=database_index,json=databaseIndex,proto3,oneof" json:"database_index,omitempty"`
-	// Whether to use Sentinel for high availability.
-	UseSentinel bool `protobuf:"varint,6,opt,name=use_sentinel,json=useSentinel,proto3" json:"use_sentinel,omitempty"`
-	// The Sentinel master set name (required if use_sentinel is true).
-	SentinelMasterSet string `protobuf:"bytes,7,opt,name=sentinel_master_set,json=sentinelMasterSet,proto3" json:"sentinel_master_set,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
-}
-
 func (x *KubernetesHarborExternalRedis) Reset() {
 	*x = KubernetesHarborExternalRedis{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -749,7 +1228,7 @@ func (x *KubernetesHarborExternalRedis) String() string {
 func (*KubernetesHarborExternalRedis) ProtoMessage() {}
 
 func (x *KubernetesHarborExternalRedis) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[7]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -762,317 +1241,294 @@ func (x *KubernetesHarborExternalRedis) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesHarborExternalRedis.ProtoReflect.Descriptor instead.
 func (*KubernetesHarborExternalRedis) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{7}
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *KubernetesHarborExternalRedis) GetHost() string {
+func (x *KubernetesHarborExternalRedis) GetAddr() *v1.StringValueOrRef {
 	if x != nil {
-		return x.Host
+		return x.Addr
+	}
+	return nil
+}
+
+func (x *KubernetesHarborExternalRedis) GetSentinelMasterSet() string {
+	if x != nil && x.SentinelMasterSet != nil {
+		return *x.SentinelMasterSet
 	}
 	return ""
 }
 
-func (x *KubernetesHarborExternalRedis) GetPort() int32 {
-	if x != nil && x.Port != nil {
-		return *x.Port
-	}
-	return 0
-}
-
 func (x *KubernetesHarborExternalRedis) GetUsername() string {
-	if x != nil {
-		return x.Username
+	if x != nil && x.Username != nil {
+		return *x.Username
 	}
 	return ""
 }
 
 func (x *KubernetesHarborExternalRedis) GetPassword() string {
-	if x != nil {
-		return x.Password
+	if x != nil && x.Password != nil {
+		return *x.Password
 	}
 	return ""
 }
 
-func (x *KubernetesHarborExternalRedis) GetDatabaseIndex() int32 {
-	if x != nil && x.DatabaseIndex != nil {
-		return *x.DatabaseIndex
+func (x *KubernetesHarborExternalRedis) GetExistingSecretName() string {
+	if x != nil && x.ExistingSecretName != nil {
+		return *x.ExistingSecretName
 	}
-	return 0
+	return ""
 }
 
-func (x *KubernetesHarborExternalRedis) GetUseSentinel() bool {
+func (x *KubernetesHarborExternalRedis) GetTlsEnabled() bool {
 	if x != nil {
-		return x.UseSentinel
+		return x.TlsEnabled
 	}
 	return false
 }
 
-func (x *KubernetesHarborExternalRedis) GetSentinelMasterSet() string {
+// *
+// Artifact blob storage for the registry. Exactly one backend.
+type KubernetesHarborArtifactStorage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Backend:
+	//
+	//	*KubernetesHarborArtifactStorage_Filesystem
+	//	*KubernetesHarborArtifactStorage_S3
+	//	*KubernetesHarborArtifactStorage_Gcs
+	//	*KubernetesHarborArtifactStorage_Azure
+	Backend       isKubernetesHarborArtifactStorage_Backend `protobuf_oneof:"backend"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborArtifactStorage) Reset() {
+	*x = KubernetesHarborArtifactStorage{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborArtifactStorage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborArtifactStorage) ProtoMessage() {}
+
+func (x *KubernetesHarborArtifactStorage) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[11]
 	if x != nil {
-		return x.SentinelMasterSet
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborArtifactStorage.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborArtifactStorage) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *KubernetesHarborArtifactStorage) GetBackend() isKubernetesHarborArtifactStorage_Backend {
+	if x != nil {
+		return x.Backend
+	}
+	return nil
+}
+
+func (x *KubernetesHarborArtifactStorage) GetFilesystem() *KubernetesHarborFilesystemStorage {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesHarborArtifactStorage_Filesystem); ok {
+			return x.Filesystem
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesHarborArtifactStorage) GetS3() *KubernetesHarborS3Storage {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesHarborArtifactStorage_S3); ok {
+			return x.S3
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesHarborArtifactStorage) GetGcs() *KubernetesHarborGcsStorage {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesHarborArtifactStorage_Gcs); ok {
+			return x.Gcs
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesHarborArtifactStorage) GetAzure() *KubernetesHarborAzureStorage {
+	if x != nil {
+		if x, ok := x.Backend.(*KubernetesHarborArtifactStorage_Azure); ok {
+			return x.Azure
+		}
+	}
+	return nil
+}
+
+type isKubernetesHarborArtifactStorage_Backend interface {
+	isKubernetesHarborArtifactStorage_Backend()
+}
+
+type KubernetesHarborArtifactStorage_Filesystem struct {
+	// *
+	// A PersistentVolumeClaim — the zero-dependency arm. Fine for a
+	// lab or a single-node registry; object storage is the
+	// production posture (HA, unbounded growth, lifecycle
+	// policies).
+	Filesystem *KubernetesHarborFilesystemStorage `protobuf:"bytes,1,opt,name=filesystem,proto3,oneof"`
+}
+
+type KubernetesHarborArtifactStorage_S3 struct {
+	// *
+	// S3 or any S3-compatible endpoint (a KubernetesSeaweedFs
+	// composes naturally via endpoint; MinIO, R2, GCS-interop all
+	// work the same way).
+	S3 *KubernetesHarborS3Storage `protobuf:"bytes,2,opt,name=s3,proto3,oneof"`
+}
+
+type KubernetesHarborArtifactStorage_Gcs struct {
+	// * Google Cloud Storage.
+	Gcs *KubernetesHarborGcsStorage `protobuf:"bytes,3,opt,name=gcs,proto3,oneof"`
+}
+
+type KubernetesHarborArtifactStorage_Azure struct {
+	// * Azure Blob Storage.
+	Azure *KubernetesHarborAzureStorage `protobuf:"bytes,4,opt,name=azure,proto3,oneof"`
+}
+
+func (*KubernetesHarborArtifactStorage_Filesystem) isKubernetesHarborArtifactStorage_Backend() {}
+
+func (*KubernetesHarborArtifactStorage_S3) isKubernetesHarborArtifactStorage_Backend() {}
+
+func (*KubernetesHarborArtifactStorage_Gcs) isKubernetesHarborArtifactStorage_Backend() {}
+
+func (*KubernetesHarborArtifactStorage_Azure) isKubernetesHarborArtifactStorage_Backend() {}
+
+// * PVC-backed artifact storage.
+type KubernetesHarborFilesystemStorage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Artifact volume size. Empty = "5Gi" (chart default) — size for
+	// real image traffic; the volume holds every layer of every
+	// artifact.
+	DiskSize *string `protobuf:"bytes,1,opt,name=disk_size,json=diskSize,proto3,oneof" json:"disk_size,omitempty"`
+	// * StorageClass for the artifact volume. Empty = the cluster default.
+	StorageClass *string `protobuf:"bytes,2,opt,name=storage_class,json=storageClass,proto3,oneof" json:"storage_class,omitempty"`
+	// *
+	// PVC access mode. Empty = "ReadWriteOnce". ReadWriteMany is
+	// REQUIRED to run more than one registry replica on this backend
+	// (enforced at validation) and needs a storage class that
+	// supports it (NFS/EFS/Filestore class).
+	AccessMode    *string `protobuf:"bytes,3,opt,name=access_mode,json=accessMode,proto3,oneof" json:"access_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborFilesystemStorage) Reset() {
+	*x = KubernetesHarborFilesystemStorage{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborFilesystemStorage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborFilesystemStorage) ProtoMessage() {}
+
+func (x *KubernetesHarborFilesystemStorage) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborFilesystemStorage.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborFilesystemStorage) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *KubernetesHarborFilesystemStorage) GetDiskSize() string {
+	if x != nil && x.DiskSize != nil {
+		return *x.DiskSize
 	}
 	return ""
 }
 
-// *
-// **KubernetesHarborManagedRedis** defines configuration for a self-managed Redis deployment.
-// This supports simple single-node deployments suitable for development and testing.
-type KubernetesHarborManagedRedis struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The container specifications for Redis.
-	Container     *KubernetesHarborRedisContainer `protobuf:"bytes,1,opt,name=container,proto3" json:"container,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesHarborManagedRedis) Reset() {
-	*x = KubernetesHarborManagedRedis{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesHarborManagedRedis) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesHarborManagedRedis) ProtoMessage() {}
-
-func (x *KubernetesHarborManagedRedis) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[8]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesHarborManagedRedis.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborManagedRedis) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *KubernetesHarborManagedRedis) GetContainer() *KubernetesHarborRedisContainer {
-	if x != nil {
-		return x.Container
-	}
-	return nil
-}
-
-// *
-// **KubernetesHarborRedisContainer** specifies the container configuration for Redis.
-// It includes replica count, resource allocations, and persistence settings.
-type KubernetesHarborRedisContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The number of Redis pods to deploy.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to the Redis container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// The container image configuration for Redis.
-	Image *kubernetes.ContainerImage `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
-	// *
-	// Flag to enable or disable data persistence for Redis.
-	// When enabled, data is persisted to a storage volume, allowing data to survive pod restarts.
-	// Defaults to true.
-	PersistenceEnabled bool `protobuf:"varint,4,opt,name=persistence_enabled,json=persistenceEnabled,proto3" json:"persistence_enabled,omitempty"`
-	// *
-	// The size of the persistent volume attached to each Redis pod (e.g., "8Gi").
-	// This attribute is ignored when persistence is not enabled.
-	DiskSize      string `protobuf:"bytes,5,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesHarborRedisContainer) Reset() {
-	*x = KubernetesHarborRedisContainer{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesHarborRedisContainer) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesHarborRedisContainer) ProtoMessage() {}
-
-func (x *KubernetesHarborRedisContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesHarborRedisContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborRedisContainer) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *KubernetesHarborRedisContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
-	}
-	return 0
-}
-
-func (x *KubernetesHarborRedisContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
-	}
-	return nil
-}
-
-func (x *KubernetesHarborRedisContainer) GetImage() *kubernetes.ContainerImage {
-	if x != nil {
-		return x.Image
-	}
-	return nil
-}
-
-func (x *KubernetesHarborRedisContainer) GetPersistenceEnabled() bool {
-	if x != nil {
-		return x.PersistenceEnabled
-	}
-	return false
-}
-
-func (x *KubernetesHarborRedisContainer) GetDiskSize() string {
-	if x != nil {
-		return x.DiskSize
+func (x *KubernetesHarborFilesystemStorage) GetStorageClass() string {
+	if x != nil && x.StorageClass != nil {
+		return *x.StorageClass
 	}
 	return ""
 }
 
-// *
-// **KubernetesHarborStorageConfig** defines the storage configuration for Harbor artifacts.
-// For production high-availability deployments, external object storage (S3, GCS, Azure) is required.
-type KubernetesHarborStorageConfig struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// The type of storage backend to use.
-	Type KubernetesHarborStorageType `protobuf:"varint,1,opt,name=type,proto3,enum=dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageType" json:"type,omitempty"`
-	// S3-compatible storage configuration (required when type is s3).
-	S3 *KubernetesHarborS3Storage `protobuf:"bytes,2,opt,name=s3,proto3" json:"s3,omitempty"`
-	// Google Cloud Storage configuration (required when type is gcs).
-	Gcs *KubernetesHarborGcsStorage `protobuf:"bytes,3,opt,name=gcs,proto3" json:"gcs,omitempty"`
-	// Azure Blob Storage configuration (required when type is azure).
-	Azure *KubernetesHarborAzureStorage `protobuf:"bytes,4,opt,name=azure,proto3" json:"azure,omitempty"`
-	// Alibaba Cloud OSS configuration (required when type is oss).
-	Oss *KubernetesHarborOssStorage `protobuf:"bytes,5,opt,name=oss,proto3" json:"oss,omitempty"`
-	// Filesystem storage configuration (required when type is filesystem).
-	Filesystem    *KubernetesHarborFilesystemStorage `protobuf:"bytes,6,opt,name=filesystem,proto3" json:"filesystem,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesHarborStorageConfig) Reset() {
-	*x = KubernetesHarborStorageConfig{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesHarborStorageConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesHarborStorageConfig) ProtoMessage() {}
-
-func (x *KubernetesHarborStorageConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+func (x *KubernetesHarborFilesystemStorage) GetAccessMode() string {
+	if x != nil && x.AccessMode != nil {
+		return *x.AccessMode
 	}
-	return mi.MessageOf(x)
+	return ""
 }
 
-// Deprecated: Use KubernetesHarborStorageConfig.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborStorageConfig) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *KubernetesHarborStorageConfig) GetType() KubernetesHarborStorageType {
-	if x != nil {
-		return x.Type
-	}
-	return KubernetesHarborStorageType_kubernetes_harbor_storage_type_unspecified
-}
-
-func (x *KubernetesHarborStorageConfig) GetS3() *KubernetesHarborS3Storage {
-	if x != nil {
-		return x.S3
-	}
-	return nil
-}
-
-func (x *KubernetesHarborStorageConfig) GetGcs() *KubernetesHarborGcsStorage {
-	if x != nil {
-		return x.Gcs
-	}
-	return nil
-}
-
-func (x *KubernetesHarborStorageConfig) GetAzure() *KubernetesHarborAzureStorage {
-	if x != nil {
-		return x.Azure
-	}
-	return nil
-}
-
-func (x *KubernetesHarborStorageConfig) GetOss() *KubernetesHarborOssStorage {
-	if x != nil {
-		return x.Oss
-	}
-	return nil
-}
-
-func (x *KubernetesHarborStorageConfig) GetFilesystem() *KubernetesHarborFilesystemStorage {
-	if x != nil {
-		return x.Filesystem
-	}
-	return nil
-}
-
-// *
-// **KubernetesHarborS3Storage** defines S3-compatible object storage configuration.
+// * S3 / S3-compatible artifact storage.
 type KubernetesHarborS3Storage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The S3 bucket name.
+	// * Bucket name. The bucket must already exist.
 	Bucket string `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
-	// The AWS region (e.g., "us-west-2").
+	// *
+	// AWS region. For non-AWS S3-compatible endpoints the driver
+	// still requires a value — any well-formed region string works
+	// (e.g. "us-east-1").
 	Region string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
-	// The AWS access key ID.
-	AccessKey string `protobuf:"bytes,3,opt,name=access_key,json=accessKey,proto3" json:"access_key,omitempty"`
-	// The AWS secret access key.
-	SecretKey string `protobuf:"bytes,4,opt,name=secret_key,json=secretKey,proto3" json:"secret_key,omitempty"`
-	// Whether to use regional endpoint (default is false for global endpoint).
-	RegionEndpoint bool `protobuf:"varint,5,opt,name=region_endpoint,json=regionEndpoint,proto3" json:"region_endpoint,omitempty"`
-	// Whether to encrypt objects using server-side encryption.
+	// *
+	// Endpoint URL for S3-COMPATIBLE stores — set for anything that
+	// is not AWS S3 itself. Accepts a literal or a reference to a
+	// KubernetesSeaweedFs resource (its S3 endpoint output).
+	Endpoint *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// *
+	// Credentials. Unset = the AMBIENT chain (EKS IRSA / Pod
+	// Identity, node roles): the registry's AWS SDK resolves
+	// credentials from the pod environment — annotate/bind the
+	// component ServiceAccounts out of band.
+	Credentials *KubernetesHarborS3Credentials `protobuf:"bytes,4,opt,name=credentials,proto3" json:"credentials,omitempty"`
+	// *
+	// Disable client redirects to the backend: the registry serves
+	// blob bytes itself instead of redirecting clients to presigned
+	// storage URLs. REQUIRED for in-cluster S3 stores whose endpoint
+	// clients cannot reach (SeaweedFS, MinIO) — a redirect would hand
+	// clients an unreachable URL.
+	DisableRedirect bool `protobuf:"varint,5,opt,name=disable_redirect,json=disableRedirect,proto3" json:"disable_redirect,omitempty"`
+	// * Server-side encryption for stored blobs (AWS S3).
 	Encrypt bool `protobuf:"varint,6,opt,name=encrypt,proto3" json:"encrypt,omitempty"`
-	// Whether to use secure (HTTPS) connection.
-	Secure bool `protobuf:"varint,7,opt,name=secure,proto3" json:"secure,omitempty"`
-	// The root directory path within the bucket.
-	RootDirectory string `protobuf:"bytes,8,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
-	// Custom S3 endpoint URL (for S3-compatible services like MinIO).
-	EndpointUrl   string `protobuf:"bytes,9,opt,name=endpoint_url,json=endpointUrl,proto3" json:"endpoint_url,omitempty"`
+	// * Use HTTPS to the endpoint. Set false for plain-HTTP in-cluster stores.
+	Secure *bool `protobuf:"varint,7,opt,name=secure,proto3,oneof" json:"secure,omitempty"`
+	// * Skip TLS certificate verification (self-signed endpoints).
+	SkipVerify bool `protobuf:"varint,8,opt,name=skip_verify,json=skipVerify,proto3" json:"skip_verify,omitempty"`
+	// * Key prefix within the bucket. Empty = the bucket root.
+	RootDirectory *string `protobuf:"bytes,9,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
+	// * S3 storage class for written blobs (e.g. STANDARD, REDUCED_REDUNDANCY).
+	StorageClass  *string `protobuf:"bytes,10,opt,name=storage_class,json=storageClass,proto3,oneof" json:"storage_class,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesHarborS3Storage) Reset() {
 	*x = KubernetesHarborS3Storage{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1084,7 +1540,7 @@ func (x *KubernetesHarborS3Storage) String() string {
 func (*KubernetesHarborS3Storage) ProtoMessage() {}
 
 func (x *KubernetesHarborS3Storage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[11]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1097,7 +1553,7 @@ func (x *KubernetesHarborS3Storage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesHarborS3Storage.ProtoReflect.Descriptor instead.
 func (*KubernetesHarborS3Storage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{11}
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *KubernetesHarborS3Storage) GetBucket() string {
@@ -1114,23 +1570,23 @@ func (x *KubernetesHarborS3Storage) GetRegion() string {
 	return ""
 }
 
-func (x *KubernetesHarborS3Storage) GetAccessKey() string {
+func (x *KubernetesHarborS3Storage) GetEndpoint() *v1.StringValueOrRef {
 	if x != nil {
-		return x.AccessKey
+		return x.Endpoint
 	}
-	return ""
+	return nil
 }
 
-func (x *KubernetesHarborS3Storage) GetSecretKey() string {
+func (x *KubernetesHarborS3Storage) GetCredentials() *KubernetesHarborS3Credentials {
 	if x != nil {
-		return x.SecretKey
+		return x.Credentials
 	}
-	return ""
+	return nil
 }
 
-func (x *KubernetesHarborS3Storage) GetRegionEndpoint() bool {
+func (x *KubernetesHarborS3Storage) GetDisableRedirect() bool {
 	if x != nil {
-		return x.RegionEndpoint
+		return x.DisableRedirect
 	}
 	return false
 }
@@ -1143,45 +1599,139 @@ func (x *KubernetesHarborS3Storage) GetEncrypt() bool {
 }
 
 func (x *KubernetesHarborS3Storage) GetSecure() bool {
+	if x != nil && x.Secure != nil {
+		return *x.Secure
+	}
+	return false
+}
+
+func (x *KubernetesHarborS3Storage) GetSkipVerify() bool {
 	if x != nil {
-		return x.Secure
+		return x.SkipVerify
 	}
 	return false
 }
 
 func (x *KubernetesHarborS3Storage) GetRootDirectory() string {
-	if x != nil {
-		return x.RootDirectory
+	if x != nil && x.RootDirectory != nil {
+		return *x.RootDirectory
 	}
 	return ""
 }
 
-func (x *KubernetesHarborS3Storage) GetEndpointUrl() string {
-	if x != nil {
-		return x.EndpointUrl
+func (x *KubernetesHarborS3Storage) GetStorageClass() string {
+	if x != nil && x.StorageClass != nil {
+		return *x.StorageClass
 	}
 	return ""
 }
 
-// *
-// **KubernetesHarborGcsStorage** defines Google Cloud Storage configuration.
+// * Declared S3 credentials (the keyless/ambient arm is the unset state).
+type KubernetesHarborS3Credentials struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Access key ID. Declared credentials are materialized into a
+	// module-owned Secret (`<name>-storage-auth`, the chart's
+	// REGISTRY_STORAGE_S3_ACCESSKEY/SECRETKEY contract keys) before
+	// the release — nothing credential-bearing rides rendered values.
+	// Mutually exclusive with existing_secret_name.
+	AccessKey *string `protobuf:"bytes,1,opt,name=access_key,json=accessKey,proto3,oneof" json:"access_key,omitempty"`
+	// * Secret access key (paired with access_key).
+	SecretKey *string `protobuf:"bytes,2,opt,name=secret_key,json=secretKey,proto3,oneof" json:"secret_key,omitempty"`
+	// *
+	// Name of an existing Secret carrying the chart's contract keys
+	// REGISTRY_STORAGE_S3_ACCESSKEY and REGISTRY_STORAGE_S3_SECRETKEY.
+	// Mutually exclusive with access_key/secret_key.
+	ExistingSecretName *string `protobuf:"bytes,3,opt,name=existing_secret_name,json=existingSecretName,proto3,oneof" json:"existing_secret_name,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborS3Credentials) Reset() {
+	*x = KubernetesHarborS3Credentials{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborS3Credentials) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborS3Credentials) ProtoMessage() {}
+
+func (x *KubernetesHarborS3Credentials) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborS3Credentials.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborS3Credentials) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *KubernetesHarborS3Credentials) GetAccessKey() string {
+	if x != nil && x.AccessKey != nil {
+		return *x.AccessKey
+	}
+	return ""
+}
+
+func (x *KubernetesHarborS3Credentials) GetSecretKey() string {
+	if x != nil && x.SecretKey != nil {
+		return *x.SecretKey
+	}
+	return ""
+}
+
+func (x *KubernetesHarborS3Credentials) GetExistingSecretName() string {
+	if x != nil && x.ExistingSecretName != nil {
+		return *x.ExistingSecretName
+	}
+	return ""
+}
+
+// * Google Cloud Storage artifact storage.
 type KubernetesHarborGcsStorage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The GCS bucket name.
+	// * Bucket name. The bucket must already exist.
 	Bucket string `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
-	// The base64-encoded service account key JSON.
-	KeyData string `protobuf:"bytes,2,opt,name=key_data,json=keyData,proto3" json:"key_data,omitempty"`
-	// The root directory path within the bucket.
-	RootDirectory string `protobuf:"bytes,3,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
-	// The chunk size for upload (default is 5242880 bytes).
-	ChunkSize     *int32 `protobuf:"varint,4,opt,name=chunk_size,json=chunkSize,proto3,oneof" json:"chunk_size,omitempty"`
+	// *
+	// Authenticate via GKE Workload Identity — the KEYLESS arm
+	// (recommended on GKE): no key material anywhere; bind the
+	// registry's Kubernetes ServiceAccount to a GCP service account
+	// with bucket access out of band. Mutually exclusive with
+	// key_data / existing_secret_name.
+	UseWorkloadIdentity bool `protobuf:"varint,2,opt,name=use_workload_identity,json=useWorkloadIdentity,proto3" json:"use_workload_identity,omitempty"`
+	// *
+	// Base64-encoded service-account key JSON. Declared keys are
+	// materialized into a module-owned Secret (`<name>-storage-auth`,
+	// the chart's GCS_KEY_DATA contract key) before the release.
+	// Mutually exclusive with use_workload_identity.
+	KeyData *string `protobuf:"bytes,3,opt,name=key_data,json=keyData,proto3,oneof" json:"key_data,omitempty"`
+	// *
+	// Name of an existing Secret carrying the chart's contract key
+	// GCS_KEY_DATA. Mutually exclusive with use_workload_identity and
+	// key_data.
+	ExistingSecretName *string `protobuf:"bytes,4,opt,name=existing_secret_name,json=existingSecretName,proto3,oneof" json:"existing_secret_name,omitempty"`
+	// * Key prefix within the bucket. Empty = the bucket root.
+	RootDirectory *string `protobuf:"bytes,5,opt,name=root_directory,json=rootDirectory,proto3,oneof" json:"root_directory,omitempty"`
+	// * Upload chunk size in bytes. Empty = the driver default (5242880).
+	ChunkSize     *int32 `protobuf:"varint,6,opt,name=chunk_size,json=chunkSize,proto3,oneof" json:"chunk_size,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesHarborGcsStorage) Reset() {
 	*x = KubernetesHarborGcsStorage{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1193,7 +1743,7 @@ func (x *KubernetesHarborGcsStorage) String() string {
 func (*KubernetesHarborGcsStorage) ProtoMessage() {}
 
 func (x *KubernetesHarborGcsStorage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[12]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1206,7 +1756,7 @@ func (x *KubernetesHarborGcsStorage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesHarborGcsStorage.ProtoReflect.Descriptor instead.
 func (*KubernetesHarborGcsStorage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{12}
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *KubernetesHarborGcsStorage) GetBucket() string {
@@ -1216,16 +1766,30 @@ func (x *KubernetesHarborGcsStorage) GetBucket() string {
 	return ""
 }
 
-func (x *KubernetesHarborGcsStorage) GetKeyData() string {
+func (x *KubernetesHarborGcsStorage) GetUseWorkloadIdentity() bool {
 	if x != nil {
-		return x.KeyData
+		return x.UseWorkloadIdentity
+	}
+	return false
+}
+
+func (x *KubernetesHarborGcsStorage) GetKeyData() string {
+	if x != nil && x.KeyData != nil {
+		return *x.KeyData
+	}
+	return ""
+}
+
+func (x *KubernetesHarborGcsStorage) GetExistingSecretName() string {
+	if x != nil && x.ExistingSecretName != nil {
+		return *x.ExistingSecretName
 	}
 	return ""
 }
 
 func (x *KubernetesHarborGcsStorage) GetRootDirectory() string {
-	if x != nil {
-		return x.RootDirectory
+	if x != nil && x.RootDirectory != nil {
+		return *x.RootDirectory
 	}
 	return ""
 }
@@ -1237,25 +1801,32 @@ func (x *KubernetesHarborGcsStorage) GetChunkSize() int32 {
 	return 0
 }
 
-// *
-// **KubernetesHarborAzureStorage** defines Azure Blob Storage configuration.
+// * Azure Blob Storage artifact storage.
 type KubernetesHarborAzureStorage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The Azure storage account name.
+	// * Storage account name.
 	AccountName string `protobuf:"bytes,1,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
-	// The Azure storage account key.
-	AccountKey string `protobuf:"bytes,2,opt,name=account_key,json=accountKey,proto3" json:"account_key,omitempty"`
-	// The Azure blob container name.
-	Container string `protobuf:"bytes,3,opt,name=container,proto3" json:"container,omitempty"`
-	// The root directory path within the container.
-	RootDirectory string `protobuf:"bytes,4,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
+	// * Blob container name. The container must already exist.
+	Container string `protobuf:"bytes,2,opt,name=container,proto3" json:"container,omitempty"`
+	// *
+	// Storage account key. Declared keys are materialized into a
+	// module-owned Secret (`<name>-storage-auth`, the chart's
+	// AZURE_STORAGE_ACCESS_KEY contract key) before the release.
+	// Mutually exclusive with existing_secret_name.
+	AccountKey *string `protobuf:"bytes,3,opt,name=account_key,json=accountKey,proto3,oneof" json:"account_key,omitempty"`
+	// *
+	// Name of an existing Secret carrying the chart's contract key
+	// AZURE_STORAGE_ACCESS_KEY. Mutually exclusive with account_key.
+	ExistingSecretName *string `protobuf:"bytes,4,opt,name=existing_secret_name,json=existingSecretName,proto3,oneof" json:"existing_secret_name,omitempty"`
+	// * Azure cloud realm. Empty = core.windows.net (public cloud).
+	Realm         *string `protobuf:"bytes,5,opt,name=realm,proto3,oneof" json:"realm,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesHarborAzureStorage) Reset() {
 	*x = KubernetesHarborAzureStorage{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[13]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1267,7 +1838,7 @@ func (x *KubernetesHarborAzureStorage) String() string {
 func (*KubernetesHarborAzureStorage) ProtoMessage() {}
 
 func (x *KubernetesHarborAzureStorage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[13]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1280,19 +1851,12 @@ func (x *KubernetesHarborAzureStorage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesHarborAzureStorage.ProtoReflect.Descriptor instead.
 func (*KubernetesHarborAzureStorage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{13}
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *KubernetesHarborAzureStorage) GetAccountName() string {
 	if x != nil {
 		return x.AccountName
-	}
-	return ""
-}
-
-func (x *KubernetesHarborAzureStorage) GetAccountKey() string {
-	if x != nil {
-		return x.AccountKey
 	}
 	return ""
 }
@@ -1304,48 +1868,109 @@ func (x *KubernetesHarborAzureStorage) GetContainer() string {
 	return ""
 }
 
-func (x *KubernetesHarborAzureStorage) GetRootDirectory() string {
-	if x != nil {
-		return x.RootDirectory
+func (x *KubernetesHarborAzureStorage) GetAccountKey() string {
+	if x != nil && x.AccountKey != nil {
+		return *x.AccountKey
+	}
+	return ""
+}
+
+func (x *KubernetesHarborAzureStorage) GetExistingSecretName() string {
+	if x != nil && x.ExistingSecretName != nil {
+		return *x.ExistingSecretName
+	}
+	return ""
+}
+
+func (x *KubernetesHarborAzureStorage) GetRealm() string {
+	if x != nil && x.Realm != nil {
+		return *x.Realm
 	}
 	return ""
 }
 
 // *
-// **KubernetesHarborOssStorage** defines Alibaba Cloud OSS configuration.
-type KubernetesHarborOssStorage struct {
+// The Trivy vulnerability scanner (a StatefulSet with its own
+// vulnerability-database cache volume).
+type KubernetesHarborTrivy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The OSS bucket name.
-	Bucket string `protobuf:"bytes,1,opt,name=bucket,proto3" json:"bucket,omitempty"`
-	// The OSS endpoint (e.g., "oss-cn-hangzhou.aliyuncs.com").
-	Endpoint string `protobuf:"bytes,2,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	// The access key ID.
-	AccessKeyId string `protobuf:"bytes,3,opt,name=access_key_id,json=accessKeyId,proto3" json:"access_key_id,omitempty"`
-	// The access key secret.
-	AccessKeySecret string `protobuf:"bytes,4,opt,name=access_key_secret,json=accessKeySecret,proto3" json:"access_key_secret,omitempty"`
-	// The root directory path within the bucket.
-	RootDirectory string `protobuf:"bytes,5,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
-	// Whether to use HTTPS.
-	Secure        bool `protobuf:"varint,6,opt,name=secure,proto3" json:"secure,omitempty"`
+	// *
+	// Deploy Trivy. Empty = TRUE (chart truth — Trivy is Harbor's
+	// built-in scanner).
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// * Trivy replicas. Empty = 1.
+	Replicas *int32 `protobuf:"varint,2,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// CPU/memory. Empty = the chart's own defaults (requests
+	// 200m/512Mi, limits 1/1Gi) — the one component the chart sizes
+	// itself.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,3,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Vulnerability-database cache volume size. Empty = "5Gi" (chart
+	// default).
+	DiskSize *string `protobuf:"bytes,4,opt,name=disk_size,json=diskSize,proto3,oneof" json:"disk_size,omitempty"`
+	// *
+	// KNOW THIS (internet-reaching runtime behavior): Trivy DOWNLOADS
+	// its vulnerability database from an OCI registry at scan time
+	// and refreshes it every ~12 hours — a fresh install needs
+	// outbound access to the db_repositories below (or the
+	// outbound_proxy). In an AIR-GAPPED cluster set skip_update AND
+	// skip_java_db_update to true and pre-load the database files
+	// onto the cache volume (`/home/scanner/.cache/trivy/...`)
+	// yourself — with skip_update and no pre-loaded DB, every scan
+	// fails.
+	SkipUpdate bool `protobuf:"varint,5,opt,name=skip_update,json=skipUpdate,proto3" json:"skip_update,omitempty"`
+	// * Skip the Java vulnerability DB download (see skip_update).
+	SkipJavaDbUpdate bool `protobuf:"varint,6,opt,name=skip_java_db_update,json=skipJavaDbUpdate,proto3" json:"skip_java_db_update,omitempty"`
+	// *
+	// Prevent Trivy from making API requests to identify
+	// dependencies during scans (air-gap posture; DB downloads are
+	// governed separately by skip_update).
+	OfflineScan bool `protobuf:"varint,7,opt,name=offline_scan,json=offlineScan,proto3" json:"offline_scan,omitempty"`
+	// *
+	// OCI repositories to pull the vulnerability DB from, in priority
+	// order. Empty = the chart defaults (mirror.gcr.io/aquasec/trivy-db,
+	// then ghcr.io/aquasecurity/trivy-db).
+	DbRepositories []string `protobuf:"bytes,8,rep,name=db_repositories,json=dbRepositories,proto3" json:"db_repositories,omitempty"`
+	// *
+	// OCI repositories for the Java vulnerability DB, in priority
+	// order. Empty = the chart defaults.
+	JavaDbRepositories []string `protobuf:"bytes,9,rep,name=java_db_repositories,json=javaDbRepositories,proto3" json:"java_db_repositories,omitempty"`
+	// *
+	// GitHub token to raise the anonymous DB-download rate limit.
+	// KNOW THIS: the chart accepts this only as a plain value that it
+	// renders into its own Secret — it rides the release values
+	// (sensitive-marked, never printed in plans) unlike this
+	// component's other credentials, which travel via pre-created
+	// Secrets. Leave empty unless you hit rate limits.
+	GithubToken *string `protobuf:"bytes,10,opt,name=github_token,json=githubToken,proto3,oneof" json:"github_token,omitempty"`
+	// *
+	// Comma-separated severities to report. Empty = the scanner
+	// default (UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL).
+	Severity *string `protobuf:"bytes,11,opt,name=severity,proto3,oneof" json:"severity,omitempty"`
+	// * Report only vulnerabilities with a published fix.
+	IgnoreUnfixed bool `protobuf:"varint,12,opt,name=ignore_unfixed,json=ignoreUnfixed,proto3" json:"ignore_unfixed,omitempty"`
+	// * Scan timeout. Empty = "5m0s" (chart default).
+	Timeout       *string `protobuf:"bytes,13,opt,name=timeout,proto3,oneof" json:"timeout,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesHarborOssStorage) Reset() {
-	*x = KubernetesHarborOssStorage{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[14]
+func (x *KubernetesHarborTrivy) Reset() {
+	*x = KubernetesHarborTrivy{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesHarborOssStorage) String() string {
+func (x *KubernetesHarborTrivy) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesHarborOssStorage) ProtoMessage() {}
+func (*KubernetesHarborTrivy) ProtoMessage() {}
 
-func (x *KubernetesHarborOssStorage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[14]
+func (x *KubernetesHarborTrivy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1356,83 +1981,194 @@ func (x *KubernetesHarborOssStorage) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesHarborOssStorage.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborOssStorage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{14}
+// Deprecated: Use KubernetesHarborTrivy.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborTrivy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{17}
 }
 
-func (x *KubernetesHarborOssStorage) GetBucket() string {
-	if x != nil {
-		return x.Bucket
-	}
-	return ""
-}
-
-func (x *KubernetesHarborOssStorage) GetEndpoint() string {
-	if x != nil {
-		return x.Endpoint
-	}
-	return ""
-}
-
-func (x *KubernetesHarborOssStorage) GetAccessKeyId() string {
-	if x != nil {
-		return x.AccessKeyId
-	}
-	return ""
-}
-
-func (x *KubernetesHarborOssStorage) GetAccessKeySecret() string {
-	if x != nil {
-		return x.AccessKeySecret
-	}
-	return ""
-}
-
-func (x *KubernetesHarborOssStorage) GetRootDirectory() string {
-	if x != nil {
-		return x.RootDirectory
-	}
-	return ""
-}
-
-func (x *KubernetesHarborOssStorage) GetSecure() bool {
-	if x != nil {
-		return x.Secure
+func (x *KubernetesHarborTrivy) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
 	}
 	return false
 }
 
+func (x *KubernetesHarborTrivy) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesHarborTrivy) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesHarborTrivy) GetDiskSize() string {
+	if x != nil && x.DiskSize != nil {
+		return *x.DiskSize
+	}
+	return ""
+}
+
+func (x *KubernetesHarborTrivy) GetSkipUpdate() bool {
+	if x != nil {
+		return x.SkipUpdate
+	}
+	return false
+}
+
+func (x *KubernetesHarborTrivy) GetSkipJavaDbUpdate() bool {
+	if x != nil {
+		return x.SkipJavaDbUpdate
+	}
+	return false
+}
+
+func (x *KubernetesHarborTrivy) GetOfflineScan() bool {
+	if x != nil {
+		return x.OfflineScan
+	}
+	return false
+}
+
+func (x *KubernetesHarborTrivy) GetDbRepositories() []string {
+	if x != nil {
+		return x.DbRepositories
+	}
+	return nil
+}
+
+func (x *KubernetesHarborTrivy) GetJavaDbRepositories() []string {
+	if x != nil {
+		return x.JavaDbRepositories
+	}
+	return nil
+}
+
+func (x *KubernetesHarborTrivy) GetGithubToken() string {
+	if x != nil && x.GithubToken != nil {
+		return *x.GithubToken
+	}
+	return ""
+}
+
+func (x *KubernetesHarborTrivy) GetSeverity() string {
+	if x != nil && x.Severity != nil {
+		return *x.Severity
+	}
+	return ""
+}
+
+func (x *KubernetesHarborTrivy) GetIgnoreUnfixed() bool {
+	if x != nil {
+		return x.IgnoreUnfixed
+	}
+	return false
+}
+
+func (x *KubernetesHarborTrivy) GetTimeout() string {
+	if x != nil && x.Timeout != nil {
+		return *x.Timeout
+	}
+	return ""
+}
+
 // *
-// **KubernetesHarborFilesystemStorage** defines filesystem (PVC) storage configuration.
-// Note: This is not suitable for production high-availability deployments.
-type KubernetesHarborFilesystemStorage struct {
+// Sizing shared by the stateless Harbor components. The chart ships
+// NO resource defaults for these components; the defaults here are
+// modest laboratory values — size real installs to traffic.
+type KubernetesHarborComponent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
+	// * Pod replicas. Empty = 1.
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// * CPU and memory for the component container.
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborComponent) Reset() {
+	*x = KubernetesHarborComponent{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborComponent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborComponent) ProtoMessage() {}
+
+func (x *KubernetesHarborComponent) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborComponent.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborComponent) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *KubernetesHarborComponent) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesHarborComponent) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+// * Jobservice sizing and job tuning.
+type KubernetesHarborJobservice struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// * Pod replicas. Empty = 1.
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// * CPU and memory for the jobservice container.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
 	// *
-	// The size of the persistent volume for storing artifacts (e.g., "100Gi").
-	// Note: This value cannot be modified after creation due to Kubernetes PVC limitations.
-	DiskSize string `protobuf:"bytes,1,opt,name=disk_size,json=diskSize,proto3" json:"disk_size,omitempty"`
-	// The storage class to use for the PVC.
-	StorageClass  string `protobuf:"bytes,2,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	// Maximum concurrent job workers (replication, GC, scans). Empty
+	// = 10 (chart default).
+	MaxJobWorkers *int32 `protobuf:"varint,3,opt,name=max_job_workers,json=maxJobWorkers,proto3,oneof" json:"max_job_workers,omitempty"`
+	// *
+	// Job-log volume size (job logs default to file storage on a
+	// PVC). Empty = "1Gi" (chart default).
+	LogDiskSize   *string `protobuf:"bytes,4,opt,name=log_disk_size,json=logDiskSize,proto3,oneof" json:"log_disk_size,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesHarborFilesystemStorage) Reset() {
-	*x = KubernetesHarborFilesystemStorage{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[15]
+func (x *KubernetesHarborJobservice) Reset() {
+	*x = KubernetesHarborJobservice{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesHarborFilesystemStorage) String() string {
+func (x *KubernetesHarborJobservice) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesHarborFilesystemStorage) ProtoMessage() {}
+func (*KubernetesHarborJobservice) ProtoMessage() {}
 
-func (x *KubernetesHarborFilesystemStorage) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[15]
+func (x *KubernetesHarborJobservice) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1443,111 +2179,73 @@ func (x *KubernetesHarborFilesystemStorage) ProtoReflect() protoreflect.Message 
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesHarborFilesystemStorage.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborFilesystemStorage) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{15}
+// Deprecated: Use KubernetesHarborJobservice.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborJobservice) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{19}
 }
 
-func (x *KubernetesHarborFilesystemStorage) GetDiskSize() string {
-	if x != nil {
-		return x.DiskSize
+func (x *KubernetesHarborJobservice) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
 	}
-	return ""
+	return 0
 }
 
-func (x *KubernetesHarborFilesystemStorage) GetStorageClass() string {
+func (x *KubernetesHarborJobservice) GetResources() *kubernetes.ContainerResources {
 	if x != nil {
-		return x.StorageClass
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesHarborJobservice) GetMaxJobWorkers() int32 {
+	if x != nil && x.MaxJobWorkers != nil {
+		return *x.MaxJobWorkers
+	}
+	return 0
+}
+
+func (x *KubernetesHarborJobservice) GetLogDiskSize() string {
+	if x != nil && x.LogDiskSize != nil {
+		return *x.LogDiskSize
 	}
 	return ""
 }
 
 // *
-// **KubernetesHarborIngress** defines the ingress configuration for Harbor endpoints.
-// It provides separate ingress settings for the Core/Portal UI and Notary service.
-type KubernetesHarborIngress struct {
+// TLS between Harbor's own components.
+type KubernetesHarborInternalTls struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Ingress configuration for Harbor Core and Portal (web UI and API).
-	Core *KubernetesHarborIngressEndpoint `protobuf:"bytes,1,opt,name=core,proto3" json:"core,omitempty"`
-	// Ingress configuration for Notary service (image signing).
-	Notary        *KubernetesHarborIngressEndpoint `protobuf:"bytes,2,opt,name=notary,proto3" json:"notary,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesHarborIngress) Reset() {
-	*x = KubernetesHarborIngress{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[16]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesHarborIngress) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesHarborIngress) ProtoMessage() {}
-
-func (x *KubernetesHarborIngress) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[16]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesHarborIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborIngress) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{16}
-}
-
-func (x *KubernetesHarborIngress) GetCore() *KubernetesHarborIngressEndpoint {
-	if x != nil {
-		return x.Core
-	}
-	return nil
-}
-
-func (x *KubernetesHarborIngress) GetNotary() *KubernetesHarborIngressEndpoint {
-	if x != nil {
-		return x.Notary
-	}
-	return nil
-}
-
-// *
-// **KubernetesHarborIngressEndpoint** defines ingress configuration for a specific Harbor endpoint.
-type KubernetesHarborIngressEndpoint struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Flag to enable or disable ingress for this endpoint.
+	// * Serve HTTPS between components.
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// The full hostname for external access (e.g., "harbor.example.com").
-	// This hostname will be configured via Gateway API resources.
-	// Required when enabled is true.
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// *
+	// Per-component certificate Secrets (kubernetes.io/tls shape plus
+	// a `ca.crt` key) — the cert-manager seam. EMPTY = the chart
+	// auto-generates an internal CA and per-component certs — and
+	// REGENERATES THEM ON EVERY APPLY (helm genCA carries no state),
+	// rolling every component each time; auto mode is for labs only.
+	CertSecrets *KubernetesHarborInternalTlsSecrets `protobuf:"bytes,2,opt,name=cert_secrets,json=certSecrets,proto3" json:"cert_secrets,omitempty"`
+	// * Restrict components to strong SSL ciphers.
+	StrongSslCiphers bool `protobuf:"varint,3,opt,name=strong_ssl_ciphers,json=strongSslCiphers,proto3" json:"strong_ssl_ciphers,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
-func (x *KubernetesHarborIngressEndpoint) Reset() {
-	*x = KubernetesHarborIngressEndpoint{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[17]
+func (x *KubernetesHarborInternalTls) Reset() {
+	*x = KubernetesHarborInternalTls{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesHarborIngressEndpoint) String() string {
+func (x *KubernetesHarborInternalTls) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesHarborIngressEndpoint) ProtoMessage() {}
+func (*KubernetesHarborInternalTls) ProtoMessage() {}
 
-func (x *KubernetesHarborIngressEndpoint) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[17]
+func (x *KubernetesHarborInternalTls) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1558,269 +2256,663 @@ func (x *KubernetesHarborIngressEndpoint) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesHarborIngressEndpoint.ProtoReflect.Descriptor instead.
-func (*KubernetesHarborIngressEndpoint) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{17}
+// Deprecated: Use KubernetesHarborInternalTls.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborInternalTls) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{20}
 }
 
-func (x *KubernetesHarborIngressEndpoint) GetEnabled() bool {
+func (x *KubernetesHarborInternalTls) GetEnabled() bool {
 	if x != nil {
 		return x.Enabled
 	}
 	return false
 }
 
-func (x *KubernetesHarborIngressEndpoint) GetHostname() string {
+func (x *KubernetesHarborInternalTls) GetCertSecrets() *KubernetesHarborInternalTlsSecrets {
 	if x != nil {
-		return x.Hostname
+		return x.CertSecrets
+	}
+	return nil
+}
+
+func (x *KubernetesHarborInternalTls) GetStrongSslCiphers() bool {
+	if x != nil {
+		return x.StrongSslCiphers
+	}
+	return false
+}
+
+// * Per-component internal-TLS certificate Secret names (all five required together).
+type KubernetesHarborInternalTlsSecrets struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	CoreSecretName       string                 `protobuf:"bytes,1,opt,name=core_secret_name,json=coreSecretName,proto3" json:"core_secret_name,omitempty"`
+	JobserviceSecretName string                 `protobuf:"bytes,2,opt,name=jobservice_secret_name,json=jobserviceSecretName,proto3" json:"jobservice_secret_name,omitempty"`
+	RegistrySecretName   string                 `protobuf:"bytes,3,opt,name=registry_secret_name,json=registrySecretName,proto3" json:"registry_secret_name,omitempty"`
+	PortalSecretName     string                 `protobuf:"bytes,4,opt,name=portal_secret_name,json=portalSecretName,proto3" json:"portal_secret_name,omitempty"`
+	// * Required only when Trivy is enabled; ignored otherwise.
+	TrivySecretName *string `protobuf:"bytes,5,opt,name=trivy_secret_name,json=trivySecretName,proto3,oneof" json:"trivy_secret_name,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborInternalTlsSecrets) Reset() {
+	*x = KubernetesHarborInternalTlsSecrets{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborInternalTlsSecrets) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborInternalTlsSecrets) ProtoMessage() {}
+
+func (x *KubernetesHarborInternalTlsSecrets) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborInternalTlsSecrets.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborInternalTlsSecrets) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *KubernetesHarborInternalTlsSecrets) GetCoreSecretName() string {
+	if x != nil {
+		return x.CoreSecretName
 	}
 	return ""
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_extTypes = []protoimpl.ExtensionInfo{
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesHarborContainer)(nil),
-		Field:         570001,
-		Name:          "dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_core_container",
-		Tag:           "bytes,570001,opt,name=default_harbor_core_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto",
-	},
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesHarborContainer)(nil),
-		Field:         570002,
-		Name:          "dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_portal_container",
-		Tag:           "bytes,570002,opt,name=default_harbor_portal_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto",
-	},
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesHarborContainer)(nil),
-		Field:         570003,
-		Name:          "dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_registry_container",
-		Tag:           "bytes,570003,opt,name=default_harbor_registry_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto",
-	},
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesHarborContainer)(nil),
-		Field:         570004,
-		Name:          "dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_jobservice_container",
-		Tag:           "bytes,570004,opt,name=default_harbor_jobservice_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto",
-	},
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesHarborPostgresqlContainer)(nil),
-		Field:         570005,
-		Name:          "dev.planton.provider.kubernetes.kubernetesharbor.v1.default_postgresql_container",
-		Tag:           "bytes,570005,opt,name=default_postgresql_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto",
-	},
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesHarborRedisContainer)(nil),
-		Field:         570006,
-		Name:          "dev.planton.provider.kubernetes.kubernetesharbor.v1.default_redis_container",
-		Tag:           "bytes,570006,opt,name=default_redis_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto",
-	},
+func (x *KubernetesHarborInternalTlsSecrets) GetJobserviceSecretName() string {
+	if x != nil {
+		return x.JobserviceSecretName
+	}
+	return ""
 }
 
-// Extension fields to descriptorpb.FieldOptions.
-var (
-	// optional dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer default_harbor_core_container = 570001;
-	E_DefaultHarborCoreContainer = &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_extTypes[0]
-	// optional dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer default_harbor_portal_container = 570002;
-	E_DefaultHarborPortalContainer = &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_extTypes[1]
-	// optional dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer default_harbor_registry_container = 570003;
-	E_DefaultHarborRegistryContainer = &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_extTypes[2]
-	// optional dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer default_harbor_jobservice_container = 570004;
-	E_DefaultHarborJobserviceContainer = &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_extTypes[3]
-	// optional dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborPostgresqlContainer default_postgresql_container = 570005;
-	E_DefaultPostgresqlContainer = &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_extTypes[4]
-	// optional dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborRedisContainer default_redis_container = 570006;
-	E_DefaultRedisContainer = &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_extTypes[5]
-)
+func (x *KubernetesHarborInternalTlsSecrets) GetRegistrySecretName() string {
+	if x != nil {
+		return x.RegistrySecretName
+	}
+	return ""
+}
+
+func (x *KubernetesHarborInternalTlsSecrets) GetPortalSecretName() string {
+	if x != nil {
+		return x.PortalSecretName
+	}
+	return ""
+}
+
+func (x *KubernetesHarborInternalTlsSecrets) GetTrivySecretName() string {
+	if x != nil && x.TrivySecretName != nil {
+		return *x.TrivySecretName
+	}
+	return ""
+}
+
+// * Prometheus metrics.
+type KubernetesHarborMetrics struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Expose /metrics on core, registry, and jobservice, and deploy
+	// the dedicated harbor-exporter.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Create a ServiceMonitor (requires the monitoring.coreos.com
+	// CRDs — a KubernetesKubePrometheusStack composes).
+	ServiceMonitorEnabled bool `protobuf:"varint,2,opt,name=service_monitor_enabled,json=serviceMonitorEnabled,proto3" json:"service_monitor_enabled,omitempty"`
+	// * ServiceMonitor scrape interval. Empty = the Prometheus default.
+	ServiceMonitorInterval *string `protobuf:"bytes,3,opt,name=service_monitor_interval,json=serviceMonitorInterval,proto3,oneof" json:"service_monitor_interval,omitempty"`
+	// * Extra labels for the ServiceMonitor (Prometheus selector matching).
+	ServiceMonitorLabels map[string]string `protobuf:"bytes,4,rep,name=service_monitor_labels,json=serviceMonitorLabels,proto3" json:"service_monitor_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborMetrics) Reset() {
+	*x = KubernetesHarborMetrics{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborMetrics) ProtoMessage() {}
+
+func (x *KubernetesHarborMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborMetrics.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborMetrics) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *KubernetesHarborMetrics) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesHarborMetrics) GetServiceMonitorEnabled() bool {
+	if x != nil {
+		return x.ServiceMonitorEnabled
+	}
+	return false
+}
+
+func (x *KubernetesHarborMetrics) GetServiceMonitorInterval() string {
+	if x != nil && x.ServiceMonitorInterval != nil {
+		return *x.ServiceMonitorInterval
+	}
+	return ""
+}
+
+func (x *KubernetesHarborMetrics) GetServiceMonitorLabels() map[string]string {
+	if x != nil {
+		return x.ServiceMonitorLabels
+	}
+	return nil
+}
+
+// * The Redis-backed manifest/metadata cache layer.
+type KubernetesHarborCacheLayer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Cache project/repository/artifact/manifest metadata in Redis —
+	// improves high-concurrency pull performance. Off by default
+	// (chart truth).
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// * Cache TTL in hours. Empty = 24 (chart default).
+	ExpireHours   *int32 `protobuf:"varint,2,opt,name=expire_hours,json=expireHours,proto3,oneof" json:"expire_hours,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborCacheLayer) Reset() {
+	*x = KubernetesHarborCacheLayer{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborCacheLayer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborCacheLayer) ProtoMessage() {}
+
+func (x *KubernetesHarborCacheLayer) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborCacheLayer.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborCacheLayer) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *KubernetesHarborCacheLayer) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesHarborCacheLayer) GetExpireHours() int32 {
+	if x != nil && x.ExpireHours != nil {
+		return *x.ExpireHours
+	}
+	return 0
+}
+
+// *
+// Outbound proxy for core, jobservice, and Trivy (DB updates and
+// replication to registries not directly reachable).
+type KubernetesHarborOutboundProxy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// * HTTP proxy URL.
+	HttpProxy *string `protobuf:"bytes,1,opt,name=http_proxy,json=httpProxy,proto3,oneof" json:"http_proxy,omitempty"`
+	// * HTTPS proxy URL.
+	HttpsProxy *string `protobuf:"bytes,2,opt,name=https_proxy,json=httpsProxy,proto3,oneof" json:"https_proxy,omitempty"`
+	// *
+	// Extra no-proxy entries appended to the chart's built-in
+	// component list (every Harbor component Service is always
+	// excluded). Empty = "127.0.0.1,localhost,.local,.internal"
+	// (chart default).
+	NoProxy       *string `protobuf:"bytes,3,opt,name=no_proxy,json=noProxy,proto3,oneof" json:"no_proxy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborOutboundProxy) Reset() {
+	*x = KubernetesHarborOutboundProxy{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborOutboundProxy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborOutboundProxy) ProtoMessage() {}
+
+func (x *KubernetesHarborOutboundProxy) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborOutboundProxy.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborOutboundProxy) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *KubernetesHarborOutboundProxy) GetHttpProxy() string {
+	if x != nil && x.HttpProxy != nil {
+		return *x.HttpProxy
+	}
+	return ""
+}
+
+func (x *KubernetesHarborOutboundProxy) GetHttpsProxy() string {
+	if x != nil && x.HttpsProxy != nil {
+		return *x.HttpsProxy
+	}
+	return ""
+}
+
+func (x *KubernetesHarborOutboundProxy) GetNoProxy() string {
+	if x != nil && x.NoProxy != nil {
+		return *x.NoProxy
+	}
+	return ""
+}
+
+// * Pod scheduling constraints (applied to every component).
+type KubernetesHarborScheduling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// * Schedule onto nodes carrying these labels.
+	NodeSelector map[string]string `protobuf:"bytes,1,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// * Tolerations for tainted nodes.
+	Tolerations   []*kubernetes.WorkloadToleration `protobuf:"bytes,2,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesHarborScheduling) Reset() {
+	*x = KubernetesHarborScheduling{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHarborScheduling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHarborScheduling) ProtoMessage() {}
+
+func (x *KubernetesHarborScheduling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHarborScheduling.ProtoReflect.Descriptor instead.
+func (*KubernetesHarborScheduling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *KubernetesHarborScheduling) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesHarborScheduling) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
 
 var File_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesharbor.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xc8\v\n" +
+	">dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesharbor.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xad\x1b\n" +
 	"\x14KubernetesHarborSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\x9d\x01\n" +
-	"\x0ecore_container\x18\x04 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainerB&\x8a\xa9\x96\x02!\b\x01\x12\x1d\n" +
-	"\f\n" +
-	"\x051000m\x12\x032Gi\x12\r\n" +
-	"\x04200m\x12\x05512MiR\rcoreContainer\x12\xa2\x01\n" +
-	"\x10portal_container\x18\x05 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainerB'\x92\xa9\x96\x02\"\b\x01\x12\x1e\n" +
-	"\r\n" +
-	"\x04500m\x12\x05512Mi\x12\r\n" +
-	"\x04100m\x12\x05256MiR\x0fportalContainer\x12\xa5\x01\n" +
-	"\x12registry_container\x18\x06 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainerB&\x9a\xa9\x96\x02!\b\x01\x12\x1d\n" +
-	"\f\n" +
-	"\x051000m\x12\x032Gi\x12\r\n" +
-	"\x04200m\x12\x05512MiR\x11registryContainer\x12\xa9\x01\n" +
-	"\x14jobservice_container\x18\a \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainerB&\xa2\xa9\x96\x02!\b\x01\x12\x1d\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
+	"\rchart_version\x18\x03 \x01(\tB\n" +
+	"\x8a\xa6\x1d\x061.19.1H\x00R\fchartVersion\x88\x01\x01\x12\xc8\x01\n" +
+	"\fexternal_url\x18\x04 \x01(\tB\xa4\x01\xbaH\xa0\x01\xba\x01\x9c\x01\n" +
+	"\x11spec.external_url\x12eexternal_url must be protocol://host[:port] with no trailing slash (e.g. https://harbor.example.com).\x1a this.matches('^https?://[^/]+$')R\vexternalUrl\x12c\n" +
+	"\x06expose\x18\x05 \x01(\v2K.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExposeR\x06expose\x12m\n" +
+	"\n" +
+	"admin_auth\x18\x06 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborAdminAuthR\tadminAuth\x12q\n" +
+	"\bdatabase\x18\a \x01(\v2M.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborDatabaseB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12h\n" +
+	"\x05cache\x18\b \x01(\v2J.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCacheB\x06\xbaH\x03\xc8\x01\x01R\x05cache\x12v\n" +
+	"\astorage\x18\t \x01(\v2T.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborArtifactStorageB\x06\xbaH\x03\xc8\x01\x01R\astorage\x12`\n" +
+	"\x05trivy\x18\n" +
+	" \x01(\v2J.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborTrivyR\x05trivy\x12b\n" +
+	"\x04core\x18\v \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborComponentR\x04core\x12f\n" +
+	"\x06portal\x18\f \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborComponentR\x06portal\x12j\n" +
+	"\bregistry\x18\r \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborComponentR\bregistry\x12o\n" +
+	"\n" +
+	"jobservice\x18\x0e \x01(\v2O.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborJobserviceR\n" +
+	"jobservice\x12d\n" +
+	"\x05nginx\x18\x0f \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborComponentR\x05nginx\x12s\n" +
+	"\finternal_tls\x18\x10 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalTlsR\vinternalTls\x12f\n" +
+	"\ametrics\x18\x11 \x01(\v2L.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborMetricsR\ametrics\x12p\n" +
+	"\vcache_layer\x18\x12 \x01(\v2O.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCacheLayerR\n" +
+	"cacheLayer\x12y\n" +
+	"\x0eoutbound_proxy\x18\x13 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborOutboundProxyR\routboundProxy\x12\xba\x01\n" +
+	"\tlog_level\x18\x14 \x01(\tB\x97\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
+	"\x0espec.log_level\x12=log_level must be one of: debug, info, warning, error, fatal.\x1a6this in [\"debug\", \"info\", \"warning\", \"error\", \"fatal\"]\x8a\xa6\x1d\x04infoH\x01R\blogLevel\x88\x01\x01\x12*\n" +
+	"\x0eimage_registry\x18\x15 \x01(\tH\x02R\rimageRegistry\x88\x01\x01\x12x\n" +
+	"\x12image_pull_secrets\x18\x16 \x03(\tBJ\xaa\xa6\x1dFNames of existing Kubernetes Secrets (references), not secret materialR\x10imagePullSecrets\x126\n" +
+	"\x15ca_bundle_secret_name\x18\x17 \x01(\tH\x03R\x12caBundleSecretName\x88\x01\x01\x12H\n" +
+	"\x19keep_volumes_on_uninstall\x18\x18 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x16keepVolumesOnUninstall\x88\x01\x01\x12\xb7\x01\n" +
+	"\x0fupdate_strategy\x18\x19 \x01(\tB\x88\x01\xbaHt\xba\x01q\n" +
+	"\x14spec.update_strategy\x122update_strategy must be RollingUpdate or Recreate.\x1a%this in [\"RollingUpdate\", \"Recreate\"]\x8a\xa6\x1d\rRollingUpdateH\x05R\x0eupdateStrategy\x88\x01\x01\x12o\n" +
+	"\n" +
+	"scheduling\x18\x1a \x01(\v2O.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSchedulingR\n" +
+	"scheduling\x12\x1f\n" +
+	"\vhelm_values\x18\x1b \x01(\tR\n" +
+	"helmValues:\xe8\x03\xbaH\xe4\x03\x1a\xe1\x03\n" +
+	"&spec.registry.filesystem_multi_replica\x12\x90\x02More than one registry replica on the filesystem backend requires storage.filesystem.access_mode: ReadWriteMany — with ReadWriteOnce each replica would need the same volume attached to a different node. Use an object-storage backend (s3/gcs/azure) to scale the registry.\x1a\xa3\x01!has(this.registry) || this.registry.replicas <= 1 || !has(this.storage) || !has(this.storage.filesystem) || this.storage.filesystem.access_mode == 'ReadWriteMany'B\x10\n" +
+	"\x0e_chart_versionB\f\n" +
+	"\n" +
+	"_log_levelB\x11\n" +
+	"\x0f_image_registryB\x18\n" +
+	"\x16_ca_bundle_secret_nameB\x1c\n" +
+	"\x1a_keep_volumes_on_uninstallB\x12\n" +
+	"\x10_update_strategy\"\x90\x06\n" +
+	"\x16KubernetesHarborExpose\x12\xcc\x01\n" +
+	"\fservice_type\x18\x01 \x01(\tB\xa3\x01\xbaH\x92\x01\xba\x01\x8e\x01\n" +
+	"\x18spec.expose.service_type\x12?service_type must be one of: ClusterIP, NodePort, LoadBalancer.\x1a1this in [\"ClusterIP\", \"NodePort\", \"LoadBalancer\"]\x8a\xa6\x1d\tClusterIPH\x00R\vserviceType\x88\x01\x01\x12`\n" +
+	"\x03tls\x18\x02 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExposeTlsR\x03tls\x12m\n" +
+	"\n" +
+	"node_ports\x18\x03 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborNodePortsR\tnodePorts\x12\x94\x01\n" +
+	"\x13service_annotations\x18\x04 \x03(\v2c.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExpose.ServiceAnnotationsEntryR\x12serviceAnnotations\x12#\n" +
+	"\rsource_ranges\x18\x05 \x03(\tR\fsourceRanges\x12-\n" +
+	"\x10load_balancer_ip\x18\x06 \x01(\tH\x01R\x0eloadBalancerIp\x88\x01\x01\x1aE\n" +
+	"\x17ServiceAnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0f\n" +
+	"\r_service_typeB\x13\n" +
+	"\x11_load_balancer_ip\"\xb9\x01\n" +
+	"\x19KubernetesHarborExposeTls\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x81\x01\n" +
+	"\x10cert_secret_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x0ecertSecretName\"\x92\x01\n" +
+	"\x19KubernetesHarborNodePorts\x12/\n" +
+	"\x04http\x18\x01 \x01(\x05B\x16\xbaH\n" +
+	"\x1a\b\x18\xff\xff\x01(\xb0\xea\x01\x8a\xa6\x1d\x0530002H\x00R\x04http\x88\x01\x01\x121\n" +
+	"\x05https\x18\x02 \x01(\x05B\x16\xbaH\n" +
+	"\x1a\b\x18\xff\xff\x01(\xb0\xea\x01\x8a\xa6\x1d\x0530003H\x01R\x05https\x88\x01\x01B\a\n" +
+	"\x05_httpB\b\n" +
+	"\x06_https\"\x9d\x02\n" +
+	"\x19KubernetesHarborAdminAuth\x125\n" +
+	"\x14existing_secret_name\x18\x01 \x01(\tH\x00R\x12existingSecretName\x88\x01\x01\x12\x97\x01\n" +
+	"\x13existing_secret_key\x18\x02 \x01(\tBb\x8a\xa6\x1d\x15HARBOR_ADMIN_PASSWORD\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialH\x01R\x11existingSecretKey\x88\x01\x01B\x17\n" +
+	"\x15_existing_secret_nameB\x16\n" +
+	"\x14_existing_secret_key\"\x98\x03\n" +
+	"\x18KubernetesHarborDatabase\x12s\n" +
+	"\binternal\x18\x01 \x01(\v2U.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalDatabaseH\x00R\binternal\x12s\n" +
+	"\bexternal\x18\x02 \x01(\v2U.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalDatabaseH\x00R\bexternal:\x87\x01\xbaH\x83\x01\x1a\x80\x01\n" +
+	"\x14spec.database.engine\x12>Exactly one database engine is required: internal or external.\x1a(has(this.internal) || has(this.external)B\b\n" +
+	"\x06engine\"\x88\x04\n" +
+	" KubernetesHarborInternalDatabase\x12u\n" +
+	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB\"\xba\xfb\xa4\x02\x1d\n" +
 	"\f\n" +
 	"\x051000m\x12\x031Gi\x12\r\n" +
-	"\x04100m\x12\x05256MiR\x13jobserviceContainer\x12w\n" +
-	"\bdatabase\x18\b \x01(\v2S.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborDatabaseConfigB\x06\xbaH\x03\xc8\x01\x01R\bdatabase\x12n\n" +
-	"\x05cache\x18\t \x01(\v2P.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCacheConfigB\x06\xbaH\x03\xc8\x01\x01R\x05cache\x12t\n" +
-	"\astorage\x18\n" +
-	" \x01(\v2R.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageConfigB\x06\xbaH\x03\xc8\x01\x01R\astorage\x12f\n" +
-	"\aingress\x18\v \x01(\v2L.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborIngressR\aingress\x12z\n" +
-	"\vhelm_values\x18\f \x03(\v2Y.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.HelmValuesEntryR\n" +
-	"helmValues\x1a=\n" +
-	"\x0fHelmValuesEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xda\x01\n" +
-	"\x19KubernetesHarborContainer\x12#\n" +
-	"\breplicas\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12E\n" +
-	"\x05image\x18\x03 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\"\xef\x03\n" +
-	"\x1eKubernetesHarborDatabaseConfig\x12\x1f\n" +
-	"\vis_external\x18\x01 \x01(\bR\n" +
-	"isExternal\x12\x84\x01\n" +
-	"\x11external_database\x18\x02 \x01(\v2W.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalPostgresqlR\x10externalDatabase\x12\x81\x01\n" +
-	"\x10managed_database\x18\x03 \x01(\v2V.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborManagedPostgresqlR\x0fmanagedDatabase:\xa0\x01\xbaH\x9c\x01\x1a\x99\x01\n" +
-	"\x1fspec.database.external_required\x12DExternal database configuration is required when is_external is true\x1a0!this.is_external || has(this.external_database)\"\xc2\x04\n" +
-	"\"KubernetesHarborExternalPostgresql\x12\x1a\n" +
-	"\x04host\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04host\x12,\n" +
+	"\x04100m\x12\x05256MiR\tresources\x12\xd9\x01\n" +
+	"\tdisk_size\x18\x02 \x01(\tB\xb6\x01\xbaH\xab\x01\xba\x01\xa7\x01\n" +
+	" spec.database.internal.disk_size\x124disk_size must be a Kubernetes quantity (e.g. 10Gi).\x1aMthis == '' || this.matches('^\\\\d+(\\\\.\\\\d+)?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')\x8a\xa6\x1d\x031GiH\x00R\bdiskSize\x88\x01\x01\x12(\n" +
+	"\rstorage_class\x18\x03 \x01(\tH\x01R\fstorageClass\x88\x01\x01\x124\n" +
+	"\x0eshm_size_limit\x18\x04 \x01(\tB\t\x8a\xa6\x1d\x05512MiH\x02R\fshmSizeLimit\x88\x01\x01B\f\n" +
+	"\n" +
+	"_disk_sizeB\x10\n" +
+	"\x0e_storage_classB\x11\n" +
+	"\x0f_shm_size_limit\"\xb9\x05\n" +
+	" KubernetesHarborExternalDatabase\x12p\n" +
+	"\x04host\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a\x19status.outputs.rw_serviceR\x04host\x12,\n" +
 	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x045432H\x00R\x04port\x88\x01\x01\x12\"\n" +
-	"\busername\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12&\n" +
-	"\bpassword\x18\x04 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bpassword\x126\n" +
-	"\rcore_database\x18\x05 \x01(\tB\f\x8a\xa6\x1d\bregistryH\x01R\fcoreDatabase\x88\x01\x01\x125\n" +
-	"\x0eclair_database\x18\x06 \x01(\tB\t\x8a\xa6\x1d\x05clairH\x02R\rclairDatabase\x88\x01\x01\x12L\n" +
-	"\x16notary_server_database\x18\a \x01(\tB\x11\x8a\xa6\x1d\rnotary_serverH\x03R\x14notaryServerDatabase\x88\x01\x01\x12L\n" +
-	"\x16notary_signer_database\x18\b \x01(\tB\x11\x8a\xa6\x1d\rnotary_signerH\x04R\x14notarySignerDatabase\x88\x01\x01\x12\x17\n" +
-	"\ause_ssl\x18\t \x01(\bR\x06useSslB\a\n" +
+	"\busername\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\busername\x12\x98\x01\n" +
+	"\x14password_secret_name\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\x12passwordSecretName\x126\n" +
+	"\rcore_database\x18\x05 \x01(\tB\f\x8a\xa6\x1d\bregistryH\x01R\fcoreDatabase\x88\x01\x01\x12\xd5\x01\n" +
+	"\bssl_mode\x18\x06 \x01(\tB\xb4\x01\xbaH\xa5\x01\xba\x01\xa1\x01\n" +
+	"\x1fspec.database.external.ssl_mode\x12Bssl_mode must be one of: disable, require, verify-ca, verify-full.\x1a:this in [\"disable\", \"require\", \"verify-ca\", \"verify-full\"]\x8a\xa6\x1d\adisableH\x02R\asslMode\x88\x01\x01B\a\n" +
 	"\x05_portB\x10\n" +
-	"\x0e_core_databaseB\x11\n" +
-	"\x0f_clair_databaseB\x19\n" +
-	"\x17_notary_server_databaseB\x19\n" +
-	"\x17_notary_signer_database\"\xcc\x01\n" +
-	"!KubernetesHarborManagedPostgresql\x12\xa6\x01\n" +
-	"\tcontainer\x18\x01 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborPostgresqlContainerB.\xaa\xa9\x96\x02)\b\x01\x12\x1d\n" +
-	"\f\n" +
-	"\x051000m\x12\x032Gi\x12\r\n" +
-	"\x04200m\x12\x05512Mi \x01*\x0420GiR\tcontainer\"\x97\x05\n" +
-	"#KubernetesHarborPostgresqlContainer\x12#\n" +
-	"\breplicas\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12E\n" +
-	"\x05image\x18\x03 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12/\n" +
-	"\x13persistence_enabled\x18\x04 \x01(\bR\x12persistenceEnabled\x12\x1b\n" +
-	"\tdisk_size\x18\x05 \x01(\tR\bdiskSize:\xe2\x02\xbaH\xde\x02\x1a\xdb\x02\n" +
-	",spec.postgresql.container.disk_size.required\x12IDisk size is required and must match the format if persistence is enabled\x1a\xdf\x01((!this.persistence_enabled && (size(this.disk_size) == 0 || this.disk_size == '')) || (this.persistence_enabled && size(this.disk_size) > 0 && this.disk_size.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')))\"\xcb\x03\n" +
-	"\x1bKubernetesHarborCacheConfig\x12\x1f\n" +
-	"\vis_external\x18\x01 \x01(\bR\n" +
-	"isExternal\x12y\n" +
-	"\x0eexternal_cache\x18\x02 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalRedisR\rexternalCache\x12v\n" +
-	"\rmanaged_cache\x18\x03 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborManagedRedisR\fmanagedCache:\x97\x01\xbaH\x93\x01\x1a\x90\x01\n" +
-	"\x1cspec.cache.external_required\x12AExternal cache configuration is required when is_external is true\x1a-!this.is_external || has(this.external_cache)\"\xf2\x03\n" +
-	"\x1dKubernetesHarborExternalRedis\x12\x1a\n" +
-	"\x04host\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04host\x12,\n" +
-	"\x04port\x18\x02 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x046379H\x00R\x04port\x88\x01\x01\x12\x1a\n" +
-	"\busername\x18\x03 \x01(\tR\busername\x12 \n" +
-	"\bpassword\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\bpassword\x121\n" +
-	"\x0edatabase_index\x18\x05 \x01(\x05B\x05\x8a\xa6\x1d\x010H\x01R\rdatabaseIndex\x88\x01\x01\x12!\n" +
-	"\fuse_sentinel\x18\x06 \x01(\bR\vuseSentinel\x12.\n" +
-	"\x13sentinel_master_set\x18\a \x01(\tR\x11sentinelMasterSet:\xa6\x01\xbaH\xa2\x01\x1a\x9f\x01\n" +
-	"#spec.cache.sentinel_master_required\x12>Sentinel master set name is required when use_sentinel is true\x1a8!this.use_sentinel || size(this.sentinel_master_set) > 0B\a\n" +
-	"\x05_portB\x11\n" +
-	"\x0f_database_index\"\xc2\x01\n" +
-	"\x1cKubernetesHarborManagedRedis\x12\xa1\x01\n" +
-	"\tcontainer\x18\x01 \x01(\v2S.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborRedisContainerB.\xb2\xa9\x96\x02)\b\x01\x12\x1e\n" +
+	"\x0e_core_databaseB\v\n" +
+	"\t_ssl_mode\"\x86\x03\n" +
+	"\x15KubernetesHarborCache\x12p\n" +
+	"\binternal\x18\x01 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalRedisH\x00R\binternal\x12p\n" +
+	"\bexternal\x18\x02 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalRedisH\x00R\bexternal:\x7f\xbaH|\x1az\n" +
+	"\x11spec.cache.engine\x12;Exactly one cache engine is required: internal or external.\x1a(has(this.internal) || has(this.external)B\b\n" +
+	"\x06engine\"\xb8\x03\n" +
+	"\x1dKubernetesHarborInternalRedis\x12u\n" +
+	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB\"\xba\xfb\xa4\x02\x1d\n" +
 	"\r\n" +
-	"\x04500m\x12\x05512Mi\x12\r\n" +
-	"\x04100m\x12\x05256Mi \x01*\x038GiR\tcontainer\"\x8d\x05\n" +
-	"\x1eKubernetesHarborRedisContainer\x12#\n" +
-	"\breplicas\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12E\n" +
-	"\x05image\x18\x03 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\x05image\x12/\n" +
-	"\x13persistence_enabled\x18\x04 \x01(\bR\x12persistenceEnabled\x12\x1b\n" +
-	"\tdisk_size\x18\x05 \x01(\tR\bdiskSize:\xdd\x02\xbaH\xd9\x02\x1a\xd6\x02\n" +
-	"'spec.redis.container.disk_size.required\x12IDisk size is required and must match the format if persistence is enabled\x1a\xdf\x01((!this.persistence_enabled && (size(this.disk_size) == 0 || this.disk_size == '')) || (this.persistence_enabled && size(this.disk_size) > 0 && this.disk_size.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')))\"\x8a\n" +
+	"\x04500m\x12\x05512Mi\x12\f\n" +
+	"\x0350m\x12\x05128MiR\tresources\x12\xd5\x01\n" +
+	"\tdisk_size\x18\x02 \x01(\tB\xb2\x01\xbaH\xa7\x01\xba\x01\xa3\x01\n" +
+	"\x1dspec.cache.internal.disk_size\x123disk_size must be a Kubernetes quantity (e.g. 1Gi).\x1aMthis == '' || this.matches('^\\\\d+(\\\\.\\\\d+)?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')\x8a\xa6\x1d\x031GiH\x00R\bdiskSize\x88\x01\x01\x12(\n" +
+	"\rstorage_class\x18\x03 \x01(\tH\x01R\fstorageClass\x88\x01\x01B\f\n" +
 	"\n" +
-	"\x1dKubernetesHarborStorageConfig\x12l\n" +
-	"\x04type\x18\x01 \x01(\x0e2P.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12^\n" +
-	"\x02s3\x18\x02 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3StorageR\x02s3\x12a\n" +
-	"\x03gcs\x18\x03 \x01(\v2O.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborGcsStorageR\x03gcs\x12g\n" +
-	"\x05azure\x18\x04 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborAzureStorageR\x05azure\x12a\n" +
-	"\x03oss\x18\x05 \x01(\v2O.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborOssStorageR\x03oss\x12v\n" +
+	"_disk_sizeB\x10\n" +
+	"\x0e_storage_class\"\xb8\x05\n" +
+	"\x1dKubernetesHarborExternalRedis\x12s\n" +
+	"\x04addr\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\x86\a\x92\xd4a\x1cstatus.outputs.kube_endpointR\x04addr\x123\n" +
+	"\x13sentinel_master_set\x18\x02 \x01(\tH\x00R\x11sentinelMasterSet\x88\x01\x01\x12\x1f\n" +
+	"\busername\x18\x03 \x01(\tH\x01R\busername\x88\x01\x01\x12%\n" +
+	"\bpassword\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01H\x02R\bpassword\x88\x01\x01\x125\n" +
+	"\x14existing_secret_name\x18\x05 \x01(\tH\x03R\x12existingSecretName\x88\x01\x01\x12\x1f\n" +
+	"\vtls_enabled\x18\x06 \x01(\bR\n" +
+	"tlsEnabled:\x81\x02\xbaH\xfd\x01\x1a\xfa\x01\n" +
+	"\x18spec.cache.external.auth\x12kDeclare the Redis credential once: password (module-materialized Secret) or existing_secret_name, not both.\x1aq!(has(this.password) && this.password != '' && has(this.existing_secret_name) && this.existing_secret_name != '')B\x16\n" +
+	"\x14_sentinel_master_setB\v\n" +
+	"\t_usernameB\v\n" +
+	"\t_passwordB\x17\n" +
+	"\x15_existing_secret_name\"\x8b\x05\n" +
+	"\x1fKubernetesHarborArtifactStorage\x12x\n" +
 	"\n" +
-	"filesystem\x18\x06 \x01(\v2V.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborFilesystemStorageR\n" +
-	"filesystem:\xf3\x04\xbaH\xef\x04\x1ap\n" +
-	"\x18spec.storage.s3_required\x124S3 configuration is required when storage type is s3\x1a\x1ethis.type != 2 || has(this.s3)\x1at\n" +
-	"\x19spec.storage.gcs_required\x126GCS configuration is required when storage type is gcs\x1a\x1fthis.type != 3 || has(this.gcs)\x1a|\n" +
-	"\x1bspec.storage.azure_required\x12:Azure configuration is required when storage type is azure\x1a!this.type != 4 || has(this.azure)\x1at\n" +
-	"\x19spec.storage.oss_required\x126OSS configuration is required when storage type is oss\x1a\x1fthis.type != 5 || has(this.oss)\x1a\x90\x01\n" +
-	" spec.storage.filesystem_required\x12DFilesystem configuration is required when storage type is filesystem\x1a&this.type != 1 || has(this.filesystem)\"\xd2\x02\n" +
+	"filesystem\x18\x01 \x01(\v2V.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborFilesystemStorageH\x00R\n" +
+	"filesystem\x12`\n" +
+	"\x02s3\x18\x02 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3StorageH\x00R\x02s3\x12c\n" +
+	"\x03gcs\x18\x03 \x01(\v2O.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborGcsStorageH\x00R\x03gcs\x12i\n" +
+	"\x05azure\x18\x04 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborAzureStorageH\x00R\x05azure:\xb0\x01\xbaH\xac\x01\x1a\xa9\x01\n" +
+	"\x14spec.storage.backend\x12GExactly one storage backend is required: filesystem, s3, gcs, or azure.\x1aHhas(this.filesystem) || has(this.s3) || has(this.gcs) || has(this.azure)B\t\n" +
+	"\abackend\"\xa4\x04\n" +
+	"!KubernetesHarborFilesystemStorage\x12\xdb\x01\n" +
+	"\tdisk_size\x18\x01 \x01(\tB\xb8\x01\xbaH\xad\x01\xba\x01\xa9\x01\n" +
+	"!spec.storage.filesystem.disk_size\x125disk_size must be a Kubernetes quantity (e.g. 100Gi).\x1aMthis == '' || this.matches('^\\\\d+(\\\\.\\\\d+)?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')\x8a\xa6\x1d\x035GiH\x00R\bdiskSize\x88\x01\x01\x12(\n" +
+	"\rstorage_class\x18\x02 \x01(\tH\x01R\fstorageClass\x88\x01\x01\x12\xc6\x01\n" +
+	"\vaccess_mode\x18\x03 \x01(\tB\x9f\x01\xbaH\x8a\x01\xba\x01\x86\x01\n" +
+	"#spec.storage.filesystem.access_mode\x123access_mode must be ReadWriteOnce or ReadWriteMany.\x1a*this in [\"ReadWriteOnce\", \"ReadWriteMany\"]\x8a\xa6\x1d\rReadWriteOnceH\x02R\n" +
+	"accessMode\x88\x01\x01B\f\n" +
+	"\n" +
+	"_disk_sizeB\x10\n" +
+	"\x0e_storage_classB\x0e\n" +
+	"\f_access_mode\"\xd9\x04\n" +
 	"\x19KubernetesHarborS3Storage\x12\x1e\n" +
 	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\x1e\n" +
-	"\x06region\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12%\n" +
+	"\x06region\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12s\n" +
+	"\bendpoint\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x9b\a\x92\xd4a\x1astatus.outputs.s3_endpointR\bendpoint\x12t\n" +
+	"\vcredentials\x18\x04 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3CredentialsR\vcredentials\x12)\n" +
+	"\x10disable_redirect\x18\x05 \x01(\bR\x0fdisableRedirect\x12\x18\n" +
+	"\aencrypt\x18\x06 \x01(\bR\aencrypt\x12%\n" +
+	"\x06secure\x18\a \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x06secure\x88\x01\x01\x12\x1f\n" +
+	"\vskip_verify\x18\b \x01(\bR\n" +
+	"skipVerify\x12*\n" +
+	"\x0eroot_directory\x18\t \x01(\tH\x01R\rrootDirectory\x88\x01\x01\x12(\n" +
+	"\rstorage_class\x18\n" +
+	" \x01(\tH\x02R\fstorageClass\x88\x01\x01B\t\n" +
+	"\a_secureB\x11\n" +
+	"\x0f_root_directoryB\x10\n" +
+	"\x0e_storage_class\"\xb8\x05\n" +
+	"\x1dKubernetesHarborS3Credentials\x12\"\n" +
 	"\n" +
-	"access_key\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\taccessKey\x12)\n" +
+	"access_key\x18\x01 \x01(\tH\x00R\taccessKey\x88\x01\x01\x12(\n" +
 	"\n" +
-	"secret_key\x18\x04 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\tsecretKey\x12'\n" +
-	"\x0fregion_endpoint\x18\x05 \x01(\bR\x0eregionEndpoint\x12\x18\n" +
-	"\aencrypt\x18\x06 \x01(\bR\aencrypt\x12\x16\n" +
-	"\x06secure\x18\a \x01(\bR\x06secure\x12%\n" +
-	"\x0eroot_directory\x18\b \x01(\tR\rrootDirectory\x12!\n" +
-	"\fendpoint_url\x18\t \x01(\tR\vendpointUrl\"\xca\x01\n" +
+	"secret_key\x18\x02 \x01(\tB\x04\xa0\xa6\x1d\x01H\x01R\tsecretKey\x88\x01\x01\x125\n" +
+	"\x14existing_secret_name\x18\x03 \x01(\tH\x02R\x12existingSecretName\x88\x01\x01:\xda\x03\xbaH\xd6\x03\x1a\x94\x02\n" +
+	"#spec.storage.s3.credentials.one_arm\x12rDeclare S3 credentials once: access_key/secret_key (module-materialized Secret) or existing_secret_name, not both.\x1ay!((has(this.access_key) && this.access_key != '') && (has(this.existing_secret_name) && this.existing_secret_name != ''))\x1a\xbc\x01\n" +
+	" spec.storage.s3.credentials.pair\x124access_key and secret_key must be declared together.\x1ab(has(this.access_key) && this.access_key != '') == (has(this.secret_key) && this.secret_key != '')B\r\n" +
+	"\v_access_keyB\r\n" +
+	"\v_secret_keyB\x17\n" +
+	"\x15_existing_secret_name\"\x97\x06\n" +
 	"\x1aKubernetesHarborGcsStorage\x12\x1e\n" +
-	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12%\n" +
-	"\bkey_data\x18\x02 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\akeyData\x12%\n" +
-	"\x0eroot_directory\x18\x03 \x01(\tR\rrootDirectory\x12/\n" +
+	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x122\n" +
+	"\x15use_workload_identity\x18\x02 \x01(\bR\x13useWorkloadIdentity\x12$\n" +
+	"\bkey_data\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01H\x00R\akeyData\x88\x01\x01\x125\n" +
+	"\x14existing_secret_name\x18\x04 \x01(\tH\x01R\x12existingSecretName\x88\x01\x01\x12*\n" +
+	"\x0eroot_directory\x18\x05 \x01(\tH\x02R\rrootDirectory\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"chunk_size\x18\x04 \x01(\x05B\v\x8a\xa6\x1d\a5242880H\x00R\tchunkSize\x88\x01\x01B\r\n" +
-	"\v_chunk_size\"\xc3\x01\n" +
+	"chunk_size\x18\x06 \x01(\x05H\x03R\tchunkSize\x88\x01\x01:\xaf\x03\xbaH\xab\x03\x1a\xa8\x03\n" +
+	"\x15spec.storage.gcs.auth\x12~Declare GCS credentials once: use_workload_identity (keyless), key_data (module-materialized Secret), or existing_secret_name.\x1a\x8e\x02!(this.use_workload_identity && ((has(this.key_data) && this.key_data != '') || (has(this.existing_secret_name) && this.existing_secret_name != ''))) && !((has(this.key_data) && this.key_data != '') && (has(this.existing_secret_name) && this.existing_secret_name != ''))B\v\n" +
+	"\t_key_dataB\x17\n" +
+	"\x15_existing_secret_nameB\x11\n" +
+	"\x0f_root_directoryB\r\n" +
+	"\v_chunk_size\"\x81\x05\n" +
 	"\x1cKubernetesHarborAzureStorage\x12)\n" +
-	"\faccount_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vaccountName\x12+\n" +
-	"\vaccount_key\x18\x02 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\n" +
-	"accountKey\x12$\n" +
-	"\tcontainer\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12%\n" +
-	"\x0eroot_directory\x18\x04 \x01(\tR\rrootDirectory\"\x83\x02\n" +
-	"\x1aKubernetesHarborOssStorage\x12\x1e\n" +
-	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\"\n" +
-	"\bendpoint\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bendpoint\x12*\n" +
-	"\raccess_key_id\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vaccessKeyId\x126\n" +
-	"\x11access_key_secret\x18\x04 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x0faccessKeySecret\x12%\n" +
-	"\x0eroot_directory\x18\x05 \x01(\tR\rrootDirectory\x12\x16\n" +
-	"\x06secure\x18\x06 \x01(\bR\x06secure\"\xa5\x02\n" +
-	"!KubernetesHarborFilesystemStorage\x12\xda\x01\n" +
-	"\tdisk_size\x18\x01 \x01(\tB\xbc\x01\xbaH\xb8\x01\xba\x01\xb4\x01\n" +
-	"*spec.storage.filesystem.disk_size.required\x12/Disk size is required and must match the format\x1aUsize(this) > 0 && this.matches('^\\\\d+(\\\\.\\\\d+)?\\\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$')R\bdiskSize\x12#\n" +
-	"\rstorage_class\x18\x02 \x01(\tR\fstorageClass\"\xf1\x01\n" +
-	"\x17KubernetesHarborIngress\x12h\n" +
-	"\x04core\x18\x01 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborIngressEndpointR\x04core\x12l\n" +
-	"\x06notary\x18\x02 \x01(\v2T.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborIngressEndpointR\x06notary\"\xd6\x01\n" +
-	"\x1fKubernetesHarborIngressEndpoint\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
-	"\x1espec.ingress.hostname.required\x12,hostname is required when ingress is enabled\x1a(!this.enabled || size(this.hostname) > 0*\x82\x01\n" +
-	"\x1bKubernetesHarborStorageType\x12.\n" +
-	"*kubernetes_harbor_storage_type_unspecified\x10\x00\x12\x0e\n" +
+	"\faccount_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vaccountName\x12$\n" +
+	"\tcontainer\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12*\n" +
+	"\vaccount_key\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01H\x00R\n" +
+	"accountKey\x88\x01\x01\x125\n" +
+	"\x14existing_secret_name\x18\x04 \x01(\tH\x01R\x12existingSecretName\x88\x01\x01\x12/\n" +
+	"\x05realm\x18\x05 \x01(\tB\x14\x8a\xa6\x1d\x10core.windows.netH\x02R\x05realm\x88\x01\x01:\xc8\x02\xbaH\xc4\x02\x1a\xc1\x02\n" +
+	"\x17spec.storage.azure.auth\x12\xab\x01Declare EXACTLY one Azure credential arm: account_key (module-materialized Secret) or existing_secret_name — the registry's azure driver has no ambient credential chain.\x1ax(has(this.account_key) && this.account_key != '') != (has(this.existing_secret_name) && this.existing_secret_name != '')B\x0e\n" +
+	"\f_account_keyB\x17\n" +
+	"\x15_existing_secret_nameB\b\n" +
+	"\x06_realm\"\xa1\x05\n" +
+	"\x15KubernetesHarborTrivy\x12'\n" +
+	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12-\n" +
+	"\breplicas\x18\x02 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x03 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12)\n" +
+	"\tdisk_size\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x035GiH\x02R\bdiskSize\x88\x01\x01\x12\x1f\n" +
+	"\vskip_update\x18\x05 \x01(\bR\n" +
+	"skipUpdate\x12-\n" +
+	"\x13skip_java_db_update\x18\x06 \x01(\bR\x10skipJavaDbUpdate\x12!\n" +
+	"\foffline_scan\x18\a \x01(\bR\vofflineScan\x12'\n" +
+	"\x0fdb_repositories\x18\b \x03(\tR\x0edbRepositories\x120\n" +
+	"\x14java_db_repositories\x18\t \x03(\tR\x12javaDbRepositories\x12,\n" +
+	"\fgithub_token\x18\n" +
+	" \x01(\tB\x04\xa0\xa6\x1d\x01H\x03R\vgithubToken\x88\x01\x01\x12\x1f\n" +
+	"\bseverity\x18\v \x01(\tH\x04R\bseverity\x88\x01\x01\x12%\n" +
+	"\x0eignore_unfixed\x18\f \x01(\bR\rignoreUnfixed\x12\x1d\n" +
+	"\atimeout\x18\r \x01(\tH\x05R\atimeout\x88\x01\x01B\n" +
 	"\n" +
-	"filesystem\x10\x01\x12\x06\n" +
-	"\x02s3\x10\x02\x12\a\n" +
-	"\x03gcs\x10\x03\x12\t\n" +
-	"\x05azure\x10\x04\x12\a\n" +
-	"\x03oss\x10\x05:\xb2\x01\n" +
-	"\x1ddefault_harbor_core_container\x12\x1d.google.protobuf.FieldOptions\x18\x91\xe5\" \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainerR\x1adefaultHarborCoreContainer:\xb6\x01\n" +
-	"\x1fdefault_harbor_portal_container\x12\x1d.google.protobuf.FieldOptions\x18\x92\xe5\" \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainerR\x1cdefaultHarborPortalContainer:\xba\x01\n" +
-	"!default_harbor_registry_container\x12\x1d.google.protobuf.FieldOptions\x18\x93\xe5\" \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainerR\x1edefaultHarborRegistryContainer:\xbe\x01\n" +
-	"#default_harbor_jobservice_container\x12\x1d.google.protobuf.FieldOptions\x18\x94\xe5\" \x01(\v2N.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainerR defaultHarborJobserviceContainer:\xbb\x01\n" +
-	"\x1cdefault_postgresql_container\x12\x1d.google.protobuf.FieldOptions\x18\x95\xe5\" \x01(\v2X.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborPostgresqlContainerR\x1adefaultPostgresqlContainer:\xac\x01\n" +
-	"\x17default_redis_container\x12\x1d.google.protobuf.FieldOptions\x18\x96\xe5\" \x01(\v2S.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborRedisContainerR\x15defaultRedisContainerB\xa1\x03\n" +
+	"\b_enabledB\v\n" +
+	"\t_replicasB\f\n" +
+	"\n" +
+	"_disk_sizeB\x0f\n" +
+	"\r_github_tokenB\v\n" +
+	"\t_severityB\n" +
+	"\n" +
+	"\b_timeout\"\xce\x01\n" +
+	"\x19KubernetesHarborComponent\x12-\n" +
+	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12u\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB\"\xba\xfb\xa4\x02\x1d\n" +
+	"\f\n" +
+	"\x051000m\x12\x031Gi\x12\r\n" +
+	"\x04100m\x12\x05256MiR\tresourcesB\v\n" +
+	"\t_replicas\"\xe3\x02\n" +
+	"\x1aKubernetesHarborJobservice\x12-\n" +
+	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12u\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB\"\xba\xfb\xa4\x02\x1d\n" +
+	"\f\n" +
+	"\x051000m\x12\x031Gi\x12\r\n" +
+	"\x04100m\x12\x05256MiR\tresources\x12:\n" +
+	"\x0fmax_job_workers\x18\x03 \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0210H\x01R\rmaxJobWorkers\x88\x01\x01\x120\n" +
+	"\rlog_disk_size\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x031GiH\x02R\vlogDiskSize\x88\x01\x01B\v\n" +
+	"\t_replicasB\x12\n" +
+	"\x10_max_job_workersB\x10\n" +
+	"\x0e_log_disk_size\"\xe1\x01\n" +
+	"\x1bKubernetesHarborInternalTls\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12z\n" +
+	"\fcert_secrets\x18\x02 \x01(\v2W.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalTlsSecretsR\vcertSecrets\x12,\n" +
+	"\x12strong_ssl_ciphers\x18\x03 \x01(\bR\x10strongSslCiphers\"\xcb\x02\n" +
+	"\"KubernetesHarborInternalTlsSecrets\x120\n" +
+	"\x10core_secret_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0ecoreSecretName\x12<\n" +
+	"\x16jobservice_secret_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x14jobserviceSecretName\x128\n" +
+	"\x14registry_secret_name\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x12registrySecretName\x124\n" +
+	"\x12portal_secret_name\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10portalSecretName\x12/\n" +
+	"\x11trivy_secret_name\x18\x05 \x01(\tH\x00R\x0ftrivySecretName\x88\x01\x01B\x14\n" +
+	"\x12_trivy_secret_name\"\xaf\x03\n" +
+	"\x17KubernetesHarborMetrics\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x126\n" +
+	"\x17service_monitor_enabled\x18\x02 \x01(\bR\x15serviceMonitorEnabled\x12=\n" +
+	"\x18service_monitor_interval\x18\x03 \x01(\tH\x00R\x16serviceMonitorInterval\x88\x01\x01\x12\x9c\x01\n" +
+	"\x16service_monitor_labels\x18\x04 \x03(\v2f.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborMetrics.ServiceMonitorLabelsEntryR\x14serviceMonitorLabels\x1aG\n" +
+	"\x19ServiceMonitorLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x1b\n" +
+	"\x19_service_monitor_interval\"~\n" +
+	"\x1aKubernetesHarborCacheLayer\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x125\n" +
+	"\fexpire_hours\x18\x02 \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0224H\x00R\vexpireHours\x88\x01\x01B\x0f\n" +
+	"\r_expire_hours\"\xb5\x01\n" +
+	"\x1dKubernetesHarborOutboundProxy\x12\"\n" +
+	"\n" +
+	"http_proxy\x18\x01 \x01(\tH\x00R\thttpProxy\x88\x01\x01\x12$\n" +
+	"\vhttps_proxy\x18\x02 \x01(\tH\x01R\n" +
+	"httpsProxy\x88\x01\x01\x12\x1e\n" +
+	"\bno_proxy\x18\x03 \x01(\tH\x02R\anoProxy\x88\x01\x01B\r\n" +
+	"\v_http_proxyB\x0e\n" +
+	"\f_https_proxyB\v\n" +
+	"\t_no_proxy\"\xbd\x02\n" +
+	"\x1aKubernetesHarborScheduling\x12\x86\x01\n" +
+	"\rnode_selector\x18\x01 \x03(\v2a.dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xa1\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetesharbor.v1B\tSpecProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesharbor/v1;kubernetesharborv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetesharbor.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetesharbor\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetesharbor\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetesharbor::V1b\x06proto3"
 
 var (
@@ -1835,82 +2927,90 @@ func file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDesc
 	return file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_goTypes = []any{
-	(KubernetesHarborStorageType)(0),            // 0: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageType
-	(*KubernetesHarborSpec)(nil),                // 1: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec
-	(*KubernetesHarborContainer)(nil),           // 2: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer
-	(*KubernetesHarborDatabaseConfig)(nil),      // 3: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborDatabaseConfig
-	(*KubernetesHarborExternalPostgresql)(nil),  // 4: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalPostgresql
-	(*KubernetesHarborManagedPostgresql)(nil),   // 5: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborManagedPostgresql
-	(*KubernetesHarborPostgresqlContainer)(nil), // 6: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborPostgresqlContainer
-	(*KubernetesHarborCacheConfig)(nil),         // 7: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCacheConfig
-	(*KubernetesHarborExternalRedis)(nil),       // 8: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalRedis
-	(*KubernetesHarborManagedRedis)(nil),        // 9: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborManagedRedis
-	(*KubernetesHarborRedisContainer)(nil),      // 10: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborRedisContainer
-	(*KubernetesHarborStorageConfig)(nil),       // 11: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageConfig
-	(*KubernetesHarborS3Storage)(nil),           // 12: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3Storage
-	(*KubernetesHarborGcsStorage)(nil),          // 13: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborGcsStorage
-	(*KubernetesHarborAzureStorage)(nil),        // 14: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborAzureStorage
-	(*KubernetesHarborOssStorage)(nil),          // 15: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborOssStorage
-	(*KubernetesHarborFilesystemStorage)(nil),   // 16: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborFilesystemStorage
-	(*KubernetesHarborIngress)(nil),             // 17: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborIngress
-	(*KubernetesHarborIngressEndpoint)(nil),     // 18: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborIngressEndpoint
-	nil,                                         // 19: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.HelmValuesEntry
-	(*v1.StringValueOrRef)(nil),                 // 20: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),       // 21: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.ContainerImage)(nil),           // 22: dev.planton.provider.kubernetes.ContainerImage
-	(*descriptorpb.FieldOptions)(nil),           // 23: google.protobuf.FieldOptions
+	(*KubernetesHarborSpec)(nil),               // 0: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec
+	(*KubernetesHarborExpose)(nil),             // 1: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExpose
+	(*KubernetesHarborExposeTls)(nil),          // 2: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExposeTls
+	(*KubernetesHarborNodePorts)(nil),          // 3: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborNodePorts
+	(*KubernetesHarborAdminAuth)(nil),          // 4: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborAdminAuth
+	(*KubernetesHarborDatabase)(nil),           // 5: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborDatabase
+	(*KubernetesHarborInternalDatabase)(nil),   // 6: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalDatabase
+	(*KubernetesHarborExternalDatabase)(nil),   // 7: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalDatabase
+	(*KubernetesHarborCache)(nil),              // 8: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCache
+	(*KubernetesHarborInternalRedis)(nil),      // 9: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalRedis
+	(*KubernetesHarborExternalRedis)(nil),      // 10: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalRedis
+	(*KubernetesHarborArtifactStorage)(nil),    // 11: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborArtifactStorage
+	(*KubernetesHarborFilesystemStorage)(nil),  // 12: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborFilesystemStorage
+	(*KubernetesHarborS3Storage)(nil),          // 13: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3Storage
+	(*KubernetesHarborS3Credentials)(nil),      // 14: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3Credentials
+	(*KubernetesHarborGcsStorage)(nil),         // 15: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborGcsStorage
+	(*KubernetesHarborAzureStorage)(nil),       // 16: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborAzureStorage
+	(*KubernetesHarborTrivy)(nil),              // 17: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborTrivy
+	(*KubernetesHarborComponent)(nil),          // 18: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborComponent
+	(*KubernetesHarborJobservice)(nil),         // 19: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborJobservice
+	(*KubernetesHarborInternalTls)(nil),        // 20: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalTls
+	(*KubernetesHarborInternalTlsSecrets)(nil), // 21: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalTlsSecrets
+	(*KubernetesHarborMetrics)(nil),            // 22: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborMetrics
+	(*KubernetesHarborCacheLayer)(nil),         // 23: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCacheLayer
+	(*KubernetesHarborOutboundProxy)(nil),      // 24: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborOutboundProxy
+	(*KubernetesHarborScheduling)(nil),         // 25: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborScheduling
+	nil,                                        // 26: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExpose.ServiceAnnotationsEntry
+	nil,                                        // 27: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborMetrics.ServiceMonitorLabelsEntry
+	nil,                                        // 28: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),                // 29: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),      // 30: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),      // 31: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_depIdxs = []int32{
-	20, // 0: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 1: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.core_container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer
-	2,  // 2: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.portal_container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer
-	2,  // 3: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.registry_container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer
-	2,  // 4: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.jobservice_container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer
-	3,  // 5: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.database:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborDatabaseConfig
-	7,  // 6: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.cache:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCacheConfig
-	11, // 7: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.storage:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageConfig
-	17, // 8: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborIngress
-	19, // 9: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.helm_values:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.HelmValuesEntry
-	21, // 10: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	22, // 11: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	4,  // 12: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborDatabaseConfig.external_database:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalPostgresql
-	5,  // 13: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborDatabaseConfig.managed_database:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborManagedPostgresql
-	6,  // 14: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborManagedPostgresql.container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborPostgresqlContainer
-	21, // 15: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborPostgresqlContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	22, // 16: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborPostgresqlContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	8,  // 17: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCacheConfig.external_cache:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalRedis
-	9,  // 18: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCacheConfig.managed_cache:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborManagedRedis
-	10, // 19: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborManagedRedis.container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborRedisContainer
-	21, // 20: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborRedisContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	22, // 21: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborRedisContainer.image:type_name -> dev.planton.provider.kubernetes.ContainerImage
-	0,  // 22: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageConfig.type:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageType
-	12, // 23: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageConfig.s3:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3Storage
-	13, // 24: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageConfig.gcs:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborGcsStorage
-	14, // 25: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageConfig.azure:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborAzureStorage
-	15, // 26: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageConfig.oss:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborOssStorage
-	16, // 27: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStorageConfig.filesystem:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborFilesystemStorage
-	18, // 28: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborIngress.core:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborIngressEndpoint
-	18, // 29: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborIngress.notary:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborIngressEndpoint
-	23, // 30: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_core_container:extendee -> google.protobuf.FieldOptions
-	23, // 31: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_portal_container:extendee -> google.protobuf.FieldOptions
-	23, // 32: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_registry_container:extendee -> google.protobuf.FieldOptions
-	23, // 33: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_jobservice_container:extendee -> google.protobuf.FieldOptions
-	23, // 34: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_postgresql_container:extendee -> google.protobuf.FieldOptions
-	23, // 35: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_redis_container:extendee -> google.protobuf.FieldOptions
-	2,  // 36: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_core_container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer
-	2,  // 37: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_portal_container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer
-	2,  // 38: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_registry_container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer
-	2,  // 39: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_harbor_jobservice_container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborContainer
-	6,  // 40: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_postgresql_container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborPostgresqlContainer
-	10, // 41: dev.planton.provider.kubernetes.kubernetesharbor.v1.default_redis_container:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborRedisContainer
-	42, // [42:42] is the sub-list for method output_type
-	42, // [42:42] is the sub-list for method input_type
-	36, // [36:42] is the sub-list for extension type_name
-	30, // [30:36] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	29, // 0: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.expose:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExpose
+	4,  // 2: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.admin_auth:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborAdminAuth
+	5,  // 3: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.database:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborDatabase
+	8,  // 4: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.cache:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCache
+	11, // 5: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.storage:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborArtifactStorage
+	17, // 6: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.trivy:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborTrivy
+	18, // 7: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.core:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborComponent
+	18, // 8: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.portal:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborComponent
+	18, // 9: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.registry:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborComponent
+	19, // 10: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.jobservice:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborJobservice
+	18, // 11: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.nginx:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborComponent
+	20, // 12: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.internal_tls:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalTls
+	22, // 13: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.metrics:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborMetrics
+	23, // 14: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.cache_layer:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCacheLayer
+	24, // 15: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.outbound_proxy:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborOutboundProxy
+	25, // 16: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborScheduling
+	2,  // 17: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExpose.tls:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExposeTls
+	3,  // 18: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExpose.node_ports:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborNodePorts
+	26, // 19: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExpose.service_annotations:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExpose.ServiceAnnotationsEntry
+	29, // 20: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExposeTls.cert_secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 21: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborDatabase.internal:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalDatabase
+	7,  // 22: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborDatabase.external:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalDatabase
+	30, // 23: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalDatabase.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	29, // 24: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalDatabase.host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 25: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalDatabase.password_secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 26: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCache.internal:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalRedis
+	10, // 27: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborCache.external:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalRedis
+	30, // 28: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalRedis.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	29, // 29: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborExternalRedis.addr:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 30: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborArtifactStorage.filesystem:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborFilesystemStorage
+	13, // 31: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborArtifactStorage.s3:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3Storage
+	15, // 32: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborArtifactStorage.gcs:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborGcsStorage
+	16, // 33: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborArtifactStorage.azure:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborAzureStorage
+	29, // 34: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3Storage.endpoint:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 35: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3Storage.credentials:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborS3Credentials
+	30, // 36: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborTrivy.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	30, // 37: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborComponent.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	30, // 38: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborJobservice.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	21, // 39: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalTls.cert_secrets:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborInternalTlsSecrets
+	27, // 40: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborMetrics.service_monitor_labels:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborMetrics.ServiceMonitorLabelsEntry
+	28, // 41: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborScheduling.NodeSelectorEntry
+	31, // 42: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	43, // [43:43] is the sub-list for method output_type
+	43, // [43:43] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_init() }
@@ -1918,24 +3018,53 @@ func file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_init() 
 	if File_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[5].OneofWrappers = []any{
+		(*KubernetesHarborDatabase_Internal)(nil),
+		(*KubernetesHarborDatabase_External)(nil),
+	}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
 	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[7].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[8].OneofWrappers = []any{
+		(*KubernetesHarborCache_Internal)(nil),
+		(*KubernetesHarborCache_External)(nil),
+	}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[11].OneofWrappers = []any{
+		(*KubernetesHarborArtifactStorage_Filesystem)(nil),
+		(*KubernetesHarborArtifactStorage_S3)(nil),
+		(*KubernetesHarborArtifactStorage_Gcs)(nil),
+		(*KubernetesHarborArtifactStorage_Azure)(nil),
+	}
 	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[14].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[15].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[16].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[17].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[18].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[19].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[21].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[22].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[23].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes[24].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   19,
-			NumExtensions: 6,
+			NumEnums:      0,
+			NumMessages:   29,
+			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_depIdxs,
-		EnumInfos:         file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_enumTypes,
 		MessageInfos:      file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_msgTypes,
-		ExtensionInfos:    file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_extTypes,
 	}.Build()
 	File_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto = out.File
 	file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_goTypes = nil

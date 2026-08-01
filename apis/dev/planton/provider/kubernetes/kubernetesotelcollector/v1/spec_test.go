@@ -99,6 +99,16 @@ var _ = ginkgo.Describe("KubernetesOtelCollector Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
+		ginkgo.It("a daemonset log collector running as root should be valid", func() {
+			// The daemonset log pattern: container runtimes write pod
+			// log files readable only by root (taught on the field).
+			input.Spec.Mode = modePtr(KubernetesOtelCollectorMode_daemonset)
+			input.Spec.PodSecurityContext = &kubernetes.WorkloadPodSecurityContext{
+				RunAsUser: func() *int64 { v := int64(0); return &v }(),
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
 		ginkgo.It("a daemonset log collector with hostPath volumes and tolerations should be valid", func() {
 			input.Spec.Mode = modePtr(KubernetesOtelCollectorMode_daemonset)
 			input.Spec.Volumes = []*kubernetes.VolumeMount{{
@@ -128,6 +138,17 @@ var _ = ginkgo.Describe("KubernetesOtelCollector Validation Tests", func() {
 
 		ginkgo.It("sidecar mode should be valid", func() {
 			input.Spec.Mode = modePtr(KubernetesOtelCollectorMode_sidecar)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("sidecar mode with only a node_selector should be valid", func() {
+			// The CRD forbids tolerations/priorityClassName in sidecar
+			// mode but not nodeSelector — the CEL mirrors the CRD
+			// exactly, never over-constraining.
+			input.Spec.Mode = modePtr(KubernetesOtelCollectorMode_sidecar)
+			input.Spec.Scheduling = &KubernetesOtelCollectorScheduling{
+				NodeSelector: map[string]string{"workload": "apps"},
+			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
@@ -179,6 +200,26 @@ var _ = ginkgo.Describe("KubernetesOtelCollector Validation Tests", func() {
 		ginkgo.It("sidecar mode with an autoscaler should fail", func() {
 			input.Spec.Mode = modePtr(KubernetesOtelCollectorMode_sidecar)
 			input.Spec.Autoscaler = &KubernetesOtelCollectorAutoscaler{MaxReplicas: 4}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("sidecar mode with tolerations should fail", func() {
+			// Mirrored from the CRD's own admission rule — the target
+			// pods own their scheduling, not this CR.
+			input.Spec.Mode = modePtr(KubernetesOtelCollectorMode_sidecar)
+			input.Spec.Scheduling = &KubernetesOtelCollectorScheduling{
+				Tolerations: []*kubernetes.WorkloadToleration{
+					{Key: "dedicated", Operator: "Exists", Effect: "NoSchedule"},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("sidecar mode with a priority class should fail", func() {
+			input.Spec.Mode = modePtr(KubernetesOtelCollectorMode_sidecar)
+			input.Spec.Scheduling = &KubernetesOtelCollectorScheduling{
+				PriorityClassName: "high-priority",
+			}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 

@@ -1,0 +1,8 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesFlinkOperator
+metadata:
+  name: flink-operator
+spec:
+  namespace:
+    value: flink-system
+  createNamespace: true

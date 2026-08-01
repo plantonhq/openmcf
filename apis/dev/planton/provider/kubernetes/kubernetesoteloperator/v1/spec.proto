@@ -20,21 +20,32 @@ import "dev/planton/shared/options/options.proto";
  * here, Instrumentation/OpAMPBridge/TargetAllocator CRs authored
  * directly).
  *
- * CRD LIFECYCLE: the chart templates its five opentelemetry.io CRDs as
+ * CRD LIFECYCLE: the chart templates its opentelemetry.io CRDs as
  * release-owned objects — a Helm uninstall would cascade-delete every
  * collector in the cluster. This component instead OWNS the CRD
- * lifecycle: the modules apply the chart's pinned CRD bundle outside
- * the release (create/update only, retained on destroy), so removing
- * the operator never deletes the fleet's declarations. Chart-version
- * bumps upgrade the CRDs with the release.
+ * lifecycle: the modules apply the four CRDs the default operator
+ * serves (opentelemetrycollectors, instrumentations, opampbridges,
+ * targetallocators), staged from the pinned chart, outside the release
+ * (create/update only, retained on destroy) — so removing the operator
+ * never deletes the fleet's declarations. Chart-version bumps upgrade
+ * the CRDs with the staged files. The fifth, feature-gated
+ * clusterobservabilities CRD (the operator.clusterobservability alpha
+ * gate, off by default) is deliberately not staged — enabling that
+ * gate via helm_values without its CRD is unsupported here.
  *
  * WEBHOOK CERTIFICATE: the operator's admission webhooks (they default
  * and validate collector CRs, failurePolicy Fail) need a serving
- * certificate. The default arm has cert-manager issue and rotate it —
- * which makes KubernetesCertManager a prerequisite of the default
- * posture. The `auto_generate` arm needs no cert-manager (Helm
- * generates the cert at install) — for clusters that will never run
- * cert-manager.
+ * certificate, and cert-manager issues and rotates it — which makes
+ * KubernetesCertManager a hard prerequisite of this component. This is
+ * a deliberate consequence of the CRD lifecycle above: the collector
+ * CRD carries a version-CONVERSION webhook, and because the CRDs are
+ * retained past the release's lifetime, their conversion trust must be
+ * kept current by a running reconciler (cert-manager's CA injector,
+ * via the CRDs' cert-manager.io/inject-ca-from annotation). A
+ * certificate embedded once at install time (the chart's Helm-generated
+ * arm) goes stale on rotation and silently breaks collector-CR
+ * conversion long after the install succeeded — so no such arm exists
+ * here.
  *
  * NAMING: keep the resource name at 30 characters or fewer — the chart
  * derives a `<name>-controller-manager-service-cert` Secret and
@@ -83,9 +94,11 @@ message KubernetesOtelOperatorSpec {
   bool skip_crds = 4;
 
   /**
-   * How the admission webhooks' serving certificate is issued. Empty =
-   * cert-manager (the chart's own default posture — requires
-   * KubernetesCertManager on the cluster).
+   * Admission-webhook certificate configuration. cert-manager issues
+   * and rotates the certificate and keeps the retained CRDs' conversion
+   * trust current (see the WEBHOOK CERTIFICATE note above — this is why
+   * KubernetesCertManager is a prerequisite). Empty = the chart creates
+   * its own self-signed Issuer, the right choice for almost everyone.
    */
   KubernetesOtelOperatorWebhook webhook = 5;
 
@@ -123,10 +136,12 @@ message KubernetesOtelOperatorSpec {
   bool service_monitor_enabled = 9;
 
   /**
-   * Registry that replaces the registry part of every image this
-   * component pulls (the operator manager, and the CRD-bundle apply
-   * path) — the air-gap/private-mirror path. Empty = each image's
-   * upstream registry (ghcr.io).
+   * Registry that replaces the registry part of the operator manager
+   * image — the air-gap/private-mirror path. Empty = the image's
+   * upstream registry (ghcr.io). This does NOT rewrite the default
+   * collector image the operator injects into CRs — mirror that
+   * fleet-wide via `default_collector_image` (the collector pods pull
+   * it, not this component).
    */
   string image_registry = 10;
 
@@ -152,28 +167,12 @@ message KubernetesOtelOperatorSpec {
 }
 
 /**
- * Admission-webhook certificate posture.
+ * Admission-webhook certificate configuration (cert-manager-issued —
+ * the only posture this component models; the spec's WEBHOOK
+ * CERTIFICATE note explains why a one-shot certificate arm cannot
+ * exist alongside retained CRDs).
  */
 message KubernetesOtelOperatorWebhook {
-  oneof cert {
-    /**
-     * cert-manager issues and rotates the webhook certificate (the
-     * chart's default). Requires KubernetesCertManager on the cluster.
-     */
-    KubernetesOtelOperatorWebhookCertManager cert_manager = 1;
-
-    /**
-     * Helm generates a self-signed certificate at install — no
-     * cert-manager dependency.
-     */
-    KubernetesOtelOperatorWebhookAutoGenerate auto_generate = 2;
-  }
-}
-
-/**
- * cert-manager-issued webhook certificate.
- */
-message KubernetesOtelOperatorWebhookCertManager {
   /**
    * Issuer to sign the webhook certificate. Empty = the chart creates
    * its own self-signed Issuer (the default — right for almost
@@ -201,30 +200,6 @@ message KubernetesOtelOperatorIssuerRef {
    * Issuer name.
    */
   string name = 2 [(buf.validate.field).required = true];
-}
-
-/**
- * Helm-generated self-signed webhook certificate.
- */
-message KubernetesOtelOperatorWebhookAutoGenerate {
-  /**
-   * Regenerate the certificate on every helm upgrade. Default false —
-   * this component deliberately diverges from the chart's
-   * regenerate-by-default so upgrades never churn the webhook trust
-   * chain; the certificate is valid for `cert_period_days` and a
-   * deliberate regeneration is an upgrade with this flag flipped.
-   */
-  bool recreate_on_upgrade = 1;
-
-  /**
-   * Certificate validity in days. Empty = 365. Plan the regeneration
-   * upgrade before it expires — an expired webhook cert blocks every
-   * collector-CR write.
-   */
-  optional int32 cert_period_days = 2 [
-    (dev.planton.shared.options.default) = "365",
-    (buf.validate.field).int32.gte = 1
-  ];
 }
 
 /**

@@ -1,0 +1,5 @@
+backend.tf
+.terraform/
+.terraform.lock.hcl
+*.tfplan
+terraform.tfplan

@@ -1,19 +1,37 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKeycloak
 metadata:
-  name: my-keycloak
+  name: keycloak
 spec:
   namespace:
     value: keycloak
-  createNamespace: true
-  container:
-    resources:
-      requests:
-        cpu: 100m
-        memory: 512Mi
-      limits:
-        cpu: 2000m
-        memory: 2Gi
-  ingress:
-    enabled: true
-    hostname: "<your-keycloak.example.com>"
+  instances: 2
+  db:
+    vendor: postgres
+    host:
+      valueFrom:
+        name: my-postgres
+    database: keycloak
+    usernameSecret:
+      name:
+        valueFrom:
+          name: my-postgres
+      key: username
+    passwordSecret:
+      name:
+        valueFrom:
+          name: my-postgres
+      key: password
+  http:
+    tlsSecretName:
+      valueFrom:
+        name: keycloak-cert
+  hostname:
+    hostname: https://auth.example.com
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 1536Mi

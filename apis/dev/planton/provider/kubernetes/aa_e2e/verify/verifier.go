@@ -25,14 +25,17 @@ var operatorKinds = map[string]bool{
 // (case-insensitive via lowercasing).
 var helmTier2Kinds = map[string]bool{
 	// Tier 2 Helm applications
-	"kubernetesopenbao":  true,
-	"kubernetesopenfga":  true,
-	"kubernetesjenkins":  true,
-	"kubernetesharbor":   true,
-	"kuberneteslocust":   true,
-	"kuberneteskeycloak": true,
+	"kubernetesjenkins": true,
+	"kubernetesharbor":  true,
+	"kuberneteslocust":  true,
 	// Helm applications with dedicated behavioral verifiers (the
-	// dispatch cases win; these rows are the generic fallback)
+	// dispatch cases win; these rows are the generic fallback).
+	// NOTE kubernetesopenbao is deliberately NOT listed: its pods are
+	// NotReady BY DESIGN until initialized/unsealed, so the generic
+	// readiness-waiting fallback would hang every lane — only its
+	// dedicated seal-lifecycle verifier is honest. kuberneteskeycloak
+	// is operator-CR (not Helm) and dispatches to its own verifier.
+	"kubernetesopenfga":   true,
 	"kubernetesseaweedfs": true,
 	"kubernetesqdrant":    true,
 	"kubernetestemporal":  true,
@@ -831,6 +834,81 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			StateProof:        strings.Contains(manifestPath, "behavioral-state"),
 		}, nil
 
+	// An Airflow installation: the Airflow 3 component set rolled out
+	// (+ Celery workers/bundled Redis when declared), THE AUTH GATE
+	// (anonymous API read rejected), the api server's own health
+	// contract (metadatabase + scheduler healthy — the composed
+	// database proven end to end), and THE DAG PROOF on every lane —
+	// a real DAG triggered through the REST API as the admin user
+	// (module-generated credential) and polled to a SUCCESSFUL run.
+	// The behavioral-dag-delivery scenario (recognized by name) writes
+	// a marker DAG into the shared dags volume instead, runs it, then
+	// re-runs it after a UID-verified scheduler replacement. Destroy
+	// is clean by design (no CRDs).
+	case "kubernetesairflow":
+		spec := manifestSpecMap(manifestPath)
+		return &AirflowVerifier{
+			Namespace:     info.Namespace,
+			Name:          info.Name,
+			CeleryEnabled: airflowCeleryEnabled(spec),
+			BundledRedis:  airflowBundledRedis(spec),
+			AdminUsername: airflowAdminUsername(spec),
+			DeliveryProof: strings.Contains(manifestPath, "behavioral-dag-delivery"),
+		}, nil
+
+	// The Apache Spark operator: rollout + both spark.apache.org CRDs
+	// established + THE JOB PROOF on every lane (a verifier-owned
+	// SparkApplication — the in-image SparkPi — runs to Succeeded
+	// through REAL driver and executor pods under the chart-created
+	// workload RBAC), and with a fenced workload posture THE FENCE
+	// PROOF (a SparkApplication outside the fence is never reconciled).
+	// Destroy asserts the crds/-directory keep posture.
+	case "kubernetessparkoperator":
+		spec := manifestSpecMap(manifestPath)
+		return &SparkOperatorVerifier{
+			Namespace:              info.Namespace,
+			Name:                   info.Name,
+			WorkloadNamespaces:     sparkWorkloadNamespaces(spec),
+			WorkloadServiceAccount: sparkWorkloadServiceAccount(spec),
+		}, nil
+
+	// A Ray cluster declaration: the CR to ready, the head Service, THE
+	// AUTH GATE (unauthenticated job submission REJECTED — token auth is
+	// the catalog default) + THE RAY PROOF (a real job through the head's
+	// Job Submission REST API to SUCCEEDED on the cluster's own
+	// capacity), and on the behavioral-state lane THE STATE PROOF (the
+	// head pod replaced; the recovered head still lists the completed
+	// job — control state lived in the composed Valkey, not head-pod
+	// memory).
+	case "kubernetesraycluster":
+		spec := manifestSpecMap(manifestPath)
+		return &RayClusterVerifier{
+			Namespace:           info.Namespace,
+			Name:                info.Name,
+			AuthDisabled:        rayClusterAuthDisabled(spec),
+			ExistingTokenSecret: rayClusterExistingTokenSecret(spec),
+			GcsFaultTolerance:   rayClusterGcsFaultTolerance(spec),
+			StateProof:          strings.Contains(manifestPath, "behavioral-state"),
+		}, nil
+
+	// A Flink cluster declaration: the CR's JobManager to READY, THE
+	// REST CONTRACT (/config answers with the declared Flink version),
+	// THE STREAM PROOF on application lanes (the job reaches RUNNING
+	// with TaskManagers materialized from its parallelism), and on the
+	// behavioral-recovery lane THE RECOVERY PROOF (completed checkpoints
+	// observed in the composed S3 store, the JobManager pod replaced,
+	// the job back to RUNNING with checkpoint continuity — recovery
+	// through HA metadata).
+	case "kubernetesflinkdeployment":
+		spec := manifestSpecMap(manifestPath)
+		return &FlinkDeploymentVerifier{
+			Namespace:     info.Namespace,
+			Name:          info.Name,
+			SessionMode:   flinkDeploymentSessionMode(spec),
+			RecoveryProof: strings.Contains(manifestPath, "behavioral-recovery"),
+			FlinkVersion:  flinkDeploymentVersion(spec),
+		}, nil
+
 	// A NATS messaging system: the StatefulSet rolled out and THE
 	// MESSAGING PROOF on every lane — a real nats.go client completes a
 	// pub/sub round-trip (authenticated as the first declared user from
@@ -850,6 +928,40 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			NoAuthUser:       natsNoAuthUser(spec),
 			NatsBoxEnabled:   natsBoxEnabled(spec),
 			DurabilityProof:  strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// The Kyverno policy engine: every enabled controller rolled out,
+	// the runtime-registered webhook configurations present, and THE
+	// ENFORCEMENT PROOF on every lane (a verifier-owned Enforce
+	// ClusterPolicy rejects a violating Pod and admits a compliant
+	// one). The behavioral-enforcement scenario (recognized by name)
+	// adds the mutation proof. Destroy asserts the webhook
+	// configurations are GONE — the pre-delete cleanup hook is the
+	// designed uninstall path.
+	case "kuberneteskyverno":
+		spec := manifestSpecMap(manifestPath)
+		return &KyvernoVerifier{
+			Namespace:         info.Namespace,
+			Name:              info.Name,
+			BackgroundEnabled: nestedBoolWithDefault(spec, "background_controller", "enabled", true),
+			CleanupEnabled:    nestedBoolWithDefault(spec, "cleanup_controller", "enabled", true),
+			ReportsEnabled:    nestedBoolWithDefault(spec, "reports_controller", "enabled", true),
+			Mutation:          strings.Contains(manifestPath, "behavioral-enforcement"),
+		}, nil
+
+	// The OPA Gatekeeper engine: controller-manager replicas + the audit
+	// controller rolled out, the chart-owned webhook configuration and
+	// engine CRDs present, and THE ENFORCEMENT PROOF on every lane (a
+	// verifier-owned CEL ConstraintTemplate + deny Constraint rejects a
+	// violating Pod and admits a compliant one). The behavioral-audit
+	// scenario (recognized by name) adds the audit-loop proof on a
+	// pre-constraint victim. Destroy asserts webhook configurations
+	// GONE and engine CRDs KEPT (the crds/-directory posture).
+	case "kubernetesgatekeeper":
+		return &GatekeeperVerifier{
+			Namespace: info.Namespace,
+			Name:      info.Name,
+			Audit:     strings.Contains(manifestPath, "behavioral-audit"),
 		}, nil
 
 	// A Qdrant vector database: replicas ready, the main Service
@@ -1109,6 +1221,159 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Profile:         tektonProfile(spec),
 			TargetNamespace: tektonTargetNamespace(spec),
 			PrunerDeclared:  tektonPrunerDeclared(spec),
+		}, nil
+
+	// The Keycloak Operator install (release-manifest bundle): the
+	// operator rolled out in the declared namespace, all four
+	// k8s.keycloak.org CRDs established — and THE DESIGN INVARIANT
+	// proven: no Keycloak server exists after installing the operator
+	// alone (the KubernetesKeycloak declaration kind owns servers).
+	// Destroy asserts workloads AND CRDs gone (the bundle posture).
+	case "kuberneteskeycloakoperator":
+		return &KeycloakOperatorVerifier{
+			Namespace: info.Namespace,
+		}, nil
+
+	// An operator-managed Keycloak server: the Keycloak CR Ready (its
+	// boolean-status condition; HasErrors warnings tolerated — a
+	// documented legitimate state), the StatefulSet at the declared
+	// instance count, the operator's naming contract
+	// (`-service`/`-discovery`/`-initial-admin`) — and THE PRODUCT
+	// PROOF on every lane: a real admin login (master-realm password
+	// grant with the bootstrap credentials) plus an authenticated
+	// admin-API read. The behavioral-durability scenario (recognized
+	// by name) creates a realm, replaces pod 0, and re-reads the realm
+	// through a fresh login — configuration surviving pod replacement
+	// is the database-durability proof.
+	case "kuberneteskeycloak":
+		spec := manifestSpecMap(manifestPath)
+		instances, https, port, adminSecret, generated := keycloakScenarioShape(spec, info.Name)
+		return &KeycloakVerifier{
+			Namespace:            info.Namespace,
+			Name:                 info.Name,
+			Instances:            instances,
+			Https:                https,
+			Port:                 port,
+			AdminSecretName:      adminSecret,
+			GeneratedAdminSecret: generated,
+			Behavioral:           strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// The OpenBao secrets manager: THE SEAL LIFECYCLE IS THE PROOF —
+	// sealed pods asserted NotReady-by-design, the verifier performs
+	// the real init/unseal bootstrap (readiness must FLIP), then a KV
+	// round-trip proves the server serves secrets. Dev mode skips
+	// init/unseal. The behavioral-raft scenario (recognized by name)
+	// replaces pod 0, re-unseals it (restart = sealed, the Shamir
+	// truth) and re-reads the marker. NEVER the generic Helm fallback:
+	// waiting on readiness hangs every fresh install by design.
+	case "kubernetesopenbao":
+		spec := manifestSpecMap(manifestPath)
+		mode, replicas := openBaoScenarioShape(spec)
+		return &OpenBaoVerifier{
+			Namespace:  info.Namespace,
+			Name:       info.Name,
+			Mode:       mode,
+			Replicas:   replicas,
+			Behavioral: strings.Contains(manifestPath, "behavioral-raft"),
+		}, nil
+
+	// The OpenFGA authorization engine: deployment rolled out (the
+	// migration init container gates on the datastore), the client
+	// Service present — and THE ZANZIBAR PROOF on every lane: a live
+	// store → model → tuple → Check round-trip asserting BOTH
+	// decisions (granted ALLOWED, ungranted DENIED). With pre-shared
+	// keys declared the proof runs authenticated and asserts the
+	// unauthenticated 401 first (the auth gate).
+	case "kubernetesopenfga":
+		spec := manifestSpecMap(manifestPath)
+		return &OpenFgaVerifier{
+			Namespace: info.Namespace,
+			Name:      info.Name,
+			ApiKey:    openFgaPresharedKey(spec),
+		}, nil
+
+	// The OpenTelemetry Operator: manager rolled out (its pod mounts
+	// the cert-manager-issued webhook Secret — the rollout IS the
+	// cert-issuance proof), all four module-owned opentelemetry.io
+	// CRDs Established, THE ADMISSION GATE (an invalid collector CR
+	// REJECTED by the fail-closed webhook) and THE CONVERSION PROOF
+	// (a v1beta1-written probe CR read back through v1alpha1 — the
+	// call only converts when the CA injector has patched the KEPT
+	// CRD's conversion caBundle, the trust seam this kind's
+	// module-owned-CRD design hangs on). Destroy asserts the designed
+	// keep: workloads gone, CRDs retained.
+	case "kubernetesoteloperator":
+		return &OtelOperatorVerifier{
+			Namespace:   info.Namespace,
+			ReleaseName: info.Name,
+		}, nil
+
+	// The KubeRay operator: rollout + the three ray.io CRDs established
+	// + THE INVARIANT (installing the operator alone deploys NO Ray
+	// cluster — the KubernetesRayCluster kind owns every cluster), and
+	// with a fenced watch posture THE FENCE PROOF (a RayCluster outside
+	// the watched namespaces is never reconciled). Destroy asserts the
+	// crds/-directory keep posture.
+	case "kuberneteskuberayoperator":
+		spec := manifestSpecMap(manifestPath)
+		return &KubeRayOperatorVerifier{
+			Namespace:       info.Namespace,
+			Name:            info.Name,
+			WatchNamespaces: specStringList(spec, "watch_namespaces", "watchNamespaces"),
+		}, nil
+
+	// The Flink operator: rollout + the four flink.apache.org CRDs
+	// established + THE INVARIANT (no FlinkDeployment after installing
+	// the operator alone). Webhook lanes prove the module-generated
+	// keystore Secret (the chart's hardcoded default never ships) and
+	// THE ADMISSION GATE (an invalid FlinkDeployment — standbys without
+	// HA — REJECTED at admission by the fail-closed webhook, with the
+	// namespaceSelector's scoping proven on fenced lanes); the
+	// webhook-less lane proves THE POSTURE CONTRAST (the same invalid
+	// CR accepted — validation deferred to the reconcile loop, the
+	// honest trade of that arm). Destroy asserts the crds/-directory
+	// keep posture.
+	case "kubernetesflinkoperator":
+		spec := manifestSpecMap(manifestPath)
+		return &FlinkOperatorVerifier{
+			Namespace:       info.Namespace,
+			Name:            info.Name,
+			WebhookEnabled:  flinkOperatorWebhookEnabled(spec),
+			WatchNamespaces: specStringList(spec, "watch_namespaces", "watchNamespaces"),
+		}, nil
+
+	// An operator-managed OpenTelemetry Collector: the mode's workload
+	// rolled out — and THE PIPELINE PROOF on every lane (a real
+	// OTLP/HTTP push whose marker lands in the debug exporter output;
+	// telemetry THROUGH the declared pipeline, never just a running
+	// pod). The daemonset lane (spec mode) adds THE FILELOG PROOF
+	// (node log files actually ingested — the run-as-root pattern);
+	// the behavioral-pipeline scenario (recognized by name) adds THE
+	// RECONCILE PROOF (a verifier-patched config rolled onto live
+	// pipeline behavior).
+	case "kubernetesotelcollector":
+		spec := manifestSpecMap(manifestPath)
+		mode, _ := spec["mode"].(string)
+		return &OtelCollectorVerifier{
+			Namespace:  info.Namespace,
+			Name:       info.Name,
+			Daemonset:  mode == "daemonset",
+			Behavioral: strings.Contains(manifestPath, "behavioral-pipeline"),
+		}, nil
+
+	// Harbor container registry: every stateless component rolled out,
+	// the front-door Service present — and THE REGISTRY PROOF on every
+	// lane: login as the module-generated admin, create a project, OCI
+	// push/pull round-trip, asserting the unauthenticated 401 first
+	// (the auth gate). The behavioral-durability scenario (recognized
+	// by name) proves the artifact survives a UID-verified registry
+	// pod replacement through a fresh port-forward (dead-tunnel class).
+	case "kubernetesharbor":
+		return &HarborVerifier{
+			Namespace:  info.Namespace,
+			Name:       info.Name,
+			Durability: strings.Contains(manifestPath, "behavioral-durability"),
 		}, nil
 
 	// The GitHub Actions runner scale set controller: the controller

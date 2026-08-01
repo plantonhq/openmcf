@@ -1,0 +1,18 @@
+# THE AUDIT-LOOP PROOF: on top of the every-lane enforcement proof, this
+# lane creates a violating Pod BEFORE any constraint exists (admission
+# never evaluates it), then applies the constraint and waits for the
+# audit controller to record the pre-existing violation in the
+# constraint's status (totalViolations >= 1). Enforcement without audit
+# misses everything already running — this is the half brownfield
+# adoption depends on. A 30s audit interval keeps the proof inside the
+# lane budget. All proof artifacts are verifier-owned and swept.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGatekeeper
+metadata:
+  name: e2e-gk-behav
+spec:
+  namespace:
+    value: e2e-gk-behav
+  create_namespace: true
+  audit:
+    interval_seconds: 30

@@ -1,19 +1,18 @@
+# Component defaults end to end: no mode declared = standalone (the
+# chart default) — one instance, file storage on the data PVC, plain
+# HTTP in-cluster, UI on. The verifier performs the REAL bootstrap
+# every operator faces: asserts the fresh pod is NotReady-by-design
+# (sealed), initializes with one key share, unseals, asserts readiness
+# FLIPS, then proves a KV v2 write/read round-trip.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenBao
 metadata:
-  name: e2e-openbao-minimal
+  name: e2e-bao-min
 spec:
   namespace:
-    value: e2e-openbao-minimal
-  create_namespace: true
-  server_container:
-    replicas: 1
-    data_storage_size: "1Gi"
-    resources:
-      limits:
-        cpu: "500m"
-        memory: "256Mi"
-      requests:
-        cpu: "50m"
-        memory: "64Mi"
-  ui_enabled: false
+    value: e2e-bao-min
+  createNamespace: true
+  server:
+    standalone: {}
+    dataStorage:
+      size: 1Gi

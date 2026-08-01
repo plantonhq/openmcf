@@ -119,6 +119,20 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 		}
 	}
 
+	// The component map may additionally declare IMPORT-NORMALIZED sub-paths
+	// scoped to ONE of its own resources -- values that cannot round-trip by
+	// provider construction (a salted-hash computed attribute re-salts on
+	// import) where the first post-adoption apply is functionally a no-op.
+	// Collected per logical resource name so the tolerance never leaks to a
+	// sibling resource of the same type.
+	normalizedSubPaths := map[string][][]string{}
+	for _, nr := range componentMap.GetSpec().GetImportNormalized() {
+		for _, sp := range nr.GetSubPaths() {
+			normalizedSubPaths[nr.GetTofuResourceName()] = append(
+				normalizedSubPaths[nr.GetTofuResourceName()], strings.Split(sp.GetPath(), "."))
+		}
+	}
+
 	metadataName, spec, err := loadManifestMetadataAndSpec(tc.Component, tc.ManifestPath)
 	if err != nil {
 		return err
@@ -223,6 +237,7 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 				rc.Change.Actions, address, asidePath)
 		}
 		changed := changedTopLevelAttributes(rc.Change.Before, rc.Change.After)
+		_, changeLogicalName, _, _ := importmap.ParseTofuAddress(address)
 		// Plugin-framework providers mark COMPUTED attributes (id, metadata,
 		// status objects) as unknown on every in-place update -- the plan
 		// cannot state their post-apply values, so they surface here as
@@ -243,17 +258,39 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 			if changeCoveredBySubPaths(rc.Change.Before, rc.Change.After, attribute, toleratedSubPaths[rc.Type]) {
 				continue
 			}
+			// The component map's own resource-scoped declarations (see the
+			// import_normalized vocabulary): tolerated exactly like catalog
+			// sub-paths, but only for THIS logical resource.
+			if changeCoveredBySubPaths(rc.Change.Before, rc.Change.After, attribute, normalizedSubPaths[changeLogicalName]) {
+				continue
+			}
 			return errors.Errorf(
-				"plan after blind re-import updates %s.%s (changed: %v) -- not a declared config-only/write-normalized attribute of %s; deployed state kept at %s",
+				"plan after blind re-import updates %s.%s (changed: %v) -- not a declared config-only/write-normalized attribute of %s nor an import-normalized sub-path of the component map; deployed state kept at %s",
 				address, attribute, changed, rc.Type, asidePath)
 		}
-		fmt.Printf("  [import-rt] tolerating declared update on %s: %v (config-only/write-normalized in the %s catalog)\n",
+		fmt.Printf("  [import-rt] tolerating declared update on %s: %v (config-only/write-normalized in the %s catalog, or import-normalized in the component map)\n",
 			address, changed, tc.Provider)
 		tolerated++
 	}
 
 	fmt.Printf("  [import-rt] %d resources re-imported blind; plan proposes no real change (%d config-only updates tolerated)\n",
 		len(addresses), tolerated)
+
+	// 5. Reconcile the imported state the way a real adopter does: import →
+	// APPLY → operate. An import cannot read CONFIG-ONLY attributes back
+	// from the cluster, so the freshly-imported state carries them
+	// null/false — and since this state replaces the deployed one for the
+	// DESTROY phase, any delete semantics riding a config-only attribute
+	// silently degrade (verified live: a kubectl_manifest `wait = true`
+	// delete returned instantly from imported state and wedged an
+	// operator-finalizer drain, while the same config blocked correctly
+	// from applied state). Applying the just-proven plan writes those
+	// attributes into state; the oracle above already guarantees the apply
+	// changes nothing real.
+	if _, err := tt.RunTerraformCommandE(tc.T, &planOpts, "apply", "-input=false", "-auto-approve", planOpts.PlanFilePath); err != nil {
+		return errors.Wrap(err, "reconcile-apply after the re-import (import → apply → operate)")
+	}
+
 	return nil
 }
 

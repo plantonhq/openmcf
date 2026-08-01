@@ -15,6 +15,42 @@ package dev.planton.iac.componentimportmap.v1;
 // construction.
 message ComponentImportMapSpec {
   repeated ImportValue values = 1;
+  // Resources whose post-import plan legitimately updates a declared
+  // attribute sub-path -- values that CANNOT round-trip by provider
+  // construction, where the first post-adoption apply rewrites them to
+  // a functionally equivalent form. The canonical class: a cluster
+  // object wiring a salted-hash COMPUTED attribute (random_password's
+  // bcrypt_hash) -- the random provider recomputes the hash with a
+  // fresh salt on import, so the referencing data key re-renders once
+  // while the underlying credential is unchanged. Declarations are
+  // scoped to ONE resource and ONE dotted sub-path each, with the
+  // reason stated -- never a whole attribute, never a whole type
+  // (that is the provider catalog's config-only/write-normalized
+  // vocabulary). The import round-trip oracle tolerates exactly these
+  // sub-paths; any sibling drift under the same attribute still fails.
+  repeated ImportNormalizedResource import_normalized = 2;
+}
+
+// ImportNormalizedResource declares the import-normalized sub-paths of
+// one Terraform logical resource.
+message ImportNormalizedResource {
+  // The Terraform logical resource name (the `internal_auth` in
+  // `kubernetes_secret_v1.internal_auth`).
+  string tofu_resource_name = 1;
+  repeated ImportNormalizedSubPath sub_paths = 2;
+}
+
+// ImportNormalizedSubPath is one dotted attribute sub-path that cannot
+// round-trip through import, with the evidence-flavored reason.
+message ImportNormalizedSubPath {
+  // Dotted sub-path under the resource's attributes, e.g.
+  // "data.REGISTRY_HTPASSWD". Must reach BELOW a top-level attribute --
+  // whole-attribute tolerance belongs in the provider catalog.
+  string path = 1;
+  // Why this value cannot round-trip and why the one-time post-import
+  // rewrite is functionally a no-op. Required -- an undocumented
+  // tolerance is indistinguishable from a silenced defect.
+  string reason = 2;
 }
 
 // ImportValue defines one named placeholder the provider-tier ID formats

@@ -1,0 +1,3 @@
+name: kubernetes-spark-operator
+runtime: go
+description: Apache Spark Kubernetes Operator installation from the official ASF spark-kubernetes-operator Helm chart — reconciles SparkApplication (per-job) and SparkCluster (long-lived) resources into running Spark workloads, with release-derived RBAC names for multi-instance safety and chart-owned keep-on-uninstall CRDs

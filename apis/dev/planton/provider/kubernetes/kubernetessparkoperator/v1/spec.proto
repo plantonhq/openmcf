@@ -1,0 +1,244 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetessparkoperator.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesSparkOperatorSpec** deploys the Apache Spark Kubernetes
+ * Operator — the official ASF controller that runs Spark workloads
+ * declared as SparkApplication (one batch/streaming job, run to
+ * completion) and SparkCluster (a long-lived standalone cluster)
+ * custom resources — from the official `spark-kubernetes-operator`
+ * Helm chart (https://apache.github.io/spark-kubernetes-operator).
+ *
+ * GRAIN: one operator per cluster is the normal posture (it watches
+ * cluster-wide by default). SparkApplication objects are per-JOB,
+ * run-to-completion declarations — submit them per pipeline run
+ * (typically from an orchestrator such as KubernetesAirflow), or
+ * declare them via KubernetesManifest; they are deliberately not a
+ * catalog kind.
+ *
+ * CRD LIFECYCLE: the chart ships its two spark.apache.org CRDs
+ * (sparkapplications, sparkclusters) in its `crds/` directory — Helm
+ * installs them once, NEVER upgrades them on chart upgrades, and
+ * LEAVES them (and every Spark workload declaration) on uninstall.
+ * Apply the new release's CRD files manually when a chart bump
+ * changes them.
+ *
+ * NO ADMISSION WEBHOOK: this operator validates in its reconcile
+ * loop — there is no webhook, no certificate machinery, and no
+ * cert-manager dependency. A bad SparkApplication surfaces on the
+ * CR's status, not as an admission rejection.
+ *
+ * WORKLOAD RBAC IS PART OF THE INSTALL: Spark driver pods create and
+ * delete executor pods at runtime, so every namespace that runs Spark
+ * needs a service account with real pod-management permissions. The
+ * chart owns that surface (see `workload`): cluster-scoped by
+ * default, or fenced to an explicit namespace list — in which case
+ * the chart CREATES those namespaces and the operator watches only
+ * them.
+ *
+ * OPERATOR CONFIGURATION is properties-based (`spark.kubernetes.
+ * operator.*` keys rendered into a ConfigMap and appended over the
+ * chart's defaults) — see `operator_properties` for the typed
+ * surface and the upstream config_properties catalog for keys.
+ *
+ * NAMING: keep the resource name at 40 characters or fewer — the
+ * modules pin the chart's fullname AND every RBAC name to the
+ * resource name (the chart hardcodes cluster-scoped RBAC names, so a
+ * second install would otherwise collide), the longest derived name
+ * suffixes "-config-monitor-binding" (23 chars), and Kubernetes
+ * names cap at 63. Both engines fail loudly over the budget.
+ *
+ * The typed fields cover the chart's meaningful surface;
+ * `helm_values` remains the escape hatch (merged last, Helm `-f`
+ * semantics, identical on both engines) — sentinel health canaries,
+ * the operator NetworkPolicy, extra RBAC shapes — a safety valve,
+ * never the primary interface.
+ */
+message KubernetesSparkOperatorSpec {
+  /**
+   * Namespace to install the operator into. Accepts a literal
+   * namespace name or a reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "1.8.0" — chart 1.8.0 pairs
+   * with operator 1.0.0). Versions must exist as SERVED charts in the
+   * repository index
+   * (https://apache.github.io/spark-kubernetes-operator). NOTE chart
+   * upgrades never upgrade the spark.apache.org CRDs (`crds/`
+   * directory posture) — apply new CRD files manually when a bump
+   * changes them.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "1.8.0"];
+
+  /**
+   * Number of operator replicas. More than 1 turns on the operator's
+   * leader election (one active reconciler, warm standbys) — the
+   * modules set the leader-election properties for you; without them
+   * the chart REFUSES multi-replica installs by design.
+   */
+  optional int32 replicas = 4 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  /**
+   * Where Spark workloads are allowed to run — the operator's watch
+   * scope AND the workload RBAC surface, decided together (they are
+   * one chart surface). Empty = cluster-wide: the operator watches
+   * every namespace and the chart creates a ClusterRole for Spark
+   * pods. With `namespaces` set, the chart CREATES those namespaces,
+   * plants the workload service account and a namespace-scoped Role
+   * in each, and the operator watches ONLY them — the fenced,
+   * multi-tenant posture.
+   */
+  KubernetesSparkOperatorWorkload workload = 5;
+
+  /**
+   * Operator configuration properties appended over the chart's
+   * defaults (`spark-operator.properties` — keys like
+   * "spark.kubernetes.operator.reconciler.intervalSeconds"). The
+   * full key catalog ships with the operator's docs at the pinned
+   * version. Values are strings, exactly as the properties file
+   * takes them.
+   */
+  map<string, string> operator_properties = 6;
+
+  /**
+   * Hot property reloading: the operator re-reads selected properties
+   * from a ConfigMap at runtime instead of restarting. The modules
+   * render the ConfigMap and the RBAC the chart pairs with it.
+   * Off by default (upstream default) — most installs prefer
+   * restart-on-change semantics.
+   */
+  KubernetesSparkOperatorDynamicConfig dynamic_config = 7;
+
+  /**
+   * JVM arguments for the operator container. Empty = the chart's
+   * tuned default (parallel GC, 80% RAM percentage, crash on OOM).
+   * Override only with a reason — the default is the upstream-tested
+   * posture.
+   */
+  string jvm_args = 8;
+
+  /**
+   * CPU and memory for the operator container. Empty = the chart
+   * defaults (1 CPU / 2Gi — a JVM; the chart requests what it
+   * limits). Lower this for lab clusters consciously: an OOM-killed
+   * operator strands every reconciling Spark job.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 9;
+
+  /**
+   * Registry that replaces the registry part of the operator image
+   * (`apache/spark-kubernetes-operator`, Docker Hub implied) — the
+   * air-gap/private-mirror path. This does NOT rewrite the images
+   * Spark workloads run — those ride each SparkApplication's own
+   * image field.
+   */
+  string image_registry = 10;
+
+  /**
+   * Names of existing image-pull Secrets applied to the operator
+   * pods. The Secrets must already exist in the namespace.
+   */
+  repeated string image_pull_secrets = 11 [(dev.planton.shared.options.sensitive_exempt_reason) = "Names of existing image-pull Secrets (references), not secret material"];
+
+  /**
+   * Scheduling for the operator pods.
+   */
+  KubernetesSparkOperatorScheduling scheduling = 12;
+
+  /**
+   * Escape hatch: additional chart values as a YAML document, merged
+   * LAST over everything the typed fields render (Helm `-f`
+   * semantics, identical on both engines). For the chart surface
+   * beyond the typed fields (sentinel canaries, NetworkPolicy,
+   * probe tuning, RBAC name overrides) — never the substitute for
+   * them.
+   */
+  string helm_values = 13;
+}
+
+/**
+ * The Spark workload surface: watch scope + workload RBAC, decided
+ * together (one chart surface — `workloadResources`).
+ */
+message KubernetesSparkOperatorWorkload {
+  /**
+   * Namespaces Spark workloads run in. Empty = cluster-wide watch
+   * with a workload ClusterRole. Non-empty = the chart CREATES each
+   * listed namespace (know this before pointing at names you manage
+   * elsewhere), plants the service account + a namespace-scoped Role
+   * in each, and the operator watches ONLY these namespaces —
+   * SparkApplications anywhere else are ignored without an error.
+   * NOTE the chart marks workload resources `helm.sh/resource-policy:
+   * keep`, so these namespaces and their RBAC SURVIVE uninstall by
+   * upstream design (running jobs must not lose their identity
+   * mid-flight).
+   */
+  repeated string namespaces = 1;
+
+  /**
+   * Service account name Spark driver/executor pods run as in every
+   * workload namespace. Empty = "spark" (the upstream default —
+   * SparkApplications reference it by this name).
+   */
+  optional string service_account = 2 [(dev.planton.shared.options.default) = "spark"];
+}
+
+/**
+ * Hot property reloading (the operator's dynamicConfig arm).
+ */
+message KubernetesSparkOperatorDynamicConfig {
+  /**
+   * Enable hot property loading from a ConfigMap the modules render.
+   */
+  bool enabled = 1;
+
+  /**
+   * The hot-reloadable properties (same key space as
+   * operator_properties). Changes to this map apply WITHOUT an
+   * operator restart.
+   */
+  map<string, string> properties = 2;
+}
+
+/**
+ * Pod scheduling for the operator pods.
+ */
+message KubernetesSparkOperatorScheduling {
+  /**
+   * Node selector for the operator pods.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations for the operator pods.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+
+  /**
+   * Priority class name for the operator pods.
+   */
+  string priority_class_name = 3;
+}

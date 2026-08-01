@@ -22,71 +22,64 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesHarborStackOutputs captures observable outputs from a Harbor deployment on Kubernetes.
+// *
+// **KubernetesHarborStackOutputs** — the composition handles a
+// deployed Harbor exports: the front-door Service for exposure
+// kinds, the per-component Services, and the admin credential
+// Secret.
 type KubernetesHarborStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// namespace specifies the Kubernetes namespace in which the Harbor registry is created.
+	// * Namespace Harbor is installed into.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for Harbor Core (API and authentication).
-	// ex: main-harbor-kubernetes-core
-	// in the above example, "main" is the name of the harbor-kubernetes
-	CoreService string `protobuf:"bytes,2,opt,name=core_service,json=coreService,proto3" json:"core_service,omitempty"`
-	// kubernetes service name for Harbor Portal (web UI).
-	// ex: main-harbor-kubernetes-portal
-	PortalService string `protobuf:"bytes,3,opt,name=portal_service,json=portalService,proto3" json:"portal_service,omitempty"`
-	// kubernetes service name for Harbor Registry (Docker/OCI registry).
-	// ex: main-harbor-kubernetes-registry
-	RegistryService string `protobuf:"bytes,4,opt,name=registry_service,json=registryService,proto3" json:"registry_service,omitempty"`
-	// kubernetes service name for Harbor Jobservice.
-	// ex: main-harbor-kubernetes-jobservice
-	JobserviceService string `protobuf:"bytes,5,opt,name=jobservice_service,json=jobserviceService,proto3" json:"jobservice_service,omitempty"`
-	// command to setup port-forwarding to open Harbor UI from developers laptop.
-	// this might come handy when harbor-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining portal service and namespace.
-	// ex: kubectl port-forward svc/harbor-portal -n kubernetes_namespace 8080:80
-	// running the command from this attribute makes it possible to access Harbor UI using http://localhost:8080
-	PortForwardCommand string `protobuf:"bytes,6,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to Harbor Core from within the cluster.
-	// ex: main-harbor-kubernetes-core.namespace.svc.cluster.local:80
-	InternalCoreEndpoint string `protobuf:"bytes,7,opt,name=internal_core_endpoint,json=internalCoreEndpoint,proto3" json:"internal_core_endpoint,omitempty"`
-	// kubernetes endpoint for the Harbor Registry from within the cluster.
-	// ex: main-harbor-kubernetes-registry.namespace.svc.cluster.local:5000
-	InternalRegistryEndpoint string `protobuf:"bytes,8,opt,name=internal_registry_endpoint,json=internalRegistryEndpoint,proto3" json:"internal_registry_endpoint,omitempty"`
-	// public endpoint to access Harbor UI from clients outside kubernetes.
-	// ex: https://harbor-planton-pcs-dev-main.registry.dev.planton.live
-	ExternalHostname string `protobuf:"bytes,9,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// external hostname for Docker registry access (docker login, pull, push).
-	// ex: https://registry-planton-pcs-dev-main.registry.dev.planton.live
-	// this is typically the same as external_hostname unless separate domains are configured
-	RegistryExternalHostname string `protobuf:"bytes,10,opt,name=registry_external_hostname,json=registryExternalHostname,proto3" json:"registry_external_hostname,omitempty"`
-	// external hostname for Notary service (image signing) if ingress is configured.
-	// ex: https://notary-planton-pcs-dev-main.registry.dev.planton.live
-	NotaryExternalHostname string `protobuf:"bytes,11,opt,name=notary_external_hostname,json=notaryExternalHostname,proto3" json:"notary_external_hostname,omitempty"`
-	// Harbor admin username for initial login.
-	// typically this is "admin"
+	// *
+	// The front-door Service (nginx) — the ONE service clients and
+	// composed exposure kinds point at; it proxies UI, API, and OCI
+	// traffic. Named after this resource.
+	ExposeService string `protobuf:"bytes,2,opt,name=expose_service,json=exposeService,proto3" json:"expose_service,omitempty"`
+	// *
+	// In-cluster URL of the front door, e.g.
+	// `http://<expose_service>.<namespace>.svc.cluster.local:80`
+	// (https/443 when expose.tls is enabled).
+	KubeEndpoint string `protobuf:"bytes,3,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
+	// *
+	// The declared external URL — the address OCI clients must use
+	// (token-service auth is bound to it).
+	ExternalUrl string `protobuf:"bytes,4,opt,name=external_url,json=externalUrl,proto3" json:"external_url,omitempty"`
+	// * Core (API) Service name.
+	CoreService string `protobuf:"bytes,5,opt,name=core_service,json=coreService,proto3" json:"core_service,omitempty"`
+	// * Portal (web UI) Service name.
+	PortalService string `protobuf:"bytes,6,opt,name=portal_service,json=portalService,proto3" json:"portal_service,omitempty"`
+	// * Registry (OCI distribution) Service name.
+	RegistryService string `protobuf:"bytes,7,opt,name=registry_service,json=registryService,proto3" json:"registry_service,omitempty"`
+	// * Jobservice Service name.
+	JobserviceService string `protobuf:"bytes,8,opt,name=jobservice_service,json=jobserviceService,proto3" json:"jobservice_service,omitempty"`
+	// * Trivy Service name — empty when the scanner is disabled.
+	TrivyService string `protobuf:"bytes,9,opt,name=trivy_service,json=trivyService,proto3" json:"trivy_service,omitempty"`
+	// *
+	// Internal database Service name — set only on the internal
+	// database arm (empty when composing an external PostgreSQL).
+	DatabaseService string `protobuf:"bytes,10,opt,name=database_service,json=databaseService,proto3" json:"database_service,omitempty"`
+	// *
+	// Internal Redis Service name — set only on the internal cache
+	// arm.
+	RedisService string `protobuf:"bytes,11,opt,name=redis_service,json=redisService,proto3" json:"redis_service,omitempty"`
+	// * Admin username — always "admin" (a Harbor constant).
 	AdminUsername string `protobuf:"bytes,12,opt,name=admin_username,json=adminUsername,proto3" json:"admin_username,omitempty"`
-	// kubernetes secret containing the Harbor admin password.
-	// the password can be retrieved using: kubectl get secret <secret-name> -n <namespace> -o jsonpath='{.data.password}' | base64 -d
+	// *
+	// The Secret holding the admin password: the module-owned
+	// `<name>-admin-auth` (key HARBOR_ADMIN_PASSWORD) on the
+	// generated arm, or the user's declared Secret/key. Retrieve:
+	// `kubectl get secret <name> -n <namespace> -o
+	// jsonpath='{.data.<key>}' | base64 -d`.
 	AdminPasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,13,opt,name=admin_password_secret,json=adminPasswordSecret,proto3" json:"admin_password_secret,omitempty"`
-	// PostgreSQL database endpoint (internal cluster endpoint).
-	// ex: harbor-postgresql.namespace.svc.cluster.local:5432
-	// This is only populated when using self-managed PostgreSQL.
-	DatabaseEndpoint string `protobuf:"bytes,14,opt,name=database_endpoint,json=databaseEndpoint,proto3" json:"database_endpoint,omitempty"`
-	// PostgreSQL username for Harbor database access.
-	// This is only populated when using self-managed PostgreSQL.
-	DatabaseUsername string `protobuf:"bytes,15,opt,name=database_username,json=databaseUsername,proto3" json:"database_username,omitempty"`
-	// kubernetes secret key for the PostgreSQL password.
-	// This is only populated when using self-managed PostgreSQL.
-	DatabasePasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,16,opt,name=database_password_secret,json=databasePasswordSecret,proto3" json:"database_password_secret,omitempty"`
-	// Redis cache endpoint (internal cluster endpoint).
-	// ex: harbor-redis.namespace.svc.cluster.local:6379
-	// This is only populated when using self-managed Redis.
-	RedisEndpoint string `protobuf:"bytes,17,opt,name=redis_endpoint,json=redisEndpoint,proto3" json:"redis_endpoint,omitempty"`
-	// kubernetes secret key for the Redis password.
-	// This is only populated when using self-managed Redis.
-	RedisPasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,18,opt,name=redis_password_secret,json=redisPasswordSecret,proto3" json:"redis_password_secret,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// *
+	// Copy-paste command to reach the UI/API from a workstation.
+	// NOTE pushes/pulls through this tunnel only authenticate when
+	// external_url matches the forwarded address (see the spec's
+	// external_url comment).
+	PortForwardCommand string `protobuf:"bytes,14,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesHarborStackOutputs) Reset() {
@@ -126,6 +119,27 @@ func (x *KubernetesHarborStackOutputs) GetNamespace() string {
 	return ""
 }
 
+func (x *KubernetesHarborStackOutputs) GetExposeService() string {
+	if x != nil {
+		return x.ExposeService
+	}
+	return ""
+}
+
+func (x *KubernetesHarborStackOutputs) GetKubeEndpoint() string {
+	if x != nil {
+		return x.KubeEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesHarborStackOutputs) GetExternalUrl() string {
+	if x != nil {
+		return x.ExternalUrl
+	}
+	return ""
+}
+
 func (x *KubernetesHarborStackOutputs) GetCoreService() string {
 	if x != nil {
 		return x.CoreService
@@ -154,44 +168,23 @@ func (x *KubernetesHarborStackOutputs) GetJobserviceService() string {
 	return ""
 }
 
-func (x *KubernetesHarborStackOutputs) GetPortForwardCommand() string {
+func (x *KubernetesHarborStackOutputs) GetTrivyService() string {
 	if x != nil {
-		return x.PortForwardCommand
+		return x.TrivyService
 	}
 	return ""
 }
 
-func (x *KubernetesHarborStackOutputs) GetInternalCoreEndpoint() string {
+func (x *KubernetesHarborStackOutputs) GetDatabaseService() string {
 	if x != nil {
-		return x.InternalCoreEndpoint
+		return x.DatabaseService
 	}
 	return ""
 }
 
-func (x *KubernetesHarborStackOutputs) GetInternalRegistryEndpoint() string {
+func (x *KubernetesHarborStackOutputs) GetRedisService() string {
 	if x != nil {
-		return x.InternalRegistryEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesHarborStackOutputs) GetExternalHostname() string {
-	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesHarborStackOutputs) GetRegistryExternalHostname() string {
-	if x != nil {
-		return x.RegistryExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesHarborStackOutputs) GetNotaryExternalHostname() string {
-	if x != nil {
-		return x.NotaryExternalHostname
+		return x.RedisService
 	}
 	return ""
 }
@@ -210,66 +203,34 @@ func (x *KubernetesHarborStackOutputs) GetAdminPasswordSecret() *kubernetes.Kube
 	return nil
 }
 
-func (x *KubernetesHarborStackOutputs) GetDatabaseEndpoint() string {
+func (x *KubernetesHarborStackOutputs) GetPortForwardCommand() string {
 	if x != nil {
-		return x.DatabaseEndpoint
+		return x.PortForwardCommand
 	}
 	return ""
-}
-
-func (x *KubernetesHarborStackOutputs) GetDatabaseUsername() string {
-	if x != nil {
-		return x.DatabaseUsername
-	}
-	return ""
-}
-
-func (x *KubernetesHarborStackOutputs) GetDatabasePasswordSecret() *kubernetes.KubernetesSecretKey {
-	if x != nil {
-		return x.DatabasePasswordSecret
-	}
-	return nil
-}
-
-func (x *KubernetesHarborStackOutputs) GetRedisEndpoint() string {
-	if x != nil {
-		return x.RedisEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesHarborStackOutputs) GetRedisPasswordSecret() *kubernetes.KubernetesSecretKey {
-	if x != nil {
-		return x.RedisPasswordSecret
-	}
-	return nil
 }
 
 var File_dev_planton_provider_kubernetes_kubernetesharbor_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesharbor_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kubernetesharbor/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kubernetesharbor.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\x97\b\n" +
+	"Gdev/planton/provider/kubernetes/kubernetesharbor/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kubernetesharbor.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\x87\x05\n" +
 	"\x1cKubernetesHarborStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
-	"\fcore_service\x18\x02 \x01(\tR\vcoreService\x12%\n" +
-	"\x0eportal_service\x18\x03 \x01(\tR\rportalService\x12)\n" +
-	"\x10registry_service\x18\x04 \x01(\tR\x0fregistryService\x12-\n" +
-	"\x12jobservice_service\x18\x05 \x01(\tR\x11jobserviceService\x120\n" +
-	"\x14port_forward_command\x18\x06 \x01(\tR\x12portForwardCommand\x124\n" +
-	"\x16internal_core_endpoint\x18\a \x01(\tR\x14internalCoreEndpoint\x12<\n" +
-	"\x1ainternal_registry_endpoint\x18\b \x01(\tR\x18internalRegistryEndpoint\x12+\n" +
-	"\x11external_hostname\x18\t \x01(\tR\x10externalHostname\x12<\n" +
-	"\x1aregistry_external_hostname\x18\n" +
-	" \x01(\tR\x18registryExternalHostname\x128\n" +
-	"\x18notary_external_hostname\x18\v \x01(\tR\x16notaryExternalHostname\x12%\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12%\n" +
+	"\x0eexpose_service\x18\x02 \x01(\tR\rexposeService\x12#\n" +
+	"\rkube_endpoint\x18\x03 \x01(\tR\fkubeEndpoint\x12!\n" +
+	"\fexternal_url\x18\x04 \x01(\tR\vexternalUrl\x12!\n" +
+	"\fcore_service\x18\x05 \x01(\tR\vcoreService\x12%\n" +
+	"\x0eportal_service\x18\x06 \x01(\tR\rportalService\x12)\n" +
+	"\x10registry_service\x18\a \x01(\tR\x0fregistryService\x12-\n" +
+	"\x12jobservice_service\x18\b \x01(\tR\x11jobserviceService\x12#\n" +
+	"\rtrivy_service\x18\t \x01(\tR\ftrivyService\x12)\n" +
+	"\x10database_service\x18\n" +
+	" \x01(\tR\x0fdatabaseService\x12#\n" +
+	"\rredis_service\x18\v \x01(\tR\fredisService\x12%\n" +
 	"\x0eadmin_username\x18\f \x01(\tR\radminUsername\x12h\n" +
-	"\x15admin_password_secret\x18\r \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x13adminPasswordSecret\x12+\n" +
-	"\x11database_endpoint\x18\x0e \x01(\tR\x10databaseEndpoint\x12+\n" +
-	"\x11database_username\x18\x0f \x01(\tR\x10databaseUsername\x12n\n" +
-	"\x18database_password_secret\x18\x10 \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x16databasePasswordSecret\x12%\n" +
-	"\x0eredis_endpoint\x18\x11 \x01(\tR\rredisEndpoint\x12h\n" +
-	"\x15redis_password_secret\x18\x12 \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x13redisPasswordSecretB\xa9\x03\n" +
+	"\x15admin_password_secret\x18\r \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x13adminPasswordSecret\x120\n" +
+	"\x14port_forward_command\x18\x0e \x01(\tR\x12portForwardCommandB\xa9\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kubernetesharbor.v1B\x11StackOutputsProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesharbor/v1;kubernetesharborv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kubernetesharbor.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kubernetesharbor\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kubernetesharbor\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kubernetesharbor::V1b\x06proto3"
 
 var (
@@ -291,13 +252,11 @@ var file_dev_planton_provider_kubernetes_kubernetesharbor_v1_stack_outputs_proto
 }
 var file_dev_planton_provider_kubernetes_kubernetesharbor_v1_stack_outputs_proto_depIdxs = []int32{
 	1, // 0: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStackOutputs.admin_password_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
-	1, // 1: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStackOutputs.database_password_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
-	1, // 2: dev.planton.provider.kubernetes.kubernetesharbor.v1.KubernetesHarborStackOutputs.redis_password_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesharbor_v1_stack_outputs_proto_init() }

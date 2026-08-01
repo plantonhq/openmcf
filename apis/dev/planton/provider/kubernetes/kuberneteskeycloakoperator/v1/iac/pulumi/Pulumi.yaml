@@ -1,0 +1,3 @@
+name: kubernetes-keycloak-operator
+runtime: go
+description: Keycloak Operator installation from the official keycloak-k8s-resources release manifests — the k8s.keycloak.org CRDs and the operator Deployment (namespaced-watch or cluster-wide variant) with the target namespace stamped onto every namespaced document, and typed overrides for images, sizing and placement

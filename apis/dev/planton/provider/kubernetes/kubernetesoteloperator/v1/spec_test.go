@@ -63,34 +63,21 @@ var _ = ginkgo.Describe("KubernetesOtelOperator Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("the default cert-manager webhook posture should be valid", func() {
+		ginkgo.It("the default webhook posture (chart-owned self-signed Issuer) should be valid", func() {
+			input.Spec.Webhook = &KubernetesOtelOperatorWebhook{}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("a webhook certificate signed by an explicit ClusterIssuer should be valid", func() {
 			input.Spec.Webhook = &KubernetesOtelOperatorWebhook{
-				Cert: &KubernetesOtelOperatorWebhook_CertManager{
-					CertManager: &KubernetesOtelOperatorWebhookCertManager{},
-				},
+				IssuerRef: &KubernetesOtelOperatorIssuerRef{Kind: "ClusterIssuer", Name: "internal-ca"},
 			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("a cert-manager webhook with an explicit ClusterIssuer should be valid", func() {
+		ginkgo.It("a webhook certificate signed by a namespaced Issuer should be valid", func() {
 			input.Spec.Webhook = &KubernetesOtelOperatorWebhook{
-				Cert: &KubernetesOtelOperatorWebhook_CertManager{
-					CertManager: &KubernetesOtelOperatorWebhookCertManager{
-						IssuerRef: &KubernetesOtelOperatorIssuerRef{Kind: "ClusterIssuer", Name: "internal-ca"},
-					},
-				},
-			}
-			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
-		})
-
-		ginkgo.It("the auto-generate webhook arm should be valid", func() {
-			input.Spec.Webhook = &KubernetesOtelOperatorWebhook{
-				Cert: &KubernetesOtelOperatorWebhook_AutoGenerate{
-					AutoGenerate: &KubernetesOtelOperatorWebhookAutoGenerate{
-						RecreateOnUpgrade: true,
-						CertPeriodDays:    int32Ptr(730),
-					},
-				},
+				IssuerRef: &KubernetesOtelOperatorIssuerRef{Kind: "Issuer", Name: "team-ca"},
 			}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
@@ -119,31 +106,14 @@ var _ = ginkgo.Describe("KubernetesOtelOperator Validation Tests", func() {
 
 		ginkgo.It("an issuer_ref with a bad kind should fail", func() {
 			input.Spec.Webhook = &KubernetesOtelOperatorWebhook{
-				Cert: &KubernetesOtelOperatorWebhook_CertManager{
-					CertManager: &KubernetesOtelOperatorWebhookCertManager{
-						IssuerRef: &KubernetesOtelOperatorIssuerRef{Kind: "CertificateAuthority", Name: "internal-ca"},
-					},
-				},
+				IssuerRef: &KubernetesOtelOperatorIssuerRef{Kind: "CertificateAuthority", Name: "internal-ca"},
 			}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
 		ginkgo.It("an issuer_ref without a name should fail", func() {
 			input.Spec.Webhook = &KubernetesOtelOperatorWebhook{
-				Cert: &KubernetesOtelOperatorWebhook_CertManager{
-					CertManager: &KubernetesOtelOperatorWebhookCertManager{
-						IssuerRef: &KubernetesOtelOperatorIssuerRef{Kind: "Issuer"},
-					},
-				},
-			}
-			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
-		})
-
-		ginkgo.It("a zero cert validity should fail", func() {
-			input.Spec.Webhook = &KubernetesOtelOperatorWebhook{
-				Cert: &KubernetesOtelOperatorWebhook_AutoGenerate{
-					AutoGenerate: &KubernetesOtelOperatorWebhookAutoGenerate{CertPeriodDays: int32Ptr(0)},
-				},
+				IssuerRef: &KubernetesOtelOperatorIssuerRef{Kind: "Issuer"},
 			}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})

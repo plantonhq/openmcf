@@ -4,8 +4,20 @@ metadata:
   name: kubernetesopenfga
 spec:
   tier: 2
-  status: skip
-  deferred_reason: "requires external PostgreSQL/MySQL database"
+  # Rebuilt onto the official openfga chart 0.3.10 (OpenFGA v1.18.1)
+  # with the datastore oneof (postgres/mysql/memory), Secret-indirected
+  # credentials and authn arms. The old skip posture ("requires external
+  # PostgreSQL/MySQL database") died with the rebuild: the memory arm is
+  # a first-class zero-dependency lane, and the postgres lanes compose
+  # the consumer-scoped CloudNativePG fixture
+  # (e2e/prerequisites/kubernetespostgres.yaml) exactly the way Temporal
+  # does. The dedicated verifier proves the Zanzibar loop live: store →
+  # model → tuple → Check BOTH ways, with the auth gate asserted on
+  # authenticated lanes.
+  status: green
   validated_provisioners:
     - pulumi
-  timeout_minutes: 15
+    - terraform
+  # The migration init container gates on the fixture database on the
+  # postgres lanes; the budget covers the CNPG cold start.
+  timeout_minutes: 25

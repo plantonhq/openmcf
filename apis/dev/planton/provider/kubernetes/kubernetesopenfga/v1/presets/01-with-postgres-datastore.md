@@ -1,24 +1,34 @@
-# OpenFGA with PostgreSQL Datastore
+# PostgreSQL datastore preset
 
-This preset deploys OpenFGA with a PostgreSQL backend for storing authorization models and relationship tuples. OpenFGA is a high-performance authorization engine based on Google's Zanzibar paper.
+The production OpenFGA shape: three stateless server replicas sharing
+a PostgreSQL datastore, schema migrations running as an init container
+in every pod (idempotent — `openfga migrate` gates each rollout on the
+database being reachable and current), and the API guarded by
+pre-shared keys.
 
-## When to Use
+The datastore references a `KubernetesPostgres` resource by name: the
+host resolves to its read-write Service (always the current primary)
+and the password rides a secretKeyRef against the operator-maintained
+`<cluster>-app` credential Secret — nothing credential-bearing ever
+renders into values or manifests. Declare the `openfga` database at
+the Postgres resource's bootstrap (`initdb`), and co-locate OpenFGA
+with the database namespace (a secretKeyRef reads only its own
+namespace's Secrets).
 
-- You need fine-grained authorization (ReBAC, ABAC, or RBAC) for your applications
-- You have an existing PostgreSQL database to use as the OpenFGA datastore
-- You want the OpenFGA HTTP/gRPC API accessible via ingress
+Authentication here points at a Secret YOU maintain
+(`openfga-api-keys`, comma-separated keys under the data key `keys` —
+the chart's contract). Alternatively declare `authn.preshared.keys`
+inline and the module materializes them into a managed Secret. Without
+any `authn` block the API is OPEN to everything that can reach the
+Service — fine on a lab cluster, never in production.
 
-## Key Configuration Choices
+Authorization DATA is not deployment config: create stores, models and
+tuples through the API (the `fga` CLI, or the platform's OpenFgaStore /
+OpenFgaAuthorizationModel / OpenFgaRelationshipTuple resources against
+the exported endpoint).
 
-- **PostgreSQL datastore** -- production-grade persistent storage for authorization data; alternative: `mysql` or `memory` (testing only)
-- **Ingress enabled** -- exposes the OpenFGA API for authorization checks and model management
-- **Single replica** -- sufficient for moderate authorization check throughput; scale for higher QPS
+Change first: the two `my-postgres` references, then `replicas` and
+`tuning` to your check volume.
 
-## Placeholders to Replace
-
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<your-postgres-host>` | PostgreSQL server hostname or ClusterIP service name | Your PostgreSQL deployment or cloud database |
-| `<your-postgres-username>` | PostgreSQL username with access to the `openfga` database | Your database credentials |
-| `<your-postgres-password>` | PostgreSQL password | Your database credentials |
-| `<your-openfga.example.com>` | Hostname for the OpenFGA API | Your DNS provider |
+See [01-with-postgres-datastore.yaml](./01-with-postgres-datastore.yaml)
+for the manifest.

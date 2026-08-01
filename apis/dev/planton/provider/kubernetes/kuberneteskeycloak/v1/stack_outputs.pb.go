@@ -21,32 +21,51 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// keycloak-kubernetes stack outputs.
+// *
+// **KubernetesKeycloakStackOutputs** — the composition handles a
+// deployed Keycloak exports. Child names follow the operator's own
+// naming contract (all derived from this resource's name).
 type KubernetesKeycloakStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which keycloak-kubernetes is created.
+	// *
+	// Namespace the server runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for keycloak-kubernetes.
-	// ex: main-keycloak-kubernetes
-	// in the above example, "main" is the name of the keycloak-kubernetes
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open keycloak-kubernetes from developers laptop.
-	// this might come handy when keycloak-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining keycloak_kubernetes_kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/keycloak_kubernetes_kubernetes_service -n kubernetes_namespace 6379:6379
-	// running the command from this attribute makes it possible to access keycloak-kubernetes using http://localhost:8080/keycloak
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to keycloak-kubernetes from the web browser.
-	// ex: main-keycloak-kubernetes.namespace.svc.cluster.local:6379
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open keycloak-kubernetes from clients outside kubernetes.
-	// ex: https://kck8s-planton-pcs-dev-main.data.dev.planton.live
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// internal endpoint to open keycloak-kubernetes from clients inside kubernetes.
-	// ex: https://kck8s-planton-pcs-dev-main.data-internal.dev.planton.live
-	InternalHostname string `protobuf:"bytes,6,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// *
+	// The StatefulSet name (exactly this resource's name).
+	StatefulSet string `protobuf:"bytes,2,opt,name=stateful_set,json=statefulSet,proto3" json:"stateful_set,omitempty"`
+	// *
+	// The main Service name (`<name>-service`) — https 8443 and/or
+	// http 8080, plus the management port.
+	Service string `protobuf:"bytes,3,opt,name=service,proto3" json:"service,omitempty"`
+	// *
+	// The headless discovery Service (`<name>-discovery`) — JGroups
+	// cluster formation between instances.
+	DiscoveryService string `protobuf:"bytes,4,opt,name=discovery_service,json=discoveryService,proto3" json:"discovery_service,omitempty"`
+	// *
+	// In-cluster API endpoint, scheme included
+	// (e.g. "https://sso-service.identity.svc.cluster.local:8443", or
+	// http/8080 when only plain HTTP is enabled) — where OIDC clients
+	// inside the cluster reach the server.
+	ApiEndpoint string `protobuf:"bytes,5,opt,name=api_endpoint,json=apiEndpoint,proto3" json:"api_endpoint,omitempty"`
+	// *
+	// The management endpoint
+	// (e.g. "https://sso-service.identity.svc.cluster.local:9000") —
+	// health probes and metrics.
+	ManagementEndpoint string `protobuf:"bytes,6,opt,name=management_endpoint,json=managementEndpoint,proto3" json:"management_endpoint,omitempty"`
+	// *
+	// Name of the bootstrap-admin credential Secret: the
+	// operator-generated `<name>-initial-admin`
+	// (kubernetes.io/basic-auth, keys username/password, username
+	// "temp-admin"), or the user-provided Secret when
+	// bootstrap_admin_secret_name is set. Seeds the FIRST admin login;
+	// create durable admin users inside Keycloak and treat this as
+	// break-glass material.
+	InitialAdminSecretName string `protobuf:"bytes,7,opt,name=initial_admin_secret_name,json=initialAdminSecretName,proto3" json:"initial_admin_secret_name,omitempty"`
+	// *
+	// Copy-paste command for reaching the server from a workstation.
+	PortForwardCommand string `protobuf:"bytes,8,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesKeycloakStackOutputs) Reset() {
@@ -86,9 +105,44 @@ func (x *KubernetesKeycloakStackOutputs) GetNamespace() string {
 	return ""
 }
 
+func (x *KubernetesKeycloakStackOutputs) GetStatefulSet() string {
+	if x != nil {
+		return x.StatefulSet
+	}
+	return ""
+}
+
 func (x *KubernetesKeycloakStackOutputs) GetService() string {
 	if x != nil {
 		return x.Service
+	}
+	return ""
+}
+
+func (x *KubernetesKeycloakStackOutputs) GetDiscoveryService() string {
+	if x != nil {
+		return x.DiscoveryService
+	}
+	return ""
+}
+
+func (x *KubernetesKeycloakStackOutputs) GetApiEndpoint() string {
+	if x != nil {
+		return x.ApiEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesKeycloakStackOutputs) GetManagementEndpoint() string {
+	if x != nil {
+		return x.ManagementEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesKeycloakStackOutputs) GetInitialAdminSecretName() string {
+	if x != nil {
+		return x.InitialAdminSecretName
 	}
 	return ""
 }
@@ -100,39 +154,20 @@ func (x *KubernetesKeycloakStackOutputs) GetPortForwardCommand() string {
 	return ""
 }
 
-func (x *KubernetesKeycloakStackOutputs) GetKubeEndpoint() string {
-	if x != nil {
-		return x.KubeEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesKeycloakStackOutputs) GetExternalHostname() string {
-	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesKeycloakStackOutputs) GetInternalHostname() string {
-	if x != nil {
-		return x.InternalHostname
-	}
-	return ""
-}
-
 var File_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Idev/planton/provider/kubernetes/kuberneteskeycloak/v1/stack_outputs.proto\x125dev.planton.provider.kubernetes.kuberneteskeycloak.v1\"\x89\x02\n" +
+	"Idev/planton/provider/kubernetes/kuberneteskeycloak/v1/stack_outputs.proto\x125dev.planton.provider.kubernetes.kuberneteskeycloak.v1\"\xe9\x02\n" +
 	"\x1eKubernetesKeycloakStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\x06 \x01(\tR\x10internalHostnameB\xb7\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12!\n" +
+	"\fstateful_set\x18\x02 \x01(\tR\vstatefulSet\x12\x18\n" +
+	"\aservice\x18\x03 \x01(\tR\aservice\x12+\n" +
+	"\x11discovery_service\x18\x04 \x01(\tR\x10discoveryService\x12!\n" +
+	"\fapi_endpoint\x18\x05 \x01(\tR\vapiEndpoint\x12/\n" +
+	"\x13management_endpoint\x18\x06 \x01(\tR\x12managementEndpoint\x129\n" +
+	"\x19initial_admin_secret_name\x18\a \x01(\tR\x16initialAdminSecretName\x120\n" +
+	"\x14port_forward_command\x18\b \x01(\tR\x12portForwardCommandB\xb7\x03\n" +
 	"9com.dev.planton.provider.kubernetes.kuberneteskeycloak.v1B\x11StackOutputsProtoP\x01Zlgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeycloak/v1;kuberneteskeycloakv1\xa2\x02\x05DPPKK\xaa\x025Dev.Planton.Provider.Kubernetes.Kuberneteskeycloak.V1\xca\x025Dev\\Planton\\Provider\\Kubernetes\\Kuberneteskeycloak\\V1\xe2\x02ADev\\Planton\\Provider\\Kubernetes\\Kuberneteskeycloak\\V1\\GPBMetadata\xea\x02:Dev::Planton::Provider::Kubernetes::Kuberneteskeycloak::V1b\x06proto3"
 
 var (

@@ -418,6 +418,7 @@ import (
 	hetznercloudsnapshotv1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudsnapshot/v1"
 	hetznercloudsshkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudsshkey/v1"
 	hetznercloudvolumev1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudvolume/v1"
+	kubernetesairflowv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesairflow/v1"
 	kubernetesaltinityoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesaltinityoperator/v1"
 	kubernetesargocdv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesargocd/v1"
 	kubernetesargoworkflowsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesargoworkflows/v1"
@@ -440,6 +441,9 @@ import (
 	kubernetesexternaldnsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternaldns/v1"
 	kubernetesexternalsecretv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternalsecret/v1"
 	kubernetesexternalsecretsoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesexternalsecretsoperator/v1"
+	kubernetesflinkdeploymentv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesflinkdeployment/v1"
+	kubernetesflinkoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesflinkoperator/v1"
+	kubernetesgatekeeperv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatekeeper/v1"
 	kubernetesgatewayv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgateway/v1"
 	kubernetesgatewayapicrdsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatewayapicrds/v1"
 	kubernetesgatewayclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesgatewayclass/v1"
@@ -471,7 +475,10 @@ import (
 	kuberneteskarpenternodepoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskarpenternodepool/v1"
 	kuberneteskedav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeda/v1"
 	kuberneteskeycloakv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeycloak/v1"
+	kuberneteskeycloakoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeycloakoperator/v1"
 	kuberneteskubeprometheusstackv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskubeprometheusstack/v1"
+	kuberneteskuberayoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskuberayoperator/v1"
+	kuberneteskyvernov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskyverno/v1"
 	kuberneteslistenersetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteslistenerset/v1"
 	kuberneteslocustv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteslocust/v1"
 	kuberneteslokiv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesloki/v1"
@@ -499,6 +506,7 @@ import (
 	kubernetesqdrantv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesqdrant/v1"
 	kubernetesrabbitmqv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrabbitmq/v1"
 	kubernetesrabbitmqoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrabbitmqoperator/v1"
+	kubernetesrayclusterv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesraycluster/v1"
 	kubernetesrbacv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrbac/v1"
 	kubernetesreferencegrantv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesreferencegrant/v1"
 	kubernetesrequestauthenticationv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesrequestauthentication/v1"
@@ -512,6 +520,7 @@ import (
 	kubernetessignozv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessignoz/v1"
 	kubernetessolrv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessolr/v1"
 	kubernetessolroperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessolroperator/v1"
+	kubernetessparkoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessparkoperator/v1"
 	kubernetesstatefulsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstatefulset/v1"
 	kubernetesstorageclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstorageclass/v1"
 	kubernetesstrimzikafkaoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstrimzikafkaoperator/v1"
@@ -1069,6 +1078,7 @@ var ProviderHetznerCloudMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 }
 
 var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
+	cloudresourcekind.CloudResourceKind_KubernetesAirflow:                     &kubernetesairflowv1.KubernetesAirflow{},
 	cloudresourcekind.CloudResourceKind_KubernetesAltinityOperator:            &kubernetesaltinityoperatorv1.KubernetesAltinityOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesArgoWorkflows:               &kubernetesargoworkflowsv1.KubernetesArgoWorkflows{},
 	cloudresourcekind.CloudResourceKind_KubernetesArgocd:                      &kubernetesargocdv1.KubernetesArgocd{},
@@ -1091,6 +1101,9 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesExternalDns:                 &kubernetesexternaldnsv1.KubernetesExternalDns{},
 	cloudresourcekind.CloudResourceKind_KubernetesExternalSecret:              &kubernetesexternalsecretv1.KubernetesExternalSecret{},
 	cloudresourcekind.CloudResourceKind_KubernetesExternalSecretsOperator:     &kubernetesexternalsecretsoperatorv1.KubernetesExternalSecretsOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesFlinkDeployment:             &kubernetesflinkdeploymentv1.KubernetesFlinkDeployment{},
+	cloudresourcekind.CloudResourceKind_KubernetesFlinkOperator:               &kubernetesflinkoperatorv1.KubernetesFlinkOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesGatekeeper:                  &kubernetesgatekeeperv1.KubernetesGatekeeper{},
 	cloudresourcekind.CloudResourceKind_KubernetesGateway:                     &kubernetesgatewayv1.KubernetesGateway{},
 	cloudresourcekind.CloudResourceKind_KubernetesGatewayApiCrds:              &kubernetesgatewayapicrdsv1.KubernetesGatewayApiCrds{},
 	cloudresourcekind.CloudResourceKind_KubernetesGatewayClass:                &kubernetesgatewayclassv1.KubernetesGatewayClass{},
@@ -1122,7 +1135,10 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesKarpenterNodePool:           &kuberneteskarpenternodepoolv1.KubernetesKarpenterNodePool{},
 	cloudresourcekind.CloudResourceKind_KubernetesKeda:                        &kuberneteskedav1.KubernetesKeda{},
 	cloudresourcekind.CloudResourceKind_KubernetesKeycloak:                    &kuberneteskeycloakv1.KubernetesKeycloak{},
+	cloudresourcekind.CloudResourceKind_KubernetesKeycloakOperator:            &kuberneteskeycloakoperatorv1.KubernetesKeycloakOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesKubePrometheusStack:         &kuberneteskubeprometheusstackv1.KubernetesKubePrometheusStack{},
+	cloudresourcekind.CloudResourceKind_KubernetesKubeRayOperator:             &kuberneteskuberayoperatorv1.KubernetesKubeRayOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesKyverno:                     &kuberneteskyvernov1.KubernetesKyverno{},
 	cloudresourcekind.CloudResourceKind_KubernetesListenerSet:                 &kuberneteslistenersetv1.KubernetesListenerSet{},
 	cloudresourcekind.CloudResourceKind_KubernetesLocust:                      &kuberneteslocustv1.KubernetesLocust{},
 	cloudresourcekind.CloudResourceKind_KubernetesLoki:                        &kuberneteslokiv1.KubernetesLoki{},
@@ -1150,6 +1166,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesQdrant:                      &kubernetesqdrantv1.KubernetesQdrant{},
 	cloudresourcekind.CloudResourceKind_KubernetesRabbitMq:                    &kubernetesrabbitmqv1.KubernetesRabbitMq{},
 	cloudresourcekind.CloudResourceKind_KubernetesRabbitMqOperator:            &kubernetesrabbitmqoperatorv1.KubernetesRabbitMqOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesRayCluster:                  &kubernetesrayclusterv1.KubernetesRayCluster{},
 	cloudresourcekind.CloudResourceKind_KubernetesRbac:                        &kubernetesrbacv1.KubernetesRbac{},
 	cloudresourcekind.CloudResourceKind_KubernetesReferenceGrant:              &kubernetesreferencegrantv1.KubernetesReferenceGrant{},
 	cloudresourcekind.CloudResourceKind_KubernetesRequestAuthentication:       &kubernetesrequestauthenticationv1.KubernetesRequestAuthentication{},
@@ -1163,6 +1180,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesSignoz:                      &kubernetessignozv1.KubernetesSignoz{},
 	cloudresourcekind.CloudResourceKind_KubernetesSolr:                        &kubernetessolrv1.KubernetesSolr{},
 	cloudresourcekind.CloudResourceKind_KubernetesSolrOperator:                &kubernetessolroperatorv1.KubernetesSolrOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesSparkOperator:               &kubernetessparkoperatorv1.KubernetesSparkOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesStatefulSet:                 &kubernetesstatefulsetv1.KubernetesStatefulSet{},
 	cloudresourcekind.CloudResourceKind_KubernetesStorageClass:                &kubernetesstorageclassv1.KubernetesStorageClass{},
 	cloudresourcekind.CloudResourceKind_KubernetesStrimziKafkaOperator:        &kubernetesstrimzikafkaoperatorv1.KubernetesStrimziKafkaOperator{},

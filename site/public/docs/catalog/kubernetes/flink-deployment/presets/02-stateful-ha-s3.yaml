@@ -1,0 +1,48 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesFlinkDeployment
+metadata:
+  name: orders-pipeline
+spec:
+  namespace:
+    value: stream-processing
+  createNamespace: true
+  flinkVersion: v2_1
+  image: registry.example.com/pipelines/orders:2.1
+  job:
+    jarUri: local:///opt/pipeline/orders.jar
+    parallelism: 4
+    upgradeMode: savepoint
+  jobManager:
+    replicas: 2
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+    execution.checkpointing.interval: 30s
+  state:
+    checkpointsDir: s3://flink-state/checkpoints/orders
+    savepointsDir: s3://flink-state/savepoints/orders
+    highAvailability:
+      enabled: true
+      storageDir: s3://flink-state/ha/orders
+    s3:
+      endpoint:
+        valueFrom:
+          name: objects
+      accessKeySecret:
+        name:
+          valueFrom:
+            name: objects
+        key: admin_access_key_id
+      secretKeySecret:
+        name:
+          valueFrom:
+            name: objects
+        key: admin_secret_access_key
+      builtinPluginJar: flink-s3-fs-hadoop-2.1.0.jar
+  taskManager:
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi

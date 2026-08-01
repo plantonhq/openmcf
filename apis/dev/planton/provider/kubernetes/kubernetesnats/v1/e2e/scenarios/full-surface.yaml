@@ -22,11 +22,19 @@ spec:
     memoryStoreMaxSize: 256Mi
   auth:
     users:
+      # THE PERMISSION RECIPE UNDER PROOF: a publish-allowlisted user is
+      # fenced from the JetStream API unless the allowlist grants it —
+      # JetStream is driven by REQUESTS published to $JS.API.> (and acks
+      # published to $JS.ACK.>); the server silently drops denied
+      # publishes, so a fenced user's stream calls just time out
+      # (verified live). Responses ride _INBOX.> subscriptions.
       - username: orders-service
         permissions:
           publishAllow:
             - "orders.>"
             - "e2e.>"
+            - "$JS.API.>"
+            - "$JS.ACK.>"
           subscribeAllow:
             - "orders.>"
             - "e2e.>"

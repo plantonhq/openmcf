@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-aws-module-test
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-keycloak
+runtime: go
+description: A Keycloak server declared as the k8s.keycloak.org/v2beta1 Keycloak CR the official Keycloak Operator reconciles — database wiring through Secret selectors, TLS/hostname posture, feature flags, additional server options, scheduling, probes and update strategy

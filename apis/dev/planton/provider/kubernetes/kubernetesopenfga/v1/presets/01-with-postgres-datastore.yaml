@@ -1,27 +1,25 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesOpenFga
 metadata:
-  name: my-openfga
+  name: openfga
 spec:
   namespace:
     value: openfga
   createNamespace: true
-  container:
-    replicas: 1
-    resources:
-      requests:
-        cpu: 50m
-        memory: 100Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
-  dataStore:
-    engine: postgres
-    host: "<your-postgres-host>"
-    port: 5432
-    database: openfga
-    username: "<your-postgres-username>"
-    password: "<your-postgres-password>"
-  ingress:
+  replicas: 3
+  datastore:
+    postgres:
+      host:
+        valueFrom:
+          name: my-postgres
+      database: openfga
+      username: openfga
+      passwordSecret:
+        secretName:
+          valueFrom:
+            name: my-postgres
+  authn:
+    preshared:
+      existingKeysSecretName: openfga-api-keys
+  metrics:
     enabled: true
-    hostname: "<your-openfga.example.com>"

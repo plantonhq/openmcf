@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetesraycluster
+spec:
+  tier: 3
+  # The Ray cluster declaration (rayclusters.ray.io/v1) against the
+  # registry-prerequisite KubeRay operator. Every lane carries THE RAY
+  # PROOF: a real job submitted through the head's Job Submission REST
+  # API (authenticated with the operator-provisioned bearer token — the
+  # unauthenticated request REJECTED first, the auth gate) runs to
+  # SUCCEEDED on the cluster's own capacity. The behavioral lane adds
+  # THE STATE PROOF: with GCS fault tolerance composed onto a
+  # KubernetesValkey, the HEAD pod is deleted (UID-verified replacement)
+  # and the recovered head still lists the completed job — control
+  # state survived outside the head's memory.
+  status: pending_proof
+  validated_provisioners: []
+  # The rayproject/ray image is ~2.5GB — it pulls once per cluster and
+  # dominates the first lane's wall clock.
+  timeout_minutes: 30

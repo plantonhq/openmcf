@@ -4,11 +4,28 @@ metadata:
   name: kubernetesharbor
 spec:
   tier: 2
-  status: deferred
-  deferred_reason: "too heavy for default kind -- 6+ subcomponents (core, portal, registry, jobservice, PostgreSQL, Redis) exceed kind resources"
+  # Rebuilt onto the official harbor chart 1.19.1 (Harbor 2.15.1) with
+  # composition-first data arms (internal XOR external database/cache;
+  # filesystem XOR S3/GCS/Azure storage), Secret-native credentials
+  # (the chart's publicly documented Harbor12345 / changeit /
+  # not-a-secure-key defaults never ship), and exposure composed from
+  # the chart's Service surface + required externalURL (no embedded
+  # ingress). The stale "too heavy for kind" deferral is challenged:
+  # ~6 pods at ~1 CPU / 2.3Gi requests is lighter than already-proven
+  # SigNoz+ClickHouse and kube-prometheus-stack lanes on the same
+  # persistent cluster. The dedicated verifier proves the product loop
+  # live: admin login → create project → OCI push/pull round-trip +
+  # the auth gate; behavioral-durability proves the artifact survives a
+  # UID-verified registry pod replacement (fresh port-forward after
+  # replacement — dead-tunnel class).
+  status: green
   validated_provisioners:
     - pulumi
-  timeout_minutes: 15
-  limitations:
-    - "Managed database + cache + filesystem storage work (not external-only as previously documented)"
-    - "Same class of kind limitation as GitLab"
+    - terraform
+  # First boot runs core's schema migrations (startup probe budgets
+  # 60 minutes upstream); the 900s Helm wait covers the normal case.
+  # Internal database + Redis + filesystem PVCs add cold-start budget.
+  # The composed-storage scenario adds a four-fixture chain (CNPG →
+  # Postgres, the S3-identity Secret, SeaweedFS, Valkey) deployed and
+  # torn down per lane — ~4 minutes each way on a warm cluster.
+  timeout_minutes: 40

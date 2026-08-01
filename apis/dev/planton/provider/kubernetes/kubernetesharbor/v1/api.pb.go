@@ -23,7 +23,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// harbor-kubernetes
+// *
+// **KubernetesHarbor** deploys Harbor — the CNCF-graduated container
+// registry with policy-driven artifact management, vulnerability
+// scanning, and content signing — from the official Helm chart.
 type KubernetesHarbor struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version

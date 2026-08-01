@@ -46,12 +46,31 @@ honestly a new credential. Generation-shape arguments are ignored
 after creation — an imported credential never silently regenerates;
 rotation stays an explicit verb.
 
+Generated passwords are LETTERS ONLY (length compensates the smaller
+alphabet). This is a server contract, not a style choice: nats-server
+re-parses a resolved env reference through its own config parser, so a
+password containing digits at the front or structural characters
+(`-`, `#`, `$`, braces, quotes) crashes every server at config load
+with a variable-reference parse error (verified live). A pure-letter
+value is the only shape the parser can never misread.
+
 ## JetStream posture
 
 ON by default (the chart's raw default is off) and rendered explicitly
 either way, so both engines state the posture: a file-store PVC
 (size/class from the spec), an optional capped memory tier, and
 per-account JetStream enablement when accounts are declared.
+
+JetStream is driven over core NATS subjects: clients PUBLISH requests
+to `$JS.API.>` and acknowledgements to `$JS.ACK.>`, and receive
+responses on `_INBOX.>` subscriptions. A user with a publish
+ALLOWLIST is therefore fenced from JetStream unless the allowlist
+includes those subjects — and because the server silently drops denied
+publishes, a fenced user's stream operations time out client-side
+instead of failing loudly (verified live). Grant `$JS.API.>` and
+`$JS.ACK.>` to every allowlisted user that works with streams;
+`publish_deny` rules can then carve out narrower fences where needed
+(deny wins on overlap).
 
 ## Cross-engine parity
 

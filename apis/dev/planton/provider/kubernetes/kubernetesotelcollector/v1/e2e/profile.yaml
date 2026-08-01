@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetesotelcollector
+spec:
+  tier: 3
+  # The OpenTelemetryCollector CR declaration (untyped-CR class,
+  # v1beta1 structured config) reconciled by the operator fixture (the
+  # registry prerequisite chain: cert-manager → operator → this kind).
+  # The DEDICATED verifier owns readiness and the product bar: THE
+  # PIPELINE PROOF (a real OTLP push observed in the debug exporter's
+  # output) on every lane, THE FILELOG PROOF on the daemonset lane
+  # (node log ingestion — the run-as-root security-context pattern),
+  # and THE RECONCILE PROOF on the behavioral lane (a config patch
+  # rolled onto live pipeline behavior).
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  # The operator fixture chain (cert-manager + operator) dominates the
+  # first lane's wall clock; collector pods themselves start fast.
+  timeout_minutes: 25

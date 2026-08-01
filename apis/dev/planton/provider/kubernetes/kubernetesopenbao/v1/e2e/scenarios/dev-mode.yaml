@@ -1,0 +1,15 @@
+# The zero-ceremony evaluation arm: dev mode auto-initializes and
+# auto-unseals (root token "root", data in memory, no PVC) — the shape
+# for composing against OpenBao without the init/unseal bootstrap. The
+# verifier skips the seal lifecycle and proves the KV round-trip on the
+# built-in `secret/` mount.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesOpenBao
+metadata:
+  name: e2e-bao-dev
+spec:
+  namespace:
+    value: e2e-bao-dev
+  createNamespace: true
+  server:
+    dev: {}

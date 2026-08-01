@@ -1,0 +1,3 @@
+name: kubernetes-kuberay-operator
+runtime: go
+description: KubeRay operator installation from the official kuberay-operator Helm chart — reconciles RayCluster resources (declared with KubernetesRayCluster) plus directly-authored RayJob/RayService CRs into running Ray clusters, with chart-installed keep-on-uninstall ray.io CRDs and no admission webhook

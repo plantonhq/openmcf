@@ -57,6 +57,41 @@ func TestChangedTopLevelAttributes(t *testing.T) {
 	}
 }
 
+// The sub-path tolerance backs BOTH declaration vocabularies (the provider
+// catalog's dotted config-only/write-normalized entries and the component
+// map's resource-scoped import-normalized entries): only the declared leaf
+// may differ; any sibling drift under the same attribute fails closed. The
+// canonical import-normalized case is a Secret data key wiring a salted-hash
+// computed attribute the provider re-salts on import.
+func TestChangeCoveredBySubPaths(t *testing.T) {
+	before := map[string]interface{}{"data": map[string]interface{}{
+		"REGISTRY_PASSWD":   "plain",
+		"REGISTRY_HTPASSWD": "user:$2a$10$oldsalt",
+	}}
+	afterHashOnly := map[string]interface{}{"data": map[string]interface{}{
+		"REGISTRY_PASSWD":   "plain",
+		"REGISTRY_HTPASSWD": "user:$2a$10$newsalt",
+	}}
+	afterSiblingDrift := map[string]interface{}{"data": map[string]interface{}{
+		"REGISTRY_PASSWD":   "DRIFTED",
+		"REGISTRY_HTPASSWD": "user:$2a$10$newsalt",
+	}}
+	declared := [][]string{{"data", "REGISTRY_HTPASSWD"}}
+
+	if !changeCoveredBySubPaths(before, afterHashOnly, "data", declared) {
+		t.Fatal("the declared salted-hash sub-path alone must be tolerated")
+	}
+	if changeCoveredBySubPaths(before, afterSiblingDrift, "data", declared) {
+		t.Fatal("sibling drift under the same attribute must fail closed")
+	}
+	if changeCoveredBySubPaths(before, afterHashOnly, "data", nil) {
+		t.Fatal("no declarations must tolerate nothing")
+	}
+	if changeCoveredBySubPaths(before, afterHashOnly, "metadata", declared) {
+		t.Fatal("a declaration scoped to another attribute must not cover this one")
+	}
+}
+
 // The blind round-trip holds no user-pasted ARN, but account_id/region are
 // deployment-level facts every ARN-shaped output carries; per-resource parts
 // must NEVER be synthesized (a wrong recipe could then pass on a fake id).

@@ -7,36 +7,56 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Resources deploys one operator-managed Keycloak server:
+//
+//  1. the namespace (optional, create_namespace),
+//  2. the k8s.keycloak.org/v2beta1 Keycloak CR itself — the StatefulSet
+//     (named exactly after this resource), `<name>-service`,
+//     `<name>-discovery`, the NetworkPolicy and the create-once
+//     `<name>-initial-admin` bootstrap Secret are all operator-created
+//     from it. No ingress resources — the operator's own default Ingress
+//     is explicitly disabled and exposure composes from Gateway API kinds
+//     referencing the exported service handles.
+//
+// PREREQUISITE: a KubernetesKeycloakOperator watching this namespace
+// (with the default namespaced watch, the operator and its Keycloak
+// declarations live in the SAME namespace).
 func Resources(ctx *pulumi.Context, stackInput *kuberneteskeycloakv1.KubernetesKeycloakStackInput) error {
-	//initialize locals
 	locals := initializeLocals(ctx, stackInput)
 
-	//create kubernetes-provider from the credential in the stack-input
+	// FAIL LOUDLY on names past the operator's naming budget: every
+	// child derives from this name by suffixing (`-network-policy` is
+	// the longest at 15 characters) and StatefulSet pod hostnames must
+	// stay DNS-legal — past 48 the derived names silently break the
+	// contract the exported outputs are built on. Twin: the Terraform
+	// module's lifecycle precondition.
+	if len(locals.ResourceName) > vars.NameBudget {
+		return errors.Errorf(
+			"resource name %q is %d characters — the Keycloak operator derives child names from it "+
+				"(suffixes up to 15 characters) and pod hostnames must stay DNS-legal; "+
+				"use a name of at most %d characters",
+			locals.ResourceName, len(locals.ResourceName), vars.NameBudget)
+	}
+
 	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
 		stackInput.ProviderConfig, "kubernetes")
 	if err != nil {
-		return errors.Wrap(err, "failed to setup kubernetes provider")
+		return errors.Wrap(err, "failed to set up kubernetes provider")
 	}
 
-	// Conditionally create namespace based on create_namespace flag.
 	createdNamespace, err := namespace(ctx, stackInput, locals, kubernetesProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	// Build conditional namespace dependency (Pulumi equivalent of Terraform depends_on).
-	// When create_namespace is false, createdNamespace is nil and namespaceDeps is empty.
 	var namespaceDeps []pulumi.ResourceOption
 	if createdNamespace != nil {
 		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
 	}
 
-	// TODO: Keycloak Helm chart deployment
-	// When implementing, resources should use:
-	// - namespaceDeps to depend on the namespace
-	// - pulumi.Provider(kubernetesProvider) for Kubernetes resources
-	// - pulumi.String(locals.Namespace) for namespace references
-	_ = namespaceDeps // will be used when Helm chart deployment is implemented
+	if err := keycloakCR(ctx, locals, kubernetesProvider, namespaceDeps); err != nil {
+		return errors.Wrap(err, "failed to create keycloak custom resource")
+	}
 
-	return nil
+	return exportOutputs(ctx, locals)
 }

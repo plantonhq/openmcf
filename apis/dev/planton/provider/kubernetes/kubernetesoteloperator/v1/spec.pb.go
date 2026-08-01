@@ -37,21 +37,32 @@ const (
 // here, Instrumentation/OpAMPBridge/TargetAllocator CRs authored
 // directly).
 //
-// CRD LIFECYCLE: the chart templates its five opentelemetry.io CRDs as
+// CRD LIFECYCLE: the chart templates its opentelemetry.io CRDs as
 // release-owned objects — a Helm uninstall would cascade-delete every
 // collector in the cluster. This component instead OWNS the CRD
-// lifecycle: the modules apply the chart's pinned CRD bundle outside
-// the release (create/update only, retained on destroy), so removing
-// the operator never deletes the fleet's declarations. Chart-version
-// bumps upgrade the CRDs with the release.
+// lifecycle: the modules apply the four CRDs the default operator
+// serves (opentelemetrycollectors, instrumentations, opampbridges,
+// targetallocators), staged from the pinned chart, outside the release
+// (create/update only, retained on destroy) — so removing the operator
+// never deletes the fleet's declarations. Chart-version bumps upgrade
+// the CRDs with the staged files. The fifth, feature-gated
+// clusterobservabilities CRD (the operator.clusterobservability alpha
+// gate, off by default) is deliberately not staged — enabling that
+// gate via helm_values without its CRD is unsupported here.
 //
 // WEBHOOK CERTIFICATE: the operator's admission webhooks (they default
 // and validate collector CRs, failurePolicy Fail) need a serving
-// certificate. The default arm has cert-manager issue and rotate it —
-// which makes KubernetesCertManager a prerequisite of the default
-// posture. The `auto_generate` arm needs no cert-manager (Helm
-// generates the cert at install) — for clusters that will never run
-// cert-manager.
+// certificate, and cert-manager issues and rotates it — which makes
+// KubernetesCertManager a hard prerequisite of this component. This is
+// a deliberate consequence of the CRD lifecycle above: the collector
+// CRD carries a version-CONVERSION webhook, and because the CRDs are
+// retained past the release's lifetime, their conversion trust must be
+// kept current by a running reconciler (cert-manager's CA injector,
+// via the CRDs' cert-manager.io/inject-ca-from annotation). A
+// certificate embedded once at install time (the chart's Helm-generated
+// arm) goes stale on rotation and silently breaks collector-CR
+// conversion long after the install succeeded — so no such arm exists
+// here.
 //
 // NAMING: keep the resource name at 30 characters or fewer — the chart
 // derives a `<name>-controller-manager-service-cert` Secret and
@@ -88,9 +99,11 @@ type KubernetesOtelOperatorSpec struct {
 	// arm, not a lighter install.
 	SkipCrds bool `protobuf:"varint,4,opt,name=skip_crds,json=skipCrds,proto3" json:"skip_crds,omitempty"`
 	// *
-	// How the admission webhooks' serving certificate is issued. Empty =
-	// cert-manager (the chart's own default posture — requires
-	// KubernetesCertManager on the cluster).
+	// Admission-webhook certificate configuration. cert-manager issues
+	// and rotates the certificate and keeps the retained CRDs' conversion
+	// trust current (see the WEBHOOK CERTIFICATE note above — this is why
+	// KubernetesCertManager is a prerequisite). Empty = the chart creates
+	// its own self-signed Issuer, the right choice for almost everyone.
 	Webhook *KubernetesOtelOperatorWebhook `protobuf:"bytes,5,opt,name=webhook,proto3" json:"webhook,omitempty"`
 	// *
 	// Default collector image the operator injects into
@@ -115,10 +128,12 @@ type KubernetesOtelOperatorSpec struct {
 	// cluster (deploy KubernetesKubePrometheusStack first).
 	ServiceMonitorEnabled bool `protobuf:"varint,9,opt,name=service_monitor_enabled,json=serviceMonitorEnabled,proto3" json:"service_monitor_enabled,omitempty"`
 	// *
-	// Registry that replaces the registry part of every image this
-	// component pulls (the operator manager, and the CRD-bundle apply
-	// path) — the air-gap/private-mirror path. Empty = each image's
-	// upstream registry (ghcr.io).
+	// Registry that replaces the registry part of the operator manager
+	// image — the air-gap/private-mirror path. Empty = the image's
+	// upstream registry (ghcr.io). This does NOT rewrite the default
+	// collector image the operator injects into CRs — mirror that
+	// fleet-wide via `default_collector_image` (the collector pods pull
+	// it, not this component).
 	ImageRegistry string `protobuf:"bytes,10,opt,name=image_registry,json=imageRegistry,proto3" json:"image_registry,omitempty"`
 	// *
 	// Names of existing image-pull Secrets applied to the operator pods.
@@ -260,14 +275,18 @@ func (x *KubernetesOtelOperatorSpec) GetHelmValues() string {
 }
 
 // *
-// Admission-webhook certificate posture.
+// Admission-webhook certificate configuration (cert-manager-issued —
+// the only posture this component models; the spec's WEBHOOK
+// CERTIFICATE note explains why a one-shot certificate arm cannot
+// exist alongside retained CRDs).
 type KubernetesOtelOperatorWebhook struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Types that are valid to be assigned to Cert:
-	//
-	//	*KubernetesOtelOperatorWebhook_CertManager
-	//	*KubernetesOtelOperatorWebhook_AutoGenerate
-	Cert          isKubernetesOtelOperatorWebhook_Cert `protobuf_oneof:"cert"`
+	// *
+	// Issuer to sign the webhook certificate. Empty = the chart creates
+	// its own self-signed Issuer (the default — right for almost
+	// everyone; the webhook cert only needs to be trusted by the API
+	// server, which cert-manager's CA injection handles).
+	IssuerRef     *KubernetesOtelOperatorIssuerRef `protobuf:"bytes,1,opt,name=issuer_ref,json=issuerRef,proto3" json:"issuer_ref,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -302,98 +321,7 @@ func (*KubernetesOtelOperatorWebhook) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesOtelOperatorWebhook) GetCert() isKubernetesOtelOperatorWebhook_Cert {
-	if x != nil {
-		return x.Cert
-	}
-	return nil
-}
-
-func (x *KubernetesOtelOperatorWebhook) GetCertManager() *KubernetesOtelOperatorWebhookCertManager {
-	if x != nil {
-		if x, ok := x.Cert.(*KubernetesOtelOperatorWebhook_CertManager); ok {
-			return x.CertManager
-		}
-	}
-	return nil
-}
-
-func (x *KubernetesOtelOperatorWebhook) GetAutoGenerate() *KubernetesOtelOperatorWebhookAutoGenerate {
-	if x != nil {
-		if x, ok := x.Cert.(*KubernetesOtelOperatorWebhook_AutoGenerate); ok {
-			return x.AutoGenerate
-		}
-	}
-	return nil
-}
-
-type isKubernetesOtelOperatorWebhook_Cert interface {
-	isKubernetesOtelOperatorWebhook_Cert()
-}
-
-type KubernetesOtelOperatorWebhook_CertManager struct {
-	// *
-	// cert-manager issues and rotates the webhook certificate (the
-	// chart's default). Requires KubernetesCertManager on the cluster.
-	CertManager *KubernetesOtelOperatorWebhookCertManager `protobuf:"bytes,1,opt,name=cert_manager,json=certManager,proto3,oneof"`
-}
-
-type KubernetesOtelOperatorWebhook_AutoGenerate struct {
-	// *
-	// Helm generates a self-signed certificate at install — no
-	// cert-manager dependency.
-	AutoGenerate *KubernetesOtelOperatorWebhookAutoGenerate `protobuf:"bytes,2,opt,name=auto_generate,json=autoGenerate,proto3,oneof"`
-}
-
-func (*KubernetesOtelOperatorWebhook_CertManager) isKubernetesOtelOperatorWebhook_Cert() {}
-
-func (*KubernetesOtelOperatorWebhook_AutoGenerate) isKubernetesOtelOperatorWebhook_Cert() {}
-
-// *
-// cert-manager-issued webhook certificate.
-type KubernetesOtelOperatorWebhookCertManager struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// Issuer to sign the webhook certificate. Empty = the chart creates
-	// its own self-signed Issuer (the default — right for almost
-	// everyone; the webhook cert only needs to be trusted by the API
-	// server, which cert-manager's CA injection handles).
-	IssuerRef     *KubernetesOtelOperatorIssuerRef `protobuf:"bytes,1,opt,name=issuer_ref,json=issuerRef,proto3" json:"issuer_ref,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubernetesOtelOperatorWebhookCertManager) Reset() {
-	*x = KubernetesOtelOperatorWebhookCertManager{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesOtelOperatorWebhookCertManager) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesOtelOperatorWebhookCertManager) ProtoMessage() {}
-
-func (x *KubernetesOtelOperatorWebhookCertManager) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesOtelOperatorWebhookCertManager.ProtoReflect.Descriptor instead.
-func (*KubernetesOtelOperatorWebhookCertManager) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *KubernetesOtelOperatorWebhookCertManager) GetIssuerRef() *KubernetesOtelOperatorIssuerRef {
+func (x *KubernetesOtelOperatorWebhook) GetIssuerRef() *KubernetesOtelOperatorIssuerRef {
 	if x != nil {
 		return x.IssuerRef
 	}
@@ -416,7 +344,7 @@ type KubernetesOtelOperatorIssuerRef struct {
 
 func (x *KubernetesOtelOperatorIssuerRef) Reset() {
 	*x = KubernetesOtelOperatorIssuerRef{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -428,7 +356,7 @@ func (x *KubernetesOtelOperatorIssuerRef) String() string {
 func (*KubernetesOtelOperatorIssuerRef) ProtoMessage() {}
 
 func (x *KubernetesOtelOperatorIssuerRef) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -441,7 +369,7 @@ func (x *KubernetesOtelOperatorIssuerRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesOtelOperatorIssuerRef.ProtoReflect.Descriptor instead.
 func (*KubernetesOtelOperatorIssuerRef) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesOtelOperatorIssuerRef) GetKind() string {
@@ -456,70 +384,6 @@ func (x *KubernetesOtelOperatorIssuerRef) GetName() string {
 		return x.Name
 	}
 	return ""
-}
-
-// *
-// Helm-generated self-signed webhook certificate.
-type KubernetesOtelOperatorWebhookAutoGenerate struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// *
-	// Regenerate the certificate on every helm upgrade. Default false —
-	// this component deliberately diverges from the chart's
-	// regenerate-by-default so upgrades never churn the webhook trust
-	// chain; the certificate is valid for `cert_period_days` and a
-	// deliberate regeneration is an upgrade with this flag flipped.
-	RecreateOnUpgrade bool `protobuf:"varint,1,opt,name=recreate_on_upgrade,json=recreateOnUpgrade,proto3" json:"recreate_on_upgrade,omitempty"`
-	// *
-	// Certificate validity in days. Empty = 365. Plan the regeneration
-	// upgrade before it expires — an expired webhook cert blocks every
-	// collector-CR write.
-	CertPeriodDays *int32 `protobuf:"varint,2,opt,name=cert_period_days,json=certPeriodDays,proto3,oneof" json:"cert_period_days,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
-}
-
-func (x *KubernetesOtelOperatorWebhookAutoGenerate) Reset() {
-	*x = KubernetesOtelOperatorWebhookAutoGenerate{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesOtelOperatorWebhookAutoGenerate) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesOtelOperatorWebhookAutoGenerate) ProtoMessage() {}
-
-func (x *KubernetesOtelOperatorWebhookAutoGenerate) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesOtelOperatorWebhookAutoGenerate.ProtoReflect.Descriptor instead.
-func (*KubernetesOtelOperatorWebhookAutoGenerate) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *KubernetesOtelOperatorWebhookAutoGenerate) GetRecreateOnUpgrade() bool {
-	if x != nil {
-		return x.RecreateOnUpgrade
-	}
-	return false
-}
-
-func (x *KubernetesOtelOperatorWebhookAutoGenerate) GetCertPeriodDays() int32 {
-	if x != nil && x.CertPeriodDays != nil {
-		return *x.CertPeriodDays
-	}
-	return 0
 }
 
 // *
@@ -541,7 +405,7 @@ type KubernetesOtelOperatorScheduling struct {
 
 func (x *KubernetesOtelOperatorScheduling) Reset() {
 	*x = KubernetesOtelOperatorScheduling{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -553,7 +417,7 @@ func (x *KubernetesOtelOperatorScheduling) String() string {
 func (*KubernetesOtelOperatorScheduling) ProtoMessage() {}
 
 func (x *KubernetesOtelOperatorScheduling) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -566,7 +430,7 @@ func (x *KubernetesOtelOperatorScheduling) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesOtelOperatorScheduling.ProtoReflect.Descriptor instead.
 func (*KubernetesOtelOperatorScheduling) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *KubernetesOtelOperatorScheduling) GetNodeSelector() map[string]string {
@@ -614,21 +478,13 @@ const file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_
 	"\vhelm_values\x18\r \x01(\tR\n" +
 	"helmValuesB\x10\n" +
 	"\x0e_chart_versionB\v\n" +
-	"\t_replicas\"\xc0\x02\n" +
-	"\x1dKubernetesOtelOperatorWebhook\x12\x88\x01\n" +
-	"\fcert_manager\x18\x01 \x01(\v2c.dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhookCertManagerH\x00R\vcertManager\x12\x8b\x01\n" +
-	"\rauto_generate\x18\x02 \x01(\v2d.dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhookAutoGenerateH\x00R\fautoGenerateB\x06\n" +
-	"\x04cert\"\xa5\x01\n" +
-	"(KubernetesOtelOperatorWebhookCertManager\x12y\n" +
+	"\t_replicas\"\x9a\x01\n" +
+	"\x1dKubernetesOtelOperatorWebhook\x12y\n" +
 	"\n" +
 	"issuer_ref\x18\x01 \x01(\v2Z.dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorIssuerRefR\tissuerRef\"o\n" +
 	"\x1fKubernetesOtelOperatorIssuerRef\x120\n" +
 	"\x04kind\x18\x01 \x01(\tB\x1c\xbaH\x19r\x17R\x06IssuerR\rClusterIssuerR\x04kind\x12\x1a\n" +
-	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\"\xaf\x01\n" +
-	")KubernetesOtelOperatorWebhookAutoGenerate\x12.\n" +
-	"\x13recreate_on_upgrade\x18\x01 \x01(\bR\x11recreateOnUpgrade\x12=\n" +
-	"\x10cert_period_days\x18\x02 \x01(\x05B\x0e\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x03365H\x00R\x0ecertPeriodDays\x88\x01\x01B\x13\n" +
-	"\x11_cert_period_days\"\xff\x02\n" +
+	"\x04name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\"\xff\x02\n" +
 	" KubernetesOtelOperatorScheduling\x12\x92\x01\n" +
 	"\rnode_selector\x18\x01 \x03(\v2m.dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
 	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x12.\n" +
@@ -650,34 +506,30 @@ func file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_r
 	return file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_goTypes = []any{
-	(*KubernetesOtelOperatorSpec)(nil),                // 0: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorSpec
-	(*KubernetesOtelOperatorWebhook)(nil),             // 1: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhook
-	(*KubernetesOtelOperatorWebhookCertManager)(nil),  // 2: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhookCertManager
-	(*KubernetesOtelOperatorIssuerRef)(nil),           // 3: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorIssuerRef
-	(*KubernetesOtelOperatorWebhookAutoGenerate)(nil), // 4: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhookAutoGenerate
-	(*KubernetesOtelOperatorScheduling)(nil),          // 5: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling
-	nil,                                               // 6: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling.NodeSelectorEntry
-	(*v1.StringValueOrRef)(nil),                       // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),             // 8: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.WorkloadToleration)(nil),             // 9: dev.planton.provider.kubernetes.WorkloadToleration
+	(*KubernetesOtelOperatorSpec)(nil),       // 0: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorSpec
+	(*KubernetesOtelOperatorWebhook)(nil),    // 1: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhook
+	(*KubernetesOtelOperatorIssuerRef)(nil),  // 2: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorIssuerRef
+	(*KubernetesOtelOperatorScheduling)(nil), // 3: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling
+	nil,                                      // 4: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),              // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),    // 6: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),    // 7: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_depIdxs = []int32{
-	7, // 0: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 0: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 1: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorSpec.webhook:type_name -> dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhook
-	8, // 2: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	5, // 3: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling
-	2, // 4: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhook.cert_manager:type_name -> dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhookCertManager
-	4, // 5: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhook.auto_generate:type_name -> dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhookAutoGenerate
-	3, // 6: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhookCertManager.issuer_ref:type_name -> dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorIssuerRef
-	6, // 7: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling.NodeSelectorEntry
-	9, // 8: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	6, // 2: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	3, // 3: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling
+	2, // 4: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorWebhook.issuer_ref:type_name -> dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorIssuerRef
+	4, // 5: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling.NodeSelectorEntry
+	7, // 6: dev.planton.provider.kubernetes.kubernetesoteloperator.v1.KubernetesOtelOperatorScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_init() }
@@ -686,18 +538,13 @@ func file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_i
 		return
 	}
 	file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[1].OneofWrappers = []any{
-		(*KubernetesOtelOperatorWebhook_CertManager)(nil),
-		(*KubernetesOtelOperatorWebhook_AutoGenerate)(nil),
-	}
-	file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesoteloperator_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

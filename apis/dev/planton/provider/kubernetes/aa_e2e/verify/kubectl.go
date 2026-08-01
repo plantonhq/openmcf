@@ -113,6 +113,57 @@ func KubectlResourceExists(ctx context.Context, kubeconfig, kind, name, namespac
 	return errors.Wrapf(lastErr, "resource %s/%s not found after 5 attempts", kind, name)
 }
 
+// podUid reads a pod's uid. Capture it BEFORE a deliberate pod deletion:
+// the uid is the only property a same-named StatefulSet replacement can
+// never share with the pod it replaces.
+func podUid(ctx context.Context, kubeconfig, namespace, pod string) (string, error) {
+	out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+		"get", "pod", pod, "-n", namespace, "-o", "jsonpath={.metadata.uid}").Output()
+	if err != nil {
+		return "", errors.Wrapf(err, "reading pod %s/%s uid", namespace, pod)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// waitForPodReplaced waits until the named pod exists with a uid DIFFERENT
+// from oldUid — the only honest signal that a deleted StatefulSet pod's
+// replacement is present. A terminating pod keeps reporting phase Running
+// (and can remain Ready) for its whole grace period, and the StatefulSet's
+// own status lags the deletion, so any wait keyed on phase/readiness alone
+// returns instantly against the DYING pod (verified live — the follow-up
+// probe then raced the old pod).
+//
+// requireReady additionally gates on the Ready condition. Pass false for
+// pods whose readiness is deliberately gated on out-of-band bootstrap
+// (e.g. a sealed-by-design secrets server that only turns Ready after an
+// unseal the caller performs next): those replacements reach phase Running
+// but are NEVER Ready on their own.
+func waitForPodReplaced(ctx context.Context, kubeconfig, namespace, pod, oldUid string, requireReady bool, budget time.Duration) error {
+	deadline := time.Now().Add(budget)
+	for time.Now().Before(deadline) {
+		out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+			"get", "pod", pod, "-n", namespace,
+			"-o", "jsonpath={.metadata.uid} {.status.phase} {.status.conditions[?(@.type=='Ready')].status}").Output()
+		if err == nil {
+			fields := strings.Fields(string(out))
+			if len(fields) >= 2 && fields[0] != oldUid {
+				if !requireReady && fields[1] == "Running" {
+					return nil
+				}
+				if requireReady && len(fields) >= 3 && fields[2] == "True" {
+					return nil
+				}
+			}
+		}
+		time.Sleep(5 * time.Second)
+	}
+	gate := "Running"
+	if requireReady {
+		gate = "Ready"
+	}
+	return errors.Errorf("pod %s/%s never came back %s with a new uid within %s", namespace, pod, gate, budget)
+}
+
 // kubectlGetJSONPath reads one jsonpath expression off a live object,
 // retrying while the object is still materializing. Returns the raw
 // (untrimmed) kubectl output.

@@ -1,0 +1,62 @@
+# Every fixture-free typed block at once: webhook postures both ways
+# (the policy webhook DELIBERATELY stays fail-open on this shared-cluster
+# lane — a Fail policy webhook would put every namespace's admissions
+# behind this lane's engine; the fail-closed posture is proven by the
+# label-guard webhook's own default), audit tuning, exemptions, engine
+# capabilities, sizing, scheduling, hooks incl. the pre-uninstall
+# webhook-config cleanup, and the escape hatch. The external-cert arm is
+# deliberately absent (needs a cert-manager Certificate fixture —
+# plan-proven, deferred-ledger row).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGatekeeper
+metadata:
+  name: e2e-gk-full
+spec:
+  namespace:
+    value: e2e-gk-full
+  create_namespace: true
+  replicas: 2
+  validating_webhook:
+    enabled: true
+    failure_policy: Ignore
+    timeout_seconds: 5
+    enable_delete_operations: true
+    check_ignore_failure_policy: Fail
+  mutating_webhook:
+    enabled: true
+    failure_policy: Ignore
+    timeout_seconds: 2
+    mutation_annotations: true
+  audit:
+    interval_seconds: 60
+    constraint_violations_limit: 30
+    match_kind_only: true
+    chunk_size: 200
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  exempt_namespaces:
+    - e2e-gk-full-exempt
+  exempt_namespace_prefixes:
+    - kube-
+  engine:
+    enable_external_data: true
+    enable_k8s_native_validation: true
+    enable_generator_resource_expansion: false
+    disabled_builtins:
+      - "{http.send}"
+    log_denies: true
+    log_level: INFO
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  hooks:
+    label_namespace: true
+    probe_webhook: true
+    upgrade_crds: true
+    delete_webhook_configurations_on_uninstall: true
+  helm_values: |
+    podLabels:
+      e2e.planton.ai/lane: full-surface

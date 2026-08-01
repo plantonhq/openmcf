@@ -38,11 +38,57 @@ data "http" "tekton_operator_manifest" {
 # server_side_apply keeps re-installs tolerant of the operator's own
 # field management on its ConfigMaps and matches the Pulumi twin's apply
 # mode.
-resource "kubectl_manifest" "tekton_operator" {
-  for_each = local.applied_documents
+# The fixed namespace applies FIRST and deletes LAST — and its DELETE
+# blocks until the namespace is fully gone (the provider's wait
+# attribute). Namespace deletion is asynchronous and this kind's
+# namespace name is FIXED, so without the ordering a destroy-then-apply
+# sequence races the terminating namespace: every namespaced document
+# fails with "unable to create new content in namespace ... because it
+# is being terminated" (verified live).
+resource "kubectl_manifest" "namespace" {
+  for_each = local.namespace_documents
 
   yaml_body = yamlencode(each.value)
 
   server_side_apply = true
   force_conflicts   = true
+  wait              = true
+}
+
+# Everything that is not a Namespace or CRD: the two Deployments (with
+# the spec's typed overrides patched on), RBAC, ConfigMaps, Services,
+# the webhook Secret. Rollout waiting is deliberately OFF — the group
+# applies BEFORE the CRDs (see the ordering rationale in locals.tf),
+# and the operator only becomes ready once its CRDs exist; blocking
+# here would deadlock the create ordering. The E2E verifier (and any
+# health check) owns rollout readiness.
+resource "kubectl_manifest" "tekton_operator" {
+  for_each = local.workload_documents
+
+  yaml_body = yamlencode(each.value)
+
+  server_side_apply = true
+  force_conflicts   = true
+  wait_for_rollout  = false
+
+  depends_on = [kubectl_manifest.namespace]
+}
+
+# The 14 operator.tekton.dev CRDs apply LAST and — critically — delete
+# FIRST, while the operator Deployments still run: CRD deletion drains
+# every CR, and the operator's runtime InstallerSets carry a finalizer
+# only the LIVE operator can process (verified live: deleting CRDs and
+# operator in one pass wedges tektoninstallersets in Terminating). The
+# delete blocks until each CRD is fully gone so the next group's
+# teardown never overtakes the drain.
+resource "kubectl_manifest" "crds" {
+  for_each = local.crd_documents
+
+  yaml_body = yamlencode(each.value)
+
+  server_side_apply = true
+  force_conflicts   = true
+  wait              = true
+
+  depends_on = [kubectl_manifest.tekton_operator]
 }

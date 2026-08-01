@@ -158,9 +158,28 @@ message KubernetesOtelCollectorSpec {
 
   /**
    * Scheduling for the collector pods (deployment/daemonset/
-   * statefulset modes).
+   * statefulset modes). In sidecar mode the collector runs inside the
+   * TARGET pods, whose scheduling this CR does not control —
+   * tolerations and priority_class_name are rejected there (mirrored
+   * from the CRD's own admission rules; see the message-level CEL).
    */
   KubernetesOtelCollectorScheduling scheduling = 14;
+
+  /**
+   * Pod-level security context for the collector pods. The daemonset
+   * log-collection pattern typically needs `run_as_user: 0` —
+   * container runtimes write pod log files readable only by root, and
+   * the default collector image runs as a non-root user that cannot
+   * open them (the filelog receiver then reports permission errors
+   * instead of shipping logs).
+   */
+  dev.planton.provider.kubernetes.WorkloadPodSecurityContext pod_security_context = 15;
+
+  option (buf.validate.message).cel = {
+    id: "spec.mode.sidecar.excludes_scheduling"
+    message: "sidecar mode injects the collector into target pods — tolerations and priority_class_name have no standalone pod to apply to (the CRD rejects them at admission)"
+    expression: "!(has(this.mode) && this.mode == 4) || !has(this.scheduling) || (size(this.scheduling.tolerations) == 0 && this.scheduling.priority_class_name == '')"
+  };
 
   option (buf.validate.message).cel = {
     id: "spec.mode.daemonset_sidecar.exclude_scaling"

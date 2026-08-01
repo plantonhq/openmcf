@@ -1,27 +1,24 @@
-# OpenBao Dev Mode
+# Dev-mode preset
 
-This preset deploys OpenBao (open-source Vault fork) in a simple configuration with the UI enabled and ingress access. Suitable for development and testing secrets management workflows.
+OpenBao with zero ceremony: dev mode auto-initializes and auto-unseals
+at startup, the root token is literally `root`, and all data lives in
+memory. Port-forward the `openbao-dev` Service and start writing
+secrets immediately — no `bao operator init`, no unseal keys, no PVC.
 
-## When to Use
+This exists for exactly one purpose: evaluating OpenBao and building
+against its API without the seal lifecycle. NEVER put real secrets in
+it — everything is lost on every pod restart, and the root token sits
+in plain text in the pod spec, readable by anyone who can get pods in
+the namespace. Dev mode also drops ServiceAccount annotations (a chart
+behavior), so cloud workload-identity seams do not apply here.
 
-- Development or staging environments for secrets management
-- Evaluating OpenBao/Vault API compatibility
-- Environments where HA and TLS are not yet required
+Know the lifecycle before you graduate: a REAL OpenBao server starts
+uninitialized and SEALED, reports NotReady by design until you run
+`bao operator init` and unseal it, and comes back SEALED after every
+restart unless an auto-unseal backend is configured. The
+production-ha preset carries that shape.
 
-## Key Configuration Choices
+Change first: nothing. When you outgrow evaluation, switch presets
+rather than hardening this one.
 
-- **UI enabled** -- web interface for managing secrets, policies, and auth methods
-- **Ingress enabled** -- exposes OpenBao at the specified hostname
-- **No HA** -- single server instance; suitable for non-production use
-- **No TLS** -- unencrypted communication; enable `tlsEnabled` for production
-
-## Placeholders to Replace
-
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<your-openbao.example.com>` | Hostname for the OpenBao UI and API | Your DNS provider |
-
-## Related Presets
-
-- **02-production-ha** -- High-availability mode with Raft storage and TLS
-- **03-production-ha-gcp-auto-unseal** -- HA mode with GCP Cloud KMS auto-unseal and Workload Identity
+See [01-dev-mode.yaml](./01-dev-mode.yaml) for the manifest.

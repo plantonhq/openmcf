@@ -1,0 +1,28 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# typed field rendered at once (cluster-wide watch scope, both image
+# overrides, resources, scheduling).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKeycloakOperator
+metadata:
+  name: keycloak-operator-full
+spec:
+  namespace:
+    value: keycloak-op-hack
+  createNamespace: true
+  clusterWide: true
+  operatorImage: mirror.example.com/keycloak/keycloak-operator:26.7.0
+  defaultKeycloakImage: mirror.example.com/keycloak/keycloak:26.7.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  scheduling:
+    nodeSelector:
+      role: platform
+    tolerations:
+      - key: platform
+        operator: Exists
+        effect: NoSchedule

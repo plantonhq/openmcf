@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kuberneteskeycloakoperator.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kuberneteskeycloakoperator/v1/spec.proto";
+import "dev/planton/provider/kubernetes/kuberneteskeycloakoperator/v1/stack_outputs.proto";
+import "dev/planton/shared/metadata.proto";
+
+// KubernetesKeycloakOperator installs the official Keycloak Operator —
+// the lifecycle manager that reconciles Keycloak declarations
+// (KubernetesKeycloak resources) into running Keycloak servers.
+// Installing the operator alone deploys no Keycloak.
+message KubernetesKeycloakOperator {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesKeycloakOperator'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesKeycloakOperatorSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesKeycloakOperatorStatus status = 5;
+}
+
+// KubernetesKeycloakOperatorStatus describes the observed state of KubernetesKeycloakOperator.
+message KubernetesKeycloakOperatorStatus {
+  // stack-outputs
+  KubernetesKeycloakOperatorStackOutputs outputs = 1;
+}

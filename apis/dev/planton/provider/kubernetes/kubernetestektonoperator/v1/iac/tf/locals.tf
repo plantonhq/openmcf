@@ -236,4 +236,40 @@ locals {
       (local.webhook_deployment_id)  = local.patched_webhook_deployment
     }
   )
+
+  # The bundle partitions into THREE ordered groups because for_each
+  # instances apply — and destroy — in PARALLEL, and this bundle has two
+  # live-caught ordering hazards:
+  #
+  # 1. CREATE: a namespaced document landing before the Namespace fails
+  #    with "namespaces ... not found" (the first passing lane rode
+  #    scheduling luck alone).
+  # 2. DESTROY: the operator's runtime InstallerSet CRs carry an
+  #    OPERATOR-PROCESSED finalizer (the webhook maintains one for
+  #    itself even with zero TektonConfigs). Deleting the CRDs in the
+  #    same pass as the operator Deployments cascade-deletes those CRs
+  #    while their only finalizer processor is dying — the
+  #    tektoninstallersets CRD wedges in Terminating (verified live,
+  #    repeatedly; upstream's own reconciler force-strips finalizers to
+  #    break exactly this class). The CRDs must therefore delete FIRST,
+  #    while the operator still runs to process the finalizers.
+  #
+  # Terraform destroy runs the reverse of create ordering, so the
+  # dependency chain namespace ← workloads ← crds yields create
+  # namespace→workloads→crds and destroy crds→workloads→namespace —
+  # both hazards resolved structurally. The operator tolerates starting
+  # before its CRDs exist (knative-style controllers crash-retry until
+  # informers sync; the verifier owns rollout readiness).
+  namespace_documents = {
+    for k, v in local.applied_documents : k => v
+    if try(v.kind, "") == "Namespace"
+  }
+  crd_documents = {
+    for k, v in local.applied_documents : k => v
+    if try(v.kind, "") == "CustomResourceDefinition"
+  }
+  workload_documents = {
+    for k, v in local.applied_documents : k => v
+    if !contains(["Namespace", "CustomResourceDefinition"], try(v.kind, ""))
+  }
 }

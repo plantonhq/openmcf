@@ -204,10 +204,21 @@ type KubernetesOtelCollectorSpec struct {
 	Resources *kubernetes.ContainerResources `protobuf:"bytes,13,opt,name=resources,proto3" json:"resources,omitempty"`
 	// *
 	// Scheduling for the collector pods (deployment/daemonset/
-	// statefulset modes).
-	Scheduling    *KubernetesOtelCollectorScheduling `protobuf:"bytes,14,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// statefulset modes). In sidecar mode the collector runs inside the
+	// TARGET pods, whose scheduling this CR does not control —
+	// tolerations and priority_class_name are rejected there (mirrored
+	// from the CRD's own admission rules; see the message-level CEL).
+	Scheduling *KubernetesOtelCollectorScheduling `protobuf:"bytes,14,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
+	// *
+	// Pod-level security context for the collector pods. The daemonset
+	// log-collection pattern typically needs `run_as_user: 0` —
+	// container runtimes write pod log files readable only by root, and
+	// the default collector image runs as a non-root user that cannot
+	// open them (the filelog receiver then reports permission errors
+	// instead of shipping logs).
+	PodSecurityContext *kubernetes.WorkloadPodSecurityContext `protobuf:"bytes,15,opt,name=pod_security_context,json=podSecurityContext,proto3" json:"pod_security_context,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesOtelCollectorSpec) Reset() {
@@ -334,6 +345,13 @@ func (x *KubernetesOtelCollectorSpec) GetResources() *kubernetes.ContainerResour
 func (x *KubernetesOtelCollectorSpec) GetScheduling() *KubernetesOtelCollectorScheduling {
 	if x != nil {
 		return x.Scheduling
+	}
+	return nil
+}
+
+func (x *KubernetesOtelCollectorSpec) GetPodSecurityContext() *kubernetes.WorkloadPodSecurityContext {
+	if x != nil {
+		return x.PodSecurityContext
 	}
 	return nil
 }
@@ -558,7 +576,7 @@ var File_dev_planton_provider_kubernetes_kubernetesotelcollector_v1_spec_proto p
 
 const file_dev_planton_provider_kubernetes_kubernetesotelcollector_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Edev/planton/provider/kubernetes/kubernetesotelcollector/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesotelcollector.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xba\x0e\n" +
+	"Edev/planton/provider/kubernetes/kubernetesotelcollector/v1/spec.proto\x12:dev.planton.provider.kubernetes.kubernetesotelcollector.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/volume_mount.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x90\x12\n" +
 	"\x1bKubernetesOtelCollectorSpec\x12j\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\x88\x01\n" +
@@ -580,10 +598,12 @@ const file_dev_planton_provider_kubernetes_kubernetesotelcollector_v1_spec_proto
 	"\tresources\x18\r \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12}\n" +
 	"\n" +
 	"scheduling\x18\x0e \x01(\v2].dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorSchedulingR\n" +
-	"scheduling\x1a6\n" +
+	"scheduling\x12m\n" +
+	"\x14pod_security_context\x18\x0f \x01(\v2;.dev.planton.provider.kubernetes.WorkloadPodSecurityContextR\x12podSecurityContext\x1a6\n" +
 	"\bEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x96\x04\xbaH\x92\x04\x1a\xcc\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xfd\x06\xbaH\xf9\x06\x1a\xe4\x02\n" +
+	"%spec.mode.sidecar.excludes_scheduling\x12\xa2\x01sidecar mode injects the collector into target pods — tolerations and priority_class_name have no standalone pod to apply to (the CRD rejects them at admission)\x1a\x95\x01!(has(this.mode) && this.mode == 4) || !has(this.scheduling) || (size(this.scheduling.tolerations) == 0 && this.scheduling.priority_class_name == '')\x1a\xcc\x02\n" +
 	"+spec.mode.daemonset_sidecar.exclude_scaling\x12\x98\x01replicas and autoscaler apply only to deployment/statefulset modes — a daemonset runs one collector per node and a sidecar runs inside the target pods\x1a\x81\x01!(has(this.mode) && (this.mode == 2 || this.mode == 4)) || ((!has(this.replicas) || this.replicas == 1) && !has(this.autoscaler))\x1a\xc0\x01\n" +
 	"!spec.autoscaler.excludes_replicas\x12Wautoscaler manages the replica count — a non-default replicas must not be set with it\x1aB!has(this.autoscaler) || !has(this.replicas) || this.replicas == 1B\a\n" +
 	"\x05_modeB\v\n" +
@@ -644,7 +664,8 @@ var file_dev_planton_provider_kubernetes_kubernetesotelcollector_v1_spec_proto_g
 	(*v1.StringValueOrRef)(nil),           // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
 	(*kubernetes.VolumeMount)(nil),        // 8: dev.planton.provider.kubernetes.VolumeMount
 	(*kubernetes.ContainerResources)(nil), // 9: dev.planton.provider.kubernetes.ContainerResources
-	(*kubernetes.WorkloadToleration)(nil), // 10: dev.planton.provider.kubernetes.WorkloadToleration
+	(*kubernetes.WorkloadPodSecurityContext)(nil), // 10: dev.planton.provider.kubernetes.WorkloadPodSecurityContext
+	(*kubernetes.WorkloadToleration)(nil),         // 11: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetesotelcollector_v1_spec_proto_depIdxs = []int32{
 	7,  // 0: dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
@@ -655,13 +676,14 @@ var file_dev_planton_provider_kubernetes_kubernetesotelcollector_v1_spec_proto_d
 	3,  // 5: dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorSpec.additional_ports:type_name -> dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorPort
 	9,  // 6: dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorSpec.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
 	4,  // 7: dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorSpec.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorScheduling
-	6,  // 8: dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorScheduling.NodeSelectorEntry
-	10, // 9: dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	10, // 8: dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorSpec.pod_security_context:type_name -> dev.planton.provider.kubernetes.WorkloadPodSecurityContext
+	6,  // 9: dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorScheduling.NodeSelectorEntry
+	11, // 10: dev.planton.provider.kubernetes.kubernetesotelcollector.v1.KubernetesOtelCollectorScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesotelcollector_v1_spec_proto_init() }

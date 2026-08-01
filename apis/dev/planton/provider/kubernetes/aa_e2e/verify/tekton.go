@@ -68,11 +68,44 @@ func (v *TektonOperatorVerifier) VerifyAbsent(ctx context.Context, kubeconfig st
 		return err
 	}
 	// The manifest-bundle posture: every document deletes with the
-	// resource, INCLUDING the CRDs.
+	// resource, INCLUDING the CRDs. The tektoninstallersets CRD is
+	// checked with a bounded wait: its deletion DRAINS the operator's
+	// runtime InstallerSet CRs, whose finalizer the (deliberately
+	// still-alive, destroy-ordered) operator processes asynchronously —
+	// a one-shot check would race the tail of that drain.
+	deadlineCrd := time.Now().Add(2 * time.Minute)
+	for {
+		err := KubectlResourceAbsent(ctx, kubeconfig, "crd", "tektoninstallersets.operator.tekton.dev", "")
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadlineCrd) {
+			return errors.Wrap(err, "the tektoninstallersets CRD never finished draining after destroy — the operator-processed finalizer ordering is broken")
+		}
+		time.Sleep(5 * time.Second)
+	}
 	if err := KubectlResourceAbsent(ctx, kubeconfig, "crd", tektonConfigCrd, ""); err != nil {
 		return errors.Wrap(err, "the operator.tekton.dev CRDs must delete with the operator (the manifest-bundle posture)")
 	}
-	fmt.Printf("  [verify] DESTROY: operator workloads and CRDs gone (the manifest-bundle posture)\n")
+	// The FIXED namespace must be FULLY GONE, not merely Terminating —
+	// namespace deletion is asynchronous, the name is baked into the
+	// manifest, and a lingering Terminating namespace makes the next
+	// install fail with "unable to create new content in namespace ...
+	// because it is being terminated" (verified live: back-to-back
+	// lanes raced exactly this window). Zero-orphan for a
+	// fixed-namespace kind includes the namespace itself.
+	deadline := time.Now().Add(3 * time.Minute)
+	for {
+		err := KubectlResourceAbsent(ctx, kubeconfig, "namespace", tektonOperatorNamespace, "")
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			return errors.Wrap(err, "the fixed tekton-operator namespace never finished terminating after destroy")
+		}
+		time.Sleep(5 * time.Second)
+	}
+	fmt.Printf("  [verify] DESTROY: operator workloads, CRDs and the fixed namespace gone (the manifest-bundle posture)\n")
 	return nil
 }
 
@@ -189,15 +222,53 @@ func (v *TektonVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) er
 	if err := KubectlResourceAbsent(ctx, kubeconfig, "tektonconfigs.operator.tekton.dev", "config", ""); err != nil {
 		return err
 	}
-	out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
-		"get", "tektoninstallersets.operator.tekton.dev", "-o", "name").CombinedOutput()
-	if err == nil && strings.TrimSpace(string(out)) != "" {
-		return errors.Errorf("TektonInstallerSets survived the TektonConfig teardown (the stranded-finalizer class): %s", firstLines(string(out), 5))
+	// The InstallerSet teardown is an ASYNC cascade (the TektonConfig
+	// finalizer removes component CRs, whose own finalizers remove their
+	// InstallerSets) that keeps converging for a short window after the
+	// TektonConfig object is gone — so this asserts CONVERGENCE within a
+	// bounded budget, never a one-shot snapshot (verified live: an
+	// instant check reported five in-flight InstallerSets as stranded).
+	// A genuinely stranded finalizer never converges and still fails.
+	//
+	// The operator's OWN webhook InstallerSet is excluded by its type
+	// label: it belongs to the OPERATOR's lifetime, not the TektonConfig
+	// teardown — the webhook maintains it from startup even with zero
+	// TektonConfigs (verified live and in the operator source), and it
+	// leaves with the KubernetesTektonOperator resource.
+	deadlineSets := time.Now().Add(3 * time.Minute)
+	for {
+		out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+			"get", "tektoninstallersets.operator.tekton.dev",
+			"-l", "operator.tekton.dev/type!=operatorValidatingDefaultingWebhook",
+			"-o", "name").CombinedOutput()
+		if err != nil || strings.TrimSpace(string(out)) == "" {
+			break
+		}
+		if time.Now().After(deadlineSets) {
+			return errors.Errorf("TektonInstallerSets survived the TektonConfig teardown (the stranded-finalizer class): %s", firstLines(string(out), 5))
+		}
+		time.Sleep(5 * time.Second)
 	}
 	if err := KubectlResourceAbsent(ctx, kubeconfig, "deployment", "tekton-pipelines-controller", v.TargetNamespace); err != nil {
 		return err
 	}
-	fmt.Printf("  [verify] DESTROY: TektonConfig, InstallerSets and component workloads gone — the operator-alive teardown completed cleanly\n")
+	// The operator DELETES its target namespace with the TektonConfig
+	// teardown (live-observed — offline-unverifiable before the first
+	// lane). Wait for it to be FULLY gone: a namespace lingering in
+	// Terminating (e.g. on an unprocessed content finalizer) wedges the
+	// next lane that targets the same fixed name.
+	deadlineNs := time.Now().Add(5 * time.Minute)
+	for {
+		err := KubectlResourceAbsent(ctx, kubeconfig, "namespace", v.TargetNamespace, "")
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadlineNs) {
+			return errors.Wrapf(err, "the operator-created target namespace %q never finished terminating after the TektonConfig teardown", v.TargetNamespace)
+		}
+		time.Sleep(5 * time.Second)
+	}
+	fmt.Printf("  [verify] DESTROY: TektonConfig, InstallerSets, component workloads and the target namespace gone — the operator-alive teardown completed cleanly\n")
 	return nil
 }
 
@@ -254,11 +325,32 @@ spec:
 	fmt.Printf("  [verify] SUBMIT: TaskRun %q submitted\n", runName)
 
 	// Zero-orphan duty: the TaskRun (and the pod it owns) leave with the
-	// verifier.
+	// verifier — CONFIRMED gone, not fire-and-forget. Tekton Results
+	// guards TaskRuns with its `results.tekton.dev/taskrun` archival
+	// finalizer, and a proof TaskRun still pending that finalizer when
+	// the destroy phase kills the results watcher can never finish
+	// deleting — it wedges the operator-created target namespace in
+	// Terminating and poisons every later lane (verified live). The
+	// deletion therefore completes HERE, while the stack serving the
+	// finalizer is alive; if the finalizer still never clears within the
+	// budget, it is stripped — the archival guarantee is meaningless for
+	// a verifier-owned proof object on its way out.
 	defer func() {
 		delCmd := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
 			"delete", "taskrun", runName, "-n", v.TargetNamespace, "--ignore-not-found", "--wait=false")
 		_, _ = delCmd.CombinedOutput()
+		goneDeadline := time.Now().Add(2 * time.Minute)
+		for time.Now().Before(goneDeadline) {
+			if KubectlResourceAbsent(ctx, kubeconfig, "taskrun", runName, v.TargetNamespace) == nil {
+				return
+			}
+			time.Sleep(5 * time.Second)
+		}
+		patchCmd := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+			"patch", "taskrun", runName, "-n", v.TargetNamespace,
+			"-p", `{"metadata":{"finalizers":[]}}`, "--type=merge")
+		_, _ = patchCmd.CombinedOutput()
+		fmt.Printf("  [verify] CLEANUP: proof TaskRun finalizers stripped after the deletion budget — a lingering archival finalizer must never outlive the lane\n")
 	}()
 
 	deadline := time.Now().Add(6 * time.Minute)

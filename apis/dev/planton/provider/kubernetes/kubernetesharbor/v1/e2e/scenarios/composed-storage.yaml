@@ -1,0 +1,74 @@
+# The production-composed shape, kind-honest: every data plane composed
+# from first-class catalog kinds — external PostgreSQL (the CNPG
+# fixture), external Valkey cache (declared password on BOTH sides —
+# the composition recipe on the cache field), and S3 object storage on
+# an in-cluster SeaweedFS whose identities the Secret fixture owns (the
+# scenario declares the same admin key pair; disableRedirect + plain
+# HTTP are the in-cluster store posture taught on the storage fields).
+# The registry runs TWO replicas — legal exactly BECAUSE the backend is
+# object storage (the filesystem-RWO CEL fence): stateless registry
+# replicas sharing one S3 store is the production scaling shape this
+# lane exists to prove. The same registry product proof runs against
+# it: admin login from the generated Secret, a PRIVATE project, OCI
+# push/pull digest-verified through both scaled replicas, and both
+# auth gates.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesHarbor
+metadata:
+  name: e2e-harbor-comp
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesPostgres,KubernetesSecret,KubernetesSeaweedFs,KubernetesValkey"
+spec:
+  # JOINS the fixture-owned namespace (the CNPG fixture deploys first
+  # with create_namespace and owns e2e-harbor); the scenario must NOT
+  # also claim createNamespace — two owners of one namespace fail the
+  # second create. Same convention as every fixture-sharing scenario.
+  namespace:
+    value: e2e-harbor
+  externalUrl: http://127.0.0.1:18080
+  database:
+    external:
+      host:
+        valueFrom:
+          name: e2e-harbor-pg
+      username: harbor
+      passwordSecretName:
+        valueFrom:
+          name: e2e-harbor-pg
+      coreDatabase: registry
+  cache:
+    external:
+      addr:
+        valueFrom:
+          name: e2e-harbor-valkey
+      # The SAME password the Valkey fixture declares for its default
+      # user — materialized by the module into `<name>-redis-auth`
+      # (the chart's REDIS_PASSWORD contract), so the blind round-trip
+      # exercises the conditional redis_auth import rows LIVE.
+      password: eTwoEHarborCachePasswordLettersOnly
+  storage:
+    s3:
+      bucket: harbor-artifacts
+      region: us-east-1
+      endpoint:
+        valueFrom:
+          name: e2e-harbor-swfs
+      # The SAME admin key pair the S3-identity Secret fixture owns —
+      # materialized into `<name>-storage-auth` (the chart's
+      # REGISTRY_STORAGE_S3_ACCESSKEY/SECRETKEY contract), so the
+      # blind round-trip exercises the conditional storage_auth import
+      # rows LIVE.
+      credentials:
+        accessKey: e2eharboraccesskeyid
+        secretKey: e2eharborsecretaccesskeyfortheobjectlane
+      # REQUIRED for in-cluster stores clients cannot reach — a
+      # redirect would hand clients an unreachable URL.
+      disableRedirect: true
+      secure: false
+  registry:
+    replicas: 2
+  trivy:
+    skipUpdate: true
+    offlineScan: true
+    severity: HIGH,CRITICAL
+  logLevel: info

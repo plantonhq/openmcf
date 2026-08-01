@@ -3,7 +3,6 @@ package module
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	kubernetesopenbaov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesopenbao/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
@@ -11,140 +10,138 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type Locals struct {
-	Namespace               string
-	KubernetesOpenBao       *kubernetesopenbaov1.KubernetesOpenBao
-	Labels                  map[string]string
-	KubeServiceName         string
-	KubeServiceFqdn         string
-	KubePortForwardCommand  string
-	IngressExternalHostname string
-	HaEnabled               bool
-	HaReplicas              int32
-	ServerReplicas          int32
-	HelmChartVersion        string
+// Server modes (the spec's mode oneof; unset = standalone — the chart's
+// own default).
+const (
+	modeDev        = "dev"
+	modeStandalone = "standalone"
+	modeHa         = "ha"
+)
 
-	IngressCertClusterIssuerName string
-	IngressCertSecretName        string
-	IngressHostnames             []string
-	IngressCertificateName       string
-	IngressGatewayName           string
-	IngressHttpRedirectRouteName string
-	IngressHttpsRouteName        string
+// Locals holds computed values derived from the stack input. Every
+// resolution here has an exact twin in the Terraform module's locals.tf —
+// keep them in lockstep.
+type Locals struct {
+	Spec *kubernetesopenbaov1.KubernetesOpenBaoSpec
+
+	// Resource-identity labels stamped on module-created satellites
+	// (namespace, seal-credentials Secret) — never injected into the
+	// chart's own resources; Helm owns those.
+	Labels map[string]string
+
+	// Namespace the server installs into (resolved literal).
+	Namespace string
+
+	// ReleaseName is metadata.name; fullnameOverride is pinned to it,
+	// so every chart-derived name hangs off this value.
+	ReleaseName string
+
+	ChartVersion string
+
+	// Mode resolved from the spec oneof (dev / standalone / ha).
+	Mode string
+
+	// Raft peer count (ha mode; 1 otherwise).
+	Replicas int
+
+	// http or https, following tls.enabled — drives the synthesized
+	// listener config, retry_join addresses, and the exported endpoint.
+	Scheme string
+
+	// True when a TLS certificate Secret is mounted.
+	TlsEnabled bool
+
+	// Resolved TLS Secret name ("" when TLS is off).
+	TlsSecretName string
+
+	// Name of the module-owned seal-credentials Secret ("" when the
+	// declared seal arm carries no credential material — the keyless
+	// posture).
+	SealCredentialsSecretName string
+
+	// The synthesized server config HCL (empty in dev mode — dev
+	// ignores config).
+	BaoConfigHcl string
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesopenbaov1.KubernetesOpenBaoStackInput) *Locals {
-	locals := &Locals{}
-
-	locals.KubernetesOpenBao = stackInput.Target
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesopenbaov1.KubernetesOpenBaoStackInput) *Locals {
 	target := stackInput.Target
+	spec := target.Spec
 
-	locals.Labels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesOpenBao.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.Labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.Labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.Labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// Get namespace from spec, it is required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
-
-	// Export namespace as an output
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	// Determine HA settings
-	locals.HaEnabled = target.Spec.HighAvailability != nil && target.Spec.HighAvailability.Enabled
-	if locals.HaEnabled && target.Spec.HighAvailability.Replicas != nil {
-		locals.HaReplicas = *target.Spec.HighAvailability.Replicas
-	} else if locals.HaEnabled {
-		locals.HaReplicas = 3 // default HA replicas
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	// Server replicas
-	if target.Spec.ServerContainer != nil {
-		locals.ServerReplicas = target.Spec.ServerContainer.Replicas
-	} else {
-		locals.ServerReplicas = 1
+	// Resolve the mode oneof; unset = standalone (the chart default).
+	mode := modeStandalone
+	replicas := 1
+	if spec.GetServer() != nil {
+		switch {
+		case spec.GetServer().GetDev() != nil:
+			mode = modeDev
+		case spec.GetServer().GetHa() != nil:
+			mode = modeHa
+			replicas = 3
+			if spec.GetServer().GetHa().Replicas != nil {
+				replicas = int(spec.GetServer().GetHa().GetReplicas())
+			}
+		}
 	}
 
-	// Export HA status
-	ctx.Export(OpHaEnabled, pulumi.Bool(locals.HaEnabled))
-
-	// Helm chart version
-	if target.Spec.HelmChartVersion != nil && *target.Spec.HelmChartVersion != "" {
-		locals.HelmChartVersion = *target.Spec.HelmChartVersion
-	} else {
-		locals.HelmChartVersion = vars.HelmChartVersion
+	tlsEnabled := spec.GetTls().GetEnabled()
+	tlsSecretName := ""
+	if tlsEnabled {
+		tlsSecretName = spec.GetTls().GetCertSecretName().GetValue()
+	}
+	scheme := "http"
+	if tlsEnabled {
+		scheme = "https"
 	}
 
-	// Compute service name - OpenBao Helm chart uses the release name
-	locals.KubeServiceName = target.Metadata.Name
-
-	// Export kubernetes service name
-	ctx.Export(OpService, pulumi.String(locals.KubeServiceName))
-
-	// Compute kubernetes FQDN
-	locals.KubeServiceFqdn = fmt.Sprintf("%s.%s.svc.cluster.local:%d",
-		locals.KubeServiceName, locals.Namespace, vars.OpenBaoPort)
-
-	// Export kubernetes endpoint
-	ctx.Export(OpKubeEndpoint, pulumi.String(locals.KubeServiceFqdn))
-
-	// Compute API address
-	apiAddress := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d",
-		locals.KubeServiceName, locals.Namespace, vars.OpenBaoPort)
-	ctx.Export(OpApiAddress, pulumi.String(apiAddress))
-
-	// Compute cluster address (for HA mode)
-	clusterAddress := fmt.Sprintf("https://%s-0.%s-internal.%s.svc.cluster.local:%d",
-		locals.KubeServiceName, locals.KubeServiceName, locals.Namespace, vars.OpenBaoClusterPort)
-	ctx.Export(OpClusterAddress, pulumi.String(clusterAddress))
-
-	// Compute port-forward command
-	locals.KubePortForwardCommand = fmt.Sprintf("kubectl port-forward -n %s service/%s %d:%d",
-		locals.Namespace, locals.KubeServiceName, vars.OpenBaoPort, vars.OpenBaoPort)
-
-	// Export port-forward command
-	ctx.Export(OpPortForwardCommand, pulumi.String(locals.KubePortForwardCommand))
-
-	// Ingress configuration
-	if target.Spec.Ingress == nil ||
-		!target.Spec.Ingress.Enabled ||
-		target.Spec.Ingress.Hostname == "" {
-		return locals
+	sealCredentialsSecretName := ""
+	if sealSecretData(spec) != nil {
+		sealCredentialsSecretName = target.Metadata.Name + vars.SealCredentialsSecretSuffix
 	}
 
-	locals.IngressExternalHostname = target.Spec.Ingress.Hostname
-
-	locals.IngressHostnames = []string{
-		locals.IngressExternalHostname,
+	locals := &Locals{
+		Spec:                      spec,
+		Labels:                    labels,
+		Namespace:                 spec.Namespace.GetValue(),
+		ReleaseName:               target.Metadata.Name,
+		ChartVersion:              chartVersion,
+		Mode:                      mode,
+		Replicas:                  replicas,
+		Scheme:                    scheme,
+		TlsEnabled:                tlsEnabled,
+		TlsSecretName:             tlsSecretName,
+		SealCredentialsSecretName: sealCredentialsSecretName,
 	}
 
-	ctx.Export(OpExternalHostname, pulumi.String(locals.IngressExternalHostname))
-
-	// Derive ClusterIssuer name from hostname domain.
-	// Example: "openbao.example.com" -> "example.com"
-	parts := strings.Split(locals.IngressExternalHostname, ".")
-	if len(parts) > 1 {
-		locals.IngressCertClusterIssuerName = strings.Join(parts[1:], ".")
-	}
-
-	locals.IngressCertSecretName = fmt.Sprintf("%s-tls", target.Metadata.Name)
-	locals.IngressCertificateName = fmt.Sprintf("%s-certificate", target.Metadata.Name)
-	locals.IngressGatewayName = fmt.Sprintf("%s-external", target.Metadata.Name)
-	locals.IngressHttpRedirectRouteName = fmt.Sprintf("%s-http-redirect", target.Metadata.Name)
-	locals.IngressHttpsRouteName = fmt.Sprintf("%s-https", target.Metadata.Name)
+	locals.BaoConfigHcl = renderBaoConfigHcl(locals)
 
 	return locals
+}
+
+// apiEndpoint is the in-cluster URL clients (external-secrets stores,
+// cert-manager Vault issuers) point at.
+func (l *Locals) apiEndpoint() string {
+	return fmt.Sprintf("%s://%s.%s.svc.cluster.local:%d", l.Scheme, l.ReleaseName, l.Namespace, vars.ApiPort)
 }

@@ -1,0 +1,14 @@
+# Consumer-scoped Flink operator fixture for the
+# KubernetesFlinkDeployment lanes. Cluster-wide watch (the component
+# default) with the default-on webhook — cert-manager rides the
+# operator's own registry prerequisite. This fixture OWNS the shared
+# e2e-flink namespace; every scenario co-locates its FlinkDeployment
+# there (the S3 credential secretKeyRefs cannot cross namespaces).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesFlinkOperator
+metadata:
+  name: e2e-flnk-operator
+spec:
+  namespace:
+    value: e2e-flink
+  create_namespace: true

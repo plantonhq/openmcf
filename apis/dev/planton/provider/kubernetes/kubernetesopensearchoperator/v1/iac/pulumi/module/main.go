@@ -45,7 +45,19 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetesopensearchoperatorv1.K
 
 	// ------------------------------ CRDs ----------------------------------
 	// Module-owned, retained on delete — see crds.go for the full posture.
-	createdCrds, err := customResourceDefinitions(ctx, kubernetesProvider)
+	//
+	// The CRDs ride a DEDICATED upsert provider: retained-on-destroy
+	// resources are, by design, already on the cluster the next time
+	// this module installs, and a plain create fails AlreadyExists (the
+	// provider adopts only with upsertExistingObjects — verified in the
+	// pinned provider source). The upsert scope stays CRD-only; the
+	// release keeps the plain provider's create-conflict semantics.
+	upsertProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert(ctx,
+		stackInput.ProviderConfig, "kubernetes-crd-upsert")
+	if err != nil {
+		return errors.Wrap(err, "failed to create the CRD upsert kubernetes provider")
+	}
+	createdCrds, err := customResourceDefinitions(ctx, upsertProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to apply opensearch operator CRDs")
 	}

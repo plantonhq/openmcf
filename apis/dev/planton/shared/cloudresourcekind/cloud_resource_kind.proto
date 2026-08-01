@@ -2596,7 +2596,7 @@ enum CloudResourceKind {
   }];
 
   // 800–999: Kubernetes resources, organized in family sub-bands
-  // (830–869 also hosts CNI/autoscaling/DR addons; 930–949 reserved for
+  // (830–869 also hosts CNI/autoscaling/DR addons; 930–949 hosts
   // analytics & ML; 990–999 reserved for growth)
   // 800–829: Kubernetes building blocks (core API primitives)
   KubernetesNamespace = 800 [(kind_meta) = {
@@ -3061,21 +3061,48 @@ enum CloudResourceKind {
     id_prefix: "k8sotelcol"
     prerequisites: [KubernetesOtelOperator]
   }];
-  // 890–899: Kubernetes security, policy, and identity
+  // 880–899: Kubernetes security, policy, and identity
+  KubernetesKyverno = 880 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skyvrn"
+  }];
+  KubernetesGatekeeper = 881 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sgtkpr"
+  }];
+  // Keycloak declarations compose the official Keycloak Operator (which
+  // reconciles the Keycloak CR this kind renders) and, on the recommended
+  // postgres vendor, a KubernetesPostgres database — both must resolve
+  // before the CR can converge.
   KubernetesKeycloak = 890 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8skc"
+    prerequisites: [
+      KubernetesKeycloakOperator,
+      KubernetesPostgres
+    ]
   }];
   KubernetesOpenBao = 891 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sbao"
   }];
+  // OpenFGA requires a datastore; the recommended arm composes a
+  // KubernetesPostgres database (the sandbox memory arm needs nothing,
+  // but the registry declares the shape real deployments require).
   KubernetesOpenFga = 892 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sfga"
+    prerequisites: [KubernetesPostgres]
+  }];
+  KubernetesKeycloakOperator = 893 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skcop"
   }];
   // 900–929: Kubernetes data platforms
   KubernetesCloudNativePgOperator = 900 [(kind_meta) = {
@@ -3240,6 +3267,56 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8srmq"
     prerequisites: [KubernetesRabbitMqOperator]
+  }];
+  // 930–949: Kubernetes analytics and ML
+  // KubernetesPostgres is a prerequisite because Airflow's metadata
+  // database composes a KubernetesPostgres by default (the spec's FK
+  // defaults resolve onto its outputs) and the migration Job needs the
+  // database reachable before the server components start.
+  KubernetesAirflow = 930 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8saflw"
+    prerequisites: [KubernetesPostgres]
+  }];
+  KubernetesSparkOperator = 931 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssprkop"
+  }];
+  KubernetesKubeRayOperator = 932 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skrayop"
+  }];
+  // KubernetesKubeRayOperator is a prerequisite because this kind declares
+  // the RayCluster custom resource that only the operator's CRDs admit and
+  // only the operator reconciles into head and worker pods.
+  KubernetesRayCluster = 933 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sraycl"
+    prerequisites: [KubernetesKubeRayOperator]
+  }];
+  // KubernetesCertManager is a prerequisite because the Flink operator's
+  // chart, with its default-on admission webhook, renders cert-manager
+  // Issuer/Certificate resources and trusts the API server through
+  // cert-manager's CA injection — there is no self-signed fallback at the
+  // pinned chart, and the webhooks are fail-closed.
+  KubernetesFlinkOperator = 934 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sflnkop"
+    prerequisites: [KubernetesCertManager]
+  }];
+  // KubernetesFlinkOperator is a prerequisite because this kind declares
+  // the FlinkDeployment custom resource that only the operator's CRDs
+  // admit and only the operator reconciles into a running Flink cluster.
+  KubernetesFlinkDeployment = 935 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sflnkd"
+    prerequisites: [KubernetesFlinkOperator]
   }];
   // 950–969: Kubernetes GitOps and CI/CD
   KubernetesArgocd = 950 [(kind_meta) = {

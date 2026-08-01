@@ -1,0 +1,3 @@
+name: kubernetes-otel-collector
+runtime: go
+description: OpenTelemetry Collector declaration as an opentelemetry.io/v1beta1 OpenTelemetryCollector custom resource — the telemetry pipeline (receivers, processors, exporters) reconciled by the OpenTelemetry Operator into a Deployment, DaemonSet, StatefulSet or sidecar-injected collector

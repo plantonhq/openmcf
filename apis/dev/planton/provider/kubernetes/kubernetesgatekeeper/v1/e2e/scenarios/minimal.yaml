@@ -1,0 +1,18 @@
+# Component defaults end to end: three webhook replicas, fail-open
+# policy webhook, the 60s audit loop, chart-managed certificates, the
+# namespace-labeling and webhook-probe hooks on. The verifier proves the
+# ENGINE on every lane: both deployments rolled out, the chart-owned
+# webhook configuration and engine CRDs present, then a verifier-owned
+# CEL ConstraintTemplate + deny Constraint REJECTS a violating Pod and
+# ADMITS a compliant one (verifier-owned target namespace, swept after,
+# incl. asserting the template's runtime constraint CRD deletes with
+# it). Destroy asserts webhook configurations GONE and engine CRDs KEPT
+# (the crds/-directory posture, designed).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesGatekeeper
+metadata:
+  name: e2e-gk-min
+spec:
+  namespace:
+    value: e2e-gk-min
+  create_namespace: true

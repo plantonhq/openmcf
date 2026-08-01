@@ -676,7 +676,16 @@ func (x *KubernetesNatsUser) GetPermissions() *KubernetesNatsPermissions {
 // — deny wins on overlap.
 type KubernetesNatsPermissions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Subjects the user MAY publish to.
+	// *
+	// Subjects the user MAY publish to. An allowlist fences the user
+	// from EVERYTHING else — including JetStream, which is driven by
+	// requests published to `$JS.API.>` and acknowledgements published
+	// to `$JS.ACK.>`. A publish-allowlisted user who needs JetStream
+	// must include both (responses arrive on `_INBOX.>` subscriptions);
+	// the server silently drops denied publishes, so a fenced user's
+	// stream operations hang until the client times out rather than
+	// failing loudly (verified live: stream creation as an allowlisted
+	// user times out with no server-side error surfaced to the client).
 	PublishAllow []string `protobuf:"bytes,1,rep,name=publish_allow,json=publishAllow,proto3" json:"publish_allow,omitempty"`
 	// Subjects the user may NOT publish to.
 	PublishDeny []string `protobuf:"bytes,2,rep,name=publish_deny,json=publishDeny,proto3" json:"publish_deny,omitempty"`

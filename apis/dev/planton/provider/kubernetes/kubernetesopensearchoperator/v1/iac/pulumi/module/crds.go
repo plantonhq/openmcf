@@ -99,5 +99,16 @@ func customResourceDefinitions(ctx *pulumi.Context,
 		crds = append(crds, crd)
 	}
 
+	// FAIL LOUDLY when the staged CRD files did not travel with the
+	// module: an empty or partial directory would silently apply too few
+	// CRDs and the operator would run against whatever CRDs happen to
+	// exist (the class was caught live elsewhere: a lane "passed" riding
+	// a previous install's retained CRDs). Ten is the staged count at
+	// chart 2.8.0 — restage ../crds and update this count together with
+	// DefaultChartVersion. Twin of the Terraform module's precondition.
+	if len(crds) != 10 {
+		return nil, errors.Errorf("the staged CRD directory %s carries %d CRDs, expected 10 — the module owns the CRD lifecycle and cannot install without its full staged set", vars.CrdDirectory, len(crds))
+	}
+
 	return crds, nil
 }

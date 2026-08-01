@@ -1,0 +1,46 @@
+# Full surface: the production shape — an unloaded head (num-cpus 0,
+# the module default), a CPU worker group under the in-tree autoscaler
+# (initial 1, bounds 0..2), explicit token auth, extra ray start
+# params. THE RAY PROOF's job MUST land on a WORKER here (the head
+# advertises no CPUs) — the same proof also proves worker scheduling.
+# GPU groups and extended resource limits stay plan-proven (no
+# accelerator nodes on this cluster); the suspend arm is exercised by
+# the behavioral lane's watch-list, not here.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesRayCluster
+metadata:
+  name: e2e-ray-full
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesKubeRayOperator"
+spec:
+  namespace:
+    value: e2e-ray
+  rayVersion: 2.52.0
+  head:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: "1"
+        memory: 3Gi
+    scheduleTasksOnHead: false
+    rayStartParams:
+      dashboard-agent-listen-port: "52365"
+  workerGroups:
+    - name: cpu
+      replicas: 1
+      minReplicas: 0
+      maxReplicas: 2
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: "1"
+          memory: 2Gi
+  autoscaling:
+    enabled: true
+    idleTimeoutSeconds: 120
+  auth:
+    mode: token

@@ -628,6 +628,76 @@ budget then expires "unable to retrieve" what was retrieved on the first
 try (caught live). Convert the pushed ID's bytes to base64 for the success
 check; keep hex only for human-facing log lines.
 
+**Verifier proof objects are deleted CONFIRMED, never fire-and-forget —
+controllers add finalizers to objects they observe.** A `--wait=false`
+delete in a cleanup defer looks clean and leaks: sidecar services
+(archival watchers, result recorders) attach their own finalizers to
+workload CRs, and a proof object still pending such a finalizer when the
+destroy phase kills its processor can never finish deleting — it wedges
+its namespace in Terminating and poisons every later lane on the shared
+cluster (caught live: a proof run's archival finalizer held a namespace
+for half an hour). Cleanup = issue the delete, POLL the object gone
+within a bounded budget while the stack that serves the finalizer is
+still alive, and strip finalizers as the last resort — a verifier-owned
+proof object's durability guarantees are meaningless on its way out.
+
+**A pod-replacement proof gates on a NEW pod UID, never on phase or
+readiness alone.** A terminating pod keeps reporting phase Running (and
+can remain Ready) for its whole grace period, and a StatefulSet's status
+lags the deletion — so any wait keyed on phase/readiness straight after
+`kubectl delete pod --wait=false` returns instantly against the DYING
+pod, and the "post-replacement" assertions then run against the old
+server (caught live twice; for a bootstrap-gated server the follow-up
+bootstrap call is silently burned as a no-op on the old pod and the real
+replacement never gets it). Capture `metadata.uid` BEFORE the delete and
+wait for the same-named pod with a DIFFERENT uid via the shared
+`waitForPodReplaced` helper in `aa_e2e/verify/` — `requireReady=true`
+for self-readying servers, `requireReady=false` (phase Running) for
+pods whose readiness is deliberately gated on out-of-band bootstrap the
+verifier performs next.
+
+**A web UI's identity is proven through its own API, never brand text in
+the SPA document.** A modern UI's index.html is an opaque asset bundle —
+its text content (even the product name) is an upstream build detail that
+changes without notice (caught live: a UI whose document carries no
+product-identifying text at all). Read the UI server's source at the pin
+for an unconditional API route (a settings/config endpoint) and assert
+its response CONTRACT (a known JSON key), not its wording.
+
+**An auth-gate probe targets a route the SERVER SOURCE proves requires
+authentication — anonymous-by-design endpoints are never gates.** Products
+with a public/private visibility model (registries, artifact stores, wikis)
+deliberately serve anonymous reads of the public subset, so "any endpoint
+without credentials answers 401" is a false contract (caught live: an
+unauthenticated project listing answered 200 with the public subset against
+a correctly-secured install). Pick the gate route by reading the handler at
+the pin (an explicit require-authenticated guard), and when the product's
+real guard is per-resource visibility, prove THAT surface too: create the
+proof resource private and assert the anonymous data-plane access is
+rejected — the strongest gate is the one a customer's security actually
+depends on.
+
+**A chart's CRD posture is read from WHERE the CRDs live, never assumed
+from chart ownership language.** `crds/` directory = Helm's install-once
+posture: created on first install, never upgraded, NEVER removed on
+uninstall — destroy must assert the CRDs SURVIVE (caught live: a destroy
+assertion built on "release-owned CRDs delete with the release" failed
+against a chart whose CRDs ride `crds/` and are untouched by uninstall).
+Templated CRDs (in `templates/`) are release-owned and delete/keep per
+their annotations; hook-applied CRDs follow the hook's own posture. The
+posture claim in the spec/docs/verifier must cite which of the three the
+chart actually uses at the pin.
+
+**Scenarios needing owner-arranged external credentials declare them with
+the `planton.dev/e2e-required-env` annotation.** Unset `${E2E_ENV:...}`
+tokens fail expansion LOUDLY by design (right when a batch bootstrap was
+supposed to export them, wrong for credentials only a human can arrange —
+a sandbox account PAT, an external tenant). The annotation lists the
+variables (comma-separated); lanes then SKIP the scenario with the reason
+wherever they are absent — an honest, self-documenting deferral that
+keeps CI green — and run it live wherever the owner exported them. Record
+the matching deferred-E2E row with the unblock.
+
 **One-way-hash credentials in E2E artifacts must be VERIFIED pairings.** When
 a scenario or fixture carries a one-way hash (a bcrypt htpasswd tenant
 password, a pre-hashed basic-auth entry) whose PLAINTEXT a verifier must use
@@ -822,6 +892,41 @@ classic-yaml ConfigGroup + a retainOnDelete TRANSFORMATION on Pulumi —
 yaml/v2 children are provider-side and unreachable by SDK options).
 Re-pin the chart's CRD-install flag AFTER the helm_values merge — a
 user override would re-arm the cascade the design exists to prevent.
+The class carries THREE corollaries, all verified live:
+
+1. **Retained resources must be RE-ADOPTED on the next install.** A
+   destroy leaves module-owned CRDs on the cluster by design, so the
+   next install of the same module finds them already there — and the
+   Pulumi provider's create fails AlreadyExists even in SSA mode
+   unless the provider sets `upsertExistingObjects` (verified in the
+   pinned provider source; its own error text names the knob). Route
+   ONLY the retained resources through the shared upsert seam
+   (`pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert`)
+   — ordinary resources keep create-conflict semantics. Terraform's
+   `kubectl_manifest` server-side apply adopts natively. A kind whose
+   Pulumi lanes were proven before this seam existed has the latent
+   break on its REINSTALL path — audit at the next touch.
+2. **Staged sibling files must be assumed NOT to travel with a bare
+   module-directory copy.** `fileset()` over a missing `../crds`
+   returns EMPTY and `for_each` silently plans ZERO resources — the
+   install then "works" against whatever CRDs happen to exist (caught
+   live: a lane passed riding a previous lane's retained CRDs, and
+   only a verifier asserting the CRDs point at THIS release exposed
+   it). Every staged-file read pairs with a fail-loud expected-count
+   guard in BOTH engines (a TF precondition and a Go count check),
+   updated together with the chart pin.
+3. **When the chart TEMPLATES its CRDs with release-derived values**
+   (a conversion-webhook clientConfig, a cert-manager
+   `inject-ca-from` annotation), stage the files RENDERED at the pin
+   with those values replaced by module tokens, and substitute the
+   release's own identity in BOTH engines at apply time — kept CRDs
+   must always point at the CURRENT release's webhook Service and
+   Certificate, and a runtime reconciler (cert-manager's CA injector)
+   is the only correct keeper of their conversion trust: an
+   install-time CA frozen into kept CRDs breaks CR conversion
+   silently on rotation, which is why such a kind models cert-manager
+   as a REQUIRED posture rather than offering a one-shot
+   self-signed arm.
 
 **Two chart-audit probes that only fail LIVE — run them at the pin,
 before any design lands.** (1) HEAD every DEFAULT image reference's

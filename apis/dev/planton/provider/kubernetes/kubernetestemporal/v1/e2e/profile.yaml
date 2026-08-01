@@ -5,15 +5,21 @@ metadata:
 spec:
   tier: 2
   # Rebuilt from the pre-program shell onto the official temporal chart
-  # 1.6.0 (external databases only — the composed-PostgreSQL story) and
-  # offline-validated (spec tests, both engines' plan/preview proofs
-  # across full, minimal, cassandra+visibility and mysql shapes); the
-  # live lanes have not run yet — they run the SDK workflow-execution
-  # engine proof on every lane and the behavioral-state lane's
-  # pod-replacement history-survival proof. The old deferred posture
+  # 1.6.0 (external databases only — the composed-PostgreSQL story).
+  # Offline-validated (spec tests, both engines' plan/preview proofs
+  # across full, minimal, cassandra+visibility and mysql shapes) and
+  # live-proven on the kind lanes against the composed
+  # CloudNativePG→Postgres fixture chain: the SDK workflow-execution
+  # engine proof and the UI server's settings-API answer on every lane,
+  # and the behavioral-state proof — the completed workflow still
+  # describes after UID-verified history+frontend pod replacements and
+  # a fresh workflow succeeds. The old deferred posture
   # (embedded-PostgreSQL weight) died with the rebuild: nothing is
   # bundled anymore.
-  status: pending_proof
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   # The pre-install schema Jobs run against the composed Postgres
   # fixture before four server Deployments + the UI roll out; the
   # budget covers that cold start on the shared cluster, serial lanes

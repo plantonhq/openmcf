@@ -35,11 +35,17 @@ remains the documented default.
 
 ## CRD posture
 
-The chart installs the four `actions.github.com` CRDs release-owned:
-they DELETE with the controller, cascade-deleting every runner scale
-set. The spec's chart_version comment carries the GitHub
-matching-versions support rule; the destroy warning lives on the
-README and the verifier asserts the posture both ways.
+The chart ships the four `actions.github.com` CRDs in its `crds/`
+directory — Helm's install-once posture: created on first install,
+never upgraded, never removed on uninstall (verified live; destroying
+the controller leaves all four CRDs on the cluster). The kept CRDs
+carry no release ownership metadata, so a later controller install
+adopts them cleanly. Runner scale sets stop reconciling the moment
+their controller is gone — destroy KubernetesGhaRunnerScaleSet
+resources first. CRD upgrades ride a new chart line's release notes,
+never `helm upgrade` (the crds/ directory is frozen by design); the
+spec's chart_version comment carries the GitHub matching-versions
+support rule.
 
 ## Deliberate exclusions
 

@@ -1,0 +1,270 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesairflow
+spec:
+  # Airflow installs as one Helm release NAMED AFTER metadata.name (at
+  # the chart's default naming scheme the release name IS the fullname,
+  # so every child is `<name>-<suffix>`), plus the optional anchor
+  # namespace, plus the module-owned Secrets and their random companions
+  # (imported by VALUE — the random provider keeps no cloud state).
+  # Chart-created objects (the component Deployments, the bundled Redis
+  # StatefulSet, Services, Jobs) travel with the release import. The
+  # composed connection Secrets (metadata/result-backend/broker-url/
+  # log-read) import by name; their data recomposes identically on the
+  # first post-adoption apply (the same referenced credential feeds the
+  # same URI composition). Conditional resources exist only with their
+  # arms: result_backend_conn/broker_url/redis_password on Celery,
+  # log_read_conn with a log backend, pgbouncer_config with the pooler,
+  # admin_auth only when module-generated, fernet_key/api_secret_key/
+  # jwt_secret only when not bring-your-own.
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares
+        the resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "airflow".
+    # ── the optional anchor namespace ──────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    # ── the Fernet key Secret + its random_bytes companion ────────────
+    - name: secret_name
+      tofu_resource_name: fernet_key
+      derivations:
+        - from_stack_output: fernet_key_secret_name
+        - from_metadata_name_suffix: "-fernet-key"
+      where_to_find: >-
+        "<resource-name>-fernet-key" when module-generated (a
+        bring-your-own security Secret creates nothing) —
+        `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: fernet_key
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: bytes_value
+      tofu_resource_name: fernet_key
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-fernet-key"
+            key: fernet-key-std-b64
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. The Secret's companion
+        `fernet-key-std-b64` key carries the STANDARD-base64 form the
+        random_bytes importer requires (the `fernet-key` key holds the
+        same bytes in Fernet's URL-safe alphabet). kubectl get secret
+        <resource-name>-fernet-key -n <namespace>
+        -o jsonpath='{.data.fernet-key-std-b64}' | base64 -d
+    # ── the API-server session key Secret + random companion ──────────
+    - name: secret_name
+      tofu_resource_name: api_secret_key
+      derivations:
+        - from_metadata_name_suffix: "-api-secret-key"
+      where_to_find: >-
+        "<resource-name>-api-secret-key" when module-generated —
+        `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: api_secret_key
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: api_secret_key
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-api-secret-key"
+            key: api-secret-key
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret
+        <resource-name>-api-secret-key -n <namespace>
+        -o jsonpath='{.data.api-secret-key}' | base64 -d
+    # ── the FAB webserver session key Secret + random companion ───────
+    - name: secret_name
+      tofu_resource_name: webserver_secret_key
+      derivations:
+        - from_metadata_name_suffix: "-webserver-secret-key"
+      where_to_find: >-
+        Always "<resource-name>-webserver-secret-key" (no
+        bring-your-own arm) — `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: webserver_secret_key
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: webserver_secret_key
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-webserver-secret-key"
+            key: webserver-secret-key
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret
+        <resource-name>-webserver-secret-key -n <namespace>
+        -o jsonpath='{.data.webserver-secret-key}' | base64 -d
+    # ── the JWT signing Secret + random companion ─────────────────────
+    - name: secret_name
+      tofu_resource_name: jwt_secret
+      derivations:
+        - from_metadata_name_suffix: "-jwt-secret"
+      where_to_find: >-
+        "<resource-name>-jwt-secret" when module-generated —
+        `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: jwt_secret
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: jwt_secret
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-jwt-secret"
+            key: jwt-secret
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret <resource-name>-jwt-secret
+        -n <namespace> -o jsonpath='{.data.jwt-secret}' | base64 -d
+    # ── the admin bootstrap credential + random companion ─────────────
+    - name: secret_name
+      tofu_resource_name: admin_auth
+      derivations:
+        - from_metadata_name_suffix: "-admin-auth"
+      where_to_find: >-
+        "<resource-name>-admin-auth" when the module generated the
+        admin password (an existing password_secret reference creates
+        nothing) — `kubectl get secrets -n <namespace>` (key password).
+    - name: secret_namespace
+      tofu_resource_name: admin_auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: admin_password
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-admin-auth"
+            key: password
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret <resource-name>-admin-auth
+        -n <namespace> -o jsonpath='{.data.password}' | base64 -d
+    # ── the bundled-Redis password + random companion (Celery arm) ────
+    - name: secret_name
+      tofu_resource_name: redis_password
+      derivations:
+        - from_metadata_name_suffix: "-redis-password"
+      where_to_find: >-
+        "<resource-name>-redis-password" on the bundled-Redis broker
+        arm — `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: redis_password
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: redis_password
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-redis-password"
+            key: password
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret
+        <resource-name>-redis-password -n <namespace>
+        -o jsonpath='{.data.password}' | base64 -d
+    # ── the composed connection Secrets ────────────────────────────────
+    - name: secret_name
+      tofu_resource_name: metadata_conn
+      derivations:
+        - from_stack_output: metadata_connection_secret_name
+        - from_metadata_name_suffix: "-metadata-conn"
+      where_to_find: >-
+        Always "<resource-name>-metadata-conn" — the SQLAlchemy URI the
+        chart's built-in env vars read (key connection).
+    - name: secret_namespace
+      tofu_resource_name: metadata_conn
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: secret_name
+      tofu_resource_name: result_backend_conn
+      derivations:
+        - from_metadata_name_suffix: "-result-backend-conn"
+      where_to_find: >-
+        "<resource-name>-result-backend-conn" on Celery executors only
+        (key connection, `db+` scheme).
+    - name: secret_namespace
+      tofu_resource_name: result_backend_conn
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: secret_name
+      tofu_resource_name: broker_url
+      derivations:
+        - from_stack_output: broker_url_secret_name
+        - from_metadata_name_suffix: "-broker-url"
+      where_to_find: >-
+        "<resource-name>-broker-url" on the bundled-Redis and composed
+        broker arms (an existing broker-URL Secret reference creates
+        nothing).
+    - name: secret_namespace
+      tofu_resource_name: broker_url
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: secret_name
+      tofu_resource_name: log_read_conn
+      derivations:
+        - from_metadata_name_suffix: "-log-read-conn"
+      where_to_find: >-
+        "<resource-name>-log-read-conn" when an Elasticsearch/OpenSearch
+        log read path is declared.
+    - name: secret_namespace
+      tofu_resource_name: log_read_conn
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the PgBouncer configuration Secret ─────────────────────────────
+    - name: secret_name
+      tofu_resource_name: pgbouncer_config
+      derivations:
+        - from_metadata_name_suffix: "-pgbouncer-config"
+      where_to_find: >-
+        "<resource-name>-pgbouncer-config" when the pooler is enabled
+        (keys pgbouncer.ini + users.txt, module-composed).
+    - name: secret_namespace
+      tofu_resource_name: pgbouncer_config
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.

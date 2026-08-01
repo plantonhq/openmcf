@@ -1,0 +1,35 @@
+# THE DURABILITY PROOF: log in as the bootstrap admin, create a
+# verifier-owned realm, DELETE pod 0, wait for the replacement to serve,
+# then re-read the realm through a FRESH login — realm configuration
+# surviving pod replacement proves it lives in the composed PostgreSQL,
+# exactly what the dev-file/dev-mem sandbox vendors cannot do (and why
+# the spec forces them to a single instance). The verifier sweeps its
+# realm afterwards. Component defaults against the fixture are the
+# honest shape for this.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKeycloak
+metadata:
+  name: e2e-kc-dura
+spec:
+  namespace:
+    value: e2e-keycloak
+  db:
+    vendor: postgres
+    host:
+      valueFrom:
+        name: e2e-kc-pg
+    database: keycloak
+    usernameSecret:
+      name:
+        valueFrom:
+          name: e2e-kc-pg
+      key: username
+    passwordSecret:
+      name:
+        valueFrom:
+          name: e2e-kc-pg
+      key: password
+  http:
+    httpEnabled: true
+  hostname:
+    strict: false

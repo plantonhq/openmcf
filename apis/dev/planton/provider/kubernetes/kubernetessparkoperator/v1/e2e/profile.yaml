@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetessparkoperator
+spec:
+  # Tier 2 on the Kyverno/Gatekeeper precedent: an operator whose
+  # verifier proves a real workload CR (no fixture prerequisites — the
+  # operator IS the control plane the proof exercises).
+  tier: 2
+  # Forged on the official ASF spark-kubernetes-operator chart 1.8.0
+  # (= operator 1.0.0; GA spark.apache.org/v1 APIs). No admission
+  # webhook, no cert-manager dependency; the spark.apache.org CRDs ride
+  # the chart's crds/ directory (install-once, KEPT on uninstall —
+  # destroy-asserted). The dedicated verifier proves THE JOB PROOF on
+  # every lane: a verifier-owned SparkApplication (the in-image SparkPi
+  # example — no internet) runs to Succeeded through REAL driver and
+  # executor pods under the chart-created workload RBAC, then is swept.
+  status: pending_proof
+  validated_provisioners: []
+  # First install pulls the operator JVM image; the job proof pulls the
+  # ~1GB spark image once per cluster.
+  timeout_minutes: 25

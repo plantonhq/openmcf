@@ -1,0 +1,23 @@
+# Full surface: the fenced watch posture (RBAC AND the webhook
+# namespaceSelector scoped to the listed namespaces), leader-elected
+# standby replicas (exercising the module-owned leader-election
+# config), operator config appends. The verifier proves THE ADMISSION
+# GATE inside the fence AND its scoping: the same invalid
+# FlinkDeployment applied OUTSIDE the watched namespaces is NOT
+# webhook-rejected (the namespaceSelector excludes it) — the fence is
+# real in both directions.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesFlinkOperator
+metadata:
+  name: e2e-flnkop-full
+spec:
+  namespace:
+    value: e2e-flnkop-full
+  createNamespace: true
+  chartVersion: 1.15.0
+  watchNamespaces:
+    - e2e-flnkop-watched
+  webhookEnabled: true
+  replicas: 2
+  operatorConfig:
+    kubernetes.operator.reconcile.interval: 15 s

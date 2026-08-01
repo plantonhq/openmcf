@@ -7,7 +7,6 @@
 package kubernetesopenbaov1
 
 import (
-	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -22,40 +21,54 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesOpenBaoStackOutputs captures observable outputs from the OpenBao deployment.
+// *
+// **KubernetesOpenBaoStackOutputs** — the composition handles a
+// deployed OpenBao exports. NOTE deliberately absent: root tokens and
+// unseal/recovery keys are produced by the RUNTIME
+// `bao operator init` call and are never known to (or owned by) the
+// deployment — capture them from the init output and store them
+// outside the cluster.
 type KubernetesOpenBaoStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes namespace in which OpenBao is deployed.
+	// *
+	// Namespace the server runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Kubernetes service name for OpenBao.
+	// *
+	// The main client Service name (round-robins ALL server pods,
+	// including sealed/not-ready ones — by design, so init/unseal can
+	// reach them).
 	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// Command to set up port-forwarding to access OpenBao from a developer's laptop.
-	// Useful when ingress is disabled for security reasons.
-	// Example: kubectl port-forward svc/<service> -n <namespace> 8200:8200
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// Kubernetes internal endpoint for OpenBao (FQDN).
-	// Example: openbao.namespace.svc.cluster.local:8200
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// External hostname for OpenBao when ingress is enabled.
-	// Example: openbao.example.com
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// OpenBao root token secret reference.
-	// The root token is generated during initialization and stored in a Kubernetes secret.
-	RootTokenSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,6,opt,name=root_token_secret,json=rootTokenSecret,proto3" json:"root_token_secret,omitempty"`
-	// OpenBao unseal keys secret reference.
-	// Unseal keys are generated during initialization and stored in a Kubernetes secret.
-	UnsealKeysSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,7,opt,name=unseal_keys_secret,json=unsealKeysSecret,proto3" json:"unseal_keys_secret,omitempty"`
-	// OpenBao cluster address for internal cluster communication (HA mode).
-	// Example: https://openbao-0.openbao-internal:8201
-	ClusterAddress string `protobuf:"bytes,8,opt,name=cluster_address,json=clusterAddress,proto3" json:"cluster_address,omitempty"`
-	// OpenBao API address.
-	// Example: http://openbao.namespace.svc.cluster.local:8200
-	ApiAddress string `protobuf:"bytes,9,opt,name=api_address,json=apiAddress,proto3" json:"api_address,omitempty"`
-	// Indicates if the OpenBao deployment is running in HA mode.
-	// "true" if HA mode is enabled, "false" otherwise.
-	HaEnabled     string `protobuf:"bytes,10,opt,name=ha_enabled,json=haEnabled,proto3" json:"ha_enabled,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// *
+	// The headless Service (`<name>-internal`) used for peer discovery
+	// and Raft cluster addresses.
+	InternalService string `protobuf:"bytes,3,opt,name=internal_service,json=internalService,proto3" json:"internal_service,omitempty"`
+	// *
+	// The active-leader Service (`<name>-active`) — HA mode only,
+	// empty otherwise. Points at exactly the elected leader; the right
+	// target for write-heavy clients.
+	ActiveService string `protobuf:"bytes,4,opt,name=active_service,json=activeService,proto3" json:"active_service,omitempty"`
+	// *
+	// The UI Service name (`<name>-ui`) when ui_enabled, empty
+	// otherwise.
+	UiService string `protobuf:"bytes,5,opt,name=ui_service,json=uiService,proto3" json:"ui_service,omitempty"`
+	// *
+	// In-cluster API endpoint, scheme included
+	// (e.g. "http://bao.openbao.svc.cluster.local:8200" — https when
+	// TLS is enabled). What secret-consuming addons (external-secrets
+	// ClusterSecretStore, cert-manager Vault issuers) should point at.
+	ApiEndpoint string `protobuf:"bytes,6,opt,name=api_endpoint,json=apiEndpoint,proto3" json:"api_endpoint,omitempty"`
+	// *
+	// API port (8200).
+	Port string `protobuf:"bytes,7,opt,name=port,proto3" json:"port,omitempty"`
+	// *
+	// The server ServiceAccount name — the identity to bind cloud IAM
+	// (auto-unseal KMS access) and OpenBao Kubernetes-auth trust to.
+	ServiceAccountName string `protobuf:"bytes,8,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
+	// *
+	// Copy-paste command for reaching the API from a workstation.
+	PortForwardCommand string `protobuf:"bytes,9,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesOpenBaoStackOutputs) Reset() {
@@ -102,58 +115,51 @@ func (x *KubernetesOpenBaoStackOutputs) GetService() string {
 	return ""
 }
 
+func (x *KubernetesOpenBaoStackOutputs) GetInternalService() string {
+	if x != nil {
+		return x.InternalService
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoStackOutputs) GetActiveService() string {
+	if x != nil {
+		return x.ActiveService
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoStackOutputs) GetUiService() string {
+	if x != nil {
+		return x.UiService
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoStackOutputs) GetApiEndpoint() string {
+	if x != nil {
+		return x.ApiEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoStackOutputs) GetPort() string {
+	if x != nil {
+		return x.Port
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoStackOutputs) GetServiceAccountName() string {
+	if x != nil {
+		return x.ServiceAccountName
+	}
+	return ""
+}
+
 func (x *KubernetesOpenBaoStackOutputs) GetPortForwardCommand() string {
 	if x != nil {
 		return x.PortForwardCommand
-	}
-	return ""
-}
-
-func (x *KubernetesOpenBaoStackOutputs) GetKubeEndpoint() string {
-	if x != nil {
-		return x.KubeEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesOpenBaoStackOutputs) GetExternalHostname() string {
-	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesOpenBaoStackOutputs) GetRootTokenSecret() *kubernetes.KubernetesSecretKey {
-	if x != nil {
-		return x.RootTokenSecret
-	}
-	return nil
-}
-
-func (x *KubernetesOpenBaoStackOutputs) GetUnsealKeysSecret() *kubernetes.KubernetesSecretKey {
-	if x != nil {
-		return x.UnsealKeysSecret
-	}
-	return nil
-}
-
-func (x *KubernetesOpenBaoStackOutputs) GetClusterAddress() string {
-	if x != nil {
-		return x.ClusterAddress
-	}
-	return ""
-}
-
-func (x *KubernetesOpenBaoStackOutputs) GetApiAddress() string {
-	if x != nil {
-		return x.ApiAddress
-	}
-	return ""
-}
-
-func (x *KubernetesOpenBaoStackOutputs) GetHaEnabled() string {
-	if x != nil {
-		return x.HaEnabled
 	}
 	return ""
 }
@@ -162,21 +168,18 @@ var File_dev_planton_provider_kubernetes_kubernetesopenbao_v1_stack_outputs_prot
 
 const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Hdev/planton/provider/kubernetes/kubernetesopenbao/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetesopenbao.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\x8a\x04\n" +
+	"Hdev/planton/provider/kubernetes/kubernetesopenbao/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetesopenbao.v1\"\xe3\x02\n" +
 	"\x1dKubernetesOpenBaoStackOutputs\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12`\n" +
-	"\x11root_token_secret\x18\x06 \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x0frootTokenSecret\x12b\n" +
-	"\x12unseal_keys_secret\x18\a \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x10unsealKeysSecret\x12'\n" +
-	"\x0fcluster_address\x18\b \x01(\tR\x0eclusterAddress\x12\x1f\n" +
-	"\vapi_address\x18\t \x01(\tR\n" +
-	"apiAddress\x12\x1d\n" +
+	"\aservice\x18\x02 \x01(\tR\aservice\x12)\n" +
+	"\x10internal_service\x18\x03 \x01(\tR\x0finternalService\x12%\n" +
+	"\x0eactive_service\x18\x04 \x01(\tR\ractiveService\x12\x1d\n" +
 	"\n" +
-	"ha_enabled\x18\n" +
-	" \x01(\tR\thaEnabledB\xb0\x03\n" +
+	"ui_service\x18\x05 \x01(\tR\tuiService\x12!\n" +
+	"\fapi_endpoint\x18\x06 \x01(\tR\vapiEndpoint\x12\x12\n" +
+	"\x04port\x18\a \x01(\tR\x04port\x120\n" +
+	"\x14service_account_name\x18\b \x01(\tR\x12serviceAccountName\x120\n" +
+	"\x14port_forward_command\x18\t \x01(\tR\x12portForwardCommandB\xb0\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetesopenbao.v1B\x11StackOutputsProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesopenbao/v1;kubernetesopenbaov1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetesopenbao.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetesopenbao\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetesopenbao\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetesopenbao::V1b\x06proto3"
 
 var (
@@ -193,17 +196,14 @@ func file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_stack_outputs_pro
 
 var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_stack_outputs_proto_goTypes = []any{
-	(*KubernetesOpenBaoStackOutputs)(nil),  // 0: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStackOutputs
-	(*kubernetes.KubernetesSecretKey)(nil), // 1: dev.planton.provider.kubernetes.KubernetesSecretKey
+	(*KubernetesOpenBaoStackOutputs)(nil), // 0: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStackOutputs
 }
 var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_stack_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStackOutputs.root_token_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
-	1, // 1: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStackOutputs.unseal_keys_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	0, // [0:0] is the sub-list for method output_type
+	0, // [0:0] is the sub-list for method input_type
+	0, // [0:0] is the sub-list for extension type_name
+	0, // [0:0] is the sub-list for extension extendee
+	0, // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_stack_outputs_proto_init() }

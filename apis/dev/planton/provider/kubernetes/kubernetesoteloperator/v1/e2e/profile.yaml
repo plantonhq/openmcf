@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetesoteloperator
+spec:
+  tier: 4
+  # Forged on the official opentelemetry-operator chart 0.120.0
+  # (= operator v0.156.0) with MODULE-OWNED CRDs (the chart templates
+  # them release-owned — an uninstall would cascade-delete every
+  # collector declaration) and the cert-manager-only webhook posture
+  # (the kept collector CRD carries a conversion webhook whose CA trust
+  # only a running injector keeps current). The dedicated verifier
+  # proves the two live-only seams: the fail-closed admission gate and
+  # the v1alpha1↔v1beta1 CONVERSION round-trip through the CA-injected
+  # kept CRD. cert-manager fixture rides the registry prerequisite.
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  # First install pulls the manager image and waits on the cert-manager
+  # webhook-certificate issuance.
+  timeout_minutes: 20

@@ -220,6 +220,22 @@ spec:
         - min_lower
         - min_numeric
 
+    - terraform_type: random_bytes
+      pulumi_type: random:index/randomBytes:RandomBytes
+      id_format: "{bytes_value}"
+      # Like random_password, the random provider keeps no cloud-side
+      # state: import takes the bytes VALUE ITSELF as the ID, in
+      # STANDARD base64 (the provider's import format). A module whose
+      # consumers need a different alphabet (e.g. Fernet's URL-safe
+      # base64) must ALSO materialize the standard-base64 form
+      # somewhere readable — by convention a companion key in the same
+      # Secret — so the import value derives mechanically. Post-import,
+      # the provider derives `length` from the imported value; modules
+      # carry lifecycle ignore_changes on it (both engines) so an
+      # imported value never proposes regeneration.
+      config_only_attributes:
+        - length
+
     # --- RBAC ----------------------------------------------------------------
     - terraform_type: kubernetes_role_v1
       pulumi_type: kubernetes:rbac.authorization.k8s.io/v1:Role

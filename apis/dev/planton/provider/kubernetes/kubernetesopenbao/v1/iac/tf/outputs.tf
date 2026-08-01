@@ -1,39 +1,50 @@
+# Composition handles. All names derive from the fullnameOverride pin
+# (= metadata.name). Root tokens and unseal keys are deliberately NOT
+# outputs — `bao operator init` produces them at runtime and no
+# deployment surface ever holds them. Twin of the Pulumi module's
+# outputs.go.
+
 output "namespace" {
-  description = "Kubernetes namespace where OpenBao is deployed"
+  description = "Namespace the server runs in."
   value       = local.namespace
 }
 
 output "service" {
-  description = "Kubernetes service name for OpenBao"
-  value       = local.kube_service_name
+  description = "The main client Service (round-robins ALL server pods, sealed ones included — by design, so init/unseal can reach them)."
+  value       = local.release_name
+}
+
+output "internal_service" {
+  description = "The headless Service used for peer discovery and Raft cluster addresses."
+  value       = "${local.release_name}-internal"
+}
+
+output "active_service" {
+  description = "The active-leader Service — HA mode only, empty otherwise."
+  value       = local.mode == "ha" ? "${local.release_name}-active" : ""
+}
+
+output "ui_service" {
+  description = "The UI Service when ui_enabled, empty otherwise."
+  value       = local.ui_enabled ? "${local.release_name}-ui" : ""
+}
+
+output "api_endpoint" {
+  description = "In-cluster API endpoint, scheme included — what secret-consuming addons point at."
+  value       = local.api_endpoint
+}
+
+output "port" {
+  description = "API port (8200)."
+  value       = tostring(local.api_port)
+}
+
+output "service_account_name" {
+  description = "The server ServiceAccount — the identity to bind cloud IAM (auto-unseal) and Kubernetes-auth trust to. The chart derives it from the fullname, which the module pins to metadata.name."
+  value       = local.release_name
 }
 
 output "port_forward_command" {
-  description = "Command to set up port-forwarding for local access"
-  value       = local.kube_port_forward_command
-}
-
-output "kube_endpoint" {
-  description = "Internal Kubernetes endpoint for OpenBao"
-  value       = local.kube_service_fqdn
-}
-
-output "external_hostname" {
-  description = "External hostname for OpenBao (when ingress is enabled)"
-  value       = local.ingress_is_enabled ? local.ingress_external_hostname : null
-}
-
-output "api_address" {
-  description = "Full API address for OpenBao"
-  value       = local.api_address
-}
-
-output "cluster_address" {
-  description = "Cluster communication address (HA mode)"
-  value       = local.cluster_address
-}
-
-output "ha_enabled" {
-  description = "Boolean indicating if HA mode is enabled"
-  value       = local.ha_enabled
+  description = "Copy-paste command for reaching the API from a workstation."
+  value       = "kubectl port-forward -n ${local.namespace} svc/${local.release_name} ${local.api_port}:${local.api_port}"
 }

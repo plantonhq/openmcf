@@ -1248,6 +1248,107 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesHarbor: the pinned-fullname naming contract — front
+			// door + per-component Services, the module-generated admin
+			// credential Secret, and the port-forward recipe. Nested
+			// admin_password_secret{name,key} is the credential handle.
+			name: "KubernetesHarbor",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesHarbor,
+			rawOutputs: map[string]interface{}{
+				"namespace":          "harbor",
+				"expose_service":     "registry",
+				"kube_endpoint":      "http://registry.harbor.svc.cluster.local:80",
+				"external_url":       "https://harbor.example.com",
+				"core_service":       "registry-core",
+				"portal_service":     "registry-portal",
+				"registry_service":   "registry-registry",
+				"jobservice_service": "registry-jobservice",
+				"trivy_service":      "registry-trivy",
+				"database_service":   "registry-database",
+				"redis_service":      "registry-redis",
+				"admin_username":     "admin",
+				"admin_password_secret": map[string]interface{}{
+					"name": "registry-admin-auth",
+					"key":  "HARBOR_ADMIN_PASSWORD",
+				},
+				"port_forward_command": "kubectl port-forward svc/registry -n harbor 8080:80",
+			},
+			mustPopulate: []string{
+				"namespace", "expose_service", "kube_endpoint", "external_url",
+				"core_service", "portal_service", "registry_service",
+				"jobservice_service", "trivy_service", "database_service",
+				"redis_service", "admin_username", "admin_password_secret",
+				"port_forward_command",
+			},
+		},
+		{
+			// KubernetesAirflow: the release-name-is-fullname naming
+			// contract — the API server front door, the admin credential
+			// handle, and the module-composed connection/key Secret names
+			// downstream composition mounts.
+			name: "KubernetesAirflow",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesAirflow,
+			rawOutputs: map[string]interface{}{
+				"namespace":           "airflow",
+				"api_server_service":  "pipelines-api-server",
+				"api_server_endpoint": "http://pipelines-api-server.airflow.svc.cluster.local:8080",
+				"admin_password_secret": map[string]interface{}{
+					"name": "pipelines-admin-auth",
+					"key":  "password",
+				},
+				"metadata_connection_secret_name": "pipelines-metadata-conn",
+				"broker_url_secret_name":          "pipelines-broker-url",
+				"fernet_key_secret_name":          "pipelines-fernet-key",
+				"port_forward_command":            "kubectl port-forward svc/pipelines-api-server -n airflow 8080:8080",
+			},
+			mustPopulate: []string{
+				"namespace", "api_server_service", "api_server_endpoint",
+				"admin_password_secret", "metadata_connection_secret_name",
+				"broker_url_secret_name", "fernet_key_secret_name",
+				"port_forward_command",
+			},
+		},
+		{
+			// KubernetesOtelOperator: the pinned-fullname naming contract —
+			// the release, the webhook Service the API server calls for
+			// admission and CRD conversion, and the cert-manager-issued
+			// serving-cert Secret.
+			name: "KubernetesOtelOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesOtelOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":                "otel-operator-system",
+				"release_name":             "otel-operator",
+				"webhook_service":          "otel-operator-webhook",
+				"webhook_cert_secret_name": "otel-operator-controller-manager-service-cert",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "webhook_service",
+				"webhook_cert_secret_name",
+			},
+		},
+		{
+			// KubernetesOtelCollector: the operator naming contract — the
+			// CR name, the receiver-port Service and its headless/
+			// monitoring siblings, and the OTLP ingest endpoints (the
+			// composition handles applications push telemetry to).
+			name: "KubernetesOtelCollector",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesOtelCollector,
+			rawOutputs: map[string]interface{}{
+				"namespace":          "observability",
+				"collector_name":     "otel-gateway",
+				"service":            "otel-gateway-collector",
+				"otlp_grpc_endpoint": "otel-gateway-collector.observability.svc.cluster.local:4317",
+				"otlp_http_endpoint": "http://otel-gateway-collector.observability.svc.cluster.local:4318",
+				"headless_service":   "otel-gateway-collector-headless",
+				"monitoring_service": "otel-gateway-collector-monitoring",
+			},
+			mustPopulate: []string{
+				"namespace", "collector_name", "service",
+				"otlp_grpc_endpoint", "otlp_http_endpoint",
+				"headless_service", "monitoring_service",
+			},
+		},
+		{
 			// KubernetesSeaweedFs: the chart naming contract — release, the
 			// S3/filer/master Service handles, both credential Secrets
 			// (chart-owned S3, module-generated admin), and the endpoints.
@@ -1291,6 +1392,42 @@ func TestStackOutputsConformance(t *testing.T) {
 				"namespace", "release_name", "service_name", "http_endpoint",
 				"grpc_endpoint", "api_key_secret_name",
 				"read_only_api_key_secret_name", "port_forward_command",
+			},
+		},
+		{
+			// KubernetesKyverno: the chart naming contract — release, the
+			// fullname-derived admission webhook Service and the runtime
+			// ConfigMap (the engine's skip-list, the first object to
+			// inspect when a resource is unexpectedly skipped or policed).
+			name: "KubernetesKyverno",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKyverno,
+			rawOutputs: map[string]interface{}{
+				"namespace":              "kyverno",
+				"release_name":           "kyverno",
+				"admission_service_name": "kyverno-svc",
+				"config_map_name":        "kyverno",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "admission_service_name",
+				"config_map_name",
+			},
+		},
+		{
+			// KubernetesGatekeeper: the chart-FIXED handles (the chart
+			// hardcodes its resource names — no fullname derivation): the
+			// webhook Service and the cert Secret the embedded rotator
+			// maintains.
+			name: "KubernetesGatekeeper",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesGatekeeper,
+			rawOutputs: map[string]interface{}{
+				"namespace":                "gatekeeper-system",
+				"release_name":             "gatekeeper",
+				"webhook_service_name":     "gatekeeper-webhook-service",
+				"webhook_cert_secret_name": "gatekeeper-webhook-server-cert",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "webhook_service_name",
+				"webhook_cert_secret_name",
 			},
 		},
 		{
@@ -7013,6 +7150,99 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{
 				"distribution_id", "distribution_arn", "domain_name",
 				"hosted_zone_id", "status",
+			},
+		},
+		{
+			// KubernetesSparkOperator: the release identity plus the
+			// workload contract — the service account SparkApplications
+			// reference and the watch fence (a repeated string, exercising
+			// the list flattening path).
+			name: "KubernetesSparkOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSparkOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":                "spark-operator",
+				"release_name":             "spark-operator",
+				"workload_service_account": "spark",
+				"watched_namespaces":       []interface{}{"data-pipelines", "ml-jobs"},
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "workload_service_account",
+				"watched_namespaces",
+			},
+		},
+		{
+			// KubernetesKubeRayOperator: the release identity plus the
+			// watch fence.
+			name: "KubernetesKubeRayOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKubeRayOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":          "ray-system",
+				"release_name":       "kuberay-operator",
+				"watched_namespaces": []interface{}{"ml-team-a"},
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "watched_namespaces",
+			},
+		},
+		{
+			// KubernetesRayCluster: the head-service endpoint trio and the
+			// nested bearer-token Secret handle — the nested-message
+			// flattening class this guard exists for (both engines must
+			// emit "auth_token_secret.name"/".key", never a flat
+			// "auth_token_secret_name").
+			name: "KubernetesRayCluster",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesRayCluster,
+			rawOutputs: map[string]interface{}{
+				"namespace":          "ml-platform",
+				"head_service":       "ml-ray-head-svc",
+				"client_endpoint":    "ml-ray-head-svc.ml-platform.svc.cluster.local:10001",
+				"dashboard_endpoint": "ml-ray-head-svc.ml-platform.svc.cluster.local:8265",
+				"gcs_endpoint":       "ml-ray-head-svc.ml-platform.svc.cluster.local:6379",
+				"auth_token_secret": map[string]interface{}{
+					"name": "ml-ray-auth-token",
+					"key":  "auth_token",
+				},
+				"port_forward_command": "kubectl port-forward -n ml-platform service/ml-ray-head-svc 8265:8265",
+			},
+			mustPopulate: []string{
+				"namespace", "head_service", "client_endpoint",
+				"dashboard_endpoint", "gcs_endpoint", "auth_token_secret",
+				"port_forward_command",
+			},
+		},
+		{
+			// KubernetesFlinkOperator: the release identity, the runner
+			// identity contract, the watch fence, and the chart-fixed
+			// webhook Service handle.
+			name: "KubernetesFlinkOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesFlinkOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":           "flink-system",
+				"release_name":        "flink-operator",
+				"job_service_account": "flink",
+				"watched_namespaces":  []interface{}{"stream-team-a"},
+				"webhook_service":     "flink-operator-webhook-service",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "job_service_account",
+				"watched_namespaces", "webhook_service",
+			},
+		},
+		{
+			// KubernetesFlinkDeployment: the REST service naming contract
+			// (`<name>-rest`) every exposure and job submission composes
+			// against.
+			name: "KubernetesFlinkDeployment",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesFlinkDeployment,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "stream-processing",
+				"rest_service":         "orders-pipeline-rest",
+				"rest_endpoint":        "orders-pipeline-rest.stream-processing.svc.cluster.local:8081",
+				"port_forward_command": "kubectl port-forward -n stream-processing service/orders-pipeline-rest 8081:8081",
+			},
+			mustPopulate: []string{
+				"namespace", "rest_service", "rest_endpoint",
+				"port_forward_command",
 			},
 		},
 	}

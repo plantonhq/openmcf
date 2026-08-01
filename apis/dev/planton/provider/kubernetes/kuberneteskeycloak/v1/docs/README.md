@@ -66,7 +66,7 @@ A Kubernetes Operator is a custom controller that watches for high-level Custom 
 
 Instead of managing dozens of YAML fields across multiple resources, you declare a single `Keycloak` object with essential production fields like `replicas`, `hostname`, `database`, and `tls`. The Operator controller generates and manages the underlying infrastructure using production best practices: it defaults to `jdbc-ping` for cluster discovery, configures proper liveness/readiness probes, handles graceful rolling upgrades, and even automates the creation of Prometheus `ServiceMonitor` resources for observability.
 
-But the Operator's true value proposition is **declarative realm management**. The `KeycloakRealm` CRD allows you to define realms, clients, roles, and identity providers as YAML resources and apply them with `kubectl`. This enables GitOps workflows where your identity configuration is version-controlled, peer-reviewed, and deployed through the same CI/CD pipelines as your application code.
+One honest caveat: the Operator's realm and client surfaces are NOT the GitOps story they first appear to be. The `KeycloakRealmImport` CRD is a one-shot import Job — edits after a successful import are silently ignored upstream — and the OIDC/SAML client CRDs are alpha, gated behind an experimental flag. The Operator's real value is lifecycle management of the server itself; realms and clients are still managed through Keycloak's admin API and console.
 
 The trade-off? You're adding another moving part to your cluster (the Operator itself), and you're accepting the Operator's opinionated decisions about how Keycloak should run. For teams with highly custom deployment requirements, overriding defaults often requires diving into the `additionalOptions` field and understanding the underlying Keycloak server configuration parameters.
 
@@ -82,7 +82,7 @@ The following table synthesizes the key decision criteria across the three viabl
 | **Container Image** | Official `quay.io/keycloak` | Official `quay.io/keycloak` | Custom `bitnami/keycloak` |
 | **Image License** | Apache 2.0 | Apache 2.0 | **Commercial Subscription Required (Post-Aug 2025)** |
 | **Lifecycle Management** | Full Day 2 (Upgrades, Healing) | Day 1 Install Only | Day 1 Install Only |
-| **Declarative Realm Management** | **Yes** (via `KeycloakRealm` CRD) | No | No |
+| **Declarative Realm Management** | One-shot import only (`KeycloakRealmImport` CRD) | No | No |
 | **Observability Integration** | Auto-creates `ServiceMonitor` for Prometheus | Manual Configuration | Manual Configuration |
 | **Production Upgrade Guarantees** | Built-in graceful rolling updates | Manual `helm upgrade` with careful tuning | Manual `helm upgrade` with careful tuning |
 | **Long-Term Open Source Viability** | **High** | **High** | **None** (Paywalled images) |
@@ -95,9 +95,9 @@ The Bitnami licensing change represents a cautionary tale about dependency risk.
 
 For Planton—an open-source IaC framework—building abstractions on Bitnami would expose every user to this risk. The only sustainable path is to standardize on the official Apache 2.0 stack or community-driven alternatives like Codecentric that explicitly commit to open-source principles.
 
-## Planton's Approach: Emulating the Operator's Declarative Surface
+## Planton's Approach: The Operator's Surface, as Two Kinds
 
-Planton's `KeycloakKubernetes` resource is designed to mirror the clean, declarative API surface of the Official Keycloak Operator's CRD, not the sprawling `values.yaml` of a Helm chart.
+Planton models Keycloak the way the Operator itself splits the problem. `KubernetesKeycloakOperator` installs the lifecycle manager — the official operator from the keycloak-k8s-resources release manifests (Keycloak ships no official Helm chart; the operator is the first-party distribution), one install per namespace, watching either its own namespace (the default) or the whole cluster. `KubernetesKeycloak` declares each server: the Keycloak CR the operator reconciles into a StatefulSet. The declaration kind mirrors the CRD's clean surface, not a chart's `values.yaml` — and a `KubernetesKeycloakOperator` watching the namespace is its prerequisite.
 
 ### Why This Matters: Day 2 vs. Day 1 Philosophy
 
@@ -109,68 +109,73 @@ Planton follows this philosophy: **the abstraction should make strong, productio
 
 ### The "80/20" API Surface
 
-The minimal, production-ready configuration for `KeycloakKubernetes` includes:
+The production-essential fields of `KubernetesKeycloak`:
 
-1. **`replicas` (int):** How many Keycloak nodes to run. Three or more is recommended for high availability.
+1. **`db` (required):** a typed vendor enum instead of the silent embedded-H2 fallback. `postgres` is the recommended path — a `KubernetesPostgres` resource composes naturally: `host` references its read-write Service, and username/password are Secret selectors against the operator-maintained credential Secret. Nothing credential-bearing ever rides the CR. The `dev-file`/`dev-mem` sandbox vendors must be chosen deliberately and cap at one instance.
 
-2. **`adminCredentialsSecret` (string):** The name of a Kubernetes Secret containing the initial admin username and password. Credentials must never be in plain text.
+2. **`http` (required):** TLS-or-HTTP is a validation rule. Set `tlsSecretName` (a `kubernetes.io/tls` Secret or a `KubernetesCertificate` reference) or opt into `httpEnabled` behind a TLS-terminating proxy — Keycloak refuses to start with neither, and upstream surfaces that only as a CrashLoopBackOff.
 
-3. **`database` (object):** The most critical configuration block. If omitted, triggers a non-production embedded H2 database. For production:
-   - `type`: `postgres`, `mysql`, `mariadb`, or `mssql`
-   - `host`: The database server hostname
-   - `port`: The database server port
-   - `databaseName`: The name of the database (e.g., `keycloak`)
-   - `credentialsSecret`: The name of a Kubernetes Secret with database username and password
+3. **`hostname` (required):** the public base URL that tokens, redirects, and the OIDC discovery document advertise. Mandatory under strict resolution (the server default); `strict: false` only behind a trusted proxy that rewrites Host headers, paired with `proxyHeaders`. Two server startup rules require the FULL-URL form (`https://...`), not a bare hostname: `backchannelDynamic` (dynamic server-to-server URLs behind a fixed public URL) and `admin` (a separate admin-console URL). Both pairings are validated at apply time — the server otherwise refuses to boot, which on Kubernetes surfaces only as a CrashLoopBackOff (verified live).
 
-4. **`hostname` (string):** The public-facing URL for Keycloak (e.g., `sso.mycompany.com`). Required for production mode.
+4. **`instances`:** all state lives in the database, so servers scale horizontally — JGroups clusters the caches through the operator's discovery Service.
 
-5. **`tls` (object):**
-   - `secretName`: The name of a `kubernetes.io/tls` Secret containing the certificate for the hostname. Omitting this implies HTTP (non-production only).
+5. **`resources`:** Keycloak is a JVM — give it real memory (production typically runs 1–2Gi).
 
-6. **`computeResources` (object):** CPU and memory requests/limits. Highly recommended for production to ensure pod stability.
+6. **`bootstrapAdminSecretName`:** bring-your-own bootstrap admin, or let the operator generate the one-time `<name>-initial-admin` Secret (username `temp-admin`) — exported as the credential handle either way.
+
+Everything else — probes, update strategy, feature flags, tracing, additional options — carries operator-informed defaults and stays out of the way.
 
 ### Example: Production Configuration
 
-Here's what a production-ready `KeycloakKubernetes` resource looks like:
+Here's what a production-ready `KubernetesKeycloak` resource looks like:
 
 ```yaml
 apiVersion: kubernetes.planton.dev/v1
-kind: KeycloakKubernetes
+kind: KubernetesKeycloak
 metadata:
-  name: keycloak-prod
+  name: keycloak
 spec:
-  replicas: 3
-  adminCredentialsSecret: keycloak-prod-admin-creds
-  database:
-    type: postgres
-    host: "keycloak-prod-db.c1a2b3d4.us-east-1.rds.amazonaws.com"
-    port: 5432
-    databaseName: keycloak_prod
-    credentialsSecret: keycloak-prod-db-creds
-  hostname: "sso.mycompany.com"
-  tls:
-    secretName: sso-prod-tls
-  computeResources:
+  namespace:
+    value: keycloak
+  instances: 2
+  db:
+    vendor: postgres
+    host:
+      valueFrom:
+        name: my-postgres
+    database: keycloak
+    usernameSecret:
+      name:
+        valueFrom:
+          name: my-postgres
+      key: username
+    passwordSecret:
+      name:
+        valueFrom:
+          name: my-postgres
+      key: password
+  http:
+    tlsSecretName:
+      valueFrom:
+        name: keycloak-cert
+  hostname:
+    hostname: https://auth.example.com
+  resources:
     requests:
-      cpu: "1"
-      memory: "2Gi"
+      cpu: 250m
+      memory: 768Mi
     limits:
-      cpu: "2"
-      memory: "4Gi"
-  # Advanced features (optional):
-  hostnameAdmin: "sso-admin.mycompany.com"
-  monitoring:
-    enabled: true
+      cpu: "1"
+      memory: 1536Mi
 ```
 
 This configuration:
-- Deploys three replicas for high availability
-- Connects to an external, HA-managed PostgreSQL database (AWS RDS in this example)
-- Exposes Keycloak at `sso.mycompany.com` with TLS
-- Exposes the admin console at a separate, more restrictive hostname for security
-- Automatically creates Prometheus metrics endpoints and `ServiceMonitor` resources
+- Runs two instances clustering through the operator's discovery Service
+- Composes a `KubernetesPostgres` resource — host from its read-write Service, credentials as Secret selectors
+- Serves TLS from a `KubernetesCertificate` reference, with the declared public hostname under strict resolution
+- Keeps the operator's NetworkPolicy and ServiceMonitor defaults on (both are explicit fields when you need them off)
 
-The fields you **don't** see are equally important: the API doesn't expose JGroups configuration, Infinispan cache tuning, probe definitions, or port mappings. These are implementation details that Planton handles internally using production best practices.
+The fields you **don't** see are equally important: no JGroups configuration, no Infinispan cache tuning, no probe endpoints, and no Ingress block — the operator's own Ingress is always disabled, and exposure composes from Gateway API kinds referencing the exported service handles. Realms and clients are deliberately not modeled (the one-shot import CR and alpha client CRDs described above); manage them through Keycloak's admin API or console.
 
 ## Production Best Practices
 
@@ -188,7 +193,7 @@ Because modern Keycloak deployments use `jdbc-ping`, the database is not just th
 
 ### Security: TLS, Admin Access Control, and Secret Management
 
-1. **TLS Termination:** All production traffic must be HTTPS. The most common pattern is **edge termination**—TLS is terminated at the Ingress controller, which communicates with Keycloak pods over HTTP within the cluster. This requires configuring Keycloak with `http.enabled=true` and `proxy.headers.xforwarded=true` so it understands it's behind a reverse proxy.
+1. **TLS Termination:** All production traffic must be HTTPS. The most common pattern is **edge termination**—TLS is terminated at the Ingress controller, which communicates with Keycloak pods over HTTP within the cluster. This maps to `http.httpEnabled: true` plus `proxyHeaders: xforwarded` in the spec, so Keycloak understands it's behind a reverse proxy (skipping `proxyHeaders` is the classic misconfiguration — the server computes wrong origins and browsers fail CORS).
 
 2. **Admin Console Isolation:** A critical yet often overlooked security practice is exposing the admin console on a separate hostname (e.g., `sso-admin.mycompany.com` vs. `sso.mycompany.com`). This allows you to apply strict access controls—IP whitelisting, VPN requirements, or mutual TLS—to administrative endpoints without impacting user-facing authentication flows.
 
@@ -207,7 +212,7 @@ Keycloak's disaster recovery strategy revolves around the database, which contai
 
 ### Observability: Metrics, Logs, and Health Monitoring
 
-Keycloak exposes comprehensive Prometheus-format metrics via the `/metrics` endpoint, including JVM statistics, cache hit rates, and per-endpoint performance data. When monitoring is enabled, Planton automatically creates a Prometheus `ServiceMonitor` resource for seamless integration with the Prometheus Operator.
+Keycloak exposes comprehensive Prometheus-format metrics via the management endpoint (port 9000 by default), including JVM statistics, cache hit rates, and per-endpoint performance data. The operator creates a Prometheus `ServiceMonitor` for it by default (`serviceMonitorEnabled` is an explicit field; without the Prometheus Operator CRDs on the cluster the operator records a warning and carries on).
 
 Keycloak logs are emitted in structured JSON format, making them easily parseable by log aggregation tools like Loki, Fluent Bit, or Elasticsearch.
 
@@ -215,11 +220,15 @@ Keycloak logs are emitted in structured JSON format, making them easily parseabl
 
 The Keycloak deployment landscape has matured from "just run a Deployment" anti-patterns to sophisticated, production-grade lifecycle management patterns. The key insight is that **deploying Keycloak is easy; operating it reliably is hard**.
 
-Helm charts solve the Day 1 problem elegantly, but they leave Day 2 operations—upgrades, scaling, healing, and configuration management—as manual, error-prone tasks. The Operator pattern, by contrast, encodes operational expertise into automated controllers, enabling zero-downtime upgrades, declarative realm management, and self-healing infrastructure.
+Helm charts solve the Day 1 problem elegantly, but they leave Day 2 operations—upgrades, scaling, healing, and configuration management—as manual, error-prone tasks. The Operator pattern, by contrast, encodes operational expertise into automated controllers: safe rolling updates where Keycloak allows them, the scale-to-zero recreate where it doesn't (two Keycloak versions cannot share one cache cluster/schema — an honest outage window, not a hidden one), and self-healing infrastructure throughout.
 
-Planton's `KeycloakKubernetes` resource follows this philosophy: it provides a clean, minimal API surface modeled on the Official Keycloak Operator's CRD, hiding implementation complexity while exposing only the fields that genuinely vary between environments. This approach prioritizes long-term operational excellence over short-term installation convenience.
+Planton's `KubernetesKeycloak` resource follows this philosophy: it provides a clean, minimal API surface modeled on the Official Keycloak Operator's CRD, hiding implementation complexity while exposing only the fields that genuinely vary between environments — with the operator itself installed and lifecycle-managed by its own `KubernetesKeycloakOperator` resource. This approach prioritizes long-term operational excellence over short-term installation convenience.
 
 By standardizing on the Apache 2.0-licensed official Keycloak stack and avoiding licensing risks like the Bitnami paywall, Planton ensures that your identity infrastructure remains open-source, sustainable, and free from vendor lock-in.
 
 **The modern paradigm for Keycloak on Kubernetes isn't about choosing between Helm and Operators—it's about recognizing that production infrastructure requires lifecycle management, not just installation tooling.** Planton delivers that guarantee through a declarative, production-ready API that lets you focus on your application's identity needs, not the operational complexity of distributed state management.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
 

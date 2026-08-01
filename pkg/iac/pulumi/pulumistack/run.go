@@ -121,6 +121,12 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 			args = append(args, "--skip-preview")
 		}
 	}
+	// Destroy-time resource hooks (BeforeDelete/AfterDelete) require the
+	// program that registered them; without --run-program Pulumi skips
+	// those hooks silently. Kyverno's webhook-GC sentinel depends on this.
+	if op == "destroy" {
+		args = append(args, "--run-program")
+	}
 	if showDiff {
 		args = append(args, "--diff")
 	}

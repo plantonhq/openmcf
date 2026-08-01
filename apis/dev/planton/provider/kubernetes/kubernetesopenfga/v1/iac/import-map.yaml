@@ -1,0 +1,52 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesopenfga
+spec:
+  # OpenFGA installs as one Helm release NAMED AFTER metadata.name (the
+  # module pins fullnameOverride to the same), plus the optional anchor
+  # namespace, plus ONE conditionally module-owned Secret: the
+  # `<name>-authn-keys` Secret exists only when the preshared authn arm
+  # DECLARES its keys inline (an existing_keys_secret_name reference
+  # creates nothing). Chart-created objects (the Deployment, Services,
+  # the migrate wiring) travel with the release import.
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares
+        the resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "openfga".
+    # ── the optional anchor namespace ──────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    # ── the conditional authn-keys Secret ──────────────────────────────
+    # Deterministic name "<metadata.name>-authn-keys"; exists only when
+    # authn.preshared.keys are declared INLINE (an
+    # existing_keys_secret_name reference creates nothing).
+    - name: secret_name
+      tofu_resource_name: authn_keys
+      derivations:
+        - from_stack_output: authn_keys_secret_name
+        - from_metadata_name_suffix: "-authn-keys"
+      where_to_find: >-
+        Always "<resource-name>-authn-keys" when inline keys are
+        declared — `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: authn_keys
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.

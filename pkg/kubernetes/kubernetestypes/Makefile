@@ -60,8 +60,10 @@ external_secrets_release=v2.8.0
 #admitted kinds.
 opensearch_operator_release=v2.8.0
 
-#https://github.com/keycloak/keycloak-k8s-resources/tree/25.0.4/kubernetes
-keycloak_release=25.0.4
+# keycloak: no generated types by design — the Keycloak CR's truststores
+# field is a map of nested objects (the crd2pulumi carriability gap), so
+# the KubernetesKeycloak modules render the CR untyped in byte-lockstep
+# with the Terraform twin. The operator bundle is pinned in the module.
 
 #https://github.com/Altinity/clickhouse-operator/tree/master/deploy/operator
 #https://github.com/Altinity/clickhouse-operator/tree/release-0.27.2
@@ -153,11 +155,6 @@ gen-external-secrets:
 gen-opensearch-operator:
 	crd2pulumi --force --goPath=opensearchoperator https://raw.githubusercontent.com/opensearch-project/opensearch-k8s-operator/${opensearch_operator_release}/opensearch-operator/config/crd/bases/opensearch.opster.io_opensearchclusters.yaml
 
-.PHONY: gen-keycloak
-gen-keycloak:
-	crd2pulumi --force --goPath=keycloak https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/${keycloak_release}/kubernetes/keycloakrealmimports.k8s.keycloak.org-v1.yml \
-		https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/${keycloak_release}/kubernetes/keycloaks.k8s.keycloak.org-v1.yml
-
 .PHONY: gen-altinity-operator
 gen-altinity-operator:
 	@echo "Extracting CRDs from Altinity bundle..."
@@ -181,7 +178,7 @@ gen-rabbitmq-cluster-operator:
 	crd2pulumi --force --goPath=rabbitmqoperator https://raw.githubusercontent.com/rabbitmq/cluster-operator/${rabbitmq_cluster_operator_release}/config/crd/bases/rabbitmq.com_rabbitmqclusters.yaml
 
 .PHONY: gen
-gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-external-secrets gen-opensearch-operator gen-keycloak gen-altinity-operator gen-rabbitmq-cluster-operator
+gen: clean gen-gateway-apis gen-karpenter gen-istio gen-cert-manager gen-cloudnative-pg gen-solr-operator gen-external-secrets gen-opensearch-operator gen-altinity-operator gen-rabbitmq-cluster-operator
 
 .PHONY: build
 build: clean gen

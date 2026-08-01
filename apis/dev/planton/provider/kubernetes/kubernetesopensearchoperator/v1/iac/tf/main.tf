@@ -94,4 +94,22 @@ resource "helm_release" "opensearch_operator" {
     kubernetes_namespace_v1.opensearch_operator,
     kubectl_manifest.crds,
   ]
+
+  lifecycle {
+    precondition {
+      # FAIL LOUDLY when the staged CRD files did not travel with the
+      # module: fileset() over a missing ../crds directory returns
+      # EMPTY and for_each would silently plan ZERO CRDs — the operator
+      # then runs against whatever CRDs happen to exist (the class was
+      # caught live elsewhere: a lane "passed" riding a previous
+      # install's retained CRDs). Ten is the staged count at chart
+      # 2.8.0 — restage ../crds and update this count together with
+      # chart_version. Twin of the Pulumi module's fail-loud guard.
+      # The guard sits on the release (not kubectl_manifest.crds): a
+      # for_each resource with an empty map evaluates ZERO
+      # preconditions, which is exactly the failure being guarded.
+      condition     = length(local.crd_manifests) == 10
+      error_message = "The staged CRD files under ../crds did not travel with the module (expected 10, found a different count) — the module owns the CRD lifecycle and cannot install without them. Deploy the module with its full iac/ directory tree."
+    }
+  }
 }

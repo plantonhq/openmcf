@@ -55,7 +55,12 @@ resource "kubectl_manifest" "solr_operator_crds" {
   yaml_body = each.value
 
   server_side_apply = true
-  apply_only        = true
+  # Retained CRDs from a previous install were last applied by a
+  # DIFFERENT field manager (that run's SSA identity); without forcing
+  # conflicts, re-adopting them on reinstall fails on field-manager
+  # ownership. Twin of the Pulumi upsert provider's EnablePatchForce.
+  force_conflicts = true
+  apply_only      = true
 }
 
 # The operator release.
@@ -93,4 +98,23 @@ resource "helm_release" "solr_operator" {
     kubernetes_namespace_v1.solr_operator,
     kubectl_manifest.solr_operator_crds,
   ]
+
+  lifecycle {
+    precondition {
+      # FAIL LOUDLY when the staged CRD files did not travel with the
+      # module: fileset() over a missing ../crds directory returns
+      # EMPTY and for_each would silently plan ZERO CRDs — the operator
+      # then runs against whatever CRDs happen to exist (the class was
+      # caught live elsewhere: a lane "passed" riding a previous
+      # install's retained CRDs). Four is the staged document count at
+      # chart 0.9.1 (three solr.apache.org CRDs + the ZookeeperCluster
+      # CRD) — restage ../crds and update this count together with
+      # chart_version. Twin of the Pulumi module's fail-loud guard.
+      # The guard sits on the release (not the kubectl_manifest): a
+      # for_each resource with an empty map evaluates ZERO
+      # preconditions, which is exactly the failure being guarded.
+      condition     = length(local.crd_documents) == 4
+      error_message = "The staged CRD files under ../crds did not travel with the module (expected 4 CRD documents, found a different count) — the module owns the CRD lifecycle and cannot install without them. Deploy the module with its full iac/ directory tree."
+    }
+  }
 }

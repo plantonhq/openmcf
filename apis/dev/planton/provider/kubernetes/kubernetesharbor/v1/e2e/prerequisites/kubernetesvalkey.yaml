@@ -1,0 +1,32 @@
+# Consumer-scoped Valkey fixture for the KubernetesHarbor
+# composed-storage lane — the external Redis-protocol cache the
+# production arm composes against:
+# - JOINS the fixture-owned namespace (the CNPG fixture deploys first
+#   with create_namespace and owns e2e-harbor).
+# - The `default` ACL user carries a KNOWN password so the Harbor
+#   scenario declares the SAME value on its cache arm (Valkey's
+#   generated auth Secret keys passwords BY USERNAME, not by the
+#   chart's REDIS_PASSWORD contract — declaring the password on both
+#   sides is the documented composition recipe on Harbor's own field).
+# - Letters-only password BY DESIGN (the env-parsed credential class).
+# - Pure-cache posture: memory ceiling + eviction, snapshots off — a
+#   cache needs no durability.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesValkey
+metadata:
+  name: e2e-harbor-valkey
+spec:
+  namespace:
+    value: e2e-harbor
+  config:
+    max_memory: 128mb
+    max_memory_policy: allkeys-lru
+    snapshots_disabled: true
+  auth:
+    users:
+      - name: default
+        password: eTwoEHarborCachePasswordLettersOnly
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi

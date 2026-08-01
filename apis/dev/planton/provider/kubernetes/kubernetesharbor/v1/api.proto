@@ -7,7 +7,11 @@ import "dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto";
 import "dev/planton/provider/kubernetes/kubernetesharbor/v1/stack_outputs.proto";
 import "dev/planton/shared/metadata.proto";
 
-// harbor-kubernetes
+/**
+ * **KubernetesHarbor** deploys Harbor — the CNCF-graduated container
+ * registry with policy-driven artifact management, vulnerability
+ * scanning, and content signing — from the official Helm chart.
+ */
 message KubernetesHarbor {
   // api-version
   string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1'];

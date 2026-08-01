@@ -1,0 +1,3 @@
+name: kubernetes-flink-operator
+runtime: go
+description: Apache Flink Kubernetes Operator installation from the official ASF flink-kubernetes-operator Helm chart — reconciles FlinkDeployment resources (declared with KubernetesFlinkDeployment) into running Flink clusters, with a module-generated webhook keystore password replacing the chart's hardcoded-public default and cert-manager-issued webhook certificates

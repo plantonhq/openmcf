@@ -855,7 +855,7 @@ const (
 	// holds GcpComputeInstance is fully allocated)
 	CloudResourceKind_GcpComputeDisk CloudResourceKind = 730
 	// 800–999: Kubernetes resources, organized in family sub-bands
-	// (830–869 also hosts CNI/autoscaling/DR addons; 930–949 reserved for
+	// (830–869 also hosts CNI/autoscaling/DR addons; 930–949 hosts
 	// analytics & ML; 990–999 reserved for growth)
 	// 800–829: Kubernetes building blocks (core API primitives)
 	CloudResourceKind_KubernetesNamespace      CloudResourceKind = 800
@@ -948,10 +948,20 @@ const (
 	// cert-manager must be running before the operator installs.
 	CloudResourceKind_KubernetesOtelOperator  CloudResourceKind = 875
 	CloudResourceKind_KubernetesOtelCollector CloudResourceKind = 876
-	// 890–899: Kubernetes security, policy, and identity
+	// 880–899: Kubernetes security, policy, and identity
+	CloudResourceKind_KubernetesKyverno    CloudResourceKind = 880
+	CloudResourceKind_KubernetesGatekeeper CloudResourceKind = 881
+	// Keycloak declarations compose the official Keycloak Operator (which
+	// reconciles the Keycloak CR this kind renders) and, on the recommended
+	// postgres vendor, a KubernetesPostgres database — both must resolve
+	// before the CR can converge.
 	CloudResourceKind_KubernetesKeycloak CloudResourceKind = 890
 	CloudResourceKind_KubernetesOpenBao  CloudResourceKind = 891
-	CloudResourceKind_KubernetesOpenFga  CloudResourceKind = 892
+	// OpenFGA requires a datastore; the recommended arm composes a
+	// KubernetesPostgres database (the sandbox memory arm needs nothing,
+	// but the registry declares the shape real deployments require).
+	CloudResourceKind_KubernetesOpenFga          CloudResourceKind = 892
+	CloudResourceKind_KubernetesKeycloakOperator CloudResourceKind = 893
 	// 900–929: Kubernetes data platforms
 	CloudResourceKind_KubernetesCloudNativePgOperator CloudResourceKind = 900
 	CloudResourceKind_KubernetesPostgres              CloudResourceKind = 901
@@ -991,6 +1001,28 @@ const (
 	// cert-manager must be running before the operator installs.
 	CloudResourceKind_KubernetesRabbitMqOperator CloudResourceKind = 925
 	CloudResourceKind_KubernetesRabbitMq         CloudResourceKind = 926
+	// 930–949: Kubernetes analytics and ML
+	// KubernetesPostgres is a prerequisite because Airflow's metadata
+	// database composes a KubernetesPostgres by default (the spec's FK
+	// defaults resolve onto its outputs) and the migration Job needs the
+	// database reachable before the server components start.
+	CloudResourceKind_KubernetesAirflow         CloudResourceKind = 930
+	CloudResourceKind_KubernetesSparkOperator   CloudResourceKind = 931
+	CloudResourceKind_KubernetesKubeRayOperator CloudResourceKind = 932
+	// KubernetesKubeRayOperator is a prerequisite because this kind declares
+	// the RayCluster custom resource that only the operator's CRDs admit and
+	// only the operator reconciles into head and worker pods.
+	CloudResourceKind_KubernetesRayCluster CloudResourceKind = 933
+	// KubernetesCertManager is a prerequisite because the Flink operator's
+	// chart, with its default-on admission webhook, renders cert-manager
+	// Issuer/Certificate resources and trusts the API server through
+	// cert-manager's CA injection — there is no self-signed fallback at the
+	// pinned chart, and the webhooks are fail-closed.
+	CloudResourceKind_KubernetesFlinkOperator CloudResourceKind = 934
+	// KubernetesFlinkOperator is a prerequisite because this kind declares
+	// the FlinkDeployment custom resource that only the operator's CRDs
+	// admit and only the operator reconciles into a running Flink cluster.
+	CloudResourceKind_KubernetesFlinkDeployment CloudResourceKind = 935
 	// 950–969: Kubernetes GitOps and CI/CD
 	CloudResourceKind_KubernetesArgocd         CloudResourceKind = 950
 	CloudResourceKind_KubernetesArgoWorkflows  CloudResourceKind = 951
@@ -1587,9 +1619,12 @@ var (
 		874:  "KubernetesTempo",
 		875:  "KubernetesOtelOperator",
 		876:  "KubernetesOtelCollector",
+		880:  "KubernetesKyverno",
+		881:  "KubernetesGatekeeper",
 		890:  "KubernetesKeycloak",
 		891:  "KubernetesOpenBao",
 		892:  "KubernetesOpenFga",
+		893:  "KubernetesKeycloakOperator",
 		900:  "KubernetesCloudNativePgOperator",
 		901:  "KubernetesPostgres",
 		902:  "KubernetesValkey",
@@ -1617,6 +1652,12 @@ var (
 		924:  "KubernetesQdrant",
 		925:  "KubernetesRabbitMqOperator",
 		926:  "KubernetesRabbitMq",
+		930:  "KubernetesAirflow",
+		931:  "KubernetesSparkOperator",
+		932:  "KubernetesKubeRayOperator",
+		933:  "KubernetesRayCluster",
+		934:  "KubernetesFlinkOperator",
+		935:  "KubernetesFlinkDeployment",
 		950:  "KubernetesArgocd",
 		951:  "KubernetesArgoWorkflows",
 		952:  "KubernetesTektonOperator",
@@ -2190,9 +2231,12 @@ var (
 		"KubernetesTempo":                                874,
 		"KubernetesOtelOperator":                         875,
 		"KubernetesOtelCollector":                        876,
+		"KubernetesKyverno":                              880,
+		"KubernetesGatekeeper":                           881,
 		"KubernetesKeycloak":                             890,
 		"KubernetesOpenBao":                              891,
 		"KubernetesOpenFga":                              892,
+		"KubernetesKeycloakOperator":                     893,
 		"KubernetesCloudNativePgOperator":                900,
 		"KubernetesPostgres":                             901,
 		"KubernetesValkey":                               902,
@@ -2220,6 +2264,12 @@ var (
 		"KubernetesQdrant":                               924,
 		"KubernetesRabbitMqOperator":                     925,
 		"KubernetesRabbitMq":                             926,
+		"KubernetesAirflow":                              930,
+		"KubernetesSparkOperator":                        931,
+		"KubernetesKubeRayOperator":                      932,
+		"KubernetesRayCluster":                           933,
+		"KubernetesFlinkOperator":                        934,
+		"KubernetesFlinkDeployment":                      935,
 		"KubernetesArgocd":                               950,
 		"KubernetesArgoWorkflows":                        951,
 		"KubernetesTektonOperator":                       952,
@@ -2688,7 +2738,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xf0\xe4\x01\n" +
+	"\x02v1\x10\x01*\xc2\xe8\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3107,10 +3157,13 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x0fKubernetesTempo\x10\xea\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8stempo\x124\n" +
 	"\x16KubernetesOtelOperator\x10\xeb\x06\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8sotelop:\x02\xbe\x06\x126\n" +
 	"\x17KubernetesOtelCollector\x10\xec\x06\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\n" +
-	"k8sotelcol:\x02\xeb\x06\x12(\n" +
-	"\x12KubernetesKeycloak\x10\xfa\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8skc\x12(\n" +
-	"\x11KubernetesOpenBao\x10\xfb\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sbao\x12(\n" +
-	"\x11KubernetesOpenFga\x10\xfc\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sfga\x129\n" +
+	"k8sotelcol:\x02\xeb\x06\x12*\n" +
+	"\x11KubernetesKyverno\x10\xf0\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8skyvrn\x12-\n" +
+	"\x14KubernetesGatekeeper\x10\xf1\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sgtkpr\x12.\n" +
+	"\x12KubernetesKeycloak\x10\xfa\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\x05k8skc:\x04\xfd\x06\x85\a\x12(\n" +
+	"\x11KubernetesOpenBao\x10\xfb\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sbao\x12,\n" +
+	"\x11KubernetesOpenFga\x10\xfc\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8sfga:\x02\x85\a\x122\n" +
+	"\x1aKubernetesKeycloakOperator\x10\xfd\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8skcop\x129\n" +
 	"\x1fKubernetesCloudNativePgOperator\x10\x84\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8scnpgop\x12,\n" +
 	"\x12KubernetesPostgres\x10\x85\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8spg:\x02\x84\a\x12'\n" +
 	"\x10KubernetesValkey\x10\x86\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svlk\x12=\n" +
@@ -3137,7 +3190,13 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x13KubernetesSeaweedFs\x10\x9b\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sswfs\x12(\n" +
 	"\x10KubernetesQdrant\x10\x9c\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sqdrt\x127\n" +
 	"\x1aKubernetesRabbitMqOperator\x10\x9d\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8srmqop:\x02\xbe\x06\x12-\n" +
-	"\x12KubernetesRabbitMq\x10\x9e\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8srmq:\x02\x9d\a\x12(\n" +
+	"\x12KubernetesRabbitMq\x10\x9e\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8srmq:\x02\x9d\a\x12-\n" +
+	"\x11KubernetesAirflow\x10\xa2\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8saflw:\x02\x85\a\x121\n" +
+	"\x17KubernetesSparkOperator\x10\xa3\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8ssprkop\x123\n" +
+	"\x19KubernetesKubeRayOperator\x10\xa4\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8skrayop\x121\n" +
+	"\x14KubernetesRayCluster\x10\xa5\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sraycl:\x02\xa4\a\x125\n" +
+	"\x17KubernetesFlinkOperator\x10\xa6\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8sflnkop:\x02\xbe\x06\x126\n" +
+	"\x19KubernetesFlinkDeployment\x10\xa7\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sflnkd:\x02\xa6\a\x12(\n" +
 	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x121\n" +
 	"\x17KubernetesArgoWorkflows\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sargowf\x122\n" +
 	"\x18KubernetesTektonOperator\x10\xb8\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12,\n" +

@@ -1,0 +1,54 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesopenbao
+spec:
+  # OpenBao installs as one Helm release NAMED AFTER metadata.name (the
+  # module pins fullnameOverride to the same), plus the optional anchor
+  # namespace, plus ONE conditionally module-owned Secret: the
+  # `<name>-seal-credentials` Secret exists only when a declared-
+  # credential auto-unseal arm carries static credentials (the keyless
+  # workload-identity postures create no Secret). Chart-created objects
+  # (the StatefulSet, Services, injector, config ConfigMap) travel with
+  # the release import.
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares
+        the resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "openbao".
+    # ── the optional anchor namespace ──────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    # ── the conditional seal-credentials Secret ────────────────────────
+    # Deterministic name "<metadata.name>-seal-credentials"; exists only
+    # when the auto_unseal arm declares STATIC credentials (awsKms
+    # secretAccessKey, azureKeyVault clientSecret, or a transit token) —
+    # the keyless workload-identity postures create no Secret.
+    - name: secret_name
+      tofu_resource_name: seal_credentials
+      derivations:
+        - from_metadata_name_suffix: "-seal-credentials"
+      where_to_find: >-
+        Always "<resource-name>-seal-credentials" when a static-
+        credential seal arm is declared — `kubectl get secrets -n
+        <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: seal_credentials
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.

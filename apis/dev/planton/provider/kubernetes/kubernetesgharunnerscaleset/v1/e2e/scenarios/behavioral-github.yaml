@@ -17,6 +17,11 @@ apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesGhaRunnerScaleSet
 metadata:
   name: e2e-gharss-live
+  # Lanes SKIP this scenario (honest deferral, never a false failure)
+  # unless the owner-arranged GitHub sandbox credentials are exported —
+  # the ${E2E_ENV:...} tokens below fail expansion loudly when unset.
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_GITHUB_REPO_PATH,PLANTON_E2E_GITHUB_TOKEN
 spec:
   namespace:
     value: e2e-gharss-live

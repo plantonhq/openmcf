@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetesflinkoperator
+spec:
+  tier: 4
+  # Forged on the official Apache flink-kubernetes-operator 1.15.0 (the
+  # signed per-version chart channel). The default-on admission webhook
+  # makes KubernetesCertManager the registry prerequisite — the chart
+  # renders cert-manager Issuer/Certificate resources with NO
+  # self-signed fallback, and both webhook configs are FAIL-CLOSED. The
+  # dedicated verifier proves THE ADMISSION GATE on webhook lanes (an
+  # invalid FlinkDeployment REJECTED at admission), the POSTURE CONTRAST
+  # on the webhook-less lane (the same invalid CR ACCEPTED — validation
+  # deferred to the reconcile loop), THE INVARIANT (no FlinkDeployment
+  # after installing the operator alone), and the module-generated
+  # keystore password Secret (the chart's hardcoded default never
+  # ships). The flink.apache.org CRDs ride the chart's crds/ directory
+  # (install-once, KEPT — destroy-asserted).
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

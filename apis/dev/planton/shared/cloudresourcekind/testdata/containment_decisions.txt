@@ -370,6 +370,7 @@ contained dev.planton.provider.gcp.gcpworkloadidentitypoolprovider.v1.GcpWorkloa
 contained dev.planton.provider.gcp.gcpworkloadidentitypoolprovider.v1.GcpWorkloadIdentityPoolProviderSpec.workload_identity_pool_id -> GcpWorkloadIdentityPool
 contained dev.planton.provider.hetznercloud.hetznercloudloadbalancer.v1.HetznerCloudLoadBalancerSpec.NetworkAttachment.network_id -> HetznerCloudNetwork
 contained dev.planton.provider.hetznercloud.hetznercloudserver.v1.HetznerCloudServerSpec.NetworkAttachment.network_id -> HetznerCloudNetwork
+contained dev.planton.provider.kubernetes.kubernetesairflow.v1.KubernetesAirflowSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesaltinityoperator.v1.KubernetesAltinityOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.namespace -> KubernetesNamespace
@@ -390,6 +391,9 @@ contained dev.planton.provider.kubernetes.kubernetesenvoyfilter.v1.KubernetesEnv
 contained dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesexternalsecret.v1.KubernetesExternalSecretSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesexternalsecretsoperator.v1.KubernetesExternalSecretsOperatorSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesflinkdeployment.v1.KubernetesFlinkDeploymentSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesflinkoperator.v1.KubernetesFlinkOperatorSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesgatekeeper.v1.KubernetesGatekeeperSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.namespace -> KubernetesNamespace
@@ -419,7 +423,10 @@ contained dev.planton.provider.kubernetes.kuberneteskarapace.v1.KubernetesKarapa
 contained dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskeda.v1.KubernetesKedaSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kuberneteskeycloakoperator.v1.KubernetesKeycloakOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskubeprometheusstack.v1.KubernetesKubePrometheusStackSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kuberneteskuberayoperator.v1.KubernetesKubeRayOperatorSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kuberneteskyverno.v1.KubernetesKyvernoSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteslistenerset.v1.KubernetesListenerSetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesloki.v1.KubernetesLokiSpec.namespace -> KubernetesNamespace
@@ -444,6 +451,7 @@ contained dev.planton.provider.kubernetes.kubernetespoddisruptionbudget.v1.Kuber
 contained dev.planton.provider.kubernetes.kubernetespostgres.v1.KubernetesPostgresSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesqdrant.v1.KubernetesQdrantSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesrabbitmq.v1.KubernetesRabbitMqSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesraycluster.v1.KubernetesRayClusterSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesrbac.v1.KubernetesRbacNamespaceScope.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesreferencegrant.v1.KubernetesReferenceGrantSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesrequestauthentication.v1.KubernetesRequestAuthenticationSpec.namespace -> KubernetesNamespace
@@ -457,6 +465,7 @@ contained dev.planton.provider.kubernetes.kubernetesserviceentry.v1.KubernetesSe
 contained dev.planton.provider.kubernetes.kubernetessignoz.v1.KubernetesSignozSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetessolr.v1.KubernetesSolrSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetessolroperator.v1.KubernetesSolrOperatorSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetessparkoperator.v1.KubernetesSparkOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesstatefulset.v1.KubernetesStatefulSetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesstrimzikafkaoperator.v1.KubernetesStrimziKafkaOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetestcproute.v1.KubernetesTcpRouteSpec.namespace -> KubernetesNamespace

@@ -6,11 +6,19 @@ spec:
   tier: 4
   # Rebuilt on the official tektoncd/operator release manifest v0.80.0
   # (auto-install of the default TektonConfig disabled — the
-  # KubernetesTekton declaration owns the cluster's configuration) and
-  # offline-validated (spec tests, both engines' plan/preview proofs);
-  # the live lanes have not run yet — they prove the operator + webhook
-  # rollouts, the CRDs established, and the design invariant that NO
-  # TektonConfig exists after install. Destroy removes everything
-  # INCLUDING the CRDs (the manifest-bundle posture).
-  status: pending_proof
+  # KubernetesTekton declaration owns the cluster's configuration).
+  # Offline-validated (spec tests, both engines' plan/preview proofs)
+  # and live-proven on the kind lanes: operator + webhook rollouts, the
+  # CRDs established, and the design invariant that NO TektonConfig
+  # exists after install. Destroy removes everything INCLUDING the CRDs
+  # (the manifest-bundle posture) through the modules' three-group
+  # ordering: the CRDs delete FIRST while the operator still runs to
+  # process the runtime InstallerSets' finalizers, then the workloads,
+  # then the fixed namespace — awaited to fully gone (a flat one-pass
+  # delete wedged the tektoninstallersets CRD in Terminating, verified
+  # live on both engines).
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 15

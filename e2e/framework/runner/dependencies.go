@@ -686,6 +686,41 @@ func ScenarioSupportsEngine(manifestPath, engine string) (bool, error) {
 	return false, nil
 }
 
+// ScenarioRequiredEnvAnnotation names the PLANTON_E2E_* environment
+// variables (comma-separated) a scenario cannot run without — external
+// credentials a committed manifest carries only as ${E2E_ENV:...} tokens
+// (a sandbox account PAT, an owner-arranged tenant). Unset token
+// variables FAIL expansion loudly by design (the right behavior when a
+// batch bootstrap was SUPPOSED to export them), so a scenario whose
+// tokens are owner-arranged must declare them here: lanes then SKIP it
+// with the reason when the environment does not carry the arrangement —
+// an honest deferral instead of a false failure — and run it live
+// wherever the variables are exported.
+const ScenarioRequiredEnvAnnotation = "planton.dev/e2e-required-env"
+
+// ScenarioMissingRequiredEnv returns the declared-but-unset environment
+// variable names per ScenarioRequiredEnvAnnotation (absent = none).
+func ScenarioMissingRequiredEnv(manifestPath string) ([]string, error) {
+	value, err := manifestAnnotation(manifestPath, ScenarioRequiredEnvAnnotation)
+	if err != nil {
+		return nil, err
+	}
+	if value == "" {
+		return nil, nil
+	}
+	var missing []string
+	for _, name := range strings.Split(value, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if os.Getenv(name) == "" {
+			missing = append(missing, name)
+		}
+	}
+	return missing, nil
+}
+
 // manifestAnnotation reads a single metadata annotation from a KRM manifest,
 // returning "" when the annotation (or the annotations map) is absent.
 func manifestAnnotation(manifestPath, key string) (string, error) {

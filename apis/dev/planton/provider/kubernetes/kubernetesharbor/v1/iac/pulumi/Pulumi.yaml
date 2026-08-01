@@ -1,7 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
-
+name: kubernetes-harbor
+runtime: go
+description: Harbor container registry from the official chart — composable PostgreSQL/Redis/object-storage arms with module-generated credentials delivered through Secrets, the Trivy scanner, and a pinned front-door Service for composed exposure

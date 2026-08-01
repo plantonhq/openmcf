@@ -1,0 +1,33 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKyverno
+metadata:
+  name: kyverno
+spec:
+  namespace:
+    value: kyverno
+  createNamespace: true
+  admissionController:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 100m
+        memory: 384Mi
+      limits:
+        memory: 1Gi
+  backgroundController:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  reportsController:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  features:
+    backgroundScan:
+      workers: 4
+      interval: 1h
+    loggingFormat: json
+  metrics:
+    serviceMonitor: true
