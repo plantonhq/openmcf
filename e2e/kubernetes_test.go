@@ -102,6 +102,11 @@ var kubernetesTier3Components = []string{
 	// registry prerequisite) reconciles into a listener and ephemeral
 	// runner pods.
 	"kubernetesgharunnerscaleset",
+	// The Keycloak CR declaration KubernetesKeycloakOperator (registry
+	// prerequisite; the consumer-scoped fixture pins the namespaced
+	// watch) reconciles into a running server against the composed
+	// CloudNativePG database fixture.
+	"kuberneteskeycloak",
 }
 
 // Kubernetes Tier 4 components: operators, addons, and cluster-level
@@ -113,6 +118,7 @@ var kubernetesTier4Components = []string{
 	"kubernetesaltinityoperator",
 	"kubernetesgharunnerscalesetcontroller",
 	"kubernetestektonoperator",
+	"kuberneteskeycloakoperator",
 }
 
 // Kubernetes Tier 2 components: Helm-based, self-contained chart installs.
@@ -132,6 +138,7 @@ var kubernetesTier2Components = []string{
 	"kubernetestemporal",
 	"kubernetesseaweedfs",
 	"kubernetesqdrant",
+	"kubernetesopenfga",
 }
 
 // ─── Tier 1 Pulumi ──────────────────────────────────────────────────────────
@@ -405,6 +412,21 @@ func TestKubernetesKubePrometheusStack_Pulumi(t *testing.T) {
 func TestKubernetesOpenBao_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesopenbao", "pulumi")
 }
+func TestKubernetesOpenBao_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesopenbao", "terraform")
+}
+func TestKubernetesOpenFga_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesopenfga", "pulumi")
+}
+func TestKubernetesOpenFga_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesopenfga", "terraform")
+}
+func TestKubernetesHarbor_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesharbor", "pulumi")
+}
+func TestKubernetesHarbor_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesharbor", "terraform")
+}
 func TestKubernetesArgoCD_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesargocd", "pulumi")
 }
@@ -583,6 +605,9 @@ func TestKubernetesSolr_Pulumi(t *testing.T) {
 func TestKubernetesClickHouse_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesclickhouse", "pulumi")
 }
+func TestKubernetesKeycloak_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskeycloak", "pulumi")
+}
 func TestKubernetesGhaRunnerScaleSet_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "pulumi")
 }
@@ -631,6 +656,9 @@ func TestKubernetesSolr_Terraform(t *testing.T) {
 func TestKubernetesClickHouse_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesclickhouse", "terraform")
 }
+func TestKubernetesKeycloak_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskeycloak", "terraform")
+}
 func TestKubernetesGhaRunnerScaleSet_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "terraform")
 }
@@ -654,6 +682,9 @@ func TestKubernetesGhaRunnerScaleSetController_Pulumi(t *testing.T) {
 }
 func TestKubernetesTekton_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestekton", "pulumi")
+}
+func TestKubernetesKeycloakOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskeycloakoperator", "pulumi")
 }
 func TestKubernetesTektonOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestektonoperator", "pulumi")
@@ -684,6 +715,9 @@ func TestKubernetesGhaRunnerScaleSetController_Terraform(t *testing.T) {
 }
 func TestKubernetesTekton_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestekton", "terraform")
+}
+func TestKubernetesKeycloakOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskeycloakoperator", "terraform")
 }
 func TestKubernetesTektonOperator_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestektonoperator", "terraform")

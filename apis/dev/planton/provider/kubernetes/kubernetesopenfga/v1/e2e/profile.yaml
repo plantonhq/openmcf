@@ -14,8 +14,10 @@ spec:
   # does. The dedicated verifier proves the Zanzibar loop live: store →
   # model → tuple → Check BOTH ways, with the auth gate asserted on
   # authenticated lanes.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   # The migration init container gates on the fixture database on the
   # postgres lanes; the budget covers the CNPG cold start.
   timeout_minutes: 25

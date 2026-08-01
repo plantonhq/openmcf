@@ -688,24 +688,33 @@ type KubernetesKeycloakHostname struct {
 	// The server's public base URL or hostname
 	// (e.g. "https://auth.example.com" — full URLs pin scheme and
 	// path). What tokens, redirects, and the OIDC discovery document
-	// advertise.
+	// advertise. NOTE two server rules require the FULL-URL form
+	// (scheme included), not a bare hostname: backchannel_dynamic and
+	// admin (both validated here — the server otherwise refuses to
+	// start, which on Kubernetes surfaces only as CrashLoopBackOff).
 	Hostname string `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	// *
 	// Separate base URL for the admin console (empty = same as
 	// hostname). Lets the admin surface live on an internal name
-	// while the user-facing hostname stays public.
+	// while the user-facing hostname stays public. Requires hostname
+	// to be a full URL (validated here — a server-startup rule).
 	Admin string `protobuf:"bytes,2,opt,name=admin,proto3" json:"admin,omitempty"`
 	// *
 	// Strict hostname resolution. Empty = true (the server default):
 	// the server uses only the declared hostname. Set false ONLY
 	// behind a trusted reverse proxy that rewrites Host headers — and
-	// then set proxy_headers too.
+	// then set proxy_headers too. When hostname is set, the server
+	// ignores this flag entirely.
 	Strict *bool `protobuf:"varint,3,opt,name=strict,proto3,oneof" json:"strict,omitempty"`
 	// *
 	// Resolve BACKCHANNEL (server-to-server) URLs dynamically from
 	// request headers while the public hostname stays fixed — for
 	// clusters where internal clients reach Keycloak through the
-	// Service instead of the public URL.
+	// Service instead of the public URL. Requires hostname as a FULL
+	// URL (validated here): the server refuses to start with a bare
+	// or absent hostname, because a partly-dynamic frontend could
+	// leak backend request parts into frontend URLs (verified live —
+	// the failure mode is a CrashLoopBackOff, not an error message).
 	BackchannelDynamic bool `protobuf:"varint,4,opt,name=backchannel_dynamic,json=backchannelDynamic,proto3" json:"backchannel_dynamic,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
@@ -1333,12 +1342,14 @@ const file_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto_rawD
 	"https_port\x18\x04 \x01(\x05B\x13\xbaH\b\x1a\x06\x18\xff\xff\x03 \x00\x8a\xa6\x1d\x048443H\x01R\thttpsPort\x88\x01\x01B\f\n" +
 	"\n" +
 	"_http_portB\r\n" +
-	"\v_https_port\"\xb1\x01\n" +
+	"\v_https_port\"\xa0\a\n" +
 	"\x1aKubernetesKeycloakHostname\x12\x1a\n" +
 	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x14\n" +
 	"\x05admin\x18\x02 \x01(\tR\x05admin\x12%\n" +
 	"\x06strict\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x06strict\x88\x01\x01\x12/\n" +
-	"\x13backchannel_dynamic\x18\x04 \x01(\bR\x12backchannelDynamicB\t\n" +
+	"\x13backchannel_dynamic\x18\x04 \x01(\bR\x12backchannelDynamic:\xec\x05\xbaH\xe8\x05\x1a\x90\x03\n" +
+	"+hostname.backchannel_dynamic.needs_full_url\x12\xf6\x01backchannel_dynamic requires hostname to be a FULL URL (\"https://...\" or \"http://...\") — the server refuses to start otherwise (verified live: a bare hostname or no hostname crash-loops with \"hostname-backchannel-dynamic must be set to false\").\x1ah!this.backchannel_dynamic || this.hostname.startsWith(\"http://\") || this.hostname.startsWith(\"https://\")\x1a\xd2\x02\n" +
+	"&hostname.admin.needs_full_url_hostname\x12\xc1\x01Setting hostname.admin requires hostname to be a FULL URL (\"https://...\" or \"http://...\") — the server refuses to start otherwise (\"hostname must be set to a URL when hostname-admin is set\").\x1adsize(this.admin) == 0 || this.hostname.startsWith(\"http://\") || this.hostname.startsWith(\"https://\")B\t\n" +
 	"\a_strict\"R\n" +
 	"\x1aKubernetesKeycloakFeatures\x12\x18\n" +
 	"\aenabled\x18\x01 \x03(\tR\aenabled\x12\x1a\n" +

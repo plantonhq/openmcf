@@ -10,12 +10,12 @@ order: 200
 presets:
   - slug: "01-minimal"
     rank: "01"
-    title: "Minimal Harbor Container Registry"
-    excerpt: "This preset deploys Harbor with default settings and ingress access. Harbor is a cloud-native container registry with vulnerability scanning, content trust, replication, and RBAC."
-  - slug: "02-production-with-s3"
+    title: "Minimal — evaluation registry, zero dependencies"
+    excerpt: "The smallest honest Harbor: the chart's in-cluster PostgreSQL and Redis (single-node, evaluation-grade by upstream's own position), artifact blobs on a 20Gi PersistentVolumeClaim, Trivy scanning on..."
+  - slug: "02-production-composed"
     rank: "02"
-    title: "Production Harbor with S3 Storage"
-    excerpt: "This preset deploys Harbor with S3-compatible storage for container image layers. Provides durable, scalable storage independent of the Kubernetes cluster's local disks."
+    title: "Production — composed data plane, object storage, HA components"
+    excerpt: "The production posture: every stateful concern leaves the chart's evaluation-grade internals and composes the catalog's own kinds — PostgreSQL from a KubernetesPostgres (the operator-maintained..."
 ---
 
 # Harbor Presets

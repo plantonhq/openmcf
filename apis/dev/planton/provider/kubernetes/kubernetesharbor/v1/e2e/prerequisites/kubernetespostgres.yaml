@@ -1,0 +1,26 @@
+# Consumer-scoped PostgreSQL fixture for the KubernetesHarbor
+# full-surface lane — the composed datastore the external-database
+# scenario wires against:
+# - SHARED NAMESPACE (e2e-harbor): the scenario co-locates with this
+#   fixture because Harbor reads the credential Secret at install time
+#   (template-time lookup) and a Secret is namespace-local.
+# - `initdb` creates the `registry` database owned by the `harbor`
+#   role — the chart's default core database name.
+# - The operator maintains the `e2e-harbor-pg-app` credential Secret
+#   (key `password` — EXACTLY the chart's external-database contract
+#   key) across failovers.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPostgres
+metadata:
+  name: e2e-harbor-pg
+spec:
+  namespace:
+    value: e2e-harbor
+  create_namespace: true
+  instances: 1
+  storage:
+    size: 2Gi
+  bootstrap:
+    initdb:
+      database: registry
+      owner: harbor

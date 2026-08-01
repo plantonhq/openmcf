@@ -1,11 +1,20 @@
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesHarbor
 metadata:
-  name: my-harbor
+  name: harbor
 spec:
   namespace:
     value: harbor
   createNamespace: true
-  ingress:
-    enabled: true
-    hostname: "<your-harbor.example.com>"
+  # THE ADDRESS OCI CLIENTS USE — Harbor binds token-service auth to it.
+  # This preset assumes port-forward access (the exported
+  # port_forward_command); put a real hostname here the moment an
+  # exposure kind fronts the install.
+  externalUrl: http://localhost:8080
+  database:
+    internal: {}
+  cache:
+    internal: {}
+  storage:
+    filesystem:
+      diskSize: 20Gi

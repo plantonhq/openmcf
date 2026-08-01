@@ -1,0 +1,13 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKeycloak
+metadata:
+  name: keycloak-dev
+spec:
+  namespace:
+    value: keycloak
+  db:
+    vendor: dev-mem
+  http:
+    httpEnabled: true
+  hostname:
+    strict: false

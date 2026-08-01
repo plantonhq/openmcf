@@ -641,6 +641,21 @@ within a bounded budget while the stack that serves the finalizer is
 still alive, and strip finalizers as the last resort — a verifier-owned
 proof object's durability guarantees are meaningless on its way out.
 
+**A pod-replacement proof gates on a NEW pod UID, never on phase or
+readiness alone.** A terminating pod keeps reporting phase Running (and
+can remain Ready) for its whole grace period, and a StatefulSet's status
+lags the deletion — so any wait keyed on phase/readiness straight after
+`kubectl delete pod --wait=false` returns instantly against the DYING
+pod, and the "post-replacement" assertions then run against the old
+server (caught live twice; for a bootstrap-gated server the follow-up
+bootstrap call is silently burned as a no-op on the old pod and the real
+replacement never gets it). Capture `metadata.uid` BEFORE the delete and
+wait for the same-named pod with a DIFFERENT uid via the shared
+`waitForPodReplaced` helper in `aa_e2e/verify/` — `requireReady=true`
+for self-readying servers, `requireReady=false` (phase Running) for
+pods whose readiness is deliberately gated on out-of-band bootstrap the
+verifier performs next.
+
 **A web UI's identity is proven through its own API, never brand text in
 the SPA document.** A modern UI's index.html is an opaque asset bundle —
 its text content (even the product name) is an upstream build detail that

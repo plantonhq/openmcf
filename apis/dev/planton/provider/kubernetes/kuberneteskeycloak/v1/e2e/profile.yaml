@@ -16,8 +16,10 @@ spec:
   # bootstrap credentials plus an authenticated admin-API read; the
   # behavioral lane proves realm configuration survives pod replacement
   # in the composed database.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   # First boot runs schema migrations against the fixture database
   # (upstream budgets its startup probe at 10 minutes); the chain also
   # pays the CNPG + operator cold starts.

@@ -187,8 +187,7 @@ func (v *SeaweedFsVerifier) proveS3RoundTrip(ctx context.Context, kubeconfig str
 		// delete returns instantly against the OLD pod's condition
 		// (verified live — the get then raced the dying pod). The
 		// recovery is only real once a pod with a NEW UID is Ready.
-		oldUid, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
-			"get", "pod", pod, "-n", v.Namespace, "-o", "jsonpath={.metadata.uid}").Output()
+		oldUid, err := podUid(ctx, kubeconfig, v.Namespace, pod)
 		if err != nil {
 			return errors.Wrap(err, "reading the volume-server pod uid")
 		}
@@ -197,7 +196,7 @@ func (v *SeaweedFsVerifier) proveS3RoundTrip(ctx context.Context, kubeconfig str
 			"delete", "pod", pod, "-n", v.Namespace, "--wait=false").CombinedOutput(); err != nil {
 			return errors.Wrapf(err, "deleting the volume-server pod: %s", string(out))
 		}
-		if err := v.waitForPodReplaced(ctx, kubeconfig, pod, strings.TrimSpace(string(oldUid)), 10*time.Minute); err != nil {
+		if err := waitForPodReplaced(ctx, kubeconfig, v.Namespace, pod, oldUid, true, 10*time.Minute); err != nil {
 			return errors.Wrap(err, "the volume server never returned after deletion")
 		}
 	}
@@ -244,27 +243,6 @@ func (v *SeaweedFsVerifier) waitForBuckets(ctx context.Context, client *awss3.Cl
 		time.Sleep(10 * time.Second)
 	}
 	return errors.Wrap(lastErr, "the S3 gateway never answered ListBuckets")
-}
-
-// waitForPodReplaced waits until the named pod exists with a uid DIFFERENT
-// from oldUid and reports Ready — the only honest signal that a deleted
-// StatefulSet pod's replacement is serving (the StatefulSet's own status
-// lags the deletion and can report Ready against the dying pod).
-func (v *SeaweedFsVerifier) waitForPodReplaced(ctx context.Context, kubeconfig, pod, oldUid string, budget time.Duration) error {
-	deadline := time.Now().Add(budget)
-	for time.Now().Before(deadline) {
-		out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
-			"get", "pod", pod, "-n", v.Namespace,
-			"-o", "jsonpath={.metadata.uid} {.status.conditions[?(@.type=='Ready')].status}").Output()
-		if err == nil {
-			fields := strings.Fields(string(out))
-			if len(fields) == 2 && fields[0] != oldUid && fields[1] == "True" {
-				return nil
-			}
-		}
-		time.Sleep(5 * time.Second)
-	}
-	return errors.Errorf("pod %q never came back Ready with a new uid within %s", pod, budget)
 }
 
 func (v *SeaweedFsVerifier) getObjectWithRetry(ctx context.Context, client *awss3.Client, bucket, key string, budget time.Duration) ([]byte, error) {

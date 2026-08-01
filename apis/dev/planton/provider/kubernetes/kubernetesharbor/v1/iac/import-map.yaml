@@ -1,0 +1,186 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesharbor
+spec:
+  # Harbor installs as one Helm release NAMED AFTER metadata.name
+  # (fullnameOverride pins every child — `<name>-core`, `-portal`,
+  # `-registry`, `-jobservice`, `-nginx`, and the front-door Service
+  # name itself — the same way), plus the optional anchor namespace,
+  # plus the module-owned credential Secrets and their random_password
+  # companions (imported by VALUE — the random provider keeps no cloud
+  # state). Chart-created objects (Deployments, Services, the internal
+  # database/Redis StatefulSets and their Secrets) travel with the
+  # release import. Conditional redis_auth / storage_auth Secrets exist
+  # only when the external cache/storage arms declare credentials
+  # inline.
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares
+        the resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "harbor".
+    # ── the optional anchor namespace ──────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    # ── the module-materialized admin credentials Secret ──────────────
+    # Deterministic name "<metadata.name>-admin-auth"; count-indexed, so
+    # from_address_key cannot serve it — the scoped suffix derivation
+    # does. Present only when the admin password is module-generated
+    # (an existing_secret_name reference creates nothing).
+    - name: secret_name
+      tofu_resource_name: admin_auth
+      derivations:
+        - from_metadata_name_suffix: "-admin-auth"
+      where_to_find: >-
+        Always "<resource-name>-admin-auth" when the module generated
+        the admin password — `kubectl get secrets -n <namespace>`
+        (key HARBOR_ADMIN_PASSWORD).
+    - name: secret_namespace
+      tofu_resource_name: admin_auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the admin password's random_password companion ────────────────
+    - name: password_value
+      tofu_resource_name: admin
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-admin-auth"
+            key: HARBOR_ADMIN_PASSWORD
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-admin-auth -n <namespace>
+        -o jsonpath='{.data.HARBOR_ADMIN_PASSWORD}' | base64 -d
+    # ── the inter-component credentials Secret ────────────────────────
+    # Always present: encryption key, core/jobservice/registry secrets,
+    # CSRF key, registry htpasswd line.
+    - name: secret_name
+      tofu_resource_name: internal_auth
+      derivations:
+        - from_metadata_name_suffix: "-internal-auth"
+      where_to_find: >-
+        Always "<resource-name>-internal-auth" —
+        `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: internal_auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: encryption_key
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-internal-auth"
+            key: secretKey
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret <resource-name>-internal-auth
+        -n <namespace> -o jsonpath='{.data.secretKey}' | base64 -d
+    - name: password_value
+      tofu_resource_name: core_secret
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-internal-auth"
+            key: secret
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret <resource-name>-internal-auth
+        -n <namespace> -o jsonpath='{.data.secret}' | base64 -d
+    - name: password_value
+      tofu_resource_name: csrf_key
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-internal-auth"
+            key: CSRF_KEY
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret <resource-name>-internal-auth
+        -n <namespace> -o jsonpath='{.data.CSRF_KEY}' | base64 -d
+    - name: password_value
+      tofu_resource_name: jobservice_secret
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-internal-auth"
+            key: JOBSERVICE_SECRET
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret <resource-name>-internal-auth
+        -n <namespace> -o jsonpath='{.data.JOBSERVICE_SECRET}' | base64 -d
+    - name: password_value
+      tofu_resource_name: registry_http_secret
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-internal-auth"
+            key: REGISTRY_HTTP_SECRET
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret <resource-name>-internal-auth
+        -n <namespace> -o jsonpath='{.data.REGISTRY_HTTP_SECRET}' | base64 -d
+    - name: password_value
+      tofu_resource_name: registry_credential
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-internal-auth"
+            key: REGISTRY_PASSWD
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret <resource-name>-internal-auth
+        -n <namespace> -o jsonpath='{.data.REGISTRY_PASSWD}' | base64 -d
+    # ── the internal-database password (chart-created Secret) ─────────
+    # Count-indexed alongside the internal database arm. The module
+    # renders the password into chart values (the chart's only intake);
+    # the chart materializes it into `<name>-database` under
+    # POSTGRES_PASSWORD — that is the import handle.
+    - name: password_value
+      tofu_resource_name: internal_database
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-database"
+            key: POSTGRES_PASSWORD
+      where_to_find: >-
+        SECRET MATERIAL. kubectl get secret <resource-name>-database
+        -n <namespace> -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d
+        (internal database arm only).
+    # ── conditional redis_auth / storage_auth Secrets ─────────────────
+    # Present only when the external cache/storage arms declare
+    # credentials inline (an existing_secret_name reference creates
+    # nothing).
+    - name: secret_name
+      tofu_resource_name: redis_auth
+      derivations:
+        - from_metadata_name_suffix: "-redis-auth"
+      where_to_find: >-
+        "<resource-name>-redis-auth" when a Redis password is declared
+        inline — `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: redis_auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: secret_name
+      tofu_resource_name: storage_auth
+      derivations:
+        - from_metadata_name_suffix: "-storage-auth"
+      where_to_find: >-
+        "<resource-name>-storage-auth" when storage credentials are
+        declared inline — `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: storage_auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.

@@ -174,6 +174,22 @@ var _ = ginkgo.Describe("KubernetesKeycloak Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
+		ginkgo.It("backchannel_dynamic with a full-URL hostname should be valid", func() {
+			input.Spec.Hostname = &KubernetesKeycloakHostname{
+				Hostname:           "https://auth.example.com",
+				BackchannelDynamic: true,
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("an admin URL with a full-URL hostname should be valid", func() {
+			input.Spec.Hostname = &KubernetesKeycloakHostname{
+				Hostname: "https://auth.example.com",
+				Admin:    "https://auth-admin.internal.example.com",
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
 		ginkgo.It("the dev-file sandbox vendor with a single instance should be valid", func() {
 			input.Spec.Db = &KubernetesKeycloakDb{Vendor: "dev-file"}
 			input.Spec.Instances = int32Ptr(1)
@@ -227,6 +243,30 @@ var _ = ginkgo.Describe("KubernetesKeycloak Validation Tests", func() {
 
 		ginkgo.It("explicit strict=true with no hostname should be invalid", func() {
 			input.Spec.Hostname = &KubernetesKeycloakHostname{Strict: boolPtr(true)}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("backchannel_dynamic with no hostname should be invalid (server refuses to start)", func() {
+			input.Spec.Hostname = &KubernetesKeycloakHostname{
+				Strict:             boolPtr(false),
+				BackchannelDynamic: true,
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("backchannel_dynamic with a bare (non-URL) hostname should be invalid (server refuses to start)", func() {
+			input.Spec.Hostname = &KubernetesKeycloakHostname{
+				Hostname:           "auth.example.com",
+				BackchannelDynamic: true,
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("an admin URL with a bare (non-URL) hostname should be invalid (server refuses to start)", func() {
+			input.Spec.Hostname = &KubernetesKeycloakHostname{
+				Hostname: "auth.example.com",
+				Admin:    "https://auth-admin.internal.example.com",
+			}
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 

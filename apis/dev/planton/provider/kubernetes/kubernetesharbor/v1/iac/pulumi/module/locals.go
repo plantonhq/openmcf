@@ -3,7 +3,6 @@ package module
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	kubernetesharborv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesharbor/v1"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
@@ -11,155 +10,184 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Locals holds computed values derived from the stack input. Every
+// resolution here has an exact twin in the Terraform module's locals.tf
+// — keep them in lockstep.
 type Locals struct {
-	KubernetesHarbor             *kubernetesharborv1.KubernetesHarbor
-	Namespace                    string
-	KubernetesLabels             map[string]string
-	CoreServiceName              string
-	PortalServiceName            string
-	RegistryServiceName          string
-	JobserviceServiceName        string
-	InternalCoreEndpoint         string
-	InternalRegistryEndpoint     string
-	KubePortForwardCommand       string
-	IngressExternalHostname      string
-	IngressHostnames             []string
-	IngressCertClusterIssuerName string
-	IngressCertSecretName        string
-	RegistryExternalHostname     string
-	NotaryExternalHostname       string
-	DatabaseEndpoint             string
-	RedisEndpoint                string
+	Spec *kubernetesharborv1.KubernetesHarborSpec
 
-	// Computed resource names to avoid conflicts when multiple instances share a namespace
-	// Format: {metadata.name}-{purpose}
-	IngressCertificateName string
-	IngressGatewayName     string
-	IngressHttpRouteName   string
+	// Resource-identity labels stamped on module-created satellites
+	// (namespace, credential Secrets) — never injected into the
+	// chart's own resources; Helm owns those.
+	Labels map[string]string
+
+	// Namespace Harbor installs into (resolved literal).
+	Namespace string
+
+	// ReleaseName is metadata.name; fullnameOverride AND the
+	// front-door Service name are pinned to it, so every chart-derived
+	// name hangs off this value (the chart's default front-door name
+	// is the literal "harbor" — two installs in one namespace would
+	// collide without the pin).
+	ReleaseName string
+
+	ChartVersion string
+
+	// The chart's expose.type value (clusterIP / nodePort /
+	// loadBalancer). The chart's `ingress` and `route` types are
+	// never rendered — exposure composes.
+	ExposeType string
+
+	// http/80 or https/443 at the nginx front door, following
+	// expose.tls.enabled — drives the exported endpoint and
+	// port-forward command.
+	FrontDoorScheme string
+	FrontDoorPort   int
+
+	// The Secret holding the admin password: the module-owned
+	// `<name>-admin-auth` on the generated arm, or the user's
+	// declared Secret/key.
+	AdminSecretName string
+	AdminSecretKey  string
+	// True when the module generates the admin password (admin_auth
+	// unset or without existing_secret_name).
+	AdminGenerated bool
+
+	// Name of the module-owned Secret carrying every generated
+	// inter-component credential (encryption key, core/jobservice/
+	// registry HTTP secrets, registry basic-auth credential, CSRF
+	// key) under the chart's per-site contract keys.
+	InternalAuthSecretName string
+
+	// Name of the module-owned Secret materializing a DECLARED
+	// external-redis password ("" when the arm is not in play — the
+	// user brought their own Secret, or the cache is internal /
+	// unauthenticated).
+	RedisAuthSecretName string
+
+	// Name of the module-owned Secret materializing DECLARED
+	// s3/gcs/azure storage credentials ("" when keyless/ambient or
+	// user-provided).
+	StorageAuthSecretName string
+
+	// True when the Trivy scanner deploys (spec unset = chart truth:
+	// enabled).
+	TrivyEnabled bool
+
+	// True on the internal database / internal redis arms.
+	InternalDatabase bool
+	InternalRedis    bool
 }
 
-func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesharborv1.KubernetesHarborStackInput) *Locals {
-	locals := &Locals{}
+// initializeLocals extracts and transforms spec fields into module-local
+// values.
+func initializeLocals(_ *pulumi.Context, stackInput *kubernetesharborv1.KubernetesHarborStackInput) *Locals {
+	target := stackInput.Target
+	spec := target.Spec
 
-	locals.KubernetesHarbor = stackInput.GetTarget()
-	target := stackInput.GetTarget()
-
-	locals.KubernetesLabels = map[string]string{
+	labels := map[string]string{
 		kuberneteslabelkeys.Resource:     strconv.FormatBool(true),
 		kuberneteslabelkeys.ResourceName: target.Metadata.Name,
 		kuberneteslabelkeys.ResourceKind: cloudresourcekind.CloudResourceKind_KubernetesHarbor.String(),
 	}
-
 	if target.Metadata.Id != "" {
-		locals.KubernetesLabels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
+		labels[kuberneteslabelkeys.ResourceId] = target.Metadata.Id
 	}
-
 	if target.Metadata.Org != "" {
-		locals.KubernetesLabels[kuberneteslabelkeys.Organization] = target.Metadata.Org
+		labels[kuberneteslabelkeys.Organization] = target.Metadata.Org
 	}
-
 	if target.Metadata.Env != "" {
-		locals.KubernetesLabels[kuberneteslabelkeys.Environment] = target.Metadata.Env
+		labels[kuberneteslabelkeys.Environment] = target.Metadata.Env
 	}
 
-	// get namespace from spec, it is required field
-	locals.Namespace = target.Spec.Namespace.GetValue()
-
-	// export namespace as an output
-	ctx.Export(OpNamespace, pulumi.String(locals.Namespace))
-
-	// Service names
-	locals.CoreServiceName = fmt.Sprintf("%s-harbor-core", target.Metadata.Name)
-	locals.PortalServiceName = fmt.Sprintf("%s-harbor-portal", target.Metadata.Name)
-	locals.RegistryServiceName = fmt.Sprintf("%s-harbor-registry", target.Metadata.Name)
-	locals.JobserviceServiceName = fmt.Sprintf("%s-harbor-jobservice", target.Metadata.Name)
-
-	//export service names
-	ctx.Export(OpCoreService, pulumi.String(locals.CoreServiceName))
-	ctx.Export(OpPortalService, pulumi.String(locals.PortalServiceName))
-	ctx.Export(OpRegistryService, pulumi.String(locals.RegistryServiceName))
-	ctx.Export(OpJobserviceService, pulumi.String(locals.JobserviceServiceName))
-
-	// Kubernetes FQDNs
-	locals.InternalCoreEndpoint = fmt.Sprintf("%s.%s.svc.cluster.local:%d",
-		locals.CoreServiceName, locals.Namespace, variables.HarborCorePort)
-	locals.InternalRegistryEndpoint = fmt.Sprintf("%s.%s.svc.cluster.local:%d",
-		locals.RegistryServiceName, locals.Namespace, variables.HarborRegistryPort)
-
-	//export kubernetes endpoints
-	ctx.Export(OpInternalCoreEndpoint, pulumi.String(locals.InternalCoreEndpoint))
-	ctx.Export(OpInternalRegistryEndpoint, pulumi.String(locals.InternalRegistryEndpoint))
-
-	// Port forward command
-	locals.KubePortForwardCommand = fmt.Sprintf("kubectl port-forward -n %s service/%s %d:%d",
-		locals.Namespace, locals.PortalServiceName, variables.HarborPortalPort, variables.HarborPortalPort)
-
-	//export kube-port-forward command
-	ctx.Export(OpPortForwardCommand, pulumi.String(locals.KubePortForwardCommand))
-
-	// Admin credentials
-	ctx.Export(OpAdminUsername, pulumi.String("admin"))
-	ctx.Export(OpAdminPasswordSecretName, pulumi.String(fmt.Sprintf("%s-harbor-core", target.Metadata.Name)))
-	ctx.Export(OpAdminPasswordSecretKey, pulumi.String("HARBOR_ADMIN_PASSWORD"))
-
-	// Database outputs (only for self-managed)
-	if target.Spec.Database != nil && !target.Spec.Database.IsExternal {
-		locals.DatabaseEndpoint = fmt.Sprintf("%s-postgresql.%s.svc.cluster.local:%d",
-			target.Metadata.Name, locals.Namespace, variables.PostgresPort)
-		ctx.Export(OpDatabaseEndpoint, pulumi.String(locals.DatabaseEndpoint))
-		ctx.Export(OpDatabaseUsername, pulumi.String("postgres"))
-		ctx.Export(OpDatabasePasswordSecretName, pulumi.String(fmt.Sprintf("%s-postgresql", target.Metadata.Name)))
-		ctx.Export(OpDatabasePasswordSecretKey, pulumi.String("postgres-password"))
+	chartVersion := spec.GetChartVersion()
+	if chartVersion == "" {
+		chartVersion = vars.DefaultChartVersion
 	}
 
-	// Redis outputs (only for self-managed)
-	if target.Spec.Cache != nil && !target.Spec.Cache.IsExternal {
-		locals.RedisEndpoint = fmt.Sprintf("%s-redis.%s.svc.cluster.local:%d",
-			target.Metadata.Name, locals.Namespace, variables.RedisPort)
-		ctx.Export(OpRedisEndpoint, pulumi.String(locals.RedisEndpoint))
-		ctx.Export(OpRedisPasswordSecretName, pulumi.String(fmt.Sprintf("%s-redis", target.Metadata.Name)))
-		ctx.Export(OpRedisPasswordSecretKey, pulumi.String("redis-password"))
+	// Map the spec's Kubernetes-conventional Service type onto the
+	// chart's camel-case expose.type values.
+	exposeType := "clusterIP"
+	switch spec.GetExpose().GetServiceType() {
+	case "NodePort":
+		exposeType = "nodePort"
+	case "LoadBalancer":
+		exposeType = "loadBalancer"
 	}
 
-	// Ingress configuration for Core/Portal
-	if target.Spec.Ingress != nil &&
-		target.Spec.Ingress.Core != nil &&
-		target.Spec.Ingress.Core.Enabled &&
-		target.Spec.Ingress.Core.Hostname != "" {
-		locals.IngressExternalHostname = target.Spec.Ingress.Core.Hostname
-		ctx.Export(OpExternalHostname, pulumi.String(locals.IngressExternalHostname))
+	frontDoorScheme := "http"
+	frontDoorPort := 80
+	if spec.GetExpose().GetTls().GetEnabled() {
+		frontDoorScheme = "https"
+		frontDoorPort = 443
+	}
 
-		// Registry external hostname is the same as core unless explicitly configured differently
-		locals.RegistryExternalHostname = locals.IngressExternalHostname
-		ctx.Export(OpRegistryExternalHostname, pulumi.String(locals.RegistryExternalHostname))
-
-		locals.IngressHostnames = []string{
-			locals.IngressExternalHostname,
+	adminSecretName := target.Metadata.Name + vars.AdminAuthSecretSuffix
+	adminSecretKey := vars.AdminPasswordSecretKey
+	adminGenerated := true
+	if spec.GetAdminAuth().GetExistingSecretName() != "" {
+		adminSecretName = spec.GetAdminAuth().GetExistingSecretName()
+		adminGenerated = false
+		if spec.GetAdminAuth().GetExistingSecretKey() != "" {
+			adminSecretKey = spec.GetAdminAuth().GetExistingSecretKey()
 		}
-
-		// ClusterIssuer should already exist on the cluster
-		// Extract domain from hostname for ClusterIssuer name
-		hostnameParts := strings.Split(locals.IngressExternalHostname, ".")
-		if len(hostnameParts) > 1 {
-			locals.IngressCertClusterIssuerName = strings.Join(hostnameParts[1:], ".")
-		}
-
-		// Computed resource names to avoid conflicts when multiple instances share a namespace
-		// Format: {metadata.name}-{purpose}
-		locals.IngressCertSecretName = fmt.Sprintf("%s-ingress-cert", target.Metadata.Name)
-		locals.IngressCertificateName = fmt.Sprintf("%s-ingress-cert", target.Metadata.Name)
-		locals.IngressGatewayName = fmt.Sprintf("%s-external", target.Metadata.Name)
-		locals.IngressHttpRouteName = fmt.Sprintf("%s-https-external", target.Metadata.Name)
 	}
 
-	// Ingress configuration for Notary
-	if target.Spec.Ingress != nil &&
-		target.Spec.Ingress.Notary != nil &&
-		target.Spec.Ingress.Notary.Enabled &&
-		target.Spec.Ingress.Notary.Hostname != "" {
-		locals.NotaryExternalHostname = target.Spec.Ingress.Notary.Hostname
-		ctx.Export(OpNotaryExternalHostname, pulumi.String(locals.NotaryExternalHostname))
+	redisAuthSecretName := ""
+	if ext := spec.GetCache().GetExternal(); ext != nil && ext.GetPassword() != "" {
+		redisAuthSecretName = target.Metadata.Name + vars.RedisAuthSecretSuffix
 	}
 
-	return locals
+	storageAuthSecretName := ""
+	if s3 := spec.GetStorage().GetS3(); s3 != nil && s3.GetCredentials().GetAccessKey() != "" {
+		storageAuthSecretName = target.Metadata.Name + vars.StorageAuthSecretSuffix
+	}
+	if gcs := spec.GetStorage().GetGcs(); gcs != nil && gcs.GetKeyData() != "" {
+		storageAuthSecretName = target.Metadata.Name + vars.StorageAuthSecretSuffix
+	}
+	if azure := spec.GetStorage().GetAzure(); azure != nil && azure.GetAccountKey() != "" {
+		storageAuthSecretName = target.Metadata.Name + vars.StorageAuthSecretSuffix
+	}
+
+	// Trivy: unset block = chart truth (enabled).
+	trivyEnabled := true
+	if spec.GetTrivy() != nil && spec.GetTrivy().Enabled != nil {
+		trivyEnabled = spec.GetTrivy().GetEnabled()
+	}
+
+	return &Locals{
+		Spec:                   spec,
+		Labels:                 labels,
+		Namespace:              spec.Namespace.GetValue(),
+		ReleaseName:            target.Metadata.Name,
+		ChartVersion:           chartVersion,
+		ExposeType:             exposeType,
+		FrontDoorScheme:        frontDoorScheme,
+		FrontDoorPort:          frontDoorPort,
+		AdminSecretName:        adminSecretName,
+		AdminSecretKey:         adminSecretKey,
+		AdminGenerated:         adminGenerated,
+		InternalAuthSecretName: target.Metadata.Name + vars.InternalAuthSecretSuffix,
+		RedisAuthSecretName:    redisAuthSecretName,
+		StorageAuthSecretName:  storageAuthSecretName,
+		TrivyEnabled:           trivyEnabled,
+		InternalDatabase:       spec.GetDatabase().GetInternal() != nil,
+		InternalRedis:          spec.GetCache().GetInternal() != nil,
+	}
+}
+
+// kubeEndpoint renders the in-cluster front-door URL.
+func (l *Locals) kubeEndpoint() string {
+	return fmt.Sprintf("%s://%s.%s.svc.cluster.local:%d",
+		l.FrontDoorScheme, l.ReleaseName, l.Namespace, l.FrontDoorPort)
+}
+
+// portForwardCommand renders the workstation access recipe.
+func (l *Locals) portForwardCommand() string {
+	localPort := 8080
+	if l.FrontDoorScheme == "https" {
+		localPort = 8443
+	}
+	return fmt.Sprintf("kubectl port-forward -n %s svc/%s %d:%d",
+		l.Namespace, l.ReleaseName, localPort, l.FrontDoorPort)
 }

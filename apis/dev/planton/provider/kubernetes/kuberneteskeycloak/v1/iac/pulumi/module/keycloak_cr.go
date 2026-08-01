@@ -280,6 +280,10 @@ func hostnameBody(hostname *kuberneteskeycloakv1.KubernetesKeycloakHostname) map
 	if hostname.Strict != nil {
 		out["strict"] = hostname.GetStrict()
 	}
+	// backchannelDynamic and admin render verbatim; both are legal ONLY
+	// with a FULL-URL hostname — server startup rules the spec's CEL
+	// enforces (verified live: any other pairing crash-loops the pod
+	// with no apply-time error from the operator).
 	if hostname.GetBackchannelDynamic() {
 		out["backchannelDynamic"] = true
 	}

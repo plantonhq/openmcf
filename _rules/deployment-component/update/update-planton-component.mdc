@@ -711,6 +711,19 @@ Based on scenario:
   a generated secret is injected via an env reference the config
   consumes; a pure-letter value is the only shape a token lexer can
   never misread.
+- **Every modeled server-option PAIR has an init-time validation to
+  mirror — grep the server's provider/config factories at the pin**:
+  servers validate option PAIRINGS at startup (`init()` in provider
+  factories, config validators), and on Kubernetes a failed pairing
+  surfaces only as CrashLoopBackOff with the real error buried in the
+  crashed container's logs (verified live: an option legal on its own
+  was rejected at boot because its companion option lacked a required
+  FORM — a full URL rather than a bare hostname). Modeling the fields
+  without their pairing rules ships apply-time-clean manifests that
+  can never boot. At design time, `rg "IllegalArgumentException|must
+  be set|requires"` through the server's config/provider factories for
+  every option the spec models, and mirror each pairing as a CEL rule
+  whose message names the server's own rule.
 - **A chart's default image reference can point at a DELETED registry —
   probe pullability at the pin, never trust the default**: verified
   live with a sidecar image whose entire upstream registry namespace

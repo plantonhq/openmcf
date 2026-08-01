@@ -11,6 +11,8 @@ spec:
   # INVARIANT: no Keycloak server exists after installing the operator
   # alone (the KubernetesKeycloak declaration kind owns servers).
   # Destroy asserts workloads AND CRDs gone (the bundle posture).
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 15

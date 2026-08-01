@@ -244,11 +244,21 @@ func (v *KeycloakVerifier) proveAdminLogin(ctx context.Context, kubeconfig, user
 
 	// THE DURABILITY PROOF: configuration lives in the database, so a
 	// replaced pod must serve the realm created before its death.
+	// Capture the doomed pod's uid first — a terminating pod keeps
+	// reporting Ready and the StatefulSet's status lags the deletion,
+	// so the recovery is only real once a pod with a NEW uid is Ready.
 	pod0 := v.Name + "-0"
+	oldUid, err := podUid(ctx, kubeconfig, v.Namespace, pod0)
+	if err != nil {
+		return err
+	}
 	fmt.Printf("  [verify] DURABILITY: deleting pod %q\n", pod0)
 	if out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
 		"delete", "pod", pod0, "-n", v.Namespace, "--wait=false").CombinedOutput(); err != nil {
 		return errors.Wrapf(err, "deleting pod 0: %s", string(out))
+	}
+	if err := waitForPodReplaced(ctx, kubeconfig, v.Namespace, pod0, oldUid, true, 10*time.Minute); err != nil {
+		return errors.Wrap(err, "the replacement pod never became Ready")
 	}
 	if err := v.waitForReadyStatefulSet(ctx, kubeconfig, 10*time.Minute); err != nil {
 		return errors.Wrap(err, "the StatefulSet never recovered after the pod loss")

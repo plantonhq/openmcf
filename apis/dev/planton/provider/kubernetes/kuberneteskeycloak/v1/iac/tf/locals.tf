@@ -102,6 +102,10 @@ locals {
   # strict is tri-state: unset leaves the server default (true); declared
   # renders either way — `strict: false` is the meaningful behind-a-proxy
   # posture.
+  # backchannelDynamic and admin render verbatim; both are legal ONLY
+  # with a FULL-URL hostname — server startup rules the spec's CEL
+  # enforces (verified live: any other pairing crash-loops the pod
+  # with no apply-time error from the operator).
   hostname_block = {
     for k, v in {
       hostname           = try(var.spec.hostname.hostname, "") != "" ? var.spec.hostname.hostname : null

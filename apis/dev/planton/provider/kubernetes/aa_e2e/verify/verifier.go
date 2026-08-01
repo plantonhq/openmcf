@@ -1218,6 +1218,20 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			ApiKey:    openFgaPresharedKey(spec),
 		}, nil
 
+	// Harbor container registry: every stateless component rolled out,
+	// the front-door Service present — and THE REGISTRY PROOF on every
+	// lane: login as the module-generated admin, create a project, OCI
+	// push/pull round-trip, asserting the unauthenticated 401 first
+	// (the auth gate). The behavioral-durability scenario (recognized
+	// by name) proves the artifact survives a UID-verified registry
+	// pod replacement through a fresh port-forward (dead-tunnel class).
+	case "kubernetesharbor":
+		return &HarborVerifier{
+			Namespace:  info.Namespace,
+			Name:       info.Name,
+			Durability: strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
 	// The GitHub Actions runner scale set controller: the controller
 	// rolled out at the declared replica count and every
 	// actions.github.com CRD established. Destroy asserts the

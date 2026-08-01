@@ -1248,6 +1248,40 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesHarbor: the pinned-fullname naming contract — front
+			// door + per-component Services, the module-generated admin
+			// credential Secret, and the port-forward recipe. Nested
+			// admin_password_secret{name,key} is the credential handle.
+			name: "KubernetesHarbor",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesHarbor,
+			rawOutputs: map[string]interface{}{
+				"namespace":          "harbor",
+				"expose_service":     "registry",
+				"kube_endpoint":      "http://registry.harbor.svc.cluster.local:80",
+				"external_url":       "https://harbor.example.com",
+				"core_service":       "registry-core",
+				"portal_service":     "registry-portal",
+				"registry_service":   "registry-registry",
+				"jobservice_service": "registry-jobservice",
+				"trivy_service":      "registry-trivy",
+				"database_service":   "registry-database",
+				"redis_service":      "registry-redis",
+				"admin_username":     "admin",
+				"admin_password_secret": map[string]interface{}{
+					"name": "registry-admin-auth",
+					"key":  "HARBOR_ADMIN_PASSWORD",
+				},
+				"port_forward_command": "kubectl port-forward svc/registry -n harbor 8080:80",
+			},
+			mustPopulate: []string{
+				"namespace", "expose_service", "kube_endpoint", "external_url",
+				"core_service", "portal_service", "registry_service",
+				"jobservice_service", "trivy_service", "database_service",
+				"redis_service", "admin_username", "admin_password_secret",
+				"port_forward_command",
+			},
+		},
+		{
 			// KubernetesSeaweedFs: the chart naming contract — release, the
 			// S3/filer/master Service handles, both credential Secrets
 			// (chart-owned S3, module-generated admin), and the endpoints.

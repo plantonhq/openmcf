@@ -7,6 +7,13 @@
 # CRDs). TLS, tracing and custom-image arms are plan-proven offline.
 # The same admin-login product proof runs against this shape — a login
 # through two clustered instances proves JGroups membership works.
+#
+# HOSTNAME POSTURE: the fixed-public-URL + dynamic-backchannel shape —
+# hostname MUST be a full URL for backchannel_dynamic (a server startup
+# rule, enforced by the spec's CEL; verified live: any other shape
+# crash-loops). The in-cluster Service URL is the honest public URL on
+# a lab cluster; hostname only pins what the server ADVERTISES, so the
+# verifier's port-forwarded login is unaffected.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesKeycloak
 metadata:
@@ -38,7 +45,7 @@ spec:
     httpEnabled: true
     httpPort: 8080
   hostname:
-    strict: false
+    hostname: http://e2e-kc-full-service.e2e-keycloak.svc.cluster.local:8080
     backchannelDynamic: true
   features:
     enabled:

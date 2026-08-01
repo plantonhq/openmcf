@@ -219,10 +219,24 @@ func (v *OpenBaoVerifier) proveKvRoundTrip(ctx context.Context, kubeconfig, toke
 	}
 
 	if v.Behavioral {
+		// Capture the doomed pod's uid first — a terminating pod keeps
+		// reporting phase Running for its whole grace period, so a
+		// phase-keyed wait returns instantly against the DYING pod and
+		// the re-unseal below would be burned as a no-op on the old
+		// (still unsealed) server. The replacement is only real once a
+		// pod with a NEW uid is Running — and NOT Ready: a replaced
+		// Shamir-mode pod is sealed by design until the unseal below.
+		oldUid, err := podUid(ctx, kubeconfig, v.Namespace, pod0)
+		if err != nil {
+			return err
+		}
 		fmt.Printf("  [verify] DURABILITY: deleting pod %q\n", pod0)
 		if out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
 			"delete", "pod", pod0, "-n", v.Namespace, "--wait=false").CombinedOutput(); err != nil {
 			return errors.Wrapf(err, "deleting pod 0: %s", string(out))
+		}
+		if err := waitForPodReplaced(ctx, kubeconfig, v.Namespace, pod0, oldUid, false, 10*time.Minute); err != nil {
+			return errors.Wrap(err, "the replacement pod never reached Running")
 		}
 		if err := v.waitForRunningPods(ctx, kubeconfig, 10*time.Minute); err != nil {
 			return errors.Wrap(err, "pod 0 never returned after deletion")

@@ -421,18 +421,34 @@ message KubernetesKeycloakHttp {
 
 /** Hostname posture. */
 message KubernetesKeycloakHostname {
+  option (buf.validate.message).cel = {
+    id: "hostname.backchannel_dynamic.needs_full_url"
+    expression: "!this.backchannel_dynamic || this.hostname.startsWith(\"http://\") || this.hostname.startsWith(\"https://\")"
+    message: "backchannel_dynamic requires hostname to be a FULL URL (\"https://...\" or \"http://...\") — the server refuses to start otherwise (verified live: a bare hostname or no hostname crash-loops with \"hostname-backchannel-dynamic must be set to false\")."
+  };
+
+  option (buf.validate.message).cel = {
+    id: "hostname.admin.needs_full_url_hostname"
+    expression: "size(this.admin) == 0 || this.hostname.startsWith(\"http://\") || this.hostname.startsWith(\"https://\")"
+    message: "Setting hostname.admin requires hostname to be a FULL URL (\"https://...\" or \"http://...\") — the server refuses to start otherwise (\"hostname must be set to a URL when hostname-admin is set\")."
+  };
+
   /**
    * The server's public base URL or hostname
    * (e.g. "https://auth.example.com" — full URLs pin scheme and
    * path). What tokens, redirects, and the OIDC discovery document
-   * advertise.
+   * advertise. NOTE two server rules require the FULL-URL form
+   * (scheme included), not a bare hostname: backchannel_dynamic and
+   * admin (both validated here — the server otherwise refuses to
+   * start, which on Kubernetes surfaces only as CrashLoopBackOff).
    */
   string hostname = 1;
 
   /**
    * Separate base URL for the admin console (empty = same as
    * hostname). Lets the admin surface live on an internal name
-   * while the user-facing hostname stays public.
+   * while the user-facing hostname stays public. Requires hostname
+   * to be a full URL (validated here — a server-startup rule).
    */
   string admin = 2;
 
@@ -440,7 +456,8 @@ message KubernetesKeycloakHostname {
    * Strict hostname resolution. Empty = true (the server default):
    * the server uses only the declared hostname. Set false ONLY
    * behind a trusted reverse proxy that rewrites Host headers — and
-   * then set proxy_headers too.
+   * then set proxy_headers too. When hostname is set, the server
+   * ignores this flag entirely.
    */
   optional bool strict = 3 [(dev.planton.shared.options.default) = "true"];
 
@@ -448,7 +465,11 @@ message KubernetesKeycloakHostname {
    * Resolve BACKCHANNEL (server-to-server) URLs dynamically from
    * request headers while the public hostname stays fixed — for
    * clusters where internal clients reach Keycloak through the
-   * Service instead of the public URL.
+   * Service instead of the public URL. Requires hostname as a FULL
+   * URL (validated here): the server refuses to start with a bare
+   * or absent hostname, because a partly-dynamic frontend could
+   * leak backend request parts into frontend URLs (verified live —
+   * the failure mode is a CrashLoopBackOff, not an error message).
    */
   bool backchannel_dynamic = 4;
 }

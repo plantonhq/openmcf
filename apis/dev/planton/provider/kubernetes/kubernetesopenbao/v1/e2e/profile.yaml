@@ -14,8 +14,10 @@ spec:
   # asserted NotReady-by-design, a real init/unseal bootstrap flipping
   # readiness, then a KV round-trip (never the generic readiness-waiting
   # fallback, which would hang every fresh install by design).
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   # First boot pulls the image and provisions per-replica PVCs; the
   # behavioral-raft lane adds a pod replacement + re-unseal cycle.
   timeout_minutes: 25

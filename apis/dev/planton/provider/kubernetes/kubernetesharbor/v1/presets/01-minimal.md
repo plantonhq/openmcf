@@ -1,25 +1,24 @@
-# Minimal Harbor Container Registry
+# Minimal — evaluation registry, zero dependencies
 
-This preset deploys Harbor with default settings and ingress access. Harbor is a cloud-native container registry with vulnerability scanning, content trust, replication, and RBAC.
+The smallest honest Harbor: the chart's in-cluster PostgreSQL and Redis
+(single-node, evaluation-grade by upstream's own position), artifact
+blobs on a 20Gi PersistentVolumeClaim, Trivy scanning on (the chart
+default), and a ClusterIP front door reached through the exported
+`port_forward_command`.
 
-## When to Use
+What you get without declaring it: every credential is generated per
+install — the admin password lands in the exported `<name>-admin-auth`
+Secret (key `HARBOR_ADMIN_PASSWORD`), and none of the chart's publicly
+documented defaults (`Harbor12345`, `changeit`, `not-a-secure-key`)
+ever ship.
 
-- You need a self-hosted container registry on Kubernetes
-- Development or testing environments where default storage (filesystem) is sufficient
-- Evaluating Harbor before configuring production-grade external storage
+KNOW THIS before pushing images: `externalUrl` is load-bearing —
+Harbor embeds it in the auth-token URL returned to every OCI client,
+so `docker login/push/pull` must dial exactly that address. This
+preset pins it to the port-forward address; change it in lockstep with
+whatever exposure you compose in front.
 
-## Key Configuration Choices
-
-- **Ingress enabled** -- exposes the Harbor web UI and Docker registry API at the specified hostname
-- **Default storage** -- uses local filesystem storage; suitable for development but not production (data lost on pod restart without PVCs)
-- **Default database and cache** -- self-managed PostgreSQL and Redis; no external dependencies required
-
-## Placeholders to Replace
-
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<your-harbor.example.com>` | Hostname for the Harbor registry and UI | Your DNS provider |
-
-## Related Presets
-
-- **02-production-with-s3** -- External S3 storage, higher resources for production use
+Graduation path: swap `database.internal` for the external arm
+composing a KubernetesPostgres, `cache.internal` for a
+KubernetesValkey, and `storage.filesystem` for an object-storage
+backend — see the production preset.

@@ -115,7 +115,7 @@ The production-essential fields of `KubernetesKeycloak`:
 
 2. **`http` (required):** TLS-or-HTTP is a validation rule. Set `tlsSecretName` (a `kubernetes.io/tls` Secret or a `KubernetesCertificate` reference) or opt into `httpEnabled` behind a TLS-terminating proxy — Keycloak refuses to start with neither, and upstream surfaces that only as a CrashLoopBackOff.
 
-3. **`hostname` (required):** the public base URL that tokens, redirects, and the OIDC discovery document advertise. Mandatory under strict resolution (the server default); `strict: false` only behind a trusted proxy that rewrites Host headers, paired with `proxyHeaders`.
+3. **`hostname` (required):** the public base URL that tokens, redirects, and the OIDC discovery document advertise. Mandatory under strict resolution (the server default); `strict: false` only behind a trusted proxy that rewrites Host headers, paired with `proxyHeaders`. Two server startup rules require the FULL-URL form (`https://...`), not a bare hostname: `backchannelDynamic` (dynamic server-to-server URLs behind a fixed public URL) and `admin` (a separate admin-console URL). Both pairings are validated at apply time — the server otherwise refuses to boot, which on Kubernetes surfaces only as a CrashLoopBackOff (verified live).
 
 4. **`instances`:** all state lives in the database, so servers scale horizontally — JGroups clusters the caches through the operator's discovery Service.
 
