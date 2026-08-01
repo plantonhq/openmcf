@@ -1,0 +1,99 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesjupyterhub
+spec:
+  # JupyterHub installs as one Helm release NAMED AFTER metadata.name
+  # whose resources render CHART-FIXED bare names (hub, proxy,
+  # proxy-public… — fullnameOverride "" is module-pinned), plus the
+  # optional anchor namespace and the module-owned Secrets. Chart-created
+  # objects (the hub/proxy Deployments, Services, the chart-owned `hub`
+  # Secret carrying the internal auth materials) travel with the release
+  # import. Conditional resources exist only with their arms: the
+  # shared-password Secret + its random companion only on the
+  # shared-password sign-in method when module-generated; the
+  # hub existing-secret + the read-anchor ConfigMap only on the external
+  # database arms (the hub-secret's data recomposes identically on the
+  # first post-adoption apply — the same referenced credential feeds the
+  # same key). KubeSpawner's per-user pods and `claim-<user>` PVCs are
+  # RUNTIME artifacts — never imported; they belong to the hub, not the
+  # engines.
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares
+        the resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); one JupyterHub per namespace
+        (the chart's resource names are fixed).
+    # ── the optional anchor namespace ──────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    # ── the shared sign-in password + random companion ─────────────────
+    - name: secret_name
+      tofu_resource_name: shared_password
+      derivations:
+        - from_metadata_name_suffix: "-auth"
+      where_to_find: >-
+        "<resource-name>-auth" on the shared-password sign-in method
+        when module-generated (a bring-your-own password Secret or an
+        OAuth/OIDC/native method creates nothing) —
+        `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: shared_password
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: shared_password
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-auth"
+            key: password
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-auth -n <namespace>
+        -o jsonpath='{.data.password}' | base64 -d
+    # ── the hub existing-secret (external database arms) ────────────────
+    - name: secret_name
+      tofu_resource_name: hub_secret
+      derivations:
+        - from_metadata_name_suffix: "-hub-secret"
+      where_to_find: >-
+        "<resource-name>-hub-secret" on the postgres/mysql hub-database
+        arms only (key hub.db.password — composed from the referenced
+        credential Secret; recomposes identically after adoption).
+    - name: secret_namespace
+      tofu_resource_name: hub_secret
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the deferred-read anchor ConfigMap (external database arms) ────
+    - name: config_map_name
+      derivations:
+        - from_metadata_name_suffix: "-read-anchor"
+      where_to_find: >-
+        "<resource-name>-read-anchor" on the external database arms
+        only — the marker that defers the credential read to apply
+        time; `kubectl get configmaps -n <namespace>`.
+    - name: config_map_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.

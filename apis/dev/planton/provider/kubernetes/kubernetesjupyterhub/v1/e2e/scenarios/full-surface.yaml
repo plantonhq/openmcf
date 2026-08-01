@@ -1,0 +1,63 @@
+# The widest honest surface on the shared cluster: the hub database on
+# the composed PostgreSQL fixture (one valueFrom per field — the
+# existing-secret credential seam live), roster + admin sign-in
+# controls, hub throttles and named servers, sized user servers with a
+# spawn-menu profile list, the packing scheduler with a warm
+# placeholder, tuned culling, and an escape-hatch entry. The verifier
+# runs the same auth-gate + sign-in + spawn proof — on THIS lane the
+# spawned server's record lives in PostgreSQL.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesJupyterHub
+metadata:
+  name: e2e-jhub-full
+spec:
+  namespace:
+    value: e2e-jupyterhub
+  hub:
+    database:
+      postgres:
+        host:
+          valueFrom:
+            name: e2e-jhub-pg
+        password_secret:
+          secret_name:
+            valueFrom:
+              name: e2e-jhub-pg
+    concurrent_spawn_limit: 8
+    active_server_limit: 10
+    allow_named_servers: true
+    named_server_limit_per_user: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+  authentication:
+    shared_password: {}
+    # The verifier signs in as this identity; roster pinned to it.
+    allowed_users:
+      - e2everifier
+    admin_users:
+      - e2everifier
+  single_user:
+    memory_guarantee: 256M
+    memory_limit: 1G
+    start_timeout_seconds: 600
+    storage:
+      dynamic:
+        capacity: 1Gi
+    profiles:
+      - display_name: Default
+        description: The lane's default shape
+        default: true
+      - display_name: Larger
+        memory_limit: 2G
+  scheduling:
+    user_scheduler_enabled: true
+    user_placeholder_replicas: 1
+  culling:
+    enabled: true
+    timeout_seconds: 600
+    every_seconds: 120
+  helm_values: |
+    debug:
+      enabled: true

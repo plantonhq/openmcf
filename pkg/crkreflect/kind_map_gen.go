@@ -462,6 +462,7 @@ import (
 	kubernetesistiobasecrdsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesistiobasecrds/v1"
 	kubernetesjenkinsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjenkins/v1"
 	kubernetesjobv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjob/v1"
+	kubernetesjupyterhubv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesjupyterhub/v1"
 	kuberneteskafkav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskafka/v1"
 	kuberneteskafkaconnectv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskafkaconnect/v1"
 	kuberneteskafkaconnectorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskafkaconnector/v1"
@@ -484,6 +485,7 @@ import (
 	kuberneteslokiv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesloki/v1"
 	kubernetesmanifestv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmanifest/v1"
 	kubernetesmetricsserverv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmetricsserver/v1"
+	kubernetesmlflowv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmlflow/v1"
 	kubernetesmongodbv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmongodb/v1"
 	kubernetesmysqlv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesmysql/v1"
 	kubernetesnamespacev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesnamespace/v1"
@@ -1122,6 +1124,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesIstioBaseCrds:               &kubernetesistiobasecrdsv1.KubernetesIstioBaseCrds{},
 	cloudresourcekind.CloudResourceKind_KubernetesJenkins:                     &kubernetesjenkinsv1.KubernetesJenkins{},
 	cloudresourcekind.CloudResourceKind_KubernetesJob:                         &kubernetesjobv1.KubernetesJob{},
+	cloudresourcekind.CloudResourceKind_KubernetesJupyterHub:                  &kubernetesjupyterhubv1.KubernetesJupyterHub{},
 	cloudresourcekind.CloudResourceKind_KubernetesKafka:                       &kuberneteskafkav1.KubernetesKafka{},
 	cloudresourcekind.CloudResourceKind_KubernetesKafkaConnect:                &kuberneteskafkaconnectv1.KubernetesKafkaConnect{},
 	cloudresourcekind.CloudResourceKind_KubernetesKafkaConnector:              &kuberneteskafkaconnectorv1.KubernetesKafkaConnector{},
@@ -1144,6 +1147,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesLoki:                        &kuberneteslokiv1.KubernetesLoki{},
 	cloudresourcekind.CloudResourceKind_KubernetesManifest:                    &kubernetesmanifestv1.KubernetesManifest{},
 	cloudresourcekind.CloudResourceKind_KubernetesMetricsServer:               &kubernetesmetricsserverv1.KubernetesMetricsServer{},
+	cloudresourcekind.CloudResourceKind_KubernetesMlflow:                      &kubernetesmlflowv1.KubernetesMlflow{},
 	cloudresourcekind.CloudResourceKind_KubernetesMongodb:                     &kubernetesmongodbv1.KubernetesMongodb{},
 	cloudresourcekind.CloudResourceKind_KubernetesMysql:                       &kubernetesmysqlv1.KubernetesMysql{},
 	cloudresourcekind.CloudResourceKind_KubernetesNamespace:                   &kubernetesnamespacev1.KubernetesNamespace{},

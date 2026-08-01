@@ -1,0 +1,18 @@
+# The component defaults: sqlite-PVC hub state, shared-password sign-in
+# with the module-generated password (the chart's open-door default —
+# any username, NO password — never ships), the chart's sample notebook
+# image, dynamic per-user home volumes, culling on. Co-located with the
+# lane fixture's namespace (create_namespace false — the chart's
+# resource names are fixed, one JupyterHub per namespace). The verifier
+# proves THE AUTH GATE (anonymous hub-API read rejected AND a
+# wrong-password sign-in refused), a REAL sign-in with the generated
+# credential, and THE SPAWN PROOF — the signed-in user's server spawns a
+# real jupyter-<username> pod through KubeSpawner and the hub reports it
+# ready; the proof server and its runtime home PVC are swept.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesJupyterHub
+metadata:
+  name: e2e-jhub-min
+spec:
+  namespace:
+    value: e2e-jupyterhub

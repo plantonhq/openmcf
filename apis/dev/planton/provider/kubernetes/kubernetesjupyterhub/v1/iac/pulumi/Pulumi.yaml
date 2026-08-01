@@ -1,0 +1,3 @@
+name: kubernetes-jupyterhub
+runtime: go
+description: JupyterHub installation from the official Zero to JupyterHub Helm chart with secured-by-default sign-in, sqlite-PVC or external-database hub state, per-user notebook sizing and storage, packing scheduler and idle culling

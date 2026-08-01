@@ -856,6 +856,46 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			DeliveryProof: strings.Contains(manifestPath, "behavioral-dag-delivery"),
 		}, nil
 
+	// A JupyterHub installation: the hub + proxy rolled out (chart-fixed
+	// bare names), THE AUTH GATE (anonymous hub-API read rejected AND a
+	// wrong-password sign-in refused — the chart's open-door default
+	// must be dead), a REAL sign-in with the module-generated shared
+	// password, and THE SPAWN PROOF on every lane — the signed-in
+	// user's server spawns a real jupyter-<username> pod through
+	// KubeSpawner and the hub reports it ready; the proof server and
+	// its runtime home PVC are swept. The behavioral-spawn scenario
+	// (recognized by name) replaces the hub pod UID-verified and proves
+	// a fresh sign-in finds the same account and spawns again — hub
+	// state lives in the database. Destroy treats surviving `claim-*`
+	// user PVCs as DESIGNED and sweeps them.
+	case "kubernetesjupyterhub":
+		return &JupyterHubVerifier{
+			Namespace:     info.Namespace,
+			Name:          info.Name,
+			SpawnUsername: "e2everifier",
+			StateProof:    strings.Contains(manifestPath, "behavioral-spawn"),
+		}, nil
+
+	// An MLflow tracking server: the module-owned Deployment rolled
+	// out, /health answering, THE AUTH GATE (anonymous tracking-API
+	// read rejected + upstream's admin/password1234 default dead), and
+	// THE TRACKING PROOF on every lane — an experiment, a run with a
+	// param + metric, an artifact round-tripped through the server's
+	// own proxy, the run FINISHED. The behavioral-durability scenario
+	// (recognized by name) replaces the server pod UID-verified and
+	// re-reads the experiment, metric and artifact bytes — state lives
+	// in the composed database and object store. Destroy is clean by
+	// design (module-owned manifests, no CRDs).
+	case "kubernetesmlflow":
+		spec := manifestSpecMap(manifestPath)
+		return &MlflowVerifier{
+			Namespace:     info.Namespace,
+			Name:          info.Name,
+			AdminUsername: mlflowAdminUsername(spec),
+			AuthEnabled:   mlflowAuthEnabled(spec),
+			StateProof:    strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
 	// The Apache Spark operator: rollout + both spark.apache.org CRDs
 	// established + THE JOB PROOF on every lane (a verifier-owned
 	// SparkApplication — the in-image SparkPi — runs to Succeeded

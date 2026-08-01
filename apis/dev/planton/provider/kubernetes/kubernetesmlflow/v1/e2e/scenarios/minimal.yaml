@@ -1,0 +1,16 @@
+# The component defaults: sqlite backend on the data PVC, artifacts on
+# their own PVC served through the tracking server, basic auth ON with
+# the module-generated admin password (upstream's open server and its
+# admin/password1234 example never ship). Co-located with the lane
+# fixtures' namespace (create_namespace false). The verifier proves the
+# /health contract, THE AUTH GATE (anonymous read rejected + upstream's
+# default credential dead), and THE TRACKING PROOF — a real experiment,
+# a run with a param + metric, an artifact round-tripped through the
+# server's own proxy, and the run FINISHED.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMlflow
+metadata:
+  name: e2e-mlfw-min
+spec:
+  namespace:
+    value: e2e-mlflow

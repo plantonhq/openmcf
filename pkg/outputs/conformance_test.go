@@ -1309,6 +1309,53 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesJupyterHub: the chart-fixed bare-name contract
+			// (fullnameOverride "" — hub, proxy-public) and the
+			// shared-password credential handle.
+			name: "KubernetesJupyterHub",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesJupyterHub,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "notebooks",
+				"proxy_public_service": "proxy-public",
+				"endpoint":             "http://proxy-public.notebooks.svc.cluster.local:80",
+				"hub_service":          "hub",
+				"shared_password_secret": map[string]interface{}{
+					"name": "notebooks-auth",
+					"key":  "password",
+				},
+				"port_forward_command": "kubectl port-forward svc/proxy-public -n notebooks 8080:80",
+			},
+			mustPopulate: []string{
+				"namespace", "proxy_public_service", "endpoint",
+				"hub_service", "shared_password_secret",
+				"port_forward_command",
+			},
+		},
+		{
+			// KubernetesMlflow: the metadata.name-is-resource-name contract
+			// (module-owned manifests), the tracking endpoint ML clients
+			// point MLFLOW_TRACKING_URI at, the admin credential handle and
+			// the composed backend-URI Secret name.
+			name: "KubernetesMlflow",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesMlflow,
+			rawOutputs: map[string]interface{}{
+				"namespace":         "mlflow",
+				"service":           "experiments",
+				"tracking_endpoint": "http://experiments.mlflow.svc.cluster.local:5000",
+				"admin_password_secret": map[string]interface{}{
+					"name": "experiments-admin-auth",
+					"key":  "password",
+				},
+				"backend_store_uri_secret_name": "experiments-backend-uri",
+				"port_forward_command":          "kubectl port-forward svc/experiments -n mlflow 5000:5000",
+			},
+			mustPopulate: []string{
+				"namespace", "service", "tracking_endpoint",
+				"admin_password_secret", "backend_store_uri_secret_name",
+				"port_forward_command",
+			},
+		},
+		{
 			// KubernetesOtelOperator: the pinned-fullname naming contract —
 			// the release, the webhook Service the API server calls for
 			// admission and CRD conversion, and the cert-manager-issued

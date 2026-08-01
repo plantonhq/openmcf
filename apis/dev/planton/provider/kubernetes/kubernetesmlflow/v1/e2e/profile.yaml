@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetesmlflow
+spec:
+  tier: 3
+  # Forged as module-owned manifests on the OFFICIAL
+  # ghcr.io/mlflow/mlflow image at v3.15.0 (MLflow publishes no served
+  # chart — the distribution ruling is recorded in the research docs):
+  # secured-by-default basic auth (upstream's open server and its
+  # admin/password1234 example never ship), sqlite-PVC or composed-
+  # PostgreSQL backend store (the apply-time URI composition), PVC or
+  # composed-SeaweedFS artifacts served through the server's own proxy,
+  # gc CronJob and ServiceMonitor arms. Offline-validated (39 spec
+  # tests, both engines' plan/preview proofs across minimal and
+  # full-surface shapes with rendered-value spot-checks and leak
+  # greps); awaiting the live lanes.
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

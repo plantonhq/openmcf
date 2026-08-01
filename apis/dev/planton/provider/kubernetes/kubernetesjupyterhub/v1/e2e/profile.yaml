@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetesjupyterhub
+spec:
+  tier: 3
+  # Forged on the official Zero to JupyterHub chart 4.4.0 = JupyterHub
+  # 5.5.0 — secured-by-default sign-in (the chart's open-door default
+  # never ships), sqlite-PVC or composed-KubernetesPostgres hub state
+  # (the existing-secret credential seam), the real spawn story
+  # (KubeSpawner user pods + per-user home PVCs), the packing
+  # user-scheduler and idle culling. Offline-validated (41 spec tests,
+  # both engines' plan/preview proofs across minimal and full-surface
+  # shapes with rendered-value spot-checks and leak greps); awaiting
+  # the live lanes.
+  status: pending_proof
+  validated_provisioners: []
+  # The pre-puller hook pulls the notebook image onto every node INSIDE
+  # the install, and the spawn proof waits for a real user pod — the
+  # budget covers that cold start on the shared cluster, serial lanes
+  # only.
+  timeout_minutes: 30

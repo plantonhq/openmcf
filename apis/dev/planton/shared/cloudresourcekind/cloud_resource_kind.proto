@@ -3318,6 +3318,31 @@ enum CloudResourceKind {
     id_prefix: "k8sflnkd"
     prerequisites: [KubernetesFlinkOperator]
   }];
+  // KubernetesPostgres is a prerequisite because JupyterHub's hub database
+  // composes a KubernetesPostgres in its external-database arm (the spec's
+  // FK defaults resolve onto its outputs) and the hub pod mounts that
+  // database's credential Secret before it can start.
+  KubernetesJupyterHub = 936 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sjhub"
+    prerequisites: [KubernetesPostgres]
+  }];
+  // KubernetesPostgres is a prerequisite because MLflow's backend store
+  // composes a KubernetesPostgres in its production arm (FK defaults onto
+  // its outputs; the module composes the connection URI from its credential
+  // Secret), and KubernetesSeaweedFs because the artifact store's
+  // S3-compatible arm FK-defaults onto the SeaweedFS endpoint and
+  // credential Secret.
+  KubernetesMlflow = 937 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8smlflw"
+    prerequisites: [
+      KubernetesPostgres,
+      KubernetesSeaweedFs
+    ]
+  }];
   // 950–969: Kubernetes GitOps and CI/CD
   KubernetesArgocd = 950 [(kind_meta) = {
     provider: kubernetes

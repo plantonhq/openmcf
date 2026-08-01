@@ -1,0 +1,3 @@
+name: kubernetes-mlflow
+runtime: go
+description: MLflow tracking server and model registry from the official image with module-rendered manifests, secured-by-default basic auth, external-database and object-store artifact composition, and garbage-collection scheduling

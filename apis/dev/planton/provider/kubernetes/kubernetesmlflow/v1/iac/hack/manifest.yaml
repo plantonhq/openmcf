@@ -1,0 +1,65 @@
+# Full-surface shape: the external-PostgreSQL backend store, the
+# S3-compatible artifact store (SeaweedFS-shaped), secured basic auth
+# with a private-by-default permission posture, garbage collection,
+# metrics with a ServiceMonitor, scheduling and the env/args escape
+# hatches — the offline plan/preview proof for the widest typed
+# rendering.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesMlflow
+metadata:
+  name: mlflow-full
+spec:
+  namespace:
+    value: mlflow-full
+  createNamespace: true
+  server:
+    replicas: 2
+    workers: 8
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        memory: 2Gi
+  backendStore:
+    postgres:
+      host:
+        value: mlflow-pg-rw
+      port: 5432
+      databaseName: mlflow
+      username: mlflow
+      passwordSecret:
+        secretName:
+          value: mlflow-pg-app
+        secretKey: password
+  artifactStore:
+    s3Compatible:
+      endpoint:
+        value: http://artifacts-s3.mlflow-full.svc.cluster.local:8333
+      bucket: mlflow-artifacts
+      prefix: runs
+      credentialsSecret:
+        secretName:
+          value: artifacts-s3-secret
+        accessKeyIdKey: admin_access_key_id
+        secretAccessKeyKey: admin_secret_access_key
+  auth:
+    enabled: true
+    adminUsername: mlops
+    defaultPermission: NO_PERMISSIONS
+  gc:
+    enabled: true
+    schedule: "30 2 * * 0"
+    olderThan: 72h
+  service:
+    type: ClusterIP
+  metrics:
+    enabled: true
+    serviceMonitorEnabled: true
+  scheduling:
+    nodeSelector:
+      workload: ml
+  extraEnv:
+    MLFLOW_HTTP_REQUEST_TIMEOUT: "120"
+  extraArgs:
+    - --gunicorn-opts=--timeout 120
