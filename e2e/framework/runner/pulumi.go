@@ -35,8 +35,12 @@ func PulumiDeploy(moduleDir, stackName, backendURL, stackInputFilePath string) (
 }
 
 // PulumiDestroy runs `pulumi destroy` for the given module directory and stack.
+// --run-program keeps the program available so BeforeDelete/AfterDelete
+// resource hooks fire (e.g. Kyverno's webhook-GC sentinel). Without it,
+// delete hooks are silently skipped and destroy can leave cluster-scoped
+// residue the module intended to clean up.
 func PulumiDestroy(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
-	args := []string{"destroy", "--stack", stackName, "--yes", "--non-interactive"}
+	args := []string{"destroy", "--stack", stackName, "--yes", "--non-interactive", "--run-program"}
 	return runPulumi(moduleDir, backendURL, stackInputFilePath, "", args)
 }
 

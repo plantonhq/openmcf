@@ -20,17 +20,17 @@
       "name": "Tier 2 Pulumi",
       "tier": 2,
       "engine": "pulumi",
-      "timeout": 375,
-      "run_regex": "Test(KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesLocust|KubernetesLoki|KubernetesNats|KubernetesNeo4j|KubernetesQdrant|KubernetesSeaweedFs|KubernetesTempo|KubernetesTemporal)_Pulumi",
-      "component_count": 12
+      "timeout": 435,
+      "run_regex": "Test(KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesGatekeeper|KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesKyverno|KubernetesLocust|KubernetesLoki|KubernetesNats|KubernetesNeo4j|KubernetesQdrant|KubernetesSeaweedFs|KubernetesTempo|KubernetesTemporal)_Pulumi",
+      "component_count": 14
     },
     {
       "name": "Tier 2 Terraform",
       "tier": 2,
       "engine": "terraform",
-      "timeout": 375,
-      "run_regex": "Test(KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesLocust|KubernetesLoki|KubernetesNats|KubernetesNeo4j|KubernetesQdrant|KubernetesSeaweedFs|KubernetesTempo|KubernetesTemporal)_Terraform",
-      "component_count": 12
+      "timeout": 435,
+      "run_regex": "Test(KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesGatekeeper|KubernetesGrafana|KubernetesKubePrometheusStack|KubernetesKyverno|KubernetesLocust|KubernetesLoki|KubernetesNats|KubernetesNeo4j|KubernetesQdrant|KubernetesSeaweedFs|KubernetesTempo|KubernetesTemporal)_Terraform",
+      "component_count": 14
     },
     {
       "name": "Tier 3 Pulumi",

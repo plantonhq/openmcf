@@ -9,10 +9,15 @@
 #
 # WEBHOOK LIFECYCLE: the chart templates NO webhook configurations — the
 # admission controller REGISTERS them at runtime and the chart's
-# pre-delete cleanup hook removes them at uninstall (webhooksCleanup,
-# rendered explicitly). A release force-deleted without the hook strands
-# kyverno-* webhook configurations whose backing service is gone; the
-# spec's top-level comment carries the manual unstick command.
+# pre-delete cleanup hook is supposed to remove them at uninstall
+# (webhooksCleanup, rendered explicitly). At the pinned chart the hook's
+# delete-webhooks helper deletes ValidatingAdmissionPolicies instead of
+# ValidatingWebhookConfigurations (upstream kyverno/kyverno#16492), so
+# validating configs survive helm uninstall. The module-owned ConfigMap
+# below runs the label-selected kubectl delete AFTER the release is
+# gone — belt-and-suspenders until upstream ships a fixed
+# readiness-checker. The spec's top-level comment still carries the
+# manual unstick command for force-deleted releases.
 #
 # CRD LIFECYCLE: the policy CRDs are chart-TEMPLATED via the crds
 # subchart — installed and DELETED with the release unless
@@ -29,6 +34,34 @@ resource "kubernetes_namespace_v1" "kyverno" {
     name   = local.namespace
     labels = local.labels
   }
+}
+
+# Destroy-ordered sentinel: helm_release depends on this ConfigMap, so
+# destroy tears the release down FIRST and then runs the provisioner —
+# after the admission pods are gone, so they cannot re-register the
+# webhooks the chart's broken delete-webhooks helper left behind.
+resource "kubernetes_config_map_v1" "webhook_gc" {
+  metadata {
+    name      = local.webhook_gc_config_map_name
+    namespace = local.namespace
+    labels    = local.labels
+  }
+
+  data = {
+    purpose = "kyverno-webhook-gc"
+  }
+
+  provisioner "local-exec" {
+    when = destroy
+    # Destroy-time provisioners cannot interpolate getenv()/other
+    # resources — only self/count/each — so the kubeconfig is resolved
+    # by the shell from the tofu process environment (KUBECONFIG, or
+    # KUBE_CONFIG_PATH which the Terraform Kubernetes provider uses).
+    # $$ escapes so Terraform leaves the shell expansions alone.
+    command = "KUBECONFIG=\"$${KUBECONFIG:-$${KUBE_CONFIG_PATH}}\" kubectl delete validatingwebhookconfiguration,mutatingwebhookconfiguration -l webhook.kyverno.io/managed-by=kyverno --ignore-not-found=true"
+  }
+
+  depends_on = [kubernetes_namespace_v1.kyverno]
 }
 
 resource "helm_release" "kyverno" {
@@ -64,5 +97,6 @@ resource "helm_release" "kyverno" {
 
   depends_on = [
     kubernetes_namespace_v1.kyverno,
+    kubernetes_config_map_v1.webhook_gc,
   ]
 }

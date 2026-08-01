@@ -433,7 +433,10 @@ message KubernetesGatekeeperHooks {
    * Gatekeeper exemption + Pod Security Standards labels. Empty =
    * true (the chart default). LEAVE IT ON unless the namespace is
    * label-managed externally — without the ignore label Gatekeeper
-   * polices its own pods and can deadlock itself.
+   * polices its own pods and can deadlock itself. When the module
+   * creates the namespace (create_namespace), it also DECLARES the
+   * exemption label on the namespace object itself so day-2 applies
+   * never strip what the hook stamped.
    */
   optional bool label_namespace = 1 [(dev.planton.shared.options.default) = "true"];
 
@@ -458,7 +461,10 @@ message KubernetesGatekeeperHooks {
    * configurations before the release objects go. Empty = false (the
    * chart default — the chart-owned webhook configurations already
    * delete with the release; enable for URL-mode webhooks or
-   * belt-and-suspenders teardown ordering).
+   * belt-and-suspenders teardown ordering). The modules render the
+   * hook's service-account name alongside the toggle — the chart's
+   * own RBAC binding for this job requires it (enabling the raw chart
+   * value alone fails at uninstall).
    */
   bool delete_webhook_configurations_on_uninstall = 4;
 }

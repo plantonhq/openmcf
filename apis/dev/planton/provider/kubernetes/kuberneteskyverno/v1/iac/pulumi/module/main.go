@@ -16,10 +16,14 @@ import (
 //
 // WEBHOOK LIFECYCLE: the chart templates NO webhook configurations — the
 // admission controller REGISTERS them at runtime and the chart's
-// pre-delete cleanup hook removes them at uninstall (webhooksCleanup,
-// rendered explicitly). A release force-deleted without the hook strands
-// kyverno-* webhook configurations whose backing service is gone; the
-// spec's top-level comment carries the manual unstick command.
+// pre-delete cleanup hook is supposed to remove them at uninstall
+// (webhooksCleanup, rendered explicitly). At the pinned chart the hook's
+// delete-webhooks helper deletes ValidatingAdmissionPolicies instead of
+// ValidatingWebhookConfigurations (upstream kyverno/kyverno#16492), so
+// validating configs survive helm uninstall. The module-owned ConfigMap
+// (webhook_gc.go) runs the label-selected kubectl delete AFTER the
+// release is gone. The spec's top-level comment still carries the
+// manual unstick command for force-deleted releases.
 //
 // CRD LIFECYCLE: the policy CRDs are chart-TEMPLATED via the crds
 // subchart — installed and DELETED with the release unless
@@ -44,9 +48,20 @@ func Resources(ctx *pulumi.Context, stackInput *kuberneteskyvernov1.KubernetesKy
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	var releaseDeps []pulumi.ResourceOption
+	var gcDeps []pulumi.Resource
 	if createdNamespace != nil {
-		releaseDeps = append(releaseDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+		gcDeps = append(gcDeps, createdNamespace)
+	}
+
+	// ------------------------------ webhook-GC sentinel -------------------
+	webhookGC, err := webhookGCConfigMap(ctx, locals, kubernetesProvider, gcDeps)
+	if err != nil {
+		return errors.Wrap(err, "failed to create kyverno webhook-gc sentinel")
+	}
+
+	releaseDeps := []pulumi.Resource{webhookGC}
+	if createdNamespace != nil {
+		releaseDeps = append(releaseDeps, createdNamespace)
 	}
 
 	// ------------------------------ helm release --------------------------
@@ -78,9 +93,10 @@ func Resources(ctx *pulumi.Context, stackInput *kuberneteskyvernov1.KubernetesKy
 		Timeout:       pulumi.Int(600),
 	}
 
-	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, releaseDeps...)
-
-	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, releaseArgs, opts...)
+	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, releaseArgs,
+		pulumi.Provider(kubernetesProvider),
+		pulumi.DependsOn(releaseDeps),
+	)
 	if err != nil {
 		return errors.Wrap(err, "failed to install kyverno helm release")
 	}

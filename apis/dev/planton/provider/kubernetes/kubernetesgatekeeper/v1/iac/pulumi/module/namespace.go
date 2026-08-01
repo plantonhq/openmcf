@@ -11,10 +11,16 @@ import (
 // namespace conditionally creates the installation namespace based on the
 // create_namespace flag. Returns the created namespace resource (or nil
 // when create_namespace is false). Terraform equivalent:
-// kubernetes_namespace_v1 with count. The Gatekeeper exemption + PSS
-// labels are applied by the CHART's post-install hook (hooks
-// .label_namespace), not here — the module stamps only the Planton
-// governance labels.
+// kubernetes_namespace_v1 with count.
+//
+// The self-management exemption label must be DECLARED here, not left to
+// the chart's post-install label_namespace hook: the hook stamps it onto
+// a namespace this module owns, so an undeclared label is permanent
+// config↔live drift — every later apply would STRIP the exemption and
+// let Gatekeeper police its own namespace (fail-closed via the
+// label-guard check webhook). Rendered whenever the hook is enabled
+// (empty = the chart default, true), matching what the hook itself
+// would stamp. Terraform twin: locals.namespace_labels.
 func namespace(ctx *pulumi.Context,
 	stackInput *kubernetesgatekeeperv1.KubernetesGatekeeperStackInput,
 	locals *Locals,
@@ -24,13 +30,22 @@ func namespace(ctx *pulumi.Context,
 		return nil, nil
 	}
 
+	namespaceLabels := make(map[string]string, len(locals.Labels)+1)
+	for k, v := range locals.Labels {
+		namespaceLabels[k] = v
+	}
+	hooks := stackInput.Target.Spec.GetHooks()
+	if hooks == nil || hooks.LabelNamespace == nil || hooks.GetLabelNamespace() {
+		namespaceLabels["admission.gatekeeper.sh/ignore"] = "no-self-managing"
+	}
+
 	createdNamespace, err := kubernetescorev1.NewNamespace(ctx,
 		locals.Namespace,
 		&kubernetescorev1.NamespaceArgs{
 			Metadata: kubernetesmeta.ObjectMetaPtrInput(
 				&kubernetesmeta.ObjectMetaArgs{
 					Name:   pulumi.String(locals.Namespace),
-					Labels: pulumi.ToStringMap(locals.Labels),
+					Labels: pulumi.ToStringMap(namespaceLabels),
 				}),
 		}, pulumi.Provider(kubernetesProvider))
 	if err != nil {

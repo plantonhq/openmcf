@@ -45,6 +45,11 @@ type Locals struct {
 	// (chart-truth: the config configMapName helper). Exported — the
 	// object to inspect when a resource is unexpectedly skipped.
 	ConfigMapName string
+
+	// WebhookGCConfigMapName is the module-owned destroy sentinel
+	// ("<name>-webhook-gc") that runs label-selected webhook cleanup
+	// after the helm release is gone. Distinct from ConfigMapName.
+	WebhookGCConfigMapName string
 }
 
 // initializeLocals extracts and transforms spec fields into module-local
@@ -86,12 +91,13 @@ func initializeLocals(_ *pulumi.Context, stackInput *kuberneteskyvernov1.Kuberne
 	}
 
 	return &Locals{
-		Spec:                 spec,
-		Labels:               labels,
-		Namespace:            spec.Namespace.GetValue(),
-		ReleaseName:          target.Metadata.Name,
-		ChartVersion:         chartVersion,
-		AdmissionServiceName: target.Metadata.Name + "-svc",
-		ConfigMapName:        target.Metadata.Name,
+		Spec:                   spec,
+		Labels:                 labels,
+		Namespace:              spec.Namespace.GetValue(),
+		ReleaseName:            target.Metadata.Name,
+		ChartVersion:           chartVersion,
+		AdmissionServiceName:   target.Metadata.Name + "-svc",
+		ConfigMapName:          target.Metadata.Name,
+		WebhookGCConfigMapName: target.Metadata.Name + "-webhook-gc",
 	}, nil
 }

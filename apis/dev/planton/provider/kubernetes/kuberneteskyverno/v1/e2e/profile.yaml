@@ -4,6 +4,6 @@ metadata:
   name: kuberneteskyverno
 spec:
   tier: 2
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 25

@@ -27,6 +27,9 @@ locals {
   # admission-controller serviceName and config configMapName helpers.
   admission_service_name = "${var.metadata.name}-svc"
   config_map_name        = var.metadata.name
+  # Module-owned sentinel that runs webhook GC on destroy (see main.tf).
+  # Distinct from the chart's runtime ConfigMap (the fullname itself).
+  webhook_gc_config_map_name = "${var.metadata.name}-webhook-gc"
 
   # Planton governance labels for the module-created namespace (never
   # injected into the chart's own resources; Helm owns those).

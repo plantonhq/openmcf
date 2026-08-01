@@ -24,12 +24,15 @@ Not the right component when:
 
 The chart templates NO webhook configurations. The admission
 controller REGISTERS them at runtime and keeps them scoped to the
-installed policies. Uninstall removes them through the chart's
-pre-delete cleanup hook (on by default — leave it on): a release
-force-deleted without the hook strands `kyverno-*` webhook
-configurations whose backing service is gone, and since policy rules
-default to fail-CLOSED, everything they match stops admitting until
-they are deleted by hand.
+installed policies. Uninstall runs the chart's pre-delete cleanup
+hook (on by default — leave it on) and a module-owned cleanup that
+deletes `kyverno-*` webhook configurations by label after the release
+is gone — needed because the chart helper at the pinned Kyverno
+release does not reliably remove validating webhook configurations.
+A release force-deleted without either path strands those configs
+with no backing service, and since policy rules default to
+fail-CLOSED, everything they match stops admitting until they are
+deleted by hand.
 
 ## CRDs and destroy
 

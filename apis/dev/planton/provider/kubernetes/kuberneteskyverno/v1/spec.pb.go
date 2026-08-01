@@ -43,10 +43,14 @@ const (
 // REGISTERS its ValidatingWebhookConfigurations /
 // MutatingWebhookConfigurations at runtime (and keeps them updated per
 // installed policies — the autoUpdateWebhooks feature). Uninstall
-// relies on the chart's pre-delete cleanup hook to remove them; if a
-// release is force-deleted without the hook running, webhook
-// configurations named `kyverno-*` can strand and must be deleted by
-// hand (`kubectl delete validatingwebhookconfiguration,mutatingwebhookconfiguration -l webhook.kyverno.io/managed-by=kyverno`).
+// runs the chart's pre-delete cleanup hook AND a module-owned
+// post-release cleanup (the chart's delete-webhooks helper at the
+// pinned Kyverno release deletes the wrong API — ValidatingAdmissionPolicies
+// instead of ValidatingWebhookConfigurations — so validating configs
+// would otherwise survive helm uninstall). If a release is force-deleted
+// without either path, webhook configurations named `kyverno-*` can
+// strand and must be deleted by hand
+// (`kubectl delete validatingwebhookconfiguration,mutatingwebhookconfiguration -l webhook.kyverno.io/managed-by=kyverno`).
 // Kyverno's own resource webhooks default to failurePolicy=Fail per
 // policy rule, so a stranded webhook with no backing service can block
 // admission for the resources it matches.
@@ -132,13 +136,15 @@ type KubernetesKyvernoSpec struct {
 	// controllers and hook jobs (the chart's global list).
 	ImagePullSecrets []string `protobuf:"bytes,14,rep,name=image_pull_secrets,json=imagePullSecrets,proto3" json:"image_pull_secrets,omitempty"`
 	// *
-	// Run the chart's pre-delete hook that removes the
-	// runtime-registered webhook configurations at uninstall. Empty =
-	// true (the chart default) — LEAVE IT ON: without it, uninstall
-	// strands `kyverno-*` webhook configurations whose backing service
-	// is gone, and any resource they match with failurePolicy=Fail is
-	// blocked from admission cluster-wide until they are deleted by
-	// hand.
+	// Run the chart's pre-delete hook that scales controllers to zero
+	// and attempts to remove the runtime-registered webhook
+	// configurations at uninstall. Empty = true (the chart default) —
+	// LEAVE IT ON. The module also deletes `kyverno-*` webhook
+	// configurations by label after the release is gone (the chart
+	// helper alone is not sufficient at the pinned release); turning
+	// this off skips only the chart's scale-to-zero step and is almost
+	// never what you want. Force-deleted releases still need the manual
+	// unstick on the kind's top-level comment.
 	WebhooksCleanupEnabled *bool `protobuf:"varint,15,opt,name=webhooks_cleanup_enabled,json=webhooksCleanupEnabled,proto3,oneof" json:"webhooks_cleanup_enabled,omitempty"`
 	// *
 	// Escape hatch: additional chart values as a YAML document, merged

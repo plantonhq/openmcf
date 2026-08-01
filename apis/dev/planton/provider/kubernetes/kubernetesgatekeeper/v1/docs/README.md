@@ -31,6 +31,31 @@ is typed separately because its default (`Fail`) intentionally
 differs from the policy webhook's (`Ignore`) — collapsing them into
 one field would force a false choice.
 
+## Namespace-label ownership (chart-truth at the pin)
+
+The chart's post-install `label_namespace` hook stamps the
+self-management exemption label (`admission.gatekeeper.sh/ignore`)
+plus Pod Security Standards labels onto the install namespace. When
+the module CREATES that namespace, it must also DECLARE the exemption
+label in its own config: an undeclared hook-stamped label is permanent
+config↔live drift, and a day-2 apply would strip the exemption and
+let Gatekeeper police its own namespace. Both modules render it
+whenever the hook is enabled. (The PSS labels never drift: the
+Terraform provider filters `*.kubernetes.io/*` keys as internal on
+read, and the Pulumi provider's server-side apply only manages
+declared fields.)
+
+## The pre-uninstall cleanup arm needs an extra key (chart-truth at the pin)
+
+The `preUninstall.deleteWebhookConfigurations` hook's
+ClusterRoleBinding renders its subject from
+`.Values.preUninstall.deleteWebhookConfigurations.name` — a key the
+chart's own values never define (the SA name lives under
+`.serviceAccount.name`). Enabling the arm with only `enabled: true`
+therefore fails EVERY uninstall on the binding's empty subject and
+wedges the release. Both modules render the missing key (set to the
+chart's SA-name default) alongside the toggle.
+
 ## The external-cert asymmetry (chart-truth at the pin)
 
 With `externalCertInjection.enabled`, the audit deployment's

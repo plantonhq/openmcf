@@ -176,9 +176,18 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 			}
 		}
 		if hooks.GetDeleteWebhookConfigurationsOnUninstall() {
+			// The extra "name" key works around a chart bug at the 3.23.0
+			// pin: the hook's ClusterRoleBinding subject renders
+			// .Values.preUninstall.deleteWebhookConfigurations.name — a key
+			// that does not exist in the chart's own values (the SA name
+			// lives under .serviceAccount.name) — so enabling the arm
+			// without it fails every uninstall on the CRB's empty subject.
+			// Value = the chart's SA-name default. Terraform twin renders
+			// it identically.
 			values["preUninstall"] = map[string]interface{}{
 				"deleteWebhookConfigurations": map[string]interface{}{
 					"enabled": true,
+					"name":    "gatekeeper-delete-webhook-configs",
 				},
 			}
 		}
@@ -190,8 +199,12 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 	// the hook containers. The typed override maps repo/tag onto
 	// repository/release; the crdRepository and curl hook images ride
 	// helm_values for full air-gap installs (the spec comment teaches
-	// it).
-	if img := spec.GetImage(); img != nil && (img.GetRepo() != "" || img.GetTag() != "") {
+	// it). Each key renders independently: pull_secret_name alone is a
+	// legal shape (authenticated pulls of the DEFAULT image, e.g. Docker
+	// Hub rate-limit credentials) and must render image.pullSecrets even
+	// with repo/tag unset — the Terraform twin prunes per key the same
+	// way.
+	if img := spec.GetImage(); img != nil && (img.GetRepo() != "" || img.GetTag() != "" || img.GetPullSecretName() != "") {
 		image := map[string]interface{}{}
 		if img.GetRepo() != "" {
 			image["repository"] = img.GetRepo()

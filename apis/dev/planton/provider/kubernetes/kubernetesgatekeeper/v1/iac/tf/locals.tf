@@ -32,9 +32,7 @@ locals {
   webhook_cert_secret_name = "gatekeeper-webhook-server-cert"
 
   # Planton governance labels for the module-created namespace (never
-  # injected into the chart's own resources; Helm owns those). The
-  # Gatekeeper exemption + PSS labels are applied by the CHART's
-  # post-install hook, not here.
+  # injected into the chart's own resources; Helm owns those).
   labels = merge(
     {
       "planton.ai/resource"      = "true"
@@ -44,6 +42,20 @@ locals {
     try(var.metadata.id, "") != "" ? { "planton.ai/resource-id" = var.metadata.id } : {},
     try(var.metadata.org, "") != "" ? { "planton.ai/organization" = var.metadata.org } : {},
     try(var.metadata.env, "") != "" ? { "planton.ai/environment" = var.metadata.env } : {}
+  )
+
+  # The self-management exemption label on the module-created namespace
+  # must be DECLARED here, not left to the chart's post-install
+  # label_namespace hook: the hook stamps it onto a namespace this module
+  # owns, so an undeclared label is permanent config↔live drift — every
+  # later apply would STRIP the exemption and let Gatekeeper police its
+  # own namespace (fail-closed via the label-guard check webhook).
+  # Rendered whenever the hook is enabled (empty = the chart default,
+  # true), matching what the hook itself would stamp.
+  label_namespace_enabled = try(var.spec.hooks.label_namespace, null) == null ? true : var.spec.hooks.label_namespace
+  namespace_labels = merge(
+    local.labels,
+    local.label_namespace_enabled ? { "admission.gatekeeper.sh/ignore" = "no-self-managing" } : {}
   )
 
   # ---- shared renderers -----------------------------------------------------------
@@ -132,7 +144,10 @@ locals {
   # The chart's image keys are repository + RELEASE (the tag key is named
   # "release" — chart-truth) with a separate crdRepository for the hook
   # containers; crdRepository and the curl hook image ride helm_values
-  # for full air-gap installs (the spec comment teaches it).
+  # for full air-gap installs (the spec comment teaches it). Each key
+  # renders independently: pull_secret_name alone is a legal shape
+  # (authenticated pulls of the DEFAULT image, e.g. Docker Hub
+  # rate-limit credentials) — the Pulumi twin renders it the same way.
   image_block = {
     for k, v in {
       repository  = try(var.spec.image.repo, "") != "" ? var.spec.image.repo : null
@@ -184,8 +199,15 @@ locals {
     # lifecycle hooks
     length(local.post_install_block) > 0 ? { postInstall = local.post_install_block } : {},
     try(var.spec.hooks.upgrade_crds, null) != null ? { upgradeCRDs = { enabled = var.spec.hooks.upgrade_crds } } : {},
+    # The extra `name` key works around a chart bug at the 3.23.0 pin:
+    # the hook's ClusterRoleBinding subject renders
+    # .Values.preUninstall.deleteWebhookConfigurations.name — a key that
+    # does not exist in the chart's own values (the SA name lives under
+    # .serviceAccount.name) — so enabling the arm without it fails every
+    # uninstall on the CRB's empty subject. Value = the chart's SA-name
+    # default. Pulumi twin renders it identically.
     try(var.spec.hooks.delete_webhook_configurations_on_uninstall, false) ? {
-      preUninstall = { deleteWebhookConfigurations = { enabled = true } }
+      preUninstall = { deleteWebhookConfigurations = { enabled = true, name = "gatekeeper-delete-webhook-configs" } }
     } : {},
 
     # image override

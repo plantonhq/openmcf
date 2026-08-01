@@ -32,11 +32,22 @@ characters and both engines fail loudly past it.
 
 The chart templates no webhook configurations; the admission
 controller registers and maintains them at runtime, scoped to the
-installed policies (autoUpdateWebhooks). Uninstall depends on the
-chart's pre-delete hook (`webhooks_cleanup_enabled`, default on). The
-default per-rule failure policy is Fail — a stranded webhook blocks
-matched admissions cluster-wide, which is why the hook toggle carries
-the warning and the unstick command lives on the spec's top comment.
+installed policies (autoUpdateWebhooks). Uninstall runs the chart's
+pre-delete hook (`webhooks_cleanup_enabled`, default on) AND a
+module-owned cleanup: a destroy-ordered sentinel ConfigMap the release
+depends on, whose delete (after the release — and the admission pods —
+are gone) removes `kyverno-*` webhook configurations by label. The
+module cleanup is load-bearing, not belt-and-suspenders: at the pinned
+release the chart hook's delete-webhooks helper targets the wrong API
+group and leaves every ValidatingWebhookConfiguration behind, and pods
+still dying can re-register webhooks the hook did delete. The default
+per-rule failure policy is Fail — a stranded webhook blocks matched
+admissions cluster-wide, which is why the hook toggle carries the
+warning and the unstick command lives on the spec's top comment. The
+Terraform cleanup is a destroy-time provisioner (kubectl on the runner,
+kubeconfig from the process environment); the Pulumi twin is a
+BeforeDelete resource hook, which fires only when destroy runs with
+`--run-program` (both Planton runners pass it).
 
 ## Config semantics
 

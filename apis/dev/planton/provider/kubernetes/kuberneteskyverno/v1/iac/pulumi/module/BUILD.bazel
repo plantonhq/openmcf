@@ -10,6 +10,7 @@ go_library(
         "outputs.go",
         "values.go",
         "vars.go",
+        "webhook_gc.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskyverno/v1/iac/pulumi/module",
     visibility = ["//visibility:public"],

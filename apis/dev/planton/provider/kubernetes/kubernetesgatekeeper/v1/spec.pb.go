@@ -827,7 +827,10 @@ type KubernetesGatekeeperHooks struct {
 	// Gatekeeper exemption + Pod Security Standards labels. Empty =
 	// true (the chart default). LEAVE IT ON unless the namespace is
 	// label-managed externally — without the ignore label Gatekeeper
-	// polices its own pods and can deadlock itself.
+	// polices its own pods and can deadlock itself. When the module
+	// creates the namespace (create_namespace), it also DECLARES the
+	// exemption label on the namespace object itself so day-2 applies
+	// never strip what the hook stamped.
 	LabelNamespace *bool `protobuf:"varint,1,opt,name=label_namespace,json=labelNamespace,proto3,oneof" json:"label_namespace,omitempty"`
 	// *
 	// Post-install probe job (curl) that waits until the webhook
@@ -846,7 +849,10 @@ type KubernetesGatekeeperHooks struct {
 	// configurations before the release objects go. Empty = false (the
 	// chart default — the chart-owned webhook configurations already
 	// delete with the release; enable for URL-mode webhooks or
-	// belt-and-suspenders teardown ordering).
+	// belt-and-suspenders teardown ordering). The modules render the
+	// hook's service-account name alongside the toggle — the chart's
+	// own RBAC binding for this job requires it (enabling the raw chart
+	// value alone fails at uninstall).
 	DeleteWebhookConfigurationsOnUninstall bool `protobuf:"varint,4,opt,name=delete_webhook_configurations_on_uninstall,json=deleteWebhookConfigurationsOnUninstall,proto3" json:"delete_webhook_configurations_on_uninstall,omitempty"`
 	unknownFields                          protoimpl.UnknownFields
 	sizeCache                              protoimpl.SizeCache

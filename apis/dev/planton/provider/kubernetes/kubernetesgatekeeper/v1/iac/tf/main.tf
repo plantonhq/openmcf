@@ -19,13 +19,15 @@
 # templates are deleted.
 
 # The optional installation namespace. Created before the release; deleted
-# with the resource.
+# with the resource. Carries the self-management exemption label the
+# chart's label_namespace hook would otherwise stamp undeclared — see
+# locals.namespace_labels for why the module must own it.
 resource "kubernetes_namespace_v1" "gatekeeper" {
   count = var.spec.create_namespace ? 1 : 0
 
   metadata {
     name   = local.namespace
-    labels = local.labels
+    labels = local.namespace_labels
   }
 }
 
