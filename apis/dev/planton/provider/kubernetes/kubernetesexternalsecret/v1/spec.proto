@@ -105,7 +105,8 @@ message KubernetesExternalSecretStoreRef {
   dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesSecretStore,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.store_name"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.store_name",
+    (dev.planton.shared.options.diagram_label) = "reads from"
   ];
 
   /**

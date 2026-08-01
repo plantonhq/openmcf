@@ -1515,11 +1515,11 @@ const file_dev_planton_provider_kubernetes_kubernetescertificate_v1_spec_proto_r
 	"\x06issuer\x18\x02 \x01(\v2b.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateNamespacedIssuerRefH\x00R\x06issuer\x12~\n" +
 	"\bexternal\x18\x03 \x01(\v2`.dev.planton.provider.kubernetes.kubernetescertificate.v1.KubernetesCertificateExternalIssuerRefH\x00R\bexternal:\xe3\x02\xbaH\xdf\x02\x1a\xdc\x02\n" +
 	"\x17issuer_ref.one_required\x12\xe5\x01An issuer reference is required — choose 'cluster_issuer' (cluster-scoped, serves any namespace), 'issuer' (namespace-scoped, same namespace as the certificate), or 'external' for a third-party issuer kind (e.g. AWS Private CA)\x1aY[has(this.cluster_issuer), has(this.issuer), has(this.external)].filter(x, x).size() == 1B\r\n" +
-	"\vissuer_type\"\xa2\x01\n" +
-	"%KubernetesCertificateClusterIssuerRef\x12y\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xbf\x06\x92\xd4a\"status.outputs.cluster_issuer_nameR\x04name\"\x9d\x01\n" +
-	"(KubernetesCertificateNamespacedIssuerRef\x12q\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xc0\x06\x92\xd4a\x1astatus.outputs.issuer_nameR\x04name\"~\n" +
+	"\vissuer_type\"\xb0\x01\n" +
+	"%KubernetesCertificateClusterIssuerRef\x12\x86\x01\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB>\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tissued by\x88\xd4a\xbf\x06\x92\xd4a\"status.outputs.cluster_issuer_nameR\x04name\"\xaa\x01\n" +
+	"(KubernetesCertificateNamespacedIssuerRef\x12~\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB6\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\tissued by\x88\xd4a\xc0\x06\x92\xd4a\x1astatus.outputs.issuer_nameR\x04name\"~\n" +
 	"&KubernetesCertificateExternalIssuerRef\x12\x1c\n" +
 	"\x05group\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05group\x12\x1a\n" +
 	"\x04kind\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04kind\x12\x1a\n" +

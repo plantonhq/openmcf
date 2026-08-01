@@ -253,6 +253,9 @@ type KubernetesKarapaceKafka struct {
 	// Bootstrap address of the Kafka cluster, as host:port. Accepts a
 	// literal address or a reference to a KubernetesKafka resource,
 	// which resolves to its in-cluster bootstrap endpoint.
+	//
+	// containment_exempt: the registry SERVES SCHEMAS FOR this
+	// cluster; it is not deployed inside it.
 	BootstrapServers *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=bootstrap_servers,json=bootstrapServers,proto3" json:"bootstrap_servers,omitempty"`
 	// *
 	// Kafka security protocol: "PLAINTEXT" (default), "SSL",
@@ -338,6 +341,9 @@ type KubernetesKarapaceKafkaTls struct {
 	// a literal Secret name or a reference to a KubernetesKafka
 	// resource, which resolves to that cluster's CA certificate
 	// Secret.
+	//
+	// containment_exempt: trust material fetched FROM the cluster —
+	// access, never placement.
 	CaSecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=ca_secret_name,json=caSecretName,proto3" json:"ca_secret_name,omitempty"`
 	// *
 	// The CA certificate's key within the Secret. Strimzi cluster CA
@@ -1050,9 +1056,9 @@ const file_dev_planton_provider_kubernetes_kuberneteskarapace_v1_spec_proto_rawD
 	"\t_replicasB\a\n" +
 	"\x05_portB\f\n" +
 	"\n" +
-	"_log_level\"\xcf\v\n" +
-	"\x17KubernetesKarapaceKafka\x12\x9a\x01\n" +
-	"\x11bootstrap_servers\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpointR\x10bootstrapServers\x12\x80\x02\n" +
+	"_log_level\"\xea\v\n" +
+	"\x17KubernetesKarapaceKafka\x12\xb5\x01\n" +
+	"\x11bootstrap_servers\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBT\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x13schema registry for\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpoint\x98\xd4a\x01R\x10bootstrapServers\x12\x80\x02\n" +
 	"\x11security_protocol\x18\x02 \x01(\tB\xcd\x01\xbaH\xbc\x01\xba\x01\xb8\x01\n" +
 	"!spec.kafka.security_protocol_enum\x12Isecurity_protocol must be one of PLAINTEXT, SSL, SASL_PLAINTEXT, SASL_SSL\x1aHthis == '' || this in ['PLAINTEXT', 'SSL', 'SASL_PLAINTEXT', 'SASL_SSL']\x8a\xa6\x1d\tPLAINTEXTH\x00R\x10securityProtocol\x88\x01\x01\x12c\n" +
 	"\x03tls\x18\x03 \x01(\v2Q.dev.planton.provider.kubernetes.kuberneteskarapace.v1.KubernetesKarapaceKafkaTlsR\x03tls\x12f\n" +
@@ -1060,9 +1066,9 @@ const file_dev_planton_provider_kubernetes_kuberneteskarapace_v1_spec_proto_rawD
 	"\x1bspec.kafka.ssl_requires_tls\x12VSSL and SASL_SSL security protocols require the tls block (at minimum the CA to trust)\x1a`!(has(this.security_protocol) && this.security_protocol in ['SSL', 'SASL_SSL']) || has(this.tls)\x1a\xf7\x01\n" +
 	"$spec.kafka.sasl_requires_credentials\x12aSASL_PLAINTEXT and SASL_SSL security protocols require the sasl block (mechanism and credentials)\x1al!(has(this.security_protocol) && this.security_protocol in ['SASL_PLAINTEXT', 'SASL_SSL']) || has(this.sasl)\x1a\xd5\x02\n" +
 	"'spec.kafka.sasl_only_with_sasl_protocol\x12\xbb\x01the sasl block requires security_protocol to be EXPLICITLY set to SASL_PLAINTEXT or SASL_SSL — the protocol defaults to PLAINTEXT when unset, which would silently ignore the credentials\x1al!has(this.sasl) || (has(this.security_protocol) && this.security_protocol in ['SASL_PLAINTEXT', 'SASL_SSL'])B\x14\n" +
-	"\x12_security_protocol\"\xa8\x04\n" +
-	"\x1aKubernetesKarapaceKafkaTls\x12\x93\x01\n" +
-	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\a\x92\xd4a*status.outputs.cluster_ca_cert_secret_nameR\fcaSecretName\x126\n" +
+	"\x12_security_protocol\"\xb6\x04\n" +
+	"\x1aKubernetesKarapaceKafkaTls\x12\xa1\x01\n" +
+	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBG\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06trusts\x88\xd4a\x8c\a\x92\xd4a*status.outputs.cluster_ca_cert_secret_name\x98\xd4a\x01R\fcaSecretName\x126\n" +
 	"\x0eca_certificate\x18\x02 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x06ca.crtH\x00R\rcaCertificate\x88\x01\x01\x12\x8e\x01\n" +
 	"\x17client_cert_secret_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8e\a\x92\xd4a\x1astatus.outputs.secret_nameR\x14clientCertSecretName\x12@\n" +

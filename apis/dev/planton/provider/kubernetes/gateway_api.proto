@@ -4,6 +4,7 @@ package dev.planton.provider.kubernetes;
 
 import "buf/validate/validate.proto";
 import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
 
 // Shared Gateway API types used across multiple Planton Gateway API components.
 // Translated from kubernetes-sigs/gateway-api v1.6.1:
@@ -75,7 +76,8 @@ message KubernetesGatewayApiParentReference {
   dev.planton.shared.foreignkey.v1.StringValueOrRef name = 4 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesGateway,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.gateway_name"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.gateway_name",
+    (dev.planton.shared.options.diagram_label) = "attached to"
   ];
 
   // Name of a section within the target resource (e.g., a Gateway Listener
@@ -138,7 +140,8 @@ message KubernetesGatewayApiParentGatewayReference {
   dev.planton.shared.foreignkey.v1.StringValueOrRef name = 4 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesGateway,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.gateway_name"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.gateway_name",
+    (dev.planton.shared.options.diagram_label) = "extends gateway"
   ];
 }
 

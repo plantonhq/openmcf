@@ -613,6 +613,9 @@ type KubernetesExternalDnsAwsRoute53 struct {
 	// resources — in an infra chart the zone and this component deploy in one
 	// run with the ID flowing in as a reference. Empty = every zone the
 	// credentials can see (filter with domain_filters at minimum).
+	//
+	// containment_exempt: a watch-scope filter — the controller manages
+	// records IN the zone; it does not deploy into it.
 	ZoneIdFilters []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=zone_id_filters,json=zoneIdFilters,proto3" json:"zone_id_filters,omitempty"`
 	// *
 	// Filter for zones of this type. Empty = both.
@@ -731,11 +734,17 @@ type KubernetesExternalDnsGoogleCloudDns struct {
 	// *
 	// GCP project that owns the Cloud DNS zones. Accepts a literal project ID
 	// or a reference to a GcpProject resource's output.
+	//
+	// containment_exempt: names the project whose zones the controller
+	// manages — the controller itself runs in the cluster, not the project.
 	Project *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
 	// *
 	// Restrict management to these Cloud DNS zones (zone names/IDs). Accepts
 	// literals or references to GcpDnsZone resources. Empty = every zone in
 	// the project.
+	//
+	// containment_exempt: a watch-scope filter — the controller manages
+	// records IN the zone; it does not deploy into it.
 	ZoneIdFilters []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=zone_id_filters,json=zoneIdFilters,proto3" json:"zone_id_filters,omitempty"`
 	// *
 	// Filter for zones with this visibility. Empty = both.
@@ -836,6 +845,9 @@ type KubernetesExternalDnsAzureDns struct {
 	// Restrict management to these DNS zones. Accepts literal zone IDs or
 	// references to AzureDnsZone resources. Empty = every zone in the
 	// resource group.
+	//
+	// containment_exempt: a watch-scope filter — the controller manages
+	// records IN the zone; it does not deploy into it.
 	ZoneIdFilters []*v1.StringValueOrRef `protobuf:"bytes,5,rep,name=zone_id_filters,json=zoneIdFilters,proto3" json:"zone_id_filters,omitempty"`
 	// *
 	// Client ID of a user-assigned managed identity to authenticate with
@@ -956,6 +968,9 @@ type KubernetesExternalDnsCloudflare struct {
 	// Restrict management to these Cloudflare zones. Accepts literal zone IDs
 	// or references to CloudflareDnsZone resources. Empty = every zone the
 	// token can see.
+	//
+	// containment_exempt: a watch-scope filter — the controller manages
+	// records IN the zone; it does not deploy into it.
 	ZoneIdFilters []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=zone_id_filters,json=zoneIdFilters,proto3" json:"zone_id_filters,omitempty"`
 	// *
 	// When true, created records are proxied through Cloudflare (orange
@@ -1316,10 +1331,10 @@ const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_r
 	"\t_intervalB\f\n" +
 	"\n" +
 	"_log_levelB\r\n" +
-	"\v_log_format\"\xc1\x05\n" +
+	"\v_log_format\"\xdc\x05\n" +
 	"\x1fKubernetesExternalDnsAwsRoute53\x12\x16\n" +
-	"\x06region\x18\x01 \x01(\tR\x06region\x12{\n" +
-	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_idR\rzoneIdFilters\x12:\n" +
+	"\x06region\x18\x01 \x01(\tR\x06region\x12\x95\x01\n" +
+	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\xd4\x01\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12:\n" +
 	"\tzone_type\x18\x03 \x01(\tB\x18\xbaH\x15r\x13R\x00R\x06publicR\aprivateH\x00R\bzoneType\x88\x01\x01\x12u\n" +
 	"\vassume_role\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\n" +
 	"assumeRole\x125\n" +
@@ -1328,28 +1343,28 @@ const file_dev_planton_provider_kubernetes_kubernetesexternaldns_v1_spec_proto_r
 	"\x11secret_access_key\x18\a \x01(\tB\x04\xa0\xa6\x1d\x01R\x0fsecretAccessKey:\xba\x01\xbaH\xb6\x01\x1a\xb3\x01\n" +
 	"\"externaldns.aws.static_keys_paired\x12Oaccess_key_id and secret_access_key form one credential — set both or neither\x1a<(this.access_key_id == '') == (this.secret_access_key == '')B\f\n" +
 	"\n" +
-	"_zone_type\"\xb5\x03\n" +
-	"#KubernetesExternalDnsGoogleCloudDns\x12v\n" +
-	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\aproject\x12{\n" +
-	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xdd\x04\x92\xd4a\x16status.outputs.zone_idR\rzoneIdFilters\x12F\n" +
+	"_zone_type\"\xd4\x03\n" +
+	"#KubernetesExternalDnsGoogleCloudDns\x12z\n" +
+	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_id\x98\xd4a\x01R\aproject\x12\x95\x01\n" +
+	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\xdd\x04\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12F\n" +
 	"\x0fzone_visibility\x18\x03 \x01(\tB\x18\xbaH\x15r\x13R\x00R\x06publicR\aprivateH\x00R\x0ezoneVisibility\x88\x01\x01\x12=\n" +
 	"\x18service_account_key_json\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x15serviceAccountKeyJsonB\x12\n" +
-	"\x10_zone_visibility\"\xb0\x06\n" +
+	"\x10_zone_visibility\"\xcb\x06\n" +
 	"\x1dKubernetesExternalDnsAzureDns\x12-\n" +
 	"\x0eresource_group\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rresourceGroup\x12/\n" +
 	"\x0fsubscription_id\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0esubscriptionId\x12\x1b\n" +
 	"\ttenant_id\x18\x03 \x01(\tR\btenantId\x12#\n" +
-	"\rprivate_zones\x18\x04 \x01(\bR\fprivateZones\x12{\n" +
-	"\x0fzone_id_filters\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x94\x03\x92\xd4a\x16status.outputs.zone_idR\rzoneIdFilters\x12;\n" +
+	"\rprivate_zones\x18\x04 \x01(\bR\fprivateZones\x12\x95\x01\n" +
+	"\x0fzone_id_filters\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\x94\x03\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12;\n" +
 	"\x1amanaged_identity_client_id\x18\x06 \x01(\tR\x17managedIdentityClientId\x12\x1b\n" +
 	"\tclient_id\x18\a \x01(\tR\bclientId\x12)\n" +
 	"\rclient_secret\x18\b \x01(\tB\x04\xa0\xa6\x1d\x01R\fclientSecret:\xea\x02\xbaH\xe6\x02\x1a\xae\x01\n" +
 	"\x1bexternaldns.azure.sp_paired\x12Yclient_id and client_secret form one service-principal credential — set both or neither\x1a4(this.client_id == '') == (this.client_secret == '')\x1a\xb2\x01\n" +
-	"$externaldns.azure.sp_requires_tenant\x12\\Service-principal authentication needs tenant_id — the Entra tenant the principal lives in\x1a,this.client_id == '' || this.tenant_id != ''\"\xba\x02\n" +
+	"$externaldns.azure.sp_requires_tenant\x12\\Service-principal authentication needs tenant_id — the Entra tenant the principal lives in\x1a,this.client_id == '' || this.tenant_id != ''\"\xd5\x02\n" +
 	"\x1fKubernetesExternalDnsCloudflare\x12'\n" +
 	"\tapi_token\x18\x01 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bapiToken\x12{\n" +
-	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_idR\rzoneIdFilters\x12\x18\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bapiToken\x12\x95\x01\n" +
+	"\x0fzone_id_filters\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xb2\xa6\x1d\x12manages records in\x88\xd4a\x88\x0e\x92\xd4a\x16status.outputs.zone_id\x98\xd4a\x01R\rzoneIdFilters\x12\x18\n" +
 	"\aproxied\x18\x03 \x01(\bR\aproxied\x12>\n" +
 	"\x14dns_records_per_page\x18\x04 \x01(\rB\b\xbaH\x05*\x03\x18\x88'H\x00R\x11dnsRecordsPerPage\x88\x01\x01B\x17\n" +
 	"\x15_dns_records_per_page\"\x80\x03\n" +

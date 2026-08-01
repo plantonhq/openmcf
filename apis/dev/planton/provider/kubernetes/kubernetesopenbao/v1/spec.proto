@@ -413,11 +413,15 @@ message KubernetesOpenBaoAwsKmsSeal {
 message KubernetesOpenBaoGcpKmsSeal {
   /**
    * GCP project containing the KMS key ring.
+   *
+   * containment_exempt: names where the unseal key lives — the server
+   * runs in the cluster, not the project.
    */
   dev.planton.shared.foreignkey.v1.StringValueOrRef project = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true
   ];
 
   /**
@@ -427,11 +431,16 @@ message KubernetesOpenBaoGcpKmsSeal {
 
   /**
    * Key ring name.
+   *
+   * containment_exempt: an unseal-key source the server calls out to —
+   * access, never placement.
    */
   dev.planton.shared.foreignkey.v1.StringValueOrRef key_ring = 3 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKeyRing,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_ring_name"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_ring_name",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "unseal key ring"
   ];
 
   /**
@@ -442,7 +451,8 @@ message KubernetesOpenBaoGcpKmsSeal {
   dev.planton.shared.foreignkey.v1.StringValueOrRef crypto_key = 4 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_name"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_name",
+    (dev.planton.shared.options.diagram_label) = "unseal key"
   ];
 
   /**

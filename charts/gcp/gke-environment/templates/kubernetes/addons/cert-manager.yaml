@@ -1,0 +1,30 @@
+# Cert-Manager, deployed INTO the cluster this chart just created — in the same
+# run. The wiring that makes one-run composition work:
+#
+#   - runs_on orders this addon after the cluster exists (the generic
+#     relationship edge; the cluster resource's bare name is this chart's
+#     cluster.yaml naming).
+#   - planton.dev/connection binds the addon to the Kubernetes connection the
+#     platform MATERIALIZES when the cluster deploys. The slug formula
+#     (<env>-<cluster resource name>) is the frozen two-ended contract with the
+#     GKE cluster-connection materializer — the record exists before this node
+#     resolves it because materialization happens inside the same workflow.
+#     Credential minting delegates to the chart's own GCP connection, so no
+#     key material is created or stored anywhere in this composition.
+{% if values.certManagerEnabled | bool %}
+---
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesCertManager
+metadata:
+  name: {{ values.cluster_name }}-cert-manager
+  annotations:
+    planton.dev/connection: "{{ values.env }}-{{ values.cluster_name }}"
+  relationships:
+    - kind: GcpGkeCluster
+      name: "{{ values.cluster_name }}"
+      type: runs_on
+spec:
+  namespace:
+    value: cert-manager
+  createNamespace: true
+{% endif %}

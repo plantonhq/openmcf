@@ -680,15 +680,15 @@ const file_dev_planton_provider_kubernetes_kuberneteskarpenternodepool_v1_spec_p
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x0f\n" +
 	"\r_expire_afterB\x1b\n" +
-	"\x19_termination_grace_period\"\xed\x03\n" +
+	"\x19_termination_grace_period\"\x82\x04\n" +
 	"'KubernetesKarpenterNodePoolNodeClassRef\x12\xa6\x01\n" +
 	"\x05group\x18\x01 \x01(\tB\x8a\x01\xbaHr\xba\x01a\n" +
 	",spec.template.node_class_ref.group_not_empty\x12%node_class_ref group may not be empty\x1a\n" +
 	"this != ''r\f\x18\xfd\x012\a^[^/]*$\x8a\xa6\x1d\x11karpenter.k8s.awsH\x00R\x05group\x88\x01\x01\x12\x8e\x01\n" +
 	"\x04kind\x18\x02 \x01(\tBu\xbaHb\xba\x01_\n" +
 	"+spec.template.node_class_ref.kind_not_empty\x12$node_class_ref kind may not be empty\x1a\n" +
-	"this != ''\x8a\xa6\x1d\fEC2NodeClassH\x01R\x04kind\x88\x01\x01\x12u\n" +
-	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x06\x92\xd4a\x1estatus.outputs.node_class_nameR\x04nameB\b\n" +
+	"this != ''\x8a\xa6\x1d\fEC2NodeClassH\x01R\x04kind\x88\x01\x01\x12\x89\x01\n" +
+	"\x04name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBA\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x10machine template\x88\xd4a\xe1\x06\x92\xd4a\x1estatus.outputs.node_class_nameR\x04nameB\b\n" +
 	"\x06_groupB\a\n" +
 	"\x05_kind\"\x92\a\n" +
 	"&KubernetesKarpenterNodePoolRequirement\x12\xdf\x03\n" +

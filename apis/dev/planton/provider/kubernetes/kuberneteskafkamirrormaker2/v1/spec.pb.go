@@ -242,6 +242,9 @@ type KubernetesKafkaMirrorMaker2Target struct {
 	// Accepts a literal address or a reference to a KubernetesKafka
 	// resource, which resolves to its in-cluster bootstrap endpoint —
 	// the migrate-INTO-Planton wiring.
+	//
+	// containment_exempt: the mirror WRITES TO this cluster; it is not
+	// deployed inside it.
 	BootstrapServers *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=bootstrap_servers,json=bootstrapServers,proto3" json:"bootstrap_servers,omitempty"`
 	// *
 	// TLS trust for the target connection. For a Strimzi-managed
@@ -505,6 +508,9 @@ type KubernetesKafkaMirrorMaker2Source struct {
 	// migrations this is usually an EXTERNAL address (Confluent / MSK
 	// bootstrap, a datacenter cluster). Accepts a literal address or a
 	// reference to a KubernetesKafka resource.
+	//
+	// containment_exempt: the mirror READS FROM this cluster; it is not
+	// deployed inside it.
 	BootstrapServers *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=bootstrap_servers,json=bootstrapServers,proto3" json:"bootstrap_servers,omitempty"`
 	// *
 	// TLS trust for the source connection. Omitted = plaintext.
@@ -897,11 +903,12 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkamirrormaker2_v1_spec_p
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xbb\x03\xbaH\xb7\x03\x1a\xb4\x03\n" +
 	"'spec.target_alias_distinct_from_sources\x12\xe3\x01the target alias must differ from every mirror's source alias — aliases identify clusters in the replication flow, and a duplicate collapses source and target into one identity (remember the target alias defaults to \"target\")\x1a\xa2\x01!has(this.target) || this.mirrors.all(m, !has(m.source) || m.source.alias != ((has(this.target.alias) && this.target.alias != '') ? this.target.alias : 'target'))B\v\n" +
-	"\t_replicas\"\x9c\a\n" +
+	"\t_replicas\"\xae\a\n" +
 	"!KubernetesKafkaMirrorMaker2Target\x12\xa6\x01\n" +
 	"\x05alias\x18\x01 \x01(\tB\x8a\x01\xbaH}\xba\x01z\n" +
-	"\x18spec.target.alias.format\x12-alias may use alphanumerics, '.', '_' and '-'\x1a/this == '' || this.matches('^[a-zA-Z0-9._-]+$')\x8a\xa6\x1d\x06targetH\x00R\x05alias\x88\x01\x01\x12\x9a\x01\n" +
-	"\x11bootstrap_servers\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpointR\x10bootstrapServers\x12H\n" +
+	"\x18spec.target.alias.format\x12-alias may use alphanumerics, '.', '_' and '-'\x1a/this == '' || this.matches('^[a-zA-Z0-9._-]+$')\x8a\xa6\x1d\x06targetH\x00R\x05alias\x88\x01\x01\x12\xac\x01\n" +
+	"\x11bootstrap_servers\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBK\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\n" +
+	"mirrors to\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpoint\x98\xd4a\x01R\x10bootstrapServers\x12H\n" +
 	"\x03tls\x18\x03 \x01(\v26.dev.planton.provider.kubernetes.StrimziKafkaClientTlsR\x03tls\x12i\n" +
 	"\x0eauthentication\x18\x04 \x01(\v2A.dev.planton.provider.kubernetes.StrimziKafkaClientAuthenticationR\x0eauthentication\x12\x19\n" +
 	"\bgroup_id\x18\x05 \x01(\tR\agroupId\x120\n" +
@@ -922,11 +929,11 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkamirrormaker2_v1_spec_p
 	"\x10source_connector\x18\x06 \x01(\v2d.dev.planton.provider.kubernetes.kuberneteskafkamirrormaker2.v1.KubernetesKafkaMirrorMaker2ConnectorR\x0fsourceConnector\x12\x97\x01\n" +
 	"\x14checkpoint_connector\x18\a \x01(\v2d.dev.planton.provider.kubernetes.kuberneteskafkamirrormaker2.v1.KubernetesKafkaMirrorMaker2ConnectorR\x13checkpointConnectorB\x11\n" +
 	"\x0f_topics_patternB\x11\n" +
-	"\x0f_groups_pattern\"\xce\x05\n" +
+	"\x0f_groups_pattern\"\xe2\x05\n" +
 	"!KubernetesKafkaMirrorMaker2Source\x12\x93\x01\n" +
 	"\x05alias\x18\x01 \x01(\tB}\xbaHz\xba\x01t\n" +
-	" spec.mirrors.source.alias.format\x12-alias may use alphanumerics, '.', '_' and '-'\x1a!this.matches('^[a-zA-Z0-9._-]+$')\xc8\x01\x01R\x05alias\x12\x9a\x01\n" +
-	"\x11bootstrap_servers\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpointR\x10bootstrapServers\x12H\n" +
+	" spec.mirrors.source.alias.format\x12-alias may use alphanumerics, '.', '_' and '-'\x1a!this.matches('^[a-zA-Z0-9._-]+$')\xc8\x01\x01R\x05alias\x12\xae\x01\n" +
+	"\x11bootstrap_servers\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBM\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\fmirrors from\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpoint\x98\xd4a\x01R\x10bootstrapServers\x12H\n" +
 	"\x03tls\x18\x03 \x01(\v26.dev.planton.provider.kubernetes.StrimziKafkaClientTlsR\x03tls\x12i\n" +
 	"\x0eauthentication\x18\x04 \x01(\v2A.dev.planton.provider.kubernetes.StrimziKafkaClientAuthenticationR\x0eauthentication\x12\x85\x01\n" +
 	"\x06config\x18\x05 \x03(\v2m.dev.planton.provider.kubernetes.kuberneteskafkamirrormaker2.v1.KubernetesKafkaMirrorMaker2Source.ConfigEntryR\x06config\x1a9\n" +

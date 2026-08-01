@@ -68,4 +68,21 @@ message AzureAksClusterStackOutputs {
   // useful when kubernetes_version was left unset (AKS picked the
   // latest recommended GA version).
   string current_kubernetes_version = 13;
+
+  // Base64-encoded cluster Certificate Authority (CA) certificate -- the
+  // standard kubeconfig certificate-authority-data format. Public cluster
+  // identity (TLS trust anchor), not credential material: it is exported
+  // as a plain value even though the providers derive it from their
+  // sensitive kubeconfig attribute. Consumed (with fqdn) by the platform's
+  // cluster-connection materializer, mirroring the EKS/GKE contract.
+  string cluster_ca_certificate = 14;
+
+  // "true" when the cluster is Entra ID (Azure AD) integrated -- i.e. the
+  // spec configures azure_active_directory_role_based_access_control --
+  // else "false". Entra integration is what makes the API server honor
+  // short-lived Entra bearer tokens, so this is the applicability gate the
+  // platform's cluster-connection materializer reads: token-based
+  // connections are only published for Entra-integrated clusters
+  // (local-accounts clusters connect through their kubeconfig instead).
+  string entra_integration_enabled = 15;
 }

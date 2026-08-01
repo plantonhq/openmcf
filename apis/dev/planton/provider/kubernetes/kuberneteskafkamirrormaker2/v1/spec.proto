@@ -162,11 +162,16 @@ message KubernetesKafkaMirrorMaker2Target {
    * Accepts a literal address or a reference to a KubernetesKafka
    * resource, which resolves to its in-cluster bootstrap endpoint —
    * the migrate-INTO-Planton wiring.
+   *
+   * containment_exempt: the mirror WRITES TO this cluster; it is not
+   * deployed inside it.
    */
   dev.planton.shared.foreignkey.v1.StringValueOrRef bootstrap_servers = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "mirrors to"
   ];
 
   /**
@@ -290,11 +295,16 @@ message KubernetesKafkaMirrorMaker2Source {
    * migrations this is usually an EXTERNAL address (Confluent / MSK
    * bootstrap, a datacenter cluster). Accepts a literal address or a
    * reference to a KubernetesKafka resource.
+   *
+   * containment_exempt: the mirror READS FROM this cluster; it is not
+   * deployed inside it.
    */
   dev.planton.shared.foreignkey.v1.StringValueOrRef bootstrap_servers = 2 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "mirrors from"
   ];
 
   /**

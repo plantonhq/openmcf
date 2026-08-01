@@ -95,6 +95,9 @@ type KubernetesKafkaConnectSpec struct {
 	// address (an external cluster, Confluent, MSK) or a reference to
 	// a KubernetesKafka resource, which resolves to its in-cluster
 	// bootstrap endpoint.
+	//
+	// containment_exempt: Connect TALKS TO this cluster; it is not
+	// deployed inside it (its own home is its namespace).
 	BootstrapServers *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=bootstrap_servers,json=bootstrapServers,proto3" json:"bootstrap_servers,omitempty"`
 	// *
 	// TLS trust for the Kafka connection. Set when the bootstrap
@@ -1004,13 +1007,13 @@ var File_dev_planton_provider_kubernetes_kuberneteskafkaconnect_v1_spec_proto pr
 
 const file_dev_planton_provider_kubernetes_kuberneteskafkaconnect_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ddev/planton/provider/kubernetes/kuberneteskafkaconnect/v1/spec.proto\x129dev.planton.provider.kubernetes.kuberneteskafkaconnect.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a:dev/planton/provider/kubernetes/strimzi_kafka_client.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xce\x14\n" +
+	"Ddev/planton/provider/kubernetes/kuberneteskafkaconnect/v1/spec.proto\x129dev.planton.provider.kubernetes.kuberneteskafkaconnect.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a:dev/planton/provider/kubernetes/strimzi_kafka_client.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xe6\x14\n" +
 	"\x1aKubernetesKafkaConnectSpec\x12j\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\tR\aversion\x12-\n" +
-	"\breplicas\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12\x9a\x01\n" +
-	"\x11bootstrap_servers\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpointR\x10bootstrapServers\x12H\n" +
+	"\breplicas\x18\x04 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12\xb2\x01\n" +
+	"\x11bootstrap_servers\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBQ\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x10reads and writes\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpoint\x98\xd4a\x01R\x10bootstrapServers\x12H\n" +
 	"\x03tls\x18\x06 \x01(\v26.dev.planton.provider.kubernetes.StrimziKafkaClientTlsR\x03tls\x12i\n" +
 	"\x0eauthentication\x18\a \x01(\v2A.dev.planton.provider.kubernetes.StrimziKafkaClientAuthenticationR\x0eauthentication\x12\x19\n" +
 	"\bgroup_id\x18\b \x01(\tR\agroupId\x120\n" +

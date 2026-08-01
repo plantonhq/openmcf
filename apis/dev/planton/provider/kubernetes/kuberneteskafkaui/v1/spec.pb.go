@@ -241,6 +241,9 @@ type KubernetesKafkaUiCluster struct {
 	// Bootstrap address of the cluster, as host:port. Accepts a
 	// literal address or a reference to a KubernetesKafka resource,
 	// which resolves to its in-cluster bootstrap endpoint.
+	//
+	// containment_exempt: the console OBSERVES this cluster; it is not
+	// deployed inside it.
 	BootstrapServers *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=bootstrap_servers,json=bootstrapServers,proto3" json:"bootstrap_servers,omitempty"`
 	// *
 	// Observe-only: hide every mutating action (topic create/delete,
@@ -372,6 +375,9 @@ type KubernetesKafkaUiClusterTls struct {
 	// resource, which resolves to that cluster's CA certificate
 	// Secret. The module mounts it and renders the truststore
 	// configuration.
+	//
+	// containment_exempt: trust material fetched FROM the cluster —
+	// access, never placement.
 	CaSecretName *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=ca_secret_name,json=caSecretName,proto3" json:"ca_secret_name,omitempty"`
 	// *
 	// The CA certificate's key within the Secret. Strimzi cluster CA
@@ -641,6 +647,9 @@ type KubernetesKafkaUiConnectCluster struct {
 	// Connect REST API address. Accepts a literal URL or a reference
 	// to a KubernetesKafkaConnect resource, which resolves to its
 	// in-cluster REST endpoint.
+	//
+	// containment_exempt: the console MANAGES this Connect cluster
+	// over its REST API; it is not deployed inside it.
 	Address *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
 	// *
 	// HTTP Basic username, when the Connect API sits behind one.
@@ -863,11 +872,11 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkaui_v1_spec_proto_rawDe
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\v\n" +
 	"\t_replicasB\x0f\n" +
 	"\r_service_typeB\x0f\n" +
-	"\r_service_port\"\x81\t\n" +
+	"\r_service_port\"\x94\t\n" +
 	"\x18KubernetesKafkaUiCluster\x12\x91\x01\n" +
 	"\x04name\x18\x01 \x01(\tB}\xbaHz\xba\x01t\n" +
-	"\x19spec.clusters.name.format\x124cluster name may use alphanumerics, '.', '_' and '-'\x1a!this.matches('^[a-zA-Z0-9._-]+$')\xc8\x01\x01R\x04name\x12\x9a\x01\n" +
-	"\x11bootstrap_servers\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpointR\x10bootstrapServers\x12\x1b\n" +
+	"\x19spec.clusters.name.format\x124cluster name may use alphanumerics, '.', '_' and '-'\x1a!this.matches('^[a-zA-Z0-9._-]+$')\xc8\x01\x01R\x04name\x12\xad\x01\n" +
+	"\x11bootstrap_servers\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBL\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\vconsole for\x88\xd4a\x8c\a\x92\xd4a*status.outputs.internal_bootstrap_endpoint\x98\xd4a\x01R\x10bootstrapServers\x12\x1b\n" +
 	"\tread_only\x18\x03 \x01(\bR\breadOnly\x12c\n" +
 	"\x03tls\x18\x04 \x01(\v2Q.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiClusterTlsR\x03tls\x12f\n" +
 	"\x04sasl\x18\x05 \x01(\v2R.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiClusterSaslR\x04sasl\x12~\n" +
@@ -879,9 +888,9 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkaui_v1_spec_proto_rawDe
 	"properties\x1a=\n" +
 	"\x0fPropertiesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xfe\x01\n" +
-	"\x1bKubernetesKafkaUiClusterTls\x12\x93\x01\n" +
-	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB9\xbaH\x03\xc8\x01\x01\x88\xd4a\x8c\a\x92\xd4a*status.outputs.cluster_ca_cert_secret_nameR\fcaSecretName\x126\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8c\x02\n" +
+	"\x1bKubernetesKafkaUiClusterTls\x12\xa1\x01\n" +
+	"\x0eca_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBG\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\x06trusts\x88\xd4a\x8c\a\x92\xd4a*status.outputs.cluster_ca_cert_secret_name\x98\xd4a\x01R\fcaSecretName\x126\n" +
 	"\x0eca_certificate\x18\x02 \x01(\tB\n" +
 	"\x8a\xa6\x1d\x06ca.crtH\x00R\rcaCertificate\x88\x01\x01B\x11\n" +
 	"\x0f_ca_certificate\"\x8a\x03\n" +
@@ -898,10 +907,10 @@ const file_dev_planton_provider_kubernetes_kuberneteskafkaui_v1_spec_proto_rawDe
 	"\x1fKubernetesKafkaUiSchemaRegistry\x12l\n" +
 	"\x03url\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\x92\a\x92\xd4a\x17status.outputs.endpointR\x03url\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12~\n" +
-	"\x0fpassword_secret\x18\x03 \x01(\v2U.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiPasswordSecretR\x0epasswordSecret\"\xd8\x02\n" +
+	"\x0fpassword_secret\x18\x03 \x01(\v2U.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiPasswordSecretR\x0epasswordSecret\"\xe8\x02\n" +
 	"\x1fKubernetesKafkaUiConnectCluster\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12}\n" +
-	"\aaddress\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\x8f\a\x92\xd4a status.outputs.rest_api_endpointR\aaddress\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x8c\x01\n" +
+	"\aaddress\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB>\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\amanages\x88\xd4a\x8f\a\x92\xd4a status.outputs.rest_api_endpoint\x98\xd4a\x01R\aaddress\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12~\n" +
 	"\x0fpassword_secret\x18\x04 \x01(\v2U.dev.planton.provider.kubernetes.kuberneteskafkaui.v1.KubernetesKafkaUiPasswordSecretR\x0epasswordSecret\"\x93\x02\n" +
 	"\x15KubernetesKafkaUiAuth\x12\x90\x01\n" +

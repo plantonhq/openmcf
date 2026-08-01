@@ -62,7 +62,14 @@ message KubernetesProviderConfigGcpGke {
   //
   // This is the raw JSON downloaded from the GCP Console or generated via
   // `gcloud iam service-accounts keys create`.
-  string service_account_key = 3 [(buf.validate.field).required = true];
+  //
+  // Optional: when empty, tokens are minted from the ambient Google credential
+  // chain of the process -- GOOGLE_OAUTH_ACCESS_TOKEN when present (the token a
+  // Planton runner mints for a connection's named gcloud configuration), else
+  // Application Default Credentials (GOOGLE_APPLICATION_CREDENTIALS, Workload
+  // Identity, GCE metadata, or `gcloud auth application-default login`). Same
+  // contract as the EKS static-key fields and the AKS client_secret.
+  string service_account_key = 3;
 }
 
 // KubernetesProviderConfigAwsEks contains the connection parameters for an Amazon Elastic

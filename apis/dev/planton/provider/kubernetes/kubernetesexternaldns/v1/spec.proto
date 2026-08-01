@@ -418,10 +418,15 @@ message KubernetesExternalDnsAwsRoute53 {
    * resources — in an infra chart the zone and this component deploy in one
    * run with the ID flowing in as a reference. Empty = every zone the
    * credentials can see (filter with domain_filters at minimum).
+   *
+   * containment_exempt: a watch-scope filter — the controller manages
+   * records IN the zone; it does not deploy into it.
    */
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id_filters = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsRoute53Zone,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "manages records in"
   ];
 
   /**
@@ -484,21 +489,30 @@ message KubernetesExternalDnsGoogleCloudDns {
   /**
    * GCP project that owns the Cloud DNS zones. Accepts a literal project ID
    * or a reference to a GcpProject resource's output.
+   *
+   * containment_exempt: names the project whose zones the controller
+   * manages — the controller itself runs in the cluster, not the project.
    */
   dev.planton.shared.foreignkey.v1.StringValueOrRef project = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true
   ];
 
   /**
    * Restrict management to these Cloud DNS zones (zone names/IDs). Accepts
    * literals or references to GcpDnsZone resources. Empty = every zone in
    * the project.
+   *
+   * containment_exempt: a watch-scope filter — the controller manages
+   * records IN the zone; it does not deploy into it.
    */
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id_filters = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpDnsZone,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "manages records in"
   ];
 
   /**
@@ -557,10 +571,15 @@ message KubernetesExternalDnsAzureDns {
    * Restrict management to these DNS zones. Accepts literal zone IDs or
    * references to AzureDnsZone resources. Empty = every zone in the
    * resource group.
+   *
+   * containment_exempt: a watch-scope filter — the controller manages
+   * records IN the zone; it does not deploy into it.
    */
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id_filters = 5 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureDnsZone,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "manages records in"
   ];
 
   /**
@@ -616,10 +635,15 @@ message KubernetesExternalDnsCloudflare {
    * Restrict management to these Cloudflare zones. Accepts literal zone IDs
    * or references to CloudflareDnsZone resources. Empty = every zone the
    * token can see.
+   *
+   * containment_exempt: a watch-scope filter — the controller manages
+   * records IN the zone; it does not deploy into it.
    */
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id_filters = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "manages records in"
   ];
 
   /**

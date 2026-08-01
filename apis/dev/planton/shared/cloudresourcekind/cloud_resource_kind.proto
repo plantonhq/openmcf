@@ -3148,10 +3148,16 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8sstzop"
   }];
+  // container_kind: a Strimzi Kafka cluster is a place in the provider's
+  // own model — KafkaTopic and KafkaUser declarations BELONG to one cluster
+  // (the strimzi.io/cluster label) and are drawn inside its box. Clients
+  // that merely talk to the cluster (Connect, MirrorMaker2, UI, Karapace)
+  // carry containment_exempt on their bootstrap/trust references.
   KubernetesKafka = 908 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8skaf"
+    container_kind: true
     prerequisites: [KubernetesStrimziKafkaOperator]
   }];
   KubernetesKafkaTopic = 909 [(kind_meta) = {
@@ -3166,10 +3172,14 @@ enum CloudResourceKind {
     id_prefix: "k8skafusr"
     prerequisites: [KubernetesKafka]
   }];
+  // container_kind: a Connect cluster hosts the connectors deployed INTO
+  // it (KafkaConnector's strimzi.io/cluster label names its Connect
+  // cluster) — the same room shape as KubernetesKafka above.
   KubernetesKafkaConnect = 911 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8skafcon"
+    container_kind: true
     prerequisites: [KubernetesKafka]
   }];
   KubernetesKafkaConnector = 912 [(kind_meta) = {

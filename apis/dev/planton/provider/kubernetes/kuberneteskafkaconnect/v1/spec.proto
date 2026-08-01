@@ -93,11 +93,16 @@ message KubernetesKafkaConnectSpec {
    * address (an external cluster, Confluent, MSK) or a reference to
    * a KubernetesKafka resource, which resolves to its in-cluster
    * bootstrap endpoint.
+   *
+   * containment_exempt: Connect TALKS TO this cluster; it is not
+   * deployed inside it (its own home is its namespace).
    */
   dev.planton.shared.foreignkey.v1.StringValueOrRef bootstrap_servers = 5 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesKafka,
-    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint"
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.internal_bootstrap_endpoint",
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.options.diagram_label) = "reads and writes"
   ];
 
   /**

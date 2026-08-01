@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -102,4 +104,29 @@ func TestMintAksToken_RequiresIdentityWithSecret(t *testing.T) {
 		_, err := MintAksToken(context.Background(), opts)
 		assert.Error(t, err, fmt.Sprintf("%+v must be rejected", opts))
 	}
+}
+
+// fakeTokenCredential satisfies azcore.TokenCredential for callers that resolve
+// their credential elsewhere (the MintAksTokenWithCredential seam).
+type fakeTokenCredential struct {
+	capturedScopes []string
+}
+
+func (f *fakeTokenCredential) GetToken(_ context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	f.capturedScopes = opts.Scopes
+	return azcore.AccessToken{Token: "external-cred-token", ExpiresOn: time.Now().Add(time.Hour)}, nil
+}
+
+// TestMintAksTokenWithCredential_UsesAksScope: the external-credential seam must
+// request the same AKS server-application scope as the options-based path -- the
+// scope stays private to this one minting seam by construction.
+func TestMintAksTokenWithCredential_UsesAksScope(t *testing.T) {
+	cred := &fakeTokenCredential{}
+
+	token, err := MintAksTokenWithCredential(context.Background(), cred)
+	require.NoError(t, err)
+
+	require.Len(t, cred.capturedScopes, 1)
+	assert.Contains(t, cred.capturedScopes[0], aksServerAppID)
+	assert.Equal(t, "external-cred-token", token.Value)
 }

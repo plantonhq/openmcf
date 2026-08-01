@@ -1,8 +1,11 @@
-// GKE bearer-token minting: an OAuth2 access token from a Google service-account key.
+// GKE bearer-token minting: an OAuth2 access token from a Google service-account key
+// or, when no key is supplied, from the ambient Google credential chain of the process.
 package kubetoken
 
 import (
 	"context"
+	"os"
+	"time"
 
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2/google"
@@ -12,10 +15,31 @@ import (
 // requests (the same scope gcloud requests for cluster access).
 const cloudPlatformScope = "https://www.googleapis.com/auth/cloud-platform"
 
+// googleOAuthAccessTokenEnvVar carries a pre-minted Google access token into the
+// process. It is the same variable the Terraform/OpenTofu google providers read, and
+// the one a Planton runner exports when a runner-mode GCP connection names a gcloud
+// configuration (the per-connection ambient-identity selector). Checked before ADC so
+// the job authenticates as the identity the connection records, not the machine
+// default.
+const googleOAuthAccessTokenEnvVar = "GOOGLE_OAUTH_ACCESS_TOKEN"
+
+// envTokenTTL is the expiry reported for a token taken from the environment, which
+// carries no expiry metadata of its own. The ExecCredential protocol requires an
+// expiration timestamp (a zero time would read as already expired), so report a
+// cadence well inside the token's real ~1h Google TTL; every re-invoke re-reads the
+// environment, so this value only sets how often client-go asks again.
+const envTokenTTL = 10 * time.Minute
+
 // GkeTokenOptions carries the Google service-account key that signs the token request.
 type GkeTokenOptions struct {
 	// ServiceAccountKeyJSON is the raw key-file JSON downloaded from the GCP console
 	// or minted via `gcloud iam service-accounts keys create`.
+	//
+	// Optional: empty selects the ambient Google credential chain --
+	// GOOGLE_OAUTH_ACCESS_TOKEN when present, else Application Default Credentials
+	// (GOOGLE_APPLICATION_CREDENTIALS, Workload Identity, GCE metadata, or
+	// `gcloud auth application-default login`). Same contract as the EKS static-key
+	// fields and the AKS client_secret.
 	ServiceAccountKeyJSON string
 
 	// TokenURL overrides Google's token endpoint. Empty in production; tests point it
@@ -23,11 +47,12 @@ type GkeTokenOptions struct {
 	TokenURL string
 }
 
-// MintGkeToken exchanges the service-account key for a short-lived OAuth2 access token
-// (Google issues ~1h tokens; the expiry comes from the token response, never assumed).
+// MintGkeToken exchanges the service-account key (or the ambient chain) for a
+// short-lived OAuth2 access token (Google issues ~1h tokens; the expiry comes from
+// the token response, never assumed).
 func MintGkeToken(ctx context.Context, opts GkeTokenOptions) (Token, error) {
 	if opts.ServiceAccountKeyJSON == "" {
-		return Token{}, errors.New("a service-account key is required to mint a GKE token")
+		return mintGkeAmbientToken(ctx)
 	}
 
 	cfg, err := google.JWTConfigFromJSON([]byte(opts.ServiceAccountKeyJSON), cloudPlatformScope)
@@ -41,6 +66,28 @@ func MintGkeToken(ctx context.Context, opts GkeTokenOptions) (Token, error) {
 	token, err := cfg.TokenSource(ctx).Token()
 	if err != nil {
 		return Token{}, errors.Wrap(err, "exchanging service-account JWT for an access token")
+	}
+
+	return Token{Value: token.AccessToken, ExpiresAt: token.Expiry}, nil
+}
+
+// mintGkeAmbientToken resolves the ambient Google credential chain: a pre-minted
+// GOOGLE_OAUTH_ACCESS_TOKEN first, then Application Default Credentials.
+func mintGkeAmbientToken(ctx context.Context) (Token, error) {
+	if envToken := os.Getenv(googleOAuthAccessTokenEnvVar); envToken != "" {
+		return Token{Value: envToken, ExpiresAt: time.Now().Add(envTokenTTL)}, nil
+	}
+
+	creds, err := google.FindDefaultCredentials(ctx, cloudPlatformScope)
+	if err != nil {
+		return Token{}, errors.Wrap(err, "resolving the ambient Google credential chain "+
+			"(no service-account key on the connection, no GOOGLE_OAUTH_ACCESS_TOKEN in the "+
+			"environment, and Application Default Credentials are unavailable)")
+	}
+
+	token, err := creds.TokenSource.Token()
+	if err != nil {
+		return Token{}, errors.Wrap(err, "minting an access token from Application Default Credentials")
 	}
 
 	return Token{Value: token.AccessToken, ExpiresAt: token.Expiry}, nil
