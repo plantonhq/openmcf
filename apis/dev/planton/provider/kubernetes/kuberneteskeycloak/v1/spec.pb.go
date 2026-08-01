@@ -1274,7 +1274,7 @@ var File_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto protor
 
 const file_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@dev/planton/provider/kubernetes/kuberneteskeycloak/v1/spec.proto\x125dev.planton.provider.kubernetes.kuberneteskeycloak.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb1\x1b\n" +
+	"@dev/planton/provider/kubernetes/kuberneteskeycloak/v1/spec.proto\x125dev.planton.provider.kubernetes.kuberneteskeycloak.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xa6\x1b\n" +
 	"\x16KubernetesKeycloakSpec\x12j\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x121\n" +
@@ -1289,10 +1289,10 @@ const file_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto_rawD
 	"\bfeatures\x18\n" +
 	" \x01(\v2Q.dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakFeaturesR\bfeatures\x124\n" +
 	"\x16transaction_xa_enabled\x18\v \x01(\bR\x14transactionXaEnabled\x12w\n" +
-	"\fcache_config\x18\f \x01(\v2T.dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakCacheConfigR\vcacheConfig\x126\n" +
-	"\x17truststore_secret_names\x18\r \x03(\tR\x15truststoreSecretNames\x12\x88\x01\n" +
-	"\x12additional_options\x18\x0e \x03(\v2Y.dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakAdditionalOptionR\x11additionalOptions\x12\x88\x01\n" +
-	"\x1bbootstrap_admin_secret_name\x18\x0f \x01(\tBI\xaa\xa6\x1dEcarries the NAME of an existing Secret, never the credential materialR\x18bootstrapAdminSecretName\x12u\n" +
+	"\fcache_config\x18\f \x01(\v2T.dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakCacheConfigR\vcacheConfig\x12w\n" +
+	"\x17truststore_secret_names\x18\r \x03(\tB?\xaa\xa6\x1d;NAMES of existing Secrets (references), not secret materialR\x15truststoreSecretNames\x12\x88\x01\n" +
+	"\x12additional_options\x18\x0e \x03(\v2Y.dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakAdditionalOptionR\x11additionalOptions\x12=\n" +
+	"\x1bbootstrap_admin_secret_name\x18\x0f \x01(\tR\x18bootstrapAdminSecretName\x12u\n" +
 	"\tresources\x18\x10 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB\"\xba\xfb\xa4\x02\x1d\n" +
 	"\f\n" +
 	"\x051000m\x12\x031Gi\x12\r\n" +
@@ -1330,10 +1330,10 @@ const file_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto_rawD
 	"$spec.db.real_vendor_needs_connection\x12\xa4\x01A real database vendor needs the connection details: host (or a KubernetesPostgres reference), database, username_secret and password_secret — or a full jdbc_url.\x1a\x80\x02this.vendor in [\"dev-file\", \"dev-mem\"] || size(this.jdbc_url) > 0 || (has(this.host) && ((has(this.host.value) && size(this.host.value) > 0) || has(this.host.value_from)) && size(this.database) > 0 && has(this.username_secret) && has(this.password_secret))B\a\n" +
 	"\x05_portB\x10\n" +
 	"\x0e_pool_min_sizeB\x10\n" +
-	"\x0e_pool_max_size\"\x81\x02\n" +
+	"\x0e_pool_max_size\"\xb8\x01\n" +
 	" KubernetesKeycloakSecretSelector\x12z\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\x04name\x12a\n" +
-	"\x03key\x18\x02 \x01(\tBO\xbaH\x03\xc8\x01\x01\xaa\xa6\x1dEKey NAME within an existing Secret (a reference), not secret materialR\x03key\"\xc9\x02\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x85\a\x92\xd4a#status.outputs.password_secret.nameR\x04name\x12\x18\n" +
+	"\x03key\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\"\xc9\x02\n" +
 	"\x16KubernetesKeycloakHttp\x12\x7f\n" +
 	"\x0ftls_secret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\rtlsSecretName\x12!\n" +
 	"\fhttp_enabled\x18\x02 \x01(\bR\vhttpEnabled\x125\n" +
@@ -1357,10 +1357,10 @@ const file_dev_planton_provider_kubernetes_kuberneteskeycloak_v1_spec_proto_rawD
 	"\x1dKubernetesKeycloakCacheConfig\x12.\n" +
 	"\x0fconfig_map_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rconfigMapName\x12)\n" +
 	"\x03key\x18\x02 \x01(\tB\x12\x8a\xa6\x1d\x0ecache-ispn.xmlH\x00R\x03key\x88\x01\x01B\x06\n" +
-	"\x04_key\"\xf0\x03\n" +
+	"\x04_key\"\xf2\x02\n" +
 	"\"KubernetesKeycloakAdditionalOption\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x91\x01\n" +
-	"\x05value\x18\x02 \x01(\tB{\xaa\xa6\x1dwgeneric option plumbing; credential-bearing options belong in the secret arm, which this field comment directs users toR\x05value\x12o\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12o\n" +
 	"\x06secret\x18\x03 \x01(\v2W.dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakSecretSelectorR\x06secret:\xa8\x01\xbaH\xa4\x01\x1a\xa1\x01\n" +
 	"\"spec.additional_options.one_source\x12NGive the option's value exactly one way — inline OR from a Secret, not both.\x1a+!(size(this.value) > 0 && has(this.secret))\"\xf3\x02\n" +
 	"\x1cKubernetesKeycloakScheduling\x12\x8a\x01\n" +

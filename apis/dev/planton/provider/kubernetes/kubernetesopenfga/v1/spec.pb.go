@@ -1591,10 +1591,10 @@ const file_dev_planton_provider_kubernetes_kubernetesopenfga_v1_spec_proto_rawDe
 	"\x16KubernetesOpenFgaAuthn\x12u\n" +
 	"\tpreshared\x18\x01 \x01(\v2U.dev.planton.provider.kubernetes.kubernetesopenfga.v1.KubernetesOpenFgaPresharedAuthnH\x00R\tpreshared\x12f\n" +
 	"\x04oidc\x18\x02 \x01(\v2P.dev.planton.provider.kubernetes.kubernetesopenfga.v1.KubernetesOpenFgaOidcAuthnH\x00R\x04oidcB\b\n" +
-	"\x06method\"\xd2\x03\n" +
+	"\x06method\"\x8e\x03\n" +
 	"\x1fKubernetesOpenFgaPresharedAuthn\x12\x18\n" +
-	"\x04keys\x18\x01 \x03(\tB\x04\xa0\xa6\x1d\x01R\x04keys\x12}\n" +
-	"\x19existing_keys_secret_name\x18\x02 \x01(\tBB\xaa\xa6\x1d>carries the NAME of an existing Secret, never the key materialR\x16existingKeysSecretName:\x95\x02\xbaH\x91\x02\x1a\x8e\x02\n" +
+	"\x04keys\x18\x01 \x03(\tB\x04\xa0\xa6\x1d\x01R\x04keys\x129\n" +
+	"\x19existing_keys_secret_name\x18\x02 \x01(\tR\x16existingKeysSecretName:\x95\x02\xbaH\x91\x02\x1a\x8e\x02\n" +
 	"$spec.authn.preshared.exactly_one_arm\x12\xa0\x01Provide the API keys exactly one way: declare them in `keys` (materialized into a managed Secret) or point `existing_keys_secret_name` at a Secret you maintain.\x1aC(size(this.keys) > 0) != (size(this.existing_keys_secret_name) > 0)\"e\n" +
 	"\x1aKubernetesOpenFgaOidcAuthn\x12#\n" +
 	"\x06issuer\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x88\x01\x01R\x06issuer\x12\"\n" +

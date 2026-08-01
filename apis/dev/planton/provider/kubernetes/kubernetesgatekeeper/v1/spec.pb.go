@@ -995,9 +995,9 @@ const file_dev_planton_provider_kubernetes_kubernetesgatekeeper_v1_spec_proto_ra
 	"\x1d_enable_k8s_native_validationB&\n" +
 	"$_enable_generator_resource_expansionB\f\n" +
 	"\n" +
-	"_log_level\"\x97\x01\n" +
-	" KubernetesGatekeeperExternalCert\x12s\n" +
-	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x06\x92\xd4a\x0fspec.secretNameR\n" +
+	"_log_level\"\x98\x01\n" +
+	" KubernetesGatekeeperExternalCert\x12t\n" +
+	"\vsecret_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x06\x92\xd4a\x10spec.secret_nameR\n" +
 	"secretName\"\xcc\x02\n" +
 	"\x19KubernetesGatekeeperHooks\x126\n" +
 	"\x0flabel_namespace\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x0elabelNamespace\x88\x01\x01\x122\n" +

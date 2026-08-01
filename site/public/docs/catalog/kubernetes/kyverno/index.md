@@ -23,7 +23,8 @@ auto-generation of defaults across thousands of production clusters.
 - **Four typed controllers** — admission, background, cleanup, and
   reports, each independently sized and scheduled; HPA on the
   admission path; ServiceMonitor fan-out across all four.
-- **Safety-first lifecycle** — the pre-delete hook that removes the
+- **Safety-first lifecycle** — uninstall cleans the runtime-registered
+  webhook configurations (chart hook plus module-owned cleanup) — the
   runtime-registered webhooks stays on by default, the CRD-cascade
   destroy warning lives on the field that controls it, and
   fail-open-everywhere is one typed flag when you want it.

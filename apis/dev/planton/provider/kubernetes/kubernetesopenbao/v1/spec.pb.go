@@ -1657,12 +1657,12 @@ const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDe
 	"\agcp_kms\x18\x02 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSealH\x00R\x06gcpKms\x12\x82\x01\n" +
 	"\x0fazure_key_vault\x18\x03 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSealH\x00R\razureKeyVault\x12n\n" +
 	"\atransit\x18\x04 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSealH\x00R\atransitB\x06\n" +
-	"\x04seal\"\x96\x02\n" +
+	"\x04seal\"\xbb\x01\n" +
 	"\x1bKubernetesOpenBaoAwsKmsSeal\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12%\n" +
 	"\n" +
-	"kms_key_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bkmsKeyId\x12}\n" +
-	"\raccess_key_id\x18\x03 \x01(\tBY\xaa\xa6\x1dUAWS access key IDs are public identifiers; only the paired secret key is a credentialR\vaccessKeyId\x120\n" +
+	"kms_key_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bkmsKeyId\x12\"\n" +
+	"\raccess_key_id\x18\x03 \x01(\tR\vaccessKeyId\x120\n" +
 	"\x11secret_access_key\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x0fsecretAccessKey\"\xcc\x04\n" +
 	"\x1bKubernetesOpenBaoGcpKmsSeal\x12v\n" +
 	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\aproject\x12\x1f\n" +
@@ -1696,14 +1696,14 @@ const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDe
 	"\x18KubernetesOpenBaoMetrics\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x126\n" +
 	"\x17service_monitor_enabled\x18\x02 \x01(\bR\x15serviceMonitorEnabled:\xdb\x01\xbaH\xd7\x01\x1a\xd4\x01\n" +
-	"-spec.metrics.service_monitor.requires_metrics\x12tA ServiceMonitor without the telemetry stanza scrapes an endpoint that rejects every request — enable metrics too.\x1a-!this.service_monitor_enabled || this.enabled\"\xfb\x04\n" +
+	"-spec.metrics.service_monitor.requires_metrics\x12tA ServiceMonitor without the telemetry stanza scrapes an endpoint that rejects every request — enable metrics too.\x1a-!this.service_monitor_enabled || this.enabled\"\xb1\x04\n" +
 	"\x1eKubernetesOpenBaoSnapshotAgent\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x121\n" +
 	"\bschedule\x18\x02 \x01(\tB\x10\x8a\xa6\x1d\f*/15 * * * *H\x00R\bschedule\x88\x01\x01\x12v\n" +
 	"\as3_host\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a\x1astatus.outputs.s3_endpointR\x06s3Host\x12$\n" +
 	"\ts3_bucket\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bs3Bucket\x128\n" +
-	"\x0es3_expire_days\x18\x05 \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0214H\x01R\fs3ExpireDays\x88\x01\x01\x12\x8d\x01\n" +
-	"\x1as3_credentials_secret_name\x18\x06 \x01(\tBP\xbaH\x04r\x02\x10\x01\xaa\xa6\x1dEcarries the NAME of an existing Secret, never the credential materialR\x17s3CredentialsSecretName\x12,\n" +
+	"\x0es3_expire_days\x18\x05 \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0214H\x01R\fs3ExpireDays\x88\x01\x01\x12D\n" +
+	"\x1as3_credentials_secret_name\x18\x06 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x17s3CredentialsSecretName\x12,\n" +
 	"\bbao_role\x18\a \x01(\tB\f\x8a\xa6\x1d\bsnapshotH\x02R\abaoRole\x88\x01\x01\x127\n" +
 	"\rbao_auth_path\x18\b \x01(\tB\x0e\x8a\xa6\x1d\n" +
 	"kubernetesH\x03R\vbaoAuthPath\x88\x01\x01B\v\n" +

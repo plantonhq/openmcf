@@ -401,7 +401,7 @@ message KubernetesOpenBaoAwsKmsSeal {
    * (`<name>-seal-credentials`) delivered as environment variables;
    * nothing credential-bearing lands in the config ConfigMap.
    */
-  string access_key_id = 3 [(dev.planton.shared.options.sensitive_exempt_reason) = "AWS access key IDs are public identifiers; only the paired secret key is a credential"];
+  string access_key_id = 3;
 
   /**
    * The secret access key paired with access_key_id.
@@ -627,10 +627,7 @@ message KubernetesOpenBaoSnapshotAgent {
    * agent image expects (keys access_key / secret_key). Required —
    * snapshot pods crash-loop without it.
    */
-  string s3_credentials_secret_name = 6 [
-    (buf.validate.field).string.min_len = 1,
-    (dev.planton.shared.options.sensitive_exempt_reason) = "carries the NAME of an existing Secret, never the credential material"
-  ];
+  string s3_credentials_secret_name = 6 [(buf.validate.field).string.min_len = 1];
 
   /**
    * The OpenBao Kubernetes-auth ROLE the agent logs in with

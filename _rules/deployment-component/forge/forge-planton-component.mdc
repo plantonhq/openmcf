@@ -892,6 +892,41 @@ classic-yaml ConfigGroup + a retainOnDelete TRANSFORMATION on Pulumi —
 yaml/v2 children are provider-side and unreachable by SDK options).
 Re-pin the chart's CRD-install flag AFTER the helm_values merge — a
 user override would re-arm the cascade the design exists to prevent.
+The class carries THREE corollaries, all verified live:
+
+1. **Retained resources must be RE-ADOPTED on the next install.** A
+   destroy leaves module-owned CRDs on the cluster by design, so the
+   next install of the same module finds them already there — and the
+   Pulumi provider's create fails AlreadyExists even in SSA mode
+   unless the provider sets `upsertExistingObjects` (verified in the
+   pinned provider source; its own error text names the knob). Route
+   ONLY the retained resources through the shared upsert seam
+   (`pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert`)
+   — ordinary resources keep create-conflict semantics. Terraform's
+   `kubectl_manifest` server-side apply adopts natively. A kind whose
+   Pulumi lanes were proven before this seam existed has the latent
+   break on its REINSTALL path — audit at the next touch.
+2. **Staged sibling files must be assumed NOT to travel with a bare
+   module-directory copy.** `fileset()` over a missing `../crds`
+   returns EMPTY and `for_each` silently plans ZERO resources — the
+   install then "works" against whatever CRDs happen to exist (caught
+   live: a lane passed riding a previous lane's retained CRDs, and
+   only a verifier asserting the CRDs point at THIS release exposed
+   it). Every staged-file read pairs with a fail-loud expected-count
+   guard in BOTH engines (a TF precondition and a Go count check),
+   updated together with the chart pin.
+3. **When the chart TEMPLATES its CRDs with release-derived values**
+   (a conversion-webhook clientConfig, a cert-manager
+   `inject-ca-from` annotation), stage the files RENDERED at the pin
+   with those values replaced by module tokens, and substitute the
+   release's own identity in BOTH engines at apply time — kept CRDs
+   must always point at the CURRENT release's webhook Service and
+   Certificate, and a runtime reconciler (cert-manager's CA injector)
+   is the only correct keeper of their conversion trust: an
+   install-time CA frozen into kept CRDs breaks CR conversion
+   silently on rotation, which is why such a kind models cert-manager
+   as a REQUIRED posture rather than offering a one-shot
+   self-signed arm.
 
 **Two chart-audit probes that only fail LIVE — run them at the pin,
 before any design lands.** (1) HEAD every DEFAULT image reference's

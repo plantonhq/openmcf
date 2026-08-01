@@ -1218,6 +1218,41 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			ApiKey:    openFgaPresharedKey(spec),
 		}, nil
 
+	// The OpenTelemetry Operator: manager rolled out (its pod mounts
+	// the cert-manager-issued webhook Secret — the rollout IS the
+	// cert-issuance proof), all four module-owned opentelemetry.io
+	// CRDs Established, THE ADMISSION GATE (an invalid collector CR
+	// REJECTED by the fail-closed webhook) and THE CONVERSION PROOF
+	// (a v1beta1-written probe CR read back through v1alpha1 — the
+	// call only converts when the CA injector has patched the KEPT
+	// CRD's conversion caBundle, the trust seam this kind's
+	// module-owned-CRD design hangs on). Destroy asserts the designed
+	// keep: workloads gone, CRDs retained.
+	case "kubernetesoteloperator":
+		return &OtelOperatorVerifier{
+			Namespace:   info.Namespace,
+			ReleaseName: info.Name,
+		}, nil
+
+	// An operator-managed OpenTelemetry Collector: the mode's workload
+	// rolled out — and THE PIPELINE PROOF on every lane (a real
+	// OTLP/HTTP push whose marker lands in the debug exporter output;
+	// telemetry THROUGH the declared pipeline, never just a running
+	// pod). The daemonset lane (spec mode) adds THE FILELOG PROOF
+	// (node log files actually ingested — the run-as-root pattern);
+	// the behavioral-pipeline scenario (recognized by name) adds THE
+	// RECONCILE PROOF (a verifier-patched config rolled onto live
+	// pipeline behavior).
+	case "kubernetesotelcollector":
+		spec := manifestSpecMap(manifestPath)
+		mode, _ := spec["mode"].(string)
+		return &OtelCollectorVerifier{
+			Namespace:  info.Namespace,
+			Name:       info.Name,
+			Daemonset:  mode == "daemonset",
+			Behavioral: strings.Contains(manifestPath, "behavioral-pipeline"),
+		}, nil
+
 	// Harbor container registry: every stateless component rolled out,
 	// the front-door Service present — and THE REGISTRY PROOF on every
 	// lane: login as the module-generated admin, create a project, OCI

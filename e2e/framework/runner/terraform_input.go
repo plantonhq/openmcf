@@ -3,6 +3,7 @@ package runner
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/iac/terraform"
@@ -76,44 +77,79 @@ func BuildTerraformInput(manifestPath, workDir string) (*TerraformInput, error) 
 	}, nil
 }
 
-// PrepareWorkDir creates an isolated temporary copy of a TF module directory.
-// Terraform state files (.terraform/, terraform.tfstate) live in the working
-// directory, so each test needs its own copy to avoid state conflicts.
+// PrepareWorkDir creates an isolated temporary copy of a TF module
+// directory. Terraform state files (.terraform/, terraform.tfstate) live in
+// the working directory, so each test needs its own copy to avoid state
+// conflicts.
+//
+// THE SIBLING-DIRECTORY CONTRACT: modules may read staged files through
+// relative paths OUTSIDE the module directory — the module-owned-CRD class
+// stages its CRD files at iac/crds/ and both engines read `../crds`. A copy
+// of the module directory ALONE makes fileset() return empty and for_each
+// silently plan ZERO resources (caught live: a lane "passed" riding a
+// previous lane's retained CRDs). The copy therefore reproduces the
+// module's PARENT directory tree (iac/), excluding engine state and the
+// sibling Pulumi module, and returns the module subdirectory inside it.
 //
 // Returns the working directory path and a cleanup function.
 func PrepareWorkDir(sourceModuleDir string) (string, func(), error) {
-	workDir, err := os.MkdirTemp("", "planton-e2e-tf-*")
+	tempRoot, err := os.MkdirTemp("", "planton-e2e-tf-*")
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to create temp directory for TF module")
 	}
 
 	cleanup := func() {
-		os.RemoveAll(workDir)
+		os.RemoveAll(tempRoot)
 	}
 
-	entries, err := os.ReadDir(sourceModuleDir)
-	if err != nil {
-		cleanup()
-		return "", nil, errors.Wrapf(err, "failed to read TF module directory %s", sourceModuleDir)
+	sourceModuleDir = filepath.Clean(sourceModuleDir)
+	parentDir := filepath.Dir(sourceModuleDir)
+
+	// Never copied: engine-local state (a shared checkout may carry a
+	// developer's .terraform plugin tree and state files) and the sibling
+	// Pulumi module (its own engine's world — irrelevant to a TF run).
+	skip := map[string]bool{
+		".terraform": true,
+		"pulumi":     true,
 	}
 
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		srcPath := filepath.Join(sourceModuleDir, entry.Name())
-		dstPath := filepath.Join(workDir, entry.Name())
-
-		content, err := os.ReadFile(srcPath)
+	var copyTree func(src, dst string) error
+	copyTree = func(src, dst string) error {
+		entries, err := os.ReadDir(src)
 		if err != nil {
-			cleanup()
-			return "", nil, errors.Wrapf(err, "failed to read %s", srcPath)
+			return errors.Wrapf(err, "failed to read directory %s", src)
 		}
-		if err := os.WriteFile(dstPath, content, 0644); err != nil {
-			cleanup()
-			return "", nil, errors.Wrapf(err, "failed to write %s", dstPath)
+		if err := os.MkdirAll(dst, 0755); err != nil {
+			return errors.Wrapf(err, "failed to create directory %s", dst)
 		}
+		for _, entry := range entries {
+			name := entry.Name()
+			if skip[name] || strings.HasPrefix(name, "terraform.tfstate") || name == "terraform.tfplan" {
+				continue
+			}
+			srcPath := filepath.Join(src, name)
+			dstPath := filepath.Join(dst, name)
+			if entry.IsDir() {
+				if err := copyTree(srcPath, dstPath); err != nil {
+					return err
+				}
+				continue
+			}
+			content, err := os.ReadFile(srcPath)
+			if err != nil {
+				return errors.Wrapf(err, "failed to read %s", srcPath)
+			}
+			if err := os.WriteFile(dstPath, content, 0644); err != nil {
+				return errors.Wrapf(err, "failed to write %s", dstPath)
+			}
+		}
+		return nil
 	}
 
-	return workDir, cleanup, nil
+	if err := copyTree(parentDir, tempRoot); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+
+	return filepath.Join(tempRoot, filepath.Base(sourceModuleDir)), cleanup, nil
 }

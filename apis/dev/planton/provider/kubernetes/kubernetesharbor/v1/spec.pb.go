@@ -2624,7 +2624,7 @@ var File_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto protoref
 
 const file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesharbor.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xf0\x1b\n" +
+	">dev/planton/provider/kubernetes/kubernetesharbor/v1/spec.proto\x123dev.planton.provider.kubernetes.kubernetesharbor.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xad\x1b\n" +
 	"\x14KubernetesHarborSpec\x12j\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
@@ -2655,8 +2655,8 @@ const file_dev_planton_provider_kubernetes_kubernetesharbor_v1_spec_proto_rawDes
 	"\tlog_level\x18\x14 \x01(\tB\x97\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
 	"\x0espec.log_level\x12=log_level must be one of: debug, info, warning, error, fatal.\x1a6this in [\"debug\", \"info\", \"warning\", \"error\", \"fatal\"]\x8a\xa6\x1d\x04infoH\x01R\blogLevel\x88\x01\x01\x12*\n" +
 	"\x0eimage_registry\x18\x15 \x01(\tH\x02R\rimageRegistry\x88\x01\x01\x12x\n" +
-	"\x12image_pull_secrets\x18\x16 \x03(\tBJ\xaa\xa6\x1dFNames of existing Kubernetes Secrets (references), not secret materialR\x10imagePullSecrets\x12y\n" +
-	"\x15ca_bundle_secret_name\x18\x17 \x01(\tBA\xaa\xa6\x1d=Name of an existing Secret (a reference), not secret materialH\x03R\x12caBundleSecretName\x88\x01\x01\x12H\n" +
+	"\x12image_pull_secrets\x18\x16 \x03(\tBJ\xaa\xa6\x1dFNames of existing Kubernetes Secrets (references), not secret materialR\x10imagePullSecrets\x126\n" +
+	"\x15ca_bundle_secret_name\x18\x17 \x01(\tH\x03R\x12caBundleSecretName\x88\x01\x01\x12H\n" +
 	"\x19keep_volumes_on_uninstall\x18\x18 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x04R\x16keepVolumesOnUninstall\x88\x01\x01\x12\xb7\x01\n" +
 	"\x0fupdate_strategy\x18\x19 \x01(\tB\x88\x01\xbaHt\xba\x01q\n" +
 	"\x14spec.update_strategy\x122update_strategy must be RollingUpdate or Recreate.\x1a%this in [\"RollingUpdate\", \"Recreate\"]\x8a\xa6\x1d\rRollingUpdateH\x05R\x0eupdateStrategy\x88\x01\x01\x12o\n" +

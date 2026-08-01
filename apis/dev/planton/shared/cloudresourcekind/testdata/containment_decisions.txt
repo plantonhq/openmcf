@@ -396,6 +396,7 @@ contained dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExt
 contained dev.planton.provider.kubernetes.kubernetesexternaldns.v1.KubernetesExternalDnsSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesexternalsecret.v1.KubernetesExternalSecretSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesexternalsecretsoperator.v1.KubernetesExternalSecretsOperatorSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kubernetesgatekeeper.v1.KubernetesGatekeeperSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesgateway.v1.KubernetesGatewaySpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesgharunnerscaleset.v1.KubernetesGhaRunnerScaleSetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesgharunnerscalesetcontroller.v1.KubernetesGhaRunnerScaleSetControllerSpec.namespace -> KubernetesNamespace
@@ -422,7 +423,9 @@ contained dev.planton.provider.kubernetes.kuberneteskarapace.v1.KubernetesKarapa
 contained dev.planton.provider.kubernetes.kuberneteskarpenter.v1.KubernetesKarpenterSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskeda.v1.KubernetesKedaSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskeycloak.v1.KubernetesKeycloakSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kuberneteskeycloakoperator.v1.KubernetesKeycloakOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteskubeprometheusstack.v1.KubernetesKubePrometheusStackSpec.namespace -> KubernetesNamespace
+contained dev.planton.provider.kubernetes.kuberneteskyverno.v1.KubernetesKyvernoSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteslistenerset.v1.KubernetesListenerSetSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesloki.v1.KubernetesLokiSpec.namespace -> KubernetesNamespace

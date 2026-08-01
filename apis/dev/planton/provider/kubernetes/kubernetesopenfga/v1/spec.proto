@@ -408,7 +408,7 @@ message KubernetesOpenFgaPresharedAuthn {
    * OR reference an existing Secret carrying the comma-separated key
    * list under the data key `keys` (the chart's contract).
    */
-  string existing_keys_secret_name = 2 [(dev.planton.shared.options.sensitive_exempt_reason) = "carries the NAME of an existing Secret, never the key material"];
+  string existing_keys_secret_name = 2;
 
   option (buf.validate.message).cel = {
     id: "spec.authn.preshared.exactly_one_arm"

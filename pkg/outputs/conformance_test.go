@@ -1282,6 +1282,46 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesOtelOperator: the pinned-fullname naming contract —
+			// the release, the webhook Service the API server calls for
+			// admission and CRD conversion, and the cert-manager-issued
+			// serving-cert Secret.
+			name: "KubernetesOtelOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesOtelOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":                "otel-operator-system",
+				"release_name":             "otel-operator",
+				"webhook_service":          "otel-operator-webhook",
+				"webhook_cert_secret_name": "otel-operator-controller-manager-service-cert",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "webhook_service",
+				"webhook_cert_secret_name",
+			},
+		},
+		{
+			// KubernetesOtelCollector: the operator naming contract — the
+			// CR name, the receiver-port Service and its headless/
+			// monitoring siblings, and the OTLP ingest endpoints (the
+			// composition handles applications push telemetry to).
+			name: "KubernetesOtelCollector",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesOtelCollector,
+			rawOutputs: map[string]interface{}{
+				"namespace":          "observability",
+				"collector_name":     "otel-gateway",
+				"service":            "otel-gateway-collector",
+				"otlp_grpc_endpoint": "otel-gateway-collector.observability.svc.cluster.local:4317",
+				"otlp_http_endpoint": "http://otel-gateway-collector.observability.svc.cluster.local:4318",
+				"headless_service":   "otel-gateway-collector-headless",
+				"monitoring_service": "otel-gateway-collector-monitoring",
+			},
+			mustPopulate: []string{
+				"namespace", "collector_name", "service",
+				"otlp_grpc_endpoint", "otlp_http_endpoint",
+				"headless_service", "monitoring_service",
+			},
+		},
+		{
 			// KubernetesSeaweedFs: the chart naming contract — release, the
 			// S3/filer/master Service handles, both credential Secrets
 			// (chart-owned S3, module-generated admin), and the endpoints.

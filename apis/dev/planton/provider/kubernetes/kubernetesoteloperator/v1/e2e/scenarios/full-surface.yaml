@@ -1,0 +1,28 @@
+# Full-surface operator install: two manager replicas behind leader
+# election, explicit resources, and an escape-hatch document (PDB) —
+# proving the typed surface and the helm_values merge together. The
+# issuerRef arm stays plan-proven (an explicit issuer needs a
+# pre-existing ClusterIssuer this lane deliberately does not carry);
+# serviceMonitorEnabled stays plan-proven (no monitoring.coreos.com
+# CRDs on the kind cluster by design).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesOtelOperator
+metadata:
+  name: e2e-otelop-full
+spec:
+  namespace:
+    value: e2e-otelop-full
+  createNamespace: true
+  chartVersion: 0.120.0
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  helmValues: |
+    pdb:
+      create: true
+      minAvailable: 1

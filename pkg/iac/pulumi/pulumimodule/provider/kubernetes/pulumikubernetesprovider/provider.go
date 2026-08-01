@@ -61,6 +61,61 @@ func GetWithKubernetesProviderConfig(ctx *pulumi.Context,
 	return provider, nil
 }
 
+// GetWithKubernetesProviderConfigUpsert is GetWithKubernetesProviderConfig
+// with upsertExistingObjects enabled: server-side apply ADOPTS an existing
+// object on create instead of failing AlreadyExists. The seam for
+// MODULE-OWNED, retained-on-destroy resources (kept CRDs above all): a
+// destroy leaves them on the cluster by design, so the next install of the
+// same module must re-adopt them — the exact semantic twin of Terraform's
+// kubectl_manifest server-side apply. Scope providers built here to ONLY
+// those resources; ordinary resources keep the default create-conflict
+// semantics through the plain provider.
+func GetWithKubernetesProviderConfigUpsert(ctx *pulumi.Context,
+	kubernetesProviderConfig *kubernetesprovider.KubernetesProviderConfig,
+	providerName string) (*kubernetes.Provider, error) {
+
+	if kubernetesProviderConfig == nil {
+		kubeContext := os.Getenv("KUBE_CTX")
+
+		providerArgs := &kubernetes.ProviderArgs{
+			EnableServerSideApply: pulumi.Bool(true),
+			UpsertExistingObjects: pulumi.Bool(true),
+			// Force field-manager conflicts on adoption — the retained
+			// object was last applied by a different stack's manager.
+			// Twin of Terraform's kubectl force_conflicts.
+			EnablePatchForce: pulumi.Bool(true),
+		}
+		if kubeContext != "" {
+			providerArgs.Context = pulumi.String(kubeContext)
+		}
+
+		provider, err := kubernetes.NewProvider(ctx, providerName, providerArgs)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get new provider")
+		}
+		return provider, nil
+	}
+
+	kubeConfigString, err := kubeconfig.Build(kubernetesProviderConfig,
+		os.Getenv(execcredential.CommandPathEnvVar))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build kubeconfig from provider config")
+	}
+
+	provider, err := kubernetes.NewProvider(ctx,
+		providerName,
+		&kubernetes.ProviderArgs{
+			EnableServerSideApply: pulumi.Bool(true),
+			UpsertExistingObjects: pulumi.Bool(true),
+			EnablePatchForce:      pulumi.Bool(true),
+			Kubeconfig:            pulumi.String(kubeConfigString),
+		})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get new provider")
+	}
+	return provider, nil
+}
+
 // GetWithKubernetesProviderConfigAndNamespace is
 // GetWithKubernetesProviderConfig with the provider's default namespace set:
 // namespaced resources that declare no metadata.namespace are applied to

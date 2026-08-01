@@ -107,6 +107,10 @@ var kubernetesTier3Components = []string{
 	// watch) reconciles into a running server against the composed
 	// CloudNativePG database fixture.
 	"kuberneteskeycloak",
+	// The OpenTelemetryCollector CR declaration KubernetesOtelOperator
+	// (its registry prerequisite; cert-manager chains transitively)
+	// reconciles into a collector workload per mode.
+	"kubernetesotelcollector",
 }
 
 // Kubernetes Tier 4 components: operators, addons, and cluster-level
@@ -119,6 +123,7 @@ var kubernetesTier4Components = []string{
 	"kubernetesgharunnerscalesetcontroller",
 	"kubernetestektonoperator",
 	"kuberneteskeycloakoperator",
+	"kubernetesoteloperator",
 }
 
 // Kubernetes Tier 2 components: Helm-based, self-contained chart installs.
@@ -686,6 +691,12 @@ func TestKubernetesTekton_Pulumi(t *testing.T) {
 func TestKubernetesKeycloakOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskeycloakoperator", "pulumi")
 }
+func TestKubernetesOtelOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesoteloperator", "pulumi")
+}
+func TestKubernetesOtelCollector_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesotelcollector", "pulumi")
+}
 func TestKubernetesTektonOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestektonoperator", "pulumi")
 }
@@ -718,6 +729,12 @@ func TestKubernetesTekton_Terraform(t *testing.T) {
 }
 func TestKubernetesKeycloakOperator_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskeycloakoperator", "terraform")
+}
+func TestKubernetesOtelOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesoteloperator", "terraform")
+}
+func TestKubernetesOtelCollector_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesotelcollector", "terraform")
 }
 func TestKubernetesTektonOperator_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestektonoperator", "terraform")

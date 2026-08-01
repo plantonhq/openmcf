@@ -1,0 +1,3 @@
+name: kubernetes-otel-operator
+runtime: go
+description: OpenTelemetry Operator installation from the official opentelemetry-operator Helm chart — reconciles OpenTelemetryCollector resources (declared with KubernetesOtelCollector) into running collector fleets, with module-owned CRDs retained past the release and cert-manager-issued webhook certificates

@@ -160,7 +160,7 @@ message KubernetesKeycloakSpec {
    * should trust (each mounted into the server truststore) — for
    * private-CA databases, LDAP servers, or identity providers.
    */
-  repeated string truststore_secret_names = 13;
+  repeated string truststore_secret_names = 13 [(dev.planton.shared.options.sensitive_exempt_reason) = "NAMES of existing Secrets (references), not secret material"];
 
   /**
    * Any Keycloak server option not modeled above, by its
@@ -179,7 +179,7 @@ message KubernetesKeycloakSpec {
    * and changes have no effect afterwards; manage real admin users
    * inside Keycloak.
    */
-  string bootstrap_admin_secret_name = 15 [(dev.planton.shared.options.sensitive_exempt_reason) = "carries the NAME of an existing Secret, never the credential material"];
+  string bootstrap_admin_secret_name = 15;
 
   /**
    * CPU and memory for the server container. Keycloak is a JVM:
@@ -373,10 +373,7 @@ message KubernetesKeycloakSecretSelector {
   /**
    * Key within the Secret.
    */
-  string key = 2 [
-    (buf.validate.field).required = true,
-    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
-  ];
+  string key = 2 [(buf.validate.field).required = true];
 }
 
 /** Listener/TLS posture. */
@@ -512,7 +509,7 @@ message KubernetesKeycloakAdditionalOption {
   /**
    * Inline value. Use secret for credential-bearing options.
    */
-  string value = 2 [(dev.planton.shared.options.sensitive_exempt_reason) = "generic option plumbing; credential-bearing options belong in the secret arm, which this field comment directs users to"];
+  string value = 2;
 
   /**
    * Value from a Secret (mutually exclusive with value).

@@ -10,16 +10,16 @@ order: 200
 presets:
   - slug: "01-dev-mode"
     rank: "01"
-    title: "OpenBao Dev Mode"
-    excerpt: "This preset deploys OpenBao (open-source Vault fork) in a simple configuration with the UI enabled and ingress access. Suitable for development and testing secrets management workflows."
+    title: "Dev-mode preset"
+    excerpt: "OpenBao with zero ceremony: dev mode auto-initializes and auto-unseals at startup, the root token is literally `root`, and all data lives in memory. Port-forward the `openbao-dev` Service and start..."
   - slug: "02-production-ha"
     rank: "02"
-    title: "Production OpenBao with HA"
-    excerpt: "This preset deploys OpenBao in high-availability mode with 3 replicas, TLS encryption, and the sidecar injector for automatic secrets injection into pods."
+    title: "Production HA (integrated Raft) preset"
+    excerpt: "Three OpenBao servers with integrated Raft storage: each replica persists to its own 10Gi PVC, the module synthesizes the `retry_join` stanzas for every peer (the chart alone ships none — without..."
   - slug: "03-production-ha-gcp-auto-unseal"
     rank: "03"
-    title: "Production HA with GCP KMS Auto-Unseal"
-    excerpt: "This preset deploys OpenBao in high-availability mode with GCP Cloud KMS auto-unseal and GKE Workload Identity. Pods unseal automatically on every restart without human intervention, eliminating the..."
+    title: "Production HA + GCP Cloud KMS auto-unseal preset"
+    excerpt: "The production-ha shape with the restart toil removed: the master key is wrapped by a Cloud KMS crypto key, so every server unseals ITSELF at startup — pod restarts, node replacements and scale..."
 ---
 
 # OpenBao Presets

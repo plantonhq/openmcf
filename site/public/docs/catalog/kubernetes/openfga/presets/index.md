@@ -10,8 +10,8 @@ order: 200
 presets:
   - slug: "01-with-postgres-datastore"
     rank: "01"
-    title: "OpenFGA with PostgreSQL Datastore"
-    excerpt: "This preset deploys OpenFGA with a PostgreSQL backend for storing authorization models and relationship tuples. OpenFGA is a high-performance authorization engine based on Google's Zanzibar paper."
+    title: "PostgreSQL datastore preset"
+    excerpt: "The production OpenFGA shape: three stateless server replicas sharing a PostgreSQL datastore, schema migrations running as an init container in every pod (idempotent — `openfga migrate` gates each..."
 ---
 
 # OpenFGA Presets

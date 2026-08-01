@@ -215,7 +215,7 @@ message KubernetesHarborSpec {
    * artifact storage or replication endpoints serving self-signed
    * certificates.
    */
-  optional string ca_bundle_secret_name = 23 [(dev.planton.shared.options.sensitive_exempt_reason) = "Name of an existing Secret (a reference), not secret material"];
+  optional string ca_bundle_secret_name = 23;
 
   /**
    * Keep the registry and jobservice PVCs when this resource is

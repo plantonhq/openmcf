@@ -1,0 +1,63 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetesoteloperator
+spec:
+  # The module renders one Helm release NAMED AFTER metadata.name, the
+  # module-owned CRD set (kubectl_manifest for_each keyed by each CRD's
+  # OWN name — cluster-scoped, 3-part composed IDs), and the optional
+  # anchor namespace. Everything the chart creates inside the release
+  # (the manager Deployment, webhook Services and configurations, the
+  # cert-manager Certificate/Issuer) is Helm-owned and never imported.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally
+        "otel-operator-system".
+    # ── the module-owned CRDs (for_each resource "crds") ────────────────
+    # Keyed by the CRD's own metadata.name, so the name derives blind
+    # from the state address key; CustomResourceDefinitions are
+    # cluster-scoped (no namespace segment). Absent entirely when
+    # skip_crds is true (the bring-your-own-CRDs arm).
+    - name: api_version
+      tofu_resource_name: crds
+      derivations:
+        - literal: apiextensions.k8s.io/v1
+      where_to_find: Always "apiextensions.k8s.io/v1" — the CRD group/version.
+    - name: kind
+      tofu_resource_name: crds
+      derivations:
+        - literal: CustomResourceDefinition
+      where_to_find: Always "CustomResourceDefinition".
+    - name: name
+      tofu_resource_name: crds
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        Each CRD's metadata.name (the for_each key) —
+        `kubectl get crd | grep opentelemetry.io` (NAME column; the four
+        staged CRDs are opentelemetrycollectors, instrumentations,
+        opampbridges and targetallocators).
+    - name: namespace
+      where_to_find: >-
+        Not applicable — CustomResourceDefinitions are cluster-scoped,
+        so the composed import ID has no namespace segment (the
+        optional [//{namespace}] group drops).
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
