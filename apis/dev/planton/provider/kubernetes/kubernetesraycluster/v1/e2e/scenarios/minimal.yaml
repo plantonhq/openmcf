@@ -1,0 +1,30 @@
+# Minimal cluster: head only, tasks scheduled ON the head (the
+# single-node lab posture the field documents — with the production
+# default of num-cpus 0 and no worker groups there would be zero
+# capacity to run anything). Token auth rides the catalog default. THE
+# RAY PROOF runs here on the head's own capacity: auth gate first
+# (unauthenticated job submission REJECTED), then a real job through
+# the Job Submission REST API to SUCCEEDED.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesRayCluster
+metadata:
+  name: e2e-ray-min
+  annotations:
+    planton.dev/e2e-prerequisites: "KubernetesKubeRayOperator"
+spec:
+  # JOINS the fixture-owned namespace (the operator fixture owns
+  # e2e-ray; cluster-wide watch reconciles it regardless — co-location
+  # keeps the lane hygiene uniform with the behavioral lane, whose
+  # Secret reads CANNOT cross namespaces).
+  namespace:
+    value: e2e-ray
+  rayVersion: 2.52.0
+  head:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 3Gi
+    scheduleTasksOnHead: true

@@ -1,0 +1,3 @@
+name: kubernetes-flink-deployment
+runtime: go
+description: A Flink cluster declared as the flink.apache.org/v1beta1 FlinkDeployment CR the Flink Kubernetes Operator reconciles — application or session shape, JobManager/TaskManager sizing, checkpoint/savepoint/HA state posture with an S3 credential seam, Flink configuration, log configuration and pod scheduling

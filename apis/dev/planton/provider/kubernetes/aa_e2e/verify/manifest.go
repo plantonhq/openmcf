@@ -238,3 +238,23 @@ func manifestHasPrerequisiteSuffix(manifestPath, suffix string) bool {
 	}
 	return false
 }
+
+// specStringList reads a repeated-string spec field, tolerating both the
+// snake_case and camelCase manifest key forms (manifests are authored in
+// either; protojson emits camelCase).
+func specStringList(spec map[string]interface{}, keys ...string) []string {
+	for _, key := range keys {
+		entries, ok := spec[key].([]interface{})
+		if !ok {
+			continue
+		}
+		out := make([]string, 0, len(entries))
+		for _, entry := range entries {
+			if s, ok := entry.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}

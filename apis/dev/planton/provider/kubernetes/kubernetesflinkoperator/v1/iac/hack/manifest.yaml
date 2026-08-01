@@ -1,0 +1,49 @@
+# Full-surface hack manifest for the offline plan/preview proofs: every
+# module-rendered arm of the operator expressed at once — the fenced
+# watch posture, the default-on webhook (exercising the module-generated
+# keystore password Secret and the useDefaultPassword=false re-pin),
+# leader-elected replicas (exercising the module-owned leader-election
+# config), operator config appends, a custom job service account,
+# resources, the image-registry mirror (with the always-rendered tag
+# pin), pull secrets, full scheduling, and an escape-hatch document
+# (logging framework).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesFlinkOperator
+metadata:
+  name: flink-operator-full
+spec:
+  namespace:
+    value: flink-system
+  createNamespace: true
+  chartVersion: 1.15.0
+  watchNamespaces:
+    - stream-team-a
+    - stream-team-b
+  webhookEnabled: true
+  replicas: 2
+  operatorConfig:
+    kubernetes.operator.reconcile.interval: 15 s
+    kubernetes.operator.metrics.reporter.slf4j.interval: 5 MINUTE
+  jobServiceAccount: flink
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  imageRegistry: mirror.example.com
+  imagePullSecrets:
+    - mirror-pull
+  scheduling:
+    nodeSelector:
+      workload: system
+    tolerations:
+      - key: dedicated
+        operator: Equal
+        value: stream-platform
+        effect: NoSchedule
+    priorityClassName: system-cluster-critical
+  helmValues: |
+    logging:
+      framework: log4j2

@@ -116,6 +116,17 @@ var kubernetesTier3Components = []string{
 	// database — the composed-database fixture class, same as
 	// Keycloak.
 	"kubernetesairflow",
+	// The RayCluster CR declaration KubernetesKubeRayOperator (its
+	// registry prerequisite) reconciles into head and worker pods;
+	// the behavioral lane chains a consumer-scoped Valkey fixture for
+	// GCS fault tolerance.
+	"kubernetesraycluster",
+	// The FlinkDeployment CR declaration KubernetesFlinkOperator (its
+	// registry prerequisite; cert-manager chains transitively for the
+	// operator's webhook) reconciles into a JobManager and its
+	// TaskManagers; the behavioral lane chains a consumer-scoped
+	// SeaweedFS fixture for checkpoint/HA storage.
+	"kubernetesflinkdeployment",
 }
 
 // Kubernetes Tier 4 components: operators, addons, and cluster-level
@@ -129,6 +140,8 @@ var kubernetesTier4Components = []string{
 	"kubernetestektonoperator",
 	"kuberneteskeycloakoperator",
 	"kubernetesoteloperator",
+	"kuberneteskuberayoperator",
+	"kubernetesflinkoperator",
 }
 
 // Kubernetes Tier 2 components: Helm-based, self-contained chart installs.
@@ -149,6 +162,9 @@ var kubernetesTier2Components = []string{
 	"kubernetesseaweedfs",
 	"kubernetesqdrant",
 	"kubernetesopenfga",
+	// An operator whose verifier proves a real workload CR with no
+	// fixture prerequisites (the Kyverno/Gatekeeper class).
+	"kubernetessparkoperator",
 }
 
 // ─── Tier 1 Pulumi ──────────────────────────────────────────────────────────
@@ -485,6 +501,12 @@ func TestKubernetesGatekeeper_Pulumi(t *testing.T) {
 func TestKubernetesGatekeeper_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgatekeeper", "terraform")
 }
+func TestKubernetesSparkOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessparkoperator", "pulumi")
+}
+func TestKubernetesSparkOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessparkoperator", "terraform")
+}
 func TestKubernetesRabbitMqOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesrabbitmqoperator", "pulumi")
 }
@@ -621,6 +643,12 @@ func TestKubernetesKeycloak_Pulumi(t *testing.T) {
 func TestKubernetesAirflow_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesairflow", "pulumi")
 }
+func TestKubernetesRayCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesraycluster", "pulumi")
+}
+func TestKubernetesFlinkDeployment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesflinkdeployment", "pulumi")
+}
 func TestKubernetesGhaRunnerScaleSet_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "pulumi")
 }
@@ -675,6 +703,12 @@ func TestKubernetesKeycloak_Terraform(t *testing.T) {
 func TestKubernetesAirflow_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesairflow", "terraform")
 }
+func TestKubernetesRayCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesraycluster", "terraform")
+}
+func TestKubernetesFlinkDeployment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesflinkdeployment", "terraform")
+}
 func TestKubernetesGhaRunnerScaleSet_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "terraform")
 }
@@ -704,6 +738,12 @@ func TestKubernetesKeycloakOperator_Pulumi(t *testing.T) {
 }
 func TestKubernetesOtelOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesoteloperator", "pulumi")
+}
+func TestKubernetesKubeRayOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskuberayoperator", "pulumi")
+}
+func TestKubernetesFlinkOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesflinkoperator", "pulumi")
 }
 func TestKubernetesOtelCollector_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesotelcollector", "pulumi")
@@ -743,6 +783,12 @@ func TestKubernetesKeycloakOperator_Terraform(t *testing.T) {
 }
 func TestKubernetesOtelOperator_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesoteloperator", "terraform")
+}
+func TestKubernetesKubeRayOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kuberneteskuberayoperator", "terraform")
+}
+func TestKubernetesFlinkOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesflinkoperator", "terraform")
 }
 func TestKubernetesOtelCollector_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesotelcollector", "terraform")

@@ -1,0 +1,3 @@
+name: kubernetes-ray-cluster
+runtime: go
+description: A Ray cluster declared as the ray.io/v1 RayCluster CR the KubeRay operator reconciles — head and worker groups with sized containers, Ray-native autoscaling, GCS fault tolerance against an external Redis-protocol store, and token authentication on by default

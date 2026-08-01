@@ -1,0 +1,36 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetessparkoperator
+spec:
+  # One Helm release named after metadata.name plus the optional anchor
+  # namespace. Everything the chart creates inside the release (the
+  # operator Deployment, the re-pinned RBAC set, the workload
+  # namespaces/service accounts — chart-kept by resource policy) travels
+  # with the release import. The spark.apache.org CRDs ride the chart's
+  # crds/ directory (Helm-owned, install-once) and are never separate
+  # state addresses.
+  values:
+    - name: release_name
+      derivations:
+        - from_stack_output: release_name
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares the
+        resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally
+        "spark-operator".
+    # ── the optional anchor namespace ────────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself (workload namespaces are CHART-created and
+        travel with the release).

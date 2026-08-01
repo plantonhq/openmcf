@@ -7152,6 +7152,99 @@ func TestStackOutputsConformance(t *testing.T) {
 				"hosted_zone_id", "status",
 			},
 		},
+		{
+			// KubernetesSparkOperator: the release identity plus the
+			// workload contract — the service account SparkApplications
+			// reference and the watch fence (a repeated string, exercising
+			// the list flattening path).
+			name: "KubernetesSparkOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesSparkOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":                "spark-operator",
+				"release_name":             "spark-operator",
+				"workload_service_account": "spark",
+				"watched_namespaces":       []interface{}{"data-pipelines", "ml-jobs"},
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "workload_service_account",
+				"watched_namespaces",
+			},
+		},
+		{
+			// KubernetesKubeRayOperator: the release identity plus the
+			// watch fence.
+			name: "KubernetesKubeRayOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesKubeRayOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":          "ray-system",
+				"release_name":       "kuberay-operator",
+				"watched_namespaces": []interface{}{"ml-team-a"},
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "watched_namespaces",
+			},
+		},
+		{
+			// KubernetesRayCluster: the head-service endpoint trio and the
+			// nested bearer-token Secret handle — the nested-message
+			// flattening class this guard exists for (both engines must
+			// emit "auth_token_secret.name"/".key", never a flat
+			// "auth_token_secret_name").
+			name: "KubernetesRayCluster",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesRayCluster,
+			rawOutputs: map[string]interface{}{
+				"namespace":          "ml-platform",
+				"head_service":       "ml-ray-head-svc",
+				"client_endpoint":    "ml-ray-head-svc.ml-platform.svc.cluster.local:10001",
+				"dashboard_endpoint": "ml-ray-head-svc.ml-platform.svc.cluster.local:8265",
+				"gcs_endpoint":       "ml-ray-head-svc.ml-platform.svc.cluster.local:6379",
+				"auth_token_secret": map[string]interface{}{
+					"name": "ml-ray-auth-token",
+					"key":  "auth_token",
+				},
+				"port_forward_command": "kubectl port-forward -n ml-platform service/ml-ray-head-svc 8265:8265",
+			},
+			mustPopulate: []string{
+				"namespace", "head_service", "client_endpoint",
+				"dashboard_endpoint", "gcs_endpoint", "auth_token_secret",
+				"port_forward_command",
+			},
+		},
+		{
+			// KubernetesFlinkOperator: the release identity, the runner
+			// identity contract, the watch fence, and the chart-fixed
+			// webhook Service handle.
+			name: "KubernetesFlinkOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesFlinkOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":           "flink-system",
+				"release_name":        "flink-operator",
+				"job_service_account": "flink",
+				"watched_namespaces":  []interface{}{"stream-team-a"},
+				"webhook_service":     "flink-operator-webhook-service",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "job_service_account",
+				"watched_namespaces", "webhook_service",
+			},
+		},
+		{
+			// KubernetesFlinkDeployment: the REST service naming contract
+			// (`<name>-rest`) every exposure and job submission composes
+			// against.
+			name: "KubernetesFlinkDeployment",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesFlinkDeployment,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "stream-processing",
+				"rest_service":         "orders-pipeline-rest",
+				"rest_endpoint":        "orders-pipeline-rest.stream-processing.svc.cluster.local:8081",
+				"port_forward_command": "kubectl port-forward -n stream-processing service/orders-pipeline-rest 8081:8081",
+			},
+			mustPopulate: []string{
+				"namespace", "rest_service", "rest_endpoint",
+				"port_forward_command",
+			},
+		},
 	}
 
 	for _, tc := range cases {

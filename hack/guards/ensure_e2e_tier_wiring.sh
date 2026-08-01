@@ -44,6 +44,19 @@ if [[ -z "$makefile_regexes" ]]; then
   exit 1
 fi
 
+# The Terraform-only sweeps (`..._Terraform"`) are a SECOND hand-maintained
+# copy of each tier's member list, and they drift independently: a kind can
+# be reachable through the generic tier row (which matches both engines'
+# funcs) while the Terraform-only twin row silently skips it. Terraform
+# funcs are therefore checked against the Terraform-suffixed rows
+# specifically, never just the union (a real drift shipped exactly this
+# way).
+makefile_terraform_regexes="$(printf '%s\n' "$makefile_regexes" | grep '_Terraform$' || true)"
+if [[ -z "$makefile_terraform_regexes" ]]; then
+  echo "GUARD BUG: no Terraform-only e2e tier -run regexes extracted from the Makefile — fix the extraction before trusting this guard" >&2
+  exit 1
+fi
+
 for profile in "$provider_base"/*/v1/e2e/profile.yaml; do
   component="$(basename "$(dirname "$(dirname "$(dirname "$profile")")")")"
 
@@ -75,6 +88,9 @@ for profile in "$provider_base"/*/v1/e2e/profile.yaml; do
     member="${member#Test}"
     if ! printf '%s\n' "$makefile_regexes" | grep -q "[|(]${member}[|)]"; then
       echo "MISSING TIER REGEX: $func_name exists but '$member' appears in no Makefile e2e tier -run regex" >&2
+      failures=$((failures + 1))
+    elif [[ "$engine_suffix" == "Terraform" ]] && ! printf '%s\n' "$makefile_terraform_regexes" | grep -q "[|(]${member}[|)]"; then
+      echo "MISSING TERRAFORM TIER REGEX: '$member' rides a generic tier row but appears in no Terraform-only (_Terraform) tier regex — the two row sets are copies and this one drifted" >&2
       failures=$((failures + 1))
     fi
   done

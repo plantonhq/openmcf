@@ -1,0 +1,11 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKubeRayOperator
+metadata:
+  name: kuberay-operator
+spec:
+  namespace:
+    value: ray-system
+  createNamespace: true
+  imageRegistry: mirror.example.com
+  metricsEnabled: true
+  serviceMonitorEnabled: true

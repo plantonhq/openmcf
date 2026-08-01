@@ -3269,6 +3269,45 @@ enum CloudResourceKind {
     id_prefix: "k8saflw"
     prerequisites: [KubernetesPostgres]
   }];
+  KubernetesSparkOperator = 931 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssprkop"
+  }];
+  KubernetesKubeRayOperator = 932 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skrayop"
+  }];
+  // KubernetesKubeRayOperator is a prerequisite because this kind declares
+  // the RayCluster custom resource that only the operator's CRDs admit and
+  // only the operator reconciles into head and worker pods.
+  KubernetesRayCluster = 933 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sraycl"
+    prerequisites: [KubernetesKubeRayOperator]
+  }];
+  // KubernetesCertManager is a prerequisite because the Flink operator's
+  // chart, with its default-on admission webhook, renders cert-manager
+  // Issuer/Certificate resources and trusts the API server through
+  // cert-manager's CA injection — there is no self-signed fallback at the
+  // pinned chart, and the webhooks are fail-closed.
+  KubernetesFlinkOperator = 934 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sflnkop"
+    prerequisites: [KubernetesCertManager]
+  }];
+  // KubernetesFlinkOperator is a prerequisite because this kind declares
+  // the FlinkDeployment custom resource that only the operator's CRDs
+  // admit and only the operator reconciles into a running Flink cluster.
+  KubernetesFlinkDeployment = 935 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8sflnkd"
+    prerequisites: [KubernetesFlinkOperator]
+  }];
   // 950–969: Kubernetes GitOps and CI/CD
   KubernetesArgocd = 950 [(kind_meta) = {
     provider: kubernetes

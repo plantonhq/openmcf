@@ -856,6 +856,59 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			DeliveryProof: strings.Contains(manifestPath, "behavioral-dag-delivery"),
 		}, nil
 
+	// The Apache Spark operator: rollout + both spark.apache.org CRDs
+	// established + THE JOB PROOF on every lane (a verifier-owned
+	// SparkApplication — the in-image SparkPi — runs to Succeeded
+	// through REAL driver and executor pods under the chart-created
+	// workload RBAC), and with a fenced workload posture THE FENCE
+	// PROOF (a SparkApplication outside the fence is never reconciled).
+	// Destroy asserts the crds/-directory keep posture.
+	case "kubernetessparkoperator":
+		spec := manifestSpecMap(manifestPath)
+		return &SparkOperatorVerifier{
+			Namespace:              info.Namespace,
+			Name:                   info.Name,
+			WorkloadNamespaces:     sparkWorkloadNamespaces(spec),
+			WorkloadServiceAccount: sparkWorkloadServiceAccount(spec),
+		}, nil
+
+	// A Ray cluster declaration: the CR to ready, the head Service, THE
+	// AUTH GATE (unauthenticated job submission REJECTED — token auth is
+	// the catalog default) + THE RAY PROOF (a real job through the head's
+	// Job Submission REST API to SUCCEEDED on the cluster's own
+	// capacity), and on the behavioral-state lane THE STATE PROOF (the
+	// head pod replaced; the recovered head still lists the completed
+	// job — control state lived in the composed Valkey, not head-pod
+	// memory).
+	case "kubernetesraycluster":
+		spec := manifestSpecMap(manifestPath)
+		return &RayClusterVerifier{
+			Namespace:           info.Namespace,
+			Name:                info.Name,
+			AuthDisabled:        rayClusterAuthDisabled(spec),
+			ExistingTokenSecret: rayClusterExistingTokenSecret(spec),
+			GcsFaultTolerance:   rayClusterGcsFaultTolerance(spec),
+			StateProof:          strings.Contains(manifestPath, "behavioral-state"),
+		}, nil
+
+	// A Flink cluster declaration: the CR's JobManager to READY, THE
+	// REST CONTRACT (/config answers with the declared Flink version),
+	// THE STREAM PROOF on application lanes (the job reaches RUNNING
+	// with TaskManagers materialized from its parallelism), and on the
+	// behavioral-recovery lane THE RECOVERY PROOF (completed checkpoints
+	// observed in the composed S3 store, the JobManager pod replaced,
+	// the job back to RUNNING with checkpoint continuity — recovery
+	// through HA metadata).
+	case "kubernetesflinkdeployment":
+		spec := manifestSpecMap(manifestPath)
+		return &FlinkDeploymentVerifier{
+			Namespace:     info.Namespace,
+			Name:          info.Name,
+			SessionMode:   flinkDeploymentSessionMode(spec),
+			RecoveryProof: strings.Contains(manifestPath, "behavioral-recovery"),
+			FlinkVersion:  flinkDeploymentVersion(spec),
+		}, nil
+
 	// A NATS messaging system: the StatefulSet rolled out and THE
 	// MESSAGING PROOF on every lane — a real nats.go client completes a
 	// pub/sub round-trip (authenticated as the first declared user from
@@ -1254,6 +1307,40 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 		return &OtelOperatorVerifier{
 			Namespace:   info.Namespace,
 			ReleaseName: info.Name,
+		}, nil
+
+	// The KubeRay operator: rollout + the three ray.io CRDs established
+	// + THE INVARIANT (installing the operator alone deploys NO Ray
+	// cluster — the KubernetesRayCluster kind owns every cluster), and
+	// with a fenced watch posture THE FENCE PROOF (a RayCluster outside
+	// the watched namespaces is never reconciled). Destroy asserts the
+	// crds/-directory keep posture.
+	case "kuberneteskuberayoperator":
+		spec := manifestSpecMap(manifestPath)
+		return &KubeRayOperatorVerifier{
+			Namespace:       info.Namespace,
+			Name:            info.Name,
+			WatchNamespaces: specStringList(spec, "watch_namespaces", "watchNamespaces"),
+		}, nil
+
+	// The Flink operator: rollout + the four flink.apache.org CRDs
+	// established + THE INVARIANT (no FlinkDeployment after installing
+	// the operator alone). Webhook lanes prove the module-generated
+	// keystore Secret (the chart's hardcoded default never ships) and
+	// THE ADMISSION GATE (an invalid FlinkDeployment — standbys without
+	// HA — REJECTED at admission by the fail-closed webhook, with the
+	// namespaceSelector's scoping proven on fenced lanes); the
+	// webhook-less lane proves THE POSTURE CONTRAST (the same invalid
+	// CR accepted — validation deferred to the reconcile loop, the
+	// honest trade of that arm). Destroy asserts the crds/-directory
+	// keep posture.
+	case "kubernetesflinkoperator":
+		spec := manifestSpecMap(manifestPath)
+		return &FlinkOperatorVerifier{
+			Namespace:       info.Namespace,
+			Name:            info.Name,
+			WebhookEnabled:  flinkOperatorWebhookEnabled(spec),
+			WatchNamespaces: specStringList(spec, "watch_namespaces", "watchNamespaces"),
 		}, nil
 
 	// An operator-managed OpenTelemetry Collector: the mode's workload

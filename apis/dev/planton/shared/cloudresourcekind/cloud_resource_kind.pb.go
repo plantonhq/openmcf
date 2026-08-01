@@ -998,7 +998,23 @@ const (
 	// database composes a KubernetesPostgres by default (the spec's FK
 	// defaults resolve onto its outputs) and the migration Job needs the
 	// database reachable before the server components start.
-	CloudResourceKind_KubernetesAirflow CloudResourceKind = 930
+	CloudResourceKind_KubernetesAirflow         CloudResourceKind = 930
+	CloudResourceKind_KubernetesSparkOperator   CloudResourceKind = 931
+	CloudResourceKind_KubernetesKubeRayOperator CloudResourceKind = 932
+	// KubernetesKubeRayOperator is a prerequisite because this kind declares
+	// the RayCluster custom resource that only the operator's CRDs admit and
+	// only the operator reconciles into head and worker pods.
+	CloudResourceKind_KubernetesRayCluster CloudResourceKind = 933
+	// KubernetesCertManager is a prerequisite because the Flink operator's
+	// chart, with its default-on admission webhook, renders cert-manager
+	// Issuer/Certificate resources and trusts the API server through
+	// cert-manager's CA injection — there is no self-signed fallback at the
+	// pinned chart, and the webhooks are fail-closed.
+	CloudResourceKind_KubernetesFlinkOperator CloudResourceKind = 934
+	// KubernetesFlinkOperator is a prerequisite because this kind declares
+	// the FlinkDeployment custom resource that only the operator's CRDs
+	// admit and only the operator reconciles into a running Flink cluster.
+	CloudResourceKind_KubernetesFlinkDeployment CloudResourceKind = 935
 	// 950–969: Kubernetes GitOps and CI/CD
 	CloudResourceKind_KubernetesArgocd         CloudResourceKind = 950
 	CloudResourceKind_KubernetesArgoWorkflows  CloudResourceKind = 951
@@ -1629,6 +1645,11 @@ var (
 		925:  "KubernetesRabbitMqOperator",
 		926:  "KubernetesRabbitMq",
 		930:  "KubernetesAirflow",
+		931:  "KubernetesSparkOperator",
+		932:  "KubernetesKubeRayOperator",
+		933:  "KubernetesRayCluster",
+		934:  "KubernetesFlinkOperator",
+		935:  "KubernetesFlinkDeployment",
 		950:  "KubernetesArgocd",
 		951:  "KubernetesArgoWorkflows",
 		952:  "KubernetesTektonOperator",
@@ -2236,6 +2257,11 @@ var (
 		"KubernetesRabbitMqOperator":                     925,
 		"KubernetesRabbitMq":                             926,
 		"KubernetesAirflow":                              930,
+		"KubernetesSparkOperator":                        931,
+		"KubernetesKubeRayOperator":                      932,
+		"KubernetesRayCluster":                           933,
+		"KubernetesFlinkOperator":                        934,
+		"KubernetesFlinkDeployment":                      935,
 		"KubernetesArgocd":                               950,
 		"KubernetesArgoWorkflows":                        951,
 		"KubernetesTektonOperator":                       952,
@@ -2704,7 +2730,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xb4\xe6\x01\n" +
+	"\x02v1\x10\x01*\xbe\xe8\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3157,7 +3183,12 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x10KubernetesQdrant\x10\x9c\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sqdrt\x127\n" +
 	"\x1aKubernetesRabbitMqOperator\x10\x9d\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8srmqop:\x02\xbe\x06\x12-\n" +
 	"\x12KubernetesRabbitMq\x10\x9e\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8srmq:\x02\x9d\a\x12-\n" +
-	"\x11KubernetesAirflow\x10\xa2\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8saflw:\x02\x85\a\x12(\n" +
+	"\x11KubernetesAirflow\x10\xa2\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8saflw:\x02\x85\a\x121\n" +
+	"\x17KubernetesSparkOperator\x10\xa3\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8ssprkop\x123\n" +
+	"\x19KubernetesKubeRayOperator\x10\xa4\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8skrayop\x121\n" +
+	"\x14KubernetesRayCluster\x10\xa5\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sraycl:\x02\xa4\a\x125\n" +
+	"\x17KubernetesFlinkOperator\x10\xa6\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8sflnkop:\x02\xbe\x06\x126\n" +
+	"\x19KubernetesFlinkDeployment\x10\xa7\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sflnkd:\x02\xa6\a\x12(\n" +
 	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x121\n" +
 	"\x17KubernetesArgoWorkflows\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sargowf\x122\n" +
 	"\x18KubernetesTektonOperator\x10\xb8\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12,\n" +

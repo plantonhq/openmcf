@@ -1,0 +1,16 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSparkOperator
+metadata:
+  name: spark-operator
+spec:
+  namespace:
+    value: spark-operator
+  createNamespace: true
+  replicas: 2
+  workload:
+    namespaces:
+      - data-pipelines
+      - ml-jobs
+    serviceAccount: spark
+  operatorProperties:
+    spark.kubernetes.operator.reconciler.intervalSeconds: "15"

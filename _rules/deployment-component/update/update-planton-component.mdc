@@ -470,6 +470,13 @@ Based on scenario:
   Verify what the repository actually serves
   (`curl <repo-url>/index.yaml`, match the entry's `appVersion`) and pin
   THAT chart version in the spec default and both modules' fallbacks.
+  The same class inverts for projects that MIRROR packaged charts into a
+  separate helm repo: the mirror's default-branch chart SOURCE lags the
+  release tags (a values.yaml read there yields a stale surface — wrong
+  defaults, missing keys — while the served index looks current). When a
+  chart has both a source repo and a mirror/pages repo, design from the
+  SOURCE repo's chart directory at the release tag the served index
+  names, and treat the mirror as index evidence only.
   **OCI-served charts have no index.yaml** — verify through the registry's
   tags API instead (`curl "https://<registry>/v2/<repo>/tags/list"` with a
   pull-scope bearer token from the registry's `/token` endpoint, or
