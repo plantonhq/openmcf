@@ -4,10 +4,18 @@ metadata:
   name: kubernetesopenbao
 spec:
   tier: 2
-  status: deferred
-  deferred_reason: "sealed state on kind -- needs dev_mode spec field"
-  validated_provisioners:
-    - pulumi
-  timeout_minutes: 15
-  limitations:
-    - "OpenBao starts sealed; readiness probe fails without init/unseal"
+  # Rebuilt onto the official openbao chart 0.28.6 (OpenBao v2.6.1) with
+  # the typed mode oneof (dev/standalone/ha-Raft), module-synthesized
+  # server HCL (listener, storage, retry_join, seal, telemetry) and the
+  # seal-credential Secret indirection. The old deferred posture
+  # ("sealed state on kind — needs dev_mode spec field") died with the
+  # rebuild: dev mode is a first-class arm now, and the DEDICATED
+  # verifier owns the seal lifecycle on the real modes — sealed pods
+  # asserted NotReady-by-design, a real init/unseal bootstrap flipping
+  # readiness, then a KV round-trip (never the generic readiness-waiting
+  # fallback, which would hang every fresh install by design).
+  status: pending_proof
+  validated_provisioners: []
+  # First boot pulls the image and provisions per-replica PVCs; the
+  # behavioral-raft lane adds a pod replacement + re-unseal cycle.
+  timeout_minutes: 25

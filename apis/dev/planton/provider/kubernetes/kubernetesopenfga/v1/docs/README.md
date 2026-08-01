@@ -92,7 +92,7 @@ A Kubernetes Operator (`ZEISS/openfga-operator`) exists in the ecosystem. The op
 - **Official image**: `openfga/openfga` (Docker Hub) is Apache-2.0 licensed and should be the default.
 - **Hardened alternative**: Chainguard provides minimal, distroless-style images built daily with significantly reduced attack surface (no shell, no package manager).
 
-Production-conscious infrastructure should default to the official image but expose `image.repository` and `image.tag` fields to allow substituting hardened images.
+The component pins the server image through the chart's `appVersion` (selected by `chartVersion`); substituting a hardened image rides the `helmValues` escape hatch as an override of the chart's existing `image.*` keys.
 
 ## The Datastore: Not a Cache, But the Source of Truth
 
@@ -129,16 +129,16 @@ Storing this in a ConfigMap or directly in an IaC resource spec is a **severe se
 
 **The secure pattern**: OpenFGA configuration allows the password to be provided via a separate environment variable (`OPENFGA_DATASTORE_PASSWORD`) that overrides any password in the URI. The Helm chart supports referencing existing Kubernetes Secret objects.
 
-**Implication for API design**: An IaC API must **not** expose a single `datastore_uri` field. Instead, enforce security by decomposing configuration into a structured object:
+**Implication for API design**: An IaC API must **not** expose a single `datastore_uri` field. Instead, enforce security by decomposing configuration into a structured object—the shape the `KubernetesOpenFga` spec carries:
 
-- `datastore.engine`: `"postgres"` or `"mysql"`
-- `datastore.host`: Database hostname
-- `datastore.port`: Database port
-- `datastore.database`: Database name
-- `datastore.user`: Database user
-- `datastore.password_secret_ref`: Reference to a Kubernetes Secret
+- `datastore.postgres` / `datastore.mysql`: The engine, as a oneof
+- `host`: Database hostname (a literal or a reference to a database resource)
+- `port`: Database port
+- `database`: Database name
+- `username`: Database user
+- `passwordSecret`: Reference to an existing Kubernetes Secret (name plus key)
 
-The controller fetches the secret and injects the value securely into the `OPENFGA_DATASTORE_PASSWORD` environment variable.
+The password reaches the server through a secretKeyRef as the `OPENFGA_DATASTORE_PASSWORD` environment variable (flag-supplied credentials take precedence over URI-embedded ones), and the rendered URI carries no credentials at all.
 
 ### High Availability and Read Scaling
 
@@ -149,7 +149,7 @@ For read-heavy workloads, OpenFGA supports explicit read-replica configuration v
 - **Writes** and **high-consistency reads** (requests using the `HIGHER_CONSISTENCY` flag) route to the primary database
 - **Standard-consistency reads** (the default) route to the read replica, reducing primary database load
 
-An IaC API should expose an optional `datastore.read_replica_credentials` block for this production optimization pattern.
+The component does not model read replicas as a first-class field; the secondary URI can ride the `helmValues` escape hatch through the chart's `extraEnvVars`.
 
 ### Common Datastore Pitfalls
 
@@ -186,7 +186,7 @@ This ensures that a single node failure or zone outage doesn't compromise the au
 
 ### Security: Authentication, Network Policies, and TLS
 
-**API Authentication**: Running an unauthenticated OpenFGA server in production is a severe security risk. The recommended method is **preshared keys** (bearer tokens). The IaC API must support this via a secret reference (e.g., `authn.preshared.keys_secret_ref`).
+**API Authentication**: Running an unauthenticated OpenFGA server in production is a severe security risk. The recommended method is **preshared keys** (bearer tokens), delivered to the server through a Kubernetes Secret — either declared inline (the component materializes them into a managed Secret) or referenced from a Secret you maintain. OIDC bearer tokens are the alternative, with both issuer and audience mandatory (the server hard-fails at startup without them as of v1.18).
 
 **Network Policies**: For a zero-trust security posture, automatically create Kubernetes NetworkPolicy resources:
 - **Ingress**: Allow traffic only from authorized application namespaces and the Prometheus namespace (for metrics scraping)
@@ -196,13 +196,13 @@ This ensures that a single node failure or zone outage doesn't compromise the au
 - **External (Ingress)**: Terminate TLS at a Kubernetes Ingress or Gateway—the standard pattern for HTTPS access
 - **Internal (mTLS)**: OpenFGA can serve gRPC and HTTP over TLS directly for mutual TLS between services—an advanced but powerful pattern
 
-**Disable the Playground**: The OpenFGA Playground is a useful development tool. It's also a security risk in production. Always set `playground.enabled: false` for production deployments.
+**Disable the Playground**: The OpenFGA Playground is a useful development tool. It's also a security risk in production — upstream turned it off by default at v1.18, and the server refuses to start when the playground is combined with any authentication method. The component disables it unconditionally; evaluate models with the `fga` CLI or the VS Code extension against the API instead.
 
 ### Monitoring: Prometheus and OpenTelemetry
 
 OpenFGA is built with first-class observability:
 
-**Prometheus Metrics**: OpenFGA natively exposes a Prometheus `/metrics` endpoint (default port 2112). For zero-configuration monitoring, an IaC controller should detect if the Prometheus Operator is installed in the cluster and automatically create a ServiceMonitor resource.
+**Prometheus Metrics**: OpenFGA natively exposes a Prometheus `/metrics` endpoint (default port 2112). The component keeps metrics on by default (the chart default) and offers a ServiceMonitor as an explicit opt-in — creating one requires the Prometheus Operator CRDs on the cluster, and the install fails without them.
 
 **OpenTelemetry Tracing**: Native support for OpenTelemetry provides deep visibility into authorization check latency and resolution paths. Expose a simple configuration field for the OTel collector endpoint to enable this.
 
@@ -217,97 +217,90 @@ Most applications use the default. Mission-critical checks (e.g., "Does this use
 
 ## The Planton Choice: A Secure-by-Default Wrapper
 
-Planton's `OpenFgaKubernetes` API is designed as a **declarative, type-safe wrapper** around the official OpenFGA Helm chart. This isn't reinventing the wheel—it's making the wheel accessible while enforcing security best practices.
+Planton's `KubernetesOpenFga` API is designed as a **declarative, type-safe wrapper** around the official OpenFGA Helm chart. This isn't reinventing the wheel—it's making the wheel accessible while enforcing security best practices.
 
 ### Design Principles
 
-1. **Leverage the official Helm chart**: The chart solves complex orchestration (schema migrations, lifecycle hooks) in a battle-tested way. Planton renders and applies this chart behind the scenes.
+1. **Leverage the official Helm chart—except where it bites**: The chart is the battle-tested deployment vehicle, but its default hook-Job migration mode is deliberately not used. A post-install hook Job deadlocks engines that wait on rollout readiness, and its post-delete hook dials the database during uninstall. Instead, `openfga migrate` runs as an idempotent init container in every server pod, gating each rollout on the database being reachable and current (`migrationTimeout`, default 3m, covers databases provisioned concurrently).
 
-2. **Enforce secure-by-default configuration**: The API **omits** insecure patterns (like a single `datastore_uri` with embedded passwords) and **mandates** secure patterns (structured credentials with secret references).
+2. **Enforce secure-by-default configuration**: The API **omits** insecure patterns—there is no single `datastore_uri` with an embedded password, and no playground toggle at all (it is always disabled). Datastore credentials are structured (`host`, `port`, `database`, `username`, `passwordSecret`), the connection URI renders without credentials, and username/password reach the server as environment variables read from the Secret.
 
-3. **Apply the 80/20 principle**: Expose the 20% of configuration fields that 80% of users need at the top level. Hide expert-level tuning parameters in an `advanced` block.
+3. **Compose, don't bundle**: The datastore references a `KubernetesPostgres` (recommended) or `KubernetesMysql` resource by name; nothing database-shaped is bundled into the release. Authorization data composes the same way—the `OpenFgaStore` / `OpenFgaAuthorizationModel` / `OpenFgaRelationshipTuple` provider kinds manage stores, models, and tuples against the exported `api_http_endpoint`.
 
-4. **Automate production necessities**: The controller automatically generates PodDisruptionBudgets, Pod Anti-Affinity rules, and ServiceMonitor resources (when Prometheus Operator is detected)—features users shouldn't have to remember to configure.
+4. **Respect the chart's closed schema**: The chart ships `additionalProperties: false` in its values schema, so the `helmValues` escape hatch can only override keys the chart defines (`extraEnvVars` carries the ~50 server flags without values paths)—it can never invent new ones, and `fullnameOverride` is re-pinned after the merge.
 
-### The 80/20 Configuration Model
+### The Configuration Surface
 
-**Essential fields** (top-level, always visible):
-- `replica_count`: Number of server pods
-- `image.repository` and `image.tag`: Container image configuration
-- `datastore.engine`: `"postgres"`, `"mysql"`, or `"memory"` (dev only)
-- `datastore.credentials`: Structured object with `host`, `port`, `database`, `user`, `password_secret_ref`
-- `datastore.read_replica_credentials`: Optional read-replica configuration
-- `authn.preshared.keys_secret_ref`: API authentication secret reference
-- `playground.enabled`: Developer playground toggle (must be `false` in production)
-- `ingress`: Standard Kubernetes ingress configuration
-- `monitoring.service_monitor.enabled`: Prometheus integration toggle
-- `resources`: CPU and memory requests/limits
-- `autoscaling.hpa`: HorizontalPodAutoscaler configuration
+**Core fields**:
+- `replicas`: Server pod count (stateless; ignored when HPA is enabled, forced to 1 on the memory datastore)
+- `datastore`: Exactly one of `postgres` (recommended), `mysql`, or `memory` (evaluation only), plus connection-pool tuning (`maxOpenConns`, `maxIdleConns`, idle/lifetime durations)
+- `authn`: Unset = open API (lab only); `preshared` (inline keys materialized into a managed Secret, or an existing Secret you maintain) or `oidc` (issuer and audience, both required)
+- `resources`, `hpa`, `scheduling`, `serviceAccountAnnotations`: Sizing, autoscaling, and placement
 
-**Advanced fields** (hidden under `advanced` block):
-- `datastore.tuning`: Connection pool tuning (`max_open_conns`, `max_idle_conns`)
-- `scheduling`: Custom affinity, tolerations, node selectors (overriding sane defaults)
-- `tracing.otel.exporter_endpoint`: OpenTelemetry collector endpoint
+**Observability and tuning**:
+- `metrics`: On by default (port 2112), with opt-in ServiceMonitor and per-RPC histograms
+- `tracing`: OTLP trace export to a collector endpoint, with a sampling ratio
+- `log`: Level and format
+- `tuning`: Query limits, deadlines, check-result caching, and experimental server features
 
 ### Configuration Profiles by Environment
 
-**Development**:
+**Development** (zero-dependency evaluation):
 ```yaml
-replica_count: 1
-datastore:
-  engine: memory
-authn:
-  preshared:
-    keys_secret_ref: ""  # Auth disabled
-playground:
-  enabled: true
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesOpenFga
+metadata:
+  name: fga-dev
+spec:
+  namespace:
+    value: openfga-dev
+  createNamespace: true
+  datastore:
+    memory: {}
 ```
 
-**Production**:
+**Production** (external managed PostgreSQL, pre-shared keys, HPA):
 ```yaml
-autoscaling:
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesOpenFga
+metadata:
+  name: fga
+spec:
+  namespace:
+    value: openfga
+  createNamespace: true
+  datastore:
+    postgres:
+      host:
+        value: production-postgres.us-east-1.rds.amazonaws.com
+      database: openfga
+      username: openfga
+      passwordSecret:
+        secretName:
+          value: openfga-db-credentials
+        secretKey: password
+      sslMode: verify-full
+  authn:
+    preshared:
+      existingKeysSecretName: openfga-api-keys
   hpa:
     enabled: true
-    min_replicas: 3
-    max_replicas: 10
-    target_cpu_utilization: 80
-datastore:
-  engine: postgres
-  credentials:
-    host: production-postgres.us-east-1.rds.amazonaws.com
-    port: 5432
-    database: openfga
-    user: openfga
-    password_secret_ref: openfga-prod-db-creds#password
-  read_replica_credentials:
-    host: production-postgres-replica.us-east-1.rds.amazonaws.com
-    # ... (same structure as credentials)
-authn:
-  preshared:
-    keys_secret_ref: openfga-prod-api-keys#bearer-tokens
-playground:
-  enabled: false
-ingress:
-  enabled: true
-  host: openfga.example.com
-  tls_secret_name: openfga-prod-tls
-monitoring:
-  service_monitor:
+    minReplicas: 3
+    maxReplicas: 10
+    targetCpuUtilizationPercent: 80
+  metrics:
     enabled: true
-resources:
-  requests:
-    cpu: 500m
-    memory: 1Gi
-  limits:
-    cpu: 2000m
-    memory: 2Gi
+    serviceMonitorEnabled: true
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
 ```
 
-The controller implicitly generates PodDisruptionBudgets and Pod Anti-Affinity rules for production profiles.
+With an in-cluster `KubernetesPostgres`, the `host` and `passwordSecret.secretName` fields take `valueFrom` references to the database resource instead of literals—the host resolves to its read-write Service and the password rides the operator-maintained `<cluster>-app` Secret.
 
 ## Operational Best Practices: The Day-2 Reality
 
@@ -338,10 +331,10 @@ This enables treating authorization logic as testable code, not untestable confi
 Teams deploying OpenFGA face an architectural decision: physical isolation (separate deployments per environment) or logical isolation (shared deployment, separate Stores)?
 
 **Pattern A: Physical Isolation**  
-Provision separate `OpenFgaKubernetes` resources for dev, staging, and production—each with its own database. Maximum isolation, higher cost and operational overhead.
+Provision separate `KubernetesOpenFga` resources for dev, staging, and production—each with its own database. Maximum isolation, higher cost and operational overhead.
 
 **Pattern B: Logical Isolation (Recommended for Platform Teams)**  
-Provision one highly-available `OpenFgaKubernetes` resource. Use OpenFGA's Store API to create multiple logically-isolated Stores (`dev_store`, `staging_store`, `prod_store_a`). Since a Store is the container for models and tuples, this provides complete logical separation on shared, cost-optimized infrastructure.
+Provision one highly-available `KubernetesOpenFga` resource. Use OpenFGA's Store API to create multiple logically-isolated Stores (`dev_store`, `staging_store`, `prod_store_a`)—declaratively, via `OpenFgaStore` resources against the shared endpoint. Since a Store is the container for models and tuples, this provides complete logical separation on shared, cost-optimized infrastructure.
 
 Pattern B is more cloud-native and cost-effective for platform teams supporting multiple applications or environments.
 
@@ -361,12 +354,7 @@ OpenFGA's value is realized when applications integrate it seamlessly. The proje
 
 The maturity of OpenFGA's Kubernetes deployment ecosystem—particularly the official Helm chart—signals a broader shift: fine-grained authorization is no longer a proprietary feature of hyperscalers. It's accessible, production-ready, and deployable by any team.
 
-The deployment landscape has clear winners and clear pitfalls. The in-memory store is a trap. Manual manifests are heroic but brittle. The official Helm chart is the production standard. Planton's approach—wrapping this chart with a secure-by-default, 80/20 API—respects what's been solved while adding the guardrails that prevent common security and operational mistakes.
+The deployment landscape has clear winners and clear pitfalls. The in-memory store is a trap. Manual manifests are heroic but brittle. The official Helm chart is the production standard. Planton's approach—wrapping this chart with a secure-by-default, typed API—respects what's been solved while adding the guardrails (init-container migrations, credential indirection, the playground permanently off) that prevent common security and operational mistakes.
 
 Deploying OpenFGA correctly means treating the datastore as business-critical infrastructure, enforcing authentication, testing authorization models as code, and building observability from day one. When approached with this rigor, OpenFGA delivers on its promise: authorization that scales like Google's, without Google's infrastructure burden.
-
-For deeper implementation guides on specific topics covered here, see:
-- [Datastore Configuration Deep Dive](./datastore-guide.md) *(coming soon)*
-- [Authorization Model Management Patterns](./model-management.md) *(coming soon)*
-- [Production Security Checklist](./security-checklist.md) *(coming soon)*
 

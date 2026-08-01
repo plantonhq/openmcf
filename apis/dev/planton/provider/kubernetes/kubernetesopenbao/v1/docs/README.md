@@ -2,7 +2,7 @@
 
 ## Overview
 
-OpenBao is an open-source secrets management solution that is a community-driven fork of HashiCorp Vault, created after Vault's license change to BSL (Business Source License). OpenBao is developed under the OpenSSF (Open Source Security Foundation) umbrella and maintains API compatibility with Vault while being released under the MPL-2.0 license.
+OpenBao is an open-source secrets management solution that is a community-driven fork of HashiCorp Vault, created after Vault's license change to BSL (Business Source License). OpenBao is governed by the Linux Foundation and maintains API compatibility with Vault at the fork point while being released under the MPL-2.0 license.
 
 ## Architecture
 
@@ -32,8 +32,8 @@ OpenBao is an open-source secrets management solution that is a community-driven
 ### Repository Information
 - **Chart Repository**: https://openbao.github.io/openbao-helm
 - **OCI Registry**: oci://ghcr.io/openbao/charts/openbao
-- **Chart Version**: 0.23.3 (as of implementation)
-- **App Version**: v2.4.4
+- **Chart Version**: 0.28.x (as of implementation; the component defaults to 0.28.6)
+- **App Version**: v2.6.x (0.28.6 = OpenBao v2.6.1)
 
 ### Key Helm Values
 

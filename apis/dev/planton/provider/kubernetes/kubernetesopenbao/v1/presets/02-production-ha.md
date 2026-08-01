@@ -1,27 +1,29 @@
-# Production OpenBao with HA
+# Production HA (integrated Raft) preset
 
-This preset deploys OpenBao in high-availability mode with 3 replicas, TLS encryption, and the sidecar injector for automatic secrets injection into pods.
+Three OpenBao servers with integrated Raft storage: each replica
+persists to its own 10Gi PVC, the module synthesizes the `retry_join`
+stanzas for every peer (the chart alone ships none — without them a
+multi-replica install never forms a cluster), and the cluster elects a
+leader. Losing any single node loses neither data nor availability. A
+dedicated audit volume is mounted at `/openbao/audit`; enable auditing
+after initialization with
+`bao audit enable file file_path=/openbao/audit/audit.log`.
 
-## When to Use
+THE BOOTSTRAP IS YOURS, by design: fresh pods run but report NotReady
+(the readiness probe is `bao status`, which fails for sealed servers).
+Initialize once through pod 0 (`bao operator init` — custody of the
+unseal key shares and root token is the whole point of a secrets
+manager), then unseal EVERY pod; peers join automatically through
+retry_join. After every pod restart the affected server is SEALED
+again until unsealed — that is Shamir-mode reality, and the
+auto-unseal preset exists to remove exactly that step.
 
-- Production secrets management requiring fault tolerance
-- Environments where TLS encryption is mandatory for all communication
-- Applications that need automatic secrets injection via sidecar (Agent Injector)
+Scheduling truth: the chart ships a REQUIRED pod anti-affinity on
+hostname, so three replicas need three schedulable nodes.
 
-## Key Configuration Choices
+Change first: `server.ha.replicas` (odd counts only — 5 tolerates two
+losses), storage sizes to your churn, and pair with the snapshot agent
+(`snapshotAgent`) once a Kubernetes-auth role exists for it — Raft
+snapshots in an object store are the disaster-recovery story.
 
-- **HA mode** with 3 replicas -- uses Raft consensus for leader election and data replication; tolerates 1 node failure
-- **TLS enabled** -- encrypts client-to-server and server-to-server communication
-- **Agent Injector enabled** -- automatically injects secrets into pods via annotations; no application code changes needed
-- **UI enabled** with ingress -- web interface for managing secrets accessible at the specified hostname
-
-## Placeholders to Replace
-
-| Placeholder | Description | Where to Find |
-|---|---|---|
-| `<your-openbao.example.com>` | Hostname for the OpenBao UI and API | Your DNS provider |
-
-## Related Presets
-
-- **01-dev-mode** -- Simple single-server deployment for development
-- **03-production-ha-gcp-auto-unseal** -- HA mode with GCP Cloud KMS auto-unseal and Workload Identity
+See [02-production-ha.yaml](./02-production-ha.yaml) for the manifest.

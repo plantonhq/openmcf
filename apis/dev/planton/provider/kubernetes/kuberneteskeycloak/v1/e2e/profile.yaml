@@ -3,9 +3,22 @@ kind: ComponentE2EProfile
 metadata:
   name: kuberneteskeycloak
 spec:
-  tier: 4
-  status: stub
-  deferred_reason: "module is a stub (namespace only)"
-  validated_provisioners:
-    - pulumi
-  timeout_minutes: 15
+  tier: 3
+  # Rebuilt from the pre-program stub into the operator-CR declaration
+  # (keycloaks.k8s.keycloak.org/v2beta1 at Keycloak 26.7.0). The lanes
+  # run against the registry prerequisite chain — the co-located
+  # KubernetesKeycloakOperator (namespaced watch: operator and CR share
+  # the namespace) and a CloudNativePG→KubernetesPostgres database
+  # (consumer-scoped fixtures in e2e/prerequisites/). The dedicated
+  # verifier asserts the CR's boolean-status Ready condition (HasErrors
+  # warnings tolerated — a documented legitimate state), the operator's
+  # naming contract, and THE PRODUCT PROOF: a real admin login with the
+  # bootstrap credentials plus an authenticated admin-API read; the
+  # behavioral lane proves realm configuration survives pod replacement
+  # in the composed database.
+  status: pending_proof
+  validated_provisioners: []
+  # First boot runs schema migrations against the fixture database
+  # (upstream budgets its startup probe at 10 minutes); the chain also
+  # pays the CNPG + operator cold starts.
+  timeout_minutes: 35

@@ -13,7 +13,6 @@ import (
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -27,40 +26,134 @@ const (
 )
 
 // *
-// **KubernetesOpenBaoSpec** defines the configuration for deploying OpenBao on a Kubernetes cluster.
-// OpenBao is an open-source secrets management solution forked from HashiCorp Vault.
-// This specification supports standalone and high-availability (HA) deployment modes using the
-// official OpenBao Helm chart from openbao.github.io/openbao-helm.
+// **KubernetesOpenBaoSpec** installs OpenBao — the open-source,
+// Linux Foundation-governed secrets manager (MPL-2.0 fork of Vault) —
+// from the official `openbao` chart
+// (https://openbao.github.io/openbao-helm, chart 0.28.x = OpenBao 2.6.x).
+//
+// THE SEAL LIFECYCLE — the fact everything else follows from: a fresh
+// OpenBao server starts UNINITIALIZED and SEALED. Initialization
+// (`bao operator init` — generates the unseal key shares and the
+// initial root token) and unsealing are RUNTIME operations performed
+// against the API after deploy; no Kubernetes deployment tool can do
+// them declaratively, and this component deliberately does not try.
+// Until a server is initialized and unsealed, its pod reports
+// NotReady BY DESIGN (the readiness probe is `bao status`, which
+// exits non-zero for sealed servers) — the chart keeps sealed pods
+// addressable through its Services (publishNotReadyAddresses), so
+// `kubectl port-forward` and the DNS names work for the init/unseal
+// calls. A deployment that never becomes "ready" until you initialize
+// it is the designed behavior, not a failure. Auto-unseal (below)
+// removes the UNSEAL step from restarts, but the one-time
+// initialization is always yours.
+//
+// ONE SERVER MODE at a time: dev XOR standalone XOR ha (Raft). When
+// no mode is declared, standalone is used — the chart's own default.
+// The server always runs as a StatefulSet with an OnDelete update
+// strategy (config changes never roll pods automatically; delete pods
+// to pick up config).
 type KubernetesOpenBaoSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// Flag to indicate if the namespace should be created.
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// Helm chart version override.
-	// Default: 0.23.3
-	HelmChartVersion *string `protobuf:"bytes,4,opt,name=helm_chart_version,json=helmChartVersion,proto3,oneof" json:"helm_chart_version,omitempty"`
-	// Server container specifications for the OpenBao deployment.
-	ServerContainer *KubernetesOpenBaoServerContainer `protobuf:"bytes,5,opt,name=server_container,json=serverContainer,proto3" json:"server_container,omitempty"`
-	// High Availability configuration.
-	// When enabled, OpenBao runs in HA mode with Raft integrated storage.
-	HighAvailability *KubernetesOpenBaoHighAvailability `protobuf:"bytes,6,opt,name=high_availability,json=highAvailability,proto3" json:"high_availability,omitempty"`
-	// Ingress configuration for external access to OpenBao.
-	Ingress *KubernetesOpenBaoIngress `protobuf:"bytes,7,opt,name=ingress,proto3" json:"ingress,omitempty"`
-	// Enable OpenBao UI.
-	// Default: true
+	// *
+	// Namespace to install into (conventionally "openbao"). Accepts a
+	// literal namespace name or a reference to a KubernetesNamespace
+	// resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the
+	// resource. When false, the namespace must already exist.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Helm chart version to install (e.g. "0.28.6" = OpenBao v2.6.1 —
+	// the chart's appVersion pins the server image). Versions must
+	// exist in the SERVED index at https://openbao.github.io/openbao-helm.
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
+	// *
+	// The OpenBao server: mode, sizing, storage, and logging.
+	Server *KubernetesOpenBaoServer `protobuf:"bytes,4,opt,name=server,proto3" json:"server,omitempty"`
+	// *
+	// End-to-end TLS for the OpenBao listener. When unset, the server
+	// listens on plain HTTP inside the cluster (the chart default).
+	// Enabling TLS is a COMPOSITE change this module owns end to end:
+	// the listener gets tls_cert_file/tls_key_file, the certificate
+	// Secret is mounted, and every derived URL and probe switches to
+	// https. (The chart's own `global.tlsDisable` value alone does NOT
+	// configure the listener — flipping it without listener changes
+	// produces a plaintext server addressed as https, an instant
+	// outage. This module renders all the pieces together.)
+	Tls *KubernetesOpenBaoTls `protobuf:"bytes,5,opt,name=tls,proto3" json:"tls,omitempty"`
+	// *
+	// Auto-unseal: delegate master-key protection to an external KMS so
+	// servers unseal themselves on startup (initialization is still a
+	// one-time manual step; it produces RECOVERY keys instead of unseal
+	// keys). Exactly one seal backend may be declared.
+	//
+	// VERSION HORIZON (verified at OpenBao v2.6.1): the cloud KMS seal
+	// mechanisms (awskms, gcpckms, azurekeyvault) are built in but
+	// DEPRECATED — upstream moves them to external KMS plugins in
+	// v2.7.0. This module renders the seal stanza for the pinned 2.6.x
+	// line; expect the rendering to gain a plugin declaration when the
+	// chart pin crosses 2.7.
+	AutoUnseal *KubernetesOpenBaoAutoUnseal `protobuf:"bytes,6,opt,name=auto_unseal,json=autoUnseal,proto3" json:"auto_unseal,omitempty"`
+	// *
+	// The OpenBao Agent Injector: a MutatingWebhookConfiguration that
+	// intercepts pod creation CLUSTER-WIDE and injects secret-fetching
+	// agent sidecars into annotated pods.
+	//
+	// OFF by default here — a deliberate divergence from the chart
+	// (whose default installs the webhook for every pod create/update
+	// in the cluster). Enable it only when workloads will actually use
+	// agent injection annotations. The webhook fails OPEN by default
+	// (failure_policy Ignore), so injector downtime never blocks pod
+	// creation — it silently skips injection instead.
+	Injector *KubernetesOpenBaoInjector `protobuf:"bytes,7,opt,name=injector,proto3" json:"injector,omitempty"`
+	// *
+	// Serve the built-in web UI and create the `<name>-ui` Service for
+	// it. Defaults to true — the UI is part of the product experience.
+	// (Exposure beyond the cluster composes from Gateway API kinds
+	// referencing the exported service handles; this component never
+	// creates ingress resources.)
 	UiEnabled *bool `protobuf:"varint,8,opt,name=ui_enabled,json=uiEnabled,proto3,oneof" json:"ui_enabled,omitempty"`
-	// OpenBao Agent Injector configuration.
-	// When enabled, deploys the injector for automatic sidecar injection.
-	Injector *KubernetesOpenBaoInjector `protobuf:"bytes,9,opt,name=injector,proto3" json:"injector,omitempty"`
-	// TLS configuration.
-	// Default: TLS is disabled (tlsDisable: true in Helm values).
-	TlsEnabled bool `protobuf:"varint,10,opt,name=tls_enabled,json=tlsEnabled,proto3" json:"tls_enabled,omitempty"`
-	// Auto-unseal configuration.
-	// When configured, OpenBao delegates master key protection to an external KMS
-	// instead of Shamir key shares. The server unseals automatically on startup
-	// without human intervention.
-	AutoUnseal    *KubernetesOpenBaoAutoUnseal `protobuf:"bytes,11,opt,name=auto_unseal,json=autoUnseal,proto3" json:"auto_unseal,omitempty"`
+	// *
+	// Render the chart's NetworkPolicy for the server pods (ingress on
+	// 8200/8201 from all namespaces by default). Off by default; most
+	// clusters manage network policy through first-class
+	// KubernetesNetworkPolicy resources instead.
+	NetworkPolicyEnabled bool `protobuf:"varint,9,opt,name=network_policy_enabled,json=networkPolicyEnabled,proto3" json:"network_policy_enabled,omitempty"`
+	// *
+	// Prometheus metrics. Enabling this renders the telemetry stanza
+	// into the server config (prometheus_retention_time plus
+	// unauthenticated_metrics_access on the listener — the metrics
+	// endpoint is UNAUTHENTICATED when enabled, scoped to
+	// /v1/sys/metrics) and optionally a ServiceMonitor.
+	Metrics *KubernetesOpenBaoMetrics `protobuf:"bytes,10,opt,name=metrics,proto3" json:"metrics,omitempty"`
+	// *
+	// Scheduled Raft snapshots shipped to an S3-compatible object store
+	// (a CronJob running the openbao-snapshot-agent). This is the
+	// disaster-recovery story for Raft-mode servers: snapshot files in
+	// the bucket outlive the cluster and restore with
+	// `bao operator raft snapshot restore`.
+	//
+	// PREREQUISITE the module cannot create: the agent authenticates to
+	// OpenBao through the Kubernetes auth method using `bao_role` —
+	// that auth method and role are RUNTIME configuration you create
+	// inside OpenBao after initialization (the docs carry the exact
+	// recipe). Until the role exists the CronJob pods fail their login.
+	SnapshotAgent *KubernetesOpenBaoSnapshotAgent `protobuf:"bytes,11,opt,name=snapshot_agent,json=snapshotAgent,proto3" json:"snapshot_agent,omitempty"`
+	// *
+	// Server ServiceAccount identity: cloud workload-identity
+	// annotations and the Kubernetes-auth delegation binding.
+	ServiceAccount *KubernetesOpenBaoServiceAccount `protobuf:"bytes,12,opt,name=service_account,json=serviceAccount,proto3" json:"service_account,omitempty"`
+	// *
+	// Advanced escape hatch: raw Helm values merged LAST (Helm `-f`
+	// semantics) over everything this spec renders — later keys win.
+	// Use it for the chart surfaces deliberately not modeled (CSI
+	// provider, injector webhook selectors, extra volumes, affinity
+	// overrides). The module re-pins `fullnameOverride` after the
+	// merge, so resource naming cannot be overridden. YAML document as
+	// a string.
+	HelmValues    string `protobuf:"bytes,13,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -109,30 +202,37 @@ func (x *KubernetesOpenBaoSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesOpenBaoSpec) GetHelmChartVersion() string {
-	if x != nil && x.HelmChartVersion != nil {
-		return *x.HelmChartVersion
+func (x *KubernetesOpenBaoSpec) GetChartVersion() string {
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
 	}
 	return ""
 }
 
-func (x *KubernetesOpenBaoSpec) GetServerContainer() *KubernetesOpenBaoServerContainer {
+func (x *KubernetesOpenBaoSpec) GetServer() *KubernetesOpenBaoServer {
 	if x != nil {
-		return x.ServerContainer
+		return x.Server
 	}
 	return nil
 }
 
-func (x *KubernetesOpenBaoSpec) GetHighAvailability() *KubernetesOpenBaoHighAvailability {
+func (x *KubernetesOpenBaoSpec) GetTls() *KubernetesOpenBaoTls {
 	if x != nil {
-		return x.HighAvailability
+		return x.Tls
 	}
 	return nil
 }
 
-func (x *KubernetesOpenBaoSpec) GetIngress() *KubernetesOpenBaoIngress {
+func (x *KubernetesOpenBaoSpec) GetAutoUnseal() *KubernetesOpenBaoAutoUnseal {
 	if x != nil {
-		return x.Ingress
+		return x.AutoUnseal
+	}
+	return nil
+}
+
+func (x *KubernetesOpenBaoSpec) GetInjector() *KubernetesOpenBaoInjector {
+	if x != nil {
+		return x.Injector
 	}
 	return nil
 }
@@ -144,60 +244,103 @@ func (x *KubernetesOpenBaoSpec) GetUiEnabled() bool {
 	return false
 }
 
-func (x *KubernetesOpenBaoSpec) GetInjector() *KubernetesOpenBaoInjector {
+func (x *KubernetesOpenBaoSpec) GetNetworkPolicyEnabled() bool {
 	if x != nil {
-		return x.Injector
-	}
-	return nil
-}
-
-func (x *KubernetesOpenBaoSpec) GetTlsEnabled() bool {
-	if x != nil {
-		return x.TlsEnabled
+		return x.NetworkPolicyEnabled
 	}
 	return false
 }
 
-func (x *KubernetesOpenBaoSpec) GetAutoUnseal() *KubernetesOpenBaoAutoUnseal {
+func (x *KubernetesOpenBaoSpec) GetMetrics() *KubernetesOpenBaoMetrics {
 	if x != nil {
-		return x.AutoUnseal
+		return x.Metrics
 	}
 	return nil
 }
 
-// *
-// KubernetesOpenBaoServerContainer defines the container specifications for the OpenBao server.
-type KubernetesOpenBaoServerContainer struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Number of OpenBao server replicas.
-	// For standalone mode, this is typically 1.
-	// For HA mode, this should be 3 or more (odd numbers recommended for Raft consensus).
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// CPU and memory resources allocated to the OpenBao server container.
-	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
-	// Size of the persistent volume for OpenBao data storage.
-	// Used for both standalone (file storage) and HA (Raft storage) modes.
-	// Example values: "10Gi", "50Gi", "100Gi"
-	// Must match Kubernetes storage size format.
-	DataStorageSize string `protobuf:"bytes,3,opt,name=data_storage_size,json=dataStorageSize,proto3" json:"data_storage_size,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+func (x *KubernetesOpenBaoSpec) GetSnapshotAgent() *KubernetesOpenBaoSnapshotAgent {
+	if x != nil {
+		return x.SnapshotAgent
+	}
+	return nil
 }
 
-func (x *KubernetesOpenBaoServerContainer) Reset() {
-	*x = KubernetesOpenBaoServerContainer{}
+func (x *KubernetesOpenBaoSpec) GetServiceAccount() *KubernetesOpenBaoServiceAccount {
+	if x != nil {
+		return x.ServiceAccount
+	}
+	return nil
+}
+
+func (x *KubernetesOpenBaoSpec) GetHelmValues() string {
+	if x != nil {
+		return x.HelmValues
+	}
+	return ""
+}
+
+// *
+// The OpenBao server: mode, sizing, storage, and logging.
+type KubernetesOpenBaoServer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Server mode. UNSET = standalone (the chart default): a single
+	// instance with file storage on a PersistentVolumeClaim.
+	//
+	// Types that are valid to be assigned to Mode:
+	//
+	//	*KubernetesOpenBaoServer_Dev
+	//	*KubernetesOpenBaoServer_Standalone
+	//	*KubernetesOpenBaoServer_Ha
+	Mode isKubernetesOpenBaoServer_Mode `protobuf_oneof:"mode"`
+	// *
+	// CPU and memory for the server container. The chart ships no
+	// defaults; these are modest laboratory defaults — size real
+	// installs to the workload.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,4,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// The data volume (file storage in standalone, Raft storage in HA).
+	// Ignored in dev mode (in-memory). One PVC per replica, mounted at
+	// /openbao/data.
+	DataStorage *KubernetesOpenBaoStorage `protobuf:"bytes,5,opt,name=data_storage,json=dataStorage,proto3" json:"data_storage,omitempty"`
+	// *
+	// Optional dedicated volume for file audit logs, mounted at
+	// /openbao/audit. Creating the volume does NOT enable auditing —
+	// after initialization run
+	// `bao audit enable file file_path=/openbao/audit/audit.log`.
+	AuditStorage *KubernetesOpenBaoStorage `protobuf:"bytes,6,opt,name=audit_storage,json=auditStorage,proto3" json:"audit_storage,omitempty"`
+	// *
+	// Server log verbosity: trace, debug, info (default), warn, error.
+	LogLevel *string `protobuf:"bytes,7,opt,name=log_level,json=logLevel,proto3,oneof" json:"log_level,omitempty"`
+	// *
+	// Server log format: standard (default) or json.
+	LogFormat *string `protobuf:"bytes,8,opt,name=log_format,json=logFormat,proto3,oneof" json:"log_format,omitempty"`
+	// *
+	// Pod scheduling constraints for the server pods. NOTE the chart
+	// ships a REQUIRED pod anti-affinity on hostname by default, so an
+	// HA cluster needs as many schedulable nodes as replicas; relax it
+	// through `helm_values` (`server.affinity: ""`) when running
+	// multiple replicas on fewer nodes (labs only — co-located Raft
+	// replicas share their node's fate).
+	Scheduling    *KubernetesOpenBaoScheduling `protobuf:"bytes,9,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesOpenBaoServer) Reset() {
+	*x = KubernetesOpenBaoServer{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesOpenBaoServerContainer) String() string {
+func (x *KubernetesOpenBaoServer) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesOpenBaoServerContainer) ProtoMessage() {}
+func (*KubernetesOpenBaoServer) ProtoMessage() {}
 
-func (x *KubernetesOpenBaoServerContainer) ProtoReflect() protoreflect.Message {
+func (x *KubernetesOpenBaoServer) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -209,62 +352,150 @@ func (x *KubernetesOpenBaoServerContainer) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesOpenBaoServerContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesOpenBaoServerContainer) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesOpenBaoServer.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoServer) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesOpenBaoServerContainer) GetReplicas() int32 {
+func (x *KubernetesOpenBaoServer) GetMode() isKubernetesOpenBaoServer_Mode {
 	if x != nil {
-		return x.Replicas
+		return x.Mode
 	}
-	return 0
+	return nil
 }
 
-func (x *KubernetesOpenBaoServerContainer) GetResources() *kubernetes.ContainerResources {
+func (x *KubernetesOpenBaoServer) GetDev() *KubernetesOpenBaoDevMode {
+	if x != nil {
+		if x, ok := x.Mode.(*KubernetesOpenBaoServer_Dev); ok {
+			return x.Dev
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesOpenBaoServer) GetStandalone() *KubernetesOpenBaoStandaloneMode {
+	if x != nil {
+		if x, ok := x.Mode.(*KubernetesOpenBaoServer_Standalone); ok {
+			return x.Standalone
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesOpenBaoServer) GetHa() *KubernetesOpenBaoHaMode {
+	if x != nil {
+		if x, ok := x.Mode.(*KubernetesOpenBaoServer_Ha); ok {
+			return x.Ha
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesOpenBaoServer) GetResources() *kubernetes.ContainerResources {
 	if x != nil {
 		return x.Resources
 	}
 	return nil
 }
 
-func (x *KubernetesOpenBaoServerContainer) GetDataStorageSize() string {
+func (x *KubernetesOpenBaoServer) GetDataStorage() *KubernetesOpenBaoStorage {
 	if x != nil {
-		return x.DataStorageSize
+		return x.DataStorage
+	}
+	return nil
+}
+
+func (x *KubernetesOpenBaoServer) GetAuditStorage() *KubernetesOpenBaoStorage {
+	if x != nil {
+		return x.AuditStorage
+	}
+	return nil
+}
+
+func (x *KubernetesOpenBaoServer) GetLogLevel() string {
+	if x != nil && x.LogLevel != nil {
+		return *x.LogLevel
 	}
 	return ""
 }
 
-// *
-// KubernetesOpenBaoHighAvailability defines HA configuration with Raft integrated storage.
-type KubernetesOpenBaoHighAvailability struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable High Availability mode with Raft integrated storage.
-	// When enabled, OpenBao uses Raft for both storage and leader election.
-	// Requires at least 3 replicas for proper Raft consensus.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// Number of HA replicas.
-	// Should be an odd number (3, 5, 7) for proper Raft consensus.
-	// Default: 3
-	Replicas      *int32 `protobuf:"varint,2,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+func (x *KubernetesOpenBaoServer) GetLogFormat() string {
+	if x != nil && x.LogFormat != nil {
+		return *x.LogFormat
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoServer) GetScheduling() *KubernetesOpenBaoScheduling {
+	if x != nil {
+		return x.Scheduling
+	}
+	return nil
+}
+
+type isKubernetesOpenBaoServer_Mode interface {
+	isKubernetesOpenBaoServer_Mode()
+}
+
+type KubernetesOpenBaoServer_Dev struct {
+	// *
+	// Dev mode: in-memory, auto-initialized, auto-unsealed, root
+	// token literally "root". NEVER for real secrets — all data is
+	// lost on every restart, and the root token is plaintext in the
+	// pod spec (readable by anyone who can get pods). Exists so the
+	// component can be evaluated and composed against without the
+	// init/unseal ceremony. No PVC is created in dev mode, and
+	// workload-identity ServiceAccount annotations are NOT applied
+	// (a chart behavior — dev mode drops them).
+	Dev *KubernetesOpenBaoDevMode `protobuf:"bytes,1,opt,name=dev,proto3,oneof"`
+}
+
+type KubernetesOpenBaoServer_Standalone struct {
+	// *
+	// Standalone: one instance, `storage "file"` on the data PVC.
+	// The production shape for single-instance installs.
+	Standalone *KubernetesOpenBaoStandaloneMode `protobuf:"bytes,2,opt,name=standalone,proto3,oneof"`
+}
+
+type KubernetesOpenBaoServer_Ha struct {
+	// *
+	// High availability with integrated Raft storage: every replica
+	// persists to its own data PVC and the cluster elects a leader.
+	// This module renders `retry_join` stanzas for every peer (the
+	// chart alone ships NONE — without them a multi-replica Raft
+	// install never forms a cluster and each pod sits uninitialized
+	// and independent). Bootstrap: initialize pod-0 and unseal every
+	// pod; joins then happen automatically through retry_join.
+	Ha *KubernetesOpenBaoHaMode `protobuf:"bytes,3,opt,name=ha,proto3,oneof"`
+}
+
+func (*KubernetesOpenBaoServer_Dev) isKubernetesOpenBaoServer_Mode() {}
+
+func (*KubernetesOpenBaoServer_Standalone) isKubernetesOpenBaoServer_Mode() {}
+
+func (*KubernetesOpenBaoServer_Ha) isKubernetesOpenBaoServer_Mode() {}
+
+// * Dev-mode marker (see the mode comment for the warnings).
+type KubernetesOpenBaoDevMode struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesOpenBaoHighAvailability) Reset() {
-	*x = KubernetesOpenBaoHighAvailability{}
+func (x *KubernetesOpenBaoDevMode) Reset() {
+	*x = KubernetesOpenBaoDevMode{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesOpenBaoHighAvailability) String() string {
+func (x *KubernetesOpenBaoDevMode) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesOpenBaoHighAvailability) ProtoMessage() {}
+func (*KubernetesOpenBaoDevMode) ProtoMessage() {}
 
-func (x *KubernetesOpenBaoHighAvailability) ProtoReflect() protoreflect.Message {
+func (x *KubernetesOpenBaoDevMode) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -276,54 +507,32 @@ func (x *KubernetesOpenBaoHighAvailability) ProtoReflect() protoreflect.Message 
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesOpenBaoHighAvailability.ProtoReflect.Descriptor instead.
-func (*KubernetesOpenBaoHighAvailability) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesOpenBaoDevMode.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoDevMode) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *KubernetesOpenBaoHighAvailability) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *KubernetesOpenBaoHighAvailability) GetReplicas() int32 {
-	if x != nil && x.Replicas != nil {
-		return *x.Replicas
-	}
-	return 0
-}
-
-// *
-// KubernetesOpenBaoIngress defines ingress configuration for OpenBao.
-// When enabled, deploys Istio Gateway API resources (Certificate, Gateway, HTTPRoutes)
-// for TLS-terminated external access with automatic HTTP-to-HTTPS redirect.
-type KubernetesOpenBaoIngress struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable ingress for external access.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// The full hostname for external access (e.g., "openbao.example.com").
-	// Required when enabled is true.
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
+// * Standalone-mode marker (single instance, file storage).
+type KubernetesOpenBaoStandaloneMode struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesOpenBaoIngress) Reset() {
-	*x = KubernetesOpenBaoIngress{}
+func (x *KubernetesOpenBaoStandaloneMode) Reset() {
+	*x = KubernetesOpenBaoStandaloneMode{}
 	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesOpenBaoIngress) String() string {
+func (x *KubernetesOpenBaoStandaloneMode) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesOpenBaoIngress) ProtoMessage() {}
+func (*KubernetesOpenBaoStandaloneMode) ProtoMessage() {}
 
-func (x *KubernetesOpenBaoIngress) ProtoReflect() protoreflect.Message {
+func (x *KubernetesOpenBaoStandaloneMode) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -335,55 +544,149 @@ func (x *KubernetesOpenBaoIngress) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesOpenBaoIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesOpenBaoIngress) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesOpenBaoStandaloneMode.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoStandaloneMode) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *KubernetesOpenBaoIngress) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
-	}
-	return false
+// * High-availability (integrated Raft) configuration.
+type KubernetesOpenBaoHaMode struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Number of server replicas (Raft peers). Odd counts (3, 5)
+	// tolerate minority loss; 3 is the standard production shape. A
+	// single replica is a legal Raft cluster of one (useful in labs).
+	// Remember the chart's default required anti-affinity: replicas
+	// beyond the node count stay Pending (see scheduling).
+	Replicas      *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesOpenBaoIngress) GetHostname() string {
+func (x *KubernetesOpenBaoHaMode) Reset() {
+	*x = KubernetesOpenBaoHaMode{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesOpenBaoHaMode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesOpenBaoHaMode) ProtoMessage() {}
+
+func (x *KubernetesOpenBaoHaMode) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[4]
 	if x != nil {
-		return x.Hostname
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesOpenBaoHaMode.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoHaMode) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesOpenBaoHaMode) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+// * A persistent volume request.
+type KubernetesOpenBaoStorage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Volume size (e.g. "10Gi").
+	Size *string `protobuf:"bytes,1,opt,name=size,proto3,oneof" json:"size,omitempty"`
+	// *
+	// StorageClass name. Empty uses the cluster's default class.
+	// Accepts a literal name or a reference to a
+	// KubernetesStorageClass resource.
+	StorageClass  *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=storage_class,json=storageClass,proto3" json:"storage_class,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesOpenBaoStorage) Reset() {
+	*x = KubernetesOpenBaoStorage{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesOpenBaoStorage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesOpenBaoStorage) ProtoMessage() {}
+
+func (x *KubernetesOpenBaoStorage) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesOpenBaoStorage.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoStorage) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesOpenBaoStorage) GetSize() string {
+	if x != nil && x.Size != nil {
+		return *x.Size
 	}
 	return ""
 }
 
-// *
-// KubernetesOpenBaoInjector defines the Agent Injector configuration.
-// The injector enables automatic sidecar injection of OpenBao Agent containers into pods.
-type KubernetesOpenBaoInjector struct {
+func (x *KubernetesOpenBaoStorage) GetStorageClass() *v1.StringValueOrRef {
+	if x != nil {
+		return x.StorageClass
+	}
+	return nil
+}
+
+// * Pod scheduling constraints.
+type KubernetesOpenBaoScheduling struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable the OpenBao Agent Injector.
-	// When enabled, deploys a mutating webhook for automatic secret injection.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// Number of injector replicas.
-	// Default: 1
-	Replicas      *int32 `protobuf:"varint,2,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// Schedule onto nodes carrying these labels.
+	NodeSelector map[string]string `protobuf:"bytes,1,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations for tainted nodes.
+	Tolerations   []*kubernetes.WorkloadToleration `protobuf:"bytes,2,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesOpenBaoInjector) Reset() {
-	*x = KubernetesOpenBaoInjector{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[4]
+func (x *KubernetesOpenBaoScheduling) Reset() {
+	*x = KubernetesOpenBaoScheduling{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesOpenBaoInjector) String() string {
+func (x *KubernetesOpenBaoScheduling) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesOpenBaoInjector) ProtoMessage() {}
+func (*KubernetesOpenBaoScheduling) ProtoMessage() {}
 
-func (x *KubernetesOpenBaoInjector) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[4]
+func (x *KubernetesOpenBaoScheduling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -394,36 +697,100 @@ func (x *KubernetesOpenBaoInjector) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesOpenBaoInjector.ProtoReflect.Descriptor instead.
-func (*KubernetesOpenBaoInjector) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{4}
+// Deprecated: Use KubernetesOpenBaoScheduling.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoScheduling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *KubernetesOpenBaoInjector) GetEnabled() bool {
+func (x *KubernetesOpenBaoScheduling) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesOpenBaoScheduling) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
+// * End-to-end TLS for the OpenBao listener.
+type KubernetesOpenBaoTls struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Enable TLS on the listener (port 8200) and the cluster port
+	// (8201 always uses OpenBao's own cluster TLS regardless).
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Name of a kubernetes.io/tls Secret in the install namespace
+	// carrying tls.crt / tls.key (and optionally ca.crt) for the
+	// server. Accepts a literal name or a reference to a
+	// KubernetesCertificate resource (cert-manager) — the natural
+	// issuer: point the certificate's dnsNames at
+	// `<name>.<namespace>.svc` and this component's derived DNS names.
+	// Required when enabled.
+	CertSecretName *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=cert_secret_name,json=certSecretName,proto3" json:"cert_secret_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *KubernetesOpenBaoTls) Reset() {
+	*x = KubernetesOpenBaoTls{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesOpenBaoTls) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesOpenBaoTls) ProtoMessage() {}
+
+func (x *KubernetesOpenBaoTls) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesOpenBaoTls.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoTls) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesOpenBaoTls) GetEnabled() bool {
 	if x != nil {
 		return x.Enabled
 	}
 	return false
 }
 
-func (x *KubernetesOpenBaoInjector) GetReplicas() int32 {
-	if x != nil && x.Replicas != nil {
-		return *x.Replicas
+func (x *KubernetesOpenBaoTls) GetCertSecretName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.CertSecretName
 	}
-	return 0
+	return nil
 }
 
 // *
-// KubernetesOpenBaoAutoUnseal configures automatic unsealing via an external KMS.
-// Exactly one seal type must be specified. When configured, OpenBao encrypts its
-// master key with the KMS key instead of Shamir splitting, enabling automatic
-// recovery after pod restarts without human intervention.
+// Auto-unseal seal backends. Exactly one may be set. Credentials
+// follow the keyless-first doctrine: on EKS/GKE/AKS prefer the
+// ambient workload identity (annotate the ServiceAccount via
+// service_account.annotations) and leave the credential fields empty.
 type KubernetesOpenBaoAutoUnseal struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Seal:
 	//
-	//	*KubernetesOpenBaoAutoUnseal_GcpKms
 	//	*KubernetesOpenBaoAutoUnseal_AwsKms
+	//	*KubernetesOpenBaoAutoUnseal_GcpKms
 	//	*KubernetesOpenBaoAutoUnseal_AzureKeyVault
 	//	*KubernetesOpenBaoAutoUnseal_Transit
 	Seal          isKubernetesOpenBaoAutoUnseal_Seal `protobuf_oneof:"seal"`
@@ -433,7 +800,7 @@ type KubernetesOpenBaoAutoUnseal struct {
 
 func (x *KubernetesOpenBaoAutoUnseal) Reset() {
 	*x = KubernetesOpenBaoAutoUnseal{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -445,7 +812,7 @@ func (x *KubernetesOpenBaoAutoUnseal) String() string {
 func (*KubernetesOpenBaoAutoUnseal) ProtoMessage() {}
 
 func (x *KubernetesOpenBaoAutoUnseal) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[5]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -458,7 +825,7 @@ func (x *KubernetesOpenBaoAutoUnseal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesOpenBaoAutoUnseal.ProtoReflect.Descriptor instead.
 func (*KubernetesOpenBaoAutoUnseal) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{5}
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *KubernetesOpenBaoAutoUnseal) GetSeal() isKubernetesOpenBaoAutoUnseal_Seal {
@@ -468,19 +835,19 @@ func (x *KubernetesOpenBaoAutoUnseal) GetSeal() isKubernetesOpenBaoAutoUnseal_Se
 	return nil
 }
 
-func (x *KubernetesOpenBaoAutoUnseal) GetGcpKms() *KubernetesOpenBaoGcpKmsSeal {
+func (x *KubernetesOpenBaoAutoUnseal) GetAwsKms() *KubernetesOpenBaoAwsKmsSeal {
 	if x != nil {
-		if x, ok := x.Seal.(*KubernetesOpenBaoAutoUnseal_GcpKms); ok {
-			return x.GcpKms
+		if x, ok := x.Seal.(*KubernetesOpenBaoAutoUnseal_AwsKms); ok {
+			return x.AwsKms
 		}
 	}
 	return nil
 }
 
-func (x *KubernetesOpenBaoAutoUnseal) GetAwsKms() *KubernetesOpenBaoAwsKmsSeal {
+func (x *KubernetesOpenBaoAutoUnseal) GetGcpKms() *KubernetesOpenBaoGcpKmsSeal {
 	if x != nil {
-		if x, ok := x.Seal.(*KubernetesOpenBaoAutoUnseal_AwsKms); ok {
-			return x.AwsKms
+		if x, ok := x.Seal.(*KubernetesOpenBaoAutoUnseal_GcpKms); ok {
+			return x.GcpKms
 		}
 	}
 	return nil
@@ -508,54 +875,137 @@ type isKubernetesOpenBaoAutoUnseal_Seal interface {
 	isKubernetesOpenBaoAutoUnseal_Seal()
 }
 
-type KubernetesOpenBaoAutoUnseal_GcpKms struct {
-	// GCP Cloud KMS auto-unseal. Natural choice for GKE deployments.
-	GcpKms *KubernetesOpenBaoGcpKmsSeal `protobuf:"bytes,1,opt,name=gcp_kms,json=gcpKms,proto3,oneof"`
+type KubernetesOpenBaoAutoUnseal_AwsKms struct {
+	// * AWS KMS. Natural on EKS (IRSA for keyless auth).
+	AwsKms *KubernetesOpenBaoAwsKmsSeal `protobuf:"bytes,1,opt,name=aws_kms,json=awsKms,proto3,oneof"`
 }
 
-type KubernetesOpenBaoAutoUnseal_AwsKms struct {
-	// AWS KMS auto-unseal. Natural choice for EKS deployments.
-	AwsKms *KubernetesOpenBaoAwsKmsSeal `protobuf:"bytes,2,opt,name=aws_kms,json=awsKms,proto3,oneof"`
+type KubernetesOpenBaoAutoUnseal_GcpKms struct {
+	// * GCP Cloud KMS. Natural on GKE (Workload Identity).
+	GcpKms *KubernetesOpenBaoGcpKmsSeal `protobuf:"bytes,2,opt,name=gcp_kms,json=gcpKms,proto3,oneof"`
 }
 
 type KubernetesOpenBaoAutoUnseal_AzureKeyVault struct {
-	// Azure Key Vault auto-unseal. Natural choice for AKS deployments.
+	// * Azure Key Vault. Natural on AKS (Workload Identity / MSI).
 	AzureKeyVault *KubernetesOpenBaoAzureKeyVaultSeal `protobuf:"bytes,3,opt,name=azure_key_vault,json=azureKeyVault,proto3,oneof"`
 }
 
 type KubernetesOpenBaoAutoUnseal_Transit struct {
-	// Transit auto-unseal via another Vault/OpenBao instance.
+	// * Transit engine of another OpenBao/Vault instance.
 	Transit *KubernetesOpenBaoTransitSeal `protobuf:"bytes,4,opt,name=transit,proto3,oneof"`
 }
 
-func (*KubernetesOpenBaoAutoUnseal_GcpKms) isKubernetesOpenBaoAutoUnseal_Seal() {}
-
 func (*KubernetesOpenBaoAutoUnseal_AwsKms) isKubernetesOpenBaoAutoUnseal_Seal() {}
+
+func (*KubernetesOpenBaoAutoUnseal_GcpKms) isKubernetesOpenBaoAutoUnseal_Seal() {}
 
 func (*KubernetesOpenBaoAutoUnseal_AzureKeyVault) isKubernetesOpenBaoAutoUnseal_Seal() {}
 
 func (*KubernetesOpenBaoAutoUnseal_Transit) isKubernetesOpenBaoAutoUnseal_Seal() {}
 
-// *
-// KubernetesOpenBaoGcpKmsSeal configures GCP Cloud KMS as the auto-unseal mechanism.
-// Requires a symmetric encrypt/decrypt key and appropriate IAM permissions.
-// Supports GKE Workload Identity for credential-free authentication.
+// * AWS KMS auto-unseal.
+type KubernetesOpenBaoAwsKmsSeal struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// AWS region of the KMS key (e.g. "us-west-2").
+	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
+	// *
+	// KMS key ID or full ARN of a SYMMETRIC encrypt/decrypt key.
+	KmsKeyId string `protobuf:"bytes,2,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
+	// *
+	// Static credentials — only when keyless (IRSA / instance profile)
+	// is unavailable. The module materializes them into a Secret
+	// (`<name>-seal-credentials`) delivered as environment variables;
+	// nothing credential-bearing lands in the config ConfigMap.
+	AccessKeyId string `protobuf:"bytes,3,opt,name=access_key_id,json=accessKeyId,proto3" json:"access_key_id,omitempty"`
+	// *
+	// The secret access key paired with access_key_id.
+	SecretAccessKey string `protobuf:"bytes,4,opt,name=secret_access_key,json=secretAccessKey,proto3" json:"secret_access_key,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesOpenBaoAwsKmsSeal) Reset() {
+	*x = KubernetesOpenBaoAwsKmsSeal{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesOpenBaoAwsKmsSeal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesOpenBaoAwsKmsSeal) ProtoMessage() {}
+
+func (x *KubernetesOpenBaoAwsKmsSeal) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesOpenBaoAwsKmsSeal.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoAwsKmsSeal) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *KubernetesOpenBaoAwsKmsSeal) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoAwsKmsSeal) GetKmsKeyId() string {
+	if x != nil {
+		return x.KmsKeyId
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoAwsKmsSeal) GetAccessKeyId() string {
+	if x != nil {
+		return x.AccessKeyId
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoAwsKmsSeal) GetSecretAccessKey() string {
+	if x != nil {
+		return x.SecretAccessKey
+	}
+	return ""
+}
+
+// * GCP Cloud KMS auto-unseal.
 type KubernetesOpenBaoGcpKmsSeal struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// GCP project containing the KMS keyring.
+	// *
+	// GCP project containing the KMS key ring.
 	Project *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`
-	// GCP region where the KMS keyring lives (e.g., "asia-south1").
+	// *
+	// KMS key ring region (e.g. "global", "us-central1").
 	Region string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
-	// Name of the KMS keyring containing the auto-unseal key.
+	// *
+	// Key ring name.
 	KeyRing *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=key_ring,json=keyRing,proto3" json:"key_ring,omitempty"`
-	// Name of the crypto key within the keyring used to encrypt the master key.
+	// *
+	// Crypto key (symmetric encrypt/decrypt) used to wrap the master
+	// key. The identity running OpenBao needs
+	// roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
 	CryptoKey *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=crypto_key,json=cryptoKey,proto3" json:"crypto_key,omitempty"`
-	// GCP service account email for GKE Workload Identity.
-	// When set, the Kubernetes service account is annotated with
-	// iam.gke.io/gcp-service-account for credential-free KMS access.
-	// The GCP service account must have roles/cloudkms.cryptoKeyEncrypterDecrypter
-	// on the key and a Workload Identity binding for the OpenBao namespace/SA.
-	// If empty, relies on Application Default Credentials or node-level permissions.
+	// *
+	// GKE Workload Identity: the GCP service account email to annotate
+	// the server ServiceAccount with (iam.gke.io/gcp-service-account).
+	// Leave empty to rely on node/ambient credentials. NOTE dev mode
+	// drops ServiceAccount annotations (chart behavior) — auto-unseal
+	// with workload identity requires standalone or ha mode.
 	WorkloadIdentityServiceAccount *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=workload_identity_service_account,json=workloadIdentityServiceAccount,proto3" json:"workload_identity_service_account,omitempty"`
 	unknownFields                  protoimpl.UnknownFields
 	sizeCache                      protoimpl.SizeCache
@@ -563,7 +1013,7 @@ type KubernetesOpenBaoGcpKmsSeal struct {
 
 func (x *KubernetesOpenBaoGcpKmsSeal) Reset() {
 	*x = KubernetesOpenBaoGcpKmsSeal{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -575,7 +1025,7 @@ func (x *KubernetesOpenBaoGcpKmsSeal) String() string {
 func (*KubernetesOpenBaoGcpKmsSeal) ProtoMessage() {}
 
 func (x *KubernetesOpenBaoGcpKmsSeal) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[6]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -588,7 +1038,7 @@ func (x *KubernetesOpenBaoGcpKmsSeal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesOpenBaoGcpKmsSeal.ProtoReflect.Descriptor instead.
 func (*KubernetesOpenBaoGcpKmsSeal) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{6}
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *KubernetesOpenBaoGcpKmsSeal) GetProject() *v1.StringValueOrRef {
@@ -626,96 +1076,34 @@ func (x *KubernetesOpenBaoGcpKmsSeal) GetWorkloadIdentityServiceAccount() *v1.St
 	return nil
 }
 
-// *
-// KubernetesOpenBaoAwsKmsSeal configures AWS KMS as the auto-unseal mechanism.
-// Requires a symmetric KMS key and appropriate IAM permissions.
-// Supports IRSA (IAM Roles for Service Accounts) on EKS for credential-free authentication.
-type KubernetesOpenBaoAwsKmsSeal struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// AWS region where the KMS key lives (e.g., "ap-south-1").
-	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// KMS key ID or full ARN.
-	KmsKeyId string `protobuf:"bytes,2,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
-	// Name of a Kubernetes secret containing 'access-key' and 'secret-key' data keys.
-	// If empty, relies on IRSA or EC2 instance profile for authentication.
-	CredentialsSecretName string `protobuf:"bytes,3,opt,name=credentials_secret_name,json=credentialsSecretName,proto3" json:"credentials_secret_name,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
-}
-
-func (x *KubernetesOpenBaoAwsKmsSeal) Reset() {
-	*x = KubernetesOpenBaoAwsKmsSeal{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[7]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubernetesOpenBaoAwsKmsSeal) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubernetesOpenBaoAwsKmsSeal) ProtoMessage() {}
-
-func (x *KubernetesOpenBaoAwsKmsSeal) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[7]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubernetesOpenBaoAwsKmsSeal.ProtoReflect.Descriptor instead.
-func (*KubernetesOpenBaoAwsKmsSeal) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{7}
-}
-
-func (x *KubernetesOpenBaoAwsKmsSeal) GetRegion() string {
-	if x != nil {
-		return x.Region
-	}
-	return ""
-}
-
-func (x *KubernetesOpenBaoAwsKmsSeal) GetKmsKeyId() string {
-	if x != nil {
-		return x.KmsKeyId
-	}
-	return ""
-}
-
-func (x *KubernetesOpenBaoAwsKmsSeal) GetCredentialsSecretName() string {
-	if x != nil {
-		return x.CredentialsSecretName
-	}
-	return ""
-}
-
-// *
-// KubernetesOpenBaoAzureKeyVaultSeal configures Azure Key Vault as the auto-unseal mechanism.
-// Requires an RSA or EC key in Azure Key Vault and appropriate access policies.
-// Supports Azure Managed Identity on AKS for credential-free authentication.
+// * Azure Key Vault auto-unseal.
 type KubernetesOpenBaoAzureKeyVaultSeal struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Name of the Azure Key Vault (e.g., "my-openbao-vault").
+	// *
+	// Key Vault name (the vault, not the key).
 	VaultName string `protobuf:"bytes,1,opt,name=vault_name,json=vaultName,proto3" json:"vault_name,omitempty"`
-	// Name of the key within the Azure Key Vault.
+	// *
+	// Name of the key inside the vault.
 	KeyName string `protobuf:"bytes,2,opt,name=key_name,json=keyName,proto3" json:"key_name,omitempty"`
-	// Azure AD tenant ID.
+	// *
+	// Entra (Azure AD) tenant ID.
 	TenantId string `protobuf:"bytes,3,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	// Name of a Kubernetes secret containing 'client-id' and 'client-secret' data keys.
-	// If empty, relies on Azure Managed Identity for authentication.
-	CredentialsSecretName string `protobuf:"bytes,4,opt,name=credentials_secret_name,json=credentialsSecretName,proto3" json:"credentials_secret_name,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// *
+	// Service-principal client ID — only when keyless (AKS Workload
+	// Identity / Managed Identity) is unavailable.
+	ClientId string `protobuf:"bytes,4,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	// *
+	// Service-principal client secret paired with client_id. Delivered
+	// as environment variables from a module-owned Secret; never lands
+	// in the config ConfigMap.
+	ClientSecret  string `protobuf:"bytes,5,opt,name=client_secret,json=clientSecret,proto3" json:"client_secret,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesOpenBaoAzureKeyVaultSeal) Reset() {
 	*x = KubernetesOpenBaoAzureKeyVaultSeal{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -727,7 +1115,7 @@ func (x *KubernetesOpenBaoAzureKeyVaultSeal) String() string {
 func (*KubernetesOpenBaoAzureKeyVaultSeal) ProtoMessage() {}
 
 func (x *KubernetesOpenBaoAzureKeyVaultSeal) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[8]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -740,7 +1128,7 @@ func (x *KubernetesOpenBaoAzureKeyVaultSeal) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use KubernetesOpenBaoAzureKeyVaultSeal.ProtoReflect.Descriptor instead.
 func (*KubernetesOpenBaoAzureKeyVaultSeal) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{8}
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *KubernetesOpenBaoAzureKeyVaultSeal) GetVaultName() string {
@@ -764,34 +1152,46 @@ func (x *KubernetesOpenBaoAzureKeyVaultSeal) GetTenantId() string {
 	return ""
 }
 
-func (x *KubernetesOpenBaoAzureKeyVaultSeal) GetCredentialsSecretName() string {
+func (x *KubernetesOpenBaoAzureKeyVaultSeal) GetClientId() string {
 	if x != nil {
-		return x.CredentialsSecretName
+		return x.ClientId
 	}
 	return ""
 }
 
-// *
-// KubernetesOpenBaoTransitSeal configures another Vault/OpenBao instance's Transit engine
-// as the auto-unseal mechanism. The satellite instance depends on the central instance
-// being available and unsealed.
+func (x *KubernetesOpenBaoAzureKeyVaultSeal) GetClientSecret() string {
+	if x != nil {
+		return x.ClientSecret
+	}
+	return ""
+}
+
+// * Transit auto-unseal via a central OpenBao/Vault.
 type KubernetesOpenBaoTransitSeal struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Address of the central Vault/OpenBao instance (e.g., "https://vault.example.com:8200").
+	// *
+	// Address of the central instance (e.g. "https://bao.example.com:8200").
+	// The satellite depends on the central instance being reachable
+	// and unsealed at every startup.
 	Address string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
-	// Name of the Transit key used to wrap/unwrap the master key.
+	// *
+	// Transit key name used to wrap the master key.
 	KeyName string `protobuf:"bytes,2,opt,name=key_name,json=keyName,proto3" json:"key_name,omitempty"`
-	// Transit engine mount path. Default: "transit/".
-	MountPath string `protobuf:"bytes,3,opt,name=mount_path,json=mountPath,proto3" json:"mount_path,omitempty"`
-	// Name of a Kubernetes secret containing a 'token' data key for the central Vault.
-	TokenSecretName string `protobuf:"bytes,4,opt,name=token_secret_name,json=tokenSecretName,proto3" json:"token_secret_name,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// *
+	// Transit engine mount path.
+	MountPath *string `protobuf:"bytes,3,opt,name=mount_path,json=mountPath,proto3,oneof" json:"mount_path,omitempty"`
+	// *
+	// Token authorized for encrypt/decrypt on the transit key.
+	// Delivered as environment variables from a module-owned Secret;
+	// never lands in the config ConfigMap.
+	Token         string `protobuf:"bytes,4,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *KubernetesOpenBaoTransitSeal) Reset() {
 	*x = KubernetesOpenBaoTransitSeal{}
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -803,7 +1203,7 @@ func (x *KubernetesOpenBaoTransitSeal) String() string {
 func (*KubernetesOpenBaoTransitSeal) ProtoMessage() {}
 
 func (x *KubernetesOpenBaoTransitSeal) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[9]
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -816,7 +1216,7 @@ func (x *KubernetesOpenBaoTransitSeal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesOpenBaoTransitSeal.ProtoReflect.Descriptor instead.
 func (*KubernetesOpenBaoTransitSeal) Descriptor() ([]byte, []int) {
-	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{9}
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *KubernetesOpenBaoTransitSeal) GetAddress() string {
@@ -834,111 +1234,490 @@ func (x *KubernetesOpenBaoTransitSeal) GetKeyName() string {
 }
 
 func (x *KubernetesOpenBaoTransitSeal) GetMountPath() string {
-	if x != nil {
-		return x.MountPath
+	if x != nil && x.MountPath != nil {
+		return *x.MountPath
 	}
 	return ""
 }
 
-func (x *KubernetesOpenBaoTransitSeal) GetTokenSecretName() string {
+func (x *KubernetesOpenBaoTransitSeal) GetToken() string {
 	if x != nil {
-		return x.TokenSecretName
+		return x.Token
 	}
 	return ""
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_extTypes = []protoimpl.ExtensionInfo{
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesOpenBaoServerContainer)(nil),
-		Field:         537100,
-		Name:          "dev.planton.provider.kubernetes.kubernetesopenbao.v1.default_server_container",
-		Tag:           "bytes,537100,opt,name=default_server_container",
-		Filename:      "dev/planton/provider/kubernetes/kubernetesopenbao/v1/spec.proto",
-	},
+// * The OpenBao Agent Injector (mutating webhook + injector pods).
+type KubernetesOpenBaoInjector struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Deploy the injector. See the spec-level comment for the
+	// cluster-wide webhook blast radius.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Injector replicas. Above 1, leader election activates and the
+	// chart creates a HARD-CODED Secret `openbao-injector-certs` —
+	// only one multi-replica injector can exist per namespace.
+	// The injector pods also carry a required anti-affinity, so
+	// replicas need distinct nodes.
+	Replicas *int32 `protobuf:"varint,2,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// Webhook failure policy: "Ignore" (default — injector downtime
+	// skips injection, pods still schedule) or "Fail" (pod creation
+	// BLOCKS while the injector is down; only for clusters that treat
+	// missing secrets as worse than blocked deploys).
+	FailurePolicy *string `protobuf:"bytes,3,opt,name=failure_policy,json=failurePolicy,proto3,oneof" json:"failure_policy,omitempty"`
+	// *
+	// CPU and memory for the injector container.
+	Resources     *kubernetes.ContainerResources `protobuf:"bytes,4,opt,name=resources,proto3" json:"resources,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-// Extension fields to descriptorpb.FieldOptions.
-var (
-	// optional dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer default_server_container = 537100;
-	E_DefaultServerContainer = &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_extTypes[0]
-)
+func (x *KubernetesOpenBaoInjector) Reset() {
+	*x = KubernetesOpenBaoInjector{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesOpenBaoInjector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesOpenBaoInjector) ProtoMessage() {}
+
+func (x *KubernetesOpenBaoInjector) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesOpenBaoInjector.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoInjector) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *KubernetesOpenBaoInjector) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesOpenBaoInjector) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesOpenBaoInjector) GetFailurePolicy() string {
+	if x != nil && x.FailurePolicy != nil {
+		return *x.FailurePolicy
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoInjector) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+// * Prometheus metrics wiring.
+type KubernetesOpenBaoMetrics struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Render the telemetry stanza (prometheus_retention_time = "30s",
+	// disable_hostname) and allow UNAUTHENTICATED access to
+	// /v1/sys/metrics on the listener. Without this, the metrics
+	// endpoint requires an OpenBao token and Prometheus cannot scrape.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Also create a ServiceMonitor (requires the Prometheus Operator
+	// CRDs — a KubernetesKubePrometheusStack — on the cluster; the
+	// install FAILS without them). In HA mode the chart scrapes only
+	// the active node.
+	ServiceMonitorEnabled bool `protobuf:"varint,2,opt,name=service_monitor_enabled,json=serviceMonitorEnabled,proto3" json:"service_monitor_enabled,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *KubernetesOpenBaoMetrics) Reset() {
+	*x = KubernetesOpenBaoMetrics{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesOpenBaoMetrics) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesOpenBaoMetrics) ProtoMessage() {}
+
+func (x *KubernetesOpenBaoMetrics) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesOpenBaoMetrics.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoMetrics) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *KubernetesOpenBaoMetrics) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesOpenBaoMetrics) GetServiceMonitorEnabled() bool {
+	if x != nil {
+		return x.ServiceMonitorEnabled
+	}
+	return false
+}
+
+// * Scheduled Raft snapshots to an S3-compatible object store.
+type KubernetesOpenBaoSnapshotAgent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Enable the snapshot CronJob. Meaningful only for Raft (HA) mode —
+	// the agent calls `bao operator raft snapshot`.
+	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// *
+	// Cron schedule.
+	Schedule *string `protobuf:"bytes,2,opt,name=schedule,proto3,oneof" json:"schedule,omitempty"`
+	// *
+	// S3(-compatible) endpoint HOST (e.g. "s3.us-east-1.amazonaws.com",
+	// or an in-cluster KubernetesSeaweedFs S3 endpoint host).
+	S3Host *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=s3_host,json=s3Host,proto3" json:"s3_host,omitempty"`
+	// *
+	// Bucket name to write snapshots into.
+	S3Bucket string `protobuf:"bytes,4,opt,name=s3_bucket,json=s3Bucket,proto3" json:"s3_bucket,omitempty"`
+	// *
+	// Days after which snapshots in the bucket expire (agent-side
+	// cleanup).
+	S3ExpireDays *int32 `protobuf:"varint,5,opt,name=s3_expire_days,json=s3ExpireDays,proto3,oneof" json:"s3_expire_days,omitempty"`
+	// *
+	// Name of an existing Secret with the s3cmd-style credentials the
+	// agent image expects (keys access_key / secret_key). Required —
+	// snapshot pods crash-loop without it.
+	S3CredentialsSecretName string `protobuf:"bytes,6,opt,name=s3_credentials_secret_name,json=s3CredentialsSecretName,proto3" json:"s3_credentials_secret_name,omitempty"`
+	// *
+	// The OpenBao Kubernetes-auth ROLE the agent logs in with
+	// (runtime configuration — create it inside OpenBao; see the
+	// component docs for the recipe).
+	BaoRole *string `protobuf:"bytes,7,opt,name=bao_role,json=baoRole,proto3,oneof" json:"bao_role,omitempty"`
+	// *
+	// Kubernetes auth method mount path inside OpenBao.
+	BaoAuthPath   *string `protobuf:"bytes,8,opt,name=bao_auth_path,json=baoAuthPath,proto3,oneof" json:"bao_auth_path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesOpenBaoSnapshotAgent) Reset() {
+	*x = KubernetesOpenBaoSnapshotAgent{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesOpenBaoSnapshotAgent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesOpenBaoSnapshotAgent) ProtoMessage() {}
+
+func (x *KubernetesOpenBaoSnapshotAgent) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesOpenBaoSnapshotAgent.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoSnapshotAgent) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *KubernetesOpenBaoSnapshotAgent) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesOpenBaoSnapshotAgent) GetSchedule() string {
+	if x != nil && x.Schedule != nil {
+		return *x.Schedule
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoSnapshotAgent) GetS3Host() *v1.StringValueOrRef {
+	if x != nil {
+		return x.S3Host
+	}
+	return nil
+}
+
+func (x *KubernetesOpenBaoSnapshotAgent) GetS3Bucket() string {
+	if x != nil {
+		return x.S3Bucket
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoSnapshotAgent) GetS3ExpireDays() int32 {
+	if x != nil && x.S3ExpireDays != nil {
+		return *x.S3ExpireDays
+	}
+	return 0
+}
+
+func (x *KubernetesOpenBaoSnapshotAgent) GetS3CredentialsSecretName() string {
+	if x != nil {
+		return x.S3CredentialsSecretName
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoSnapshotAgent) GetBaoRole() string {
+	if x != nil && x.BaoRole != nil {
+		return *x.BaoRole
+	}
+	return ""
+}
+
+func (x *KubernetesOpenBaoSnapshotAgent) GetBaoAuthPath() string {
+	if x != nil && x.BaoAuthPath != nil {
+		return *x.BaoAuthPath
+	}
+	return ""
+}
+
+// * Server ServiceAccount identity.
+type KubernetesOpenBaoServiceAccount struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Annotations for the server ServiceAccount — the cloud
+	// workload-identity seam (eks.amazonaws.com/role-arn,
+	// iam.gke.io/gcp-service-account, azure.workload.identity/client-id).
+	// NOTE: dev mode drops these (chart behavior).
+	Annotations map[string]string `protobuf:"bytes,1,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Bind the ServiceAccount to the cluster's system:auth-delegator
+	// role (a ClusterRoleBinding). Required for OpenBao's Kubernetes
+	// AUTH METHOD to validate workload tokens via TokenReview — leave
+	// on unless the cluster forbids the binding and you will not use
+	// Kubernetes auth.
+	AuthDelegatorEnabled *bool `protobuf:"varint,2,opt,name=auth_delegator_enabled,json=authDelegatorEnabled,proto3,oneof" json:"auth_delegator_enabled,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *KubernetesOpenBaoServiceAccount) Reset() {
+	*x = KubernetesOpenBaoServiceAccount{}
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesOpenBaoServiceAccount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesOpenBaoServiceAccount) ProtoMessage() {}
+
+func (x *KubernetesOpenBaoServiceAccount) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesOpenBaoServiceAccount.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenBaoServiceAccount) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *KubernetesOpenBaoServiceAccount) GetAnnotations() map[string]string {
+	if x != nil {
+		return x.Annotations
+	}
+	return nil
+}
+
+func (x *KubernetesOpenBaoServiceAccount) GetAuthDelegatorEnabled() bool {
+	if x != nil && x.AuthDelegatorEnabled != nil {
+		return *x.AuthDelegatorEnabled
+	}
+	return false
+}
 
 var File_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?dev/planton/provider/kubernetes/kubernetesopenbao/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesopenbao.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\x1a google/protobuf/descriptor.proto\"\xe7\a\n" +
+	"?dev/planton/provider/kubernetes/kubernetesopenbao/v1/spec.proto\x124dev.planton.provider.kubernetes.kubernetesopenbao.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a-dev/planton/provider/kubernetes/options.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\x97\t\n" +
 	"\x15KubernetesOpenBaoSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12=\n" +
-	"\x12helm_chart_version\x18\x04 \x01(\tB\n" +
-	"\x8a\xa6\x1d\x060.23.3H\x00R\x10helmChartVersion\x88\x01\x01\x12\xb0\x01\n" +
-	"\x10server_container\x18\x05 \x01(\v2V.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainerB-⠆\x02(\b\x01\x12\x1e\n" +
-	"\r\n" +
-	"\x04500m\x12\x05256Mi\x12\r\n" +
-	"\x04100m\x12\x05128Mi\x1a\x0410GiR\x0fserverContainer\x12\x84\x01\n" +
-	"\x11high_availability\x18\x06 \x01(\v2W.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoHighAvailabilityR\x10highAvailability\x12h\n" +
-	"\aingress\x18\a \x01(\v2N.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoIngressR\aingress\x12,\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x124\n" +
+	"\rchart_version\x18\x03 \x01(\tB\n" +
+	"\x8a\xa6\x1d\x060.28.6H\x00R\fchartVersion\x88\x01\x01\x12e\n" +
+	"\x06server\x18\x04 \x01(\v2M.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerR\x06server\x12\\\n" +
+	"\x03tls\x18\x05 \x01(\v2J.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTlsR\x03tls\x12r\n" +
+	"\vauto_unseal\x18\x06 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnsealR\n" +
+	"autoUnseal\x12k\n" +
+	"\binjector\x18\a \x01(\v2O.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjectorR\binjector\x12,\n" +
 	"\n" +
-	"ui_enabled\x18\b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\tuiEnabled\x88\x01\x01\x12k\n" +
-	"\binjector\x18\t \x01(\v2O.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjectorR\binjector\x12\x1f\n" +
-	"\vtls_enabled\x18\n" +
-	" \x01(\bR\n" +
-	"tlsEnabled\x12r\n" +
-	"\vauto_unseal\x18\v \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnsealR\n" +
-	"autoUnsealB\x15\n" +
-	"\x13_helm_chart_versionB\r\n" +
-	"\v_ui_enabled\"\x82\x02\n" +
-	" KubernetesOpenBaoServerContainer\x12%\n" +
-	"\breplicas\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\n" +
-	"(\x01R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12d\n" +
-	"\x11data_storage_size\x18\x03 \x01(\tB8\xbaH5r3\x10\x012/^\\d+(\\.\\d+)?\\s?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$R\x0fdataStorageSize\"{\n" +
-	"!KubernetesOpenBaoHighAvailability\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12/\n" +
-	"\breplicas\x18\x02 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\n" +
-	"(\x03\x8a\xa6\x1d\x013H\x00R\breplicas\x88\x01\x01B\v\n" +
-	"\t_replicas\"\xcf\x01\n" +
-	"\x18KubernetesOpenBaoIngress\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
-	"\x1espec.ingress.hostname.required\x12,hostname is required when ingress is enabled\x1a(!this.enabled || size(this.hostname) > 0\"s\n" +
-	"\x19KubernetesOpenBaoInjector\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12/\n" +
-	"\breplicas\x18\x02 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x05(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01B\v\n" +
-	"\t_replicas\"\xf6\x03\n" +
+	"ui_enabled\x18\b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\tuiEnabled\x88\x01\x01\x124\n" +
+	"\x16network_policy_enabled\x18\t \x01(\bR\x14networkPolicyEnabled\x12h\n" +
+	"\ametrics\x18\n" +
+	" \x01(\v2N.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoMetricsR\ametrics\x12{\n" +
+	"\x0esnapshot_agent\x18\v \x01(\v2T.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSnapshotAgentR\rsnapshotAgent\x12~\n" +
+	"\x0fservice_account\x18\f \x01(\v2U.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServiceAccountR\x0eserviceAccount\x12\x1f\n" +
+	"\vhelm_values\x18\r \x01(\tR\n" +
+	"helmValuesB\x10\n" +
+	"\x0e_chart_versionB\r\n" +
+	"\v_ui_enabled\"\xae\t\n" +
+	"\x17KubernetesOpenBaoServer\x12b\n" +
+	"\x03dev\x18\x01 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoDevModeH\x00R\x03dev\x12w\n" +
+	"\n" +
+	"standalone\x18\x02 \x01(\v2U.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStandaloneModeH\x00R\n" +
+	"standalone\x12_\n" +
+	"\x02ha\x18\x03 \x01(\v2M.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoHaModeH\x00R\x02ha\x12w\n" +
+	"\tresources\x18\x04 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesB$\xba\xfb\xa4\x02\x1f\n" +
+	"\x0e\n" +
+	"\x051000m\x12\x05512Mi\x12\r\n" +
+	"\x04100m\x12\x05256MiR\tresources\x12q\n" +
+	"\fdata_storage\x18\x05 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStorageR\vdataStorage\x12s\n" +
+	"\raudit_storage\x18\x06 \x01(\v2N.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStorageR\fauditStorage\x12\xbb\x01\n" +
+	"\tlog_level\x18\a \x01(\tB\x98\x01\xbaH\x8c\x01\xba\x01\x88\x01\n" +
+	"\x15spec.server.log_level\x12:Log level must be one of: trace, debug, info, warn, error.\x1a3this in [\"trace\", \"debug\", \"info\", \"warn\", \"error\"]\x8a\xa6\x1d\x04infoH\x01R\blogLevel\x88\x01\x01\x12\x9d\x01\n" +
+	"\n" +
+	"log_format\x18\b \x01(\tBy\xbaHj\xba\x01g\n" +
+	"\x16spec.server.log_format\x12/Log format must be either \"standard\" or \"json\".\x1a\x1cthis in [\"standard\", \"json\"]\x8a\xa6\x1d\bstandardH\x02R\tlogFormat\x88\x01\x01\x12q\n" +
+	"\n" +
+	"scheduling\x18\t \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSchedulingR\n" +
+	"schedulingB\x06\n" +
+	"\x04modeB\f\n" +
+	"\n" +
+	"_log_levelB\r\n" +
+	"\v_log_format\"\x1a\n" +
+	"\x18KubernetesOpenBaoDevMode\"!\n" +
+	"\x1fKubernetesOpenBaoStandaloneMode\"W\n" +
+	"\x17KubernetesOpenBaoHaMode\x12/\n" +
+	"\breplicas\x18\x01 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\v(\x01\x8a\xa6\x1d\x013H\x00R\breplicas\x88\x01\x01B\v\n" +
+	"\t_replicas\"\xff\x01\n" +
+	"\x18KubernetesOpenBaoStorage\x12T\n" +
+	"\x04size\x18\x01 \x01(\tB;\xbaH0r.2,^\\d+(\\.\\d+)?(Ki|Mi|Gi|Ti|Pi|Ei|K|M|G|T|P|E)$\x8a\xa6\x1d\x0410GiH\x00R\x04size\x88\x01\x01\x12\x83\x01\n" +
+	"\rstorage_class\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xb0\x06\x92\xd4a!status.outputs.storage_class_nameR\fstorageClassB\a\n" +
+	"\x05_size\"\xc0\x02\n" +
+	"\x1bKubernetesOpenBaoScheduling\x12\x88\x01\n" +
+	"\rnode_selector\x18\x01 \x03(\v2c.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x9d\x04\n" +
+	"\x14KubernetesOpenBaoTls\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x81\x01\n" +
+	"\x10cert_secret_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xc1\x06\x92\xd4a\x1astatus.outputs.secret_nameR\x0ecertSecretName:\xe6\x02\xbaH\xe2\x02\x1a\xdf\x02\n" +
+	"\"spec.tls.cert_secret_name.required\x12\x8e\x01TLS needs certificate material: set cert_secret_name to a kubernetes.io/tls Secret (or reference a KubernetesCertificate) when TLS is enabled.\x1a\xa7\x01!this.enabled || (has(this.cert_secret_name) && ((has(this.cert_secret_name.value) && size(this.cert_secret_name.value) > 0) || has(this.cert_secret_name.value_from)))\"\xf6\x03\n" +
 	"\x1bKubernetesOpenBaoAutoUnseal\x12l\n" +
-	"\agcp_kms\x18\x01 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSealH\x00R\x06gcpKms\x12l\n" +
-	"\aaws_kms\x18\x02 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSealH\x00R\x06awsKms\x12\x82\x01\n" +
+	"\aaws_kms\x18\x01 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSealH\x00R\x06awsKms\x12l\n" +
+	"\agcp_kms\x18\x02 \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSealH\x00R\x06gcpKms\x12\x82\x01\n" +
 	"\x0fazure_key_vault\x18\x03 \x01(\v2X.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSealH\x00R\razureKeyVault\x12n\n" +
 	"\atransit\x18\x04 \x01(\v2R.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSealH\x00R\atransitB\x06\n" +
-	"\x04seal\"\xcc\x04\n" +
+	"\x04seal\"\x96\x02\n" +
+	"\x1bKubernetesOpenBaoAwsKmsSeal\x12\x1f\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12%\n" +
+	"\n" +
+	"kms_key_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bkmsKeyId\x12}\n" +
+	"\raccess_key_id\x18\x03 \x01(\tBY\xaa\xa6\x1dUAWS access key IDs are public identifiers; only the paired secret key is a credentialR\vaccessKeyId\x120\n" +
+	"\x11secret_access_key\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x0fsecretAccessKey\"\xcc\x04\n" +
 	"\x1bKubernetesOpenBaoGcpKmsSeal\x12v\n" +
 	"\aproject\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xe1\x04\x92\xd4a\x19status.outputs.project_idR\aproject\x12\x1f\n" +
 	"\x06region\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12z\n" +
 	"\bkey_ring\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xb2\x05\x92\xd4a\x1cstatus.outputs.key_ring_nameR\akeyRing\x12y\n" +
 	"\n" +
 	"crypto_key\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xb3\x05\x92\xd4a\x17status.outputs.key_nameR\tcryptoKey\x12\x9c\x01\n" +
-	"!workload_identity_service_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x1eworkloadIdentityServiceAccount\"\x9d\x01\n" +
-	"\x1bKubernetesOpenBaoAwsKmsSeal\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12%\n" +
-	"\n" +
-	"kms_key_id\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bkmsKeyId\x126\n" +
-	"\x17credentials_secret_name\x18\x03 \x01(\tR\x15credentialsSecretName\"\xce\x01\n" +
+	"!workload_identity_service_account\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR\x1eworkloadIdentityServiceAccount\"\xde\x01\n" +
 	"\"KubernetesOpenBaoAzureKeyVaultSeal\x12&\n" +
 	"\n" +
 	"vault_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tvaultName\x12\"\n" +
 	"\bkey_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\akeyName\x12$\n" +
-	"\ttenant_id\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\btenantId\x126\n" +
-	"\x17credentials_secret_name\x18\x04 \x01(\tR\x15credentialsSecretName\"\xb9\x01\n" +
+	"\ttenant_id\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\btenantId\x12\x1b\n" +
+	"\tclient_id\x18\x04 \x01(\tR\bclientId\x12)\n" +
+	"\rclient_secret\x18\x05 \x01(\tB\x04\xa0\xa6\x1d\x01R\fclientSecret\"\xc2\x01\n" +
 	"\x1cKubernetesOpenBaoTransitSeal\x12!\n" +
 	"\aaddress\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\aaddress\x12\"\n" +
-	"\bkey_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\akeyName\x12\x1d\n" +
+	"\bkey_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\akeyName\x120\n" +
 	"\n" +
-	"mount_path\x18\x03 \x01(\tR\tmountPath\x123\n" +
-	"\x11token_secret_name\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0ftokenSecretName:\xb1\x01\n" +
-	"\x18default_server_container\x12\x1d.google.protobuf.FieldOptions\x18\x8c\xe4  \x01(\v2V.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainerR\x16defaultServerContainerB\xa8\x03\n" +
+	"mount_path\x18\x03 \x01(\tB\f\x8a\xa6\x1d\btransit/H\x00R\tmountPath\x88\x01\x01\x12\x1a\n" +
+	"\x05token\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x05tokenB\r\n" +
+	"\v_mount_path\"\xaa\x03\n" +
+	"\x19KubernetesOpenBaoInjector\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12/\n" +
+	"\breplicas\x18\x02 \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\x05(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x12\xce\x01\n" +
+	"\x0efailure_policy\x18\x03 \x01(\tB\xa1\x01\xbaH\x93\x01\xba\x01\x8f\x01\n" +
+	"\x1cspec.injector.failure_policy\x12SWebhook failure policy must be either \"Ignore\" (fail open) or \"Fail\" (fail closed).\x1a\x1athis in [\"Ignore\", \"Fail\"]\x8a\xa6\x1d\x06IgnoreH\x01R\rfailurePolicy\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x04 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\v\n" +
+	"\t_replicasB\x11\n" +
+	"\x0f_failure_policy\"\xca\x02\n" +
+	"\x18KubernetesOpenBaoMetrics\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x126\n" +
+	"\x17service_monitor_enabled\x18\x02 \x01(\bR\x15serviceMonitorEnabled:\xdb\x01\xbaH\xd7\x01\x1a\xd4\x01\n" +
+	"-spec.metrics.service_monitor.requires_metrics\x12tA ServiceMonitor without the telemetry stanza scrapes an endpoint that rejects every request — enable metrics too.\x1a-!this.service_monitor_enabled || this.enabled\"\xfb\x04\n" +
+	"\x1eKubernetesOpenBaoSnapshotAgent\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x121\n" +
+	"\bschedule\x18\x02 \x01(\tB\x10\x8a\xa6\x1d\f*/15 * * * *H\x00R\bschedule\x88\x01\x01\x12v\n" +
+	"\as3_host\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x9b\a\x92\xd4a\x1astatus.outputs.s3_endpointR\x06s3Host\x12$\n" +
+	"\ts3_bucket\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bs3Bucket\x128\n" +
+	"\x0es3_expire_days\x18\x05 \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0214H\x01R\fs3ExpireDays\x88\x01\x01\x12\x8d\x01\n" +
+	"\x1as3_credentials_secret_name\x18\x06 \x01(\tBP\xbaH\x04r\x02\x10\x01\xaa\xa6\x1dEcarries the NAME of an existing Secret, never the credential materialR\x17s3CredentialsSecretName\x12,\n" +
+	"\bbao_role\x18\a \x01(\tB\f\x8a\xa6\x1d\bsnapshotH\x02R\abaoRole\x88\x01\x01\x127\n" +
+	"\rbao_auth_path\x18\b \x01(\tB\x0e\x8a\xa6\x1d\n" +
+	"kubernetesH\x03R\vbaoAuthPath\x88\x01\x01B\v\n" +
+	"\t_scheduleB\x11\n" +
+	"\x0f_s3_expire_daysB\v\n" +
+	"\t_bao_roleB\x10\n" +
+	"\x0e_bao_auth_path\"\xcc\x02\n" +
+	"\x1fKubernetesOpenBaoServiceAccount\x12\x88\x01\n" +
+	"\vannotations\x18\x01 \x03(\v2f.dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServiceAccount.AnnotationsEntryR\vannotations\x12C\n" +
+	"\x16auth_delegator_enabled\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x14authDelegatorEnabled\x88\x01\x01\x1a>\n" +
+	"\x10AnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x19\n" +
+	"\x17_auth_delegator_enabledB\xa8\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetesopenbao.v1B\tSpecProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesopenbao/v1;kubernetesopenbaov1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetesopenbao.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetesopenbao\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetesopenbao\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetesopenbao::V1b\x06proto3"
 
 var (
@@ -953,45 +1732,67 @@ func file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDes
 	return file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_goTypes = []any{
 	(*KubernetesOpenBaoSpec)(nil),              // 0: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec
-	(*KubernetesOpenBaoServerContainer)(nil),   // 1: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer
-	(*KubernetesOpenBaoHighAvailability)(nil),  // 2: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoHighAvailability
-	(*KubernetesOpenBaoIngress)(nil),           // 3: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoIngress
-	(*KubernetesOpenBaoInjector)(nil),          // 4: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjector
-	(*KubernetesOpenBaoAutoUnseal)(nil),        // 5: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal
-	(*KubernetesOpenBaoGcpKmsSeal)(nil),        // 6: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal
-	(*KubernetesOpenBaoAwsKmsSeal)(nil),        // 7: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSeal
-	(*KubernetesOpenBaoAzureKeyVaultSeal)(nil), // 8: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSeal
-	(*KubernetesOpenBaoTransitSeal)(nil),       // 9: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSeal
-	(*v1.StringValueOrRef)(nil),                // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),      // 11: dev.planton.provider.kubernetes.ContainerResources
-	(*descriptorpb.FieldOptions)(nil),          // 12: google.protobuf.FieldOptions
+	(*KubernetesOpenBaoServer)(nil),            // 1: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServer
+	(*KubernetesOpenBaoDevMode)(nil),           // 2: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoDevMode
+	(*KubernetesOpenBaoStandaloneMode)(nil),    // 3: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStandaloneMode
+	(*KubernetesOpenBaoHaMode)(nil),            // 4: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoHaMode
+	(*KubernetesOpenBaoStorage)(nil),           // 5: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStorage
+	(*KubernetesOpenBaoScheduling)(nil),        // 6: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoScheduling
+	(*KubernetesOpenBaoTls)(nil),               // 7: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTls
+	(*KubernetesOpenBaoAutoUnseal)(nil),        // 8: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal
+	(*KubernetesOpenBaoAwsKmsSeal)(nil),        // 9: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSeal
+	(*KubernetesOpenBaoGcpKmsSeal)(nil),        // 10: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal
+	(*KubernetesOpenBaoAzureKeyVaultSeal)(nil), // 11: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSeal
+	(*KubernetesOpenBaoTransitSeal)(nil),       // 12: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSeal
+	(*KubernetesOpenBaoInjector)(nil),          // 13: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjector
+	(*KubernetesOpenBaoMetrics)(nil),           // 14: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoMetrics
+	(*KubernetesOpenBaoSnapshotAgent)(nil),     // 15: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSnapshotAgent
+	(*KubernetesOpenBaoServiceAccount)(nil),    // 16: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServiceAccount
+	nil,                                        // 17: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoScheduling.NodeSelectorEntry
+	nil,                                        // 18: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServiceAccount.AnnotationsEntry
+	(*v1.StringValueOrRef)(nil),                // 19: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),      // 20: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),      // 21: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_depIdxs = []int32{
-	10, // 0: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 1: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.server_container:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer
-	2,  // 2: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.high_availability:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoHighAvailability
-	3,  // 3: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.ingress:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoIngress
-	4,  // 4: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.injector:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjector
-	5,  // 5: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.auto_unseal:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal
-	11, // 6: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	6,  // 7: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.gcp_kms:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal
-	7,  // 8: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.aws_kms:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSeal
-	8,  // 9: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.azure_key_vault:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSeal
-	9,  // 10: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.transit:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSeal
-	10, // 11: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.project:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 12: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.key_ring:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 13: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.crypto_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 14: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.workload_identity_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 15: dev.planton.provider.kubernetes.kubernetesopenbao.v1.default_server_container:extendee -> google.protobuf.FieldOptions
-	1,  // 16: dev.planton.provider.kubernetes.kubernetesopenbao.v1.default_server_container:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServerContainer
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	16, // [16:17] is the sub-list for extension type_name
-	15, // [15:16] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	19, // 0: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.server:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServer
+	7,  // 2: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.tls:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTls
+	8,  // 3: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.auto_unseal:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal
+	13, // 4: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.injector:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjector
+	14, // 5: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.metrics:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoMetrics
+	15, // 6: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.snapshot_agent:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSnapshotAgent
+	16, // 7: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSpec.service_account:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServiceAccount
+	2,  // 8: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServer.dev:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoDevMode
+	3,  // 9: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServer.standalone:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStandaloneMode
+	4,  // 10: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServer.ha:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoHaMode
+	20, // 11: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	5,  // 12: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServer.data_storage:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStorage
+	5,  // 13: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServer.audit_storage:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStorage
+	6,  // 14: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServer.scheduling:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoScheduling
+	19, // 15: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoStorage.storage_class:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 16: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoScheduling.NodeSelectorEntry
+	21, // 17: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	19, // 18: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTls.cert_secret_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 19: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.aws_kms:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAwsKmsSeal
+	10, // 20: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.gcp_kms:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal
+	11, // 21: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.azure_key_vault:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAzureKeyVaultSeal
+	12, // 22: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoAutoUnseal.transit:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoTransitSeal
+	19, // 23: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.project:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 24: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.key_ring:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 25: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.crypto_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 26: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoGcpKmsSeal.workload_identity_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 27: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoInjector.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	19, // 28: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoSnapshotAgent.s3_host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 29: dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServiceAccount.annotations:type_name -> dev.planton.provider.kubernetes.kubernetesopenbao.v1.KubernetesOpenBaoServiceAccount.AnnotationsEntry
+	30, // [30:30] is the sub-list for method output_type
+	30, // [30:30] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_init() }
@@ -1000,28 +1801,36 @@ func file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_init()
 		return
 	}
 	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[1].OneofWrappers = []any{
+		(*KubernetesOpenBaoServer_Dev)(nil),
+		(*KubernetesOpenBaoServer_Standalone)(nil),
+		(*KubernetesOpenBaoServer_Ha)(nil),
+	}
 	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
-	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[5].OneofWrappers = []any{
-		(*KubernetesOpenBaoAutoUnseal_GcpKms)(nil),
+	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[5].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[8].OneofWrappers = []any{
 		(*KubernetesOpenBaoAutoUnseal_AwsKms)(nil),
+		(*KubernetesOpenBaoAutoUnseal_GcpKms)(nil),
 		(*KubernetesOpenBaoAutoUnseal_AzureKeyVault)(nil),
 		(*KubernetesOpenBaoAutoUnseal_Transit)(nil),
 	}
+	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[15].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
-			NumExtensions: 1,
+			NumMessages:   19,
+			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_depIdxs,
 		MessageInfos:      file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_msgTypes,
-		ExtensionInfos:    file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_extTypes,
 	}.Build()
 	File_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto = out.File
 	file_dev_planton_provider_kubernetes_kubernetesopenbao_v1_spec_proto_goTypes = nil

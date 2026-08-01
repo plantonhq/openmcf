@@ -21,32 +21,38 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// open-fga-kubernetes kubernetes status
+// *
+// **KubernetesOpenFgaStackOutputs** — the composition handles a
+// deployed OpenFGA exports. Point authorization-data tooling (the
+// `fga` CLI, SDKs, the platform's OpenFGA provider kinds) at the
+// endpoints below.
 type KubernetesOpenFgaStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which open-fga-kubernetes is created.
+	// *
+	// Namespace the server runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for open-fga-kubernetes.
-	// ex: main-open-fga-kubernetes
-	// in the above example, "main" is the name of the open-fga-kubernetes
+	// *
+	// The OpenFGA Service name.
 	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open open-fga-kubernetes from developers laptop.
-	// this might come handy when open-fga-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining openfga_kubernetes_kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/openfga_kubernetes_kubernetes_service -n kubernetes_namespace 6379:6379
-	// running the command from this attribute makes it possible to access open-fga-kubernetes using http://localhost:8080/openfga
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to open-fga-kubernetes from the web browser.
-	// ex: main-open-fga-kubernetes.namespace.svc.cluster.local:6379
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open open-fga-kubernetes from clients outside kubernetes.
-	// ex: https://rdc-planton-pcs-dev-main.data.dev.planton.live
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// private endpoint to open open-fga-kubernetes from clients inside kubernetes.
-	// ex: https://rdc-planton-pcs-dev-main.data-internal.dev.planton.live
-	InternalHostname string `protobuf:"bytes,6,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// *
+	// In-cluster HTTP API endpoint
+	// (e.g. "http://fga.authz.svc.cluster.local:8080") — the REST
+	// surface SDKs and the platform's OpenFGA provider connect to.
+	ApiHttpEndpoint string `protobuf:"bytes,3,opt,name=api_http_endpoint,json=apiHttpEndpoint,proto3" json:"api_http_endpoint,omitempty"`
+	// *
+	// In-cluster gRPC API endpoint host:port
+	// (e.g. "fga.authz.svc.cluster.local:8081") — plaintext gRPC.
+	ApiGrpcEndpoint string `protobuf:"bytes,4,opt,name=api_grpc_endpoint,json=apiGrpcEndpoint,proto3" json:"api_grpc_endpoint,omitempty"`
+	// *
+	// Name of the module-owned Secret holding declared pre-shared API
+	// keys (`<name>-authn-keys`, data key `keys`); empty when authn is
+	// unset or rides an existing Secret.
+	AuthnKeysSecretName string `protobuf:"bytes,5,opt,name=authn_keys_secret_name,json=authnKeysSecretName,proto3" json:"authn_keys_secret_name,omitempty"`
+	// *
+	// Copy-paste command for reaching the HTTP API from a workstation.
+	PortForwardCommand string `protobuf:"bytes,6,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesOpenFgaStackOutputs) Reset() {
@@ -93,30 +99,30 @@ func (x *KubernetesOpenFgaStackOutputs) GetService() string {
 	return ""
 }
 
+func (x *KubernetesOpenFgaStackOutputs) GetApiHttpEndpoint() string {
+	if x != nil {
+		return x.ApiHttpEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesOpenFgaStackOutputs) GetApiGrpcEndpoint() string {
+	if x != nil {
+		return x.ApiGrpcEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesOpenFgaStackOutputs) GetAuthnKeysSecretName() string {
+	if x != nil {
+		return x.AuthnKeysSecretName
+	}
+	return ""
+}
+
 func (x *KubernetesOpenFgaStackOutputs) GetPortForwardCommand() string {
 	if x != nil {
 		return x.PortForwardCommand
-	}
-	return ""
-}
-
-func (x *KubernetesOpenFgaStackOutputs) GetKubeEndpoint() string {
-	if x != nil {
-		return x.KubeEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesOpenFgaStackOutputs) GetExternalHostname() string {
-	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesOpenFgaStackOutputs) GetInternalHostname() string {
-	if x != nil {
-		return x.InternalHostname
 	}
 	return ""
 }
@@ -125,14 +131,14 @@ var File_dev_planton_provider_kubernetes_kubernetesopenfga_v1_stack_outputs_prot
 
 const file_dev_planton_provider_kubernetes_kubernetesopenfga_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Hdev/planton/provider/kubernetes/kubernetesopenfga/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetesopenfga.v1\"\x88\x02\n" +
+	"Hdev/planton/provider/kubernetes/kubernetesopenfga/v1/stack_outputs.proto\x124dev.planton.provider.kubernetes.kubernetesopenfga.v1\"\x96\x02\n" +
 	"\x1dKubernetesOpenFgaStackOutputs\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\x06 \x01(\tR\x10internalHostnameB\xb0\x03\n" +
+	"\aservice\x18\x02 \x01(\tR\aservice\x12*\n" +
+	"\x11api_http_endpoint\x18\x03 \x01(\tR\x0fapiHttpEndpoint\x12*\n" +
+	"\x11api_grpc_endpoint\x18\x04 \x01(\tR\x0fapiGrpcEndpoint\x123\n" +
+	"\x16authn_keys_secret_name\x18\x05 \x01(\tR\x13authnKeysSecretName\x120\n" +
+	"\x14port_forward_command\x18\x06 \x01(\tR\x12portForwardCommandB\xb0\x03\n" +
 	"8com.dev.planton.provider.kubernetes.kubernetesopenfga.v1B\x11StackOutputsProtoP\x01Zjgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesopenfga/v1;kubernetesopenfgav1\xa2\x02\x05DPPKK\xaa\x024Dev.Planton.Provider.Kubernetes.Kubernetesopenfga.V1\xca\x024Dev\\Planton\\Provider\\Kubernetes\\Kubernetesopenfga\\V1\xe2\x02@Dev\\Planton\\Provider\\Kubernetes\\Kubernetesopenfga\\V1\\GPBMetadata\xea\x029Dev::Planton::Provider::Kubernetes::Kubernetesopenfga::V1b\x06proto3"
 
 var (

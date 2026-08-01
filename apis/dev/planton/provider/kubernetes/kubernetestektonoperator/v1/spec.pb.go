@@ -7,7 +7,6 @@
 package kubernetestektonoperatorv1
 
 import (
-	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -187,7 +186,7 @@ var File_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto 
 
 const file_dev_planton_provider_kubernetes_kubernetestektonoperator_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fdev/planton/provider/kubernetes/kubernetestektonoperator/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetestektonoperator.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a(dev/planton/shared/options/options.proto\"\xb7\x06\n" +
+	"Fdev/planton/provider/kubernetes/kubernetestektonoperator/v1/spec.proto\x12;dev.planton.provider.kubernetes.kubernetestektonoperator.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a(dev/planton/shared/options/options.proto\"\xb7\x06\n" +
 	"\x1cKubernetesTektonOperatorSpec\x12V\n" +
 	"\x0eoperator_image\x18\x01 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\roperatorImage\x12T\n" +
 	"\rwebhook_image\x18\x02 \x01(\v2/.dev.planton.provider.kubernetes.ContainerImageR\fwebhookImage\x12b\n" +

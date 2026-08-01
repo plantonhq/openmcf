@@ -25,14 +25,17 @@ var operatorKinds = map[string]bool{
 // (case-insensitive via lowercasing).
 var helmTier2Kinds = map[string]bool{
 	// Tier 2 Helm applications
-	"kubernetesopenbao":  true,
-	"kubernetesopenfga":  true,
-	"kubernetesjenkins":  true,
-	"kubernetesharbor":   true,
-	"kuberneteslocust":   true,
-	"kuberneteskeycloak": true,
+	"kubernetesjenkins": true,
+	"kubernetesharbor":  true,
+	"kuberneteslocust":  true,
 	// Helm applications with dedicated behavioral verifiers (the
-	// dispatch cases win; these rows are the generic fallback)
+	// dispatch cases win; these rows are the generic fallback).
+	// NOTE kubernetesopenbao is deliberately NOT listed: its pods are
+	// NotReady BY DESIGN until initialized/unsealed, so the generic
+	// readiness-waiting fallback would hang every lane — only its
+	// dedicated seal-lifecycle verifier is honest. kuberneteskeycloak
+	// is operator-CR (not Helm) and dispatches to its own verifier.
+	"kubernetesopenfga":   true,
 	"kubernetesseaweedfs": true,
 	"kubernetesqdrant":    true,
 	"kubernetestemporal":  true,
@@ -1143,6 +1146,76 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Profile:         tektonProfile(spec),
 			TargetNamespace: tektonTargetNamespace(spec),
 			PrunerDeclared:  tektonPrunerDeclared(spec),
+		}, nil
+
+	// The Keycloak Operator install (release-manifest bundle): the
+	// operator rolled out in the declared namespace, all four
+	// k8s.keycloak.org CRDs established — and THE DESIGN INVARIANT
+	// proven: no Keycloak server exists after installing the operator
+	// alone (the KubernetesKeycloak declaration kind owns servers).
+	// Destroy asserts workloads AND CRDs gone (the bundle posture).
+	case "kuberneteskeycloakoperator":
+		return &KeycloakOperatorVerifier{
+			Namespace: info.Namespace,
+		}, nil
+
+	// An operator-managed Keycloak server: the Keycloak CR Ready (its
+	// boolean-status condition; HasErrors warnings tolerated — a
+	// documented legitimate state), the StatefulSet at the declared
+	// instance count, the operator's naming contract
+	// (`-service`/`-discovery`/`-initial-admin`) — and THE PRODUCT
+	// PROOF on every lane: a real admin login (master-realm password
+	// grant with the bootstrap credentials) plus an authenticated
+	// admin-API read. The behavioral-durability scenario (recognized
+	// by name) creates a realm, replaces pod 0, and re-reads the realm
+	// through a fresh login — configuration surviving pod replacement
+	// is the database-durability proof.
+	case "kuberneteskeycloak":
+		spec := manifestSpecMap(manifestPath)
+		instances, https, port, adminSecret, generated := keycloakScenarioShape(spec, info.Name)
+		return &KeycloakVerifier{
+			Namespace:            info.Namespace,
+			Name:                 info.Name,
+			Instances:            instances,
+			Https:                https,
+			Port:                 port,
+			AdminSecretName:      adminSecret,
+			GeneratedAdminSecret: generated,
+			Behavioral:           strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// The OpenBao secrets manager: THE SEAL LIFECYCLE IS THE PROOF —
+	// sealed pods asserted NotReady-by-design, the verifier performs
+	// the real init/unseal bootstrap (readiness must FLIP), then a KV
+	// round-trip proves the server serves secrets. Dev mode skips
+	// init/unseal. The behavioral-raft scenario (recognized by name)
+	// replaces pod 0, re-unseals it (restart = sealed, the Shamir
+	// truth) and re-reads the marker. NEVER the generic Helm fallback:
+	// waiting on readiness hangs every fresh install by design.
+	case "kubernetesopenbao":
+		spec := manifestSpecMap(manifestPath)
+		mode, replicas := openBaoScenarioShape(spec)
+		return &OpenBaoVerifier{
+			Namespace:  info.Namespace,
+			Name:       info.Name,
+			Mode:       mode,
+			Replicas:   replicas,
+			Behavioral: strings.Contains(manifestPath, "behavioral-raft"),
+		}, nil
+
+	// The OpenFGA authorization engine: deployment rolled out (the
+	// migration init container gates on the datastore), the client
+	// Service present — and THE ZANZIBAR PROOF on every lane: a live
+	// store → model → tuple → Check round-trip asserting BOTH
+	// decisions (granted ALLOWED, ungranted DENIED). With pre-shared
+	// keys declared the proof runs authenticated and asserts the
+	// unauthenticated 401 first (the auth gate).
+	case "kubernetesopenfga":
+		spec := manifestSpecMap(manifestPath)
+		return &OpenFgaVerifier{
+			Namespace: info.Namespace,
+			Name:      info.Name,
+			ApiKey:    openFgaPresharedKey(spec),
 		}, nil
 
 	// The GitHub Actions runner scale set controller: the controller

@@ -1,95 +1,81 @@
-# Overview
+# Kubernetes OpenBao
 
-The **KubernetesOpenBao** API resource enables deployment and management of OpenBao on Kubernetes clusters. OpenBao is an open-source secrets management solution forked from HashiCorp Vault, providing secure secret storage, dynamic secrets generation, data encryption, leasing/renewal, and revocation capabilities.
+## When NOT to Use This
 
-## Why We Created This API Resource
+**One resource is ONE OpenBao install** — the Linux
+Foundation-governed secrets manager (MPL-2.0 fork of Vault): secret
+storage, dynamic secrets, encryption as a service — from the official
+`openbao` chart (0.28.x = server 2.6.x).
 
-Managing secrets securely in cloud-native environments is critical but complex. OpenBao provides enterprise-grade secrets management, but deploying and configuring it on Kubernetes requires significant expertise. The KubernetesOpenBao API resource simplifies this process by providing:
+Not the right component when:
 
-- **Simplified Deployment**: Deploy OpenBao on Kubernetes with minimal configuration using sensible defaults
-- **Flexible Architecture**: Support for both standalone (development/testing) and high-availability (production) deployment modes
-- **Integrated Storage**: Automatic configuration of persistent storage using file backend (standalone) or Raft consensus (HA)
-- **Secret Injection**: Optional Agent Injector deployment for automatic secret injection into application pods
-- **External Access**: Built-in ingress configuration for secure external access
+- **A managed service already covers you** — the platform's managed
+  cloud KMS and secret-manager kinds exist for teams that want keys
+  and secrets without operating a server.
+- **You need HashiCorp Vault compatibility guarantees** — OpenBao
+  forked from MPL-2.0 Vault and evolves independently; behavior past
+  the fork point is not guaranteed to track Vault.
 
-## Key Features
+## The seal lifecycle
 
-### Deployment Modes
+The fact everything else follows from: a fresh server starts
+UNINITIALIZED and SEALED. `bao operator init` (which generates the
+unseal key shares and the root token) and unsealing are RUNTIME API
+operations no deployment tool performs — this component deliberately
+does not try. Until then the pod reports NotReady BY DESIGN (the
+readiness probe is `bao status`, non-zero for sealed servers); the
+chart keeps sealed pods addressable through its Services, so
+port-forward and the DNS names work for the init/unseal calls. In
+Shamir mode every restart returns a SEALED server. Auto-unseal
+(below) removes the unseal step from restarts; the one-time
+initialization is always yours — with auto-unseal it produces
+RECOVERY keys instead of unseal keys.
 
-#### Standalone Mode
-- **Single Replica**: Ideal for development, testing, and small-scale deployments
-- **File Storage Backend**: Persistent data storage using Kubernetes PersistentVolumeClaims
-- **Quick Setup**: Minimal configuration required to get started
+## One mode at a time
 
-#### High Availability Mode
-- **Multi-Replica Clustering**: Deploy 3 or more replicas for fault tolerance
-- **Raft Integrated Storage**: Built-in consensus protocol for leader election and data replication
-- **Automatic Failover**: Seamless leader election when the active node fails
+dev XOR standalone XOR ha; unset means standalone (the chart
+default): one instance, file storage on a PVC. Dev mode is in-memory,
+auto-initialized, root token literally `root` — evaluation only,
+never real secrets. HA is integrated Raft, and this module
+synthesizes the `retry_join` stanzas for every peer — the chart alone
+ships NONE, and without them a multi-replica install never forms a
+cluster. Scheduling truth: the chart's REQUIRED pod anti-affinity
+means HA replicas need as many schedulable nodes; relax it through
+`helm_values` in labs only.
 
-### Container Configuration
+## Auto-unseal
 
-- **Resource Management**: Fine-grained control over CPU and memory allocation
-  - Default CPU: 100m requests, 500m limits
-  - Default Memory: 128Mi requests, 256Mi limits
-- **Data Storage**: Configurable persistent volume size (default: 10Gi)
-- **Replica Count**: Adjustable based on deployment mode (1 for standalone, 3+ for HA)
+Four seal arms: `awsKms`, `gcpKms`, `azureKeyVault`, `transit`.
+Keyless-first: on EKS/GKE/AKS annotate the server ServiceAccount for
+workload identity and leave the credential fields empty. Static
+credentials, when unavoidable, ride a module-owned Secret delivered
+as environment variables — nothing credential-bearing lands in the
+config ConfigMap. Version horizon: the cloud KMS seals are built in
+but deprecated at the pinned 2.6.x — upstream moves them to external
+plugins at 2.7.
 
-### Agent Injector
+## TLS is a composite
 
-The OpenBao Agent Injector provides automatic secret injection into Kubernetes pods:
+The chart's `global.tlsDisable` value alone does NOT configure the
+listener — flipping it produces a plaintext server addressed as
+https, an instant outage. The `tls` block is owned end to end:
+listener cert/key files, the certificate Secret mount, and every
+derived URL and probe switch together. A `KubernetesCertificate` is
+the natural issuer for `cert_secret_name`.
 
-- **Mutating Webhook**: Automatically injects OpenBao Agent sidecars into annotated pods
-- **Secret Templating**: Transform secrets into application-specific formats
-- **Token Management**: Automatic authentication and token renewal
+## Injector, metrics, snapshots
 
-### Auto-Unseal
-
-OpenBao starts in a sealed state after every pod restart. The `auto_unseal` field configures automatic unsealing via an external KMS so pods recover without human intervention.
-
-- **GCP Cloud KMS**: Symmetric encrypt/decrypt key in Cloud KMS. Supports GKE Workload Identity for credential-free authentication via `workload_identity_service_account`.
-- **AWS KMS**: Symmetric KMS key. Supports IRSA (IAM Roles for Service Accounts) on EKS or explicit credentials via a Kubernetes secret.
-- **Azure Key Vault**: RSA or EC key in Azure Key Vault. Supports Azure Managed Identity on AKS or explicit credentials via a Kubernetes secret.
-- **Transit Seal**: Uses another Vault/OpenBao instance's Transit secrets engine to wrap/unwrap the master key.
-
-When configured, the HCL `seal` stanza is automatically injected into the Helm chart's server configuration for both standalone and HA modes.
-
-### Ingress Configuration
-
-- **External Access**: Configure ingress for secure external access to the OpenBao UI and API
-- **Custom Hostname**: Full control over the ingress hostname (e.g., `openbao.example.com`)
-- **TLS Support**: Optional TLS termination at the ingress controller
-- **Ingress Class**: Support for different ingress controllers (nginx, traefik, etc.)
-
-### Namespace Management
-
-- **Flexible Namespace Control**: The `create_namespace` flag provides control over namespace creation:
-  - **When `true`**: Creates a dedicated namespace with appropriate resource labels
-  - **When `false`**: Uses an existing namespace (must exist before deployment)
-
-## Security Features
-
-- **TLS Encryption**: Optional end-to-end TLS encryption for all OpenBao traffic
-- **Auto-Unseal**: First-class `auto_unseal` configuration supporting GCP Cloud KMS, AWS KMS, Azure Key Vault, and Transit seal types. Pods unseal automatically on startup without manual intervention.
-- **Audit Logging**: Configurable audit storage for compliance requirements
-
-## Outputs
-
-After deployment, the following outputs are available:
-
-- **namespace**: The Kubernetes namespace where OpenBao is deployed
-- **service**: The Kubernetes service name for accessing OpenBao
-- **kube_endpoint**: Internal cluster endpoint (FQDN)
-- **external_hostname**: External hostname when ingress is enabled
-- **port_forward_command**: kubectl command for local access
-- **root_token_secret**: Reference to the root token Kubernetes secret
-- **unseal_keys_secret**: Reference to the unseal keys Kubernetes secret
-
-## Benefits
-
-- **Open Source**: Community-driven development under the OpenSSF umbrella
-- **Vault Compatible**: API-compatible with HashiCorp Vault, enabling migration from existing deployments
-- **Production Ready**: Enterprise-grade features including HA, audit logging, and encryption
-- **Kubernetes Native**: Deep integration with Kubernetes authentication and service accounts
+The Agent Injector is OFF by default — a deliberate divergence from
+the chart: it is a CLUSTER-WIDE mutating webhook on pod creation,
+fail-open by default (downtime skips injection rather than blocking
+pods). Metrics, when enabled, make /v1/sys/metrics UNAUTHENTICATED on
+the listener — that is how Prometheus scrapes. The snapshot agent is
+the Raft disaster-recovery story: a CronJob shipping
+`bao operator raft snapshot` to an S3-compatible bucket, with one
+runtime prerequisite — the Kubernetes-auth role it logs in with is
+created inside OpenBao after initialization. `helm_values` merges
+last for chart surfaces deliberately not modeled;
+`fullnameOverride` is re-pinned after the merge.
 
 ---
 

@@ -2,32 +2,62 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kuberneteskeycloak.v1;
 
-//keycloak-kubernetes stack outputs.
+/**
+ * **KubernetesKeycloakStackOutputs** — the composition handles a
+ * deployed Keycloak exports. Child names follow the operator's own
+ * naming contract (all derived from this resource's name).
+ */
 message KubernetesKeycloakStackOutputs {
-  //kubernetes namespace in which keycloak-kubernetes is created.
+  /**
+   * Namespace the server runs in.
+   */
   string namespace = 1;
 
-  //kubernetes service name for keycloak-kubernetes.
-  //ex: main-keycloak-kubernetes
-  //in the above example, "main" is the name of the keycloak-kubernetes
-  string service = 2;
+  /**
+   * The StatefulSet name (exactly this resource's name).
+   */
+  string stateful_set = 2;
 
-  //command to setup port-forwarding to open keycloak-kubernetes from developers laptop.
-  //this might come handy when keycloak-kubernetes ingress is disabled for security reasons.
-  //this is rendered by combining keycloak_kubernetes_kubernetes_service and kubernetes_namespace
-  //ex: kubectl port-forward svc/keycloak_kubernetes_kubernetes_service -n kubernetes_namespace 6379:6379
-  //running the command from this attribute makes it possible to access keycloak-kubernetes using http://localhost:8080/keycloak
-  string port_forward_command = 3;
+  /**
+   * The main Service name (`<name>-service`) — https 8443 and/or
+   * http 8080, plus the management port.
+   */
+  string service = 3;
 
-  //kubernetes endpoint to connect to keycloak-kubernetes from the web browser.
-  //ex: main-keycloak-kubernetes.namespace.svc.cluster.local:6379
-  string kube_endpoint = 4;
+  /**
+   * The headless discovery Service (`<name>-discovery`) — JGroups
+   * cluster formation between instances.
+   */
+  string discovery_service = 4;
 
-  //public endpoint to open keycloak-kubernetes from clients outside kubernetes.
-  //ex: https://kck8s-planton-pcs-dev-main.data.dev.planton.live
-  string external_hostname = 5;
+  /**
+   * In-cluster API endpoint, scheme included
+   * (e.g. "https://sso-service.identity.svc.cluster.local:8443", or
+   * http/8080 when only plain HTTP is enabled) — where OIDC clients
+   * inside the cluster reach the server.
+   */
+  string api_endpoint = 5;
 
-  //internal endpoint to open keycloak-kubernetes from clients inside kubernetes.
-  //ex: https://kck8s-planton-pcs-dev-main.data-internal.dev.planton.live
-  string internal_hostname = 6;
+  /**
+   * The management endpoint
+   * (e.g. "https://sso-service.identity.svc.cluster.local:9000") —
+   * health probes and metrics.
+   */
+  string management_endpoint = 6;
+
+  /**
+   * Name of the bootstrap-admin credential Secret: the
+   * operator-generated `<name>-initial-admin`
+   * (kubernetes.io/basic-auth, keys username/password, username
+   * "temp-admin"), or the user-provided Secret when
+   * bootstrap_admin_secret_name is set. Seeds the FIRST admin login;
+   * create durable admin users inside Keycloak and treat this as
+   * break-glass material.
+   */
+  string initial_admin_secret_name = 7;
+
+  /**
+   * Copy-paste command for reaching the server from a workstation.
+   */
+  string port_forward_command = 8;
 }

@@ -1,103 +1,124 @@
+# Typed mirror of KubernetesOpenFgaSpec (spec.proto).
+# The spec arrives from the proto->tfvars converter in snake_case;
+# StringValueOrRef fields arrive resolved to their literal string values.
+
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name = string,
-    id = optional(string),
-    org = optional(string),
-    env = optional(string),
-    labels = optional(map(string)),
-    tags = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name        = string
+    id          = optional(string, "")
+    org         = optional(string, "")
+    env         = optional(string, "")
+    labels      = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags        = optional(list(string), [])
   })
 }
 
-
 variable "spec" {
-  description = "spec"
+  description = "KubernetesOpenFga specification"
   type = object({
-    # Kubernetes namespace to install the component
-    namespace = string
-
-    # Flag to indicate if the namespace should be created
-    create_namespace = bool
-
-    # The container specifications for the OpenFGA deployment.
-    container = object({
-
-      # The number of OpenFGA replicas to deploy. This determines the level of concurrency and availability.
-      replicas = number
-
-      # The CPU and memory resources allocated to the OpenFGA container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-    })
-
-    # The ingress configuration for the OpenFGA deployment.
-    ingress = object({
-
-      # A flag to enable or disable ingress.
-      enabled = bool
-
-      # The full hostname for external access (e.g., "openfga.example.com").
-      hostname = string
-    })
-
-    # The data store configuration for OpenFGA.
-    # This specifies the backend database engine and connection details.
+    namespace        = string
+    create_namespace = optional(bool, false)
+    chart_version    = optional(string, "0.3.10")
+    replicas         = optional(number)
     datastore = object({
-
-      # Specifies the type of data store engine to use.
-      # Allowed values are "mysql" for MySQL database and "postgres" for PostgreSQL database.
-      engine = string
-
-      # The hostname or endpoint of the database server.
-      host = string
-
-      # The port number of the database server.
-      # Defaults to 5432 for PostgreSQL and 3306 for MySQL.
-      port = optional(number)
-
-      # The name of the database to connect to.
-      database = string
-
-      # The username for authenticating to the database.
-      username = string
-
-      # The password for authenticating to the database.
-      # Can be provided either as a plain string value or as a reference to an existing Kubernetes Secret.
-      password = object({
-        string_value = optional(string)
-        secret_ref = optional(object({
-          namespace = optional(string)
-          name = string
-          key = string
-        }))
-      })
-
-      # Whether to use SSL/TLS connection to the database.
-      is_secure = optional(bool, false)
+      postgres = optional(object({
+        host     = string
+        port     = optional(number)
+        database = string
+        username = string
+        password_secret = object({
+          secret_name = string
+          secret_key  = optional(string, "")
+        })
+        ssl_mode = optional(string, "")
+      }))
+      mysql = optional(object({
+        host     = string
+        port     = optional(number)
+        database = string
+        username = string
+        password_secret = object({
+          secret_name = string
+          secret_key  = optional(string, "")
+        })
+      }))
+      memory             = optional(object({}))
+      migration_timeout  = optional(string, "")
+      max_open_conns     = optional(number)
+      max_idle_conns     = optional(number)
+      conn_max_idle_time = optional(string, "")
+      conn_max_lifetime  = optional(string, "")
     })
+    authn = optional(object({
+      preshared = optional(object({
+        keys                      = optional(list(string), [])
+        existing_keys_secret_name = optional(string, "")
+      }))
+      oidc = optional(object({
+        issuer   = string
+        audience = string
+      }))
+    }))
+    metrics = optional(object({
+      enabled                 = optional(bool)
+      service_monitor_enabled = optional(bool, false)
+      enable_rpc_histograms   = optional(bool, false)
+    }))
+    tracing = optional(object({
+      enabled       = optional(bool, false)
+      otlp_endpoint = optional(string, "")
+      sample_ratio  = optional(string, "")
+    }))
+    log = optional(object({
+      level  = optional(string, "")
+      format = optional(string, "")
+    }))
+    tuning = optional(object({
+      max_tuples_per_write              = optional(number)
+      max_types_per_authorization_model = optional(number)
+      max_checks_per_batch_check        = optional(number)
+      list_objects_deadline             = optional(string, "")
+      list_objects_max_results          = optional(number)
+      list_users_deadline               = optional(string, "")
+      list_users_max_results            = optional(number)
+      request_timeout                   = optional(string, "")
+      check_query_cache = optional(object({
+        enabled = optional(bool, false)
+        limit   = optional(number)
+        ttl     = optional(string, "")
+      }))
+      experimentals = optional(list(string), [])
+    }))
+    resources = optional(object({
+      requests = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+      limits = optional(object({
+        cpu    = optional(string, "")
+        memory = optional(string, "")
+      }))
+    }))
+    hpa = optional(object({
+      enabled                           = optional(bool, false)
+      min_replicas                      = optional(number)
+      max_replicas                      = optional(number)
+      target_cpu_utilization_percent    = optional(number)
+      target_memory_utilization_percent = optional(number)
+    }))
+    scheduling = optional(object({
+      node_selector = optional(map(string), {})
+      tolerations = optional(list(object({
+        key                = optional(string, "")
+        operator           = optional(string, "")
+        value              = optional(string, "")
+        effect             = optional(string, "")
+        toleration_seconds = optional(number)
+      })), [])
+    }))
+    service_account_annotations = optional(map(string), {})
+    helm_values                 = optional(string, "")
   })
 }

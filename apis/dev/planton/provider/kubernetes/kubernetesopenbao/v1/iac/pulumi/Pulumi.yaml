@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-open-bao
+runtime: go
+description: OpenBao secrets manager from the official chart — dev/standalone/HA-Raft server modes with module-synthesized HCL config (retry_join peers, TLS listener, auto-unseal seal stanzas, telemetry), the opt-in agent injector, and the Raft snapshot agent

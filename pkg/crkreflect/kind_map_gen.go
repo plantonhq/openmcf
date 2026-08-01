@@ -472,6 +472,7 @@ import (
 	kuberneteskarpenternodepoolv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskarpenternodepool/v1"
 	kuberneteskedav1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeda/v1"
 	kuberneteskeycloakv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeycloak/v1"
+	kuberneteskeycloakoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskeycloakoperator/v1"
 	kuberneteskubeprometheusstackv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskubeprometheusstack/v1"
 	kuberneteskyvernov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteskyverno/v1"
 	kuberneteslistenersetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteslistenerset/v1"
@@ -1125,6 +1126,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesKarpenterNodePool:           &kuberneteskarpenternodepoolv1.KubernetesKarpenterNodePool{},
 	cloudresourcekind.CloudResourceKind_KubernetesKeda:                        &kuberneteskedav1.KubernetesKeda{},
 	cloudresourcekind.CloudResourceKind_KubernetesKeycloak:                    &kuberneteskeycloakv1.KubernetesKeycloak{},
+	cloudresourcekind.CloudResourceKind_KubernetesKeycloakOperator:            &kuberneteskeycloakoperatorv1.KubernetesKeycloakOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesKubePrometheusStack:         &kuberneteskubeprometheusstackv1.KubernetesKubePrometheusStack{},
 	cloudresourcekind.CloudResourceKind_KubernetesKyverno:                     &kuberneteskyvernov1.KubernetesKyverno{},
 	cloudresourcekind.CloudResourceKind_KubernetesListenerSet:                 &kuberneteslistenersetv1.KubernetesListenerSet{},

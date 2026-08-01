@@ -1,0 +1,40 @@
+# The kind-honest full surface for a shared-nothing lab cluster:
+# standalone mode with a dedicated audit volume, metrics telemetry
+# rendered into the server config (no ServiceMonitor — the kind cluster
+# runs no Prometheus Operator CRDs), the agent injector deployed with
+# its fail-open webhook, tuned logging and the auth-delegator binding.
+# TLS and auto-unseal arms are plan-proven offline (certificate material
+# and cloud KMS keys have no honest stand-ins on a kind cluster). The
+# same seal-lifecycle bootstrap + KV proof runs against this shape.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesOpenBao
+metadata:
+  name: e2e-bao-full
+spec:
+  namespace:
+    value: e2e-bao-full
+  createNamespace: true
+  server:
+    standalone: {}
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    dataStorage:
+      size: 1Gi
+    auditStorage:
+      size: 1Gi
+    logLevel: debug
+    logFormat: json
+  injector:
+    enabled: true
+    replicas: 1
+    failurePolicy: Ignore
+  uiEnabled: true
+  metrics:
+    enabled: true
+  serviceAccount:
+    authDelegatorEnabled: true

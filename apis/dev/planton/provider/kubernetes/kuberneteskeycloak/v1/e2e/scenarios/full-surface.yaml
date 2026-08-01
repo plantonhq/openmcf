@@ -1,0 +1,63 @@
+# The kind-honest full surface: two instances clustering through the
+# discovery Service against the composed database, tuned pools and
+# probes, feature flags, an inline additional option, XA transactions,
+# and the Explicit update strategy. NetworkPolicy stays on (the operator
+# default — proven compatible with the verifier's port-forward);
+# ServiceMonitor is off (the kind cluster runs no Prometheus Operator
+# CRDs). TLS, tracing and custom-image arms are plan-proven offline.
+# The same admin-login product proof runs against this shape — a login
+# through two clustered instances proves JGroups membership works.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKeycloak
+metadata:
+  name: e2e-kc-full
+spec:
+  namespace:
+    value: e2e-keycloak
+  instances: 2
+  db:
+    vendor: postgres
+    host:
+      valueFrom:
+        name: e2e-kc-pg
+    database: keycloak
+    schema: public
+    usernameSecret:
+      name:
+        valueFrom:
+          name: e2e-kc-pg
+      key: username
+    passwordSecret:
+      name:
+        valueFrom:
+          name: e2e-kc-pg
+      key: password
+    poolMinSize: 2
+    poolMaxSize: 20
+  http:
+    httpEnabled: true
+    httpPort: 8080
+  hostname:
+    strict: false
+    backchannelDynamic: true
+  features:
+    enabled:
+      - recovery-codes
+  transactionXaEnabled: true
+  additionalOptions:
+    - name: log-level
+      value: info
+  resources:
+    requests:
+      cpu: 250m
+      memory: 768Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  probes:
+    startupFailureThreshold: 600
+    startupPeriodSeconds: 1
+  serviceMonitorEnabled: false
+  update:
+    strategy: Explicit
+    revision: "1"

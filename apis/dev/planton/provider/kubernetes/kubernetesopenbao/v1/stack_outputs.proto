@@ -2,46 +2,67 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesopenbao.v1;
 
-import "dev/planton/provider/kubernetes/kubernetes.proto";
-
-// KubernetesOpenBaoStackOutputs captures observable outputs from the OpenBao deployment.
+/**
+ * **KubernetesOpenBaoStackOutputs** — the composition handles a
+ * deployed OpenBao exports. NOTE deliberately absent: root tokens and
+ * unseal/recovery keys are produced by the RUNTIME
+ * `bao operator init` call and are never known to (or owned by) the
+ * deployment — capture them from the init output and store them
+ * outside the cluster.
+ */
 message KubernetesOpenBaoStackOutputs {
-  // Kubernetes namespace in which OpenBao is deployed.
+  /**
+   * Namespace the server runs in.
+   */
   string namespace = 1;
 
-  // Kubernetes service name for OpenBao.
+  /**
+   * The main client Service name (round-robins ALL server pods,
+   * including sealed/not-ready ones — by design, so init/unseal can
+   * reach them).
+   */
   string service = 2;
 
-  // Command to set up port-forwarding to access OpenBao from a developer's laptop.
-  // Useful when ingress is disabled for security reasons.
-  // Example: kubectl port-forward svc/<service> -n <namespace> 8200:8200
-  string port_forward_command = 3;
+  /**
+   * The headless Service (`<name>-internal`) used for peer discovery
+   * and Raft cluster addresses.
+   */
+  string internal_service = 3;
 
-  // Kubernetes internal endpoint for OpenBao (FQDN).
-  // Example: openbao.namespace.svc.cluster.local:8200
-  string kube_endpoint = 4;
+  /**
+   * The active-leader Service (`<name>-active`) — HA mode only,
+   * empty otherwise. Points at exactly the elected leader; the right
+   * target for write-heavy clients.
+   */
+  string active_service = 4;
 
-  // External hostname for OpenBao when ingress is enabled.
-  // Example: openbao.example.com
-  string external_hostname = 5;
+  /**
+   * The UI Service name (`<name>-ui`) when ui_enabled, empty
+   * otherwise.
+   */
+  string ui_service = 5;
 
-  // OpenBao root token secret reference.
-  // The root token is generated during initialization and stored in a Kubernetes secret.
-  dev.planton.provider.kubernetes.KubernetesSecretKey root_token_secret = 6;
+  /**
+   * In-cluster API endpoint, scheme included
+   * (e.g. "http://bao.openbao.svc.cluster.local:8200" — https when
+   * TLS is enabled). What secret-consuming addons (external-secrets
+   * ClusterSecretStore, cert-manager Vault issuers) should point at.
+   */
+  string api_endpoint = 6;
 
-  // OpenBao unseal keys secret reference.
-  // Unseal keys are generated during initialization and stored in a Kubernetes secret.
-  dev.planton.provider.kubernetes.KubernetesSecretKey unseal_keys_secret = 7;
+  /**
+   * API port (8200).
+   */
+  string port = 7;
 
-  // OpenBao cluster address for internal cluster communication (HA mode).
-  // Example: https://openbao-0.openbao-internal:8201
-  string cluster_address = 8;
+  /**
+   * The server ServiceAccount name — the identity to bind cloud IAM
+   * (auto-unseal KMS access) and OpenBao Kubernetes-auth trust to.
+   */
+  string service_account_name = 8;
 
-  // OpenBao API address.
-  // Example: http://openbao.namespace.svc.cluster.local:8200
-  string api_address = 9;
-
-  // Indicates if the OpenBao deployment is running in HA mode.
-  // "true" if HA mode is enabled, "false" otherwise.
-  string ha_enabled = 10;
+  /**
+   * Copy-paste command for reaching the API from a workstation.
+   */
+  string port_forward_command = 9;
 }

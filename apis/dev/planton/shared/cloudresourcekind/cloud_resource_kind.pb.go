@@ -951,9 +951,17 @@ const (
 	// 880–899: Kubernetes security, policy, and identity
 	CloudResourceKind_KubernetesKyverno    CloudResourceKind = 880
 	CloudResourceKind_KubernetesGatekeeper CloudResourceKind = 881
-	CloudResourceKind_KubernetesKeycloak   CloudResourceKind = 890
-	CloudResourceKind_KubernetesOpenBao    CloudResourceKind = 891
-	CloudResourceKind_KubernetesOpenFga    CloudResourceKind = 892
+	// Keycloak declarations compose the official Keycloak Operator (which
+	// reconciles the Keycloak CR this kind renders) and, on the recommended
+	// postgres vendor, a KubernetesPostgres database — both must resolve
+	// before the CR can converge.
+	CloudResourceKind_KubernetesKeycloak CloudResourceKind = 890
+	CloudResourceKind_KubernetesOpenBao  CloudResourceKind = 891
+	// OpenFGA requires a datastore; the recommended arm composes a
+	// KubernetesPostgres database (the sandbox memory arm needs nothing,
+	// but the registry declares the shape real deployments require).
+	CloudResourceKind_KubernetesOpenFga          CloudResourceKind = 892
+	CloudResourceKind_KubernetesKeycloakOperator CloudResourceKind = 893
 	// 900–929: Kubernetes data platforms
 	CloudResourceKind_KubernetesCloudNativePgOperator CloudResourceKind = 900
 	CloudResourceKind_KubernetesPostgres              CloudResourceKind = 901
@@ -1586,6 +1594,7 @@ var (
 		890:  "KubernetesKeycloak",
 		891:  "KubernetesOpenBao",
 		892:  "KubernetesOpenFga",
+		893:  "KubernetesKeycloakOperator",
 		900:  "KubernetesCloudNativePgOperator",
 		901:  "KubernetesPostgres",
 		902:  "KubernetesValkey",
@@ -2191,6 +2200,7 @@ var (
 		"KubernetesKeycloak":                             890,
 		"KubernetesOpenBao":                              891,
 		"KubernetesOpenFga":                              892,
+		"KubernetesKeycloakOperator":                     893,
 		"KubernetesCloudNativePgOperator":                900,
 		"KubernetesPostgres":                             901,
 		"KubernetesValkey":                               902,
@@ -2686,7 +2696,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xc7\xe5\x01\n" +
+	"\x02v1\x10\x01*\x85\xe6\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3107,10 +3117,11 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x17KubernetesOtelCollector\x10\xec\x06\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\n" +
 	"k8sotelcol:\x02\xeb\x06\x12*\n" +
 	"\x11KubernetesKyverno\x10\xf0\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8skyvrn\x12-\n" +
-	"\x14KubernetesGatekeeper\x10\xf1\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sgtkpr\x12(\n" +
-	"\x12KubernetesKeycloak\x10\xfa\x06\x1a\x0f\xa2\xf7\x04\v\b\x13\x10\x01\"\x05k8skc\x12(\n" +
-	"\x11KubernetesOpenBao\x10\xfb\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sbao\x12(\n" +
-	"\x11KubernetesOpenFga\x10\xfc\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sfga\x129\n" +
+	"\x14KubernetesGatekeeper\x10\xf1\x06\x1a\x12\xa2\xf7\x04\x0e\b\x13\x10\x01\"\bk8sgtkpr\x12.\n" +
+	"\x12KubernetesKeycloak\x10\xfa\x06\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\x05k8skc:\x04\xfd\x06\x85\a\x12(\n" +
+	"\x11KubernetesOpenBao\x10\xfb\x06\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8sbao\x12,\n" +
+	"\x11KubernetesOpenFga\x10\xfc\x06\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8sfga:\x02\x85\a\x122\n" +
+	"\x1aKubernetesKeycloakOperator\x10\xfd\x06\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8skcop\x129\n" +
 	"\x1fKubernetesCloudNativePgOperator\x10\x84\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8scnpgop\x12,\n" +
 	"\x12KubernetesPostgres\x10\x85\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\x05k8spg:\x02\x84\a\x12'\n" +
 	"\x10KubernetesValkey\x10\x86\a\x1a\x10\xa2\xf7\x04\f\b\x13\x10\x01\"\x06k8svlk\x12=\n" +

@@ -2,32 +2,45 @@ syntax = "proto3";
 
 package dev.planton.provider.kubernetes.kubernetesopenfga.v1;
 
-//open-fga-kubernetes kubernetes status
+/**
+ * **KubernetesOpenFgaStackOutputs** — the composition handles a
+ * deployed OpenFGA exports. Point authorization-data tooling (the
+ * `fga` CLI, SDKs, the platform's OpenFGA provider kinds) at the
+ * endpoints below.
+ */
 message KubernetesOpenFgaStackOutputs {
-  //kubernetes namespace in which open-fga-kubernetes is created.
+  /**
+   * Namespace the server runs in.
+   */
   string namespace = 1;
 
-  //kubernetes service name for open-fga-kubernetes.
-  //ex: main-open-fga-kubernetes
-  //in the above example, "main" is the name of the open-fga-kubernetes
+  /**
+   * The OpenFGA Service name.
+   */
   string service = 2;
 
-  //command to setup port-forwarding to open open-fga-kubernetes from developers laptop.
-  //this might come handy when open-fga-kubernetes ingress is disabled for security reasons.
-  //this is rendered by combining openfga_kubernetes_kubernetes_service and kubernetes_namespace
-  //ex: kubectl port-forward svc/openfga_kubernetes_kubernetes_service -n kubernetes_namespace 6379:6379
-  //running the command from this attribute makes it possible to access open-fga-kubernetes using http://localhost:8080/openfga
-  string port_forward_command = 3;
+  /**
+   * In-cluster HTTP API endpoint
+   * (e.g. "http://fga.authz.svc.cluster.local:8080") — the REST
+   * surface SDKs and the platform's OpenFGA provider connect to.
+   */
+  string api_http_endpoint = 3;
 
-  //kubernetes endpoint to connect to open-fga-kubernetes from the web browser.
-  //ex: main-open-fga-kubernetes.namespace.svc.cluster.local:6379
-  string kube_endpoint = 4;
+  /**
+   * In-cluster gRPC API endpoint host:port
+   * (e.g. "fga.authz.svc.cluster.local:8081") — plaintext gRPC.
+   */
+  string api_grpc_endpoint = 4;
 
-  //public endpoint to open open-fga-kubernetes from clients outside kubernetes.
-  //ex: https://rdc-planton-pcs-dev-main.data.dev.planton.live
-  string external_hostname = 5;
+  /**
+   * Name of the module-owned Secret holding declared pre-shared API
+   * keys (`<name>-authn-keys`, data key `keys`); empty when authn is
+   * unset or rides an existing Secret.
+   */
+  string authn_keys_secret_name = 5;
 
-  //private endpoint to open open-fga-kubernetes from clients inside kubernetes.
-  //ex: https://rdc-planton-pcs-dev-main.data-internal.dev.planton.live
-  string internal_hostname = 6;
+  /**
+   * Copy-paste command for reaching the HTTP API from a workstation.
+   */
+  string port_forward_command = 6;
 }

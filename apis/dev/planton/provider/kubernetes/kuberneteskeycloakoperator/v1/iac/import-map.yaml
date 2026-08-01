@@ -1,0 +1,48 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kuberneteskeycloakoperator
+spec:
+  # The module applies the release bundle's documents through
+  # kubectl_manifest resources keyed by each document's own composed
+  # identity — apiVersion//kind//name[//namespace] — exactly the ID form
+  # the kubectl importer takes. Every composed-ID placeholder is a
+  # segment of the address key itself (from_address_key_segment): the
+  # bundle spans many apiVersion/kind pairs, so per-document literals
+  # cannot serve (the multi-GVK bundle class). Cluster-scoped documents
+  # (the 4 CRDs, ClusterRoles, ClusterRoleBindings) carry 3-part keys —
+  # the namespace segment resolves empty and the ID's bracketed group
+  # drops it. The optional module-authored anchor namespace is the one
+  # non-bundle resource.
+  values:
+    - name: api_version
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        The document's own apiVersion — the first "//" segment of the
+        state address key; `kubectl get <kind> <name> -o
+        jsonpath='{.apiVersion}'`.
+    - name: kind
+      derivations:
+        - from_address_key_segment: 1
+      where_to_find: >-
+        The document's own kind — the second "//" segment of the state
+        address key.
+    - name: name
+      derivations:
+        - from_address_key_segment: 2
+      where_to_find: >-
+        The document's metadata.name — the third "//" segment of the
+        state address key. Every name is FIXED by the release bundle
+        (e.g. the operator Deployment and Service are both
+        "keycloak-operator").
+    - name: namespace
+      derivations:
+        - from_address_key_segment: 3
+      where_to_find: >-
+        The spec's namespace for namespaced documents (the module stamps
+        it — upstream expects kustomize to); absent for the
+        cluster-scoped ones (the CRDs, cluster roles/bindings). The
+        optional module-authored anchor Namespace is itself a
+        kubectl_manifest document (`v1//Namespace//<namespace>`), served
+        by these same segment rows.

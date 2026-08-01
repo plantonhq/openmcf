@@ -1,0 +1,15 @@
+# The zero-dependency evaluation arm: the memory datastore (data lost on
+# restart, replicas forced to 1 by the module) with no authentication —
+# the smallest honest OpenFGA. The verifier proves the Zanzibar loop
+# live: create a store, write the model, grant anne viewer on a
+# document, then Check BOTH ways (anne ALLOWED, bob DENIED).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesOpenFga
+metadata:
+  name: e2e-fga-min
+spec:
+  namespace:
+    value: e2e-fga-min
+  createNamespace: true
+  datastore:
+    memory: {}

@@ -3072,20 +3072,37 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8sgtkpr"
   }];
+  // Keycloak declarations compose the official Keycloak Operator (which
+  // reconciles the Keycloak CR this kind renders) and, on the recommended
+  // postgres vendor, a KubernetesPostgres database — both must resolve
+  // before the CR can converge.
   KubernetesKeycloak = 890 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8skc"
+    prerequisites: [
+      KubernetesKeycloakOperator,
+      KubernetesPostgres
+    ]
   }];
   KubernetesOpenBao = 891 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sbao"
   }];
+  // OpenFGA requires a datastore; the recommended arm composes a
+  // KubernetesPostgres database (the sandbox memory arm needs nothing,
+  // but the registry declares the shape real deployments require).
   KubernetesOpenFga = 892 [(kind_meta) = {
     provider: kubernetes
     version: v1
     id_prefix: "k8sfga"
+    prerequisites: [KubernetesPostgres]
+  }];
+  KubernetesKeycloakOperator = 893 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8skcop"
   }];
   // 900–929: Kubernetes data platforms
   KubernetesCloudNativePgOperator = 900 [(kind_meta) = {

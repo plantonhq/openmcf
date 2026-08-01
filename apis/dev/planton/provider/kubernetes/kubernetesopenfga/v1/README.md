@@ -1,79 +1,78 @@
-# Overview
+# Kubernetes OpenFGA
 
-The **OpenFGA Kubernetes API resource** is designed to provide a streamlined interface for deploying OpenFGA, an open-source authorization system, in a Kubernetes environment. This API resource handles the configuration of the OpenFGA container, its resource allocation, ingress settings, and data store connection, ensuring a consistent and secure deployment across different environments.
+## When NOT to Use This
 
-## Why We Created This API Resource
+**One resource is ONE OpenFGA server** — the CNCF authorization
+engine implementing Google-Zanzibar-style relationship-based access
+control, from the official `openfga` chart (0.3.x = OpenFGA 1.18+),
+on a datastore you pick.
 
-Deploying OpenFGA in Kubernetes can involve complex configurations, especially when managing resources, ingress rules, and data store connections. This API resource simplifies the process by:
+Not the right component when:
 
-- **Simplifying Deployment**: Abstracts the complexity of Kubernetes configurations for OpenFGA.
-- **Ensuring Consistency**: Provides a standardized way to deploy OpenFGA across multiple environments.
-- **Optimizing Resource Management**: Allows for fine-tuning resource allocation (CPU and memory) for the OpenFGA container.
-- **Enabling Flexible Data Store Options**: Supports both MySQL and PostgreSQL for OpenFGA data storage.
+- **You want roles and permissions inside your identity provider** —
+  that is `KubernetesKeycloak` territory. OpenFGA answers "is user U
+  related to object O in the required way" from stored relationship
+  tuples, not "what roles does this token carry".
+- **You want a managed authorization service** — point your
+  applications at it and deploy nothing here.
+- **You want to declare the authorization data** — stores, models
+  and tuples are API-managed, never deployment config. This kind
+  installs the ENGINE; the platform's `OpenFgaStore`,
+  `OpenFgaAuthorizationModel` and `OpenFgaRelationshipTuple` kinds
+  compose against the exported `api_http_endpoint`.
+- **The memory datastore, beyond a demo** — the zero-dependency
+  evaluation arm: data lost on every restart, replicas forced to 1.
 
-## Key Features
+## The datastore contract
 
-### Environment Integration
+Exactly one engine: `postgres` (recommended — a `KubernetesPostgres`
+composes by reference: the host resolves to its read-write Service
+and the password rides the operator-maintained `<cluster>-app`
+Secret), `mysql`, or `memory`. Credentials go through Secret
+indirection everywhere: the connection URI renders WITHOUT
+credentials and username/password arrive as environment variables
+read from the Secret — nothing credential-bearing lands in rendered
+values. One Kubernetes constraint: a secretKeyRef reads only its own
+namespace's Secrets — co-locate OpenFGA with its database or
+replicate the Secret.
 
-- **Environment Info**: Integrates with Planton's environment management system to deploy OpenFGA in a specific environment.
-- **Stack Job Settings**: Supports stack-update settings to ensure consistent and repeatable deployments using infrastructure-as-code.
+## Migrations that cannot deadlock
 
-### Kubernetes Credential Management
+`openfga migrate` runs as an idempotent init container in every
+server pod. The chart's default hook-Job mode is deliberately not
+used: a post-install hook Job deadlocks engines that wait on rollout
+readiness, and its post-delete hook dials the database during
+uninstall. `migration_timeout` (default 3m) covers the composed
+case where the database provisions concurrently with OpenFGA.
 
-- **Kubernetes Credential ID**: Specifies the Kubernetes credentials (`kubernetes_credential_id`) for securely deploying and managing the OpenFGA container within a Kubernetes cluster.
+## Authentication
 
-### OpenFGA Container Configuration
+Unset means an OPEN API — anyone who can reach the Service reads and
+writes every store; lab clusters only. Pre-shared keys reach the
+server through a Secret in BOTH arms: declare them and the module
+materializes `<name>-authn-keys`, or point at a Secret you maintain
+(comma-separated under the data key `keys` — the chart's contract).
+OIDC requires BOTH issuer and audience — the server hard-fails at
+startup without them (audience validation became mandatory at v1.18).
 
-#### Resource Management
+## Playground, always off
 
-- **Container Resources**: Allows configuration of CPU and memory limits to optimize the performance of the OpenFGA container. Recommended default values:
-    - **CPU Requests**: `50m`
-    - **Memory Requests**: `256Mi`
-    - **CPU Limits**: `1`
-    - **Memory Limits**: `1Gi`
+The chart ships its demo playground enabled; this module always
+disables it. Upstream turned it off by default for security at
+v1.18, the server refuses to start when it is combined with any
+authentication method, and at this version it binds pod-local
+anyway. Evaluate models with the `fga` CLI or the VS Code extension
+against the API instead.
 
-- **Replicas**: Define the number of replicas for the OpenFGA container, providing high availability and fault tolerance.
+## Scaling and the closed schema
 
-### Ingress Configuration
-
-- **Ingress Spec**: Configures ingress rules to expose the OpenFGA service to external clients. Users specify the full hostname (e.g., `openfga.example.com`) for secure access to the OpenFGA API.
-
-### Data Store Configuration
-
-- **Engine**: Specifies the type of data store engine to use for OpenFGA, with support for both MySQL and PostgreSQL.
-    - Supported engines: `"postgres"` and `"mysql"`
-
-- **URI**: Defines the connection URI for the selected data store engine. The URI should be appropriately formatted based on the engine type (e.g., `mysql://user:password@host:port/database` or `postgres://user:password@host:port/database`).
-
-### Namespace Management
-
-The OpenFGA Kubernetes API resource provides flexible namespace management through the `create_namespace` flag:
-
-- **create_namespace**: Boolean flag controlling namespace creation behavior
-    - `true`: The module will create the specified namespace (recommended for most deployments)
-    - `false`: The module expects the namespace to already exist and will use it
-
-**When to use create_namespace: true**
-- Fresh deployments where namespace doesn't exist
-- Isolated deployments where you want the module to manage the full lifecycle
-- Development/test environments
-- Single-component namespaces
-
-**When to use create_namespace: false**
-- Namespace is managed by a separate KubernetesNamespace resource
-- Namespace is pre-created by cluster administrators
-- Multiple components sharing the same namespace
-- Production environments with strict namespace management policies
-- Organizations with centralized namespace governance
-
-## Benefits
-
-- **Simplified Deployment**: Reduces the complexities of deploying OpenFGA on Kubernetes with a standardized and easy-to-use API resource.
-- **Consistency**: Ensures consistent deployment of OpenFGA across different environments and clusters.
-- **Resource Optimization**: Allows for fine-tuning resource allocations to optimize performance and cost-efficiency.
-- **Data Store Flexibility**: Supports both MySQL and PostgreSQL as data store engines, providing flexibility in database management.
-- **Secure Access**: Configures ingress rules for secure and controlled access to the OpenFGA instance.
-- **Flexible Namespace Management**: Control whether namespaces are created or managed externally, supporting various organizational policies.
+OpenFGA is stateless — all state lives in the datastore, so replicas
+scale checks linearly, and the `hpa` arm hands the count to an
+autoscaler. The chart's values schema is CLOSED
+(`additionalProperties: false`): `helm_values` can only override
+keys the chart defines (`extraEnvVars` carries the ~50 server flags
+without values paths), never invent new ones; `fullnameOverride` is
+re-pinned after the merge.
 
 ---
 

@@ -1,0 +1,30 @@
+# The cluster-wide variant with every patch arm exercised: the four
+# controllers watch ALL namespaces (per-controller ClusterRoleBindings +
+# JOSDK_ALL_NAMESPACES — at most one cluster-wide operator per cluster),
+# tuned operator resources, and a toleration. The image overrides are
+# plan-proven offline (a mirror registry has no honest stand-in here —
+# overriding to a nonexistent mirror would only prove a pull failure).
+# Run serially with the namespaced lane: both bundles define the same
+# cluster-scoped ClusterRoles/CRDs by fixed name.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesKeycloakOperator
+metadata:
+  name: e2e-kcop-full
+spec:
+  namespace:
+    value: e2e-kcop-full
+  createNamespace: true
+  clusterWide: true
+  resources:
+    requests:
+      cpu: 300m
+      memory: 450Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  scheduling:
+    tolerations:
+      - key: maintenance
+        operator: Exists
+        effect: NoExecute
+        tolerationSeconds: 300

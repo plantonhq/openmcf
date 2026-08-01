@@ -488,6 +488,7 @@ go_library(
         "//apis/dev/planton/provider/kubernetes/kuberneteskarpenternodepool/v1:kuberneteskarpenternodepool",
         "//apis/dev/planton/provider/kubernetes/kuberneteskeda/v1:kuberneteskeda",
         "//apis/dev/planton/provider/kubernetes/kuberneteskeycloak/v1:kuberneteskeycloak",
+        "//apis/dev/planton/provider/kubernetes/kuberneteskeycloakoperator/v1:kuberneteskeycloakoperator",
         "//apis/dev/planton/provider/kubernetes/kuberneteskubeprometheusstack/v1:kuberneteskubeprometheusstack",
         "//apis/dev/planton/provider/kubernetes/kuberneteskyverno/v1:kuberneteskyverno",
         "//apis/dev/planton/provider/kubernetes/kuberneteslistenerset/v1:kuberneteslistenerset",
