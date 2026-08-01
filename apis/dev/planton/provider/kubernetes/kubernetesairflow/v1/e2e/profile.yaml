@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetesairflow
+spec:
+  tier: 3
+  # Forged on the official airflow chart 1.22.0 = Airflow 3.2.2 —
+  # external-database-only (the composed KubernetesPostgres story
+  # through the registry prerequisite chain), module-composed
+  # connection Secrets (the chart's URI-Secret contracts), executor
+  # arms (KubernetesExecutor default; Celery + bundled Redis on the
+  # full-surface lane), git-sync + shared-volume DAG delivery, and
+  # PgBouncer with the module-owned config Secret. Offline-validated
+  # (37 spec tests, both engines' plan/preview proofs across minimal
+  # and full-surface shapes with rendered-value spot-checks and leak
+  # greps); awaiting the live lanes.
+  status: pending_proof
+  validated_provisioners: []
+  # The migration Job runs against the composed Postgres before the
+  # component set rolls out, and the ~1GB airflow image pulls once per
+  # cluster; the budget covers that cold start on the shared cluster,
+  # serial lanes only.
+  timeout_minutes: 30

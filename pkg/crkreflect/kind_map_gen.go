@@ -418,6 +418,7 @@ import (
 	hetznercloudsnapshotv1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudsnapshot/v1"
 	hetznercloudsshkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudsshkey/v1"
 	hetznercloudvolumev1 "github.com/plantonhq/planton/apis/dev/planton/provider/hetznercloud/hetznercloudvolume/v1"
+	kubernetesairflowv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesairflow/v1"
 	kubernetesaltinityoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesaltinityoperator/v1"
 	kubernetesargocdv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesargocd/v1"
 	kubernetesargoworkflowsv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesargoworkflows/v1"
@@ -1072,6 +1073,7 @@ var ProviderHetznerCloudMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 }
 
 var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
+	cloudresourcekind.CloudResourceKind_KubernetesAirflow:                     &kubernetesairflowv1.KubernetesAirflow{},
 	cloudresourcekind.CloudResourceKind_KubernetesAltinityOperator:            &kubernetesaltinityoperatorv1.KubernetesAltinityOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesArgoWorkflows:               &kubernetesargoworkflowsv1.KubernetesArgoWorkflows{},
 	cloudresourcekind.CloudResourceKind_KubernetesArgocd:                      &kubernetesargocdv1.KubernetesArgocd{},

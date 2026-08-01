@@ -9,6 +9,7 @@ order: 10
 
 The following KUBERNETES resources can be deployed using Planton:
 
+- [Airflow](/docs/catalog/kubernetes/airflow)
 - [Altinity Operator](/docs/catalog/kubernetes/altinity-operator)
 - [Argo CD](/docs/catalog/kubernetes/argo-cd)
 - [Argo Workflows](/docs/catalog/kubernetes/argo-workflows)

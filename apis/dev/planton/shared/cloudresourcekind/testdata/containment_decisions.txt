@@ -371,6 +371,7 @@ contained dev.planton.provider.gcp.gcpworkloadidentitypoolprovider.v1.GcpWorkloa
 contained dev.planton.provider.hetznercloud.hetznercloudloadbalancer.v1.HetznerCloudLoadBalancerSpec.NetworkAttachment.network_id -> HetznerCloudNetwork
 contained dev.planton.provider.hetznercloud.hetznercloudserver.v1.HetznerCloudServerSpec.NetworkAttachment.network_id -> HetznerCloudNetwork
 contained dev.planton.provider.kubernetes.ExternalSecretsStoreGcp.project_id -> GcpProject
+contained dev.planton.provider.kubernetes.kubernetesairflow.v1.KubernetesAirflowSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesaltinityoperator.v1.KubernetesAltinityOperatorSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesargocd.v1.KubernetesArgocdSpec.namespace -> KubernetesNamespace
 contained dev.planton.provider.kubernetes.kubernetesargoworkflows.v1.KubernetesArgoWorkflowsSpec.namespace -> KubernetesNamespace

@@ -1282,6 +1282,33 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesAirflow: the release-name-is-fullname naming
+			// contract — the API server front door, the admin credential
+			// handle, and the module-composed connection/key Secret names
+			// downstream composition mounts.
+			name: "KubernetesAirflow",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesAirflow,
+			rawOutputs: map[string]interface{}{
+				"namespace":           "airflow",
+				"api_server_service":  "pipelines-api-server",
+				"api_server_endpoint": "http://pipelines-api-server.airflow.svc.cluster.local:8080",
+				"admin_password_secret": map[string]interface{}{
+					"name": "pipelines-admin-auth",
+					"key":  "password",
+				},
+				"metadata_connection_secret_name": "pipelines-metadata-conn",
+				"broker_url_secret_name":          "pipelines-broker-url",
+				"fernet_key_secret_name":          "pipelines-fernet-key",
+				"port_forward_command":            "kubectl port-forward svc/pipelines-api-server -n airflow 8080:8080",
+			},
+			mustPopulate: []string{
+				"namespace", "api_server_service", "api_server_endpoint",
+				"admin_password_secret", "metadata_connection_secret_name",
+				"broker_url_secret_name", "fernet_key_secret_name",
+				"port_forward_command",
+			},
+		},
+		{
 			// KubernetesOtelOperator: the pinned-fullname naming contract —
 			// the release, the webhook Service the API server calls for
 			// admission and CRD conversion, and the cert-manager-issued

@@ -855,7 +855,7 @@ const (
 	// holds GcpComputeInstance is fully allocated)
 	CloudResourceKind_GcpComputeDisk CloudResourceKind = 730
 	// 800–999: Kubernetes resources, organized in family sub-bands
-	// (830–869 also hosts CNI/autoscaling/DR addons; 930–949 reserved for
+	// (830–869 also hosts CNI/autoscaling/DR addons; 930–949 hosts
 	// analytics & ML; 990–999 reserved for growth)
 	// 800–829: Kubernetes building blocks (core API primitives)
 	CloudResourceKind_KubernetesNamespace      CloudResourceKind = 800
@@ -993,6 +993,12 @@ const (
 	// cert-manager must be running before the operator installs.
 	CloudResourceKind_KubernetesRabbitMqOperator CloudResourceKind = 925
 	CloudResourceKind_KubernetesRabbitMq         CloudResourceKind = 926
+	// 930–949: Kubernetes analytics and ML
+	// KubernetesPostgres is a prerequisite because Airflow's metadata
+	// database composes a KubernetesPostgres by default (the spec's FK
+	// defaults resolve onto its outputs) and the migration Job needs the
+	// database reachable before the server components start.
+	CloudResourceKind_KubernetesAirflow CloudResourceKind = 930
 	// 950–969: Kubernetes GitOps and CI/CD
 	CloudResourceKind_KubernetesArgocd         CloudResourceKind = 950
 	CloudResourceKind_KubernetesArgoWorkflows  CloudResourceKind = 951
@@ -1622,6 +1628,7 @@ var (
 		924:  "KubernetesQdrant",
 		925:  "KubernetesRabbitMqOperator",
 		926:  "KubernetesRabbitMq",
+		930:  "KubernetesAirflow",
 		950:  "KubernetesArgocd",
 		951:  "KubernetesArgoWorkflows",
 		952:  "KubernetesTektonOperator",
@@ -2228,6 +2235,7 @@ var (
 		"KubernetesQdrant":                               924,
 		"KubernetesRabbitMqOperator":                     925,
 		"KubernetesRabbitMq":                             926,
+		"KubernetesAirflow":                              930,
 		"KubernetesArgocd":                               950,
 		"KubernetesArgoWorkflows":                        951,
 		"KubernetesTektonOperator":                       952,
@@ -2696,7 +2704,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\x85\xe6\x01\n" +
+	"\x02v1\x10\x01*\xb4\xe6\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3148,7 +3156,8 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x13KubernetesSeaweedFs\x10\x9b\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sswfs\x12(\n" +
 	"\x10KubernetesQdrant\x10\x9c\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sqdrt\x127\n" +
 	"\x1aKubernetesRabbitMqOperator\x10\x9d\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8srmqop:\x02\xbe\x06\x12-\n" +
-	"\x12KubernetesRabbitMq\x10\x9e\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8srmq:\x02\x9d\a\x12(\n" +
+	"\x12KubernetesRabbitMq\x10\x9e\a\x1a\x14\xa2\xf7\x04\x10\b\x13\x10\x01\"\x06k8srmq:\x02\x9d\a\x12-\n" +
+	"\x11KubernetesAirflow\x10\xa2\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8saflw:\x02\x85\a\x12(\n" +
 	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x121\n" +
 	"\x17KubernetesArgoWorkflows\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sargowf\x122\n" +
 	"\x18KubernetesTektonOperator\x10\xb8\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12,\n" +

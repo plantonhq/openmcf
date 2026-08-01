@@ -111,6 +111,11 @@ var kubernetesTier3Components = []string{
 	// (its registry prerequisite; cert-manager chains transitively)
 	// reconciles into a collector workload per mode.
 	"kubernetesotelcollector",
+	// Airflow composes KubernetesPostgres (registry prerequisite;
+	// transitively the CloudNativePG operator) as its metadata
+	// database — the composed-database fixture class, same as
+	// Keycloak.
+	"kubernetesairflow",
 }
 
 // Kubernetes Tier 4 components: operators, addons, and cluster-level
@@ -613,6 +618,9 @@ func TestKubernetesClickHouse_Pulumi(t *testing.T) {
 func TestKubernetesKeycloak_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskeycloak", "pulumi")
 }
+func TestKubernetesAirflow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesairflow", "pulumi")
+}
 func TestKubernetesGhaRunnerScaleSet_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "pulumi")
 }
@@ -663,6 +671,9 @@ func TestKubernetesClickHouse_Terraform(t *testing.T) {
 }
 func TestKubernetesKeycloak_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kuberneteskeycloak", "terraform")
+}
+func TestKubernetesAirflow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesairflow", "terraform")
 }
 func TestKubernetesGhaRunnerScaleSet_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "terraform")

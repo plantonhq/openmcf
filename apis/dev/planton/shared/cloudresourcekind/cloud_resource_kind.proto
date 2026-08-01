@@ -2596,7 +2596,7 @@ enum CloudResourceKind {
   }];
 
   // 800–999: Kubernetes resources, organized in family sub-bands
-  // (830–869 also hosts CNI/autoscaling/DR addons; 930–949 reserved for
+  // (830–869 also hosts CNI/autoscaling/DR addons; 930–949 hosts
   // analytics & ML; 990–999 reserved for growth)
   // 800–829: Kubernetes building blocks (core API primitives)
   KubernetesNamespace = 800 [(kind_meta) = {
@@ -3257,6 +3257,17 @@ enum CloudResourceKind {
     version: v1
     id_prefix: "k8srmq"
     prerequisites: [KubernetesRabbitMqOperator]
+  }];
+  // 930–949: Kubernetes analytics and ML
+  // KubernetesPostgres is a prerequisite because Airflow's metadata
+  // database composes a KubernetesPostgres by default (the spec's FK
+  // defaults resolve onto its outputs) and the migration Job needs the
+  // database reachable before the server components start.
+  KubernetesAirflow = 930 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8saflw"
+    prerequisites: [KubernetesPostgres]
   }];
   // 950–969: Kubernetes GitOps and CI/CD
   KubernetesArgocd = 950 [(kind_meta) = {

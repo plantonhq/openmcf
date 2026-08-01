@@ -434,6 +434,7 @@ go_library(
         "//apis/dev/planton/provider/hetznercloud/hetznercloudsnapshot/v1:hetznercloudsnapshot",
         "//apis/dev/planton/provider/hetznercloud/hetznercloudsshkey/v1:hetznercloudsshkey",
         "//apis/dev/planton/provider/hetznercloud/hetznercloudvolume/v1:hetznercloudvolume",
+        "//apis/dev/planton/provider/kubernetes/kubernetesairflow/v1:kubernetesairflow",
         "//apis/dev/planton/provider/kubernetes/kubernetesaltinityoperator/v1:kubernetesaltinityoperator",
         "//apis/dev/planton/provider/kubernetes/kubernetesargocd/v1:kubernetesargocd",
         "//apis/dev/planton/provider/kubernetes/kubernetesargoworkflows/v1:kubernetesargoworkflows",

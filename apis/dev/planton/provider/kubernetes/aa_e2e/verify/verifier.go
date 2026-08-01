@@ -834,6 +834,28 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			StateProof:        strings.Contains(manifestPath, "behavioral-state"),
 		}, nil
 
+	// An Airflow installation: the Airflow 3 component set rolled out
+	// (+ Celery workers/bundled Redis when declared), THE AUTH GATE
+	// (anonymous API read rejected), the api server's own health
+	// contract (metadatabase + scheduler healthy — the composed
+	// database proven end to end), and THE DAG PROOF on every lane —
+	// a real DAG triggered through the REST API as the admin user
+	// (module-generated credential) and polled to a SUCCESSFUL run.
+	// The behavioral-dag-delivery scenario (recognized by name) writes
+	// a marker DAG into the shared dags volume instead, runs it, then
+	// re-runs it after a UID-verified scheduler replacement. Destroy
+	// is clean by design (no CRDs).
+	case "kubernetesairflow":
+		spec := manifestSpecMap(manifestPath)
+		return &AirflowVerifier{
+			Namespace:     info.Namespace,
+			Name:          info.Name,
+			CeleryEnabled: airflowCeleryEnabled(spec),
+			BundledRedis:  airflowBundledRedis(spec),
+			AdminUsername: airflowAdminUsername(spec),
+			DeliveryProof: strings.Contains(manifestPath, "behavioral-dag-delivery"),
+		}, nil
+
 	// A NATS messaging system: the StatefulSet rolled out and THE
 	// MESSAGING PROOF on every lane — a real nats.go client completes a
 	// pub/sub round-trip (authenticated as the first declared user from

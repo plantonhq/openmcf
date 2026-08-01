@@ -1,0 +1,3 @@
+name: kubernetes-airflow
+runtime: go
+description: Apache Airflow installation from the official Helm chart on an external database (PostgreSQL/MySQL) with module-composed connection Secrets, executor and broker arms, git-sync DAG delivery, PgBouncer pooling and KEDA worker autoscaling
