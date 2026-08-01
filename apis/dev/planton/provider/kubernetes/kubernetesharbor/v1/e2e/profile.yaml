@@ -25,4 +25,7 @@ spec:
   # First boot runs core's schema migrations (startup probe budgets
   # 60 minutes upstream); the 900s Helm wait covers the normal case.
   # Internal database + Redis + filesystem PVCs add cold-start budget.
-  timeout_minutes: 30
+  # The composed-storage scenario adds a four-fixture chain (CNPG →
+  # Postgres, the S3-identity Secret, SeaweedFS, Valkey) deployed and
+  # torn down per lane — ~4 minutes each way on a warm cluster.
+  timeout_minutes: 40

@@ -53,6 +53,19 @@ func applyCrds(ctx *pulumi.Context, kubernetesProvider pulumi.ProviderResource) 
 		return nil, err
 	}
 
+	// FAIL LOUDLY when the staged CRD files did not travel with the
+	// module: an empty or partial directory would silently apply too few
+	// CRDs and the operator would run against whatever CRDs happen to
+	// exist (the class was caught live elsewhere: a lane "passed" riding
+	// a previous install's retained CRDs). Four is the staged document
+	// count at chart 0.9.1 (three solr.apache.org CRDs + the
+	// ZookeeperCluster CRD) — restage ../crds and update this count
+	// together with DefaultChartVersion. Twin of the Terraform module's
+	// precondition.
+	if len(crdDocuments) != 4 {
+		return nil, errors.Errorf("the staged CRD directory %s carries %d CRD documents, expected 4 — the module owns the CRD lifecycle and cannot install without its full staged set", vars.CrdsDir, len(crdDocuments))
+	}
+
 	retainOnDelete := pulumi.Transformations([]pulumi.ResourceTransformation{
 		func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
 			return &pulumi.ResourceTransformationResult{

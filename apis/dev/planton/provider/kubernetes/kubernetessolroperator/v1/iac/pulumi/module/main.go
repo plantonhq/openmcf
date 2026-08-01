@@ -54,7 +54,19 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetessolroperatorv1.Kuberne
 	// watching these types immediately, and the bundled
 	// zookeeper-operator refuses to start without the ZookeeperCluster
 	// CRD present.
-	createdCrds, err := applyCrds(ctx, kubernetesProvider)
+	//
+	// The CRDs ride a DEDICATED upsert provider: retained-on-destroy
+	// resources are, by design, already on the cluster the next time
+	// this module installs, and a plain create fails AlreadyExists (the
+	// provider adopts only with upsertExistingObjects — verified in the
+	// pinned provider source). The upsert scope stays CRD-only; the
+	// release keeps the plain provider's create-conflict semantics.
+	upsertProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert(ctx,
+		stackInput.ProviderConfig, "kubernetes-crd-upsert")
+	if err != nil {
+		return errors.Wrap(err, "failed to create the CRD upsert kubernetes provider")
+	}
+	createdCrds, err := applyCrds(ctx, upsertProvider)
 	if err != nil {
 		return errors.Wrap(err, "failed to apply solr-operator crds")
 	}
