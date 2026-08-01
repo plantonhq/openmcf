@@ -18,8 +18,10 @@ spec:
   # the auth gate; behavioral-durability proves the artifact survives a
   # UID-verified registry pod replacement (fresh port-forward after
   # replacement — dead-tunnel class).
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   # First boot runs core's schema migrations (startup probe budgets
   # 60 minutes upstream); the 900s Helm wait covers the normal case.
   # Internal database + Redis + filesystem PVCs add cold-start budget.

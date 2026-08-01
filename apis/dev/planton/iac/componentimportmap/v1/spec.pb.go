@@ -33,10 +33,24 @@ const (
 // names, repeated resources, and conditional resources are handled by
 // construction.
 type ComponentImportMapSpec struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Values        []*ImportValue         `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Values []*ImportValue         `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
+	// Resources whose post-import plan legitimately updates a declared
+	// attribute sub-path -- values that CANNOT round-trip by provider
+	// construction, where the first post-adoption apply rewrites them to
+	// a functionally equivalent form. The canonical class: a cluster
+	// object wiring a salted-hash COMPUTED attribute (random_password's
+	// bcrypt_hash) -- the random provider recomputes the hash with a
+	// fresh salt on import, so the referencing data key re-renders once
+	// while the underlying credential is unchanged. Declarations are
+	// scoped to ONE resource and ONE dotted sub-path each, with the
+	// reason stated -- never a whole attribute, never a whole type
+	// (that is the provider catalog's config-only/write-normalized
+	// vocabulary). The import round-trip oracle tolerates exactly these
+	// sub-paths; any sibling drift under the same attribute still fails.
+	ImportNormalized []*ImportNormalizedResource `protobuf:"bytes,2,rep,name=import_normalized,json=importNormalized,proto3" json:"import_normalized,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *ComponentImportMapSpec) Reset() {
@@ -76,6 +90,129 @@ func (x *ComponentImportMapSpec) GetValues() []*ImportValue {
 	return nil
 }
 
+func (x *ComponentImportMapSpec) GetImportNormalized() []*ImportNormalizedResource {
+	if x != nil {
+		return x.ImportNormalized
+	}
+	return nil
+}
+
+// ImportNormalizedResource declares the import-normalized sub-paths of
+// one Terraform logical resource.
+type ImportNormalizedResource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Terraform logical resource name (the `internal_auth` in
+	// `kubernetes_secret_v1.internal_auth`).
+	TofuResourceName string                     `protobuf:"bytes,1,opt,name=tofu_resource_name,json=tofuResourceName,proto3" json:"tofu_resource_name,omitempty"`
+	SubPaths         []*ImportNormalizedSubPath `protobuf:"bytes,2,rep,name=sub_paths,json=subPaths,proto3" json:"sub_paths,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ImportNormalizedResource) Reset() {
+	*x = ImportNormalizedResource{}
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportNormalizedResource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportNormalizedResource) ProtoMessage() {}
+
+func (x *ImportNormalizedResource) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportNormalizedResource.ProtoReflect.Descriptor instead.
+func (*ImportNormalizedResource) Descriptor() ([]byte, []int) {
+	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ImportNormalizedResource) GetTofuResourceName() string {
+	if x != nil {
+		return x.TofuResourceName
+	}
+	return ""
+}
+
+func (x *ImportNormalizedResource) GetSubPaths() []*ImportNormalizedSubPath {
+	if x != nil {
+		return x.SubPaths
+	}
+	return nil
+}
+
+// ImportNormalizedSubPath is one dotted attribute sub-path that cannot
+// round-trip through import, with the evidence-flavored reason.
+type ImportNormalizedSubPath struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Dotted sub-path under the resource's attributes, e.g.
+	// "data.REGISTRY_HTPASSWD". Must reach BELOW a top-level attribute --
+	// whole-attribute tolerance belongs in the provider catalog.
+	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
+	// Why this value cannot round-trip and why the one-time post-import
+	// rewrite is functionally a no-op. Required -- an undocumented
+	// tolerance is indistinguishable from a silenced defect.
+	Reason        string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImportNormalizedSubPath) Reset() {
+	*x = ImportNormalizedSubPath{}
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImportNormalizedSubPath) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImportNormalizedSubPath) ProtoMessage() {}
+
+func (x *ImportNormalizedSubPath) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImportNormalizedSubPath.ProtoReflect.Descriptor instead.
+func (*ImportNormalizedSubPath) Descriptor() ([]byte, []int) {
+	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ImportNormalizedSubPath) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *ImportNormalizedSubPath) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 // ImportValue defines one named placeholder the provider-tier ID formats
 // reference, with its ordered derivations.
 type ImportValue struct {
@@ -106,7 +243,7 @@ type ImportValue struct {
 
 func (x *ImportValue) Reset() {
 	*x = ImportValue{}
-	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -118,7 +255,7 @@ func (x *ImportValue) String() string {
 func (*ImportValue) ProtoMessage() {}
 
 func (x *ImportValue) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[1]
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -131,7 +268,7 @@ func (x *ImportValue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportValue.ProtoReflect.Descriptor instead.
 func (*ImportValue) Descriptor() ([]byte, []int) {
-	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP(), []int{1}
+	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ImportValue) GetName() string {
@@ -184,7 +321,7 @@ type ImportValueDerivation struct {
 
 func (x *ImportValueDerivation) Reset() {
 	*x = ImportValueDerivation{}
-	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -196,7 +333,7 @@ func (x *ImportValueDerivation) String() string {
 func (*ImportValueDerivation) ProtoMessage() {}
 
 func (x *ImportValueDerivation) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[2]
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -209,7 +346,7 @@ func (x *ImportValueDerivation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportValueDerivation.ProtoReflect.Descriptor instead.
 func (*ImportValueDerivation) Descriptor() ([]byte, []int) {
-	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP(), []int{2}
+	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *ImportValueDerivation) GetSource() isImportValueDerivation_Source {
@@ -430,7 +567,7 @@ type FromClusterSecretKey struct {
 
 func (x *FromClusterSecretKey) Reset() {
 	*x = FromClusterSecretKey{}
-	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -442,7 +579,7 @@ func (x *FromClusterSecretKey) String() string {
 func (*FromClusterSecretKey) ProtoMessage() {}
 
 func (x *FromClusterSecretKey) ProtoReflect() protoreflect.Message {
-	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[3]
+	mi := &file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -455,7 +592,7 @@ func (x *FromClusterSecretKey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FromClusterSecretKey.ProtoReflect.Descriptor instead.
 func (*FromClusterSecretKey) Descriptor() ([]byte, []int) {
-	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP(), []int{3}
+	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *FromClusterSecretKey) GetNameSuffix() string {
@@ -483,9 +620,16 @@ var File_dev_planton_iac_componentimportmap_v1_spec_proto protoreflect.FileDescr
 
 const file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0dev/planton/iac/componentimportmap/v1/spec.proto\x12%dev.planton.iac.componentimportmap.v1\"d\n" +
+	"0dev/planton/iac/componentimportmap/v1/spec.proto\x12%dev.planton.iac.componentimportmap.v1\"\xd2\x01\n" +
 	"\x16ComponentImportMapSpec\x12J\n" +
-	"\x06values\x18\x01 \x03(\v22.dev.planton.iac.componentimportmap.v1.ImportValueR\x06values\"\xd3\x01\n" +
+	"\x06values\x18\x01 \x03(\v22.dev.planton.iac.componentimportmap.v1.ImportValueR\x06values\x12l\n" +
+	"\x11import_normalized\x18\x02 \x03(\v2?.dev.planton.iac.componentimportmap.v1.ImportNormalizedResourceR\x10importNormalized\"\xa5\x01\n" +
+	"\x18ImportNormalizedResource\x12,\n" +
+	"\x12tofu_resource_name\x18\x01 \x01(\tR\x10tofuResourceName\x12[\n" +
+	"\tsub_paths\x18\x02 \x03(\v2>.dev.planton.iac.componentimportmap.v1.ImportNormalizedSubPathR\bsubPaths\"E\n" +
+	"\x17ImportNormalizedSubPath\x12\x12\n" +
+	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\xd3\x01\n" +
 	"\vImportValue\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12^\n" +
 	"\vderivations\x18\x02 \x03(\v2<.dev.planton.iac.componentimportmap.v1.ImportValueDerivationR\vderivations\x12\"\n" +
@@ -521,22 +665,26 @@ func file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescGZIP() []byte 
 	return file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_dev_planton_iac_componentimportmap_v1_spec_proto_goTypes = []any{
-	(*ComponentImportMapSpec)(nil), // 0: dev.planton.iac.componentimportmap.v1.ComponentImportMapSpec
-	(*ImportValue)(nil),            // 1: dev.planton.iac.componentimportmap.v1.ImportValue
-	(*ImportValueDerivation)(nil),  // 2: dev.planton.iac.componentimportmap.v1.ImportValueDerivation
-	(*FromClusterSecretKey)(nil),   // 3: dev.planton.iac.componentimportmap.v1.FromClusterSecretKey
+	(*ComponentImportMapSpec)(nil),   // 0: dev.planton.iac.componentimportmap.v1.ComponentImportMapSpec
+	(*ImportNormalizedResource)(nil), // 1: dev.planton.iac.componentimportmap.v1.ImportNormalizedResource
+	(*ImportNormalizedSubPath)(nil),  // 2: dev.planton.iac.componentimportmap.v1.ImportNormalizedSubPath
+	(*ImportValue)(nil),              // 3: dev.planton.iac.componentimportmap.v1.ImportValue
+	(*ImportValueDerivation)(nil),    // 4: dev.planton.iac.componentimportmap.v1.ImportValueDerivation
+	(*FromClusterSecretKey)(nil),     // 5: dev.planton.iac.componentimportmap.v1.FromClusterSecretKey
 }
 var file_dev_planton_iac_componentimportmap_v1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.iac.componentimportmap.v1.ComponentImportMapSpec.values:type_name -> dev.planton.iac.componentimportmap.v1.ImportValue
-	2, // 1: dev.planton.iac.componentimportmap.v1.ImportValue.derivations:type_name -> dev.planton.iac.componentimportmap.v1.ImportValueDerivation
-	3, // 2: dev.planton.iac.componentimportmap.v1.ImportValueDerivation.from_cluster_secret_key:type_name -> dev.planton.iac.componentimportmap.v1.FromClusterSecretKey
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 0: dev.planton.iac.componentimportmap.v1.ComponentImportMapSpec.values:type_name -> dev.planton.iac.componentimportmap.v1.ImportValue
+	1, // 1: dev.planton.iac.componentimportmap.v1.ComponentImportMapSpec.import_normalized:type_name -> dev.planton.iac.componentimportmap.v1.ImportNormalizedResource
+	2, // 2: dev.planton.iac.componentimportmap.v1.ImportNormalizedResource.sub_paths:type_name -> dev.planton.iac.componentimportmap.v1.ImportNormalizedSubPath
+	4, // 3: dev.planton.iac.componentimportmap.v1.ImportValue.derivations:type_name -> dev.planton.iac.componentimportmap.v1.ImportValueDerivation
+	5, // 4: dev.planton.iac.componentimportmap.v1.ImportValueDerivation.from_cluster_secret_key:type_name -> dev.planton.iac.componentimportmap.v1.FromClusterSecretKey
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_iac_componentimportmap_v1_spec_proto_init() }
@@ -544,7 +692,7 @@ func file_dev_planton_iac_componentimportmap_v1_spec_proto_init() {
 	if File_dev_planton_iac_componentimportmap_v1_spec_proto != nil {
 		return
 	}
-	file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[2].OneofWrappers = []any{
+	file_dev_planton_iac_componentimportmap_v1_spec_proto_msgTypes[4].OneofWrappers = []any{
 		(*ImportValueDerivation_FromMetadataName)(nil),
 		(*ImportValueDerivation_FromSpecField)(nil),
 		(*ImportValueDerivation_FromStackOutput)(nil),
@@ -561,7 +709,7 @@ func file_dev_planton_iac_componentimportmap_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc), len(file_dev_planton_iac_componentimportmap_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

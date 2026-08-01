@@ -119,6 +119,20 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 		}
 	}
 
+	// The component map may additionally declare IMPORT-NORMALIZED sub-paths
+	// scoped to ONE of its own resources -- values that cannot round-trip by
+	// provider construction (a salted-hash computed attribute re-salts on
+	// import) where the first post-adoption apply is functionally a no-op.
+	// Collected per logical resource name so the tolerance never leaks to a
+	// sibling resource of the same type.
+	normalizedSubPaths := map[string][][]string{}
+	for _, nr := range componentMap.GetSpec().GetImportNormalized() {
+		for _, sp := range nr.GetSubPaths() {
+			normalizedSubPaths[nr.GetTofuResourceName()] = append(
+				normalizedSubPaths[nr.GetTofuResourceName()], strings.Split(sp.GetPath(), "."))
+		}
+	}
+
 	metadataName, spec, err := loadManifestMetadataAndSpec(tc.Component, tc.ManifestPath)
 	if err != nil {
 		return err
@@ -223,6 +237,7 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 				rc.Change.Actions, address, asidePath)
 		}
 		changed := changedTopLevelAttributes(rc.Change.Before, rc.Change.After)
+		_, changeLogicalName, _, _ := importmap.ParseTofuAddress(address)
 		// Plugin-framework providers mark COMPUTED attributes (id, metadata,
 		// status objects) as unknown on every in-place update -- the plan
 		// cannot state their post-apply values, so they surface here as
@@ -243,11 +258,17 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 			if changeCoveredBySubPaths(rc.Change.Before, rc.Change.After, attribute, toleratedSubPaths[rc.Type]) {
 				continue
 			}
+			// The component map's own resource-scoped declarations (see the
+			// import_normalized vocabulary): tolerated exactly like catalog
+			// sub-paths, but only for THIS logical resource.
+			if changeCoveredBySubPaths(rc.Change.Before, rc.Change.After, attribute, normalizedSubPaths[changeLogicalName]) {
+				continue
+			}
 			return errors.Errorf(
-				"plan after blind re-import updates %s.%s (changed: %v) -- not a declared config-only/write-normalized attribute of %s; deployed state kept at %s",
+				"plan after blind re-import updates %s.%s (changed: %v) -- not a declared config-only/write-normalized attribute of %s nor an import-normalized sub-path of the component map; deployed state kept at %s",
 				address, attribute, changed, rc.Type, asidePath)
 		}
-		fmt.Printf("  [import-rt] tolerating declared update on %s: %v (config-only/write-normalized in the %s catalog)\n",
+		fmt.Printf("  [import-rt] tolerating declared update on %s: %v (config-only/write-normalized in the %s catalog, or import-normalized in the component map)\n",
 			address, changed, tc.Provider)
 		tolerated++
 	}

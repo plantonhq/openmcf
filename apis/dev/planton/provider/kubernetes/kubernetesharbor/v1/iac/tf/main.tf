@@ -201,7 +201,11 @@ resource "kubernetes_secret_v1" "admin_auth" {
 # STABLE bcrypt hash — the chart's own `htpasswd` template function
 # re-salts on every render, which would rotate the credential on every
 # apply (the chart's values comment itself recommends a pre-computed
-# line for CD tools).
+# line for CD tools). One import caveat, verified live: the random
+# provider recomputes bcrypt_hash with a FRESH SALT on import, so the
+# first post-adoption apply rewrites REGISTRY_HTPASSWD to an equivalent
+# hash of the same password — a functional no-op the import map
+# declares as import-normalized.
 resource "kubernetes_secret_v1" "internal_auth" {
   metadata {
     name      = local.internal_auth_secret_name

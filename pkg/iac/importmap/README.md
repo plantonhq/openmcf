@@ -83,6 +83,17 @@ profiles.
   sibling drift still fails. The destroy that follows runs through the
   re-imported state, proving it fully owns the resources.
 
+A component map may additionally declare `import_normalized` entries — the
+narrowest tolerance vocabulary, scoped to ONE of the module's own logical
+resources and ONE dotted sub-path each, with a mandatory reason. It exists
+for values that cannot round-trip BY PROVIDER CONSTRUCTION rather than by
+importer read-back gaps: the canonical case is a Secret data key wiring
+`random_password`'s `bcrypt_hash`, which the random provider recomputes with
+a fresh salt on import — the first post-adoption apply rewrites the key to
+an equivalent hash of the same password, a functional no-op. Provider-wide
+classes stay in the catalog; a kind's own irreducible normalization lives in
+the kind's map, beside the resource it describes.
+
 ## Enrollment is the file itself
 
 The import-map file's presence is the single enrollment signal everywhere:
@@ -193,6 +204,7 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kuberneteskeycloak` | 2026-08-01, all three scenarios (the namespaced 4-part composed ID `k8s.keycloak.org/v2beta1//Keycloak//<ns>//<name>`; re-imported alongside the live operator + composed-Postgres fixture chain; the operator-generated `<name>-initial-admin` Secret is deliberately outside the module's state — no row exists for it) | `kubectl_manifest` provider-side knobs (config-only, see the catalog row) |
 | `kubernetesopenbao` | 2026-08-01, all four scenarios (Helm release + created namespace; dev/standalone/single-replica-Raft shapes all re-imported). The conditional `<name>-seal-credentials` Secret row is offline-validated only — no lane scenario declares a static-credential seal arm (real KMS credentials have no kind stand-in; the deferred-E2E ledger carries the unblock) | `helm_release` install-time attributes (config-only, see the catalog row) |
 | `kubernetesopenfga` | 2026-08-01, both scenarios — including the LIVE exercise of the conditional `<name>-authn-keys` Secret row on the full-surface lane (inline preshared keys materialize the Secret; the memory-arm lane re-imports release + namespace only) | `helm_release` install-time attributes (config-only, see the catalog row) |
+| `kubernetesharbor` | 2026-08-01, all three scenarios (12 resources each: release + module-owned admin/internal Secrets + SEVEN `random_password` companions imported by VALUE via `from_cluster_secret_key` — six scoped keys on `-internal-auth`, the admin on `-admin-auth`, the internal-database password read from the CHART-created `<name>-database` Secret; the full-surface lane re-imported alongside the live composed-Postgres fixture; the anchor-namespace row conditional on `create_namespace`). The conditional `redis_auth`/`storage_auth` rows are offline-validated only — no lane scenario declares inline external cache/storage credentials (the deferred-E2E ledger carries the composed-lane unblock) | `helm_release` install-time attributes + `kubernetes_secret_v1.wait_for_service_account_token` (config-only, see the catalog rows); `internal_auth` `data.REGISTRY_HTPASSWD` — the FIRST `import_normalized` component-map declaration (random_password's `bcrypt_hash` re-salts on import; sibling keys verified identical by the oracle) |
 
 Kinds where an import map is **deliberately not applicable** (recorded so
 absence is never mistaken for an oversight):

@@ -664,6 +664,19 @@ product-identifying text at all). Read the UI server's source at the pin
 for an unconditional API route (a settings/config endpoint) and assert
 its response CONTRACT (a known JSON key), not its wording.
 
+**An auth-gate probe targets a route the SERVER SOURCE proves requires
+authentication — anonymous-by-design endpoints are never gates.** Products
+with a public/private visibility model (registries, artifact stores, wikis)
+deliberately serve anonymous reads of the public subset, so "any endpoint
+without credentials answers 401" is a false contract (caught live: an
+unauthenticated project listing answered 200 with the public subset against
+a correctly-secured install). Pick the gate route by reading the handler at
+the pin (an explicit require-authenticated guard), and when the product's
+real guard is per-resource visibility, prove THAT surface too: create the
+proof resource private and assert the anonymous data-plane access is
+rejected — the strongest gate is the one a customer's security actually
+depends on.
+
 **A chart's CRD posture is read from WHERE the CRDs live, never assumed
 from chart ownership language.** `crds/` directory = Helm's install-once
 posture: created on first install, never upgraded, NEVER removed on

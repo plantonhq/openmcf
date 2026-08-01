@@ -14,6 +14,22 @@ spec:
   # release import. Conditional redis_auth / storage_auth Secrets exist
   # only when the external cache/storage arms declare credentials
   # inline.
+  # The one value that cannot round-trip by provider construction,
+  # declared narrowly (proven by the live round-trip): see the entry's
+  # reason.
+  import_normalized:
+    - tofu_resource_name: internal_auth
+      sub_paths:
+        - path: data.REGISTRY_HTPASSWD
+          reason: >-
+            The htpasswd line wires random_password's bcrypt_hash, and
+            the random provider RECOMPUTES that hash with a fresh salt
+            on import (verified live: only this key drifted after a
+            blind re-import). The first post-adoption apply rewrites
+            the line to an equivalent hash of the SAME password —
+            functionally a no-op: core's plaintext credential and the
+            registry's validation agree throughout, and no pod restart
+            is triggered (the chart references the Secret by name).
   values:
     - name: release_name
       derivations:

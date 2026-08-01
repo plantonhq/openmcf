@@ -159,6 +159,32 @@ func TestImportMapConformance(t *testing.T) {
 							v.GetName(), scope)
 					}
 				}
+
+				// Import-normalized declarations are the narrowest tolerance
+				// vocabulary and must stay narrow: a real resource, a dotted
+				// sub-path (whole-attribute tolerance belongs in the provider
+				// catalog), and a stated reason (an undocumented tolerance is
+				// indistinguishable from a silenced defect). A typo'd resource
+				// name would silently tolerate nothing.
+				for _, nr := range m.GetSpec().GetImportNormalized() {
+					if nr.GetTofuResourceName() == "" || !moduleNames[nr.GetTofuResourceName()] {
+						t.Errorf("import_normalized entry names tofu_resource_name %q, but the module declares no resource with that logical name",
+							nr.GetTofuResourceName())
+					}
+					if len(nr.GetSubPaths()) == 0 {
+						t.Errorf("import_normalized entry for %q declares no sub_paths", nr.GetTofuResourceName())
+					}
+					for _, sp := range nr.GetSubPaths() {
+						if !strings.Contains(sp.GetPath(), ".") {
+							t.Errorf("import_normalized sub-path %q on %q is not a dotted sub-path -- whole-attribute tolerance belongs in the provider catalog",
+								sp.GetPath(), nr.GetTofuResourceName())
+						}
+						if strings.TrimSpace(sp.GetReason()) == "" {
+							t.Errorf("import_normalized sub-path %q on %q carries no reason",
+								sp.GetPath(), nr.GetTofuResourceName())
+						}
+					}
+				}
 				for _, resourceType := range moduleTypes {
 					idFormat, mapped := formatsByTerraformType[resourceType]
 					if !mapped {

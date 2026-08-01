@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/pkg/errors"
 )
 
@@ -21,9 +23,18 @@ import (
 // push and pull OCI artifacts against it: every stateless component
 // rolled out (core, portal, registry, jobservice, nginx), the front-door
 // Service present, and THE REGISTRY PROOF on every lane — login as the
-// module-generated admin, create a project, OCI push/pull round-trip,
-// asserting BOTH the granted path and THE AUTH GATE (an unauthenticated
-// API call is rejected with 401).
+// module-generated admin, create a PRIVATE project, OCI push/pull
+// round-trip, asserting BOTH the granted path and THE AUTH GATE at two
+// surfaces: an unauthenticated API call to an authenticated-only route
+// answers 401, and an ANONYMOUS pull of the pushed private artifact is
+// rejected by the registry itself.
+//
+// Gate-endpoint truth (verified live and in the server source at the
+// pin): Harbor's visibility model deliberately serves ANONYMOUS reads
+// of public-project metadata — GET /api/v2.0/projects has no
+// authentication requirement and answers 200 with the public subset,
+// so it can never be an auth gate. GET /api/v2.0/users/current calls
+// RequireAuthenticated and is the honest 401 probe.
 //
 // The behavioral-durability scenario (recognized by name) additionally
 // DELETES the registry pod after the push, waits for a UID-verified
@@ -112,20 +123,24 @@ func (v *HarborVerifier) proveRegistryRoundTrip(ctx context.Context, kubeconfig,
 	base := "http://127.0.0.1:" + harborLocalPort
 	client := &http.Client{Timeout: 30 * time.Second}
 
-	// THE AUTH GATE: the API without credentials must answer 401 —
-	// proving the generated admin password actually guards the surface.
+	// THE API AUTH GATE: an authenticated-only route without credentials
+	// must answer 401 — proving no anonymous identity exists. See the
+	// type comment for why the projects listing can never be this gate.
 	if err := v.waitForAuthGate(ctx, client, base, 4*time.Minute); err != nil {
 		cancel()
 		return err
 	}
-	fmt.Printf("  [verify] AUTH GATE: unauthenticated request rejected with 401\n")
+	fmt.Printf("  [verify] AUTH GATE: unauthenticated /users/current rejected with 401\n")
 
+	// PRIVATE by design: the registry-surface gate below proves an
+	// anonymous pull of this project's artifact is rejected — a public
+	// project would be anonymously pullable BY DESIGN and prove nothing.
 	project := fmt.Sprintf("e2e%d", time.Now().Unix()%1000000)
 	if err := v.createProject(ctx, client, base, password, project, 4*time.Minute); err != nil {
 		cancel()
 		return err
 	}
-	fmt.Printf("  [verify] PROJECT: %q created as admin\n", project)
+	fmt.Printf("  [verify] PROJECT: private %q created as admin\n", project)
 
 	repo := "proof"
 	tag := fmt.Sprintf("t%d", time.Now().Unix())
@@ -136,6 +151,15 @@ func (v *HarborVerifier) proveRegistryRoundTrip(ctx context.Context, kubeconfig,
 		return err
 	}
 	fmt.Printf("  [verify] OCI: pushed %s (digest %s)\n", refStr, digest)
+
+	// THE REGISTRY AUTH GATE: the OCI surface itself must reject an
+	// anonymous pull of the private artifact — the guard a customer's
+	// registry actually depends on, distinct from the portal API gate.
+	if err := v.assertAnonymousPullRejected(ctx, refStr); err != nil {
+		cancel()
+		return err
+	}
+	fmt.Printf("  [verify] AUTH GATE: anonymous pull of the private artifact rejected by the registry\n")
 
 	if v.Durability {
 		// Close the tunnel across the replacement window and reopen fresh
@@ -168,6 +192,13 @@ func (v *HarborVerifier) proveRegistryRoundTrip(ctx context.Context, kubeconfig,
 	return nil
 }
 
+// startPortForward opens the tunnel to the front-door Service and only
+// returns once the LOCAL port accepts a TCP connection — kubectl binds
+// the listener asynchronously, so "process started" is not "tunnel up"
+// (caught live: a pull dialed the fresh post-replacement tunnel before
+// it listened and read connection-refused as a durability failure; the
+// first tunnel only ever worked because the auth-gate retry loop
+// happened to absorb the same race).
 func (v *HarborVerifier) startPortForward(ctx context.Context, kubeconfig string) (context.CancelFunc, error) {
 	pfCtx, cancel := context.WithCancel(ctx)
 	pf := exec.CommandContext(pfCtx, "kubectl", "--kubeconfig", kubeconfig,
@@ -186,19 +217,34 @@ func (v *HarborVerifier) startPortForward(ctx context.Context, kubeconfig string
 		_ = pf.Wait()
 		close(done)
 	}()
-	return func() {
+	cancelAndReap := func() {
 		cancel()
 		<-done
-	}, nil
+	}
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+harborLocalPort, 2*time.Second)
+		if err == nil {
+			_ = conn.Close()
+			return cancelAndReap, nil
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	cancelAndReap()
+	return nil, errors.Errorf("the port-forward never started listening on 127.0.0.1:%s within 30s; kubectl output: %s", harborLocalPort, pfOut.String())
 }
 
 // waitForAuthGate retries until Harbor answers 401 to an unauthenticated
-// projects list (core finishes migrating before the API authenticates).
+// current-user read (core may still be finishing first-boot migrations
+// when the tunnel first answers). Route truth at the pin: the handler
+// calls RequireAuthenticated before anything else, so anonymous == 401
+// unconditionally — unlike the projects listing, which serves the
+// public subset to anonymous callers by design.
 func (v *HarborVerifier) waitForAuthGate(ctx context.Context, client *http.Client, base string, budget time.Duration) error {
 	deadline := time.Now().Add(budget)
 	var last error
 	for time.Now().Before(deadline) {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/v2.0/projects", nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/v2.0/users/current", nil)
 		if err != nil {
 			return err
 		}
@@ -220,7 +266,9 @@ func (v *HarborVerifier) waitForAuthGate(ctx context.Context, client *http.Clien
 }
 
 func (v *HarborVerifier) createProject(ctx context.Context, client *http.Client, base, password, project string, budget time.Duration) error {
-	body := fmt.Sprintf(`{"project_name":%q,"public":true}`, project)
+	// public:false is load-bearing: the registry-surface auth gate pulls
+	// this project anonymously and MUST be rejected.
+	body := fmt.Sprintf(`{"project_name":%q,"public":false}`, project)
 	deadline := time.Now().Add(budget)
 	var last error
 	for time.Now().Before(deadline) {
@@ -266,6 +314,29 @@ func (v *HarborVerifier) pushImage(ctx context.Context, refStr, password string)
 		return "", err
 	}
 	return digest.String(), nil
+}
+
+// assertAnonymousPullRejected proves the OCI surface guards the private
+// artifact: an anonymous pull must fail with an authorization rejection
+// (Harbor's token service withholds the pull scope, and the registry
+// answers 401 UNAUTHORIZED / 403 DENIED). A succeeding pull means the
+// project visibility or the token-service auth is broken; any OTHER
+// failure (network, tunnel) is reported as its own error, never
+// mistaken for the gate holding.
+func (v *HarborVerifier) assertAnonymousPullRejected(ctx context.Context, refStr string) error {
+	ref, err := name.ParseReference(refStr, name.Insecure)
+	if err != nil {
+		return errors.Wrap(err, "parsing anonymous pull reference")
+	}
+	_, err = remote.Image(ref, remote.WithAuth(authn.Anonymous), remote.WithContext(ctx))
+	if err == nil {
+		return errors.New("an ANONYMOUS pull of the private artifact SUCCEEDED — the registry auth gate is not holding")
+	}
+	var terr *transport.Error
+	if errors.As(err, &terr) && (terr.StatusCode == http.StatusUnauthorized || terr.StatusCode == http.StatusForbidden) {
+		return nil
+	}
+	return errors.Wrap(err, "the anonymous pull failed for a reason OTHER than an auth rejection")
 }
 
 func (v *HarborVerifier) pullImage(ctx context.Context, refStr, password string) (string, error) {

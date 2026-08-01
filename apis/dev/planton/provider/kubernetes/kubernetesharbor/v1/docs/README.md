@@ -39,6 +39,12 @@ Valkey, and object-storage kinds, with every credential riding a Secret.
 - **Admin credential** — unset means module-generated into
   `<name>-admin-auth` (key `HARBOR_ADMIN_PASSWORD`). The chart default
   `Harbor12345` never ships.
+- **Project visibility is the anonymous-access boundary** — verified
+  live: public projects are anonymously listable and pullable BY
+  DESIGN (the projects API serves unauthenticated reads of the public
+  subset), private projects reject anonymous pulls at the registry
+  surface. Hardening means auditing project visibility, not only
+  rotating credentials.
 - **Trivy** — on by default. Air-gapped clusters set `skip_update` and
   `offline_scan` and preload the vulnerability DB; with `skip_update`
   and no pre-loaded DB, scans fail closed.

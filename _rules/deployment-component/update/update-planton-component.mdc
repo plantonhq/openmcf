@@ -572,7 +572,17 @@ Based on scenario:
   fallout. Guard two: the value is secret material — resolving contexts
   redact it from progress lines, command echoes, and error wraps (the
   round-trip harness does this whenever an id_format carries a
-  `from_cluster_secret_key`-derived placeholder).
+  `from_cluster_secret_key`-derived placeholder). Guard three, for the
+  SALTED-HASH class: `random_password.bcrypt_hash` is NOT import-stable
+  — the provider recomputes it with a fresh salt on import (verified
+  live: after a blind re-import, only the hash-wired data key drifted),
+  so any cluster object wiring `bcrypt_hash` re-renders that one value
+  on the first post-adoption apply. The rewrite is functionally a no-op
+  (equivalent hash of the same password); declare exactly that dotted
+  sub-path in the component map's `import_normalized` entry with the
+  reason, never a provider-catalog-wide tolerance and never
+  ignore_changes on the referencing Secret's data (which would blind a
+  REAL rotation from propagating to the hash).
 - **A COLLECTION of generated credentials is keyed by each credential's
   IDENTITY (the username), never by list position — on BOTH engines**:
   a positional key (`for_each` over an index, or an index-derived env

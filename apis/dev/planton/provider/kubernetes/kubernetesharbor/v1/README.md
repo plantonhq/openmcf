@@ -49,6 +49,16 @@ Unset admin auth = the module generates a random password into
 `admin_password_secret`. Inter-component secrets land in
 `<name>-internal-auth` under each chart site's contract key.
 
+## Anonymous visibility is per-project, not per-registry
+
+Harbor's guard is its project visibility model, verified live: a
+PUBLIC project's metadata is anonymously listable and its artifacts
+anonymously pullable BY DESIGN (the projects API serves unauthenticated
+reads of the public subset), while a PRIVATE project rejects anonymous
+pulls at the registry surface. Generating a strong admin password does
+not make a public project private — audit project visibility, not just
+credentials, when hardening a deployment.
+
 ## Exposure and `externalUrl`
 
 `externalUrl` is load-bearing for pushes and pulls — Harbor embeds it

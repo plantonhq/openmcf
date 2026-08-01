@@ -62,7 +62,12 @@ func newAlnumPassword(ctx *pulumi.Context, name string, length int) (*random.Ran
 //     random_password's STABLE bcrypt hash — the chart's own `htpasswd`
 //     template function re-salts on every render, which would rotate
 //     the credential on every apply (the chart's values comment itself
-//     recommends a pre-computed line for CD tools).
+//     recommends a pre-computed line for CD tools). One import caveat,
+//     verified live on the Terraform twin: the random provider
+//     recomputes the bcrypt hash with a FRESH SALT on import, so the
+//     first post-adoption apply rewrites REGISTRY_HTPASSWD to an
+//     equivalent hash of the same password — a functional no-op the
+//     import map declares as import-normalized.
 //   - `<name>-redis-auth` (declared external-redis password only):
 //     REDIS_PASSWORD (+ REDIS_USERNAME when a username is declared).
 //   - `<name>-storage-auth` (declared s3/gcs/azure credentials only):
