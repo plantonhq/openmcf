@@ -212,16 +212,27 @@ func startPortForward(ctx context.Context, kubeconfig, target, namespace, ports 
 
 // deletePodAwaitReplacement deletes the workload's pod(s) by selector and
 // waits until a pod with a NEW UID is Ready — a new UID is the only honest
-// recovery signal (status can flap Ready against the dying pod).
+// recovery signal (status can flap Ready against the dying pod). Every
+// pre-delete pod's uid goes into the "old" set, and each poll reads uid,
+// phase and readiness for ALL matched pods in ONE query: during a
+// Deployment-managed replacement the selector transiently matches both
+// the dying pod and its successor, so two separate queries indexing
+// .items[0] can each land on a DIFFERENT pod and never agree.
 func deletePodAwaitReplacement(ctx context.Context, kubeconfig, namespace, selector string, budget time.Duration) error {
 	uidOut, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
-		"get", "pods", "-n", namespace, "-l", selector, "-o", "jsonpath={.items[0].metadata.uid}").CombinedOutput()
+		"get", "pods", "-n", namespace, "-l", selector, "-o", "jsonpath={.items[*].metadata.uid}").CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, "reading the pod uid: %s", string(uidOut))
+		return errors.Wrapf(err, "reading the pod uids: %s", string(uidOut))
 	}
-	oldUid := strings.TrimSpace(string(uidOut))
+	oldUids := map[string]bool{}
+	for _, uid := range strings.Fields(string(uidOut)) {
+		oldUids[uid] = true
+	}
+	if len(oldUids) == 0 {
+		return errors.Errorf("no pod matched selector %q before the deletion", selector)
+	}
 
-	fmt.Printf("  [verify] DURABILITY: deleting the pod (uid %s)\n", oldUid)
+	fmt.Printf("  [verify] DURABILITY: deleting %d pod(s) matching %q\n", len(oldUids), selector)
 	if out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
 		"delete", "pod", "-n", namespace, "-l", selector, "--wait=false").CombinedOutput(); err != nil {
 		return errors.Wrapf(err, "deleting the pod: %s", string(out))
@@ -229,17 +240,13 @@ func deletePodAwaitReplacement(ctx context.Context, kubeconfig, namespace, selec
 
 	deadline := time.Now().Add(budget)
 	for time.Now().Before(deadline) {
-		uidNow, _ := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+		out, _ := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
 			"get", "pods", "-n", namespace, "-l", selector,
-			"--field-selector", "status.phase=Running",
-			"-o", "jsonpath={.items[0].metadata.uid}").CombinedOutput()
-		newUid := strings.TrimSpace(string(uidNow))
-		if newUid != "" && newUid != oldUid {
-			ready, _ := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
-				"get", "pods", "-n", namespace, "-l", selector,
-				"-o", "jsonpath={.items[0].status.conditions[?(@.type=='Ready')].status}").CombinedOutput()
-			if strings.TrimSpace(string(ready)) == "True" {
-				fmt.Printf("  [verify] DURABILITY: replacement pod (uid %s) is Ready\n", newUid)
+			"-o", `jsonpath={range .items[*]}{.metadata.uid} {.status.phase} {.status.conditions[?(@.type=='Ready')].status}{"\n"}{end}`).CombinedOutput()
+		for _, line := range strings.Split(string(out), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) >= 3 && !oldUids[fields[0]] && fields[1] == "Running" && fields[2] == "True" {
+				fmt.Printf("  [verify] DURABILITY: replacement pod (uid %s) is Ready\n", fields[0])
 				return nil
 			}
 		}

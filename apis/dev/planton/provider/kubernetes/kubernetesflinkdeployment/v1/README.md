@@ -64,11 +64,13 @@ identity on a cloud bucket).
 **The plugin truth:** the official Flink images ship the S3
 filesystem plugin DISABLED. `state.s3.builtin_plugin_jar` names the
 exact jar under `/opt/flink/opt` in YOUR image (e.g.
-`flink-s3-fs-hadoop-2.1.0.jar` — the version in the name must match
-the image's Flink patch version); without it, every `s3://` path
-fails at runtime with "unsupported filesystem scheme". Leave it empty
-only for custom images that bake the plugin into
-`/opt/flink/plugins`.
+`flink-s3-fs-hadoop-2.1.3.jar` for the current `flink:2.1` image —
+the version in the name must match the image's Flink patch version).
+A patch mismatch CrashLoopBackOffs the JobManager with no jar name
+in the operator error — `ls /opt/flink/opt` is the diagnosis.
+Without the field, every `s3://` path fails at runtime with
+"unsupported filesystem scheme". Leave it empty only for custom
+images that bake the plugin into `/opt/flink/plugins`.
 
 ## The slot-sizing arithmetic
 
@@ -247,7 +249,7 @@ spec:
           valueFrom:
             name: objects
         key: admin_secret_access_key
-      builtinPluginJar: flink-s3-fs-hadoop-2.1.0.jar
+      builtinPluginJar: flink-s3-fs-hadoop-2.1.3.jar
   taskManager:
     resources:
       requests:

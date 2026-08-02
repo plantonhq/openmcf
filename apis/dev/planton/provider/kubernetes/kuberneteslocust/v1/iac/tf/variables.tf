@@ -1,135 +1,120 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string,
-    id      = optional(string),
-    org     = optional(string),
-    env     = optional(string),
-    labels  = optional(map(string)),
-    tags    = optional(list(string)),
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "Specification for Kubernetes Locust deployment"
+  description = "KubernetesLocust specification"
   type = object({
-
-    # Kubernetes namespace for Locust deployment
     namespace = string
-
-    # Flag to indicate if the namespace should be created
     create_namespace = optional(bool, false)
-
-    # The master container specifications for the Locust cluster.
-    # This defines the resource allocation and number of replicas for the master node.
-    master_container = object({
-
-      # The number of replicas for the container.
-      # This determines the level of concurrency and load generation capabilities.
-      replicas = number
-
-      # The CPU and memory resources allocated to the Locust container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-    })
-
-    # The worker container specifications for the Locust cluster.
-    # This defines the resource allocation and number of replicas for the worker nodes.
-    worker_container = object({
-
-      # The number of replicas for the container.
-      # This determines the level of concurrency and load generation capabilities.
-      replicas = number
-
-      # The CPU and memory resources allocated to the Locust container.
-      resources = object({
-
-        # The resource limits for the container.
-        # Specify the maximum amount of CPU and memory that the container can use.
-        limits = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-
-        # The resource requests for the container.
-        # Specify the minimum amount of CPU and memory that the container is guaranteed.
-        requests = object({
-
-          # The amount of CPU allocated (e.g., "500m" for 0.5 CPU cores).
-          cpu = string
-
-          # The amount of memory allocated (e.g., "256Mi" for 256 mebibytes).
-          memory = string
-        })
-      })
-    })
-
-    # The ingress configuration for the Locust deployment.
-    ingress = optional(object({
-
-      # A flag to enable or disable ingress.
-      is_enabled = optional(bool, false)
-
-      # The dns domain.
-      dns_domain = optional(string, "")
+    image = optional(object({
+      repository = optional(string)
+      tag = optional(string)
     }))
-
-    # The load test parameters, including the main test script, additional library files,
-    # and extra Python pip packages needed for test execution.
-    # This specifies how the Locust nodes will simulate traffic and interact with the target application.
+    image_pull_secrets = optional(list(string), [])
     load_test = object({
-
-      # A unique identifier or name for this particular load test specification.
-      # It is used to reference or distinguish this test configuration among others within a testing suite or environment.
-      name = string
-
-      # The Python code for the main Locust test script.
-      # This script defines the behavior of the simulated users and is crucial for executing the load test.
-      main_py_content = string
-
-      # A map where each entry consists of a filename and its associated Python code content.
-      # These files typically contain additional classes or functions required by the main_py_content script.
-      # The key of the map is the filename, and the value is the file content.
-      lib_files_content = optional(map(string))
-
-      # A list of extra Python pip packages that are required for the load test.
-      # These packages will be installed in the environment where the load test is executed,
-      # allowing for extended functionality or custom dependencies to be included easily.
-      pip_packages = optional(list(string))
+      name = optional(string)
+      inline = optional(object({
+        locustfile_content = string
+        lib_files = optional(map(string), {})
+      }))
+      existing_config_maps = optional(object({
+        locustfile_config_map = string
+        locustfile_name = optional(string)
+        lib_config_map = optional(string, "")
+      }))
+      target_host = optional(string, "")
+      pip_packages = optional(list(string), [])
+      pip_requirements_config_map = optional(string, "")
+      environment = optional(map(string), {})
+      env_from_secrets = optional(list(string), [])
+      env_from_secret_keys = optional(list(object({
+        secret_name = string
+        keys = list(string)
+      })), [])
+      tags = optional(list(string), [])
+      exclude_tags = optional(list(string), [])
+      headless = optional(bool, false)
     })
-
-    # A map of key-value pairs providing additional customization options for the Helm chart used
-    # to deploy the Locust cluster. These values allow for further refinement of the deployment,
-    # such as customizing resource limits, setting environment variables, or specifying version tags.
-    # For detailed information on the available options, refer to the Helm chart documentation at:
-    # https://github.com/deliveryhero/helm-charts/tree/master/stable/locust#values
-    helm_values = optional(map(string))
+    master = optional(object({
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+      log_level = optional(string)
+      pdb_enabled = optional(bool, false)
+      scheduling = optional(object({
+        node_selector = optional(map(string), {})
+        tolerations = optional(list(object({
+          key = optional(string, "")
+          operator = optional(string, "")
+          value = optional(string, "")
+          effect = optional(string, "")
+          toleration_seconds = optional(number)
+        })), [])
+      }))
+    }))
+    workers = optional(object({
+      replicas = optional(number)
+      resources = optional(object({
+        limits = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+        requests = optional(object({
+          cpu = optional(string, "")
+          memory = optional(string, "")
+        }))
+      }))
+      log_level = optional(string)
+      pdb_enabled = optional(bool, false)
+      scheduling = optional(object({
+        node_selector = optional(map(string), {})
+        tolerations = optional(list(object({
+          key = optional(string, "")
+          operator = optional(string, "")
+          value = optional(string, "")
+          effect = optional(string, "")
+          toleration_seconds = optional(number)
+        })), [])
+      }))
+      hpa = optional(object({
+        min_replicas = optional(number)
+        max_replicas = optional(number, 0)
+        target_cpu_utilization_percent = optional(number)
+      }))
+      keda = optional(object({
+        min_replicas = optional(number)
+        max_replicas = optional(number, 0)
+        target_users_per_worker = optional(number)
+        polling_interval_seconds = optional(number)
+        cooldown_period_seconds = optional(number)
+        custom_triggers = optional(string, "")
+      }))
+    }))
+    web_ui_auth = optional(object({
+      enabled = optional(bool)
+      username = optional(string)
+    }))
+    service = optional(object({
+      type = optional(string)
+      annotations = optional(map(string), {})
+    }))
+    helm_values = optional(string, "")
   })
 }

@@ -14,8 +14,8 @@ spec:
   # KubernetesValkey, the HEAD pod is deleted (UID-verified replacement)
   # and the recovered head still lists the completed job — control
   # state survived outside the head's memory.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   # The rayproject/ray image is ~2.5GB — it pulls once per cluster and
   # dominates the first lane's wall clock.
   timeout_minutes: 30

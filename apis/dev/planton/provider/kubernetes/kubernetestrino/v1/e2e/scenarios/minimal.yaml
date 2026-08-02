@@ -1,0 +1,37 @@
+# The component defaults, sized for the shared single-node cluster:
+# PASSWORD auth with the module-generated admin (upstream's open,
+# anyone-can-query posture never ships), the in-image tpch/tpcds
+# sample catalogs, one worker with percent-based heaps that follow the
+# container limits. Co-located with the lane fixture's namespace
+# (create_namespace false). The verifier proves THE AUTH GATE
+# (anonymous statement submission rejected) and THE QUERY PROOF —
+# `SELECT count(*) FROM tpch.tiny.nation` answers 25 through a real
+# worker via the coordinator's own statement API.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTrino
+metadata:
+  name: e2e-trino-min
+spec:
+  namespace:
+    value: e2e-trino
+  coordinator:
+    jvm:
+      max_heap_percent: 60
+    max_query_memory_per_node: 512MB
+    resources:
+      requests:
+        cpu: 200m
+        memory: 768Mi
+      limits:
+        memory: 1536Mi
+  workers:
+    replicas: 1
+    jvm:
+      max_heap_percent: 60
+    max_query_memory_per_node: 512MB
+    resources:
+      requests:
+        cpu: 200m
+        memory: 768Mi
+      limits:
+        memory: 1536Mi

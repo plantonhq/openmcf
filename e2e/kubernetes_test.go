@@ -649,6 +649,18 @@ func TestKubernetesRayCluster_Pulumi(t *testing.T) {
 func TestKubernetesFlinkDeployment_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesflinkdeployment", "pulumi")
 }
+func TestKubernetesJupyterHub_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesjupyterhub", "pulumi")
+}
+func TestKubernetesMlflow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmlflow", "pulumi")
+}
+func TestKubernetesTrino_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestrino", "pulumi")
+}
+func TestKubernetesSuperset_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessuperset", "pulumi")
+}
 func TestKubernetesGhaRunnerScaleSet_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "pulumi")
 }
@@ -708,6 +720,18 @@ func TestKubernetesRayCluster_Terraform(t *testing.T) {
 }
 func TestKubernetesFlinkDeployment_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesflinkdeployment", "terraform")
+}
+func TestKubernetesJupyterHub_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesjupyterhub", "terraform")
+}
+func TestKubernetesMlflow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesmlflow", "terraform")
+}
+func TestKubernetesTrino_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetestrino", "terraform")
+}
+func TestKubernetesSuperset_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetessuperset", "terraform")
 }
 func TestKubernetesGhaRunnerScaleSet_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "terraform")

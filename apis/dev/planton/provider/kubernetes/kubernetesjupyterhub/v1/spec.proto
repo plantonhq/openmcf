@@ -1,0 +1,1041 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetesjupyterhub.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesJupyterHubSpec** deploys JupyterHub — the multi-user
+ * notebook platform — from the official `jupyterhub` Helm chart
+ * (https://hub.jupyter.org/helm-chart/, the Zero to JupyterHub
+ * distribution).
+ *
+ * WHAT GETS INSTALLED: the hub (JupyterHub + KubeSpawner + the
+ * configured authenticator), the configurable-http-proxy pod routing
+ * every user request, the user-scheduler (packs user pods onto busy
+ * nodes so autoscalers can reclaim the rest), optional placeholder
+ * pods that pre-warm capacity, image-puller DaemonSets that pre-pull
+ * the notebook image onto every node, and the idle-culler that stops
+ * abandoned notebook servers.
+ *
+ * HOW IT WORKS: every user gets their OWN notebook server — the hub
+ * spawns a dedicated pod (and, by default, a dedicated persistent
+ * home volume) per user at login, and the proxy routes each user to
+ * their server. These per-user pods and volumes are created by the
+ * hub AT RUNTIME — they are not part of this resource's deploy and
+ * they survive it: uninstalling the release deletes the hub, proxy
+ * and scheduling machinery, but user home PVCs (named `claim-<user>`)
+ * remain until deleted explicitly. Treat user homes as data.
+ *
+ * NAMES ARE CHART-FIXED: resources render with bare names (hub,
+ * proxy, proxy-public, user-scheduler…), so one JupyterHub per
+ * namespace — deploy each instance into its own namespace (the
+ * default posture here).
+ *
+ * SECURED BY DEFAULT: the chart's own default authenticator accepts
+ * ANY username with NO password. This kind never ships that — when
+ * `authentication` is empty, the shared sign-in password is
+ * module-generated into `<name>-auth` and wired to the hub through an
+ * environment variable, never through rendered Helm values. The
+ * chart's three internal auth materials (proxy token, cookie secret,
+ * crypt keys) are chart-managed and stable across upgrades.
+ *
+ * STATE lives in the hub database: sqlite on a small PVC (the
+ * default — fine for most installs, the hub is single-replica by
+ * design) or an external PostgreSQL (a KubernetesPostgres composes
+ * naturally; the password rides a mounted Secret, never rendered
+ * values).
+ *
+ * EXPOSURE: the proxy-public Service stays ClusterIP here (the chart
+ * default is LoadBalancer — deliberately overridden); expose it via
+ * first-class kinds (KubernetesService, Gateway API routes,
+ * KubernetesIngress) over the exported service handle. The chart's
+ * ingress/httpRoute blocks and the autohttps/ACME machinery are never
+ * modeled — TLS terminates at the composed exposure layer.
+ *
+ * The typed fields below cover the chart's meaningful configuration
+ * surface; `helm_values` remains as the escape hatch (merged last,
+ * Helm `-f` semantics, identical on both engines) for the long tail —
+ * per-pod securityContext overrides, network-policy egress shaping,
+ * hub.extraConfig snippets, services/loadRoles, LDAP auth — a safety
+ * valve, never the primary interface.
+ */
+message KubernetesJupyterHubSpec {
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource. One JupyterHub per
+   * namespace — the chart's resource names are fixed (hub, proxy,
+   * proxy-public…), so a second release in the same namespace
+   * collides.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist. KNOW
+   * THIS: deleting the namespace also deletes every user's home PVC
+   * living in it — back user homes up before tearing an instance
+   * down.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Helm chart version to install (e.g. "4.4.0" — chart 4.4.0 ships
+   * JupyterHub 5.5.0). Versions must exist as SERVED charts in the
+   * repository index (https://hub.jupyter.org/helm-chart/). The chart
+   * requires Kubernetes 1.28+.
+   */
+  optional string chart_version = 3 [(dev.planton.shared.options.default) = "4.4.0"];
+
+  /**
+   * The hub — JupyterHub itself: its database, spawn throttles and
+   * server-lifecycle switches.
+   */
+  KubernetesJupyterHubHub hub = 4;
+
+  /**
+   * WHO can sign in and HOW. Empty = username/shared-password sign-in
+   * with a module-generated password (`<name>-auth`, key `password`)
+   * — the chart's own default (any username, NO password) never
+   * ships.
+   */
+  KubernetesJupyterHubAuth authentication = 5;
+
+  /**
+   * The proxy tier — how traffic reaches JupyterHub and what the CHP
+   * pod gets to work with.
+   */
+  KubernetesJupyterHubProxy proxy = 6;
+
+  /**
+   * The per-user notebook servers — image, sizing, home storage and
+   * the profile menu. This is what your USERS live in; size it for
+   * them, not for the hub.
+   */
+  KubernetesJupyterHubSingleUser single_user = 7;
+
+  /**
+   * User-pod scheduling machinery: the packing scheduler, capacity
+   * placeholders and pod priorities. Empty = the chart defaults
+   * (user-scheduler on, no placeholders).
+   */
+  KubernetesJupyterHubScheduling scheduling = 8;
+
+  /**
+   * Idle-server culling. Empty = enabled, stop notebook servers idle
+   * for an hour (the chart default) — the single most important knob
+   * for not paying for abandoned notebooks.
+   */
+  KubernetesJupyterHubCulling culling = 9;
+
+  /**
+   * Notebook-image pre-pulling. Empty = the chart defaults (both
+   * pullers on). The hook puller runs BEFORE install/upgrade
+   * completes — first installs wait for the notebook image to land on
+   * every node, which is exactly what makes first spawns fast.
+   */
+  KubernetesJupyterHubPrePuller pre_puller = 10;
+
+  /**
+   * Render the chart's NetworkPolicies for hub, proxy and user pods
+   * (user pods get a deny-by-default posture that still allows DNS,
+   * the hub and the internet; the cloud metadata server is blocked).
+   * Empty = true (the chart default). Requires a CNI that enforces
+   * NetworkPolicy for any actual effect.
+   */
+  optional bool network_policy_enabled = 11 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Additional Helm values merged LAST (Helm `-f` semantics,
+   * identical on both engines) — the escape hatch for chart values
+   * the typed fields do not model: hub.extraConfig snippets,
+   * hub.services/loadRoles, per-component securityContext, LDAP
+   * auth, network-policy egress rules, singleuser lifecycle hooks.
+   * YAML document as a string. Never put secret material here —
+   * everything in Helm values lands base64-readable inside the
+   * chart-owned hub Secret; credentials belong in the typed
+   * secret-reference fields, which ride environment indirection
+   * instead. Never set proxy.https/ingress/httpRoute — exposure
+   * composes from first-class kinds.
+   */
+  string helm_values = 12;
+}
+
+/**
+ * The hub tier: database and server-lifecycle behavior. The hub is
+ * SINGLE-REPLICA BY DESIGN (upstream: JupyterHub has no HA story;
+ * the chart pins a Recreate deployment strategy) — scale user
+ * capacity via nodes and culling, never hub replicas.
+ */
+message KubernetesJupyterHubHub {
+  /**
+   * The hub database — users, running-server records, tokens.
+   * Empty = sqlite on a 1Gi PVC (the chart default; right for most
+   * installs).
+   */
+  KubernetesJupyterHubDatabase database = 1;
+
+  /**
+   * How many users may be SPAWNING simultaneously (not how many may
+   * be running) — the login-storm throttle. Empty = 64 (the chart
+   * default).
+   */
+  optional int32 concurrent_spawn_limit = 2 [
+    (dev.planton.shared.options.default) = "64",
+    (buf.validate.field).int32 = {gte: 1}
+  ];
+
+  /**
+   * Hard cap on RUNNING notebook servers across all users — the
+   * cluster-capacity guard. Users beyond it see "server limit
+   * reached" at spawn. Empty = unlimited (the chart default).
+   */
+  optional int32 active_server_limit = 3 [(buf.validate.field).int32 = {gte: 1}];
+
+  /**
+   * Let each user run multiple NAMED servers (e.g. one per project)
+   * alongside their default server. Off by default — each named
+   * server is a full pod + volume.
+   */
+  bool allow_named_servers = 4;
+
+  /**
+   * Cap on named servers per user. Only meaningful with
+   * `allow_named_servers`. Empty = unlimited.
+   */
+  optional int32 named_server_limit_per_user = 5 [(buf.validate.field).int32 = {gte: 1}];
+
+  /**
+   * Stop the user's notebook server when they log out. Off by
+   * default (matching the chart) — the culler usually handles
+   * abandonment better than logout does.
+   */
+  bool shutdown_on_logout = 6;
+
+  /**
+   * CPU/memory for the hub container. Empty = the chart's defaults
+   * (no requests). The hub is light — 512Mi/0.5cpu carries hundreds
+   * of users.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 7;
+
+  option (buf.validate.message).cel = {
+    id: "hub.named_server_limit_needs_named_servers"
+    message: "named_server_limit_per_user only applies when allow_named_servers is true — enable named servers or remove the limit."
+    expression: "!has(this.named_server_limit_per_user) || this.allow_named_servers"
+  };
+}
+
+/**
+ * The hub database backend. Exactly one arm.
+ */
+message KubernetesJupyterHubDatabase {
+  /**
+   * Exactly one database backend.
+   */
+  oneof backend {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * sqlite on a dedicated PVC (the chart default) — zero external
+     * dependencies, right for most installs since the hub is
+     * single-replica anyway. The PVC (named `hub-db-dir`) carries
+     * ALL hub state.
+     */
+    KubernetesJupyterHubSqlitePvc sqlite_pvc = 1;
+
+    /**
+     * External PostgreSQL — a KubernetesPostgres composes naturally.
+     * Choose this to survive PVC loss, to snapshot hub state with
+     * your database fleet, or on clusters without dynamic volumes.
+     */
+    KubernetesJupyterHubPostgres postgres = 2;
+
+    /**
+     * External MySQL 8+ — a KubernetesMysql composes naturally.
+     */
+    KubernetesJupyterHubMysql mysql = 3;
+  }
+}
+
+/**
+ * The sqlite-on-PVC hub database.
+ */
+message KubernetesJupyterHubSqlitePvc {
+  /**
+   * PVC size. Empty = "1Gi" (the chart default — hub state is
+   * small).
+   */
+  optional string storage_size = 1 [
+    (dev.planton.shared.options.default) = "1Gi",
+    (buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$"
+  ];
+
+  /**
+   * Storage class for the hub-db PVC. Empty = the cluster default.
+   */
+  string storage_class = 2;
+}
+
+/**
+ * External PostgreSQL hub database. The module renders a
+ * credential-free connection URL
+ * (`postgresql+psycopg2://user@host:port/db`) into values and mounts
+ * the password from the referenced Secret through the chart's
+ * existing-secret seam — the password never appears in rendered Helm
+ * values.
+ */
+message KubernetesJupyterHubPostgres {
+  /**
+   * Database server host. Defaults compose a KubernetesPostgres
+   * resource's read-write Service; any reachable PostgreSQL works as
+   * a literal value.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.rw_service"
+  ];
+
+  /**
+   * Database server port. Empty = 5432.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "5432",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  /**
+   * Database name holding hub state. Must EXIST before install (the
+   * hub creates tables, never the database) — on a
+   * KubernetesPostgres, declare it at bootstrap (`initdb.database`).
+   * Empty = "jupyterhub".
+   */
+  optional string database_name = 3 [
+    (dev.planton.shared.options.default) = "jupyterhub",
+    (buf.validate.field).string.pattern = "^[a-zA-Z_][a-zA-Z0-9_$]*$"
+  ];
+
+  /**
+   * Database user with full rights inside `database_name` (ownership
+   * is simplest — declare the same user as the database owner at
+   * bootstrap). Empty = "jupyterhub".
+   */
+  optional string username = 4 [(dev.planton.shared.options.default) = "jupyterhub"];
+
+  /**
+   * The Secret holding the user's password. The hub mounts it
+   * through the chart's existing-secret seam — it never lands in
+   * rendered values. Defaults compose a KubernetesPostgres
+   * resource's application-user Secret. Same-namespace constraint (a
+   * Kubernetes rule): the Secret must live in the namespace
+   * JupyterHub installs into.
+   */
+  KubernetesJupyterHubPasswordSecret password_secret = 5 [(buf.validate.field).required = true];
+}
+
+/**
+ * External MySQL 8+ hub database (connection URL form
+ * `mysql+pymysql://user@host:port/db`), password mounted the same
+ * existing-secret way as the postgres arm.
+ */
+message KubernetesJupyterHubMysql {
+  /**
+   * Database server host. Defaults compose a KubernetesMysql
+   * resource's client Service.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesMysql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_service"
+  ];
+
+  /**
+   * Database server port. Empty = 3306.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "3306",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  /**
+   * Database name holding hub state. Must EXIST before install.
+   * Empty = "jupyterhub".
+   */
+  optional string database_name = 3 [
+    (dev.planton.shared.options.default) = "jupyterhub",
+    (buf.validate.field).string.pattern = "^[a-zA-Z_][a-zA-Z0-9_$]*$"
+  ];
+
+  /**
+   * Database user with full rights inside `database_name`. Empty =
+   * "jupyterhub".
+   */
+  optional string username = 4 [(dev.planton.shared.options.default) = "jupyterhub"];
+
+  /**
+   * The Secret holding the user's password. Defaults compose a
+   * KubernetesMysql resource's root credential Secret; for a
+   * dedicated hub user (recommended), point at that user's Secret.
+   * Same-namespace constraint applies.
+   */
+  KubernetesJupyterHubMysqlPasswordSecret password_secret = 5 [(buf.validate.field).required = true];
+}
+
+/**
+ * A reference to an existing Secret holding the PostgreSQL user's
+ * password.
+ */
+message KubernetesJupyterHubPasswordSecret {
+  /**
+   * Name of the Secret. Defaults compose a KubernetesPostgres
+   * resource's application-user Secret (`<cluster>-app`).
+   * Same-namespace constraint applies.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.password_secret.name"
+  ];
+
+  /**
+   * Key inside the Secret holding the password. Empty = "password"
+   * (the KubernetesPostgres application-Secret convention).
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * A reference to an existing Secret holding the MySQL user's
+ * password.
+ */
+message KubernetesJupyterHubMysqlPasswordSecret {
+  /**
+   * Name of the Secret. Defaults compose a KubernetesMysql
+   * resource's root credential Secret. Same-namespace constraint
+   * applies.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesMysql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.root_password_secret.name"
+  ];
+
+  /**
+   * Key inside the Secret holding the password. Empty = "password".
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * Sign-in configuration. Exactly one method when set; empty message
+ * (or an absent `authentication` field) = shared-password sign-in
+ * with a module-generated password. Every secret in this message
+ * reaches the hub as an ENVIRONMENT VARIABLE from a Secret — never
+ * through rendered Helm values (the chart embeds all values,
+ * readable, inside its own hub Secret).
+ */
+message KubernetesJupyterHubAuth {
+  /**
+   * The authenticator. Empty = shared-password sign-in
+   * (module-generated password).
+   */
+  oneof method {
+    /**
+     * Shared-password sign-in (upstream's DummyAuthenticator +
+     * password): ANY username, ONE shared password — teams, labs,
+     * evaluations. The username becomes the user's identity (home
+     * volume, admin rights), so users must pick consistent names.
+     */
+    KubernetesJupyterHubDummyAuth shared_password = 1;
+
+    /**
+     * Self-service accounts (NativeAuthenticator, ships in the hub
+     * image): users sign UP with a username/password; admins approve
+     * them in the hub UI before first login (unless open_signup).
+     * No external identity provider needed.
+     */
+    KubernetesJupyterHubNativeAuth native = 2;
+
+    /**
+     * Sign in with GitHub (OAuthenticator). Gate by organization
+     * membership via `allowed_organizations`.
+     */
+    KubernetesJupyterHubGithubAuth github = 3;
+
+    /**
+     * Sign in with Google (OAuthenticator). Gate by workspace domain
+     * via `hosted_domains`.
+     */
+    KubernetesJupyterHubGoogleAuth google = 4;
+
+    /**
+     * Sign in with any OIDC/OAuth2 provider (GenericOAuthenticator)
+     * — Keycloak composes naturally (a KubernetesKeycloak realm's
+     * endpoints slot straight in), as do Okta, Auth0, Dex.
+     */
+    KubernetesJupyterHubOidcAuth oidc = 5;
+  }
+
+  /**
+   * Usernames granted JupyterHub admin rights (manage users, access
+   * servers, use the admin panel). For OAuth methods this is the
+   * provider-side username (e.g. the GitHub login).
+   */
+  repeated string admin_users = 6;
+
+  /**
+   * Explicit allow-list of usernames permitted to sign in. Empty =
+   * any authenticated identity may sign in (for shared_password that
+   * means ANY username knowing the shared password — set this list
+   * to pin the roster).
+   */
+  repeated string allowed_users = 7;
+}
+
+/**
+ * Shared-password sign-in.
+ */
+message KubernetesJupyterHubDummyAuth {
+  /**
+   * Existing Secret holding the shared password. Empty = the module
+   * GENERATES it into `<name>-auth` (key `password`) — stable across
+   * upgrades. Either way the password reaches the hub as an env var;
+   * it never renders into values.
+   */
+  KubernetesJupyterHubExistingSecretRef password_secret = 1;
+}
+
+/**
+ * Self-service accounts via NativeAuthenticator.
+ */
+message KubernetesJupyterHubNativeAuth {
+  /**
+   * Let new signups log in immediately WITHOUT admin approval. Off
+   * by default — with it on, anyone reaching the login page can
+   * create a working account, so pair it with `allowed_users` or a
+   * private network.
+   */
+  bool open_signup = 1;
+
+  /**
+   * Minimum signup password length. Empty = 8.
+   */
+  optional int32 minimum_password_length = 2 [
+    (dev.planton.shared.options.default) = "8",
+    (buf.validate.field).int32 = {gte: 1}
+  ];
+}
+
+/**
+ * GitHub OAuth sign-in. Register an OAuth app at
+ * https://github.com/settings/applications/new with callback URL
+ * `<your-jupyterhub-url>/hub/oauth_callback`.
+ */
+message KubernetesJupyterHubGithubAuth {
+  /**
+   * The OAuth app's client ID (public, renders into values).
+   */
+  string client_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * The Secret holding the OAuth app's client secret. Reaches the
+   * hub as an env var (the authenticator's native environment
+   * fallback) — never rendered into values. Same-namespace
+   * constraint applies.
+   */
+  KubernetesJupyterHubExistingSecretRef client_secret_secret = 2 [(buf.validate.field).required = true];
+
+  /**
+   * The OAuth callback URL as registered with the provider —
+   * `<your-jupyterhub-url>/hub/oauth_callback`. Must match the
+   * registration exactly (scheme and host included).
+   */
+  string oauth_callback_url = 3 [(buf.validate.field).required = true];
+
+  /**
+   * GitHub organizations whose members may sign in (org name, or
+   * `org:team` to gate by team). Empty = any GitHub identity —
+   * effectively public; set this in production.
+   */
+  repeated string allowed_organizations = 4;
+}
+
+/**
+ * Google OAuth sign-in. Create credentials at
+ * https://console.cloud.google.com/apis/credentials with redirect
+ * URI `<your-jupyterhub-url>/hub/oauth_callback`.
+ */
+message KubernetesJupyterHubGoogleAuth {
+  /**
+   * The OAuth client ID (public, renders into values).
+   */
+  string client_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * The Secret holding the OAuth client secret (env-var indirection,
+   * never rendered). Same-namespace constraint applies.
+   */
+  KubernetesJupyterHubExistingSecretRef client_secret_secret = 2 [(buf.validate.field).required = true];
+
+  /**
+   * The OAuth callback URL as registered —
+   * `<your-jupyterhub-url>/hub/oauth_callback`.
+   */
+  string oauth_callback_url = 3 [(buf.validate.field).required = true];
+
+  /**
+   * Google Workspace domains whose users may sign in (e.g.
+   * "example.com"). Empty = any Google account — set this in
+   * production.
+   */
+  repeated string hosted_domains = 4;
+}
+
+/**
+ * Generic OIDC/OAuth2 sign-in (GenericOAuthenticator).
+ */
+message KubernetesJupyterHubOidcAuth {
+  /**
+   * The OAuth client ID (public, renders into values).
+   */
+  string client_id = 1 [(buf.validate.field).required = true];
+
+  /**
+   * The Secret holding the OAuth client secret (env-var indirection,
+   * never rendered). Same-namespace constraint applies.
+   */
+  KubernetesJupyterHubExistingSecretRef client_secret_secret = 2 [(buf.validate.field).required = true];
+
+  /**
+   * The OAuth callback URL as registered with the provider —
+   * `<your-jupyterhub-url>/hub/oauth_callback`.
+   */
+  string oauth_callback_url = 3 [(buf.validate.field).required = true];
+
+  /**
+   * The provider's authorization endpoint (e.g.
+   * `https://keycloak.example.com/realms/eng/protocol/openid-connect/auth`).
+   */
+  string authorize_url = 4 [(buf.validate.field).required = true];
+
+  /**
+   * The provider's token endpoint.
+   */
+  string token_url = 5 [(buf.validate.field).required = true];
+
+  /**
+   * The provider's userinfo endpoint (where the authenticator reads
+   * the user's identity claims).
+   */
+  string userdata_url = 6 [(buf.validate.field).required = true];
+
+  /**
+   * OAuth scopes to request. Empty = ["openid", "email", "profile"].
+   */
+  repeated string scopes = 7;
+
+  /**
+   * The claim in the userinfo response that becomes the JupyterHub
+   * username. Empty = "preferred_username" (the OIDC standard
+   * claim).
+   */
+  optional string username_claim = 8 [(dev.planton.shared.options.default) = "preferred_username"];
+
+  /**
+   * The provider name shown on the login button ("Sign in with
+   * <login_service>"). Empty = "OIDC".
+   */
+  optional string login_service = 9 [(dev.planton.shared.options.default) = "OIDC"];
+}
+
+/**
+ * A plain reference to an existing Secret and key.
+ */
+message KubernetesJupyterHubExistingSecretRef {
+  /**
+   * Name of the Secret. Same-namespace constraint applies.
+   */
+  string secret_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key inside the Secret. Empty = "password".
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * The proxy tier. The configurable-http-proxy pod carries EVERY user
+ * byte — size it accordingly on busy hubs.
+ */
+message KubernetesJupyterHubProxy {
+  /**
+   * The proxy-public Service — the instance's front door. This kind
+   * defaults it to ClusterIP (the chart's own default is
+   * LoadBalancer — deliberately overridden): expose it by composing
+   * first-class kinds over the exported service handle, or set
+   * "LoadBalancer"/"NodePort" here for direct exposure.
+   */
+  optional string service_type = 1 [
+    (dev.planton.shared.options.default) = "ClusterIP",
+    (buf.validate.field).string.in = "ClusterIP",
+    (buf.validate.field).string.in = "LoadBalancer",
+    (buf.validate.field).string.in = "NodePort"
+  ];
+
+  /**
+   * Annotations for the proxy-public Service — the cloud
+   * load-balancer configuration surface (NLB type, internal LB,
+   * static IPs) when `service_type` is LoadBalancer.
+   */
+  map<string, string> service_annotations = 2;
+
+  /**
+   * CPU/memory for the CHP container. Empty = the chart's defaults
+   * (no requests).
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 3;
+}
+
+/**
+ * The per-user notebook servers — what KubeSpawner creates for each
+ * user at login.
+ */
+message KubernetesJupyterHubSingleUser {
+  /**
+   * The notebook image every user server runs. Empty = the chart's
+   * sample image (quay.io/jupyterhub/k8s-singleuser-sample — minimal
+   * JupyterLab; fine for evaluation, replace it with a
+   * jupyter/docker-stacks image or your own for real work). The
+   * image must carry `jupyterhub-singleuser` matching the hub's
+   * major version.
+   */
+  KubernetesJupyterHubImage image = 1;
+
+  /**
+   * Per-user memory GUARANTEE (the pod's request — capacity planning
+   * multiplies this by concurrent users). Empty = "1G" (the chart
+   * default). Kubernetes quantity or decimal bytes.
+   */
+  optional string memory_guarantee = 2 [(dev.planton.shared.options.default) = "1G"];
+
+  /**
+   * Per-user memory LIMIT (the OOM ceiling — a runaway notebook dies
+   * at it instead of taking the node down). Empty = unlimited (the
+   * chart default; set one in production).
+   */
+  string memory_limit = 3;
+
+  /**
+   * Per-user CPU guarantee (e.g. "0.5"). Empty = none (the chart
+   * default).
+   */
+  string cpu_guarantee = 4;
+
+  /**
+   * Per-user CPU limit. Empty = unlimited.
+   */
+  string cpu_limit = 5;
+
+  /**
+   * Per-user home storage. Empty = a dynamically-provisioned 10Gi
+   * ReadWriteOnce PVC per user, named `claim-<username>`, mounted at
+   * /home/jovyan — KEPT when the user's server stops AND when this
+   * resource is destroyed (user homes are data; delete `claim-*`
+   * PVCs explicitly, or the namespace, to reclaim them).
+   */
+  KubernetesJupyterHubUserStorage storage = 6;
+
+  /**
+   * The URL users land on after their server starts. Empty = the
+   * image's default (JupyterLab on current images). Set "/lab" to
+   * force JupyterLab or "/tree" for the classic notebook UI.
+   */
+  string default_url = 7;
+
+  /**
+   * Seconds the hub waits for a user server to become ready before
+   * failing the spawn. Empty = 300 (the chart default) — raise it
+   * for very large images on slow-pulling nodes (or rely on the
+   * pre-puller, which is the real fix).
+   */
+  optional int32 start_timeout_seconds = 8 [
+    (dev.planton.shared.options.default) = "300",
+    (buf.validate.field).int32 = {gte: 30}
+  ];
+
+  /**
+   * Extra environment variables injected into every user server
+   * (plain values — for secrets, mount them via `helm_values`
+   * singleuser.extraFiles or bake them into your image's tooling).
+   */
+  map<string, string> extra_env = 9;
+
+  /**
+   * The server-options menu shown at spawn time. Empty = no menu;
+   * every user gets the default image/sizing above. Each profile can
+   * override the image and sizing — "Small CPU", "GPU workstation",
+   * "Big-memory ETL".
+   */
+  repeated KubernetesJupyterHubProfile profiles = 10;
+}
+
+/**
+ * A notebook container image (combined registry/repository form plus
+ * a tag, matching the chart's image.name/image.tag split).
+ */
+message KubernetesJupyterHubImage {
+  /**
+   * Image repository including any registry host (e.g.
+   * "quay.io/jupyter/scipy-notebook").
+   */
+  string repository = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Image tag (e.g. "2026-07-28").
+   */
+  string tag = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * Per-user home storage. Exactly one arm.
+ */
+message KubernetesJupyterHubUserStorage {
+  /**
+   * Exactly one storage mode.
+   */
+  oneof mode {
+    option (buf.validate.oneof).required = true;
+
+    /**
+     * A dynamically-provisioned PVC per user (the chart default) —
+     * each user's home survives server stops and hub upgrades.
+     */
+    KubernetesJupyterHubDynamicStorage dynamic = 1;
+
+    /**
+     * One existing shared volume for all users, each user in a
+     * subPath. The PVC (and its storage class) must support the
+     * concurrent access your users create — ReadWriteMany for
+     * multi-node clusters.
+     */
+    KubernetesJupyterHubStaticStorage static = 2;
+
+    /**
+     * No persistent home — user workspaces are EPHEMERAL and vanish
+     * when the server stops (culling included). Only for stateless
+     * teaching setups where all work lands in external systems.
+     */
+    KubernetesJupyterHubNoStorage none = 3;
+  }
+}
+
+/**
+ * Dynamic per-user PVCs.
+ */
+message KubernetesJupyterHubDynamicStorage {
+  /**
+   * Per-user volume size. Empty = "10Gi" (the chart default).
+   */
+  optional string capacity = 1 [
+    (dev.planton.shared.options.default) = "10Gi",
+    (buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]+)?(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|k|m)?$"
+  ];
+
+  /**
+   * Storage class for user volumes. Empty = the cluster default.
+   */
+  string storage_class = 2;
+}
+
+/**
+ * A shared static volume for all user homes.
+ */
+message KubernetesJupyterHubStaticStorage {
+  /**
+   * Name of the existing PVC holding all user homes.
+   */
+  string pvc_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Per-user subPath template within the volume. Empty =
+   * "{username}".
+   */
+  optional string sub_path = 2 [(dev.planton.shared.options.default) = "{username}"];
+}
+
+/**
+ * Ephemeral user workspaces (storage.type: none).
+ */
+message KubernetesJupyterHubNoStorage {}
+
+/**
+ * A spawn-menu profile.
+ */
+message KubernetesJupyterHubProfile {
+  /**
+   * The name users see in the server-options menu.
+   */
+  string display_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * One-line description under the name.
+   */
+  string description = 2;
+
+  /**
+   * Pre-select this profile in the menu. At most one profile should
+   * set it.
+   */
+  bool default = 3;
+
+  /**
+   * Image override for this profile. Empty = the spec-level
+   * single_user image.
+   */
+  KubernetesJupyterHubImage image = 4;
+
+  /**
+   * Memory guarantee override (e.g. "4G").
+   */
+  string memory_guarantee = 5;
+
+  /**
+   * Memory limit override.
+   */
+  string memory_limit = 6;
+
+  /**
+   * CPU guarantee override.
+   */
+  string cpu_guarantee = 7;
+
+  /**
+   * CPU limit override.
+   */
+  string cpu_limit = 8;
+}
+
+/**
+ * User-pod scheduling machinery.
+ */
+message KubernetesJupyterHubScheduling {
+  /**
+   * Run the chart's user-scheduler (a kube-scheduler configured to
+   * PACK user pods onto the busiest fitting node instead of
+   * spreading them) — what lets cluster autoscalers actually scale
+   * user capacity DOWN. Empty = true (the chart default).
+   */
+  optional bool user_scheduler_enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Number of user-placeholder pods — dummy pods at lower priority
+   * than real users that keep spare capacity warm; a real user
+   * evicts one instantly instead of waiting for a node to boot.
+   * Sized like one default user each. Setting this above 0 enables
+   * the chart's pod-priority machinery. Empty = 0.
+   */
+  optional int32 user_placeholder_replicas = 2 [
+    (dev.planton.shared.options.default) = "0",
+    (buf.validate.field).int32 = {gte: 0}
+  ];
+
+  /**
+   * Node selector applied to the hub, proxy and other CORE pods (the
+   * chart's per-component nodeSelector surface; user pods schedule
+   * via the user-scheduler and `helm_values`
+   * singleuser.nodeSelector).
+   */
+  map<string, string> core_node_selector = 3;
+
+  /**
+   * Node selector applied to USER pods.
+   */
+  map<string, string> user_node_selector = 4;
+}
+
+/**
+ * Idle-server culling (the jupyterhub-idle-culler hub service).
+ */
+message KubernetesJupyterHubCulling {
+  /**
+   * Cull idle notebook servers. Empty = true (the chart default) —
+   * disable only when notebooks must never be stopped automatically.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Seconds of inactivity before a server is culled. Empty = 3600
+   * (the chart default).
+   */
+  optional int32 timeout_seconds = 2 [
+    (dev.planton.shared.options.default) = "3600",
+    (buf.validate.field).int32 = {gte: 60}
+  ];
+
+  /**
+   * Seconds between cull sweeps. Empty = 600 (the chart default).
+   */
+  optional int32 every_seconds = 3 [
+    (dev.planton.shared.options.default) = "600",
+    (buf.validate.field).int32 = {gte: 30}
+  ];
+
+  /**
+   * Cull servers older than this many seconds REGARDLESS of
+   * activity (a hard session lifetime). Empty/0 = no age cap (the
+   * chart default).
+   */
+  optional int32 max_age_seconds = 4 [(buf.validate.field).int32 = {gte: 0}];
+
+  /**
+   * Also delete the culled USER record (not just their server) —
+   * for authenticators minting throwaway identities. Off by default
+   * (matching the chart); never enable with real user rosters.
+   */
+  bool cull_users = 5;
+}
+
+/**
+ * Notebook-image pre-pulling.
+ */
+message KubernetesJupyterHubPrePuller {
+  /**
+   * Pre-pull the notebook image on every node BEFORE
+   * install/upgrade completes (a hook DaemonSet + an awaiter Job the
+   * release waits on). Makes first spawns fast at the cost of slower
+   * installs — the install is pulling gigabytes to every node.
+   * Empty = true (the chart default).
+   */
+  optional bool hook_enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Keep a DaemonSet running that pre-pulls the notebook image onto
+   * NEW nodes as they join — spawns on fresh autoscaled nodes skip
+   * the pull. Empty = true (the chart default).
+   */
+  optional bool continuous_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+}

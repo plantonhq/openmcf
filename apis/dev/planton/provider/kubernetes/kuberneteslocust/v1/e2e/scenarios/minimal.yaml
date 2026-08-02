@@ -1,39 +1,50 @@
+# The component defaults: the web-UI login ON with the
+# module-generated credential (upstream's open, anyone-can-start-tests
+# UI never ships), one worker, an inline locustfile swarming the
+# composed podinfo fixture. Co-located with the fixture's namespace
+# (create_namespace false). The verifier proves THE AUTH GATE
+# (anonymous stats read bounced to the login), THE LOGIN PROOF (the
+# generated credential signs in; a wrong password is refused) and THE
+# SWARM PROOF — a real distributed test started through the master's
+# own REST API drives real requests through the worker at the fixture
+# target with zero failures.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesLocust
 metadata:
-  name: e2e-locust-minimal
+  name: e2e-locust-min
+  annotations:
+    planton.dev/e2e-prerequisites: KubernetesDeployment
 spec:
   namespace:
-    value: e2e-locust-minimal
-  create_namespace: true
-  masterContainer:
+    value: e2e-locust
+  load_test:
+    inline:
+      locustfile_content: |
+        from locust import HttpUser, task, between
+
+
+        class PodinfoUser(HttpUser):
+            wait_time = between(0.1, 0.3)
+
+            @task
+            def get_index(self):
+                self.client.get("/")
+    target_host:
+      value: http://e2e-locust-target.e2e-locust.svc.cluster.local:9898
+  workers:
     replicas: 1
     resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
       limits:
         cpu: 500m
         memory: 256Mi
-      requests:
-        cpu: 50m
-        memory: 64Mi
-  workerContainer:
-    replicas: 1
+  master:
     resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
       limits:
         cpu: 500m
         memory: 256Mi
-      requests:
-        cpu: 50m
-        memory: 64Mi
-  loadTest:
-    name: e2e-test
-    mainPyContent: |
-      from locust import HttpUser, task, between
-
-      class SimpleUser(HttpUser):
-          wait_time = between(1, 2)
-
-          @task
-          def get_index(self):
-              self.client.get("/")
-    libFilesContent:
-      "__init__.py": ""

@@ -1023,6 +1023,31 @@ const (
 	// the FlinkDeployment custom resource that only the operator's CRDs
 	// admit and only the operator reconciles into a running Flink cluster.
 	CloudResourceKind_KubernetesFlinkDeployment CloudResourceKind = 935
+	// KubernetesPostgres is a prerequisite because JupyterHub's hub database
+	// composes a KubernetesPostgres in its external-database arm (the spec's
+	// FK defaults resolve onto its outputs) and the hub pod mounts that
+	// database's credential Secret before it can start.
+	CloudResourceKind_KubernetesJupyterHub CloudResourceKind = 936
+	// KubernetesPostgres is a prerequisite because MLflow's backend store
+	// composes a KubernetesPostgres in its production arm (FK defaults onto
+	// its outputs; the module composes the connection URI from its credential
+	// Secret), and KubernetesSeaweedFs because the artifact store's
+	// S3-compatible arm FK-defaults onto the SeaweedFS endpoint and
+	// credential Secret.
+	CloudResourceKind_KubernetesMlflow CloudResourceKind = 937
+	// KubernetesPostgres is a prerequisite because Trino's postgres
+	// catalogs compose a KubernetesPostgres (the catalog host and
+	// credential FK-default onto its outputs), and the pods read that
+	// database's credential Secret to resolve catalog passwords from
+	// environment.
+	CloudResourceKind_KubernetesTrino CloudResourceKind = 938
+	// KubernetesPostgres is a prerequisite because Superset's REQUIRED
+	// metadata database composes a KubernetesPostgres (FK defaults onto
+	// its outputs; the module composes the environment Secret from its
+	// credential Secret), and KubernetesValkey because the cache/broker
+	// arm FK-defaults onto a KubernetesValkey's service and password
+	// Secret.
+	CloudResourceKind_KubernetesSuperset CloudResourceKind = 939
 	// 950–969: Kubernetes GitOps and CI/CD
 	CloudResourceKind_KubernetesArgocd         CloudResourceKind = 950
 	CloudResourceKind_KubernetesArgoWorkflows  CloudResourceKind = 951
@@ -1658,6 +1683,10 @@ var (
 		933:  "KubernetesRayCluster",
 		934:  "KubernetesFlinkOperator",
 		935:  "KubernetesFlinkDeployment",
+		936:  "KubernetesJupyterHub",
+		937:  "KubernetesMlflow",
+		938:  "KubernetesTrino",
+		939:  "KubernetesSuperset",
 		950:  "KubernetesArgocd",
 		951:  "KubernetesArgoWorkflows",
 		952:  "KubernetesTektonOperator",
@@ -2270,6 +2299,10 @@ var (
 		"KubernetesRayCluster":                           933,
 		"KubernetesFlinkOperator":                        934,
 		"KubernetesFlinkDeployment":                      935,
+		"KubernetesJupyterHub":                           936,
+		"KubernetesMlflow":                               937,
+		"KubernetesTrino":                                938,
+		"KubernetesSuperset":                             939,
 		"KubernetesArgocd":                               950,
 		"KubernetesArgoWorkflows":                        951,
 		"KubernetesTektonOperator":                       952,
@@ -2738,7 +2771,7 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x04kind\x18\x02 \x01(\tR\x04kind*O\n" +
 	"\x18CloudResourceKindVersion\x12+\n" +
 	"'cloud_resource_kind_version_unspecified\x10\x00\x12\x06\n" +
-	"\x02v1\x10\x01*\xc2\xe8\x01\n" +
+	"\x02v1\x10\x01*\x86\xea\x01\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12,\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x0e\xa2\xf7\x04\n" +
@@ -3196,7 +3229,11 @@ const file_dev_planton_shared_cloudresourcekind_cloud_resource_kind_proto_rawDes
 	"\x19KubernetesKubeRayOperator\x10\xa4\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8skrayop\x121\n" +
 	"\x14KubernetesRayCluster\x10\xa5\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sraycl:\x02\xa4\a\x125\n" +
 	"\x17KubernetesFlinkOperator\x10\xa6\a\x1a\x17\xa2\xf7\x04\x13\b\x13\x10\x01\"\tk8sflnkop:\x02\xbe\x06\x126\n" +
-	"\x19KubernetesFlinkDeployment\x10\xa7\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sflnkd:\x02\xa6\a\x12(\n" +
+	"\x19KubernetesFlinkDeployment\x10\xa7\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8sflnkd:\x02\xa6\a\x120\n" +
+	"\x14KubernetesJupyterHub\x10\xa8\a\x1a\x15\xa2\xf7\x04\x11\b\x13\x10\x01\"\ak8sjhub:\x02\x85\a\x12/\n" +
+	"\x10KubernetesMlflow\x10\xa9\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\bk8smlflw:\x04\x85\a\x9b\a\x12,\n" +
+	"\x0fKubernetesTrino\x10\xaa\a\x1a\x16\xa2\xf7\x04\x12\b\x13\x10\x01\"\bk8strino:\x02\x85\a\x121\n" +
+	"\x12KubernetesSuperset\x10\xab\a\x1a\x18\xa2\xf7\x04\x14\b\x13\x10\x01\"\bk8ssprst:\x04\x85\a\x86\a\x12(\n" +
 	"\x10KubernetesArgocd\x10\xb6\a\x1a\x11\xa2\xf7\x04\r\b\x13\x10\x01\"\ak8sargo\x121\n" +
 	"\x17KubernetesArgoWorkflows\x10\xb7\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8sargowf\x122\n" +
 	"\x18KubernetesTektonOperator\x10\xb8\a\x1a\x13\xa2\xf7\x04\x0f\b\x13\x10\x01\"\tk8stktnop\x12,\n" +

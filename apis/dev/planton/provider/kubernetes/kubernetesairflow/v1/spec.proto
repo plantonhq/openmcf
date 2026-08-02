@@ -18,9 +18,13 @@ import "dev/planton/shared/options/options.proto";
  * (UI + REST API, HTTP 8080), the scheduler, the standalone DAG
  * processor, the triggerer (async deferred tasks, on by default with
  * its own PVC), Celery workers when a Celery executor is declared,
- * and the database-migration and admin-user bootstrap Jobs. This kind
- * models the Airflow 3 line only (`airflow_version >= 3.0.0`) — the
- * Airflow 2 webserver/flower-era surfaces are not modeled.
+ * and the database-migration and admin-user bootstrap Jobs. Those Jobs
+ * ship HOOK-LESS (`useHelmHooks: false`): the chart's post-install
+ * hook defaults deadlock against `wait-for-airflow-migrations` init
+ * containers under any wait-style install (Helm wait, both engines,
+ * Argo CD sync — verified live). This kind models the Airflow 3 line
+ * only (`airflow_version >= 3.0.0`) — the Airflow 2 webserver/flower-
+ * era surfaces are not modeled.
  *
  * BRING YOUR OWN DATABASE — the chart's bundled PostgreSQL subchart
  * never ships (upstream marks it non-production and its Bitnami image
@@ -215,6 +219,13 @@ message KubernetesAirflowSpec {
    * only — never enable in production (the examples poll external
    * sites and clutter the DAG list). Matches the chart default
    * (false).
+   *
+   * WIRING: the module sets this via the `AIRFLOW__CORE__LOAD_EXAMPLES`
+   * env var, NOT `config.core.load_examples`. The official image bakes
+   * `AIRFLOW__CORE__LOAD_EXAMPLES=False` as a container env, and
+   * Airflow's precedence puts env above airflow.cfg — a cfg-only True
+   * is silently defeated (verified live: examples never parsed; the
+   * chart's own docs prescribe the env route).
    */
   bool load_examples = 15;
 
@@ -689,6 +700,15 @@ message KubernetesAirflowGitSync {
    * The git revision to sync — a branch name, tag, or commit hash
    * (git-sync v4 `ref`). Empty = the repository's default branch
    * (HEAD).
+   *
+   * RENDERING: the chart emits BOTH env generations unconditionally —
+   * `GITSYNC_REF` from `ref` (v4) and `GIT_SYNC_BRANCH` from `branch`
+   * (legacy) — and git-sync v4 translates the deprecated `--branch`
+   * OVER `--ref`. A ref-only render therefore silently syncs the
+   * chart's default branch (`v2-2-stable`, verified live). The module
+   * always writes BOTH keys to this field's value — including the
+   * empty string, which neutralizes the chart defaults so Empty=HEAD
+   * holds (git-sync treats empty ref/branch as HEAD).
    */
   string ref = 2;
 

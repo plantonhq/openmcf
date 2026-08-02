@@ -1,0 +1,17 @@
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTrino
+metadata:
+  name: trino
+spec:
+  namespace:
+    value: trino
+  create_namespace: true
+  # Everything else is the component's defaults — and the defaults are
+  # deliberately SECURED and immediately queryable: PASSWORD
+  # authentication ON with a module-generated admin (Secret
+  # `trino-auth`, key `password` — upstream ships NO authentication;
+  # that never deploys from this kind), the internal-communication
+  # shared secret configured (Trino requires it once auth is on), a
+  # coordinator + 2 workers, and the chart's in-image tpch/tpcds
+  # sample catalogs so `SELECT count(*) FROM tpch.tiny.nation` answers
+  # on a fresh install.

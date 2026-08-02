@@ -275,6 +275,12 @@ destroy.
 ### Phase 6: Terraform Implementation (Rules 013, 015)
 
 15. **013-terraform-module** - Generate tf/ (variables.tf, main.tf, locals.tf, outputs.tf, provider.tf), richly commented to the module-comment bar
+    - **variables.tf is GENERATED, never hand-mirrored**: run
+      `planton tofu generate-variables <Kind> --output-file <kind>/v1/iac/tf/variables.tf`
+      from the working tree (after the proto stubs regenerate) and commit the generator's
+      output (`tofu fmt` it). A hand-written mirror silently drops fields — the module then
+      never renders them and every offline gate stays green (the drift surfaces only live,
+      as a spec field that does nothing). Re-run the generator after every spec change.
     - Rule 013 ends with the mandatory **PARITY WITH PULUMI** reconciliation (see that rule).
       Terraform is authored AFTER Pulumi in the sequence, so it is reconciled field-by-field
       against the existing Pulumi module — fixing whichever engine is wrong, since neither is
@@ -677,6 +683,45 @@ proof resource private and assert the anonymous data-plane access is
 rejected — the strongest gate is the one a customer's security actually
 depends on.
 
+**A browser-session gate discriminates on the server's OWN login
+contract, never on a redirect-followed page fetch.** Web apps redirect
+anonymous page requests to their login page, so "GET a protected page
+with a redirect-following client and expect non-200" is a false
+contract: the refused session lands on the login page and reads 200
+exactly like a signed-in one (caught live: the probe reported
+wrong-password sign-ins as successes against a correctly-secured
+install, on every lane). Read the login handler at the pin for the
+refusal status (e.g. a 403 form re-render vs a success redirect) and
+assert THAT on the login POST itself; then prove the session on an
+authenticated API identity route (200 + the identity for a signed-in
+jar, 401/403 for an anonymous one) — API routes answer status codes,
+never redirects, so they discriminate under any client.
+
+**A verifier's tunnel Service names and pod selectors are read from the
+chart's Service and pod templates at the pin, never inferred from the
+Deployment-name pattern.** A chart that names its Deployments
+`<fullname>-<component>` may still name the component's Service plain
+`<fullname>` (caught by review: a tunnel to `svc/<name>-coordinator`
+against a chart whose coordinator Service is `<name>` — every lane would
+have failed at tunnel open). Read `service-*.yaml` for the name and the
+pod template's `labels:` block for the selector, and verify the chosen
+selector is UNIQUE against every sibling workload the chart renders
+(workers, schedulers, hook Jobs).
+
+**A template read is only as truthful as the clone's checked-out REF —
+verify it against the pinned chart version before trusting the read.**
+When one clone serves two pins (the app tag for image/server truths, the
+chart tag for template truths), its working tree sits on whichever ref
+was needed last, and a template read from the wrong ref produces
+confident false conclusions (caught live: a pod-selector "fix" built on
+an app-tag checkout whose in-tree chart was several minor versions
+behind the served chart — the old chart stamped legacy `app`/`release`
+labels, the served chart stamps `app.kubernetes.io/*`, and the "fixed"
+selector matched zero pods). Before any template-derived claim, confirm
+`git describe --tags` (or the in-tree `Chart.yaml` version) matches the
+pinned CHART version — and when live pods disagree with a template read,
+trust the pods and re-check the ref.
+
 **A chart's CRD posture is read from WHERE the CRDs live, never assumed
 from chart ownership language.** `crds/` directory = Helm's install-once
 posture: created on first install, never upgraded, NEVER removed on
@@ -831,6 +876,24 @@ as a resource that sits NotReady with "class not found". When the live
 check contradicts the upstream example, the live truth is what goes on
 the reader surfaces (spec comments, presets, docs), marked as verified
 live.
+
+**The same discipline applies to the official image's VARIANT when the
+module owns the manifests.** Projects that publish a bare package image
+(`pip install <app>` on a slim base) often publish a dependency-complete
+sibling (`-full`, `-all`, an extras matrix) — and the bare variant may
+be unable to BOOT the arms the spec models (database drivers,
+object-store clients, even the auth feature's own dependency can live
+in extras). Before pinning a default image, read the image's OWN build
+file at the pin (its Dockerfile/extras list, not the tag name) and
+verify every modeled arm's dependency is in the chosen variant; probe
+the chosen tag's registry manifest. A driverless default crash-loops
+at first boot behind every green offline gate. Grep the server's own
+startup/create-app path for hard-required environment (signing keys,
+secret-key material a framework refuses to start without): each such
+requirement is module-generated Secret material wired by design, never
+discovered by a customer at boot — and when the server requires the
+value be consistent across replicas, sourcing every replica from ONE
+module-owned Secret satisfies it by construction.
 
 **Model the upstream's built-in sandbox arm when one exists.** Cloud-talking
 addons (DNS publishers, secret-store operators, ...) cannot prove their

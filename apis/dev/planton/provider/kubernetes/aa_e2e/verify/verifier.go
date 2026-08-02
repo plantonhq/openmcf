@@ -27,7 +27,6 @@ var helmTier2Kinds = map[string]bool{
 	// Tier 2 Helm applications
 	"kubernetesjenkins": true,
 	"kubernetesharbor":  true,
-	"kuberneteslocust":  true,
 	// Helm applications with dedicated behavioral verifiers (the
 	// dispatch cases win; these rows are the generic fallback).
 	// NOTE kubernetesopenbao is deliberately NOT listed: its pods are
@@ -40,6 +39,7 @@ var helmTier2Kinds = map[string]bool{
 	"kubernetesqdrant":    true,
 	"kubernetestemporal":  true,
 	"kubernetesnats":      true,
+	"kuberneteslocust":    true,
 }
 
 // crdInstallKinds maps manifest kind values (lowercased) to their expected CRD
@@ -856,6 +856,91 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			DeliveryProof: strings.Contains(manifestPath, "behavioral-dag-delivery"),
 		}, nil
 
+	// A JupyterHub installation: the hub + proxy rolled out (chart-fixed
+	// bare names), THE AUTH GATE (anonymous hub-API read rejected AND a
+	// wrong-password sign-in refused — the chart's open-door default
+	// must be dead), a REAL sign-in with the module-generated shared
+	// password, and THE SPAWN PROOF on every lane — the signed-in
+	// user's server spawns a real jupyter-<username> pod through
+	// KubeSpawner and the hub reports it ready; the proof server and
+	// its runtime home PVC are swept. The behavioral-spawn scenario
+	// (recognized by name) replaces the hub pod UID-verified and proves
+	// a fresh sign-in finds the same account and spawns again — hub
+	// state lives in the database. Destroy treats surviving `claim-*`
+	// user PVCs as DESIGNED and sweeps them.
+	case "kubernetesjupyterhub":
+		return &JupyterHubVerifier{
+			Namespace:     info.Namespace,
+			Name:          info.Name,
+			SpawnUsername: "e2everifier",
+			StateProof:    strings.Contains(manifestPath, "behavioral-spawn"),
+		}, nil
+
+	// An MLflow tracking server: the module-owned Deployment rolled
+	// out, /health answering, THE AUTH GATE (anonymous tracking-API
+	// read rejected + upstream's admin/password1234 default dead), and
+	// THE TRACKING PROOF on every lane — an experiment, a run with a
+	// param + metric, an artifact round-tripped through the server's
+	// own proxy, the run FINISHED. The behavioral-durability scenario
+	// (recognized by name) replaces the server pod UID-verified and
+	// re-reads the experiment, metric and artifact bytes — state lives
+	// in the composed database and object store. Destroy is clean by
+	// design (module-owned manifests, no CRDs).
+	case "kubernetesmlflow":
+		spec := manifestSpecMap(manifestPath)
+		return &MlflowVerifier{
+			Namespace:     info.Namespace,
+			Name:          info.Name,
+			AdminUsername: mlflowAdminUsername(spec),
+			AuthEnabled:   mlflowAuthEnabled(spec),
+			StateProof:    strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// A Trino cluster: coordinator + worker rollouts, THE AUTH GATE
+	// (anonymous statement submission rejected — upstream ships no
+	// authentication and that never deploys), and THE QUERY PROOF on
+	// every lane (a real query through the statement API as the
+	// generated admin, answered through real workers). The
+	// full-surface scenario adds THE FEDERATION PROOF (the composed
+	// PostgreSQL catalog answers, and a cross-catalog join runs in
+	// one statement); the behavioral scenario adds THE RECOVERY PROOF
+	// (a UID-verified coordinator replacement answers the same query
+	// — the engine is stateless by design). Destroy is clean: a plain
+	// Helm release plus module-owned Secrets, no CRDs.
+	case "kubernetestrino":
+		spec := manifestSpecMap(manifestPath)
+		return &TrinoVerifier{
+			Namespace:       info.Namespace,
+			Name:            info.Name,
+			AdminUsername:   trinoAdminUsername(spec),
+			AuthEnabled:     trinoAuthEnabled(spec),
+			WorkerReplicas:  trinoWorkerReplicas(spec),
+			FederationProof: strings.Contains(manifestPath, "full-surface"),
+			CatalogName:     "warehouse",
+			RecoveryProof:   strings.Contains(manifestPath, "behavioral"),
+		}, nil
+
+	// An Apache Superset deployment: the web rollout (gated on the
+	// init Job's schema migration), /health, THE AUTH GATE (anonymous
+	// API read rejected + the chart's documented admin/admin default
+	// dead), a real sign-in through the security API, and THE
+	// DASHBOARD PROOF on every lane (a dashboard created through the
+	// REST API with the JWT+CSRF contract real clients use, read
+	// back, and swept). The behavioral-durability scenario replaces
+	// the web pod UID-verified and finds the same dashboard from a
+	// fresh session — BI state lives in the composed PostgreSQL.
+	// Destroy is clean: a plain Helm release plus module-owned
+	// Secrets, no CRDs.
+	case "kubernetessuperset":
+		spec := manifestSpecMap(manifestPath)
+		return &SupersetVerifier{
+			Namespace:     info.Namespace,
+			Name:          info.Name,
+			AdminUsername: supersetAdminUsername(spec),
+			WorkerEnabled: supersetWorkerEnabled(spec),
+			StateProof:    strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
 	// The Apache Spark operator: rollout + both spark.apache.org CRDs
 	// established + THE JOB PROOF on every lane (a verifier-owned
 	// SparkApplication — the in-image SparkPi — runs to Succeeded
@@ -1374,6 +1459,30 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Namespace:  info.Namespace,
 			Name:       info.Name,
 			Durability: strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// A Locust load-testing cluster: master and worker rollouts, THE
+	// AUTH GATE (anonymous stats read bounced to the login —
+	// upstream's open web UI never ships), THE LOGIN PROOF (wrong
+	// password refused, the module-generated credential signs in
+	// through the platform-managed backend), and THE SWARM PROOF on
+	// every lane — a real distributed test through the master's own
+	// REST API drives real requests through registered workers at the
+	// composed fixture target with zero failures. The behavioral
+	// scenario (recognized by name) adds THE RECONNECT PROOF: a
+	// UID-verified master replacement, the SAME session still
+	// authenticating (the stable session-signing key design), workers
+	// re-registered, and a second swarm. Destroy is clean: a plain
+	// Helm release plus module-owned ConfigMaps and Secret.
+	case "kuberneteslocust":
+		spec := manifestSpecMap(manifestPath)
+		return &LocustVerifier{
+			Namespace:       info.Namespace,
+			Name:            info.Name,
+			WebLoginEnabled: locustWebLoginEnabled(spec),
+			Username:        locustUsername(spec),
+			WorkerReplicas:  locustWorkerReplicas(spec),
+			ReconnectProof:  strings.Contains(manifestPath, "behavioral"),
 		}, nil
 
 	// The GitHub Actions runner scale set controller: the controller

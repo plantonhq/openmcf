@@ -11,6 +11,7 @@ go_library(
         "outputs.go",
         "values.go",
         "vars.go",
+        "watch_namespaces.go",
     ],
     importpath = "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesflinkoperator/v1/iac/pulumi/module",
     visibility = ["//visibility:public"],

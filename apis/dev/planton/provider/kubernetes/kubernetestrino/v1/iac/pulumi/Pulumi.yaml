@@ -1,0 +1,3 @@
+name: kubernetes-trino
+runtime: go
+description: Trino distributed SQL query engine from the official trinodb Helm chart with secured-by-default password authentication, secret-native catalog composition over Trino's env-substitution mechanism, worker autoscaling, and fault-tolerant execution

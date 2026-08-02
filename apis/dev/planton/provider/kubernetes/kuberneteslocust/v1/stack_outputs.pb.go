@@ -7,6 +7,7 @@
 package kuberneteslocustv1
 
 import (
+	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -21,32 +22,43 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// locust-kubernetes stack outputs.
+// *
+// **KubernetesLocustStackOutputs** — the composition handles a
+// deployed Locust exports. Operators open the web UI through the
+// master endpoint (or the port-forward command); external workers
+// and automation dial the master bind endpoint; the web-UI
+// credential is exported as a Secret handle.
 type KubernetesLocustStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// kubernetes namespace in which locust-kubernetes is created.
+	// Namespace Locust runs in.
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// kubernetes service name for locust-kubernetes.
-	// ex: main-locust-kubernetes
-	// in the above example, "main" is the name of the locust-kubernetes
-	Service string `protobuf:"bytes,2,opt,name=service,proto3" json:"service,omitempty"`
-	// command to setup port-forwarding to open locust-kubernetes from developers laptop.
-	// this might come handy when locust-kubernetes ingress is disabled for security reasons.
-	// this is rendered by combining locust_kubernetes_kubernetes_service and kubernetes_namespace
-	// ex: kubectl port-forward svc/locust_kubernetes_kubernetes_service -n kubernetes_namespace 6379:6379
-	// running the command from this attribute makes it possible to access locust-kubernetes using http://localhost:8080/locust
-	PortForwardCommand string `protobuf:"bytes,3,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
-	// kubernetes endpoint to connect to locust-kubernetes from the web browser.
-	// ex: main-locust-kubernetes.namespace.svc.cluster.local:6379
-	KubeEndpoint string `protobuf:"bytes,4,opt,name=kube_endpoint,json=kubeEndpoint,proto3" json:"kube_endpoint,omitempty"`
-	// public endpoint to open locust-kubernetes from clients outside kubernetes.
-	// ex: https://lock8s-planton-pcs-dev-main.dev.planton.live
-	ExternalHostname string `protobuf:"bytes,5,opt,name=external_hostname,json=externalHostname,proto3" json:"external_hostname,omitempty"`
-	// internal endpoint to open locust-kubernetes from clients inside kubernetes.
-	// ex: https://lock8s-planton-pcs-dev-main-internal.dev.planton.live
-	InternalHostname string `protobuf:"bytes,6,opt,name=internal_hostname,json=internalHostname,proto3" json:"internal_hostname,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Name of the master Service (`<name>` at default naming) — the
+	// handle exposure kinds route to. Serves the web UI (8089) and
+	// the worker-connect ports (5557/5558).
+	MasterService string `protobuf:"bytes,2,opt,name=master_service,json=masterService,proto3" json:"master_service,omitempty"`
+	// In-cluster web endpoint,
+	// `http://<master_service>.<namespace>.svc.cluster.local:8089` —
+	// the web UI and REST API (with login on, pair it with the
+	// credential below).
+	WebEndpoint string `protobuf:"bytes,3,opt,name=web_endpoint,json=webEndpoint,proto3" json:"web_endpoint,omitempty"`
+	// In-cluster worker-connect endpoint,
+	// `<master_service>.<namespace>.svc.cluster.local:5557` — where
+	// additional workers (e.g. from other namespaces) register with
+	// the master.
+	MasterBindEndpoint string `protobuf:"bytes,4,opt,name=master_bind_endpoint,json=masterBindEndpoint,proto3" json:"master_bind_endpoint,omitempty"`
+	// The web-UI login username (`web_ui_auth.username`, default
+	// "locust"). Empty when the login is disabled or the run is
+	// headless.
+	WebUiUsername string `protobuf:"bytes,5,opt,name=web_ui_username,json=webUiUsername,proto3" json:"web_ui_username,omitempty"`
+	// The web-UI credential: the Secret and key holding the login
+	// password (module-generated `<name>-auth`, key `password`).
+	// Empty when the login is disabled or the run is headless.
+	WebUiPasswordSecret *kubernetes.KubernetesSecretKey `protobuf:"bytes,6,opt,name=web_ui_password_secret,json=webUiPasswordSecret,proto3" json:"web_ui_password_secret,omitempty"`
+	// Port-forward command for reaching the web UI from a
+	// workstation when no exposure is composed.
+	PortForwardCommand string `protobuf:"bytes,7,opt,name=port_forward_command,json=portForwardCommand,proto3" json:"port_forward_command,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *KubernetesLocustStackOutputs) Reset() {
@@ -86,11 +98,39 @@ func (x *KubernetesLocustStackOutputs) GetNamespace() string {
 	return ""
 }
 
-func (x *KubernetesLocustStackOutputs) GetService() string {
+func (x *KubernetesLocustStackOutputs) GetMasterService() string {
 	if x != nil {
-		return x.Service
+		return x.MasterService
 	}
 	return ""
+}
+
+func (x *KubernetesLocustStackOutputs) GetWebEndpoint() string {
+	if x != nil {
+		return x.WebEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesLocustStackOutputs) GetMasterBindEndpoint() string {
+	if x != nil {
+		return x.MasterBindEndpoint
+	}
+	return ""
+}
+
+func (x *KubernetesLocustStackOutputs) GetWebUiUsername() string {
+	if x != nil {
+		return x.WebUiUsername
+	}
+	return ""
+}
+
+func (x *KubernetesLocustStackOutputs) GetWebUiPasswordSecret() *kubernetes.KubernetesSecretKey {
+	if x != nil {
+		return x.WebUiPasswordSecret
+	}
+	return nil
 }
 
 func (x *KubernetesLocustStackOutputs) GetPortForwardCommand() string {
@@ -100,39 +140,19 @@ func (x *KubernetesLocustStackOutputs) GetPortForwardCommand() string {
 	return ""
 }
 
-func (x *KubernetesLocustStackOutputs) GetKubeEndpoint() string {
-	if x != nil {
-		return x.KubeEndpoint
-	}
-	return ""
-}
-
-func (x *KubernetesLocustStackOutputs) GetExternalHostname() string {
-	if x != nil {
-		return x.ExternalHostname
-	}
-	return ""
-}
-
-func (x *KubernetesLocustStackOutputs) GetInternalHostname() string {
-	if x != nil {
-		return x.InternalHostname
-	}
-	return ""
-}
-
 var File_dev_planton_provider_kubernetes_kuberneteslocust_v1_stack_outputs_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kuberneteslocust_v1_stack_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Gdev/planton/provider/kubernetes/kuberneteslocust/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kuberneteslocust.v1\"\x87\x02\n" +
+	"Gdev/planton/provider/kubernetes/kuberneteslocust/v1/stack_outputs.proto\x123dev.planton.provider.kubernetes.kuberneteslocust.v1\x1a0dev/planton/provider/kubernetes/kubernetes.proto\"\xfd\x02\n" +
 	"\x1cKubernetesLocustStackOutputs\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x18\n" +
-	"\aservice\x18\x02 \x01(\tR\aservice\x120\n" +
-	"\x14port_forward_command\x18\x03 \x01(\tR\x12portForwardCommand\x12#\n" +
-	"\rkube_endpoint\x18\x04 \x01(\tR\fkubeEndpoint\x12+\n" +
-	"\x11external_hostname\x18\x05 \x01(\tR\x10externalHostname\x12+\n" +
-	"\x11internal_hostname\x18\x06 \x01(\tR\x10internalHostnameB\xa9\x03\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12%\n" +
+	"\x0emaster_service\x18\x02 \x01(\tR\rmasterService\x12!\n" +
+	"\fweb_endpoint\x18\x03 \x01(\tR\vwebEndpoint\x120\n" +
+	"\x14master_bind_endpoint\x18\x04 \x01(\tR\x12masterBindEndpoint\x12&\n" +
+	"\x0fweb_ui_username\x18\x05 \x01(\tR\rwebUiUsername\x12i\n" +
+	"\x16web_ui_password_secret\x18\x06 \x01(\v24.dev.planton.provider.kubernetes.KubernetesSecretKeyR\x13webUiPasswordSecret\x120\n" +
+	"\x14port_forward_command\x18\a \x01(\tR\x12portForwardCommandB\xa9\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kuberneteslocust.v1B\x11StackOutputsProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteslocust/v1;kuberneteslocustv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kuberneteslocust.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kuberneteslocust\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kuberneteslocust\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kuberneteslocust::V1b\x06proto3"
 
 var (
@@ -149,14 +169,16 @@ func file_dev_planton_provider_kubernetes_kuberneteslocust_v1_stack_outputs_prot
 
 var file_dev_planton_provider_kubernetes_kuberneteslocust_v1_stack_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_dev_planton_provider_kubernetes_kuberneteslocust_v1_stack_outputs_proto_goTypes = []any{
-	(*KubernetesLocustStackOutputs)(nil), // 0: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustStackOutputs
+	(*KubernetesLocustStackOutputs)(nil),   // 0: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustStackOutputs
+	(*kubernetes.KubernetesSecretKey)(nil), // 1: dev.planton.provider.kubernetes.KubernetesSecretKey
 }
 var file_dev_planton_provider_kubernetes_kuberneteslocust_v1_stack_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustStackOutputs.web_ui_password_secret:type_name -> dev.planton.provider.kubernetes.KubernetesSecretKey
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kuberneteslocust_v1_stack_outputs_proto_init() }

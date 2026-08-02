@@ -18,7 +18,7 @@ import (
 //
 // Chart-default-matching values render only on divergence, so the
 // rendered values stay minimal on both engines — with the deliberate
-// always-rendered exceptions called out inline (fullnameOverride,
+// always-rendered exceptions called out inline (nameOverride,
 // image.tag, the keystore wiring whenever the webhook is on) and ONE
 // key re-pinned AFTER the escape-hatch merge (see the bottom of this
 // function).
@@ -26,9 +26,16 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 	spec := locals.Spec
 
 	values := map[string]interface{}{
-		// fullnameOverride pins the chart's fullname to the resource
-		// name (the catalog's Helm-kind identity convention) — every
-		// fullname-derived fallback name hangs off it.
+		// nameOverride is THIS chart's identity pin: the operator
+		// Deployment (and its selector labels) render from the
+		// `flink-operator.name` helper (default .Chart.Name |
+		// nameOverride) — fullnameOverride alone is a no-op for the
+		// Deployment and leaves it at the chart-constant
+		// `flink-kubernetes-operator` (verified live: the pinned name
+		// was NotFound while the chart-named Deployment served). Both
+		// keys are set so any fullname-derived fallback also hangs off
+		// the resource name.
+		"nameOverride":     locals.ReleaseName,
 		"fullnameOverride": locals.ReleaseName,
 	}
 

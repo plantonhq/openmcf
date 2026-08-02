@@ -74,6 +74,10 @@ variable "spec" {
           name = string
           key = string
         })
+        # Exact jar under /opt/flink/opt — without this the S3 plugin
+        # stays disabled and every s3:// path fails (verified live: TF
+        # twin silently dropped the field when it was absent here).
+        builtin_plugin_jar = optional(string, "")
       }))
     }))
     mode = optional(string)

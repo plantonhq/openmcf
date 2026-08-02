@@ -1,0 +1,3 @@
+name: kubernetes-superset
+runtime: go
+description: Apache Superset business-intelligence platform from the official ASF Helm chart with a module-composed environment-Secret credential contract, external-only metadata database and cache composition, secured-by-default admin and session-signing keys, and Celery worker/beat/flower/websocket/MCP components

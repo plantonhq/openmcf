@@ -4,8 +4,19 @@ metadata:
   name: kuberneteslocust
 spec:
   tier: 2
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
-  timeout_minutes: 15
+  # Rebuilt on the deliveryhero chart 0.35.0 = Locust 2.32.2
+  # (OCI-served; the official locustio image) — secured-by-default
+  # web-UI login (upstream ships the UI open; the module delivers a
+  # login backend through Locust's own extension seam with the
+  # credential in Secret-projected files), ConfigMap-delivered inline
+  # scripts with content-hash rollouts, secret-native test env, worker
+  # HPA/KEDA arms. Offline-validated (35 spec tests, both engines'
+  # plan/preview proofs across minimal/full/keda/headless shapes with
+  # rendered-value spot-checks, leak greps and a byte-identical
+  # cross-engine config checksum); the prior green predates this
+  # rebuild and is honestly reset — awaiting the live lanes.
+  status: pending_proof
+  validated_provisioners: []
+  # Small images (locust + podinfo); the full-surface lane's
+  # pip-install-at-pod-start rides the readiness window.
+  timeout_minutes: 20

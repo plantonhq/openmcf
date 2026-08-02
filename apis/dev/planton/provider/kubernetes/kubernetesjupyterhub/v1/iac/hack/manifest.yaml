@@ -1,0 +1,95 @@
+# Full-surface shape: the external-PostgreSQL hub database, OIDC sign-in
+# (Keycloak-shaped), sized user servers with a spawn-menu, the packing
+# scheduler with warm placeholders, tuned culling and an escape-hatch
+# entry — the offline plan/preview proof for the widest typed rendering.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesJupyterHub
+metadata:
+  name: jupyterhub-full
+spec:
+  namespace:
+    value: jupyterhub-full
+  createNamespace: true
+  chartVersion: 4.4.0
+  hub:
+    database:
+      postgres:
+        host:
+          value: hub-pg-rw
+        port: 5432
+        databaseName: jupyterhub
+        username: jupyterhub
+        passwordSecret:
+          secretName:
+            value: hub-pg-app
+          secretKey: password
+    concurrentSpawnLimit: 32
+    activeServerLimit: 200
+    allowNamedServers: true
+    namedServerLimitPerUser: 2
+    shutdownOnLogout: true
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+  authentication:
+    oidc:
+      clientId: jupyterhub
+      clientSecretSecret:
+        secretName: kc-oauth
+        secretKey: client-secret
+      oauthCallbackUrl: https://hub.example.com/hub/oauth_callback
+      authorizeUrl: https://kc.example.com/realms/eng/protocol/openid-connect/auth
+      tokenUrl: https://kc.example.com/realms/eng/protocol/openid-connect/token
+      userdataUrl: https://kc.example.com/realms/eng/protocol/openid-connect/userinfo
+      scopes:
+        - openid
+        - email
+      usernameClaim: email
+      loginService: Keycloak
+    adminUsers:
+      - ada
+  proxy:
+    serviceType: ClusterIP
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  singleUser:
+    image:
+      repository: quay.io/jupyter/scipy-notebook
+      tag: "2026-07-28"
+    memoryGuarantee: 2G
+    memoryLimit: 4G
+    cpuGuarantee: "0.5"
+    cpuLimit: "2"
+    defaultUrl: /lab
+    startTimeoutSeconds: 600
+    storage:
+      dynamic:
+        capacity: 20Gi
+    profiles:
+      - displayName: Small
+        description: Default 2G workspace
+        default: true
+        memoryGuarantee: 2G
+        memoryLimit: 2G
+      - displayName: Large
+        description: Big-memory ETL
+        memoryLimit: 8G
+        cpuLimit: "4"
+  scheduling:
+    userSchedulerEnabled: true
+    userPlaceholderReplicas: 2
+  culling:
+    enabled: true
+    timeoutSeconds: 1800
+    everySeconds: 300
+  prePuller:
+    hookEnabled: true
+    continuousEnabled: true
+  helmValues: |
+    debug:
+      enabled: true

@@ -1,0 +1,105 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetestrino
+spec:
+  # Helm-release class: one release named after metadata.name (the
+  # module pins fullnameOverride to the same value, so every chart
+  # child is `<name>-coordinator`, `<name>-worker`, `<name>-catalog`…
+  # and travels with the release import), plus the optional anchor
+  # namespace and the module-owned Secrets with their random
+  # companions. Conditional resources exist only with their arms: the
+  # `-auth` Secret + admin random only when the module generates the
+  # admin credential (bring-your-own password.db creates nothing), the
+  # `-internal` Secret + shared-secret random whenever auth is enabled.
+  import_normalized:
+    - tofu_resource_name: auth
+      sub_paths:
+        # The key ITSELF contains a dot, so it rides the bracket-quoted
+        # segment grammar (a plain dotted path would walk
+        # data → password → db and never match the real key).
+        - path: data["password.db"]
+          reason: >-
+            The htpasswd line wires random_password's bcrypt_hash, and
+            the random provider RECOMPUTES that hash with a fresh salt
+            on import (the class was proven live on the registry
+            kind's htpasswd Secret). The first post-adoption apply
+            rewrites the line to an equivalent hash of the SAME
+            password — functionally a no-op: the plaintext `password`
+            key and the server's PASSWORD authenticator keep matching;
+            drift on any sibling key still fails closed.
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares
+        the resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "trino".
+    # ── the optional anchor namespace ──────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    # ── the admin credential Secret + random companion ──────────────────
+    - name: secret_name
+      tofu_resource_name: auth
+      derivations:
+        - from_metadata_name_suffix: "-auth"
+      where_to_find: >-
+        "<resource-name>-auth" when the module generated the admin
+        credential (auth disabled or a bring-your-own password.db
+        Secret creates nothing) — keys `password` (plaintext) and
+        `password.db` (the htpasswd file the chart mounts);
+        `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: admin
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-auth"
+            key: password
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-auth -n <namespace>
+        -o jsonpath='{.data.password}' | base64 -d
+    # ── the internal-communication shared secret + random companion ─────
+    - name: secret_name
+      tofu_resource_name: internal
+      derivations:
+        - from_metadata_name_suffix: "-internal"
+      where_to_find: >-
+        "<resource-name>-internal" whenever auth is enabled (key
+        `shared-secret` — the internal-communication credential every
+        node presents) — `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: internal
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: internal_shared_secret
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-internal"
+            key: shared-secret
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-internal -n <namespace>
+        -o jsonpath='{.data.shared-secret}' | base64 -d

@@ -31,7 +31,14 @@ host to `<name>-pgbouncer`, database to the ini aliases
 (`<name>-metadata`/`<name>-result-backend`) — and the module composes
 `pgbouncer.ini` + `users.txt` into the pooler's config Secret
 (`pgbouncer.configSecretName`), because the chart's own rendering path
-embeds the raw password in values.
+embeds the raw password in values. The pooler's metrics-exporter
+sidecar (unconditional at this pin) gets the same treatment: the
+chart's own stats Secret composes the exporter DSN from split values
+(defaults `postgres:postgres` — a user the auth_file never carries, so
+the sidecar crash-loops; verified live), so the module composes
+`<name>-pgbouncer-stats` (key `connection`) with the metadata user —
+who is also the ini's `stats_users` grant — through the chart's
+`statsSecretName` seam.
 
 ## Render-time random credentials, replaced
 
@@ -57,6 +64,22 @@ credential never appears in a rendered pod spec. The chart's default
 `config` pins the FAB auth manager, so password login and
 `airflow users create` are the chart's own posture at this pin.
 
+## The bootstrap Jobs run hook-less
+
+The chart defaults its migration and create-user Jobs to post-install
+Helm HOOKS — and Helm runs post-install hooks only AFTER the release
+wait completes, while every component's `wait-for-airflow-migrations`
+init container blocks on the migrations that hook would apply. Under
+any wait-style install (both engines wait; Argo CD's sync waits the
+same way) that is a deadlock by construction: verified live — no Job
+existed while every init container crash-looped on "unapplied
+migrations". The module renders `useHelmHooks: false` on BOTH Jobs, so
+they apply WITH the release as ordinary resources and the init
+containers converge on them. The chart's own
+`ttlSecondsAfterFinished: 300` default self-deletes the finished Jobs,
+which keeps day-2 applies clean (each upgrade recreates them fresh —
+no immutable-Job patch conflicts).
+
 ## Executor and broker pairing
 
 `executor` mirrors the chart: a plain string, comma-separated
@@ -81,6 +104,27 @@ KubernetesOtelCollector composes naturally. Airflow's remote WRITE
 path (S3/GCS remote_logging) is an airflow.cfg surface — it rides
 `helm_values` under `config.logging`, taught rather than typed at this
 pin.
+
+## `load_examples` rides the env var, not airflow.cfg
+
+The official image bakes `AIRFLOW__CORE__LOAD_EXAMPLES=False` as a
+container env, and Airflow's precedence puts env above airflow.cfg —
+a cfg-only `config.core.load_examples: "True"` is silently defeated
+(verified live: examples never parsed). The module therefore sets
+`AIRFLOW__CORE__LOAD_EXAMPLES=True` through the chart's top-level
+`env` list when the field is true — the chart's own docs prescribe
+the same route.
+
+## git-sync `ref` must neutralize the chart's legacy `branch`
+
+The chart renders BOTH env generations unconditionally —
+`GITSYNC_REF` from `ref` (v4) and `GIT_SYNC_BRANCH` from `branch`
+(legacy) — and git-sync v4 translates the deprecated `--branch` OVER
+`--ref`. A ref-only render therefore silently syncs the chart's
+default branch (`v2-2-stable`, verified live) while the values looked
+correct. The module always writes BOTH keys to `dags.git_sync.ref`'s
+value — including the empty string, which clears the chart defaults
+so Empty = HEAD holds.
 
 ## Deliberate exclusions
 

@@ -1,75 +1,56 @@
-# Overview
+# Kubernetes Locust
 
-The **Locust Kubernetes API resource** provides a consistent and streamlined interface for deploying and managing Locust-based load testing clusters within Kubernetes environments. This resource is designed to automate the configuration and deployment of Locust to run distributed load tests, allowing you to simulate traffic against target applications while ensuring scalability and flexibility.
+Deploys Locust — the open-source load testing tool — from the
+deliveryhero Helm chart (the official `locustio/locust` image). A
+master serves the web UI and coordinates; a worker fleet generates the
+load; your test behavior is plain Python that ships as ConfigMaps —
+no custom images to build.
 
-## Why We Created This API Resource
+## Secured by default
 
-Running distributed load tests using Locust in Kubernetes environments can be complex, requiring detailed configurations for containers, resource management, and test scripts. To simplify this process and provide a standardized approach, we developed this API resource. It allows you to:
+Upstream Locust ships the web UI OPEN — anyone who can reach the
+Service can start load tests against any host the cluster can see.
+That never ships from here: an empty `web_ui_auth` block means the
+login is ON with a module-generated credential (`<name>-auth` Secret,
+exported as the credential handle). The login backend is
+platform-managed code delivered alongside your locustfile through
+Locust's own extension seam — the chart's legacy path that renders
+credentials as pod arguments is never engaged. Headless runs start no
+web UI, so the login machinery is skipped there.
 
-- **Simplify Deployment**: Easily deploy a Locust load testing cluster without needing to configure the underlying Kubernetes resources manually.
-- **Ensure Consistency**: Maintain consistent load testing setups across environments and clusters.
-- **Enhance Flexibility**: Customize the behavior of load tests through Python test scripts and additional libraries.
-- **Optimize Resource Management**: Efficiently allocate resources and scale Locust master and worker nodes as needed.
+## The load test is the product
 
-## Key Features
+Write the locustfile inline (`load_test.inline`) — supporting modules
+ride `lib_files` and mount at `lib/` — or reference ConfigMaps your
+CI already ships (`load_test.existing_config_maps`). Point
+`target_host` at a literal URL or another resource's exported
+endpoint: load-testing the services you already declare is the
+composed story. Script changes roll the pods automatically (the
+module stamps a content hash onto the pod templates).
 
-### Environment Integration
+Test credentials arrive as environment variables your Python reads:
+`env_from_secrets` loads whole Secrets, `env_from_secret_keys` picks
+keys. KNOW THIS: `pip_packages` installs from PyPI at every pod start
+— convenient for extras, but production-grade setups bake packages
+into a custom image instead.
 
-- **Environment Info**: Integrates seamlessly with our environment management system to deploy Locust within specific environments.
-- **Stack Job Settings**: Supports custom stack-update settings for infrastructure-as-code deployments, ensuring consistent and repeatable provisioning processes.
+## Sizing and scaling
 
-### Kubernetes Credential Management
+Each worker is one Python process — roughly one CPU core of load
+generation; size `workers.replicas` and resources to the load you
+need, and give workers CPU requests before enabling HPA. KEDA scales
+workers on the LIVE USER COUNT the master reports (its default
+trigger reads the master's stats API, which requires the login to be
+off — the validation enforces the pairing); custom triggers replace
+it wholesale.
 
-- **Kubernetes Credential ID**: Utilizes the specified Kubernetes credentials (`kubernetes_credential_id`) to ensure secure and authorized operations within Kubernetes clusters.
+## Exposure
 
-### Namespace Management
-
-- **Namespace Configuration**: Specify the Kubernetes namespace where Locust will be deployed using the `namespace` field.
-- **Namespace Creation Control**: Use the `create_namespace` flag to control whether the module should create the namespace or use an existing one:
-  - **`create_namespace: true`**: The module creates the namespace with appropriate labels. Use this for new deployments or when you want the module to fully manage the namespace lifecycle.
-  - **`create_namespace: false`**: The module uses an existing namespace without creating it. Use this when:
-    - The namespace already exists in the cluster
-    - Multiple deployments share the same namespace
-    - Namespaces are managed centrally by cluster administrators
-    - Using GitOps workflows where namespaces are managed separately
-
-  **Important**: When `create_namespace: false`, you must ensure the namespace exists before deploying, otherwise the deployment will fail.
-
-### Customizable Locust Deployment
-
-#### Locust Master and Worker Configuration
-
-- **Master and Worker Containers**: Configure CPU and memory resources for both the master and worker containers to optimize performance. Recommended defaults are:
-    - **CPU Requests**: `50m`
-    - **Memory Requests**: `256Mi`
-    - **CPU Limits**: `1`
-    - **Memory Limits**: `1Gi`
-- **Replicas**: Define the number of replicas for both the master and worker containers to scale the load testing cluster based on your testing needs.
-
-#### Ingress Configuration
-
-- **Ingress Spec**: Configure ingress settings to expose the Locust web UI or API endpoints outside the cluster, allowing for external access and control over load tests.
-
-### Load Test Configuration
-
-#### Load Test Script
-
-- **Main Python Script**: Provide the `main_py_content` which contains the Python code defining the behavior of the simulated users for the load test.
-- **Library Files**: Add supporting Python files via `lib_files_content`, allowing the main script to reference additional classes or functions necessary for test execution.
-- **Pip Packages**: Specify extra Python pip packages required for the test using `pip_packages`. This allows for flexible test execution by including additional dependencies.
-
-### Helm Chart Customization
-
-- **Helm Values**: Provide a map of key-value pairs (`helm_values`) to customize the Helm chart used to deploy the Locust cluster. This includes options for fine-tuning resource limits, environment variables, or version tags. For detailed options, refer to the [Helm chart documentation](https://github.com/deliveryhero/helm-charts/tree/master/stable/locust#values).
-
-## Benefits
-
-- **Simplified Deployment**: Abstracts the complexities of setting up a Locust load testing cluster on Kubernetes into an easy-to-use API resource.
-- **Consistency**: Ensures all Locust deployments adhere to organizational standards for load testing environments.
-- **Scalability**: Allows for easy scaling of Locust master and worker nodes to handle varying loads and testing requirements.
-- **Customizability**: Enables custom load test scripts, library files, and Python package dependencies to suit specific test cases.
-- **Resource Optimization**: Provides precise control over resource allocation for containers, optimizing performance and cost.
-- **Flexibility**: Supports advanced ingress configurations and external access to the Locust web interface.
+The master Service stays ClusterIP; compose exposure kinds over the
+exported `master_service` handle, or use the exported
+`port_forward_command` from a workstation. Additional workers
+(including from other namespaces) can dial the exported
+`master_bind_endpoint`.
 
 ---
 

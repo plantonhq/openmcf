@@ -160,9 +160,15 @@ locals {
   # flinkConfiguration, which renders into a ConfigMap in clear text.
   # ENABLE_BUILT_IN_PLUGINS activates the named S3 filesystem plugin
   # from the image's bundled (disabled-by-default) plugin set.
-  s3_env = local.s3_set ? concat(
+  # Credential env entries carry valueFrom; the plugin entry carries
+  # value. Terraform cannot concat those object shapes (or ternary
+  # them against null/[]) — "Inconsistent conditional result types"
+  # (verified live once builtin_plugin_jar reached the variable
+  # schema). Encode each entry as JSON (uniform string list), then
+  # decode so the rendered podTemplate gets the right keys.
+  s3_env_json = local.s3_set ? concat(
     [
-      {
+      jsonencode({
         name = "AWS_ACCESS_KEY_ID"
         valueFrom = {
           secretKeyRef = {
@@ -170,8 +176,8 @@ locals {
             key  = var.spec.state.s3.access_key_secret.key
           }
         }
-      },
-      {
+      }),
+      jsonencode({
         name = "AWS_SECRET_ACCESS_KEY"
         valueFrom = {
           secretKeyRef = {
@@ -179,12 +185,17 @@ locals {
             key  = var.spec.state.s3.secret_key_secret.key
           }
         }
-      }
+      }),
     ],
     try(var.spec.state.s3.builtin_plugin_jar, "") != "" ? [
-      { name = "ENABLE_BUILT_IN_PLUGINS", value = var.spec.state.s3.builtin_plugin_jar }
+      jsonencode({
+        name  = "ENABLE_BUILT_IN_PLUGINS"
+        value = var.spec.state.s3.builtin_plugin_jar
+      })
     ] : []
   ) : []
+
+  s3_env = [for e in local.s3_env_json : jsondecode(e)]
 
   scheduling_tolerations = [
     for t in try(var.spec.scheduling.tolerations, []) : { for k, v in {

@@ -15,8 +15,8 @@ spec:
   # every lane: a verifier-owned SparkApplication (the in-image SparkPi
   # example — no internet) runs to Succeeded through REAL driver and
   # executor pods under the chart-created workload RBAC, then is swept.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   # First install pulls the operator JVM image; the job proof pulls the
   # ~1GB spark image once per cluster.
   timeout_minutes: 25

@@ -15,8 +15,8 @@ spec:
   # is deleted (UID-verified replacement), and the job returns to
   # RUNNING through Kubernetes HA metadata + checkpoint restore — state
   # survived outside the pods.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   # The flink image pulls once per cluster; the behavioral lane also
   # pays the SeaweedFS fixture chain and two checkpoint intervals.
   timeout_minutes: 30

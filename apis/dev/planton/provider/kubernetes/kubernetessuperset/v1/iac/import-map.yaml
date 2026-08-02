@@ -1,0 +1,124 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kubernetessuperset
+spec:
+  # Helm-release class: one release named after metadata.name (the
+  # module pins fullnameOverride to the same value, so every chart
+  # child — the web Deployment `<name>`, `<name>-worker`,
+  # `<name>-celerybeat`, the `<name>-config` Secret, the
+  # `<name>-init-db` Job — travels with the release import), plus the
+  # optional anchor namespace and the module-owned Secrets with their
+  # random companions. The `<name>-env` Secret always exists (the
+  # chart's runtime-credential contract, module-composed); its
+  # generated keys re-render identically after adoption because the
+  # randoms import by VALUE. Conditional resources exist only with
+  # their arms: `<name>-secret-key` and `<name>-admin-auth` only when
+  # module-generated (bring-your-own references create nothing), the
+  # websocket JWT random only when the websockets arm is on.
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares
+        the resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column); conventionally "superset".
+    # ── the optional anchor namespace ──────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    # ── the environment Secret (always module-owned) ────────────────────
+    - name: secret_name
+      tofu_resource_name: env
+      derivations:
+        - from_stack_output: env_secret_name
+        - from_metadata_name_suffix: "-env"
+      where_to_find: >-
+        "<resource-name>-env" — the chart's runtime-credential
+        contract every component envFroms (non-secret connection facts
+        plus the module-generated keys); `kubectl get secrets -n
+        <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: env
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the session-signing key Secret + random companion ───────────────
+    - name: secret_name
+      tofu_resource_name: secret_key
+      derivations:
+        - from_stack_output: secret_key_secret_name
+        - from_metadata_name_suffix: "-secret-key"
+      where_to_find: >-
+        "<resource-name>-secret-key" when module-generated (a
+        bring-your-own secret_key_secret reference creates nothing) —
+        key `secret_key`; `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: secret_key
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: secret_key
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-secret-key"
+            key: secret_key
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly (this key also encrypts
+        the datasource credentials stored in the metadata database).
+        kubectl get secret <resource-name>-secret-key -n <namespace>
+        -o jsonpath='{.data.secret_key}' | base64 -d
+    # ── the admin credential Secret + random companion ──────────────────
+    - name: secret_name
+      tofu_resource_name: admin_auth
+      derivations:
+        - from_metadata_name_suffix: "-admin-auth"
+      where_to_find: >-
+        "<resource-name>-admin-auth" when the module generated the
+        admin password (an existing password_secret reference creates
+        nothing) — key `password`;
+        `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: admin_auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: admin
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-admin-auth"
+            key: password
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-admin-auth -n <namespace>
+        -o jsonpath='{.data.password}' | base64 -d
+    # ── the websocket JWT random companion (websockets arm only) ────────
+    - name: password_value
+      tofu_resource_name: ws_jwt
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-env"
+            key: JWT_SECRET
+      where_to_find: >-
+        SECRET MATERIAL — the async-queries JWT lives as the
+        JWT_SECRET key of the environment Secret (websockets arm
+        only). kubectl get secret <resource-name>-env -n <namespace>
+        -o jsonpath='{.data.JWT_SECRET}' | base64 -d

@@ -43,6 +43,7 @@ var vars = struct {
 	RedisPasswordSecretSuffix     string
 	LogReadConnSecretSuffix       string
 	PgbouncerConfigSecretSuffix   string
+	PgbouncerStatsSecretSuffix    string
 	AdminAuthSecretSuffix         string
 	FernetKeySecretSuffix         string
 	ApiSecretKeySecretSuffix      string
@@ -82,6 +83,7 @@ var vars = struct {
 	RedisPasswordSecretSuffix:     "-redis-password",
 	LogReadConnSecretSuffix:       "-log-read-conn",
 	PgbouncerConfigSecretSuffix:   "-pgbouncer-config",
+	PgbouncerStatsSecretSuffix:    "-pgbouncer-stats",
 	AdminAuthSecretSuffix:         "-admin-auth",
 	FernetKeySecretSuffix:         "-fernet-key",
 	ApiSecretKeySecretSuffix:      "-api-secret-key",

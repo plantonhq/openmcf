@@ -1,0 +1,29 @@
+# Consumer-scoped PostgreSQL fixture for the KubernetesJupyterHub
+# lanes — the composed hub database the full-surface scenario wires
+# against:
+# - SHARED NAMESPACE (e2e-jupyterhub): the scenarios co-locate with
+#   this fixture because the module reads the database credential
+#   Secret to compose the hub's existing-secret, and a Secret can only
+#   be consumed from the workload's own namespace. The chart's resource
+#   names are FIXED (hub, proxy-public…), so lanes are serial in this
+#   one namespace by construction.
+# - ONE BOOTSTRAP DATABASE: initdb creates `jupyterhub` owned by the
+#   `jupyterhub` role — the hub creates its tables inside it.
+# - The operator maintains the `e2e-jhub-pg-app` credential Secret
+#   (keys username/password) across failovers — the composition target
+#   of the full-surface scenario's password reference.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPostgres
+metadata:
+  name: e2e-jhub-pg
+spec:
+  namespace:
+    value: e2e-jupyterhub
+  create_namespace: true
+  instances: 1
+  storage:
+    size: 2Gi
+  bootstrap:
+    initdb:
+      database: jupyterhub
+      owner: jupyterhub

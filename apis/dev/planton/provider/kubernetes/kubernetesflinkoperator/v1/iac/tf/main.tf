@@ -53,6 +53,21 @@ resource "kubernetes_namespace_v1" "flink_operator" {
   }
 }
 
+# Watch namespaces MUST exist before the Helm release: the chart plants
+# job ServiceAccount/Role/RoleBinding INTO each watched namespace
+# (templates/flink/*) and does NOT create the namespaces itself — an
+# absent watch namespace fails the install with "namespaces \"…\" not
+# found" (verified live). The module owns them so a fenced install is
+# self-contained. Twin of the Pulumi module's watchNamespaces().
+resource "kubernetes_namespace_v1" "watch" {
+  for_each = toset(try(var.spec.watch_namespaces, []))
+
+  metadata {
+    name   = each.value
+    labels = local.labels
+  }
+}
+
 # The webhook keystore password (webhook-enabled installs only — the
 # disabled arm creates no random/Secret resources at all). Letters+digits
 # only: letters-only-safe alphabets avoid whole config-parser bug classes
@@ -132,6 +147,7 @@ resource "helm_release" "flink_operator" {
 
   depends_on = [
     kubernetes_namespace_v1.flink_operator,
+    kubernetes_namespace_v1.watch,
     kubernetes_secret_v1.webhook_keystore,
   ]
 

@@ -72,6 +72,7 @@ type Locals struct {
 	EffectiveMetadataDbName   string
 	EffectiveResultBackendDb  string
 	PgbouncerConfigSecretName string
+	PgbouncerStatsSecretName  string
 
 	// Broker arm resolution (Celery only). BundledRedis and the
 	// composed arm both end in a module-owned broker-url Secret; the
@@ -231,6 +232,7 @@ func initializeLocals(_ *pulumi.Context, stackInput *kubernetesairflowv1.Kuberne
 		locals.EffectiveMetadataDbName = fmt.Sprintf("%s-metadata", locals.ReleaseName)
 		locals.EffectiveResultBackendDb = fmt.Sprintf("%s-result-backend", locals.ReleaseName)
 		locals.PgbouncerConfigSecretName = locals.ReleaseName + vars.PgbouncerConfigSecretSuffix
+		locals.PgbouncerStatsSecretName = locals.ReleaseName + vars.PgbouncerStatsSecretSuffix
 	}
 
 	// ------------------------------- broker -------------------------------

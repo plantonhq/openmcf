@@ -1,0 +1,109 @@
+# Full-surface shape: composed postgres + mysql catalogs beside the
+# in-image samples, a custom memory catalog, fault-tolerant execution
+# spooling to an S3-compatible store with env-substituted keys, worker
+# graceful shutdown + HPA, access-control/resource-group/session
+# documents, JMX metrics with ServiceMonitors, a NetworkPolicy and the
+# env escape hatches — the offline plan/preview proof for the widest
+# typed rendering.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTrino
+metadata:
+  name: trino-full
+spec:
+  namespace:
+    value: trino-full
+  createNamespace: true
+  nodeEnvironment: analytics_prod
+  logLevel: INFO
+  maxQueryMemory: 8GB
+  coordinator:
+    jvm:
+      maxHeapPercent: 70
+    maxQueryMemoryPerNode: 2GB
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        memory: 4Gi
+  workers:
+    jvm:
+      maxHeapPercent: 75
+    maxQueryMemoryPerNode: 2GB
+    resources:
+      requests:
+        cpu: "1"
+        memory: 4Gi
+      limits:
+        memory: 6Gi
+    gracefulShutdown:
+      enabled: true
+      gracePeriodSeconds: 180
+    hpa:
+      maxReplicas: 6
+      targetCpuUtilizationPercent: 60
+      targetMemoryUtilizationPercent: 0
+  auth:
+    enabled: true
+    adminUsername: analyst
+  catalogs:
+    sampleCatalogsEnabled: true
+    postgres:
+      - name: warehouse
+        host:
+          value: warehouse-pg-rw
+        port: 5432
+        database: warehouse
+        username: app
+        passwordSecret:
+          secretName:
+            value: warehouse-pg-app
+          secretKey: password
+        additionalProperties:
+          - postgresql.array-mapping=AS_ARRAY
+    mysql:
+      - name: orders
+        host:
+          value: orders-mysql
+        username: trino_ro
+        passwordSecret:
+          secretName:
+            value: orders-mysql-trino
+          secretKey: password
+    custom:
+      scratch: |
+        connector.name=memory
+        memory.max-data-per-node=256MB
+  faultTolerantExecution:
+    retryPolicy: TASK
+    exchangeManager:
+      baseDirectories:
+        - s3://trino-exchange
+      additionalProperties:
+        - exchange.s3.region=us-east-1
+        - exchange.s3.endpoint=http://exchange-s3.trino-full.svc.cluster.local:8333
+        - exchange.s3.aws-access-key=${ENV:EXCHANGE_ACCESS_KEY}
+        - exchange.s3.aws-secret-key=${ENV:EXCHANGE_SECRET_KEY}
+  accessControlRules: |
+    {"catalogs":[{"user":"analyst","catalog":".*","allow":"all"},{"group":"readers","catalog":"warehouse","allow":"read-only"}]}
+  resourceGroupsConfig: |
+    {"rootGroups":[{"name":"global","softMemoryLimit":"80%","hardConcurrencyLimit":100,"maxQueued":200}],"selectors":[{"group":"global"}]}
+  sessionPropertiesConfig: |
+    [{"group":"global.*","sessionProperties":{"query_max_execution_time":"4h"}}]
+  additionalConfigProperties:
+    - http-server.process-forwarded=true
+  extraEnvFromSecret:
+    EXCHANGE_ACCESS_KEY:
+      secretName: exchange-s3-secret
+      secretKey: admin_access_key_id
+    EXCHANGE_SECRET_KEY:
+      secretName: exchange-s3-secret
+      secretKey: admin_secret_access_key
+  extraEnv:
+    JAVA_TOOL_OPTIONS: -XX:+UseStringDeduplication
+  metrics:
+    enabled: true
+    serviceMonitorEnabled: true
+  networkPolicyEnabled: true
+  service:
+    type: ClusterIP

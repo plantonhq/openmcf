@@ -109,7 +109,9 @@ chart's own default is the unpinned `latest`).
 - **`spec.watch_namespaces`**: empty = every namespace; with a list
   set, the chart scopes RBAC AND the admission webhook to exactly
   these namespaces — Flink declarations outside them are ignored
-  without an error
+  without an error. The modules create each listed namespace before
+  the Helm release (the chart plants job RBAC into them and does not
+  create the namespaces)
 - **`spec.replicas`**: operator replicas (default 1); more than 1
   requires leader election — the modules render the operator's
   leader-election config for you (the chart REFUSES multi-replica

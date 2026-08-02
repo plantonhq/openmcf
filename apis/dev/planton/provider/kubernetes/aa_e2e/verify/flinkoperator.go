@@ -37,8 +37,9 @@ const flinkWebhookService = "flink-operator-webhook-service"
 // honest trade that arm buys).
 type FlinkOperatorVerifier struct {
 	// Namespace is the release namespace; the module pins the chart
-	// fullname to the resource name, so the Deployment is
-	// deployment/<Name> here.
+	// nameOverride (and fullnameOverride) to the resource name, so the
+	// Deployment is deployment/<Name> here — the chart's
+	// `flink-operator.name` helper honors nameOverride, not fullname.
 	Namespace string
 	Name      string
 	// WebhookEnabled mirrors the spec: it selects between the admission
@@ -46,7 +47,8 @@ type FlinkOperatorVerifier struct {
 	WebhookEnabled bool
 	// WatchNamespaces is the watch fence from the spec. Non-empty means
 	// RBAC AND the webhook namespaceSelector are scoped to these
-	// namespaces; empty means cluster-wide.
+	// namespaces (and the module owns those namespaces); empty means
+	// cluster-wide.
 	WatchNamespaces []string
 }
 
@@ -145,9 +147,11 @@ func (v *FlinkOperatorVerifier) proveAdmissionGate(ctx context.Context, kubeconf
 
 	out, err := applyManifestString(ctx, kubeconfig, v.invalidFlinkDeployment(proofName, gateNamespace))
 	if err == nil {
-		// It went through — remove it before the operator acts on it,
-		// and fail loudly.
+		// It went through — remove it (confirmed: the operator watches
+		// here and a finalizer-held leftover would wedge the destroy
+		// phase that still runs after this failure) and fail loudly.
 		_ = kubectlDeleteResource(ctx, kubeconfig, "flinkdeployments.flink.apache.org", proofName, gateNamespace)
+		_ = KubectlResourceAbsent(ctx, kubeconfig, "flinkdeployments.flink.apache.org", proofName, gateNamespace)
 		return errors.New("ADMISSION GATE FAILED: a FlinkDeployment with standby JobManagers and no HA was ADMITTED — the validating webhook is not enforcing")
 	}
 	// The denial must come FROM the webhook — any other apply failure
@@ -207,8 +211,15 @@ func (v *FlinkOperatorVerifier) provePostureContrast(ctx context.Context, kubeco
 	if err != nil {
 		return errors.Errorf("the invalid FlinkDeployment was REJECTED on the webhook-less lane — something is still gating admission (%s)", firstLines(out, 3))
 	}
+	// Unlike the scoping arm's outside namespace, the operator WATCHES
+	// this namespace and may already hold a finalizer on the probe —
+	// deletion must be CONFIRMED while the operator is alive, or the
+	// leftover wedges the namespace teardown on the finalizer.
 	if err := kubectlDeleteResource(ctx, kubeconfig, "flinkdeployments.flink.apache.org", proofName, v.Namespace); err != nil {
 		return errors.Wrap(err, "sweeping the contrast-probe FlinkDeployment")
+	}
+	if err := KubectlResourceAbsent(ctx, kubeconfig, "flinkdeployments.flink.apache.org", proofName, v.Namespace); err != nil {
+		return errors.Wrap(err, "the contrast-probe FlinkDeployment never finished deleting — its finalizer must clear while the operator lives")
 	}
 	fmt.Printf("  [verify] THE POSTURE CONTRAST: invalid FlinkDeployment ACCEPTED at admission on the webhook-less lane — validation deferred to reconcile, the trade this arm buys\n")
 	return nil
@@ -216,8 +227,9 @@ func (v *FlinkOperatorVerifier) provePostureContrast(ctx context.Context, kubeco
 
 // VerifyAbsent asserts the destroy posture: the operator Deployment gone,
 // all four CRDs SURVIVING (the crds/-directory keep — a designed outcome,
-// asserted, not tolerated), the webhook Service gone when it existed, and
-// zero FlinkDeployment CRs (which covers any gate-proof leftovers).
+// asserted, not tolerated), the webhook Service gone when it existed,
+// module-owned watch namespaces gone, and zero FlinkDeployment CRs
+// (which covers any gate-proof leftovers).
 func (v *FlinkOperatorVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) error {
 	if err := KubectlResourceAbsent(ctx, kubeconfig, "deployment", v.Name, v.Namespace); err != nil {
 		return err
@@ -232,6 +244,11 @@ func (v *FlinkOperatorVerifier) VerifyAbsent(ctx context.Context, kubeconfig str
 			return errors.Wrap(err, "the webhook service survived destroy")
 		}
 	}
+	for _, ns := range v.WatchNamespaces {
+		if err := KubectlResourceAbsent(ctx, kubeconfig, "namespace", ns, ""); err != nil {
+			return errors.Wrapf(err, "module-owned watch namespace %q survived destroy", ns)
+		}
+	}
 	// The CRDs survive, so the API is still queryable: any
 	// FlinkDeployment remaining would be verifier residue (a leaked
 	// gate proof) or an unexpected tenant.
@@ -242,7 +259,7 @@ func (v *FlinkOperatorVerifier) VerifyAbsent(ctx context.Context, kubeconfig str
 	if leftovers != "" {
 		return errors.Errorf("FlinkDeployment CRs survived the destroy: %s", leftovers)
 	}
-	fmt.Printf("  [verify] DESTROY: operator deployment gone, all 4 CRDs RETAINED by design, webhook service gone, no FlinkDeployment CRs anywhere\n")
+	fmt.Printf("  [verify] DESTROY: operator deployment gone, all 4 CRDs RETAINED by design, webhook service gone, module-owned watch namespaces gone, no FlinkDeployment CRs anywhere\n")
 	return nil
 }
 

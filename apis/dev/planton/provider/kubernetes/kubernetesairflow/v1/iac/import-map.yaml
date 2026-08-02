@@ -268,3 +268,19 @@ spec:
         - from_spec_field: namespace.value
       where_to_find: >-
         Same namespace as the installation.
+    # ── the PgBouncer metrics-exporter stats Secret ────────────────────
+    - name: secret_name
+      tofu_resource_name: pgbouncer_stats
+      derivations:
+        - from_metadata_name_suffix: "-pgbouncer-stats"
+      where_to_find: >-
+        "<resource-name>-pgbouncer-stats" when the pooler is enabled
+        (key connection — the metrics-exporter sidecar's DSN, composed
+        from the same referenced credential as the connection Secrets).
+    - name: secret_namespace
+      tofu_resource_name: pgbouncer_stats
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.

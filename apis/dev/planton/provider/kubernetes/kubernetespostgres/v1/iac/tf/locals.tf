@@ -370,17 +370,28 @@ locals {
     } : k => v if v != null
   }
 
+  # Absent quantities are OMITTED, never rendered empty: CNPG's
+  # mutating webhook rejects "" with `quantities must match the
+  # regular expression ...` (verified live against a spec declaring
+  # only limits.memory), so each cpu/memory key joins its block only
+  # when the manifest actually set it.
+  resources_limits_body = try(var.spec.resources.limits, null) == null ? null : {
+    for k, v in {
+      cpu    = try(var.spec.resources.limits.cpu, null)
+      memory = try(var.spec.resources.limits.memory, null)
+    } : k => v if v != null && v != ""
+  }
+  resources_requests_body = try(var.spec.resources.requests, null) == null ? null : {
+    for k, v in {
+      cpu    = try(var.spec.resources.requests.cpu, null)
+      memory = try(var.spec.resources.requests.memory, null)
+    } : k => v if v != null && v != ""
+  }
   resources_body = try(var.spec.resources, null) == null ? null : {
     for k, v in {
-      limits = try(var.spec.resources.limits, null) == null ? null : {
-        cpu    = var.spec.resources.limits.cpu
-        memory = var.spec.resources.limits.memory
-      }
-      requests = try(var.spec.resources.requests, null) == null ? null : {
-        cpu    = var.spec.resources.requests.cpu
-        memory = var.spec.resources.requests.memory
-      }
-    } : k => v if v != null
+      limits   = local.resources_limits_body
+      requests = local.resources_requests_body
+    } : k => v if try(length(v), 0) > 0
   }
 
   # postgresql stanza. The CRD's own field names are snake_case here
