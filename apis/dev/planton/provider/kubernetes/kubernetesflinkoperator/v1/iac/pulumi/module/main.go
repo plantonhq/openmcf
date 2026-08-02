@@ -77,6 +77,20 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetesflinkoperatorv1.Kubern
 		namespaceDeps = append(namespaceDeps, createdNamespace)
 	}
 
+	// Watch namespaces MUST exist before the Helm release: the chart
+	// plants job ServiceAccount/Role/RoleBinding INTO each watched
+	// namespace (templates/flink/*) and does NOT create the namespaces
+	// itself — an absent watch namespace fails the install with
+	// "namespaces \"…\" not found" (verified live). The module owns
+	// them so a fenced install is self-contained.
+	watchNs, err := watchNamespaces(ctx, locals, kubernetesProvider)
+	if err != nil {
+		return errors.Wrap(err, "failed to create watch namespaces")
+	}
+	for _, ns := range watchNs {
+		namespaceDeps = append(namespaceDeps, ns)
+	}
+
 	// ------------------------ webhook keystore secret ---------------------
 	// Module-generated credential; nil on the webhook-disabled arm — see
 	// keystore_secret.go for the full posture.

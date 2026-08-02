@@ -109,7 +109,11 @@ type KubernetesFlinkOperatorSpec struct {
 	// namespace (the normal one-operator-per-cluster posture). With a
 	// list set, the chart scopes RBAC AND the admission webhook to
 	// exactly these namespaces — Flink declarations outside them are
-	// ignored without an error.
+	// ignored without an error. The modules CREATE each listed
+	// namespace before the Helm release: the chart plants job
+	// ServiceAccount/Role/RoleBinding INTO those namespaces and does
+	// not create them — an absent watch namespace fails the install
+	// with "namespaces \"…\" not found".
 	WatchNamespaces []string `protobuf:"bytes,4,rep,name=watch_namespaces,json=watchNamespaces,proto3" json:"watch_namespaces,omitempty"`
 	// *
 	// The admission webhook (validates AND defaults Flink CRs at

@@ -84,8 +84,11 @@ them out:
 The official Flink images ship the S3 filesystem plugin DISABLED,
 bundled under `/opt/flink/opt`. `builtin_plugin_jar` names the exact
 jar to activate (rendered as the `ENABLE_BUILT_IN_PLUGINS` pod env
-var) — e.g. `flink-s3-fs-hadoop-2.1.0.jar`, where the version in the
-name must match the image's Flink patch version. Without it, every
+var) — e.g. `flink-s3-fs-hadoop-2.1.3.jar` for the current `flink:2.1`
+image, where the version in the name must match the image's Flink
+patch version. A patch mismatch CrashLoopBackOffs the JobManager;
+the operator error never names the jar — `ls /opt/flink/opt` in the
+image is the diagnosis (verified live). Without the field, every
 `s3://` path fails at runtime with "unsupported filesystem scheme".
 Custom images that bake the plugin into `/opt/flink/plugins` leave it
 empty.

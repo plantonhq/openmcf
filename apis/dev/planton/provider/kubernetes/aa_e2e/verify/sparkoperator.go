@@ -223,7 +223,13 @@ spec:
 
 // VerifyAbsent asserts the destroy posture: the operator Deployment gone,
 // both CRDs SURVIVING (the crds/-directory keep — a designed outcome,
-// asserted, not tolerated), and zero verifier residue anywhere.
+// asserted, not tolerated), the WORKLOAD resources surviving (the
+// chart annotates every workload resource `helm.sh/resource-policy:
+// keep` at the pin — protective by design: a day-2 fence-list edit
+// must never cascade-delete a namespace of running Spark jobs, and
+// operator uninstall must not abort workloads), and zero verifier
+// residue anywhere. After asserting the keeps, the lane SWEEPS them
+// (confirmed) — shared-cluster hygiene, the prove-then-clean shape.
 func (v *SparkOperatorVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) error {
 	if err := KubectlResourceAbsent(ctx, kubeconfig, "deployment", v.Name, v.Namespace); err != nil {
 		return err
@@ -242,7 +248,37 @@ func (v *SparkOperatorVerifier) VerifyAbsent(ctx context.Context, kubeconfig str
 	if leftovers != "" {
 		return errors.Errorf("proof SparkApplications survived the verifier sweep: %s", leftovers)
 	}
-	fmt.Printf("  [verify] DESTROY: operator deployment gone, both CRDs RETAINED by design, no proof CRs left anywhere\n")
+
+	// THE WORKLOAD KEEP, per arm (the module's one-decision design):
+	// the cluster-wide arm keeps the workload ClusterRole (its binding
+	// and SA live in the module-deleted release namespace); the fenced
+	// arm keeps each workload namespace with its `spark` SA and
+	// Role/Binding inside. Assert the designed keep, then sweep for
+	// lane hygiene.
+	sweep := func(kind, name, namespace string) error {
+		if err := kubectlDeleteResource(ctx, kubeconfig, kind, name, namespace); err != nil {
+			return err
+		}
+		return KubectlResourceAbsent(ctx, kubeconfig, kind, name, namespace)
+	}
+	if len(v.WorkloadNamespaces) == 0 {
+		workloadClusterRole := v.Name + "-workload-clusterrole"
+		if err := KubectlResourceExists(ctx, kubeconfig, "clusterrole", workloadClusterRole, ""); err != nil {
+			return errors.Wrapf(err, "the workload ClusterRole %q was DELETED on destroy — the chart's resource-policy keep regressed", workloadClusterRole)
+		}
+		if err := sweep("clusterrole", workloadClusterRole, ""); err != nil {
+			return errors.Wrap(err, "sweeping the kept workload ClusterRole")
+		}
+	}
+	for _, workloadNs := range v.WorkloadNamespaces {
+		if err := KubectlResourceExists(ctx, kubeconfig, "namespace", workloadNs, ""); err != nil {
+			return errors.Wrapf(err, "workload namespace %q was DELETED on destroy — the chart's resource-policy keep regressed", workloadNs)
+		}
+		if err := sweep("namespace", workloadNs, ""); err != nil {
+			return errors.Wrapf(err, "sweeping the kept workload namespace %q", workloadNs)
+		}
+	}
+	fmt.Printf("  [verify] DESTROY: operator deployment gone, both CRDs RETAINED by design, workload keep posture ASSERTED (and swept for lane hygiene), no proof CRs left anywhere\n")
 	return nil
 }
 

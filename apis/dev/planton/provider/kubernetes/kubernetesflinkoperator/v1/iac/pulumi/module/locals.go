@@ -27,7 +27,8 @@ type Locals struct {
 	Namespace string
 
 	// Helm release name — metadata.name. The module pins the chart's
-	// fullnameOverride to it.
+	// nameOverride (and fullnameOverride) to it — the Deployment
+	// renders from `flink-operator.name`, which honors nameOverride.
 	ReleaseName string
 
 	// Chart version resolved to the pinned default when unset, so both

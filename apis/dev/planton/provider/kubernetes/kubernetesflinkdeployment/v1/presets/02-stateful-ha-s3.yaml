@@ -37,7 +37,7 @@ spec:
           valueFrom:
             name: objects
         key: admin_secret_access_key
-      builtinPluginJar: flink-s3-fs-hadoop-2.1.0.jar
+      builtinPluginJar: flink-s3-fs-hadoop-2.1.3.jar
   taskManager:
     resources:
       requests:

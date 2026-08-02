@@ -88,8 +88,14 @@ name from the release identity instead
 `<name>-config-monitor`, `<name>-config-monitor-binding`,
 `<name>-workload-clusterrole`, `<name>-workload-role`,
 `<name>-workload-rolebinding`), so instances coexist — the same
-defense as the fullname pin, applied to the chart's values-borne
-names. The chart derives the workload binding's roleRef ITSELF from
+defense as the identity pin, applied to the chart's values-borne
+names. The identity pin itself is `nameOverride`, not
+`fullnameOverride`: every named object in this chart (the operator
+Deployment, PDB selector, NetworkPolicy) renders from the
+`spark-operator.name` helper, and the chart's fullname helper is
+consumed by no template — a fullname-only pin leaves the Deployment
+at the chart's constant `spark-kubernetes-operator` name (verified
+live). The chart derives the workload binding's roleRef ITSELF from
 `clusterRole.create` (ClusterRole when cluster-wide, Role when
 fenced) — only the name is the module's to pin (template-verified).
 

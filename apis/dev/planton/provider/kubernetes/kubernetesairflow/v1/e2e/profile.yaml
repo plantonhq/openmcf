@@ -14,8 +14,8 @@ spec:
   # (37 spec tests, both engines' plan/preview proofs across minimal
   # and full-surface shapes with rendered-value spot-checks and leak
   # greps); awaiting the live lanes.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   # The migration Job runs against the composed Postgres before the
   # component set rolls out, and the ~1GB airflow image pulls once per
   # cluster; the budget covers that cold start on the shared cluster,

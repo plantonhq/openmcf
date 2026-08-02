@@ -41,7 +41,10 @@ spec:
         name:
           value: e2e-flnk-swfs-s3-secret
         key: admin_secret_access_key
-      builtinPluginJar: flink-s3-fs-hadoop-2.1.0.jar
+      # Exact jar under /opt/flink/opt in flink:2.1 (currently 2.1.3) —
+      # a patch mismatch CrashLoopBackOffs the JobManager with no jar name
+      # in the operator error (verified live).
+      builtinPluginJar: flink-s3-fs-hadoop-2.1.3.jar
   taskManager:
     resources:
       requests:

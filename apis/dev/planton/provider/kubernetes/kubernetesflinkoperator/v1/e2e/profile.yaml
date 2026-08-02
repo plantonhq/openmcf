@@ -17,6 +17,6 @@ spec:
   # keystore password Secret (the chart's hardcoded default never
   # ships). The flink.apache.org CRDs ride the chart's crds/ directory
   # (install-once, KEPT — destroy-asserted).
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

@@ -20,49 +20,49 @@
       "name": "Tier 2 Pulumi",
       "tier": 2,
       "engine": "pulumi",
-      "timeout": 695,
-      "run_regex": "Test(KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesGatekeeper|KubernetesGrafana|KubernetesHarbor|KubernetesKubePrometheusStack|KubernetesKyverno|KubernetesLocust|KubernetesLoki|KubernetesNats|KubernetesNeo4j|KubernetesOpenBao|KubernetesOpenFga|KubernetesQdrant|KubernetesSeaweedFs|KubernetesTempo|KubernetesTemporal)_Pulumi",
-      "component_count": 17
+      "timeout": 735,
+      "run_regex": "Test(KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesGatekeeper|KubernetesGrafana|KubernetesHarbor|KubernetesKubePrometheusStack|KubernetesKyverno|KubernetesLocust|KubernetesLoki|KubernetesNats|KubernetesNeo4j|KubernetesOpenBao|KubernetesOpenFga|KubernetesQdrant|KubernetesSeaweedFs|KubernetesSparkOperator|KubernetesTempo|KubernetesTemporal)_Pulumi",
+      "component_count": 18
     },
     {
       "name": "Tier 2 Terraform",
       "tier": 2,
       "engine": "terraform",
-      "timeout": 695,
-      "run_regex": "Test(KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesGatekeeper|KubernetesGrafana|KubernetesHarbor|KubernetesKubePrometheusStack|KubernetesKyverno|KubernetesLocust|KubernetesLoki|KubernetesNats|KubernetesNeo4j|KubernetesOpenBao|KubernetesOpenFga|KubernetesQdrant|KubernetesSeaweedFs|KubernetesTempo|KubernetesTemporal)_Terraform",
-      "component_count": 17
+      "timeout": 735,
+      "run_regex": "Test(KubernetesArgoCD|KubernetesArgoWorkflows|KubernetesGatekeeper|KubernetesGrafana|KubernetesHarbor|KubernetesKubePrometheusStack|KubernetesKyverno|KubernetesLocust|KubernetesLoki|KubernetesNats|KubernetesNeo4j|KubernetesOpenBao|KubernetesOpenFga|KubernetesQdrant|KubernetesSeaweedFs|KubernetesSparkOperator|KubernetesTempo|KubernetesTemporal)_Terraform",
+      "component_count": 18
     },
     {
       "name": "Tier 3 Pulumi",
       "tier": 3,
       "engine": "pulumi",
-      "timeout": 400,
-      "run_regex": "Test(KubernetesClickHouse|KubernetesGhaRunnerScaleSet|KubernetesKeycloak|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesOtelCollector|KubernetesRabbitMq|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator|KubernetesTekton)_Pulumi",
-      "component_count": 11
+      "timeout": 505,
+      "run_regex": "Test(KubernetesAirflow|KubernetesClickHouse|KubernetesFlinkDeployment|KubernetesGhaRunnerScaleSet|KubernetesKeycloak|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesOtelCollector|KubernetesRabbitMq|KubernetesRayCluster|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator|KubernetesTekton)_Pulumi",
+      "component_count": 14
     },
     {
       "name": "Tier 3 Terraform",
       "tier": 3,
       "engine": "terraform",
-      "timeout": 400,
-      "run_regex": "Test(KubernetesClickHouse|KubernetesGhaRunnerScaleSet|KubernetesKeycloak|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesOtelCollector|KubernetesRabbitMq|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator|KubernetesTekton)_Terraform",
-      "component_count": 11
+      "timeout": 505,
+      "run_regex": "Test(KubernetesAirflow|KubernetesClickHouse|KubernetesFlinkDeployment|KubernetesGhaRunnerScaleSet|KubernetesKeycloak|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesOtelCollector|KubernetesRabbitMq|KubernetesRayCluster|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator|KubernetesTekton)_Terraform",
+      "component_count": 14
     },
     {
       "name": "Tier 4 Pulumi",
       "tier": 4,
       "engine": "pulumi",
-      "timeout": 295,
-      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesKeycloakOperator|KubernetesOtelOperator|KubernetesPeerAuthentication|KubernetesRabbitMqOperator|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTektonOperator|KubernetesTelemetry)_Pulumi",
-      "component_count": 14
+      "timeout": 335,
+      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesFlinkOperator|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesKeycloakOperator|KubernetesKubeRayOperator|KubernetesOtelOperator|KubernetesPeerAuthentication|KubernetesRabbitMqOperator|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTektonOperator|KubernetesTelemetry)_Pulumi",
+      "component_count": 16
     },
     {
       "name": "Tier 4 Terraform",
       "tier": 4,
       "engine": "terraform",
-      "timeout": 295,
-      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesKeycloakOperator|KubernetesOtelOperator|KubernetesPeerAuthentication|KubernetesRabbitMqOperator|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTektonOperator|KubernetesTelemetry)_Terraform",
-      "component_count": 14
+      "timeout": 335,
+      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesFlinkOperator|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesKeycloakOperator|KubernetesKubeRayOperator|KubernetesOtelOperator|KubernetesPeerAuthentication|KubernetesRabbitMqOperator|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTektonOperator|KubernetesTelemetry)_Terraform",
+      "component_count": 16
     }
   ]
 }

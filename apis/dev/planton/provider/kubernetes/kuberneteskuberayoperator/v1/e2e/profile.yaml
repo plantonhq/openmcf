@@ -11,6 +11,6 @@ spec:
   # operator rollout, the CRDs established, and THE INVARIANT: installing
   # the operator alone deploys NO Ray cluster (the KubernetesRayCluster
   # kind owns every cluster — its lanes carry the product proofs).
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

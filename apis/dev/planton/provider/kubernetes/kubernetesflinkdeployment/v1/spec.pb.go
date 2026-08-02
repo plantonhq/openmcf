@@ -753,13 +753,16 @@ type KubernetesFlinkDeploymentS3 struct {
 	SecretKeySecret *KubernetesFlinkDeploymentSecretSelector `protobuf:"bytes,4,opt,name=secret_key_secret,json=secretKeySecret,proto3" json:"secret_key_secret,omitempty"`
 	// *
 	// Name of the S3 filesystem plugin jar to activate from the image's
-	// bundled plugin set (e.g. "flink-s3-fs-hadoop-2.1.0.jar" — the
+	// bundled plugin set (e.g. "flink-s3-fs-hadoop-2.1.3.jar" — the
 	// exact file under /opt/flink/opt in YOUR image; the version in the
-	// name must match the image's Flink patch version). The official
-	// images ship the plugin DISABLED: without this (or a custom image
-	// that bakes the plugin into /opt/flink/plugins) every s3:// path
-	// fails at runtime with "unsupported filesystem scheme". Leave
-	// empty only for images that pre-bake the plugin.
+	// name must match the image's Flink patch version). A patch
+	// mismatch CrashLoopBackOffs the JobManager; the operator error
+	// never names the jar — `ls /opt/flink/opt` in the image is the
+	// diagnosis. The official images ship the plugin DISABLED: without
+	// this (or a custom image that bakes the plugin into
+	// /opt/flink/plugins) every s3:// path fails at runtime with
+	// "unsupported filesystem scheme". Leave empty only for images
+	// that pre-bake the plugin.
 	BuiltinPluginJar string `protobuf:"bytes,5,opt,name=builtin_plugin_jar,json=builtinPluginJar,proto3" json:"builtin_plugin_jar,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache

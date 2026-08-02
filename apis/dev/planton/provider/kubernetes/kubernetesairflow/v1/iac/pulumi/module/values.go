@@ -203,11 +203,18 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 			"enabled": true,
 			"repo":    gitSync.GetRepo(),
 		}
-		if gitSync.GetRef() != "" {
-			// git-sync v4 syncs `ref` (branch, tag or hash); the chart's
-			// separate branch/rev keys serve the retired v3 sidecar.
-			gitSyncBlock["ref"] = gitSync.GetRef()
-		}
+		// The chart renders BOTH env generations UNCONDITIONALLY —
+		// GITSYNC_REF from `ref` (v4) and GIT_SYNC_BRANCH from
+		// `branch` (legacy) — and git-sync v4 translates the
+		// deprecated --branch OVER --ref, so a ref-only rendering
+		// silently syncs the chart's default branch (verified live:
+		// the sidecar fetched v2-2-stable while ref carried the
+		// declared value). Both keys always render the spec value —
+		// INCLUDING the empty string, which neutralizes the chart's
+		// v2-2-stable defaults so the spec's Empty = HEAD promise
+		// holds (git-sync treats empty ref/branch as HEAD).
+		gitSyncBlock["ref"] = gitSync.GetRef()
+		gitSyncBlock["branch"] = gitSync.GetRef()
 		gitSyncBlock["subPath"] = gitSync.GetSubPath()
 		if gitSync.PeriodSeconds != nil {
 			gitSyncBlock["period"] = formatSeconds(int(gitSync.GetPeriodSeconds()))
@@ -269,6 +276,12 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 			// chart's own rendering path embeds the database password
 			// in Helm values and is never used.
 			"configSecretName": locals.PgbouncerConfigSecretName,
+			// The module-composed stats DSN for the metrics-exporter
+			// sidecar (see secrets.go) — with statsSecretName set, the
+			// chart skips creating its split-values stats Secret.
+			"metricsExporterSidecar": map[string]interface{}{
+				"statsSecretName": locals.PgbouncerStatsSecretName,
+			},
 		}
 		if pgb.MetadataPoolSize != nil {
 			pgbouncerBlock["metadataPoolSize"] = int(pgb.GetMetadataPoolSize())
@@ -293,13 +306,30 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 	values["statsd"] = map[string]interface{}{"enabled": statsdEnabled}
 
 	if spec.GetLoadExamples() {
-		values["config"] = map[string]interface{}{
-			"core": map[string]interface{}{"load_examples": "True"},
+		// The env-var form, NOT config.core: the official image BAKES
+		// AIRFLOW__CORE__LOAD_EXAMPLES=False as a container env, and
+		// Airflow's precedence puts env above airflow.cfg — a cfg-only
+		// True is silently defeated (verified live: examples never
+		// parsed; the chart's own docs prescribe the env route).
+		values["env"] = []interface{}{
+			map[string]interface{}{"name": "AIRFLOW__CORE__LOAD_EXAMPLES", "value": "True"},
 		}
 	}
 
 	// ---- admin bootstrap user ---------------------------------------------
 	values["createUserJob"] = createUserJobBlock(locals)
+
+	// The chart's migration Job defaults to a post-install Helm HOOK,
+	// and post-install hooks only run AFTER the release wait completes
+	// — while every component's wait-for-airflow-migrations init
+	// container blocks on the migrations that hook would apply. Under
+	// any wait-style install that is a deadlock by construction
+	// (verified live: no Job existed while every init container
+	// crash-looped on "unapplied migrations"). Hook-less mode makes the
+	// Job an ordinary release resource applied WITH the install; the
+	// chart's own ttlSecondsAfterFinished: 300 default self-deletes the
+	// finished Job, so day-2 applies recreate it cleanly.
+	values["migrateDatabaseJob"] = map[string]interface{}{"useHelmHooks": false}
 
 	// ---- scheduling ---------------------------------------------------------
 	if scheduling := spec.GetScheduling(); scheduling != nil {
@@ -384,11 +414,15 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 // from the admin Secret, so the credential never appears in a rendered
 // pod spec.
 func createUserJobBlock(locals *Locals) map[string]interface{} {
+	// useHelmHooks false for the same reason as migrateDatabaseJob: a
+	// post-install hook only fires after the release wait, which never
+	// completes on a fresh database (the migration-hook deadlock class).
 	if !locals.AdminCreate {
-		return map[string]interface{}{"enabled": false}
+		return map[string]interface{}{"enabled": false, "useHelmHooks": false}
 	}
 	return map[string]interface{}{
-		"enabled": true,
+		"enabled":      true,
+		"useHelmHooks": false,
 		"env": []interface{}{
 			map[string]interface{}{
 				"name": "ADMIN_PASSWORD",

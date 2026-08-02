@@ -126,20 +126,24 @@ func (v *AirflowVerifier) VerifyExists(ctx context.Context, kubeconfig string) e
 		}
 	}
 
-	cancel, err := startPortForward(ctx, kubeconfig, "svc/"+v.Name+"-api-server", v.Namespace, airflowApiPort+":8080")
+	// The tunnel backs the api-server Service; open it listen-waited
+	// (a "started" port-forward is not a LISTENING one — the
+	// caught-live race harbor.go documents).
+	cancel, err := openServiceTunnel(ctx, kubeconfig, v.Namespace, v.Name+"-api-server", airflowApiPort, "8080")
 	if err != nil {
-		return errors.Wrap(err, "starting port-forward to the api server")
+		return errors.Wrap(err, "opening the tunnel to the api server")
 	}
-	defer cancel()
 
 	// THE AUTH GATE — before any credentialed call: the dags API must
 	// reject anonymous reads (source-verified authenticated route).
 	if err := v.proveAuthGate(ctx); err != nil {
+		cancel()
 		return err
 	}
 
 	token, err := v.login(ctx, kubeconfig)
 	if err != nil {
+		cancel()
 		return err
 	}
 
@@ -147,18 +151,94 @@ func (v *AirflowVerifier) VerifyExists(ctx context.Context, kubeconfig string) e
 	// composed database wiring, end to end) and the scheduler
 	// heartbeating.
 	if err := v.proveHealth(ctx, token); err != nil {
+		cancel()
 		return err
 	}
 
-	if v.DeliveryProof {
-		return v.proveDagDelivery(ctx, kubeconfig, token)
+	// refreshTunnel closes a dead/half-open forward and opens a fresh
+	// listen-waited one. The 2-replica api-server Service (full-surface)
+	// plus any pod restart leaves kubectl's sticky backend pointing at a
+	// dead endpoint — subsequent polls then burn the DagRun budget
+	// against transport errors while the worker has already finished
+	// the run (verified live: lastState stuck at "queued" for 10m
+	// while Celery logged success for the same run_id). A failed
+	// reopen must leave cancel as a no-op: openServiceTunnel returns
+	// (nil, err) on failure, and an unguarded cancel() after that is
+	// a nil-pointer panic (verified live).
+	refreshTunnel := func() error {
+		if cancel != nil {
+			cancel()
+		}
+		var reopenErr error
+		cancel, reopenErr = openServiceTunnel(ctx, kubeconfig, v.Namespace, v.Name+"-api-server", airflowApiPort, "8080")
+		if reopenErr != nil {
+			cancel = func() {}
+		}
+		return reopenErr
+	}
+	closeTunnel := func() {
+		if cancel != nil {
+			cancel()
+			cancel = nil
+		}
 	}
 
-	// THE DAG PROOF — the bundled example DAG (load_examples is
-	// declared on the proof scenarios) runs to a successful DagRun.
-	if err := v.proveDagRun(ctx, token, "example_bash_operator", "e2e-proof"); err != nil {
+	if !v.DeliveryProof {
+		// THE DAG PROOF — the bundled example DAG (load_examples is
+		// declared on the proof scenarios) runs to a successful DagRun.
+		err := v.proveDagRun(ctx, token, "example_bash_operator", "e2e-proof", refreshTunnel)
+		closeTunnel()
 		return err
 	}
+
+	// THE DELIVERY PROOF, phase 1 (this tunnel): deliver the marker DAG
+	// through the dag-processor's own mount and run it to success.
+	if err := v.deliverAndRunMarkerDag(ctx, kubeconfig, token, refreshTunnel); err != nil {
+		closeTunnel()
+		return err
+	}
+
+	// THE DURABILITY ARM: close the tunnel across the replacement
+	// window (long-held tunnels are single half-open pipes — the
+	// fresh-tunnel-per-phase shape the Ray/Flink verifiers share), kill
+	// the scheduler, then prove a fresh session on a fresh tunnel: a
+	// NEW login and a NEW run must succeed — scheduling state lives in
+	// the database, never in the pod.
+	closeTunnel()
+	if err := deletePodAwaitReplacement(ctx, kubeconfig, v.Namespace,
+		"component=scheduler,release="+v.Name, 10*time.Minute); err != nil {
+		return errors.Wrap(err, "the scheduler pod did not recover after deletion")
+	}
+
+	cancel, err = openServiceTunnel(ctx, kubeconfig, v.Namespace, v.Name+"-api-server", airflowApiPort, "8080")
+	if err != nil {
+		return errors.Wrap(err, "re-establishing the tunnel after the scheduler replacement")
+	}
+	// Lookup cancel at exit — refreshTunnel may have replaced it.
+	defer func() {
+		if cancel != nil {
+			cancel()
+		}
+	}()
+	token, err = v.login(ctx, kubeconfig)
+	if err != nil {
+		return errors.Wrap(err, "logging in again after the scheduler replacement")
+	}
+	refreshTunnel = func() error {
+		if cancel != nil {
+			cancel()
+		}
+		var reopenErr error
+		cancel, reopenErr = openServiceTunnel(ctx, kubeconfig, v.Namespace, v.Name+"-api-server", airflowApiPort, "8080")
+		if reopenErr != nil {
+			cancel = func() {}
+		}
+		return reopenErr
+	}
+	if err := v.proveDagRun(ctx, token, "e2e_delivery_proof", "post-replacement", refreshTunnel); err != nil {
+		return errors.Wrap(err, "a DagRun triggered AFTER the scheduler replacement should still succeed")
+	}
+	fmt.Printf("  [verify] DURABILITY: the delivered DAG ran to success again after a UID-verified scheduler replacement — scheduling state lives in the database\n")
 	return nil
 }
 
@@ -212,7 +292,12 @@ func (v *AirflowVerifier) proveAuthGate(ctx context.Context) error {
 
 // login exchanges the admin credential for a JWT at the api server's
 // own token endpoint (POST /auth/token — source-verified; the FAB auth
-// manager is the chart's default posture).
+// manager is the chart's default posture). A 401 is retried inside a
+// bounded bootstrap window: the hook-less create-user Job applies WITH
+// the release and Helm's wait does not await Jobs, so the api server
+// can be Ready seconds before the admin user exists (verified live —
+// the fast engine's verify raced the Job; the slow engine's never
+// did). A 401 that OUTLIVES the window is a real credential failure.
 func (v *AirflowVerifier) login(ctx context.Context, kubeconfig string) (string, error) {
 	password, err := v.adminPassword(ctx, kubeconfig)
 	if err != nil {
@@ -222,21 +307,27 @@ func (v *AirflowVerifier) login(ctx context.Context, kubeconfig string) (string,
 		"username": v.AdminUsername,
 		"password": password,
 	})
-	status, body, err := airflowApiRequest(ctx, "POST", "http://127.0.0.1:"+airflowApiPort+"/auth/token", "", string(payload), 3*time.Minute)
-	if err != nil {
-		return "", errors.Wrap(err, "the token endpoint never answered")
+	deadline := time.Now().Add(3 * time.Minute)
+	for {
+		status, body, err := airflowApiRequest(ctx, "POST", "http://127.0.0.1:"+airflowApiPort+"/auth/token", "", string(payload), 3*time.Minute)
+		if err != nil {
+			return "", errors.Wrap(err, "the token endpoint never answered")
+		}
+		if status >= 200 && status < 300 {
+			var parsed struct {
+				AccessToken string `json:"access_token"`
+			}
+			if jsonErr := json.Unmarshal([]byte(body), &parsed); jsonErr != nil || parsed.AccessToken == "" {
+				return "", errors.Errorf("the token endpoint answered without an access_token: %s", firstLines(body, 2))
+			}
+			fmt.Printf("  [verify] LOGIN: admin JWT issued from the module-generated credential\n")
+			return parsed.AccessToken, nil
+		}
+		if (status != http.StatusUnauthorized && status != http.StatusForbidden) || time.Now().After(deadline) {
+			return "", errors.Errorf("login as %q failed with %d: %s", v.AdminUsername, status, firstLines(body, 2))
+		}
+		time.Sleep(10 * time.Second)
 	}
-	if status < 200 || status >= 300 {
-		return "", errors.Errorf("login as %q failed with %d: %s", v.AdminUsername, status, firstLines(body, 2))
-	}
-	var parsed struct {
-		AccessToken string `json:"access_token"`
-	}
-	if err := json.Unmarshal([]byte(body), &parsed); err != nil || parsed.AccessToken == "" {
-		return "", errors.Errorf("the token endpoint answered without an access_token: %s", firstLines(body, 2))
-	}
-	fmt.Printf("  [verify] LOGIN: admin JWT issued from the module-generated credential\n")
-	return parsed.AccessToken, nil
 }
 
 // proveHealth asserts the api server's health contract: metadatabase
@@ -268,8 +359,10 @@ func (v *AirflowVerifier) proveHealth(ctx context.Context, token string) error {
 }
 
 // proveDagRun unpauses a DAG, triggers a run through the REST API, and
-// polls it to state=success — THE DAG PROOF.
-func (v *AirflowVerifier) proveDagRun(ctx context.Context, token, dagId, runPrefix string) error {
+// polls it to state=success — THE DAG PROOF. refreshTunnel is called
+// after consecutive transport errors so a dead port-forward (api-server
+// restart / sticky Service backend) cannot burn the poll budget.
+func (v *AirflowVerifier) proveDagRun(ctx context.Context, token, dagId, runPrefix string, refreshTunnel func() error) error {
 	base := "http://127.0.0.1:" + airflowApiPort + "/api/v2/dags/" + dagId
 
 	// The DAG must be parsed before it can run — poll the dag-processor's
@@ -305,9 +398,24 @@ func (v *AirflowVerifier) proveDagRun(ctx context.Context, token, dagId, runPref
 	// dispatch (Celery) happen inside this budget.
 	pollDeadline := time.Now().Add(10 * time.Minute)
 	var lastState string
+	consecutiveTransportErrs := 0
+	var lastProgress time.Time
 	for time.Now().Before(pollDeadline) {
 		status, body, err = airflowApiRequest(ctx, "GET", base+"/dagRuns/"+runId, token, "", 30*time.Second)
-		if err == nil && status == http.StatusOK {
+		if err != nil {
+			consecutiveTransportErrs++
+			if consecutiveTransportErrs >= 2 && refreshTunnel != nil {
+				fmt.Printf("  [verify] DagRun poll transport errors — refreshing the api-server tunnel\n")
+				if refreshErr := refreshTunnel(); refreshErr != nil {
+					return errors.Wrap(refreshErr, "refreshing the api-server tunnel mid-poll")
+				}
+				consecutiveTransportErrs = 0
+			}
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		consecutiveTransportErrs = 0
+		if status == http.StatusOK {
 			var parsed struct {
 				State string `json:"state"`
 			}
@@ -319,6 +427,10 @@ func (v *AirflowVerifier) proveDagRun(ctx context.Context, token, dagId, runPref
 				}
 				if parsed.State == "failed" {
 					return errors.Errorf("DagRun %q on %q FAILED — the engine cannot run its own DAG", runId, dagId)
+				}
+				if time.Since(lastProgress) >= 30*time.Second {
+					fmt.Printf("  [verify] waiting on DagRun %q: state %q\n", runId, lastState)
+					lastProgress = time.Now()
 				}
 			}
 		}
@@ -341,12 +453,13 @@ with DAG(dag_id="e2e_delivery_proof", schedule=None, catchup=False) as dag:
     BashOperator(task_id="echo_marker", bash_command="echo e2e-delivery-ok")
 `
 
-// proveDagDelivery writes the marker DAG into the shared dags volume
-// through the dag-processor pod (the parser's own mount), waits for it
-// to parse, runs it to success, then replaces the SCHEDULER pod
-// (UID-verified) and runs it again — scheduling state lives in the
-// database, never in the pod.
-func (v *AirflowVerifier) proveDagDelivery(ctx context.Context, kubeconfig, token string) error {
+// deliverAndRunMarkerDag writes the marker DAG into the shared dags
+// volume through the dag-processor pod (the parser's own mount), waits
+// for it to parse, and runs it to success — THE DELIVERY PROOF's first
+// phase. The durability arm (scheduler replacement + a second run on a
+// fresh tunnel and session) is orchestrated by VerifyExists, where the
+// tunnel lifecycle lives.
+func (v *AirflowVerifier) deliverAndRunMarkerDag(ctx context.Context, kubeconfig, token string, refreshTunnel func() error) error {
 	// Write through kubectl exec — the dag-processor mounts the shared
 	// dags volume read-write and parses what lands there.
 	writeCmd := fmt.Sprintf("cat > /opt/airflow/dags/e2e_delivery_proof.py <<'PYEOF'\n%s\nPYEOF", airflowMarkerDag)
@@ -359,22 +472,17 @@ func (v *AirflowVerifier) proveDagDelivery(ctx context.Context, kubeconfig, toke
 	}
 	fmt.Printf("  [verify] DELIVERY: marker DAG written into the shared dags volume\n")
 
-	if err := v.proveDagRun(ctx, token, "e2e_delivery_proof", "delivery-proof"); err != nil {
+	if err := v.proveDagRun(ctx, token, "e2e_delivery_proof", "delivery-proof", refreshTunnel); err != nil {
 		return errors.Wrap(err, "the delivered DAG never ran to success")
 	}
-
-	// THE DURABILITY ARM: replace the scheduler, then a fresh run must
-	// still schedule and succeed.
-	if err := deletePodAwaitReplacement(ctx, kubeconfig, v.Namespace,
-		"component=scheduler,release="+v.Name, 10*time.Minute); err != nil {
-		return errors.Wrap(err, "the scheduler pod did not recover after deletion")
-	}
-	if err := v.proveDagRun(ctx, token, "e2e_delivery_proof", "post-replacement"); err != nil {
-		return errors.Wrap(err, "a DagRun triggered AFTER the scheduler replacement should still succeed")
-	}
-	fmt.Printf("  [verify] DURABILITY: the delivered DAG ran to success again after a UID-verified scheduler replacement — scheduling state lives in the database\n")
 	return nil
 }
+
+// airflowHTTP is a short-timeout client so a dead port-forward fails
+// the request in seconds (and the poller can refresh) instead of
+// hanging on http.DefaultClient's unbounded dial against a half-open
+// tunnel.
+var airflowHTTP = &http.Client{Timeout: 15 * time.Second}
 
 // airflowApiRequest is one HTTP request with optional bearer token and
 // JSON body, retried until the budget expires on transport errors only
@@ -393,7 +501,7 @@ func airflowApiRequest(ctx context.Context, method, url, token, body string, bud
 		if body != "" {
 			req.Header.Set("Content-Type", "application/json")
 		}
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := airflowHTTP.Do(req)
 		if err == nil {
 			raw, readErr := io.ReadAll(resp.Body)
 			resp.Body.Close()

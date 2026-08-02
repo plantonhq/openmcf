@@ -167,13 +167,20 @@ locals {
   # ---- typed chart values (twin of the Pulumi module's buildHelmValues) --------
   # Chart-default-matching values render only on divergence — with the
   # deliberate always-rendered exceptions called out inline
-  # (fullnameOverride, image.tag, and the keystore wiring whenever the
+  # (nameOverride, image.tag, and the keystore wiring whenever the
   # webhook is on).
   typed_values = {
     for k, v in {
-      # fullnameOverride pins the chart's fullname to the resource name
-      # (the catalog's Helm-kind identity convention) — every
-      # fullname-derived fallback name hangs off it.
+      # nameOverride is THIS chart's identity pin: the operator
+      # Deployment (and its selector labels) render from the
+      # `flink-operator.name` helper (default .Chart.Name |
+      # nameOverride) — fullnameOverride alone is a no-op for the
+      # Deployment and leaves it at the chart-constant
+      # `flink-kubernetes-operator` (verified live: the pinned name was
+      # NotFound while the chart-named Deployment served). Both keys
+      # are set so any fullname-derived fallback also hangs off the
+      # resource name.
+      nameOverride     = local.release_name
       fullnameOverride = local.release_name
 
       image = local.operator_image

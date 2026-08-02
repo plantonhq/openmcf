@@ -388,6 +388,28 @@ func airflowSecrets(ctx *pulumi.Context,
 			return nil, errors.Wrap(err, "failed to create pgbouncer config secret")
 		}
 		createdResources = append(createdResources, created)
+
+		// The metrics-exporter sidecar (unconditional whenever the
+		// pooler deploys at this pin) reads its DSN from a stats
+		// Secret. The chart's OWN stats Secret composes that DSN from
+		// split values (data.metadataConnection.user/pass — defaults
+		// postgres/postgres), which the secret-native design never
+		// sets: the exporter then dials a user pgbouncer's auth_file
+		// does not carry and crash-loops (verified live: "no such
+		// user: postgres" in the pooler log). The module composes the
+		// stats DSN itself — the metadata user IS the ini stats_users
+		// grant — through the chart's documented statsSecretName seam
+		// (DSN shape from the chart's own Secret template:
+		// 127.0.0.1:<port>/pgbouncer, sslmode disable default).
+		statsUri := pulumi.Sprintf("postgresql://%s:%s@127.0.0.1:%d/pgbouncer?sslmode=disable",
+			url.QueryEscape(locals.DbUser), urlEncode(dbPassword), vars.PgbouncerPort)
+		created, err = newSecret("pgbouncer-stats-secret", locals.PgbouncerStatsSecretName, pulumi.StringMap{
+			vars.ConnectionKey: pulumi.ToSecret(statsUri).(pulumi.StringOutput),
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create pgbouncer stats secret")
+		}
+		createdResources = append(createdResources, created)
 	}
 
 	return createdResources, nil

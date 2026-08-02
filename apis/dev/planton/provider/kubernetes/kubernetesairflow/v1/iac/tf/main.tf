@@ -346,6 +346,26 @@ resource "kubernetes_secret_v1" "pgbouncer_config" {
   depends_on = [kubernetes_namespace_v1.airflow]
 }
 
+resource "kubernetes_secret_v1" "pgbouncer_stats" {
+  count = local.pgbouncer_enabled ? 1 : 0
+
+  metadata {
+    name      = local.pgbouncer_stats_secret
+    namespace = local.namespace
+    labels    = local.labels
+  }
+  type = "Opaque"
+  data = {
+    # The metrics-exporter sidecar's DSN (chart contract: key
+    # `connection`, pgbouncer admin database over localhost). The
+    # chart's own stats Secret would render split-values defaults the
+    # auth_file never carries — see the pgbouncer_stats_uri comment.
+    "connection" = local.pgbouncer_stats_uri
+  }
+
+  depends_on = [kubernetes_namespace_v1.airflow]
+}
+
 # ---------------------------------------------------------------------------
 # The Helm release.
 # ---------------------------------------------------------------------------

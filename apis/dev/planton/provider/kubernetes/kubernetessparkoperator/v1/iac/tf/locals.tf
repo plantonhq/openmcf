@@ -167,10 +167,15 @@ locals {
   # by that conventional name.
   typed_values = {
     for k, v in {
-      # fullnameOverride pins the chart's fullname to the resource name
-      # (the catalog's Helm-kind identity convention) — the operator
-      # Deployment and its probe/metrics artifacts derive from it.
-      fullnameOverride = local.release_name
+      # nameOverride is THIS chart's identity pin: every named object
+      # (the operator Deployment, PDB selector, NetworkPolicy) renders
+      # from the `spark-operator.name` helper (default .Chart.Name |
+      # nameOverride) — the chart defines a fullname helper but NO
+      # template consumes it, so a fullnameOverride pin is a no-op and
+      # the Deployment would keep the chart's constant name
+      # `spark-kubernetes-operator` (verified live: the pinned name was
+      # NotFound while the chart-named Deployment served).
+      nameOverride = local.release_name
 
       operatorDeployment = {
         for dk, dv in {

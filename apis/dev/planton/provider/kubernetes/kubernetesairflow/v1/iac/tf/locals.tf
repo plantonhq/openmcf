@@ -204,6 +204,20 @@ locals {
     local.db_user, local.db_password,
   )
 
+  # The pgbouncer metrics-exporter sidecar (unconditional whenever the
+  # pooler deploys at this pin) reads its DSN from a stats Secret. The
+  # chart's OWN stats Secret composes that DSN from split values
+  # (data.metadataConnection.user/pass — defaults postgres/postgres),
+  # which the secret-native design never sets: the exporter then dials
+  # a user pgbouncer's auth_file does not carry and crash-loops
+  # (verified live: "no such user: postgres" in the pooler log). The
+  # module composes the stats DSN itself — the metadata user IS the ini
+  # stats_users grant — through the chart's documented
+  # statsSecretName seam (DSN shape from the chart's own Secret
+  # template: 127.0.0.1:<port>/pgbouncer, sslmode disable default).
+  pgbouncer_stats_secret = "${local.release_name}-pgbouncer-stats"
+  pgbouncer_stats_uri    = "postgresql://${urlencode(local.db_user)}:${urlencode(local.db_password)}@127.0.0.1:${local.pgbouncer_port}/pgbouncer?sslmode=disable"
+
   # ---- resources helper renderings ----------------------------------------------------
   component_resources = {
     api_server    = try(var.spec.components.api_server.resources, null)
@@ -303,9 +317,17 @@ locals {
     for k, v in {
       enabled = true
       repo    = local.git_sync.repo
-      # git-sync v4 syncs `ref`; the chart's separate branch/rev keys
-      # serve the retired v3 sidecar.
-      ref               = local.git_sync.ref != "" ? local.git_sync.ref : null
+      # The chart renders BOTH env generations UNCONDITIONALLY —
+      # GITSYNC_REF from `ref` (v4) and GIT_SYNC_BRANCH from `branch`
+      # (legacy) — and git-sync v4 translates the deprecated --branch
+      # OVER --ref, so a ref-only rendering silently syncs the chart's
+      # default branch (verified live: the sidecar fetched v2-2-stable
+      # while ref carried the declared value). Both keys always render
+      # the spec value — INCLUDING the empty string, which neutralizes
+      # the chart's v2-2-stable defaults so the spec's Empty = HEAD
+      # promise holds (git-sync treats empty ref/branch as HEAD).
+      ref               = local.git_sync.ref
+      branch            = local.git_sync.ref
       subPath           = local.git_sync.sub_path
       period            = try(coalesce(local.git_sync.period_seconds), null) != null ? "${local.git_sync.period_seconds}s" : null
       depth             = try(coalesce(local.git_sync.depth), null)
@@ -383,6 +405,10 @@ locals {
       resultBackendPoolSize = try(coalesce(try(var.spec.pgbouncer.result_backend_pool_size, null)), null)
       maxClientConn         = try(coalesce(try(var.spec.pgbouncer.max_client_connections, null)), null)
       resources             = local.rendered_resources.pgbouncer
+      # The module-composed stats DSN for the metrics-exporter sidecar
+      # (see the pgbouncer_stats_uri comment) — with statsSecretName
+      # set, the chart skips creating its split-values stats Secret.
+      metricsExporterSidecar = { statsSecretName = local.pgbouncer_stats_secret }
     } : k => v if v != null
   } : null
 
@@ -391,9 +417,13 @@ locals {
   # ARGUMENT — this block replaces the password argument with a
   # job-scoped env var read from the admin Secret. One null-pruned map
   # serves the enabled and disabled shapes (the type-unification class).
+  # useHelmHooks false for the same reason as migrateDatabaseJob: a
+  # post-install hook only fires after the release wait, which never
+  # completes on a fresh database (the migration-hook deadlock class).
   create_user_job_block = {
     for k, v in {
-      enabled = local.admin_create
+      useHelmHooks = false
+      enabled      = local.admin_create
       env = local.admin_create ? [{
         name = "ADMIN_PASSWORD"
         valueFrom = {
@@ -509,9 +539,30 @@ locals {
 
       statsd = { enabled = local.statsd_enabled }
 
-      config = var.spec.load_examples ? { core = { load_examples = "True" } } : null
+      # The env-var form, NOT config.core: the official image BAKES
+      # AIRFLOW__CORE__LOAD_EXAMPLES=False as a container env, and
+      # Airflow's precedence puts env above airflow.cfg — a cfg-only
+      # True is silently defeated (verified live: examples never
+      # parsed; the chart's own docs prescribe the env route).
+      env = var.spec.load_examples ? [
+        { name = "AIRFLOW__CORE__LOAD_EXAMPLES", value = "True" }
+      ] : null
 
       createUserJob = local.create_user_job_block
+
+      # The chart's migration Job defaults to a post-install Helm HOOK,
+      # and Helm runs post-install hooks only AFTER the release wait
+      # completes — while every component's wait-for-airflow-migrations
+      # init container blocks on the migrations that hook would apply.
+      # Under any wait-style install (both engines wait) that is a
+      # deadlock by construction: the pods never turn Ready, the wait
+      # expires, the hook never fires (verified live: no Job existed
+      # while every init container crash-looped on "unapplied
+      # migrations"). Hook-less mode makes the Job an ordinary release
+      # resource applied WITH the install; the chart's own
+      # ttlSecondsAfterFinished: 300 default self-deletes the finished
+      # Job, so day-2 applies recreate it cleanly.
+      migrateDatabaseJob = { useHelmHooks = false }
 
       nodeSelector = try(local.scheduling_block.nodeSelector, null)
       tolerations  = try(local.scheduling_block.tolerations, null)

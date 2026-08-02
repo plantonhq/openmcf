@@ -158,15 +158,53 @@ func (v *FlinkDeploymentVerifier) VerifyExists(ctx context.Context, kubeconfig s
 	}
 	fmt.Printf("  [verify] THE RECOVERY PROOF: job %s RUNNING again after the JobManager replacement\n", newJobId)
 
-	// Stage 4: checkpoint continuity — the recovered execution must
-	// complete fresh checkpoints, proving it restored state and resumed
-	// the write path into S3 (not merely rebooted empty).
+	// Stage 4: checkpoint continuity, both halves. First the RESTORE
+	// truth: the recovered execution must report latest.restored — the
+	// coordinator's own record that it initialized FROM a checkpoint in
+	// the store (CheckpointingStatistics.LatestCheckpoints, field
+	// "restored", nullable — null would mean a fresh boot that merely
+	// resembles recovery). Then the WRITE path: fresh checkpoints must
+	// complete after the restore.
+	restoredId, err := v.waitForRestoredCheckpoint(ctx, client, base, newJobId, 4*time.Minute)
+	if err != nil {
+		return errors.Wrap(err, "the recovered job never reported a RESTORED checkpoint — it may have rebooted empty instead of restoring")
+	}
+	fmt.Printf("  [verify] THE RECOVERY PROOF: the recovered job RESTORED checkpoint %d from the composed S3 store\n", restoredId)
 	completed, err = v.waitForCompletedCheckpoints(ctx, client, base, newJobId, 5*time.Minute)
 	if err != nil {
 		return errors.Wrap(err, "no checkpoints completed after the recovery")
 	}
 	fmt.Printf("  [verify] THE RECOVERY PROOF: %d checkpoint(s) completed after recovery — HA metadata + checkpoint restore held\n", completed)
 	return nil
+}
+
+// waitForRestoredCheckpoint polls /jobs/<id>/checkpoints until
+// latest.restored is non-null, returning the restored checkpoint id.
+// The field is the checkpoint coordinator's own restore record
+// (CheckpointingStatistics.java: FIELD_NAME_LATEST_CHECKPOINTS
+// "latest" → FIELD_NAME_RESTORED "restored", @Nullable
+// RestoredCheckpointStatistics with id/restore_timestamp) — the one
+// signal that distinguishes a genuine state restore from a job that
+// rebooted empty and started checkpointing from scratch.
+func (v *FlinkDeploymentVerifier) waitForRestoredCheckpoint(ctx context.Context, client *http.Client, base, jobId string, budget time.Duration) (int64, error) {
+	deadline := time.Now().Add(budget)
+	for time.Now().Before(deadline) {
+		body, err := flinkGET(ctx, client, base+"/jobs/"+jobId+"/checkpoints", 60*time.Second)
+		if err == nil {
+			var stats struct {
+				Latest struct {
+					Restored *struct {
+						Id int64 `json:"id"`
+					} `json:"restored"`
+				} `json:"latest"`
+			}
+			if jsonErr := json.Unmarshal([]byte(body), &stats); jsonErr == nil && stats.Latest.Restored != nil {
+				return stats.Latest.Restored.Id, nil
+			}
+		}
+		time.Sleep(10 * time.Second)
+	}
+	return 0, errors.Errorf("latest.restored never appeared for job %s within %s", jobId, budget)
 }
 
 func (v *FlinkDeploymentVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) error {

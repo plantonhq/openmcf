@@ -50,7 +50,11 @@ this spec. The chart truth at 1.15.0:
 - **The webhook scoping follows the watch fence**: with
   `watch_namespaces` set, the chart scopes its RBAC AND the admission
   webhook's namespaceSelector to exactly that list — declarations
-  outside it are neither reconciled nor webhook-validated.
+  outside it are neither reconciled nor webhook-validated. The
+  modules CREATE each listed namespace before the Helm release —
+  the chart plants job ServiceAccount/Role/RoleBinding INTO those
+  namespaces and does not create them (an absent watch namespace
+  fails the install with `namespaces "…" not found`).
 
 ## The Keystore Password: Why the Module Generates a Credential
 
@@ -143,13 +147,22 @@ jobs never lose their identity.
   FlinkDeployments that mysteriously never reconcile.
 - **The module owns namespace creation** (`create_namespace`), never
   the Helm release.
-- **`fullnameOverride` pins the chart's fullname to the resource
-  name** — the catalog's Helm-kind identity convention; every
-  fullname-derived fallback name hangs off it.
+- **`nameOverride` is THIS chart's identity pin** (not
+  `fullnameOverride` alone). The operator Deployment and its
+  selector labels render from the `flink-operator.name` helper
+  (`default .Chart.Name | nameOverride`) — pinning only
+  `fullnameOverride` leaves the Deployment at the chart-constant
+  `flink-kubernetes-operator` while the verifier looks for
+  `deployment/<metadata.name>` (verified live). Both keys are set
+  so any fullname-derived fallback also hangs off the resource
+  name. Same class as KubernetesSparkOperator's `nameOverride` pin.
 - **Chart-default-matching values render only on divergence** — with
-  the deliberate always-rendered exceptions: `fullnameOverride`,
-  `image.tag` (the anti-`latest` pin), and the keystore wiring
-  whenever the webhook is on.
+  the deliberate always-rendered exceptions: `nameOverride` /
+  `fullnameOverride`, `image.tag` (the anti-`latest` pin), and the
+  keystore wiring whenever the webhook is on.
+- **The module owns watch namespaces** when `watch_namespaces` is
+  non-empty — created before the release, deleted with the
+  resource.
 
 ## Version Pins and Naming Contracts
 

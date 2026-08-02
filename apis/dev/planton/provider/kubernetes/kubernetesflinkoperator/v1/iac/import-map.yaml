@@ -4,15 +4,16 @@ metadata:
   name: kubernetesflinkoperator
 spec:
   # One Helm release named after metadata.name, the optional anchor
-  # namespace, and — webhook-enabled installs only — the module-owned
-  # keystore-password Secret with its random_password companion
-  # (imported by VALUE: the random provider keeps no cloud state).
-  # Everything the chart creates inside the release (the operator
-  # Deployment, the webhook Service/configurations, the cert-manager
-  # Certificate/Issuer, the kept job ServiceAccount) travels with the
-  # release import. The flink.apache.org CRDs ride the chart's crds/
-  # directory (Helm-owned, install-once) and are never separate state
-  # addresses.
+  # namespace, the module-owned watch namespaces (for_each when
+  # watch_namespaces is set), and — webhook-enabled installs only — the
+  # module-owned keystore-password Secret with its random_password
+  # companion (imported by VALUE: the random provider keeps no cloud
+  # state). Everything the chart creates inside the release (the
+  # operator Deployment, the webhook Service/configurations, the
+  # cert-manager Certificate/Issuer, the kept job ServiceAccount)
+  # travels with the release import. The flink.apache.org CRDs ride the
+  # chart's crds/ directory (Helm-owned, install-once) and are never
+  # separate state addresses.
   values:
     - name: release_name
       derivations:
@@ -35,6 +36,17 @@ spec:
       where_to_find: >-
         Only imported when create_namespace is true; the installation
         namespace itself.
+    # ── module-owned watch namespaces (for_each resource "watch") ───────
+    # Keyed by the namespace name itself (a spec.watch_namespaces entry),
+    # so the import ID derives blind from the state address key. Absent
+    # entirely when watch_namespaces is empty.
+    - name: namespace_name
+      tofu_resource_name: watch
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        Each watch namespace's metadata.name is the for_each key (a
+        `spec.watch_namespaces` entry) — `kubectl get ns` (NAME column).
     # ── the module-owned webhook keystore Secret ─────────────────────────
     # Deterministic name "<metadata.name>-webhook-keystore"; count-indexed
     # (webhook-enabled installs only), so from_address_key cannot serve it
