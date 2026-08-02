@@ -275,10 +275,16 @@ type KubernetesMlflowServer struct {
 	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
 	// *
 	// Container image. Empty = the official image
-	// (`ghcr.io/mlflow/mlflow`, tag pinned to this kind's MLflow
-	// release) — override for private mirrors or a custom image
-	// carrying extra drivers (the official image already includes the
-	// PostgreSQL driver and the S3/GCS/Azure artifact clients).
+	// (`ghcr.io/mlflow/mlflow`, `-full` variant at this kind's pinned
+	// MLflow release) — override for private mirrors or a custom
+	// image. The variant matters (verified live: the pod crash-loops
+	// otherwise): the bare `vX.Y.Z` image is core MLflow only — no
+	// database drivers (psycopg2/PyMySQL), no object-store clients
+	// (boto3/GCS/Azure), and no basic-auth dependency (Flask-WTF) —
+	// so the postgres/mysql backends, every remote artifact store,
+	// and the secured-by-default sign-in all require the `-full`
+	// variant (published upstream since v3.9.0). A mirror or custom
+	// image must carry the same dependency set.
 	Image *KubernetesMlflowImage `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
 	// *
 	// Number of uvicorn worker processes. Empty = the server default
@@ -361,8 +367,10 @@ type KubernetesMlflowImage struct {
 	// "ghcr.io/mlflow/mlflow".
 	Repository *string `protobuf:"bytes,1,opt,name=repository,proto3,oneof" json:"repository,omitempty"`
 	// *
-	// Image tag. Empty = "v3.15.0" (the MLflow release this kind is
-	// built against).
+	// Image tag. Empty = "v3.15.0-full" (the MLflow release this kind
+	// is built against, in the `-full` variant that ships the database
+	// drivers, object-store clients and auth dependency — the bare
+	// variant boots none of those arms; verified live at the pin).
 	Tag           *string `protobuf:"bytes,2,opt,name=tag,proto3,oneof" json:"tag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2128,12 +2136,12 @@ const file_dev_planton_provider_kubernetes_kubernetesmlflow_v1_spec_proto_rawDes
 	"\tresources\x18\x04 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresourcesB\v\n" +
 	"\t_replicasB\n" +
 	"\n" +
-	"\b_workers\"\x92\x01\n" +
+	"\b_workers\"\x97\x01\n" +
 	"\x15KubernetesMlflowImage\x12>\n" +
 	"\n" +
 	"repository\x18\x01 \x01(\tB\x19\x8a\xa6\x1d\x15ghcr.io/mlflow/mlflowH\x00R\n" +
-	"repository\x88\x01\x01\x12\"\n" +
-	"\x03tag\x18\x02 \x01(\tB\v\x8a\xa6\x1d\av3.15.0H\x01R\x03tag\x88\x01\x01B\r\n" +
+	"repository\x88\x01\x01\x12'\n" +
+	"\x03tag\x18\x02 \x01(\tB\x10\x8a\xa6\x1d\fv3.15.0-fullH\x01R\x03tag\x88\x01\x01B\r\n" +
 	"\v_repositoryB\x06\n" +
 	"\x04_tag\"\xf2\x02\n" +
 	"\x1cKubernetesMlflowBackendStore\x12o\n" +

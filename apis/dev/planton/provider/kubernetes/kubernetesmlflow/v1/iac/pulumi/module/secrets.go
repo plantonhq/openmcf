@@ -77,11 +77,16 @@ func readSecretValue(ctx *pulumi.Context,
 //   - `<name>-admin-auth` (key `password`, generated arm only): the
 //     bootstrap admin password — the exported credential handle.
 //     Upstream's admin/password1234 default never ships.
-//   - `<name>-auth-config` (key `basic_auth.ini`): the basic-auth app's
-//     configuration — admin credential, default permission, and the auth
-//     database (the backend database on database arms; a sqlite file
-//     beside the tracking data on the sqlite arm). The server reads it
-//     through MLFLOW_AUTH_CONFIG_PATH.
+//   - `<name>-auth-config` (keys `basic_auth.ini` + `flask_secret_key`):
+//     the basic-auth app's configuration — admin credential, default
+//     permission, the auth database (the backend database on database
+//     arms; a sqlite file beside the tracking data on the sqlite arm),
+//     and the Flask CSRF signing key the auth app REFUSES to start
+//     without (MLFLOW_FLASK_SERVER_SECRET_KEY, env-wired; verified live
+//     at the pin). The server reads the ini through
+//     MLFLOW_AUTH_CONFIG_PATH; the key rides env from the same Secret,
+//     so every replica shares one consistent value — upstream's own
+//     multi-server requirement.
 //
 // Returns the created resources plus the composed backend URI (the
 // deployment wires it as an env var).
@@ -196,8 +201,27 @@ admin_password = %s
 authorization_function = mlflow.server.auth:authenticate_request_basic_auth
 `, locals.DefaultPermission, authDatabaseUri, locals.AdminUsername, adminPassword)
 
+	// The Flask CSRF signing key: the auth app raises at create_app
+	// without MLFLOW_FLASK_SERVER_SECRET_KEY (server source at the
+	// pin). Letters+digits only (env-consumed); module-generated —
+	// there is no user-facing reason to model a knob for a purely
+	// internal signing key.
+	flaskSecretKey, err := random.NewRandomPassword(ctx, "flask-secret-key",
+		&random.RandomPasswordArgs{
+			Length:     pulumi.Int(40),
+			Special:    pulumi.Bool(false),
+			MinUpper:   pulumi.Int(2),
+			MinLower:   pulumi.Int(2),
+			MinNumeric: pulumi.Int(2),
+		},
+		generationShapeIgnores)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate flask secret key")
+	}
+
 	created, err := newSecret("auth-config-secret", locals.AuthConfigSecretName, pulumi.StringMap{
 		vars.AuthConfigFileName: pulumi.ToSecret(authIni).(pulumi.StringOutput),
+		vars.FlaskSecretKeyKey:  flaskSecretKey.Result,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create auth config secret")

@@ -230,30 +230,45 @@ func newJupyterhubSession(ctx context.Context) (*jupyterhubSession, error) {
 	return nil, errors.New("the login page never answered through proxy-public")
 }
 
-// login signs in through the hub's own login form as SpawnUsername.
+// login signs in through the hub's own login form as SpawnUsername and
+// proves the session with the hub's authenticated identity route.
 func (v *JupyterHubVerifier) login(ctx context.Context, password string) (*jupyterhubSession, error) {
 	session, err := newJupyterhubSession(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if err := session.postLogin(ctx, v.SpawnUsername, password); err != nil {
+	status, body, err := session.postLogin(ctx, v.SpawnUsername, password)
+	if err != nil {
 		return nil, err
 	}
-	// Authenticated proof: the home page answers 200 for a signed-in
-	// session (an anonymous request redirects to the login page).
-	status, body, err := session.request(ctx, "GET", "/hub/home", nil, "")
+	// The server's own contract (LoginHandler.post at the pin): a
+	// REFUSED login re-renders the form with 403 and sets no session
+	// cookie; a successful one redirects.
+	if status == http.StatusForbidden {
+		return nil, errors.Errorf("sign-in as %q was REFUSED (403): %s", v.SpawnUsername, firstLines(body, 2))
+	}
+	// Authenticated proof on an API route, never a redirect-followed
+	// page fetch: /hub/api/user answers 200 with the identity for a
+	// signed-in session and 403 for an anonymous one (a page like
+	// /hub/home answers 200 EITHER WAY once the client follows the
+	// anonymous redirect back to the login page — verified live: that
+	// probe reported wrong-password sign-ins as successes).
+	status, body, err = session.request(ctx, "GET", "/hub/api/user", nil, "")
 	if err != nil {
-		return nil, errors.Wrap(err, "the home page never answered after login")
+		return nil, errors.Wrap(err, "the identity route never answered after login")
 	}
-	if status != http.StatusOK {
-		return nil, errors.Errorf("sign-in as %q did not stick: /hub/home answered %d: %s", v.SpawnUsername, status, firstLines(body, 2))
+	if status != http.StatusOK || !strings.Contains(body, v.SpawnUsername) {
+		return nil, errors.Errorf("sign-in as %q did not stick: /hub/api/user answered %d: %s", v.SpawnUsername, status, firstLines(body, 2))
 	}
-	fmt.Printf("  [verify] LOGIN: %q signed in with the module-generated shared password\n", v.SpawnUsername)
+	fmt.Printf("  [verify] LOGIN: %q signed in with the module-generated shared password (identity confirmed via /hub/api/user)\n", v.SpawnUsername)
 	return session, nil
 }
 
-// postLogin submits the login form (username/password + the XSRF echo).
-func (s *jupyterhubSession) postLogin(ctx context.Context, username, password string) error {
+// postLogin submits the login form (username/password + the XSRF echo)
+// and returns the server's OWN response status plus body — the caller
+// discriminates on the server's contract (403 = refused; a successful
+// login redirects and sets the session cookie).
+func (s *jupyterhubSession) postLogin(ctx context.Context, username, password string) (int, string, error) {
 	form := url.Values{}
 	form.Set("username", username)
 	form.Set("password", password)
@@ -264,17 +279,14 @@ func (s *jupyterhubSession) postLogin(ctx context.Context, username, password st
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	response, err := s.client.Do(request)
 	if err != nil {
-		return errors.Wrap(err, "the login form never answered")
+		return 0, "", errors.Wrap(err, "the login form never answered")
 	}
 	body, _ := io.ReadAll(response.Body)
 	response.Body.Close()
-	// A successful login lands on a 200 page after redirects; a
-	// rejected one re-renders the login form with an error and no
-	// session cookie — the /hub/home probe distinguishes them.
 	if response.StatusCode >= 500 {
-		return errors.Errorf("the login form answered %d: %s", response.StatusCode, firstLines(string(body), 2))
+		return response.StatusCode, string(body), errors.Errorf("the login form answered %d: %s", response.StatusCode, firstLines(string(body), 2))
 	}
-	return nil
+	return response.StatusCode, string(body), nil
 }
 
 // request performs a session request with the XSRF header echoed (the
@@ -322,23 +334,33 @@ func (v *JupyterHubVerifier) proveAnonymousRejected(ctx context.Context) error {
 }
 
 // proveWrongPasswordRejected asserts a wrong-password sign-in never
-// authenticates.
+// authenticates — on the server's OWN contract (the login POST answers
+// 403 with the form re-rendered) AND on the identity route (the jar's
+// session must stay anonymous). Never a redirect-followed page fetch:
+// an anonymous /hub/home redirects back to the login page and answers
+// 200 exactly like a signed-in one (verified live — the page probe
+// reported wrong-password sign-ins as successes on every lane).
 func (v *JupyterHubVerifier) proveWrongPasswordRejected(ctx context.Context) error {
 	session, err := newJupyterhubSession(ctx)
 	if err != nil {
 		return err
 	}
-	if err := session.postLogin(ctx, v.SpawnUsername, "definitely-not-the-password"); err != nil {
+	status, _, err := session.postLogin(ctx, v.SpawnUsername, "definitely-not-the-password")
+	if err != nil {
 		return err
 	}
-	status, _, err := session.request(ctx, "GET", "/hub/home", nil, "")
+	if status != http.StatusForbidden {
+		return errors.Errorf("THE AUTH GATE FAILED: a wrong-password login POST answered %d, expected the server's 403 refusal", status)
+	}
+	// Belt and braces: the refused jar must hold NO working session.
+	status, _, err = session.request(ctx, "GET", "/hub/api/user", nil, "")
 	if err != nil {
-		return errors.Wrap(err, "the post-login probe never answered")
+		return errors.Wrap(err, "the post-login identity probe never answered")
 	}
 	if status == http.StatusOK {
-		return errors.New("THE AUTH GATE FAILED: a WRONG password signed in — the chart's open-door default is live")
+		return errors.New("THE AUTH GATE FAILED: a WRONG password produced a working session — the chart's open-door default is live")
 	}
-	fmt.Printf("  [verify] AUTH GATE: wrong-password sign-in refused (the open-door chart default is dead)\n")
+	fmt.Printf("  [verify] AUTH GATE: wrong-password sign-in refused with the server's 403 and no session (the open-door chart default is dead)\n")
 	return nil
 }
 

@@ -56,6 +56,12 @@ func serverEnv(locals *Locals) kubernetescorev1.EnvVarArray {
 	if locals.AuthEnabled {
 		envVars = append(envVars, envVar("MLFLOW_AUTH_CONFIG_PATH",
 			fmt.Sprintf("%s/%s", vars.AuthConfigMountPath, vars.AuthConfigFileName)))
+		// The auth app refuses to start without the Flask CSRF signing
+		// key (verified live at the pin); sourcing it from the shared
+		// auth-config Secret keeps it consistent across replicas —
+		// upstream's own multi-server requirement.
+		envVars = append(envVars, secretEnvVar("MLFLOW_FLASK_SERVER_SECRET_KEY",
+			locals.AuthConfigSecretName, vars.FlaskSecretKeyKey))
 	}
 
 	// Artifact-store credentials — env contracts of MLflow's own
@@ -175,6 +181,14 @@ func serverDeployment(ctx *pulumi.Context, locals *Locals,
 			Name: pulumi.String("auth-config"),
 			Secret: &kubernetescorev1.SecretVolumeSourceArgs{
 				SecretName: pulumi.String(locals.AuthConfigSecretName),
+				// Only the ini materializes as a file — the Secret's
+				// flask_secret_key rides env, never the filesystem.
+				Items: kubernetescorev1.KeyToPathArray{
+					&kubernetescorev1.KeyToPathArgs{
+						Key:  pulumi.String(vars.AuthConfigFileName),
+						Path: pulumi.String(vars.AuthConfigFileName),
+					},
+				},
 			},
 		})
 		volumeMounts = append(volumeMounts, &kubernetescorev1.VolumeMountArgs{

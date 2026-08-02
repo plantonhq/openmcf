@@ -10,12 +10,28 @@ there is nothing served to pin. The mature community chart was
 disqualified on image provenance (it runs a personal third-party
 rebuild of MLflow, not the official image) and on dead bundled
 dependencies. This module therefore renders MODULE-OWNED typed
-manifests around the OFFICIAL image `ghcr.io/mlflow/mlflow:v3.15.0`
+manifests around the OFFICIAL image `ghcr.io/mlflow/mlflow:v3.15.0-full`
 (registry-verified), using the unpublished in-repo chart as the
 canonical pod-shape reference: `mlflow server` command args,
 MLFLOW_BACKEND_STORE_URI via env (the secretKeyRef seam is upstream's
 own design), `/health` probes, `mlflow gc` as a CronJob, and the
 Recreate-when-RWO strategy rule.
+
+## Image-variant truth (verified live — the pod crash-loops otherwise)
+
+The bare `ghcr.io/mlflow/mlflow:vX.Y.Z` image is `pip install mlflow`
+on python-slim and NOTHING else (its Dockerfile at the pin). Upstream's
+own docker README states the consequence plainly: "Most integrations
+(backend store databases, artifact stores, etc.) will not work without
+additional packages." Concretely missing: the database drivers
+(psycopg2-binary/PyMySQL — a postgres backend dies at boot with
+`No module named 'psycopg2'`), the object-store clients (boto3/GCS/
+Azure — every remote artifact destination), and Flask-WTF (the `auth`
+extra — basic auth itself). The `-full` variant
+(`pip install mlflow[extras,azure,db,gateway,genai,auth]`, published
+since v3.9.0) is the only official image that serves this kind's
+modeled surface, so it is the module default. A private mirror or
+custom image must carry the same dependency set.
 
 ## Server contract at the pin
 
@@ -45,6 +61,13 @@ at the backend store (same PostgreSQL database on the database arms —
 upstream-supported; a sqlite file beside the tracking data otherwise),
 so auth state is exactly as durable as tracking state. Passwords store
 PBKDF2-hashed.
+
+The auth app additionally REFUSES to start without
+`MLFLOW_FLASK_SERVER_SECRET_KEY` (CSRF protection — `create_app`
+raises; verified live at the pin), and upstream requires the key be
+CONSISTENT across servers. The module generates it into the
+`<name>-auth-config` Secret (key `flask_secret_key`) and env-wires it,
+so every replica shares one value by construction.
 
 ## Storage arms
 

@@ -17,8 +17,10 @@ at.
 
 - **The official image, a clean deployment** — MLflow ships no Helm
   chart, so this component renders its own manifests around
-  ghcr.io/mlflow/mlflow: server, credentials, volumes, optional
-  garbage collection and metrics.
+  ghcr.io/mlflow/mlflow (the `-full` variant, which carries the
+  database drivers, object-store clients and auth dependencies the
+  bare image omits): server, credentials, volumes, optional garbage
+  collection and metrics.
 - **Secured by default** — upstream's open server and its
   admin/password1234 example never ship; basic auth is on with a
   generated admin password, and experiments can be private-by-default.

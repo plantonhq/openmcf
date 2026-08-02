@@ -1,5 +1,9 @@
 # Consumer-scoped SeaweedFS fixture for the KubernetesMlflow lanes —
 # the composed S3-compatible artifact store:
+# - JOINS the fixture-owned namespace (the PostgreSQL fixture deploys
+#   first with create_namespace and owns e2e-mlflow — exactly one
+#   fixture owns a shared namespace; a second creator would fail
+#   AlreadyExists at deploy).
 # - SHARED NAMESPACE (e2e-mlflow): co-located because the module wires
 #   the store's credential Secret into the server pod as env vars, and
 #   a secretKeyRef can only reach Secrets in the pod's own namespace.
@@ -15,7 +19,6 @@ metadata:
 spec:
   namespace:
     value: e2e-mlflow
-  create_namespace: true
   s3:
     buckets:
       - name: mlflow-artifacts

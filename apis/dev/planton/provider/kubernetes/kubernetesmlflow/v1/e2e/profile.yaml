@@ -5,8 +5,10 @@ metadata:
 spec:
   tier: 3
   # Forged as module-owned manifests on the OFFICIAL
-  # ghcr.io/mlflow/mlflow image at v3.15.0 (MLflow publishes no served
-  # chart — the distribution ruling is recorded in the research docs):
+  # ghcr.io/mlflow/mlflow image at v3.15.0-full (MLflow publishes no
+  # served chart — the distribution ruling is recorded in the research
+  # docs; the -full variant carries the DB drivers/object-store
+  # clients/auth deps the bare image omits — live-caught):
   # secured-by-default basic auth (upstream's open server and its
   # admin/password1234 example never ship), sqlite-PVC or composed-
   # PostgreSQL backend store (the apply-time URI composition), PVC or
@@ -15,6 +17,8 @@ spec:
   # tests, both engines' plan/preview proofs across minimal and
   # full-surface shapes with rendered-value spot-checks and leak
   # greps); awaiting the live lanes.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 20

@@ -128,8 +128,9 @@ spec:
       derivations:
         - from_metadata_name_suffix: "-auth-config"
       where_to_find: >-
-        "<resource-name>-auth-config" whenever auth is enabled (key
-        basic_auth.ini — the server's basic-auth configuration).
+        "<resource-name>-auth-config" whenever auth is enabled (keys
+        basic_auth.ini — the server's basic-auth configuration — and
+        flask_secret_key — the CSRF signing key the auth app requires).
     - name: secret_namespace
       tofu_resource_name: auth_config
       derivations:
@@ -137,6 +138,16 @@ spec:
         - from_spec_field: namespace.value
       where_to_find: >-
         Same namespace as the server.
+    - name: password_value
+      tofu_resource_name: flask_secret_key
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-auth-config"
+            key: flask_secret_key
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-auth-config -n <namespace>
+        -o jsonpath='{.data.flask_secret_key}' | base64 -d
     # ── the deferred-read anchor ConfigMap ───────────────────────────────
     - name: config_map_name
       derivations:

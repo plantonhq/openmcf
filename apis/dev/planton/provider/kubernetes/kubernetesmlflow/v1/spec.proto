@@ -181,10 +181,16 @@ message KubernetesMlflowServer {
 
   /**
    * Container image. Empty = the official image
-   * (`ghcr.io/mlflow/mlflow`, tag pinned to this kind's MLflow
-   * release) — override for private mirrors or a custom image
-   * carrying extra drivers (the official image already includes the
-   * PostgreSQL driver and the S3/GCS/Azure artifact clients).
+   * (`ghcr.io/mlflow/mlflow`, `-full` variant at this kind's pinned
+   * MLflow release) — override for private mirrors or a custom
+   * image. The variant matters (verified live: the pod crash-loops
+   * otherwise): the bare `vX.Y.Z` image is core MLflow only — no
+   * database drivers (psycopg2/PyMySQL), no object-store clients
+   * (boto3/GCS/Azure), and no basic-auth dependency (Flask-WTF) —
+   * so the postgres/mysql backends, every remote artifact store,
+   * and the secured-by-default sign-in all require the `-full`
+   * variant (published upstream since v3.9.0). A mirror or custom
+   * image must carry the same dependency set.
    */
   KubernetesMlflowImage image = 2;
 
@@ -217,10 +223,12 @@ message KubernetesMlflowImage {
   optional string repository = 1 [(dev.planton.shared.options.default) = "ghcr.io/mlflow/mlflow"];
 
   /**
-   * Image tag. Empty = "v3.15.0" (the MLflow release this kind is
-   * built against).
+   * Image tag. Empty = "v3.15.0-full" (the MLflow release this kind
+   * is built against, in the `-full` variant that ships the database
+   * drivers, object-store clients and auth dependency — the bare
+   * variant boots none of those arms; verified live at the pin).
    */
-  optional string tag = 2 [(dev.planton.shared.options.default) = "v3.15.0"];
+  optional string tag = 2 [(dev.planton.shared.options.default) = "v3.15.0-full"];
 }
 
 /**

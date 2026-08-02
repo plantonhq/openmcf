@@ -133,11 +133,35 @@ resource "kubernetes_secret_v1" "backend_uri" {
   depends_on = [kubernetes_namespace_v1.mlflow]
 }
 
+# The Flask CSRF signing key: the auth app raises at create_app without
+# MLFLOW_FLASK_SERVER_SECRET_KEY (server source at the pin).
+# Letters+digits only (env-consumed); module-generated — there is no
+# user-facing reason to model a knob for a purely internal signing key.
+resource "random_password" "flask_secret_key" {
+  count       = local.auth_enabled ? 1 : 0
+  length      = 40
+  special     = false
+  min_upper   = 2
+  min_lower   = 2
+  min_numeric = 2
+
+  # An IMPORTED key never silently regenerates: rotation stays an
+  # explicit verb, never plan fallout (the Pulumi twin ignores the same
+  # generation-shape arguments).
+  lifecycle {
+    ignore_changes = [length, special, upper, lower, numeric, min_lower, min_numeric, min_special, min_upper, override_special]
+  }
+}
+
 # The basic-auth ini — the server's own contract
 # (mlflow/server/auth/basic_auth.ini at the pin). The auth database
 # follows the backend store: the same database on the postgres/mysql
 # arms (upstream-supported; keeps auth state as durable as tracking
 # state), a sqlite file beside the tracking data on the sqlite arm.
+# The Secret's second key is the Flask CSRF signing key the auth app
+# REFUSES to start without — env-wired from this shared Secret so every
+# replica carries one consistent value (upstream's own multi-server
+# requirement).
 resource "kubernetes_secret_v1" "auth_config" {
   count = local.auth_enabled ? 1 : 0
 
@@ -156,6 +180,7 @@ resource "kubernetes_secret_v1" "auth_config" {
       admin_password = ${local.admin_secret_module_owned ? random_password.admin_password[0].result : data.kubernetes_secret_v1.byo_admin_password[0].data[local.admin_secret_key]}
       authorization_function = mlflow.server.auth:authenticate_request_basic_auth
     EOT
+    flask_secret_key              = random_password.flask_secret_key[0].result
   }
 
   depends_on = [kubernetes_namespace_v1.mlflow]
@@ -376,6 +401,12 @@ resource "kubernetes_deployment_v1" "mlflow" {
             name = "auth-config"
             secret {
               secret_name = local.auth_config_secret_name
+              # Only the ini materializes as a file — the Secret's
+              # flask_secret_key rides env, never the filesystem.
+              items {
+                key  = local.auth_config_file_name
+                path = local.auth_config_file_name
+              }
             }
           }
         }

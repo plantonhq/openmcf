@@ -29,9 +29,13 @@ locals {
 
   # ------------------------------ server --------------------------------
   # The OFFICIAL image (ghcr.io/mlflow/mlflow) at this kind's pinned
-  # release — identical constants in the Pulumi module's vars.
+  # release — identical constants in the Pulumi module's vars. The tag
+  # is the `-full` variant BY DESIGN (verified live: the bare variant
+  # is core MLflow only — no psycopg2/PyMySQL, no boto3/GCS/Azure
+  # clients, no Flask-WTF — so the database backends, every remote
+  # artifact store and basic auth all crash-loop on it).
   image_repository = try(var.spec.server.image.repository, "") != "" && try(var.spec.server.image.repository, "") != null ? var.spec.server.image.repository : "ghcr.io/mlflow/mlflow"
-  image_tag        = try(var.spec.server.image.tag, "") != "" && try(var.spec.server.image.tag, "") != null ? var.spec.server.image.tag : "v3.15.0"
+  image_tag        = try(var.spec.server.image.tag, "") != "" && try(var.spec.server.image.tag, "") != null ? var.spec.server.image.tag : "v3.15.0-full"
   image            = "${local.image_repository}:${local.image_tag}"
 
   server_port = 5000
@@ -199,6 +203,13 @@ locals {
   secret_env = merge(
     local.backend_type != "sqlite" ? {
       MLFLOW_BACKEND_STORE_URI = { secret_name = local.backend_uri_secret, secret_key = "uri" }
+    } : {},
+    # The auth app refuses to start without the Flask CSRF signing key
+    # (verified live at the pin); sourcing it from the shared
+    # auth-config Secret keeps it consistent across replicas —
+    # upstream's own multi-server requirement.
+    local.auth_enabled ? {
+      MLFLOW_FLASK_SERVER_SECRET_KEY = { secret_name = local.auth_config_secret_name, secret_key = "flask_secret_key" }
     } : {},
     local.artifact_type == "s3_compatible" ? {
       AWS_ACCESS_KEY_ID     = { secret_name = local.artifact_s3_compatible.credentials_secret.secret_name, secret_key = local.s3_access_key_id_key }
