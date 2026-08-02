@@ -27,7 +27,6 @@ var helmTier2Kinds = map[string]bool{
 	// Tier 2 Helm applications
 	"kubernetesjenkins": true,
 	"kubernetesharbor":  true,
-	"kuberneteslocust":  true,
 	// Helm applications with dedicated behavioral verifiers (the
 	// dispatch cases win; these rows are the generic fallback).
 	// NOTE kubernetesopenbao is deliberately NOT listed: its pods are
@@ -40,6 +39,7 @@ var helmTier2Kinds = map[string]bool{
 	"kubernetesqdrant":    true,
 	"kubernetestemporal":  true,
 	"kubernetesnats":      true,
+	"kuberneteslocust":    true,
 }
 
 // crdInstallKinds maps manifest kind values (lowercased) to their expected CRD
@@ -1459,6 +1459,30 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Namespace:  info.Namespace,
 			Name:       info.Name,
 			Durability: strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
+	// A Locust load-testing cluster: master and worker rollouts, THE
+	// AUTH GATE (anonymous stats read bounced to the login —
+	// upstream's open web UI never ships), THE LOGIN PROOF (wrong
+	// password refused, the module-generated credential signs in
+	// through the platform-managed backend), and THE SWARM PROOF on
+	// every lane — a real distributed test through the master's own
+	// REST API drives real requests through registered workers at the
+	// composed fixture target with zero failures. The behavioral
+	// scenario (recognized by name) adds THE RECONNECT PROOF: a
+	// UID-verified master replacement, the SAME session still
+	// authenticating (the stable session-signing key design), workers
+	// re-registered, and a second swarm. Destroy is clean: a plain
+	// Helm release plus module-owned ConfigMaps and Secret.
+	case "kuberneteslocust":
+		spec := manifestSpecMap(manifestPath)
+		return &LocustVerifier{
+			Namespace:       info.Namespace,
+			Name:            info.Name,
+			WebLoginEnabled: locustWebLoginEnabled(spec),
+			Username:        locustUsername(spec),
+			WorkerReplicas:  locustWorkerReplicas(spec),
+			ReconnectProof:  strings.Contains(manifestPath, "behavioral"),
 		}, nil
 
 	// The GitHub Actions runner scale set controller: the controller

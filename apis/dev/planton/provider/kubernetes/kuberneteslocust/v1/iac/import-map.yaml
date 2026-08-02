@@ -1,0 +1,123 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: kuberneteslocust
+spec:
+  # Helm-release class: one release named after metadata.name (the
+  # module pins fullnameOverride to the same value, so every chart
+  # child — `<name>-master`, `<name>-worker`, the bare `<name>` Service
+  # — travels with the release import), plus the optional anchor
+  # namespace, the module-owned script ConfigMaps and, when the web-UI
+  # login is on, the login machinery (the `-web-auth` code ConfigMap,
+  # the `-auth` Secret, and the two random companions — both import by
+  # VALUE, no salted-hash derivations exist on this kind). Conditional
+  # resources exist only with their arms: the locustfile/lib ConfigMaps
+  # only on the inline-scripts arm (existing-ConfigMaps deployments
+  # created them outside this module), the lib ConfigMap only when lib
+  # files are declared, the login set only when the login is enabled
+  # (and the run is not headless).
+  values:
+    - name: release_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        `helm list -n <namespace>` (NAME column) — the release shares
+        the resource's name.
+    - name: release_namespace
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        `helm list -A` (NAMESPACE column).
+    # ── the optional anchor namespace ──────────────────────────────────
+    - name: namespace_name
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Only imported when create_namespace is true; the installation
+        namespace itself.
+    # ── the locustfile ConfigMap (inline-scripts arm) ──────────────────
+    - name: config_map_name
+      tofu_resource_name: locustfile
+      derivations:
+        - from_metadata_name_suffix: "-locustfile"
+      where_to_find: >-
+        "<resource-name>-locustfile" when scripts are declared inline
+        (the existing-ConfigMaps arm creates nothing here);
+        `kubectl get configmaps -n <namespace>`.
+    - name: config_map_namespace
+      tofu_resource_name: locustfile
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the lib ConfigMap (inline-scripts arm with lib files) ──────────
+    - name: config_map_name
+      tofu_resource_name: lib
+      derivations:
+        - from_metadata_name_suffix: "-lib"
+      where_to_find: >-
+        "<resource-name>-lib" when inline lib files are declared;
+        `kubectl get configmaps -n <namespace>`.
+    - name: config_map_namespace
+      tofu_resource_name: lib
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the login-backend code ConfigMap (login on) ────────────────────
+    - name: config_map_name
+      tofu_resource_name: web_auth_code
+      derivations:
+        - from_metadata_name_suffix: "-web-auth"
+      where_to_find: >-
+        "<resource-name>-web-auth" when the web-UI login is enabled
+        (the default; headless runs and disabled login create
+        nothing); `kubectl get configmaps -n <namespace>`.
+    - name: config_map_namespace
+      tofu_resource_name: web_auth_code
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    # ── the login credential Secret + random companions ────────────────
+    - name: secret_name
+      tofu_resource_name: auth
+      derivations:
+        - from_metadata_name_suffix: "-auth"
+      where_to_find: >-
+        "<resource-name>-auth" when the web-UI login is enabled — keys
+        `username`, `password` (the login credential) and
+        `flask-secret-key` (the session-signing key);
+        `kubectl get secrets -n <namespace>`.
+    - name: secret_namespace
+      tofu_resource_name: auth
+      derivations:
+        - from_stack_output: namespace
+        - from_spec_field: namespace.value
+      where_to_find: >-
+        Same namespace as the installation.
+    - name: password_value
+      tofu_resource_name: web_ui
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-auth"
+            key: password
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-auth -n <namespace>
+        -o jsonpath='{.data.password}' | base64 -d
+    - name: password_value
+      tofu_resource_name: flask_secret_key
+      derivations:
+        - from_cluster_secret_key:
+            name_suffix: "-auth"
+            key: flask-secret-key
+      where_to_find: >-
+        SECRET MATERIAL — handle accordingly. kubectl get secret
+        <resource-name>-auth -n <namespace>
+        -o jsonpath='{.data.flask-secret-key}' | base64 -d

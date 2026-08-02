@@ -1,0 +1,81 @@
+# The full typed surface on the shared cluster: inline scripts WITH
+# lib modules, a pip package installed at pod start (the
+# internet-at-pod-start arm, proven live), the secret-native env path
+# (API_TOKEN from the composed credential fixture — the locustfile
+# RAISES if it is missing, so a zero-failure swarm proves delivery),
+# tags filtering the task set, PDBs, a custom login username and two
+# workers. The verifier runs the same AUTH GATE / LOGIN / SWARM
+# proofs; task filtering is proven by the swarm executing only the
+# tagged task against the fixture.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesLocust
+metadata:
+  name: e2e-locust-full
+  annotations:
+    planton.dev/e2e-prerequisites: KubernetesDeployment,KubernetesSecret
+spec:
+  namespace:
+    value: e2e-locust
+  load_test:
+    name: e2e-full
+    inline:
+      locustfile_content: |
+        import os
+
+        from locust import HttpUser, tag, task, between
+
+        from lib import headers
+
+        if not os.environ.get("API_TOKEN"):
+            raise RuntimeError("API_TOKEN missing - the secret-env path failed")
+
+
+        class PodinfoUser(HttpUser):
+            wait_time = between(0.1, 0.3)
+
+            @tag("e2e")
+            @task
+            def tagged_index(self):
+                self.client.get("/", headers=headers.auth_headers())
+      lib_files:
+        "__init__.py": ""
+        "headers.py": |
+          import os
+
+
+          def auth_headers():
+              return {"Authorization": "Bearer " + os.environ["API_TOKEN"]}
+    target_host:
+      value: http://e2e-locust-target.e2e-locust.svc.cluster.local:9898
+    pip_packages:
+      - six==1.17.0
+    environment:
+      TEST_PROFILE: e2e-full
+    env_from_secret_keys:
+      - secret_name: e2e-locust-cred
+        keys:
+          - API_TOKEN
+    tags:
+      - e2e
+  master:
+    log_level: DEBUG
+    pdb_enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  workers:
+    replicas: 2
+    pdb_enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  web_ui_auth:
+    username: perf-team

@@ -10,9 +10,9 @@ import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	kubernetes "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes"
 	v1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/apis/dev/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	descriptorpb "google.golang.org/protobuf/types/descriptorpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -25,34 +25,95 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// **KubernetesLocustSpec** defines the overall configuration for deploying a Locust load testing cluster on Kubernetes.
-// This message encapsulates environmental context, Kubernetes deployment specifications, load testing parameters,
-// and Helm chart values for customizing the deployment. By configuring these parameters, you can set up a scalable
-// and customizable load testing environment to simulate user traffic and measure application performance.
+// *
+// **KubernetesLocustSpec** deploys Locust — the open-source load
+// testing tool that simulates user traffic against your own
+// applications, with test behavior written as plain Python
+// (https://locust.io).
+//
+// WHAT GETS INSTALLED: the locust Helm chart (deliveryhero org,
+// OCI-served; runs the OFFICIAL locustio/locust image) renders a
+// master Deployment (the web UI + REST API on port 8089 and the
+// coordination endpoint workers dial on port 5557) and a worker
+// Deployment (the load generators — each worker runs your locustfile
+// and reports stats to the master). Your test scripts reach the pods
+// as ConfigMap mounts; changing the scripts rolls the pods
+// automatically.
+//
+// SECURED BY DEFAULT: upstream ships the web UI OPEN — anyone who
+// can reach the Service can start load tests against any host it
+// can see. This kind enables the web-UI login by default with a
+// module-generated credential (`<name>-auth` Secret): the module
+// delivers a small login backend alongside your locustfile (Locust's
+// own documented extension seam — the UI and every REST route
+// require the session). Disable only for headless runs or fenced
+// dev clusters.
+//
+// TARGET WHAT YOU DECLARE: `load_test.target_host` accepts a literal
+// URL or a reference to another resource's output — point it at a
+// service you already declare on the platform and the wiring
+// composes.
+//
+// EXPOSURE: the Service stays ClusterIP; expose it via first-class
+// kinds over the exported handle.
 type KubernetesLocustSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Kubernetes Namespace
-	Namespace *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// flag to indicate if the namespace should be created
-	CreateNamespace bool `protobuf:"varint,3,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
-	// The master container specifications for the Locust cluster.
-	// This defines the resource allocation and number of replicas for the master node.
-	MasterContainer *KubernetesLocustContainer `protobuf:"bytes,4,opt,name=master_container,json=masterContainer,proto3" json:"master_container,omitempty"`
-	// The worker container specifications for the Locust cluster.
-	// This defines the resource allocation and number of replicas for the worker nodes.
-	WorkerContainer *KubernetesLocustContainer `protobuf:"bytes,5,opt,name=worker_container,json=workerContainer,proto3" json:"worker_container,omitempty"`
-	// The ingress configuration for the Locust deployment.
-	Ingress *KubernetesLocustIngress `protobuf:"bytes,6,opt,name=ingress,proto3" json:"ingress,omitempty"`
-	// The load test parameters, including the main test script, additional library files,
-	// and extra Python pip packages needed for test execution.
-	// This specifies how the Locust nodes will simulate traffic and interact with the target application.
-	LoadTest *KubernetesLocustLoadTest `protobuf:"bytes,7,opt,name=load_test,json=loadTest,proto3" json:"load_test,omitempty"`
-	// A map of key-value pairs providing additional customization options for the Helm chart used
-	// to deploy the Locust cluster. These values allow for further refinement of the deployment,
-	// such as customizing resource limits, setting environment variables, or specifying version tags.
-	// For detailed information on the available options, refer to the Helm chart documentation at:
-	// https://github.com/deliveryhero/helm-charts/tree/master/stable/locust#values
-	HelmValues    map[string]string `protobuf:"bytes,8,rep,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Namespace to install into. Accepts a literal namespace name or a
+	// reference to a KubernetesNamespace resource.
+	Namespace *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// *
+	// When true, the namespace is created (with the standard Planton
+	// governance labels) before installing and deleted with the
+	// resource. When false, the namespace must already exist. KNOW
+	// THIS: Secrets referenced by `env_from_secrets` /
+	// `env_from_secret_keys` and existing script ConfigMaps are read
+	// by the pods at runtime and must live in the SAME namespace —
+	// co-locate Locust with the credentials its tests use.
+	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
+	// *
+	// Container image for master and workers. Empty = the official
+	// `locustio/locust` image at the Locust release this kind is
+	// built against.
+	Image *KubernetesLocustImage `protobuf:"bytes,3,opt,name=image,proto3" json:"image,omitempty"`
+	// *
+	// Names of image-pull Secrets in the same namespace, for pulling
+	// from private mirrors.
+	ImagePullSecrets []string `protobuf:"bytes,4,rep,name=image_pull_secrets,json=imagePullSecrets,proto3" json:"image_pull_secrets,omitempty"`
+	// *
+	// The load test — scripts, target, packages, environment. This is
+	// the reason the deployment exists.
+	LoadTest *KubernetesLocustLoadTest `protobuf:"bytes,5,opt,name=load_test,json=loadTest,proto3" json:"load_test,omitempty"`
+	// *
+	// The master: web UI, REST API, worker coordination. Empty = chart
+	// defaults (no resource requests — size for real load tests).
+	Master *KubernetesLocustMaster `protobuf:"bytes,6,opt,name=master,proto3" json:"master,omitempty"`
+	// *
+	// The worker fleet: the actual load generators. Empty = 1 worker
+	// with chart defaults. Worker COUNT bounds the load you can
+	// generate — each worker is one Python process (roughly one CPU
+	// core of load generation).
+	Workers *KubernetesLocustWorkers `protobuf:"bytes,7,opt,name=workers,proto3" json:"workers,omitempty"`
+	// *
+	// Web-UI login. Empty = ENABLED with a module-generated credential
+	// — the open, anyone-can-start-load-tests UI never ships. Has no
+	// effect when `load_test.headless` is true (headless runs start no
+	// web UI at all).
+	WebUiAuth *KubernetesLocustWebUiAuth `protobuf:"bytes,8,opt,name=web_ui_auth,json=webUiAuth,proto3" json:"web_ui_auth,omitempty"`
+	// *
+	// The master Service (web UI 8089 + worker-connect 5557/5558) —
+	// this kind keeps it ClusterIP (compose exposure kinds over the
+	// exported handle); the annotations surface carries cloud LB
+	// configuration when you flip the type.
+	Service *KubernetesLocustService `protobuf:"bytes,9,opt,name=service,proto3" json:"service,omitempty"`
+	// *
+	// Raw Helm values (YAML) merged LAST over everything this spec
+	// renders — the escape hatch for chart surfaces the typed fields
+	// do not model (probes, init containers, extra volumes, host
+	// aliases). The module re-pins security-critical values after the
+	// merge (the login wiring, the script delivery) — those cannot be
+	// silently disabled from here.
+	HelmValues    string `protobuf:"bytes,10,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -101,23 +162,16 @@ func (x *KubernetesLocustSpec) GetCreateNamespace() bool {
 	return false
 }
 
-func (x *KubernetesLocustSpec) GetMasterContainer() *KubernetesLocustContainer {
+func (x *KubernetesLocustSpec) GetImage() *KubernetesLocustImage {
 	if x != nil {
-		return x.MasterContainer
+		return x.Image
 	}
 	return nil
 }
 
-func (x *KubernetesLocustSpec) GetWorkerContainer() *KubernetesLocustContainer {
+func (x *KubernetesLocustSpec) GetImagePullSecrets() []string {
 	if x != nil {
-		return x.WorkerContainer
-	}
-	return nil
-}
-
-func (x *KubernetesLocustSpec) GetIngress() *KubernetesLocustIngress {
-	if x != nil {
-		return x.Ingress
+		return x.ImagePullSecrets
 	}
 	return nil
 }
@@ -129,41 +183,75 @@ func (x *KubernetesLocustSpec) GetLoadTest() *KubernetesLocustLoadTest {
 	return nil
 }
 
-func (x *KubernetesLocustSpec) GetHelmValues() map[string]string {
+func (x *KubernetesLocustSpec) GetMaster() *KubernetesLocustMaster {
 	if x != nil {
-		return x.HelmValues
+		return x.Master
 	}
 	return nil
 }
 
-// **KubernetesLocustContainer** specifies the container configuration for Locust master and worker nodes.
-// It includes resource allocations for CPU and memory, as well as the number of replicas to deploy.
-// Proper configuration ensures optimal performance and scalability of your load testing environment.
-type KubernetesLocustContainer struct {
+func (x *KubernetesLocustSpec) GetWorkers() *KubernetesLocustWorkers {
+	if x != nil {
+		return x.Workers
+	}
+	return nil
+}
+
+func (x *KubernetesLocustSpec) GetWebUiAuth() *KubernetesLocustWebUiAuth {
+	if x != nil {
+		return x.WebUiAuth
+	}
+	return nil
+}
+
+func (x *KubernetesLocustSpec) GetService() *KubernetesLocustService {
+	if x != nil {
+		return x.Service
+	}
+	return nil
+}
+
+func (x *KubernetesLocustSpec) GetHelmValues() string {
+	if x != nil {
+		return x.HelmValues
+	}
+	return ""
+}
+
+// *
+// A container image reference in the chart's COMBINED form
+// (repository + tag in one image string).
+type KubernetesLocustImage struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The number of replicas for the container.
-	// This determines the level of concurrency and load generation capabilities.
-	Replicas int32 `protobuf:"varint,1,opt,name=replicas,proto3" json:"replicas,omitempty"`
-	// The CPU and memory resources allocated to the Locust container.
-	Resources     *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Image repository (including registry host for mirrors, e.g.
+	// "my-registry.example.com/locustio/locust"). Empty =
+	// "locustio/locust" (Docker Hub).
+	Repository *string `protobuf:"bytes,1,opt,name=repository,proto3,oneof" json:"repository,omitempty"`
+	// *
+	// Image tag. Empty = "2.32.2" (the Locust release this kind is
+	// built against). KNOW THIS: the web-UI login mechanism requires
+	// Locust >= 2.21.0 — older tags fall onto a chart code path that
+	// renders credentials as pod arguments, which this kind refuses.
+	Tag           *string `protobuf:"bytes,2,opt,name=tag,proto3,oneof" json:"tag,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesLocustContainer) Reset() {
-	*x = KubernetesLocustContainer{}
+func (x *KubernetesLocustImage) Reset() {
+	*x = KubernetesLocustImage{}
 	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesLocustContainer) String() string {
+func (x *KubernetesLocustImage) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesLocustContainer) ProtoMessage() {}
+func (*KubernetesLocustImage) ProtoMessage() {}
 
-func (x *KubernetesLocustContainer) ProtoReflect() protoreflect.Message {
+func (x *KubernetesLocustImage) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -175,45 +263,98 @@ func (x *KubernetesLocustContainer) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesLocustContainer.ProtoReflect.Descriptor instead.
-func (*KubernetesLocustContainer) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesLocustImage.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustImage) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *KubernetesLocustContainer) GetReplicas() int32 {
-	if x != nil {
-		return x.Replicas
+func (x *KubernetesLocustImage) GetRepository() string {
+	if x != nil && x.Repository != nil {
+		return *x.Repository
 	}
-	return 0
+	return ""
 }
 
-func (x *KubernetesLocustContainer) GetResources() *kubernetes.ContainerResources {
-	if x != nil {
-		return x.Resources
+func (x *KubernetesLocustImage) GetTag() string {
+	if x != nil && x.Tag != nil {
+		return *x.Tag
 	}
-	return nil
+	return ""
 }
 
-// **KubernetesLocustLoadTest** defines the specification for a load test using a Locust cluster.
-// This message includes the primary Python script for Locust and any additional library files
-// necessary to execute the load test. By providing these details, you can define the behavior
-// of simulated users and customize the load test according to your application's requirements.
+// *
+// The load test definition.
 type KubernetesLocustLoadTest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// A unique identifier or name for this particular load test specification.
-	// It is used to reference or distinguish this test configuration among others within a testing suite or environment.
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The Python code for the main Locust test script.
-	// This script defines the behavior of the simulated users and is crucial for executing the load test.
-	MainPyContent string `protobuf:"bytes,2,opt,name=main_py_content,json=mainPyContent,proto3" json:"main_py_content,omitempty"`
-	// A map where each entry consists of a filename and its associated Python code content.
-	// These files typically contain additional classes or functions required by the main_py_content script.
-	// The key of the map is the filename, and the value is the file content.
-	LibFilesContent map[string]string `protobuf:"bytes,3,rep,name=lib_files_content,json=libFilesContent,proto3" json:"lib_files_content,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// A list of extra Python pip packages that are required for the load test.
-	// These packages will be installed in the environment where the load test is executed,
-	// allowing for extended functionality or custom dependencies to be included easily.
-	PipPackages   []string `protobuf:"bytes,4,rep,name=pip_packages,json=pipPackages,proto3" json:"pip_packages,omitempty"`
+	// *
+	// Load-test name — labels every resource (`load_test: <name>`)
+	// and groups stats. Empty = the resource name. KNOW THIS: the
+	// name lands in the Deployments' immutable selector labels — it
+	// cannot change after the first deploy (delete and recreate to
+	// rename).
+	Name *string `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	// *
+	// How the test scripts reach the pods — exactly one.
+	//
+	// Types that are valid to be assigned to Scripts:
+	//
+	//	*KubernetesLocustLoadTest_Inline
+	//	*KubernetesLocustLoadTest_ExistingConfigMaps
+	Scripts isKubernetesLocustLoadTest_Scripts `protobuf_oneof:"scripts"`
+	// *
+	// The base URL the test targets (Locust's `--host` — what
+	// `self.client.get("/")` resolves against). Accepts a literal URL
+	// or a reference to another resource's output — point it at a
+	// service you declare on the platform. Empty = the locustfile
+	// must set `host` itself (Locust refuses to start a test without
+	// one).
+	TargetHost *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=target_host,json=targetHost,proto3" json:"target_host,omitempty"`
+	// *
+	// Extra Python packages pip-installed AT POD START (both master
+	// and workers). KNOW THIS: this downloads from PyPI every time a
+	// pod starts — pods need internet (or a mirror via pip env
+	// configuration in `environment`), and a PyPI outage becomes a
+	// pod-start failure. For air-gapped or production-grade setups,
+	// bake packages into a custom image instead.
+	PipPackages []string `protobuf:"bytes,5,rep,name=pip_packages,json=pipPackages,proto3" json:"pip_packages,omitempty"`
+	// *
+	// An existing ConfigMap holding a `requirements.txt` — the
+	// file-based alternative to `pip_packages`, same
+	// pod-start-install caveat. Same-namespace constraint applies.
+	PipRequirementsConfigMap string `protobuf:"bytes,6,opt,name=pip_requirements_config_map,json=pipRequirementsConfigMap,proto3" json:"pip_requirements_config_map,omitempty"`
+	// *
+	// Environment variables for the test (master AND workers) — feed
+	// configuration to your locustfile (`os.environ[...]`). Plain
+	// values only; for credentials use `env_from_secrets` /
+	// `env_from_secret_keys`.
+	Environment map[string]string `protobuf:"bytes,7,rep,name=environment,proto3" json:"environment,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Existing Secrets loaded WHOLE into the test environment (every
+	// key becomes an environment variable named after it) — the
+	// simple way to hand test credentials to your locustfile.
+	// Same-namespace constraint applies.
+	EnvFromSecrets []string `protobuf:"bytes,8,rep,name=env_from_secrets,json=envFromSecrets,proto3" json:"env_from_secrets,omitempty"`
+	// *
+	// Selected keys from existing Secrets injected into the test
+	// environment — each key becomes an environment variable named
+	// exactly after the key (the chart's contract). Use when a Secret
+	// carries more keys than the test should see.
+	EnvFromSecretKeys []*KubernetesLocustSecretEnv `protobuf:"bytes,9,rep,name=env_from_secret_keys,json=envFromSecretKeys,proto3" json:"env_from_secret_keys,omitempty"`
+	// *
+	// Run only tasks tagged with any of these tags (Locust
+	// `--tags`). Empty = all tasks.
+	Tags []string `protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty"`
+	// *
+	// Skip tasks tagged with any of these tags (Locust
+	// `--exclude-tags`).
+	ExcludeTags []string `protobuf:"bytes,11,rep,name=exclude_tags,json=excludeTags,proto3" json:"exclude_tags,omitempty"`
+	// *
+	// Run headless: no web UI — the test starts immediately and runs
+	// until stopped. Drive run shape (users, spawn rate, duration)
+	// through `environment` (LOCUST_USERS, LOCUST_SPAWN_RATE,
+	// LOCUST_RUN_TIME). With headless on, `web_ui_auth` has nothing
+	// to protect and is ignored.
+	Headless      bool `protobuf:"varint,12,opt,name=headless,proto3" json:"headless,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -249,22 +390,40 @@ func (*KubernetesLocustLoadTest) Descriptor() ([]byte, []int) {
 }
 
 func (x *KubernetesLocustLoadTest) GetName() string {
-	if x != nil {
-		return x.Name
+	if x != nil && x.Name != nil {
+		return *x.Name
 	}
 	return ""
 }
 
-func (x *KubernetesLocustLoadTest) GetMainPyContent() string {
+func (x *KubernetesLocustLoadTest) GetScripts() isKubernetesLocustLoadTest_Scripts {
 	if x != nil {
-		return x.MainPyContent
+		return x.Scripts
 	}
-	return ""
+	return nil
 }
 
-func (x *KubernetesLocustLoadTest) GetLibFilesContent() map[string]string {
+func (x *KubernetesLocustLoadTest) GetInline() *KubernetesLocustInlineScripts {
 	if x != nil {
-		return x.LibFilesContent
+		if x, ok := x.Scripts.(*KubernetesLocustLoadTest_Inline); ok {
+			return x.Inline
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesLocustLoadTest) GetExistingConfigMaps() *KubernetesLocustExistingScriptConfigMaps {
+	if x != nil {
+		if x, ok := x.Scripts.(*KubernetesLocustLoadTest_ExistingConfigMaps); ok {
+			return x.ExistingConfigMaps
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesLocustLoadTest) GetTargetHost() *v1.StringValueOrRef {
+	if x != nil {
+		return x.TargetHost
 	}
 	return nil
 }
@@ -276,33 +435,111 @@ func (x *KubernetesLocustLoadTest) GetPipPackages() []string {
 	return nil
 }
 
+func (x *KubernetesLocustLoadTest) GetPipRequirementsConfigMap() string {
+	if x != nil {
+		return x.PipRequirementsConfigMap
+	}
+	return ""
+}
+
+func (x *KubernetesLocustLoadTest) GetEnvironment() map[string]string {
+	if x != nil {
+		return x.Environment
+	}
+	return nil
+}
+
+func (x *KubernetesLocustLoadTest) GetEnvFromSecrets() []string {
+	if x != nil {
+		return x.EnvFromSecrets
+	}
+	return nil
+}
+
+func (x *KubernetesLocustLoadTest) GetEnvFromSecretKeys() []*KubernetesLocustSecretEnv {
+	if x != nil {
+		return x.EnvFromSecretKeys
+	}
+	return nil
+}
+
+func (x *KubernetesLocustLoadTest) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *KubernetesLocustLoadTest) GetExcludeTags() []string {
+	if x != nil {
+		return x.ExcludeTags
+	}
+	return nil
+}
+
+func (x *KubernetesLocustLoadTest) GetHeadless() bool {
+	if x != nil {
+		return x.Headless
+	}
+	return false
+}
+
+type isKubernetesLocustLoadTest_Scripts interface {
+	isKubernetesLocustLoadTest_Scripts()
+}
+
+type KubernetesLocustLoadTest_Inline struct {
+	// *
+	// Scripts written inline in this manifest. The module renders
+	// them into ConfigMaps (`<name>-locustfile`, `<name>-lib`) and
+	// mounts them where Locust looks; script changes roll the pods
+	// automatically.
+	Inline *KubernetesLocustInlineScripts `protobuf:"bytes,2,opt,name=inline,proto3,oneof"`
+}
+
+type KubernetesLocustLoadTest_ExistingConfigMaps struct {
+	// *
+	// Scripts you already ship as ConfigMaps (e.g. synced from your
+	// repo by CI). Same-namespace constraint applies.
+	ExistingConfigMaps *KubernetesLocustExistingScriptConfigMaps `protobuf:"bytes,3,opt,name=existing_config_maps,json=existingConfigMaps,proto3,oneof"`
+}
+
+func (*KubernetesLocustLoadTest_Inline) isKubernetesLocustLoadTest_Scripts() {}
+
+func (*KubernetesLocustLoadTest_ExistingConfigMaps) isKubernetesLocustLoadTest_Scripts() {}
+
 // *
-// KubernetesLocustIngress defines ingress configuration for Locust.
-type KubernetesLocustIngress struct {
+// Test scripts written inline in the manifest.
+type KubernetesLocustInlineScripts struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Flag to enable or disable ingress.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// The full hostname for external access (e.g., "locust.example.com").
-	// Required when enabled is true.
-	Hostname      string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	// *
+	// The locustfile — the Python that defines your simulated users
+	// and their tasks. Rendered into the `<name>-locustfile`
+	// ConfigMap as `main.py`.
+	LocustfileContent string `protobuf:"bytes,1,opt,name=locustfile_content,json=locustfileContent,proto3" json:"locustfile_content,omitempty"`
+	// *
+	// Supporting Python modules: filename → content. Rendered into
+	// the `<name>-lib` ConfigMap and mounted at `lib/` next to the
+	// locustfile — import them as `from lib import <module>`.
+	LibFiles      map[string]string `protobuf:"bytes,2,rep,name=lib_files,json=libFiles,proto3" json:"lib_files,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubernetesLocustIngress) Reset() {
-	*x = KubernetesLocustIngress{}
+func (x *KubernetesLocustInlineScripts) Reset() {
+	*x = KubernetesLocustInlineScripts{}
 	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubernetesLocustIngress) String() string {
+func (x *KubernetesLocustInlineScripts) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubernetesLocustIngress) ProtoMessage() {}
+func (*KubernetesLocustInlineScripts) ProtoMessage() {}
 
-func (x *KubernetesLocustIngress) ProtoReflect() protoreflect.Message {
+func (x *KubernetesLocustInlineScripts) ProtoReflect() protoreflect.Message {
 	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -314,92 +551,872 @@ func (x *KubernetesLocustIngress) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubernetesLocustIngress.ProtoReflect.Descriptor instead.
-func (*KubernetesLocustIngress) Descriptor() ([]byte, []int) {
+// Deprecated: Use KubernetesLocustInlineScripts.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustInlineScripts) Descriptor() ([]byte, []int) {
 	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *KubernetesLocustIngress) GetEnabled() bool {
+func (x *KubernetesLocustInlineScripts) GetLocustfileContent() string {
 	if x != nil {
-		return x.Enabled
-	}
-	return false
-}
-
-func (x *KubernetesLocustIngress) GetHostname() string {
-	if x != nil {
-		return x.Hostname
+		return x.LocustfileContent
 	}
 	return ""
 }
 
-var file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_extTypes = []protoimpl.ExtensionInfo{
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesLocustContainer)(nil),
-		Field:         528001,
-		Name:          "dev.planton.provider.kubernetes.kuberneteslocust.v1.default_master_container",
-		Tag:           "bytes,528001,opt,name=default_master_container",
-		Filename:      "dev/planton/provider/kubernetes/kuberneteslocust/v1/spec.proto",
-	},
-	{
-		ExtendedType:  (*descriptorpb.FieldOptions)(nil),
-		ExtensionType: (*KubernetesLocustContainer)(nil),
-		Field:         528002,
-		Name:          "dev.planton.provider.kubernetes.kuberneteslocust.v1.default_worker_container",
-		Tag:           "bytes,528002,opt,name=default_worker_container",
-		Filename:      "dev/planton/provider/kubernetes/kuberneteslocust/v1/spec.proto",
-	},
+func (x *KubernetesLocustInlineScripts) GetLibFiles() map[string]string {
+	if x != nil {
+		return x.LibFiles
+	}
+	return nil
 }
 
-// Extension fields to descriptorpb.FieldOptions.
-var (
-	// optional dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainer default_master_container = 528001;
-	E_DefaultMasterContainer = &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_extTypes[0]
-	// optional dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainer default_worker_container = 528002;
-	E_DefaultWorkerContainer = &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_extTypes[1]
-)
+// *
+// Test scripts from existing ConfigMaps.
+type KubernetesLocustExistingScriptConfigMaps struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// ConfigMap holding the locustfile. Same-namespace constraint
+	// applies.
+	LocustfileConfigMap string `protobuf:"bytes,1,opt,name=locustfile_config_map,json=locustfileConfigMap,proto3" json:"locustfile_config_map,omitempty"`
+	// *
+	// The locustfile's key/filename inside that ConfigMap. Empty =
+	// "main.py".
+	LocustfileName *string `protobuf:"bytes,2,opt,name=locustfile_name,json=locustfileName,proto3,oneof" json:"locustfile_name,omitempty"`
+	// *
+	// ConfigMap holding supporting modules, mounted at `lib/` next to
+	// the locustfile. Empty = no lib mount.
+	LibConfigMap  string `protobuf:"bytes,3,opt,name=lib_config_map,json=libConfigMap,proto3" json:"lib_config_map,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesLocustExistingScriptConfigMaps) Reset() {
+	*x = KubernetesLocustExistingScriptConfigMaps{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesLocustExistingScriptConfigMaps) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesLocustExistingScriptConfigMaps) ProtoMessage() {}
+
+func (x *KubernetesLocustExistingScriptConfigMaps) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesLocustExistingScriptConfigMaps.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustExistingScriptConfigMaps) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *KubernetesLocustExistingScriptConfigMaps) GetLocustfileConfigMap() string {
+	if x != nil {
+		return x.LocustfileConfigMap
+	}
+	return ""
+}
+
+func (x *KubernetesLocustExistingScriptConfigMaps) GetLocustfileName() string {
+	if x != nil && x.LocustfileName != nil {
+		return *x.LocustfileName
+	}
+	return ""
+}
+
+func (x *KubernetesLocustExistingScriptConfigMaps) GetLibConfigMap() string {
+	if x != nil {
+		return x.LibConfigMap
+	}
+	return ""
+}
+
+// *
+// Selected keys from one existing Secret, injected as environment
+// variables named exactly after the keys.
+type KubernetesLocustSecretEnv struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Name of the Secret. Same-namespace constraint applies.
+	SecretName string `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// *
+	// Keys to inject — each becomes an environment variable with the
+	// SAME name (name your Secret keys like environment variables,
+	// e.g. "API_TOKEN").
+	Keys          []string `protobuf:"bytes,2,rep,name=keys,proto3" json:"keys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesLocustSecretEnv) Reset() {
+	*x = KubernetesLocustSecretEnv{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesLocustSecretEnv) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesLocustSecretEnv) ProtoMessage() {}
+
+func (x *KubernetesLocustSecretEnv) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesLocustSecretEnv.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustSecretEnv) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *KubernetesLocustSecretEnv) GetSecretName() string {
+	if x != nil {
+		return x.SecretName
+	}
+	return ""
+}
+
+func (x *KubernetesLocustSecretEnv) GetKeys() []string {
+	if x != nil {
+		return x.Keys
+	}
+	return nil
+}
+
+// *
+// The master.
+type KubernetesLocustMaster struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// CPU/memory for the master container. Empty = no requests (fine
+	// for trying it out; size for real tests — the master aggregates
+	// stats from every worker).
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,1,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Log level. Empty = "INFO".
+	LogLevel *string `protobuf:"bytes,2,opt,name=log_level,json=logLevel,proto3,oneof" json:"log_level,omitempty"`
+	// *
+	// Create a PodDisruptionBudget (maxUnavailable 0) so voluntary
+	// disruptions (node drains) never kill the master mid-test.
+	PdbEnabled bool `protobuf:"varint,3,opt,name=pdb_enabled,json=pdbEnabled,proto3" json:"pdb_enabled,omitempty"`
+	// *
+	// Pod scheduling for the master.
+	Scheduling    *KubernetesLocustScheduling `protobuf:"bytes,4,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesLocustMaster) Reset() {
+	*x = KubernetesLocustMaster{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesLocustMaster) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesLocustMaster) ProtoMessage() {}
+
+func (x *KubernetesLocustMaster) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesLocustMaster.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustMaster) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KubernetesLocustMaster) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesLocustMaster) GetLogLevel() string {
+	if x != nil && x.LogLevel != nil {
+		return *x.LogLevel
+	}
+	return ""
+}
+
+func (x *KubernetesLocustMaster) GetPdbEnabled() bool {
+	if x != nil {
+		return x.PdbEnabled
+	}
+	return false
+}
+
+func (x *KubernetesLocustMaster) GetScheduling() *KubernetesLocustScheduling {
+	if x != nil {
+		return x.Scheduling
+	}
+	return nil
+}
+
+// *
+// The worker fleet.
+type KubernetesLocustWorkers struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Worker count. Empty = 1. Ignored when an autoscaling arm is
+	// set.
+	Replicas *int32 `protobuf:"varint,1,opt,name=replicas,proto3,oneof" json:"replicas,omitempty"`
+	// *
+	// CPU/memory per worker container. Empty = no requests. KNOW
+	// THIS: a worker saturates around one CPU core — more load per
+	// worker needs more CPU, more concurrent users need more memory;
+	// HPA additionally requires CPU REQUESTS to compute utilization
+	// against.
+	Resources *kubernetes.ContainerResources `protobuf:"bytes,2,opt,name=resources,proto3" json:"resources,omitempty"`
+	// *
+	// Log level. Empty = "INFO".
+	LogLevel *string `protobuf:"bytes,3,opt,name=log_level,json=logLevel,proto3,oneof" json:"log_level,omitempty"`
+	// *
+	// Create a PodDisruptionBudget (maxUnavailable 0) for the
+	// workers.
+	PdbEnabled bool `protobuf:"varint,4,opt,name=pdb_enabled,json=pdbEnabled,proto3" json:"pdb_enabled,omitempty"`
+	// *
+	// Pod scheduling for workers.
+	Scheduling *KubernetesLocustScheduling `protobuf:"bytes,5,opt,name=scheduling,proto3" json:"scheduling,omitempty"`
+	// *
+	// Worker autoscaling — at most one arm.
+	//
+	// Types that are valid to be assigned to Autoscaling:
+	//
+	//	*KubernetesLocustWorkers_Hpa
+	//	*KubernetesLocustWorkers_Keda
+	Autoscaling   isKubernetesLocustWorkers_Autoscaling `protobuf_oneof:"autoscaling"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesLocustWorkers) Reset() {
+	*x = KubernetesLocustWorkers{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesLocustWorkers) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesLocustWorkers) ProtoMessage() {}
+
+func (x *KubernetesLocustWorkers) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesLocustWorkers.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustWorkers) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *KubernetesLocustWorkers) GetReplicas() int32 {
+	if x != nil && x.Replicas != nil {
+		return *x.Replicas
+	}
+	return 0
+}
+
+func (x *KubernetesLocustWorkers) GetResources() *kubernetes.ContainerResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *KubernetesLocustWorkers) GetLogLevel() string {
+	if x != nil && x.LogLevel != nil {
+		return *x.LogLevel
+	}
+	return ""
+}
+
+func (x *KubernetesLocustWorkers) GetPdbEnabled() bool {
+	if x != nil {
+		return x.PdbEnabled
+	}
+	return false
+}
+
+func (x *KubernetesLocustWorkers) GetScheduling() *KubernetesLocustScheduling {
+	if x != nil {
+		return x.Scheduling
+	}
+	return nil
+}
+
+func (x *KubernetesLocustWorkers) GetAutoscaling() isKubernetesLocustWorkers_Autoscaling {
+	if x != nil {
+		return x.Autoscaling
+	}
+	return nil
+}
+
+func (x *KubernetesLocustWorkers) GetHpa() *KubernetesLocustWorkerHpa {
+	if x != nil {
+		if x, ok := x.Autoscaling.(*KubernetesLocustWorkers_Hpa); ok {
+			return x.Hpa
+		}
+	}
+	return nil
+}
+
+func (x *KubernetesLocustWorkers) GetKeda() *KubernetesLocustWorkerKeda {
+	if x != nil {
+		if x, ok := x.Autoscaling.(*KubernetesLocustWorkers_Keda); ok {
+			return x.Keda
+		}
+	}
+	return nil
+}
+
+type isKubernetesLocustWorkers_Autoscaling interface {
+	isKubernetesLocustWorkers_Autoscaling()
+}
+
+type KubernetesLocustWorkers_Hpa struct {
+	// *
+	// Horizontal Pod Autoscaler on CPU utilization (needs a metrics
+	// server on the cluster and worker CPU REQUESTS).
+	Hpa *KubernetesLocustWorkerHpa `protobuf:"bytes,6,opt,name=hpa,proto3,oneof"`
+}
+
+type KubernetesLocustWorkers_Keda struct {
+	// *
+	// KEDA event-driven autoscaling — scales workers on the LIVE
+	// USER COUNT the master reports (more simulated users = more
+	// workers). Requires the KEDA operator on the cluster — a
+	// KubernetesKeda composes naturally.
+	Keda *KubernetesLocustWorkerKeda `protobuf:"bytes,7,opt,name=keda,proto3,oneof"`
+}
+
+func (*KubernetesLocustWorkers_Hpa) isKubernetesLocustWorkers_Autoscaling() {}
+
+func (*KubernetesLocustWorkers_Keda) isKubernetesLocustWorkers_Autoscaling() {}
+
+// *
+// HPA-based worker autoscaling.
+type KubernetesLocustWorkerHpa struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Lower replica bound. Empty = 1.
+	MinReplicas *int32 `protobuf:"varint,1,opt,name=min_replicas,json=minReplicas,proto3,oneof" json:"min_replicas,omitempty"`
+	// *
+	// Upper replica bound. Required.
+	MaxReplicas int32 `protobuf:"varint,2,opt,name=max_replicas,json=maxReplicas,proto3" json:"max_replicas,omitempty"`
+	// *
+	// Target average CPU utilization percentage (of worker CPU
+	// requests). Empty = 40 (the chart default — workers should scale
+	// BEFORE saturating, or they distort the load they generate).
+	TargetCpuUtilizationPercent *int32 `protobuf:"varint,3,opt,name=target_cpu_utilization_percent,json=targetCpuUtilizationPercent,proto3,oneof" json:"target_cpu_utilization_percent,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
+func (x *KubernetesLocustWorkerHpa) Reset() {
+	*x = KubernetesLocustWorkerHpa{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesLocustWorkerHpa) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesLocustWorkerHpa) ProtoMessage() {}
+
+func (x *KubernetesLocustWorkerHpa) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesLocustWorkerHpa.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustWorkerHpa) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *KubernetesLocustWorkerHpa) GetMinReplicas() int32 {
+	if x != nil && x.MinReplicas != nil {
+		return *x.MinReplicas
+	}
+	return 0
+}
+
+func (x *KubernetesLocustWorkerHpa) GetMaxReplicas() int32 {
+	if x != nil {
+		return x.MaxReplicas
+	}
+	return 0
+}
+
+func (x *KubernetesLocustWorkerHpa) GetTargetCpuUtilizationPercent() int32 {
+	if x != nil && x.TargetCpuUtilizationPercent != nil {
+		return *x.TargetCpuUtilizationPercent
+	}
+	return 0
+}
+
+// *
+// KEDA-based worker autoscaling. Requires the KEDA operator
+// (`ScaledObject` CRD) on the cluster.
+type KubernetesLocustWorkerKeda struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Lower replica bound. Empty = 1.
+	MinReplicas *int32 `protobuf:"varint,1,opt,name=min_replicas,json=minReplicas,proto3,oneof" json:"min_replicas,omitempty"`
+	// *
+	// Upper replica bound. Required.
+	MaxReplicas int32 `protobuf:"varint,2,opt,name=max_replicas,json=maxReplicas,proto3" json:"max_replicas,omitempty"`
+	// *
+	// Simulated users one worker should carry before another is added
+	// — the scaling target on the master's live user count. Empty =
+	// 50 (the chart default).
+	TargetUsersPerWorker *int32 `protobuf:"varint,3,opt,name=target_users_per_worker,json=targetUsersPerWorker,proto3,oneof" json:"target_users_per_worker,omitempty"`
+	// *
+	// Seconds between trigger evaluations. Empty = 15 (the chart
+	// default).
+	PollingIntervalSeconds *int32 `protobuf:"varint,4,opt,name=polling_interval_seconds,json=pollingIntervalSeconds,proto3,oneof" json:"polling_interval_seconds,omitempty"`
+	// *
+	// Seconds to wait after the last active trigger before scaling
+	// down. Empty = 30 (the chart default).
+	CooldownPeriodSeconds *int32 `protobuf:"varint,5,opt,name=cooldown_period_seconds,json=cooldownPeriodSeconds,proto3,oneof" json:"cooldown_period_seconds,omitempty"`
+	// *
+	// Replace the default user-count trigger with your own KEDA
+	// trigger list as raw YAML (the `triggers:` array content). Empty
+	// = the user-count trigger described above.
+	CustomTriggers string `protobuf:"bytes,6,opt,name=custom_triggers,json=customTriggers,proto3" json:"custom_triggers,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *KubernetesLocustWorkerKeda) Reset() {
+	*x = KubernetesLocustWorkerKeda{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesLocustWorkerKeda) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesLocustWorkerKeda) ProtoMessage() {}
+
+func (x *KubernetesLocustWorkerKeda) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesLocustWorkerKeda.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustWorkerKeda) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *KubernetesLocustWorkerKeda) GetMinReplicas() int32 {
+	if x != nil && x.MinReplicas != nil {
+		return *x.MinReplicas
+	}
+	return 0
+}
+
+func (x *KubernetesLocustWorkerKeda) GetMaxReplicas() int32 {
+	if x != nil {
+		return x.MaxReplicas
+	}
+	return 0
+}
+
+func (x *KubernetesLocustWorkerKeda) GetTargetUsersPerWorker() int32 {
+	if x != nil && x.TargetUsersPerWorker != nil {
+		return *x.TargetUsersPerWorker
+	}
+	return 0
+}
+
+func (x *KubernetesLocustWorkerKeda) GetPollingIntervalSeconds() int32 {
+	if x != nil && x.PollingIntervalSeconds != nil {
+		return *x.PollingIntervalSeconds
+	}
+	return 0
+}
+
+func (x *KubernetesLocustWorkerKeda) GetCooldownPeriodSeconds() int32 {
+	if x != nil && x.CooldownPeriodSeconds != nil {
+		return *x.CooldownPeriodSeconds
+	}
+	return 0
+}
+
+func (x *KubernetesLocustWorkerKeda) GetCustomTriggers() string {
+	if x != nil {
+		return x.CustomTriggers
+	}
+	return ""
+}
+
+// *
+// Web-UI login.
+type KubernetesLocustWebUiAuth struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Require login on the web UI and REST API. Empty = true — the
+	// open UI never ships by default. Disabling means anyone who can
+	// reach the Service can start load tests against any host the
+	// cluster can see.
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
+	// *
+	// The login username. Empty = "locust". The module generates this
+	// user's password into the `<name>-auth` Secret (key `password`)
+	// — exported as the credential handle for operators and
+	// verifiers.
+	Username      *string `protobuf:"bytes,2,opt,name=username,proto3,oneof" json:"username,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesLocustWebUiAuth) Reset() {
+	*x = KubernetesLocustWebUiAuth{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesLocustWebUiAuth) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesLocustWebUiAuth) ProtoMessage() {}
+
+func (x *KubernetesLocustWebUiAuth) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesLocustWebUiAuth.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustWebUiAuth) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *KubernetesLocustWebUiAuth) GetEnabled() bool {
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
+	}
+	return false
+}
+
+func (x *KubernetesLocustWebUiAuth) GetUsername() string {
+	if x != nil && x.Username != nil {
+		return *x.Username
+	}
+	return ""
+}
+
+// *
+// Pod scheduling.
+type KubernetesLocustScheduling struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Node selector.
+	NodeSelector map[string]string `protobuf:"bytes,1,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// *
+	// Tolerations.
+	Tolerations   []*kubernetes.WorkloadToleration `protobuf:"bytes,2,rep,name=tolerations,proto3" json:"tolerations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesLocustScheduling) Reset() {
+	*x = KubernetesLocustScheduling{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesLocustScheduling) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesLocustScheduling) ProtoMessage() {}
+
+func (x *KubernetesLocustScheduling) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesLocustScheduling.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustScheduling) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *KubernetesLocustScheduling) GetNodeSelector() map[string]string {
+	if x != nil {
+		return x.NodeSelector
+	}
+	return nil
+}
+
+func (x *KubernetesLocustScheduling) GetTolerations() []*kubernetes.WorkloadToleration {
+	if x != nil {
+		return x.Tolerations
+	}
+	return nil
+}
+
+// *
+// The master Service.
+type KubernetesLocustService struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Service type. Empty = "ClusterIP" — compose exposure kinds over
+	// the exported handle instead of exposing directly.
+	Type *string `protobuf:"bytes,1,opt,name=type,proto3,oneof" json:"type,omitempty"`
+	// *
+	// Service annotations — the cloud load-balancer configuration
+	// surface when `type` is LoadBalancer.
+	Annotations   map[string]string `protobuf:"bytes,2,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KubernetesLocustService) Reset() {
+	*x = KubernetesLocustService{}
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesLocustService) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesLocustService) ProtoMessage() {}
+
+func (x *KubernetesLocustService) ProtoReflect() protoreflect.Message {
+	mi := &file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesLocustService.ProtoReflect.Descriptor instead.
+func (*KubernetesLocustService) Descriptor() ([]byte, []int) {
+	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *KubernetesLocustService) GetType() string {
+	if x != nil && x.Type != nil {
+		return *x.Type
+	}
+	return ""
+}
+
+func (x *KubernetesLocustService) GetAnnotations() map[string]string {
+	if x != nil {
+		return x.Annotations
+	}
+	return nil
+}
 
 var File_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto protoreflect.FileDescriptor
 
 const file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	">dev/planton/provider/kubernetes/kuberneteslocust/v1/spec.proto\x123dev.planton.provider.kubernetes.kuberneteslocust.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a google/protobuf/descriptor.proto\"\x8a\a\n" +
+	">dev/planton/provider/kubernetes/kuberneteslocust/v1/spec.proto\x123dev.planton.provider.kubernetes.kuberneteslocust.v1\x1a\x1bbuf/validate/validate.proto\x1a0dev/planton/provider/kubernetes/kubernetes.proto\x1a2dev/planton/provider/kubernetes/workload_pod.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\x1a(dev/planton/shared/options/options.proto\"\xb9\v\n" +
 	"\x14KubernetesLocustSpec\x12j\n" +
-	"\tnamespace\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x03 \x01(\bR\x0fcreateNamespace\x12\xa0\x01\n" +
-	"\x10master_container\x18\x04 \x01(\v2N.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainerB%\x8a\xe8\x81\x02 \b\x01\x12\x1c\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100MiR\x0fmasterContainer\x12\xa0\x01\n" +
-	"\x10worker_container\x18\x05 \x01(\v2N.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainerB%\x92\xe8\x81\x02 \b\x01\x12\x1c\n" +
-	"\f\n" +
-	"\x051000m\x12\x031Gi\x12\f\n" +
-	"\x0350m\x12\x05100MiR\x0fworkerContainer\x12f\n" +
-	"\aingress\x18\x06 \x01(\v2L.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustIngressR\aingress\x12r\n" +
-	"\tload_test\x18\a \x01(\v2M.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTestB\x06\xbaH\x03\xc8\x01\x01R\bloadTest\x12z\n" +
-	"\vhelm_values\x18\b \x03(\v2Y.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.HelmValuesEntryR\n" +
-	"helmValues\x1a=\n" +
-	"\x0fHelmValuesEntry\x12\x10\n" +
+	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x06\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12`\n" +
+	"\x05image\x18\x03 \x01(\v2J.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustImageR\x05image\x12\x7f\n" +
+	"\x12image_pull_secrets\x18\x04 \x03(\tBQ\xaa\xa6\x1dMSecret NAMES (references to existing image-pull Secrets), not secret materialR\x10imagePullSecrets\x12r\n" +
+	"\tload_test\x18\x05 \x01(\v2M.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTestB\x06\xbaH\x03\xc8\x01\x01R\bloadTest\x12c\n" +
+	"\x06master\x18\x06 \x01(\v2K.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustMasterR\x06master\x12f\n" +
+	"\aworkers\x18\a \x01(\v2L.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkersR\aworkers\x12n\n" +
+	"\vweb_ui_auth\x18\b \x01(\v2N.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWebUiAuthR\twebUiAuth\x12f\n" +
+	"\aservice\x18\t \x01(\v2L.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustServiceR\aservice\x12\x1f\n" +
+	"\vhelm_values\x18\n" +
+	" \x01(\tR\n" +
+	"helmValues:\xec\x03\xbaH\xe8\x03\x1a\xe5\x03\n" +
+	"-workers.keda.default_trigger_needs_open_stats\x12\xe3\x01The default KEDA trigger scales on the master's /stats/requests API, which the web-UI login locks out and headless mode never serves — set web_ui_auth.enabled to false with a non-headless run, or provide keda.custom_triggers.\x1a\xcd\x01!has(this.workers) || !has(this.workers.keda) || this.workers.keda.custom_triggers != '' || (has(this.web_ui_auth) && has(this.web_ui_auth.enabled) && !this.web_ui_auth.enabled && !this.load_test.headless)\"\x8b\x01\n" +
+	"\x15KubernetesLocustImage\x128\n" +
+	"\n" +
+	"repository\x18\x01 \x01(\tB\x13\x8a\xa6\x1d\x0flocustio/locustH\x00R\n" +
+	"repository\x88\x01\x01\x12!\n" +
+	"\x03tag\x18\x02 \x01(\tB\n" +
+	"\x8a\xa6\x1d\x062.32.2H\x01R\x03tag\x88\x01\x01B\r\n" +
+	"\v_repositoryB\x06\n" +
+	"\x04_tag\"\xfa\b\n" +
+	"\x18KubernetesLocustLoadTest\x12?\n" +
+	"\x04name\x18\x01 \x01(\tB&\xbaH#r!2\x1f^[a-z0-9]([a-z0-9-]*[a-z0-9])?$H\x01R\x04name\x88\x01\x01\x12l\n" +
+	"\x06inline\x18\x02 \x01(\v2R.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustInlineScriptsH\x00R\x06inline\x12\x91\x01\n" +
+	"\x14existing_config_maps\x18\x03 \x01(\v2].dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustExistingScriptConfigMapsH\x00R\x12existingConfigMaps\x12S\n" +
+	"\vtarget_host\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\n" +
+	"targetHost\x127\n" +
+	"\fpip_packages\x18\x05 \x03(\tB\x14\xbaH\x11\x92\x01\x0e\"\fr\n" +
+	"2\b^[^\\s]+$R\vpipPackages\x12=\n" +
+	"\x1bpip_requirements_config_map\x18\x06 \x01(\tR\x18pipRequirementsConfigMap\x12\x80\x01\n" +
+	"\venvironment\x18\a \x03(\v2^.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.EnvironmentEntryR\venvironment\x12p\n" +
+	"\x10env_from_secrets\x18\b \x03(\tBF\xaa\xa6\x1dBSecret NAMES (references to existing Secrets), not secret materialR\x0eenvFromSecrets\x12\x7f\n" +
+	"\x14env_from_secret_keys\x18\t \x03(\v2N.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSecretEnvR\x11envFromSecretKeys\x12(\n" +
+	"\x04tags\x18\n" +
+	" \x03(\tB\x14\xbaH\x11\x92\x01\x0e\"\fr\n" +
+	"2\b^[^\\s]+$R\x04tags\x127\n" +
+	"\fexclude_tags\x18\v \x03(\tB\x14\xbaH\x11\x92\x01\x0e\"\fr\n" +
+	"2\b^[^\\s]+$R\vexcludeTags\x12\x1a\n" +
+	"\bheadless\x18\f \x01(\bR\bheadless\x1a>\n" +
+	"\x10EnvironmentEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8a\x01\n" +
-	"\x19KubernetesLocustContainer\x12\x1a\n" +
-	"\breplicas\x18\x01 \x01(\x05R\breplicas\x12Q\n" +
-	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\"\xe6\x02\n" +
-	"\x18KubernetesLocustLoadTest\x12\x1a\n" +
-	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12.\n" +
-	"\x0fmain_py_content\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rmainPyContent\x12\x96\x01\n" +
-	"\x11lib_files_content\x18\x03 \x03(\v2b.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.LibFilesContentEntryB\x06\xbaH\x03\xc8\x01\x01R\x0flibFilesContent\x12!\n" +
-	"\fpip_packages\x18\x04 \x03(\tR\vpipPackages\x1aB\n" +
-	"\x14LibFilesContentEntry\x12\x10\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
+	"\ascripts\x12\x05\xbaH\x02\b\x01B\a\n" +
+	"\x05_name\"\xb2\x02\n" +
+	"\x1dKubernetesLocustInlineScripts\x125\n" +
+	"\x12locustfile_content\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x11locustfileContent\x12\x9c\x01\n" +
+	"\tlib_files\x18\x02 \x03(\v2`.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustInlineScripts.LibFilesEntryB\x1d\xbaH\x1a\x9a\x01\x17\"\x15r\x132\x11^[A-Za-z0-9_.-]+$R\blibFiles\x1a;\n" +
+	"\rLibFilesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xce\x01\n" +
-	"\x17KubernetesLocustIngress\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname:}\xbaHz\x1ax\n" +
-	"\x1espec.ingress.hostname.required\x12,hostname is required when ingress is enabled\x1a(!this.enabled || size(this.hostname) > 0:\xa9\x01\n" +
-	"\x18default_master_container\x12\x1d.google.protobuf.FieldOptions\x18\x81\x9d  \x01(\v2N.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainerR\x16defaultMasterContainer:\xa9\x01\n" +
-	"\x18default_worker_container\x12\x1d.google.protobuf.FieldOptions\x18\x82\x9d  \x01(\v2N.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainerR\x16defaultWorkerContainerB\xa1\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xf7\x01\n" +
+	"(KubernetesLocustExistingScriptConfigMaps\x12:\n" +
+	"\x15locustfile_config_map\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13locustfileConfigMap\x12U\n" +
+	"\x0flocustfile_name\x18\x02 \x01(\tB'\xbaH\x19r\x172\x15^[A-Za-z0-9_.-]+\\.py$\x8a\xa6\x1d\amain.pyH\x00R\x0elocustfileName\x88\x01\x01\x12$\n" +
+	"\x0elib_config_map\x18\x03 \x01(\tR\flibConfigMapB\x12\n" +
+	"\x10_locustfile_name\"\xab\x01\n" +
+	"\x19KubernetesLocustSecretEnv\x12'\n" +
+	"\vsecret_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"secretName\x12e\n" +
+	"\x04keys\x18\x02 \x03(\tBQ\xbaH\x05\x92\x01\x02\b\x01\xaa\xa6\x1dEKey NAMES within an existing Secret (references), not secret materialR\x04keys\"\xe3\x02\n" +
+	"\x16KubernetesLocustMaster\x12Q\n" +
+	"\tresources\x18\x01 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12V\n" +
+	"\tlog_level\x18\x02 \x01(\tB4\xbaH)r'R\x05DEBUGR\x04INFOR\aWARNINGR\x05ERRORR\bCRITICAL\x8a\xa6\x1d\x04INFOH\x00R\blogLevel\x88\x01\x01\x12\x1f\n" +
+	"\vpdb_enabled\x18\x03 \x01(\bR\n" +
+	"pdbEnabled\x12o\n" +
+	"\n" +
+	"scheduling\x18\x04 \x01(\v2O.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSchedulingR\n" +
+	"schedulingB\f\n" +
+	"\n" +
+	"_log_level\"\xfa\x04\n" +
+	"\x17KubernetesLocustWorkers\x12-\n" +
+	"\breplicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12Q\n" +
+	"\tresources\x18\x02 \x01(\v23.dev.planton.provider.kubernetes.ContainerResourcesR\tresources\x12V\n" +
+	"\tlog_level\x18\x03 \x01(\tB4\xbaH)r'R\x05DEBUGR\x04INFOR\aWARNINGR\x05ERRORR\bCRITICAL\x8a\xa6\x1d\x04INFOH\x02R\blogLevel\x88\x01\x01\x12\x1f\n" +
+	"\vpdb_enabled\x18\x04 \x01(\bR\n" +
+	"pdbEnabled\x12o\n" +
+	"\n" +
+	"scheduling\x18\x05 \x01(\v2O.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSchedulingR\n" +
+	"scheduling\x12b\n" +
+	"\x03hpa\x18\x06 \x01(\v2N.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkerHpaH\x00R\x03hpa\x12e\n" +
+	"\x04keda\x18\a \x01(\v2O.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkerKedaH\x00R\x04kedaB\r\n" +
+	"\vautoscalingB\v\n" +
+	"\t_replicasB\f\n" +
+	"\n" +
+	"_log_level\"\x8c\x02\n" +
+	"\x19KubernetesLocustWorkerHpa\x124\n" +
+	"\fmin_replicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\vminReplicas\x88\x01\x01\x12*\n" +
+	"\fmax_replicas\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\vmaxReplicas\x12Y\n" +
+	"\x1etarget_cpu_utilization_percent\x18\x03 \x01(\x05B\x0f\xbaH\x06\x1a\x04\x18d(\x01\x8a\xa6\x1d\x0240H\x01R\x1btargetCpuUtilizationPercent\x88\x01\x01B\x0f\n" +
+	"\r_min_replicasB!\n" +
+	"\x1f_target_cpu_utilization_percent\"\xe6\x03\n" +
+	"\x1aKubernetesLocustWorkerKeda\x124\n" +
+	"\fmin_replicas\x18\x01 \x01(\x05B\f\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x011H\x00R\vminReplicas\x88\x01\x01\x12*\n" +
+	"\fmax_replicas\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\vmaxReplicas\x12I\n" +
+	"\x17target_users_per_worker\x18\x03 \x01(\x05B\r\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x0250H\x01R\x14targetUsersPerWorker\x88\x01\x01\x12F\n" +
+	"\x18polling_interval_seconds\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x02R\x16pollingIntervalSeconds\x88\x01\x01\x12D\n" +
+	"\x17cooldown_period_seconds\x18\x05 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x03R\x15cooldownPeriodSeconds\x88\x01\x01\x12'\n" +
+	"\x0fcustom_triggers\x18\x06 \x01(\tR\x0ecustomTriggersB\x0f\n" +
+	"\r_min_replicasB\x1a\n" +
+	"\x18_target_users_per_workerB\x1b\n" +
+	"\x19_polling_interval_secondsB\x1a\n" +
+	"\x18_cooldown_period_seconds\"\xa7\x01\n" +
+	"\x19KubernetesLocustWebUiAuth\x12'\n" +
+	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12H\n" +
+	"\busername\x18\x02 \x01(\tB'\xbaH\x1ar\x182\x16^[a-z0-9][a-z0-9._-]*$\x8a\xa6\x1d\x06locustH\x01R\busername\x88\x01\x01B\n" +
+	"\n" +
+	"\b_enabledB\v\n" +
+	"\t_username\"\xbd\x02\n" +
+	"\x1aKubernetesLocustScheduling\x12\x86\x01\n" +
+	"\rnode_selector\x18\x01 \x03(\v2a.dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustScheduling.NodeSelectorEntryR\fnodeSelector\x12U\n" +
+	"\vtolerations\x18\x02 \x03(\v23.dev.planton.provider.kubernetes.WorkloadTolerationR\vtolerations\x1a?\n" +
+	"\x11NodeSelectorEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb3\x02\n" +
+	"\x17KubernetesLocustService\x12N\n" +
+	"\x04type\x18\x01 \x01(\tB5\xbaH%r#R\tClusterIPR\fLoadBalancerR\bNodePort\x8a\xa6\x1d\tClusterIPH\x00R\x04type\x88\x01\x01\x12\x7f\n" +
+	"\vannotations\x18\x02 \x03(\v2].dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustService.AnnotationsEntryR\vannotations\x1a>\n" +
+	"\x10AnnotationsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\a\n" +
+	"\x05_typeB\xa1\x03\n" +
 	"7com.dev.planton.provider.kubernetes.kuberneteslocust.v1B\tSpecProtoP\x01Zhgithub.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kuberneteslocust/v1;kuberneteslocustv1\xa2\x02\x05DPPKK\xaa\x023Dev.Planton.Provider.Kubernetes.Kuberneteslocust.V1\xca\x023Dev\\Planton\\Provider\\Kubernetes\\Kuberneteslocust\\V1\xe2\x02?Dev\\Planton\\Provider\\Kubernetes\\Kuberneteslocust\\V1\\GPBMetadata\xea\x028Dev::Planton::Provider::Kubernetes::Kuberneteslocust::V1b\x06proto3"
 
 var (
@@ -414,36 +1431,57 @@ func file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDesc
 	return file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDescData
 }
 
-var file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_goTypes = []any{
-	(*KubernetesLocustSpec)(nil),          // 0: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec
-	(*KubernetesLocustContainer)(nil),     // 1: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainer
-	(*KubernetesLocustLoadTest)(nil),      // 2: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest
-	(*KubernetesLocustIngress)(nil),       // 3: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustIngress
-	nil,                                   // 4: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.HelmValuesEntry
-	nil,                                   // 5: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.LibFilesContentEntry
-	(*v1.StringValueOrRef)(nil),           // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil), // 7: dev.planton.provider.kubernetes.ContainerResources
-	(*descriptorpb.FieldOptions)(nil),     // 8: google.protobuf.FieldOptions
+	(*KubernetesLocustSpec)(nil),                     // 0: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec
+	(*KubernetesLocustImage)(nil),                    // 1: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustImage
+	(*KubernetesLocustLoadTest)(nil),                 // 2: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest
+	(*KubernetesLocustInlineScripts)(nil),            // 3: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustInlineScripts
+	(*KubernetesLocustExistingScriptConfigMaps)(nil), // 4: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustExistingScriptConfigMaps
+	(*KubernetesLocustSecretEnv)(nil),                // 5: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSecretEnv
+	(*KubernetesLocustMaster)(nil),                   // 6: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustMaster
+	(*KubernetesLocustWorkers)(nil),                  // 7: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkers
+	(*KubernetesLocustWorkerHpa)(nil),                // 8: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkerHpa
+	(*KubernetesLocustWorkerKeda)(nil),               // 9: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkerKeda
+	(*KubernetesLocustWebUiAuth)(nil),                // 10: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWebUiAuth
+	(*KubernetesLocustScheduling)(nil),               // 11: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustScheduling
+	(*KubernetesLocustService)(nil),                  // 12: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustService
+	nil,                                              // 13: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.EnvironmentEntry
+	nil,                                              // 14: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustInlineScripts.LibFilesEntry
+	nil,                                              // 15: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustScheduling.NodeSelectorEntry
+	nil,                                              // 16: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustService.AnnotationsEntry
+	(*v1.StringValueOrRef)(nil),                      // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),            // 18: dev.planton.provider.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),            // 19: dev.planton.provider.kubernetes.WorkloadToleration
 }
 var file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_depIdxs = []int32{
-	6,  // 0: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 1: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.master_container:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainer
-	1,  // 2: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.worker_container:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainer
-	3,  // 3: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.ingress:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustIngress
-	2,  // 4: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.load_test:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest
-	4,  // 5: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.helm_values:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.HelmValuesEntry
-	7,  // 6: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainer.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	5,  // 7: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.lib_files_content:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.LibFilesContentEntry
-	8,  // 8: dev.planton.provider.kubernetes.kuberneteslocust.v1.default_master_container:extendee -> google.protobuf.FieldOptions
-	8,  // 9: dev.planton.provider.kubernetes.kuberneteslocust.v1.default_worker_container:extendee -> google.protobuf.FieldOptions
-	1,  // 10: dev.planton.provider.kubernetes.kuberneteslocust.v1.default_master_container:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainer
-	1,  // 11: dev.planton.provider.kubernetes.kuberneteslocust.v1.default_worker_container:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustContainer
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	10, // [10:12] is the sub-list for extension type_name
-	8,  // [8:10] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	17, // 0: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.image:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustImage
+	2,  // 2: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.load_test:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest
+	6,  // 3: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.master:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustMaster
+	7,  // 4: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.workers:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkers
+	10, // 5: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.web_ui_auth:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWebUiAuth
+	12, // 6: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSpec.service:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustService
+	3,  // 7: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.inline:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustInlineScripts
+	4,  // 8: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.existing_config_maps:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustExistingScriptConfigMaps
+	17, // 9: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.target_host:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 10: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.environment:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.EnvironmentEntry
+	5,  // 11: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustLoadTest.env_from_secret_keys:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustSecretEnv
+	14, // 12: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustInlineScripts.lib_files:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustInlineScripts.LibFilesEntry
+	18, // 13: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustMaster.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	11, // 14: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustMaster.scheduling:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustScheduling
+	18, // 15: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkers.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	11, // 16: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkers.scheduling:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustScheduling
+	8,  // 17: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkers.hpa:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkerHpa
+	9,  // 18: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkers.keda:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustWorkerKeda
+	15, // 19: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustScheduling.node_selector:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustScheduling.NodeSelectorEntry
+	19, // 20: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustScheduling.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	16, // 21: dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustService.annotations:type_name -> dev.planton.provider.kubernetes.kuberneteslocust.v1.KubernetesLocustService.AnnotationsEntry
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_init() }
@@ -451,20 +1489,34 @@ func file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_init() 
 	if File_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto != nil {
 		return
 	}
+	file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[2].OneofWrappers = []any{
+		(*KubernetesLocustLoadTest_Inline)(nil),
+		(*KubernetesLocustLoadTest_ExistingConfigMaps)(nil),
+	}
+	file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[4].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[6].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[7].OneofWrappers = []any{
+		(*KubernetesLocustWorkers_Hpa)(nil),
+		(*KubernetesLocustWorkers_Keda)(nil),
+	}
+	file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[8].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[10].OneofWrappers = []any{}
+	file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDesc), len(file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
-			NumExtensions: 2,
+			NumMessages:   17,
+			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_goTypes,
 		DependencyIndexes: file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_depIdxs,
 		MessageInfos:      file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_msgTypes,
-		ExtensionInfos:    file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_extTypes,
 	}.Build()
 	File_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto = out.File
 	file_dev_planton_provider_kubernetes_kuberneteslocust_v1_spec_proto_goTypes = nil

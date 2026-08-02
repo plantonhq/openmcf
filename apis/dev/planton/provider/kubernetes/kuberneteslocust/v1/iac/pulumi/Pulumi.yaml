@@ -1,6 +1,3 @@
-#name should be updated based on the choice of 'project' name in pulumi backend
-name: planton-aws-module-test
-runtime:
-  name: go
-#  options:
-#    binary: ./debug.sh
+name: kubernetes-locust
+runtime: go
+description: Locust distributed load testing from the deliveryhero Helm chart (the official locustio image) with a secured-by-default web-UI login, ConfigMap-delivered test scripts, secret-native test credentials, and worker autoscaling

@@ -7292,6 +7292,30 @@ func TestStackOutputsConformance(t *testing.T) {
 				"port_forward_command",
 			},
 		},
+		{
+			// KubernetesLocust: the master Service handles (web +
+			// worker-connect endpoints) and the module-generated web-UI
+			// login credential handle.
+			name: "KubernetesLocust",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesLocust,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "load-test",
+				"master_service":       "load-test",
+				"web_endpoint":         "http://load-test.load-test.svc.cluster.local:8089",
+				"master_bind_endpoint": "load-test.load-test.svc.cluster.local:5557",
+				"web_ui_username":      "locust",
+				"web_ui_password_secret": map[string]interface{}{
+					"name": "load-test-auth",
+					"key":  "password",
+				},
+				"port_forward_command": "kubectl port-forward svc/load-test -n load-test 8089:8089",
+			},
+			mustPopulate: []string{
+				"namespace", "master_service", "web_endpoint",
+				"master_bind_endpoint", "web_ui_username",
+				"web_ui_password_secret", "port_forward_command",
+			},
+		},
 	}
 
 	for _, tc := range cases {

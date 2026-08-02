@@ -1,17 +1,14 @@
-# The component defaults: the web-UI login ON with the
-# module-generated credential (upstream's open, anyone-can-start-tests
-# UI never ships), one worker, an inline locustfile swarming the
-# composed podinfo fixture. Co-located with the fixture's namespace
-# (create_namespace false). The verifier proves THE AUTH GATE
-# (anonymous stats read bounced to the login), THE LOGIN PROOF (the
-# generated credential signs in; a wrong password is refused) and THE
-# SWARM PROOF — a real distributed test started through the master's
-# own REST API drives real requests through the worker at the fixture
-# target with zero failures.
+# The behavioral lane: THE RECONNECT PROOF on top of the standard
+# gates — after a full swarm proof, the verifier deletes the master
+# pod (UID-verified replacement), the workers re-register with the
+# replacement (Locust's worker loop reconnects through the stable
+# Service), and a SECOND swarm from a fresh session drives requests
+# again — coordination recovers by design, not by accident. Two
+# workers make the re-registration observable.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesLocust
 metadata:
-  name: e2e-locust-min
+  name: e2e-locust-beh
   annotations:
     planton.dev/e2e-prerequisites: KubernetesDeployment
 spec:
@@ -32,7 +29,7 @@ spec:
     target_host:
       value: http://e2e-locust-target.e2e-locust.svc.cluster.local:9898
   workers:
-    replicas: 1
+    replicas: 2
     resources:
       requests:
         cpu: 100m

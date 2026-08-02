@@ -1,0 +1,38 @@
+# Consumer-scoped swarm-target fixture for the KubernetesLocust lanes —
+# the catalog load-testing the catalog: the target is a
+# KubernetesDeployment (podinfo, the canonical tiny HTTP app), exactly
+# the composed story this kind exists for (load-testing services you
+# already declare on the platform).
+# - SHARED NAMESPACE (e2e-locust): this fixture owns the namespace
+#   (create_namespace true); the scenarios and the credential fixture
+#   co-locate in it (Secret references and ConfigMap mounts cannot
+#   cross namespaces).
+# - The Service is named after the resource (`e2e-locust-target`,
+#   port 9898) — the scenarios' target_host URL.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesDeployment
+metadata:
+  name: e2e-locust-target
+spec:
+  namespace:
+    value: e2e-locust
+  create_namespace: true
+  version: main
+  container:
+    app:
+      image:
+        repo: ghcr.io/stefanprodan/podinfo
+        tag: "6.9.2"
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 128Mi
+      ports:
+        - name: http
+          container_port: 9898
+          network_protocol: TCP
+          app_protocol: http
+          service_port: 9898

@@ -43,6 +43,7 @@ go_library(
         "kuberayoperator.go",
         "kyverno.go",
         "lbaddress.go",
+        "locust.go",
         "loki.go",
         "manifest.go",
         "metricsserver.go",
