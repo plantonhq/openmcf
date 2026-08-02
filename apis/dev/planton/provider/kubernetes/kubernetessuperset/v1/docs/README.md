@@ -73,8 +73,16 @@ generates it once and shape-ignores the random.
 
 ## Drivers
 
-The official image installs the `[postgres]` extras only — the
-metadata database and postgres datasources work out of the box; other
-datasources (Trino, Elasticsearch…) need their drivers via
-`bootstrap_script` (internet at container start, re-runs per restart)
-or a custom image.
+The official image is the driver-less "lean" build stage (the
+`[postgres]` extras ride only the dev/ci variants — verified live:
+the server exits at boot with "No module named 'psycopg2'"). The
+module's default bootstrap script installs the exact psycopg2 pin the
+app's [postgres] extra declares, so the metadata database works out
+of the box; a custom `bootstrap_script` replaces that default and
+must keep a psycopg2 install. Installs must target the app's venv:
+the image's plain `pip` belongs to the system interpreter and its
+installs stay invisible to the app (verified live) — use `uv pip
+install --python /app/.venv/bin/python <driver>`. Other datasources
+(Trino, Elasticsearch…) add their drivers the same way (internet at
+container start, re-runs per restart) or via a custom image — the
+production posture.

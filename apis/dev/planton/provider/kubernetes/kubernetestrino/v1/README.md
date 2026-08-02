@@ -14,10 +14,14 @@ here: an empty `auth` block means PASSWORD (file) authentication with
 a module-generated admin credential (`<name>-auth` Secret, exported as
 the credential handle), and the module configures the
 internal-communication shared secret Trino requires once
-authentication is on. Password auth normally demands HTTPS; in-cluster
-traffic rides the ClusterIP Service with
-`allow-insecure-over-http` set — terminate TLS at composed exposure
-kinds (or use the `https` keystore arm).
+authentication is on. Trino enforces password authentication only on
+secure requests (verified in the server source at the pin — the
+`allow-insecure-over-http` flag would bypass the password file
+entirely over HTTP, not extend it), so the module sets
+`http-server.process-forwarded=true`: terminate TLS at composed
+exposure kinds (their `X-Forwarded-Proto: https` engages the password
+file) or use the `https` keystore arm; plain-HTTP data-plane requests
+are refused outright.
 
 ## Catalogs are the product
 

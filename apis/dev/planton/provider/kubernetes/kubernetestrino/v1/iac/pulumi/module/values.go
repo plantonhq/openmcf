@@ -201,12 +201,19 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		configProperties = append(configProperties,
 			fmt.Sprintf("internal-communication.shared-secret=${ENV:%s}", vars.SharedSecretEnvVar))
 		if !httpsEnabled {
-			// Password auth demands TLS unless explicitly allowed over
-			// HTTP — in-cluster traffic rides the ClusterIP Service and
-			// TLS terminates at composed exposure kinds (the chart has
-			// no TLS of its own without the https arm).
+			// Password auth engages ONLY on secure requests. Verified in
+			// the server's AuthenticationFilter at the pin:
+			// `allow-insecure-over-http` does NOT run password auth over
+			// HTTP — it routes plain-HTTP requests to the username-trust
+			// authenticator, so the password file would guard nothing.
+			// `process-forwarded` is upstream's TLS-terminating-proxy
+			// recipe: requests arriving with X-Forwarded-Proto: https
+			// (what composed exposure kinds send) are treated secure and
+			// the PASSWORD authenticator ENFORCES the file, while plain
+			// HTTP data-plane requests fail CLOSED (403). Health probes
+			// are unaffected (/v1/info and /v1/status are PUBLIC routes).
 			configProperties = append(configProperties,
-				"http-server.authentication.allow-insecure-over-http=true")
+				"http-server.process-forwarded=true")
 		}
 	}
 	if fte := spec.GetFaultTolerantExecution(); fte != nil {
@@ -389,7 +396,19 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 
 	// ------------------------------- metrics ------------------------------
 	if metrics := spec.GetMetrics(); metrics.GetEnabled() {
-		exporterBlock := map[string]interface{}{"enabled": true}
+		// The standalone JMX exporter FATALS without a hostPort/jmxUrl
+		// in its config (verified live: "you must configure 'jmxUrl'
+		// or 'hostPort'"), and the chart's default configProperties is
+		// EMPTY — enabling the sidecar without composing the config
+		// ships a crash-loop. The module renders the chart's own
+		// documented pairing; the `tpl` reference keeps the port
+		// single-sourced from the chart's jmx.registryPort.
+		exporterBlock := map[string]interface{}{
+			"enabled": true,
+			"configProperties": "hostPort: localhost:{{- .Values.jmx.registryPort }}\n" +
+				"startDelaySeconds: 0\n" +
+				"ssl: false\n",
+		}
 		if metrics.GetExporterImage() != "" {
 			exporterBlock["image"] = metrics.GetExporterImage()
 		}
@@ -429,7 +448,7 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		// RE-PINS: the security spine survives any merge. The
 		// deterministic names, the authentication wiring and the
 		// module-owned config-properties list (which carries the
-		// shared secret and the insecure-over-http pairing) cannot be
+		// shared secret and the process-forwarded pairing) cannot be
 		// silently disabled from the escape hatch.
 		values["fullnameOverride"] = locals.ReleaseName
 		if locals.AuthEnabled {
@@ -479,11 +498,17 @@ func buildNodeBlock(
 	block := map[string]interface{}{}
 
 	// JVM heap: percent-based sizing only works when the fixed -Xmx is
-	// UNSET (chart truth) — null-delete the chart's 8G default.
+	// UNSET (chart truth). The chart's 8G default is disabled with an
+	// EMPTY STRING, never nil: the chart guards the -Xmx line with
+	// `{{- if .Values.<node>.jvm.maxHeapSize }}` and "" is falsy
+	// there, while a nil does NOT survive to Helm through this
+	// engine's release seam (verified live: the chart's -Xmx8G
+	// default silently overrode the percent sizing inside the
+	// container limit).
 	if jvm != nil {
 		jvmBlock := map[string]interface{}{}
 		if jvm.MaxHeapPercent != nil {
-			jvmBlock["maxHeapSize"] = nil
+			jvmBlock["maxHeapSize"] = ""
 			jvmBlock["maxHeapPercent"] = int(jvm.GetMaxHeapPercent())
 		} else if jvm.GetMaxHeapSize() != "" {
 			jvmBlock["maxHeapSize"] = jvm.GetMaxHeapSize()

@@ -175,9 +175,18 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 			workerBlock["resources"] = resources
 		}
 	} else {
-		// No cache (or explicitly disabled): the worker Deployment
-		// never renders — it would crash-loop without a broker.
-		workerBlock["replicas"] = map[string]interface{}{"enabled": false}
+		// No cache (or explicitly disabled): the worker runs at ZERO
+		// replicas. KNOW THIS (chart truth at the pin, verified
+		// live): the worker Deployment template has NO whole-file
+		// guard — the `replicas.enabled` flag only omits the
+		// `replicas:` LINE, and a Deployment without that line
+		// defaults to ONE pod, so a "disabled" worker still deploys
+		// and crash-loops without a broker. replicaCount 0 is the
+		// chart's only real off switch.
+		workerBlock["replicas"] = map[string]interface{}{
+			"enabled":      true,
+			"replicaCount": 0,
+		}
 	}
 	values["supersetWorker"] = workerBlock
 
@@ -214,8 +223,29 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		"command":      initCommand(),
 	}
 
+	// The published apache/superset image is the driver-less "lean"
+	// build stage: the metadata-database driver (psycopg2) rides ONLY
+	// the dev/ci image variants — verified live ("No module named
+	// 'psycopg2'" at boot) and in the image's own build file at the
+	// pin. The chart's own mechanism is the bootstrap script, sourced
+	// by every component AND the init Job before anything else runs;
+	// when the manifest brings no script of its own, the module
+	// composes upstream's marker script plus the exact driver pin the
+	// app's [postgres] extra declares. THE INSTALL MUST TARGET THE
+	// APP'S VENV (verified live): the app runs from /app/.venv while
+	// the image's plain `pip` is the SYSTEM interpreter's — a bare
+	// pip install succeeds and stays invisible to the app; `uv pip
+	// install --python /app/.venv/bin/python` (uv is the image's own
+	// tool) pins the right interpreter. Production hardening
+	// (air-gap, no pip-at-boot): bake a custom image and set
+	// bootstrap_script to a no-op. Keep byte-identical with the
+	// Terraform module's default.
 	if spec.GetBootstrapScript() != "" {
 		values["bootstrapScript"] = spec.GetBootstrapScript()
+	} else {
+		values["bootstrapScript"] = "#!/bin/bash\n" +
+			"if [ ! -f ~/bootstrap ]; then echo \"Running Superset with uid {{ .Values.runAsUser }}\" > ~/bootstrap; fi\n" +
+			"uv pip install --no-cache --python /app/.venv/bin/python psycopg2-binary==2.9.9\n"
 	}
 
 	// --------------------------- configOverrides --------------------------

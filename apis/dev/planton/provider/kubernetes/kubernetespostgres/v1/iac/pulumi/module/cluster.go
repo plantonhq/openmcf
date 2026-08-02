@@ -37,18 +37,16 @@ func createCluster(ctx *pulumi.Context, locals *Locals,
 	}
 
 	if resources := spec.GetResources(); resources != nil {
+		// Absent quantities are OMITTED, never rendered empty: CNPG's
+		// mutating webhook rejects "" with `quantities must match the
+		// regular expression ...` (verified live against a spec
+		// declaring only limits.memory).
 		resourcesArgs := postgresqlv1.ClusterSpecResourcesArgs{}
-		if limits := resources.GetLimits(); limits != nil {
-			resourcesArgs.Limits = pulumi.Map{
-				"cpu":    pulumi.String(limits.GetCpu()),
-				"memory": pulumi.String(limits.GetMemory()),
-			}
+		if limits := quantityMap(resources.GetLimits()); limits != nil {
+			resourcesArgs.Limits = limits
 		}
-		if requests := resources.GetRequests(); requests != nil {
-			resourcesArgs.Requests = pulumi.Map{
-				"cpu":    pulumi.String(requests.GetCpu()),
-				"memory": pulumi.String(requests.GetMemory()),
-			}
+		if requests := quantityMap(resources.GetRequests()); requests != nil {
+			resourcesArgs.Requests = requests
 		}
 		clusterSpec.Resources = resourcesArgs
 	}
@@ -382,4 +380,26 @@ func workloadIdentityAnnotations(workloadIdentity *kubernetesprovider.Kubernetes
 		}
 	}
 	return annotations
+}
+
+// quantityMap renders a cpu/memory block with absent quantities OMITTED —
+// CNPG's mutating webhook rejects an empty-string quantity (`quantities
+// must match the regular expression ...`, verified live against a spec
+// declaring only limits.memory). Returns nil when the block is absent or
+// carries no set quantity, so the key never renders at all.
+func quantityMap(cpuMemory *kubernetesprovider.CpuMemory) pulumi.Map {
+	if cpuMemory == nil {
+		return nil
+	}
+	quantities := pulumi.Map{}
+	if cpuMemory.GetCpu() != "" {
+		quantities["cpu"] = pulumi.String(cpuMemory.GetCpu())
+	}
+	if cpuMemory.GetMemory() != "" {
+		quantities["memory"] = pulumi.String(cpuMemory.GetMemory())
+	}
+	if len(quantities) == 0 {
+		return nil
+	}
+	return quantities
 }

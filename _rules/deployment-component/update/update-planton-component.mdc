@@ -730,6 +730,21 @@ Based on scenario:
   operate — the reconcile apply writes config-only attributes into
   state; the E2E import round-trip performs the same reconcile-apply
   after its zero-change plan proof for exactly this reason.
+- **Disabling a chart default the chart guards with `if` uses a
+  CHART-FALSY EMPTY value ("" / 0), never a null — a null's survival to
+  Helm differs by engine**: Terraform's yamlencode carries `null`
+  through and Helm null-deletes the key, but the same nil does NOT
+  survive the Pulumi release seam — the key vanishes from the values
+  instead of overriding, and the chart default silently rides (verified
+  live: a percent-based JVM heap whose fixed `-Xmx` default was
+  "null-deleted" on both engines actually kept the chart's 8G `-Xmx` on
+  the Pulumi lanes, overriding the percent sizing inside the container
+  limit — invisible offline because both plans LOOK correct, and
+  invisible live until a sibling value validated against the real
+  heap). When the chart's guard is `{{ if .Values.x }}`, an empty
+  string/zero is falsy and expresses the disable identically through
+  BOTH engines; reserve null-deletes for map-entry removal the chart
+  iterates (and verify those live on both engines).
 - **A generated credential that a server resolves through its OWN
   config/env re-parsing must use a parser-safe alphabet — letters
   only, length compensating entropy**: some servers substitute env-var

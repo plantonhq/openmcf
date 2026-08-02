@@ -131,7 +131,7 @@ resource "helm_release" "trino" {
   # last-word contract (twin of the Pulumi module): the deterministic
   # names, the PASSWORD authentication wiring and the module-owned
   # config-properties list (which carries the shared secret and the
-  # insecure-over-http pairing) cannot be silently disabled.
+  # process-forwarded pairing) cannot be silently disabled.
   # Single-attribute ternaries only (the HCL type-unification class —
   # a composite true branch cannot unify against {}).
   values = concat(

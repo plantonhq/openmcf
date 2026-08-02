@@ -44,10 +44,20 @@ const (
 // PASSWORD (file) authentication by default with a module-generated
 // admin user (`<name>-auth` Secret), and configures the
 // internal-communication shared secret Trino requires once
-// authentication is on. Password auth normally demands HTTPS; the
-// module sets `http-server.authentication.allow-insecure-over-http`
-// because in-cluster traffic rides the ClusterIP Service and TLS
-// terminates at composed exposure kinds (or the `https` arm here).
+// authentication is on. KNOW THIS (verified live and in the server's
+// request-authentication source at the pin): Trino runs password
+// authentication ONLY on secure requests — the often-suggested
+// `allow-insecure-over-http` flag does NOT extend it to HTTP; it
+// routes plain-HTTP requests to a username-trust path where the
+// password file guards nothing. The module therefore sets
+// `http-server.process-forwarded=true` (upstream's TLS-terminating-
+// proxy recipe): requests arriving through a TLS-terminating proxy
+// (composed exposure kinds send `X-Forwarded-Proto: https`) are
+// authenticated against the password file, and plain-HTTP data-plane
+// requests are refused outright (health probes ride public routes and
+// are unaffected). Terminate TLS at composed exposure kinds or enable
+// the `https` arm here; direct in-cluster clients must present the
+// forwarded-proto header a proxy would send.
 //
 // CREDENTIALS ARE SECRET-NATIVE: catalog passwords and the internal
 // shared secret never appear in rendered ConfigMaps — properties
@@ -473,7 +483,14 @@ type KubernetesTrinoCoordinator struct {
 	Jvm *KubernetesTrinoJvm `protobuf:"bytes,1,opt,name=jvm,proto3" json:"jvm,omitempty"`
 	// *
 	// Per-node memory ceiling for a single query on the coordinator
-	// (`query.max-memory-per-node`). Empty = "1GB".
+	// (`query.max-memory-per-node`). Empty = "1GB". KNOW THIS
+	// (verified live): the server validates this value against the
+	// JVM's ACTUAL max heap at boot and refuses to start when it
+	// exceeds it ("Heap size cannot be greater than maximum heap
+	// size") — with percent-based heaps, keep it comfortably below
+	// `resources.limits.memory × jvm.max_heap_percent` (the 1GB
+	// default already exceeds the heap of containers limited below
+	// ~1.7Gi at 60%).
 	MaxQueryMemoryPerNode *string `protobuf:"bytes,2,opt,name=max_query_memory_per_node,json=maxQueryMemoryPerNode,proto3,oneof" json:"max_query_memory_per_node,omitempty"`
 	// *
 	// Heap memory reserved for non-query work
@@ -588,7 +605,14 @@ type KubernetesTrinoWorkers struct {
 	Jvm *KubernetesTrinoJvm `protobuf:"bytes,2,opt,name=jvm,proto3" json:"jvm,omitempty"`
 	// *
 	// Per-node memory ceiling for a single query on each worker
-	// (`query.max-memory-per-node`). Empty = "1GB".
+	// (`query.max-memory-per-node`). Empty = "1GB". KNOW THIS
+	// (verified live): the server validates this value against the
+	// JVM's ACTUAL max heap at boot and refuses to start when it
+	// exceeds it ("Heap size cannot be greater than maximum heap
+	// size") — with percent-based heaps, keep it comfortably below
+	// `resources.limits.memory × jvm.max_heap_percent` (the 1GB
+	// default already exceeds the heap of containers limited below
+	// ~1.7Gi at 60%).
 	MaxQueryMemoryPerNode *string `protobuf:"bytes,3,opt,name=max_query_memory_per_node,json=maxQueryMemoryPerNode,proto3,oneof" json:"max_query_memory_per_node,omitempty"`
 	// *
 	// Heap memory reserved for non-query work. Empty = the Trino

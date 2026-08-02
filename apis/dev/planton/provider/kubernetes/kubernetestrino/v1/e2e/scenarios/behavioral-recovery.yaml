@@ -13,6 +13,7 @@ spec:
   coordinator:
     jvm:
       max_heap_percent: 60
+    max_query_memory_per_node: 512MB
     resources:
       requests:
         cpu: 200m
@@ -23,6 +24,7 @@ spec:
     replicas: 1
     jvm:
       max_heap_percent: 60
+    max_query_memory_per_node: 512MB
     resources:
       requests:
         cpu: 200m

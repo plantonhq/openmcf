@@ -36,17 +36,17 @@
       "name": "Tier 3 Pulumi",
       "tier": 3,
       "engine": "pulumi",
-      "timeout": 575,
-      "run_regex": "Test(KubernetesAirflow|KubernetesClickHouse|KubernetesFlinkDeployment|KubernetesGhaRunnerScaleSet|KubernetesJupyterHub|KubernetesKeycloak|KubernetesMlflow|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesOtelCollector|KubernetesRabbitMq|KubernetesRayCluster|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator|KubernetesTekton)_Pulumi",
-      "component_count": 16
+      "timeout": 645,
+      "run_regex": "Test(KubernetesAirflow|KubernetesClickHouse|KubernetesFlinkDeployment|KubernetesGhaRunnerScaleSet|KubernetesJupyterHub|KubernetesKeycloak|KubernetesMlflow|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesOtelCollector|KubernetesRabbitMq|KubernetesRayCluster|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator|KubernetesSuperset|KubernetesTekton|KubernetesTrino)_Pulumi",
+      "component_count": 18
     },
     {
       "name": "Tier 3 Terraform",
       "tier": 3,
       "engine": "terraform",
-      "timeout": 575,
-      "run_regex": "Test(KubernetesAirflow|KubernetesClickHouse|KubernetesFlinkDeployment|KubernetesGhaRunnerScaleSet|KubernetesJupyterHub|KubernetesKeycloak|KubernetesMlflow|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesOtelCollector|KubernetesRabbitMq|KubernetesRayCluster|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator|KubernetesTekton)_Terraform",
-      "component_count": 16
+      "timeout": 645,
+      "run_regex": "Test(KubernetesAirflow|KubernetesClickHouse|KubernetesFlinkDeployment|KubernetesGhaRunnerScaleSet|KubernetesJupyterHub|KubernetesKeycloak|KubernetesMlflow|KubernetesOpenSearch|KubernetesOpenSearchOperator|KubernetesOtelCollector|KubernetesRabbitMq|KubernetesRayCluster|KubernetesSignoz|KubernetesSolr|KubernetesSolrOperator|KubernetesSuperset|KubernetesTekton|KubernetesTrino)_Terraform",
+      "component_count": 18
     },
     {
       "name": "Tier 4 Pulumi",

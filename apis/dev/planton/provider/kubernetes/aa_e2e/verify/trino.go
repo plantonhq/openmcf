@@ -15,12 +15,15 @@ import (
 
 // TrinoVerifier checks a Trino cluster to the point a customer could
 // point a SQL client at it: coordinator and worker rollouts, THE AUTH
-// GATE (an anonymous statement submission REJECTED — upstream ships NO
-// authentication and that posture never deploys from this kind), and
-// THE QUERY PROOF on every lane — a real query executes through the
-// coordinator's own statement API as the module-generated admin and
-// returns the expected result through REAL workers (an engine that
-// cannot answer SQL is not a query engine).
+// GATE (plain-HTTP data-plane requests refused OUTRIGHT under the
+// module's process-forwarded posture, and through the forwarded-proto
+// path — the traffic a TLS-terminating proxy delivers — anonymous AND
+// wrong-password submissions rejected by the password file; upstream
+// ships NO authentication and that posture never deploys from this
+// kind), and THE QUERY PROOF on every lane — a real query executes
+// through the coordinator's own statement API as the module-generated
+// admin and returns the expected result through REAL workers (an
+// engine that cannot answer SQL is not a query engine).
 //
 // The full-surface scenario (recognized by name) adds THE FEDERATION
 // PROOF: the composed PostgreSQL catalog answers through Trino, and a
@@ -106,20 +109,24 @@ func (v *TrinoVerifier) VerifyExists(ctx context.Context, kubeconfig string) err
 		}
 	}
 
-	cancel, err := openServiceTunnel(ctx, kubeconfig, v.Namespace, v.Name+"-coordinator", trinoApiPort, "8080")
+	// The coordinator Service is named exactly the fullname (verified
+	// in the chart's service-coordinator.yaml at the pin): only the
+	// DEPLOYMENTS carry the -coordinator/-worker suffixes, and the
+	// worker Service is `<name>-worker`.
+	cancel, err := openServiceTunnel(ctx, kubeconfig, v.Namespace, v.Name, trinoApiPort, "8080")
 	if err != nil {
 		return errors.Wrap(err, "opening the tunnel to the trino coordinator")
 	}
 
 	password := ""
 	if v.AuthEnabled {
-		// THE AUTH GATE before any credentialed call.
-		if err := v.proveAuthGate(ctx); err != nil {
+		password, err = v.adminPassword(ctx, kubeconfig)
+		if err != nil {
 			cancel()
 			return err
 		}
-		password, err = v.adminPassword(ctx, kubeconfig)
-		if err != nil {
+		// THE AUTH GATE before any credentialed call.
+		if err := v.proveAuthGate(ctx, password); err != nil {
 			cancel()
 			return err
 		}
@@ -176,7 +183,7 @@ func (v *TrinoVerifier) VerifyExists(ctx context.Context, kubeconfig string) err
 	if err := kubectlRolloutStatus(ctx, kubeconfig, "deployment/"+v.Name+"-coordinator", v.Namespace, 8*time.Minute); err != nil {
 		return errors.Wrap(err, "the replaced coordinator never became ready")
 	}
-	cancel, err = openServiceTunnel(ctx, kubeconfig, v.Namespace, v.Name+"-coordinator", trinoApiPort, "8080")
+	cancel, err = openServiceTunnel(ctx, kubeconfig, v.Namespace, v.Name, trinoApiPort, "8080")
 	if err != nil {
 		return errors.Wrap(err, "re-opening the tunnel after the coordinator replacement")
 	}
@@ -225,18 +232,44 @@ func (v *TrinoVerifier) adminPassword(ctx context.Context, kubeconfig string) (s
 	return password, nil
 }
 
-// proveAuthGate submits a statement WITHOUT credentials and requires a
-// 401 — upstream's open server (any caller queries as any user) must
-// be dead.
-func (v *TrinoVerifier) proveAuthGate(ctx context.Context) error {
-	status, _, err := v.statementRequest(ctx, "SELECT 1", "", "")
+// proveAuthGate asserts the module's process-forwarded posture on the
+// server's own contract (source-verified at the pin): plain-HTTP
+// data-plane requests are REFUSED OUTRIGHT (403 — with process
+// forwarding on and real authentication configured, the server flips
+// insecure-over-http off, so the username-trust path never runs), and
+// through the forwarded-proto path the PASSWORD authenticator enforces
+// the file — anonymous and wrong-password submissions both 401.
+func (v *TrinoVerifier) proveAuthGate(ctx context.Context, password string) error {
+	// Arm 1 — fail-closed HTTP: no forwarded header, no credentials.
+	status, _, err := v.statementRequest(ctx, "SELECT 1", "", "", false)
 	if err != nil {
-		return errors.Wrap(err, "the anonymous statement submission")
+		return errors.Wrap(err, "the plain-http statement submission")
+	}
+	if status != http.StatusForbidden {
+		return errors.Errorf("THE AUTH GATE FAILED: plain-http statement submission returned %d, want 403 — the fail-closed posture must hold (a username-trust path here means the password file guards nothing)", status)
+	}
+	fmt.Printf("  [verify] THE AUTH GATE: plain-http statement submission refused outright (403)\n")
+
+	// Arm 2 — anonymous through the proxy path: challenge, never data.
+	status, _, err = v.statementRequest(ctx, "SELECT 1", "", "", true)
+	if err != nil {
+		return errors.Wrap(err, "the anonymous forwarded statement submission")
 	}
 	if status != http.StatusUnauthorized {
-		return errors.Errorf("THE AUTH GATE FAILED: anonymous statement submission returned %d, want 401 — the open server posture must never ship", status)
+		return errors.Errorf("THE AUTH GATE FAILED: anonymous forwarded statement submission returned %d, want 401 — the open server posture must never ship", status)
 	}
-	fmt.Printf("  [verify] THE AUTH GATE: anonymous statement submission rejected (401)\n")
+	fmt.Printf("  [verify] THE AUTH GATE: anonymous submission rejected (401)\n")
+
+	// Arm 3 — the password file actually ENFORCES: a wrong password
+	// for the real admin user is refused on the forwarded path.
+	status, _, err = v.statementRequest(ctx, "SELECT 1", v.AdminUsername, password+"-wrong", true)
+	if err != nil {
+		return errors.Wrap(err, "the wrong-password statement submission")
+	}
+	if status != http.StatusUnauthorized {
+		return errors.Errorf("THE AUTH GATE FAILED: a WRONG password returned %d, want 401 — the password file is not enforcing", status)
+	}
+	fmt.Printf("  [verify] THE AUTH GATE: wrong-password submission rejected (401) — the password file enforces\n")
 	return nil
 }
 
@@ -272,7 +305,7 @@ func (v *TrinoVerifier) runScalarQuery(ctx context.Context, password, query stri
 }
 
 func (v *TrinoVerifier) runScalarQueryOnce(ctx context.Context, password, query string) (string, error) {
-	status, body, err := v.statementRequest(ctx, query, v.AdminUsername, password)
+	status, body, err := v.statementRequest(ctx, query, v.AdminUsername, password, true)
 	if err != nil {
 		return "", err
 	}
@@ -311,7 +344,7 @@ func (v *TrinoVerifier) runScalarQueryOnce(ctx context.Context, password, query 
 		if idx := strings.Index(nextPath, "/v1/"); idx >= 0 {
 			nextPath = nextPath[idx:]
 		}
-		status, body, err = v.request(ctx, http.MethodGet, nextPath, v.AdminUsername, password, nil)
+		status, body, err = v.request(ctx, http.MethodGet, nextPath, v.AdminUsername, password, nil, true)
 		if err != nil {
 			return "", err
 		}
@@ -323,14 +356,22 @@ func (v *TrinoVerifier) runScalarQueryOnce(ctx context.Context, password, query 
 
 // statementRequest POSTs one query to /v1/statement (basic auth when a
 // username is given; X-Trino-User always names the session user).
-func (v *TrinoVerifier) statementRequest(ctx context.Context, query, username, password string) (int, string, error) {
-	return v.request(ctx, http.MethodPost, "/v1/statement", username, password, []byte(query))
+func (v *TrinoVerifier) statementRequest(ctx context.Context, query, username, password string, forwarded bool) (int, string, error) {
+	return v.request(ctx, http.MethodPost, "/v1/statement", username, password, []byte(query), forwarded)
 }
 
-func (v *TrinoVerifier) request(ctx context.Context, method, path, username, password string, payload []byte) (int, string, error) {
+func (v *TrinoVerifier) request(ctx context.Context, method, path, username, password string, payload []byte, forwarded bool) (int, string, error) {
 	req, err := http.NewRequestWithContext(ctx, method, trinoBaseUrl()+path, strings.NewReader(string(payload)))
 	if err != nil {
 		return 0, "", err
+	}
+	// The module runs the server with http-server.process-forwarded:
+	// the forwarded-proto header is exactly what a TLS-terminating
+	// proxy (the composed exposure kinds) sends, and it is what makes
+	// the request secure enough for the PASSWORD authenticator to run.
+	// Plain requests (forwarded=false) prove the fail-closed posture.
+	if forwarded {
+		req.Header.Set("X-Forwarded-Proto", "https")
 	}
 	if username != "" {
 		req.SetBasicAuth(username, password)

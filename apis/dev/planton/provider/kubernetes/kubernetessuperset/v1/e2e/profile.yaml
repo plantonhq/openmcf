@@ -11,10 +11,11 @@ spec:
   # generated-and-stable SECRET_KEY, and the env-driven admin
   # bootstrap. Offline-validated (39 spec tests, both engines'
   # plan/preview proofs across minimal and full-surface shapes with
-  # rendered-value spot-checks and leak greps); awaiting the live
-  # lanes.
-  status: pending_proof
-  validated_provisioners: []
+  # rendered-value spot-checks and leak greps).
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   # The ~1GB superset image pulls once per cluster; the init Job's
   # schema migration runs against the composed database INSIDE the
   # Helm wait (a post-install hook), and the CNPG→Postgres + Valkey

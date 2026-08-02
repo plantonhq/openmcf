@@ -175,8 +175,8 @@ func TestImportMapConformance(t *testing.T) {
 						t.Errorf("import_normalized entry for %q declares no sub_paths", nr.GetTofuResourceName())
 					}
 					for _, sp := range nr.GetSubPaths() {
-						if !strings.Contains(sp.GetPath(), ".") {
-							t.Errorf("import_normalized sub-path %q on %q is not a dotted sub-path -- whole-attribute tolerance belongs in the provider catalog",
+						if len(SplitAttributePath(sp.GetPath())) < 2 {
+							t.Errorf("import_normalized sub-path %q on %q does not reach below a top-level attribute -- whole-attribute tolerance belongs in the provider catalog",
 								sp.GetPath(), nr.GetTofuResourceName())
 						}
 						if strings.TrimSpace(sp.GetReason()) == "" {

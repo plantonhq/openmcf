@@ -138,6 +138,12 @@ func (v *SupersetVerifier) VerifyExists(ctx context.Context, kubeconfig string) 
 	// the composed database.
 	cancel()
 	fmt.Printf("  [verify] THE STATE PROOF: replacing the web pod…\n")
+	// The chart stamps every component's pods with the standard
+	// app.kubernetes.io labels plus a per-component
+	// `app.kubernetes.io/component` (web/worker/…) — VERIFIED LIVE on
+	// the running pods at the pin. (An earlier chart line stamped
+	// legacy app/release labels instead — read the label shape from
+	// the clone checked out at the CHART tag, not the app tag.)
 	selector := "app.kubernetes.io/instance=" + v.Name + ",app.kubernetes.io/component=web"
 	if err := deletePodAwaitReplacement(ctx, kubeconfig, v.Namespace, selector, 8*time.Minute); err != nil {
 		return errors.Wrap(err, "the web pod was never replaced")

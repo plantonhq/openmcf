@@ -74,10 +74,17 @@ locals {
   # this ConfigMap-rendered list.
   config_properties = concat(
     local.auth_enabled ? ["internal-communication.shared-secret=$${ENV:${local.shared_secret_env_var}}"] : [],
-    # Password auth demands TLS unless explicitly allowed over HTTP —
-    # in-cluster traffic rides the ClusterIP Service and TLS terminates
-    # at composed exposure kinds.
-    local.auth_enabled && !local.https_enabled ? ["http-server.authentication.allow-insecure-over-http=true"] : [],
+    # Password auth engages ONLY on secure requests. Verified in the
+    # server's AuthenticationFilter at the pin: allow-insecure-over-http
+    # does NOT run password auth over HTTP — it routes plain-HTTP
+    # requests to the username-trust authenticator, so the password
+    # file would guard nothing. process-forwarded is upstream's
+    # TLS-terminating-proxy recipe: requests arriving with
+    # X-Forwarded-Proto: https (what composed exposure kinds send) are
+    # treated secure and the PASSWORD authenticator ENFORCES the file,
+    # while plain HTTP data-plane requests fail CLOSED (403). Health
+    # probes are unaffected (/v1/info and /v1/status are PUBLIC routes).
+    local.auth_enabled && !local.https_enabled ? ["http-server.process-forwarded=true"] : [],
     try(var.spec.fault_tolerant_execution, null) != null ? ["retry-policy=${var.spec.fault_tolerant_execution.retry_policy}"] : [],
     try(var.spec.additional_config_properties, []),
   )
@@ -247,10 +254,15 @@ locals {
 
   # -------------------- coordinator / worker blocks -----------------------
   # JVM heap: percent-based sizing only works when the fixed -Xmx is
-  # UNSET (chart truth) — null-delete the chart's 8G default.
+  # UNSET (chart truth). The chart's 8G default is disabled with an
+  # EMPTY STRING, never null: the chart guards the -Xmx line with
+  # `{{- if .Values.<node>.jvm.maxHeapSize }}` and "" is falsy there,
+  # while a null's survival to Helm differs by engine (verified live:
+  # the Pulumi seam dropped the null and the chart's -Xmx8G default
+  # silently overrode the percent sizing inside the container limit).
   coordinator_jvm_block = try(var.spec.coordinator.jvm.max_heap_percent, null) != null ? {
     jvm = {
-      maxHeapSize    = null
+      maxHeapSize    = ""
       maxHeapPercent = var.spec.coordinator.jvm.max_heap_percent
     }
     } : (try(var.spec.coordinator.jvm.max_heap_size, "") != "" ? {
@@ -261,7 +273,7 @@ locals {
 
   worker_jvm_block = try(var.spec.workers.jvm.max_heap_percent, null) != null ? {
     jvm = {
-      maxHeapSize    = null
+      maxHeapSize    = ""
       maxHeapPercent = var.spec.workers.jvm.max_heap_percent
     }
     } : (try(var.spec.workers.jvm.max_heap_size, "") != "" ? {
@@ -422,11 +434,26 @@ locals {
   metrics_enabled         = try(var.spec.metrics.enabled, false)
   service_monitor_enabled = try(var.spec.metrics.service_monitor_enabled, false)
 
+  # The standalone JMX exporter FATALS without a hostPort/jmxUrl in its
+  # config (verified live: "you must configure 'jmxUrl' or 'hostPort'"),
+  # and the chart's default configProperties is EMPTY — enabling the
+  # sidecar without composing the config ships a crash-loop. The module
+  # renders the chart's own documented pairing; the `tpl` reference
+  # keeps the port single-sourced from the chart's jmx.registryPort.
+  jmx_exporter_config = <<-EOT
+    hostPort: localhost:{{- .Values.jmx.registryPort }}
+    startDelaySeconds: 0
+    ssl: false
+  EOT
+
   jmx_block = local.metrics_enabled ? {
     jmx = {
       enabled = true
       exporter = merge(
-        { enabled = true },
+        {
+          enabled          = true
+          configProperties = local.jmx_exporter_config
+        },
         try(var.spec.metrics.exporter_image, "") != "" ? { image = var.spec.metrics.exporter_image } : {},
       )
     }

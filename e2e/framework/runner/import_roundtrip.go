@@ -109,7 +109,7 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 		for _, attr := range declared {
 			if strings.Contains(attr, ".") {
 				toleratedSubPaths[rt.GetTerraformType()] = append(
-					toleratedSubPaths[rt.GetTerraformType()], strings.Split(attr, "."))
+					toleratedSubPaths[rt.GetTerraformType()], importmap.SplitAttributePath(attr))
 				continue
 			}
 			if toleratedAttributes[rt.GetTerraformType()] == nil {
@@ -125,11 +125,15 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	// import) where the first post-adoption apply is functionally a no-op.
 	// Collected per logical resource name so the tolerance never leaks to a
 	// sibling resource of the same type.
+	// Paths split through the shared grammar: dot-separated segments,
+	// with bracket-quoted segments for keys that contain literal dots
+	// (`data["password.db"]` — a plain dotted split would walk
+	// data→password→db and never match the real key).
 	normalizedSubPaths := map[string][][]string{}
 	for _, nr := range componentMap.GetSpec().GetImportNormalized() {
 		for _, sp := range nr.GetSubPaths() {
 			normalizedSubPaths[nr.GetTofuResourceName()] = append(
-				normalizedSubPaths[nr.GetTofuResourceName()], strings.Split(sp.GetPath(), "."))
+				normalizedSubPaths[nr.GetTofuResourceName()], importmap.SplitAttributePath(sp.GetPath()))
 		}
 	}
 

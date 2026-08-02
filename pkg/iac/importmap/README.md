@@ -94,6 +94,14 @@ an equivalent hash of the same password, a functional no-op. Provider-wide
 classes stay in the catalog; a kind's own irreducible normalization lives in
 the kind's map, beside the resource it describes.
 
+Sub-path grammar (shared by catalog sub-paths and `import_normalized`
+paths): segments are dot-separated, and a segment whose KEY itself
+contains dots is written bracket-quoted — `data["password.db"]` —
+because a plain dotted path would walk `data → password → db` and never
+match the real key (Kubernetes Secret data keys like htpasswd file
+names are the canonical case; proven live on a blind round-trip that
+failed its declared tolerance until the grammar could express the key).
+
 ## Enrollment is the file itself
 
 The import-map file's presence is the single enrollment signal everywhere:
@@ -229,6 +237,8 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `kubernetesotelcollector` | 2026-08-01, all three scenarios (the namespaced 4-part composed ID `opentelemetry.io/v1beta1//OpenTelemetryCollector//<ns>//<name>`; re-imported alongside the live operator fixture chain; everything the operator creates from the CR is operator-owned — no rows exist for it) | `kubectl_manifest` provider-side knobs (config-only, see the catalog row) |
 | `kubernetesopensearchoperator` | 2026-08-01, both scenarios (Helm release + created namespace + the TEN module-owned CRDs as cluster-scoped 3-part composed IDs keyed by each CRD's own name; re-imported OVER CRDs retained by previous installs — the adoption path itself) | `helm_release` install-time attributes + `kubectl_manifest` provider-side knobs incl. `apply_only` (config-only, see the catalog rows) |
 | `kubernetessolroperator` | 2026-08-01, both scenarios (Helm release + created namespace + the FOUR module-owned CRD documents — three solr.apache.org plus the bundled zookeeper-operator's ZookeeperCluster — as cluster-scoped 3-part composed IDs; re-imported over retained CRDs) | `helm_release` install-time attributes + `kubectl_manifest` provider-side knobs incl. `apply_only` (config-only, see the catalog rows) |
+| `kubernetestrino` | 2026-08-02, all three scenarios (5 resources each: Helm release + the module-owned `-auth`/`-internal` Secrets + BOTH `random_password` companions imported by VALUE via `from_cluster_secret_key`; the full-surface lane re-imported alongside the live composed-Postgres fixture) | `helm_release` install-time attributes + `kubernetes_secret_v1.wait_for_service_account_token` (config-only, see the catalog rows); `auth` `data["password.db"]` — the `import_normalized` bcrypt re-salt row, and the FIRST bracket-quoted sub-path segment (the Secret key itself contains a dot, which a plain dotted path cannot express — the grammar gained the segment form on this lane) |
+| `kubernetessuperset` | 2026-08-02, all three scenarios (6 resources each: Helm release + the always-owned `-env` Secret — its generated keys recomposed identically after adoption, zero drift — + the conditional `-secret-key`/`-admin-auth` Secrets + BOTH `random_password` companions imported by VALUE via `from_cluster_secret_key`; the full-surface lane re-imported alongside the live composed Postgres + AUTHED Valkey fixture chain) | `helm_release` install-time attributes + `kubernetes_secret_v1.wait_for_service_account_token` (config-only, see the catalog rows); the ws-JWT random's row is offline-validated only (no lane scenario declares the websockets arm — the deferred-E2E ledger carries the unblock) |
 
 Kinds where an import map is **deliberately not applicable** (recorded so
 absence is never mistaken for an oversight):

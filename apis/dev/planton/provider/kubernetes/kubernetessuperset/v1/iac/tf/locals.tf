@@ -165,6 +165,28 @@ locals {
     "if superset fab list-users 2>/dev/null | grep -qF \"username:$${ADMIN_USERNAME}\"; then echo \"Admin user already exists, skipping.\"; else superset fab create-admin --username \"$ADMIN_USERNAME\" --firstname Superset --lastname Admin --email \"$ADMIN_EMAIL\" --password \"$ADMIN_PASSWORD\"; fi",
   ])]
 
+  # The published apache/superset image is the driver-less "lean"
+  # build stage: the metadata-database driver (psycopg2) rides ONLY
+  # the dev/ci image variants — verified live ("No module named
+  # 'psycopg2'" at boot) and in the image's own build file at the pin.
+  # The chart's own mechanism is the bootstrap script, sourced by
+  # every component AND the init Job before anything else runs; when
+  # the manifest brings no script of its own, the module composes
+  # upstream's marker script plus the exact driver pin the app's
+  # [postgres] extra declares. THE INSTALL MUST TARGET THE APP'S VENV
+  # (verified live): the app runs from /app/.venv while the image's
+  # plain `pip` is the SYSTEM interpreter's — a bare pip install
+  # succeeds and stays invisible to the app; `uv pip install
+  # --python /app/.venv/bin/python` (uv is the image's own tool) pins
+  # the right interpreter. Production hardening (air-gap, no
+  # pip-at-boot): bake a custom image and set bootstrap_script to a
+  # no-op. Keep byte-identical with the Pulumi module's default.
+  default_bootstrap_script = <<-EOT
+    #!/bin/bash
+    if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid {{ .Values.runAsUser }}" > ~/bootstrap; fi
+    uv pip install --no-cache --python /app/.venv/bin/python psycopg2-binary==2.9.9
+  EOT
+
   # ------------------- module-owned configOverrides ------------------------
   # Env-indirection replacements for the chart's password-from-values
   # config blocks. Keep byte-identical with the Pulumi module's
@@ -288,8 +310,13 @@ locals {
     )
   } : {}
 
-  # No cache (or explicitly disabled): the worker Deployment never
-  # renders — it would crash-loop without a broker. Complementary
+  # No cache (or explicitly disabled): the worker runs at ZERO
+  # replicas. KNOW THIS (chart truth at the pin, verified live): the
+  # worker Deployment template has NO whole-file guard — the
+  # `replicas.enabled` flag only omits the `replicas:` LINE, and a
+  # Deployment without that line defaults to ONE pod, so a "disabled"
+  # worker still deploys and crash-loops without a broker. replicaCount
+  # 0 is the chart's only real off switch. Complementary
   # single-attribute ternaries: exactly one `replicas`/`autoscaling`
   # arm is non-empty.
   worker_block = merge(
@@ -310,7 +337,12 @@ locals {
       }
     } : {},
     local.worker_enabled ? local.worker_resources_block : {},
-    !local.worker_enabled ? { replicas = { enabled = false } } : {},
+    !local.worker_enabled ? {
+      replicas = {
+        enabled      = true
+        replicaCount = 0
+      }
+    } : {},
   )
 
   # The two arms carry different attribute sets — merge of
@@ -416,7 +448,7 @@ locals {
       )
     },
     length(local.config_overrides) > 0 ? { configOverrides = local.config_overrides } : {},
-    try(var.spec.bootstrap_script, "") != "" ? { bootstrapScript = var.spec.bootstrap_script } : {},
+    { bootstrapScript = try(var.spec.bootstrap_script, "") != "" ? var.spec.bootstrap_script : local.default_bootstrap_script },
     length(try(var.spec.extra_env, {})) > 0 ? { extraEnv = var.spec.extra_env } : {},
     length(try(var.spec.feature_flags, {})) > 0 ? { featureFlags = var.spec.feature_flags } : {},
     length(try(var.spec.scheduling.node_selector, {})) > 0 ? { nodeSelector = var.spec.scheduling.node_selector } : {},

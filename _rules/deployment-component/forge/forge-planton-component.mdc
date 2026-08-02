@@ -697,6 +697,31 @@ authenticated API identity route (200 + the identity for a signed-in
 jar, 401/403 for an anonymous one) — API routes answer status codes,
 never redirects, so they discriminate under any client.
 
+**A verifier's tunnel Service names and pod selectors are read from the
+chart's Service and pod templates at the pin, never inferred from the
+Deployment-name pattern.** A chart that names its Deployments
+`<fullname>-<component>` may still name the component's Service plain
+`<fullname>` (caught by review: a tunnel to `svc/<name>-coordinator`
+against a chart whose coordinator Service is `<name>` — every lane would
+have failed at tunnel open). Read `service-*.yaml` for the name and the
+pod template's `labels:` block for the selector, and verify the chosen
+selector is UNIQUE against every sibling workload the chart renders
+(workers, schedulers, hook Jobs).
+
+**A template read is only as truthful as the clone's checked-out REF —
+verify it against the pinned chart version before trusting the read.**
+When one clone serves two pins (the app tag for image/server truths, the
+chart tag for template truths), its working tree sits on whichever ref
+was needed last, and a template read from the wrong ref produces
+confident false conclusions (caught live: a pod-selector "fix" built on
+an app-tag checkout whose in-tree chart was several minor versions
+behind the served chart — the old chart stamped legacy `app`/`release`
+labels, the served chart stamps `app.kubernetes.io/*`, and the "fixed"
+selector matched zero pods). Before any template-derived claim, confirm
+`git describe --tags` (or the in-tree `Chart.yaml` version) matches the
+pinned CHART version — and when live pods disagree with a template read,
+trust the pods and re-check the ref.
+
 **A chart's CRD posture is read from WHERE the CRDs live, never assumed
 from chart ownership language.** `crds/` directory = Helm's install-once
 posture: created on first install, never upgraded, NEVER removed on

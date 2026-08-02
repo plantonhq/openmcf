@@ -39,12 +39,21 @@ nothing is copied, nothing renders.
 
 ## Drivers
 
-The official image ships the PostgreSQL driver family only. Extra
-data sources (Trino, Elasticsearch…) need their python drivers:
-`bootstrap_script` pip-installs at container start (needs internet,
-re-runs each restart) — for production, bake a custom image. A
-composed KubernetesTrino makes every federated catalog chartable from
-one Superset connection once the `trino` driver is present.
+The official image is the driver-less "lean" build stage — verified
+live, it ships NO database driver at all, not even the PostgreSQL
+driver its own metadata database needs (that rides only the dev/ci
+image variants). The module's default bootstrap script installs the
+exact psycopg2 pin at container start, so the metadata database works
+out of the box; a custom `bootstrap_script` REPLACES that default and
+must keep a psycopg2 install (or the pods crash-loop). Installs must
+target the app's venv — the image's plain `pip` is the system
+interpreter's and its installs stay invisible to the app (verified
+live); use `uv pip install --python /app/.venv/bin/python <driver>`.
+Extra data sources (Trino, Elasticsearch…) add their python drivers
+the same way (needs internet, re-runs each restart) — for production,
+bake a custom image and set `bootstrap_script` to a no-op. A composed
+KubernetesTrino makes every federated catalog chartable from one
+Superset connection once the `trino` driver is present.
 
 ## Exposure
 

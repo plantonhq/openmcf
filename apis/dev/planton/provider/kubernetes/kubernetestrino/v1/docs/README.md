@@ -31,10 +31,18 @@ path:
 
 ## Authentication truths (server source at the pin)
 
-- PASSWORD (file) auth requires HTTPS for clients unless
-  `http-server.authentication.allow-insecure-over-http=true` — the
-  module sets it when the `https` arm is off because in-cluster
-  traffic rides ClusterIP and TLS terminates at composed exposure.
+- PASSWORD (file) auth runs ONLY on secure requests — the server's
+  request-authentication filter routes plain-HTTP requests either to
+  a username-trust path (`allow-insecure-over-http=true`, where the
+  password file guards NOTHING and any bare username authenticates)
+  or to an outright refusal (flag off). Verified live and in the
+  filter source at the pin. The module therefore sets
+  `http-server.process-forwarded=true` when the `https` arm is off:
+  a TLS-terminating proxy's `X-Forwarded-Proto: https` marks the
+  request secure, so the password file ENFORCES on exactly the
+  traffic composed exposure kinds deliver, while direct plain-HTTP
+  data-plane requests fail closed (403). Health probes ride the
+  public `/v1/info`/`/v1/status` routes and are unaffected.
 - The chart auto-renders `password-authenticator.properties` when the
   authentication type contains PASSWORD; the password file mounts at
   `<config-path>/auth/password/password.db`.

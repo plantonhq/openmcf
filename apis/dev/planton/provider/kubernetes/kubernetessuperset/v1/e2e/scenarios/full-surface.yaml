@@ -1,10 +1,11 @@
-# The composed full stack: metadata database + the AUTHED Valkey cache
-# (REDIS_PASSWORD riding an environment reference to the fixture's own
-# Secret, and the module's env-reading results-backend override live),
-# a Celery worker executing async work, beat firing schedules, and
-# dashboard-level RBAC. The verifier proves the worker rollout beside
-# the web proof set — THE DASHBOARD PROOF runs with the Celery stack
-# alive.
+# The composed full stack: metadata database over an SSL-required
+# connection (CNPG serves TLS by default; `require` encrypts without
+# certificate verification) + the AUTHED Valkey cache (REDIS_PASSWORD
+# riding an environment reference to the fixture's own Secret, and the
+# module's env-reading results-backend override live), a Celery worker
+# executing async work, beat firing schedules, and dashboard-level
+# RBAC. The verifier proves the worker rollout beside the web proof
+# set — THE DASHBOARD PROOF runs with the Celery stack alive.
 apiVersion: kubernetes.planton.dev/v1
 kind: KubernetesSuperset
 metadata:
@@ -19,6 +20,8 @@ spec:
       secret_name:
         value: e2e-sprst-pg-app
       secret_key: password
+    ssl:
+      enabled: true
   cache:
     host:
       value: e2e-sprst-vk

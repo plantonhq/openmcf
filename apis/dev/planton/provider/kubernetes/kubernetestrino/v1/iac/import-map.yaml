@@ -15,7 +15,10 @@ spec:
   import_normalized:
     - tofu_resource_name: auth
       sub_paths:
-        - path: data.password.db
+        # The key ITSELF contains a dot, so it rides the bracket-quoted
+        # segment grammar (a plain dotted path would walk
+        # data → password → db and never match the real key).
+        - path: data["password.db"]
           reason: >-
             The htpasswd line wires random_password's bcrypt_hash, and
             the random provider RECOMPUTES that hash with a fresh salt

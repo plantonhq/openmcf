@@ -45,7 +45,10 @@ message ImportNormalizedResource {
 message ImportNormalizedSubPath {
   // Dotted sub-path under the resource's attributes, e.g.
   // "data.REGISTRY_HTPASSWD". Must reach BELOW a top-level attribute --
-  // whole-attribute tolerance belongs in the provider catalog.
+  // whole-attribute tolerance belongs in the provider catalog. A
+  // segment whose KEY itself contains dots is written bracket-quoted:
+  // `data["password.db"]` (Kubernetes Secret data keys are the
+  // canonical case) -- a plain dotted path cannot express it.
   string path = 1;
   // Why this value cannot round-trip and why the one-time post-import
   // rewrite is functionally a no-op. Required -- an undocumented
