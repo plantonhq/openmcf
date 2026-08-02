@@ -3343,6 +3343,32 @@ enum CloudResourceKind {
       KubernetesSeaweedFs
     ]
   }];
+  // KubernetesPostgres is a prerequisite because Trino's postgres
+  // catalogs compose a KubernetesPostgres (the catalog host and
+  // credential FK-default onto its outputs), and the pods read that
+  // database's credential Secret to resolve catalog passwords from
+  // environment.
+  KubernetesTrino = 938 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8strino"
+    prerequisites: [KubernetesPostgres]
+  }];
+  // KubernetesPostgres is a prerequisite because Superset's REQUIRED
+  // metadata database composes a KubernetesPostgres (FK defaults onto
+  // its outputs; the module composes the environment Secret from its
+  // credential Secret), and KubernetesValkey because the cache/broker
+  // arm FK-defaults onto a KubernetesValkey's service and password
+  // Secret.
+  KubernetesSuperset = 939 [(kind_meta) = {
+    provider: kubernetes
+    version: v1
+    id_prefix: "k8ssprst"
+    prerequisites: [
+      KubernetesPostgres,
+      KubernetesValkey
+    ]
+  }];
   // 950–969: Kubernetes GitOps and CI/CD
   KubernetesArgocd = 950 [(kind_meta) = {
     provider: kubernetes

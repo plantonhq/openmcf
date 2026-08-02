@@ -428,9 +428,23 @@ Based on scenario:
   types. The same plan-time trap hides in guard expressions:
   `coalesce(x, {})` fails at PLAN with "all arguments must have the same
   type" whenever `x` is a populated object (coalesce requires same-typed
-  arguments — an empty object literal is not the same type). Guard
+  arguments — an empty object literal is not the same type).   Guard
   nullable locals with a plain `x != null ?` and always-map locals with
   `length(x) > 0 ?`; never `length(coalesce(x, {}))`.
+  Two sharpenings of the same class: (1) the `jsondecode(jsonencode(…))`
+  seam rescues mixed-shape LIST concatenation (env lists mixing
+  `{name,value}` and `{name,valueFrom}` entries) but does NOT rescue a
+  ternary — plan-time constant folding re-derives concrete object types
+  straight through `jsondecode`, so
+  `cond ? jsondecode(jsonencode({rich})) : jsondecode(jsonencode({thin}))`
+  fails at PLAN exactly like the bare ternary (and `terraform validate`
+  still passes — only a real plan with values catches it). (2) A
+  branch-shaped conditional (an enabled-vs-disabled block whose arms
+  carry different attribute sets) decomposes into a MERGE of
+  complementary single-attribute ternaries — each ternary gates ONE
+  attribute against `{}` (`merge({enabled = cond}, cond ? {image = {…}} : {},
+  cond ? {replicaCount = n} : {}, !cond ? {replicas = {enabled = false}} : {})`)
+  — the branch shape never lives in one conditional expression.
 - **crd2pulumi cannot type a CRD field that is a map of NESTED objects**
   (name-keyed maps whose values are objects — e.g. backup-storage maps):
   it generates `map[string]map[string]string`, which structurally cannot

@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: kubernetestrino
+spec:
+  tier: 3
+  # Forged on the official trinodb chart 1.42.2 = Trino 480 —
+  # secured-by-default PASSWORD auth (upstream ships none; the module
+  # generates the admin credential and the required internal shared
+  # secret), env-substituted catalog credentials (${ENV:...} — nothing
+  # renders into the catalog ConfigMap), worker autoscaling and
+  # fault-tolerant execution arms. Offline-validated (42 spec tests,
+  # both engines' plan/preview proofs across minimal and full-surface
+  # shapes with rendered-value spot-checks and leak greps); awaiting
+  # the live lanes.
+  status: pending_proof
+  validated_provisioners: []
+  # The ~1GB trinodb/trino image pulls once per cluster; the composed
+  # CNPG→Postgres fixture chain deploys inside the lane budget.
+  timeout_minutes: 25

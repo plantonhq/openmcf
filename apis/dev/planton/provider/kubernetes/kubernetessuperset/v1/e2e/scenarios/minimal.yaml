@@ -1,0 +1,30 @@
+# The smallest honest Superset: the web application against the
+# composed metadata database only (web-only — no cache, so workers,
+# beat, flower, websockets and MCP stay off by construction). The init
+# Job migrates the schema and the module's env-driven step creates the
+# admin. Co-located with the lane fixture's namespace
+# (create_namespace false). The verifier proves /health, THE AUTH GATE
+# (anonymous API read rejected AND the chart's documented admin/admin
+# default dead), a real sign-in through the security API, and THE
+# DASHBOARD PROOF (create through the REST API, read back, sweep).
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSuperset
+metadata:
+  name: e2e-sprst-min
+spec:
+  namespace:
+    value: e2e-superset
+  metadata_database:
+    host:
+      value: e2e-sprst-pg-rw
+    password_secret:
+      secret_name:
+        value: e2e-sprst-pg-app
+      secret_key: password
+  web:
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1Gi
+      limits:
+        memory: 2560Mi

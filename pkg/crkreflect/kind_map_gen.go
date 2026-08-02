@@ -526,6 +526,7 @@ import (
 	kubernetesstatefulsetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstatefulset/v1"
 	kubernetesstorageclassv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstorageclass/v1"
 	kubernetesstrimzikafkaoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesstrimzikafkaoperator/v1"
+	kubernetessupersetv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetessuperset/v1"
 	kubernetestcproutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestcproute/v1"
 	kubernetestektonv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestekton/v1"
 	kubernetestektonoperatorv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestektonoperator/v1"
@@ -533,6 +534,7 @@ import (
 	kubernetestempov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestempo/v1"
 	kubernetestemporalv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestemporal/v1"
 	kubernetestlsroutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestlsroute/v1"
+	kubernetestrinov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetestrino/v1"
 	kubernetesudproutev1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesudproute/v1"
 	kubernetesvalkeyv1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvalkey/v1"
 	kubernetesvelerov1 "github.com/plantonhq/planton/apis/dev/planton/provider/kubernetes/kubernetesvelero/v1"
@@ -1188,6 +1190,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesStatefulSet:                 &kubernetesstatefulsetv1.KubernetesStatefulSet{},
 	cloudresourcekind.CloudResourceKind_KubernetesStorageClass:                &kubernetesstorageclassv1.KubernetesStorageClass{},
 	cloudresourcekind.CloudResourceKind_KubernetesStrimziKafkaOperator:        &kubernetesstrimzikafkaoperatorv1.KubernetesStrimziKafkaOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesSuperset:                    &kubernetessupersetv1.KubernetesSuperset{},
 	cloudresourcekind.CloudResourceKind_KubernetesTcpRoute:                    &kubernetestcproutev1.KubernetesTcpRoute{},
 	cloudresourcekind.CloudResourceKind_KubernetesTekton:                      &kubernetestektonv1.KubernetesTekton{},
 	cloudresourcekind.CloudResourceKind_KubernetesTektonOperator:              &kubernetestektonoperatorv1.KubernetesTektonOperator{},
@@ -1195,6 +1198,7 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesTempo:                       &kubernetestempov1.KubernetesTempo{},
 	cloudresourcekind.CloudResourceKind_KubernetesTemporal:                    &kubernetestemporalv1.KubernetesTemporal{},
 	cloudresourcekind.CloudResourceKind_KubernetesTlsRoute:                    &kubernetestlsroutev1.KubernetesTlsRoute{},
+	cloudresourcekind.CloudResourceKind_KubernetesTrino:                       &kubernetestrinov1.KubernetesTrino{},
 	cloudresourcekind.CloudResourceKind_KubernetesUdpRoute:                    &kubernetesudproutev1.KubernetesUdpRoute{},
 	cloudresourcekind.CloudResourceKind_KubernetesValkey:                      &kubernetesvalkeyv1.KubernetesValkey{},
 	cloudresourcekind.CloudResourceKind_KubernetesVelero:                      &kubernetesvelerov1.KubernetesVelero{},

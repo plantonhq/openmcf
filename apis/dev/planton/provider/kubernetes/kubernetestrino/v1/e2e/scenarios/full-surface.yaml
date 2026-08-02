@@ -1,0 +1,56 @@
+# The composed-catalog surface: the fixture PostgreSQL declared as the
+# `warehouse` catalog (credential riding ${ENV:...} from the fixture's
+# app Secret — the secret-native catalog story live), the samples kept
+# on beside it, access-control rules scoping the admin, JMX metrics ON
+# (the exporter sidecar; the ServiceMonitor arm stays off — no
+# monitoring CRDs on this lane), and a custom in-memory catalog. The
+# verifier adds THE FEDERATION PROOF — the composed catalog answers
+# through Trino AND a cross-catalog join (tpch × warehouse) runs in
+# one statement.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesTrino
+metadata:
+  name: e2e-trino-full
+spec:
+  namespace:
+    value: e2e-trino
+  coordinator:
+    jvm:
+      max_heap_percent: 60
+    resources:
+      requests:
+        cpu: 200m
+        memory: 768Mi
+      limits:
+        memory: 1536Mi
+  workers:
+    replicas: 1
+    jvm:
+      max_heap_percent: 60
+    resources:
+      requests:
+        cpu: 200m
+        memory: 768Mi
+      limits:
+        memory: 1536Mi
+  auth:
+    admin_username: analyst
+  catalogs:
+    postgres:
+      - name: warehouse
+        host:
+          value: e2e-trino-pg-rw
+        database: warehouse
+        username: warehouse
+        password_secret:
+          secret_name:
+            value: e2e-trino-pg-app
+          secret_key: password
+    custom:
+      scratch: |
+        connector.name=memory
+        memory.max-data-per-node=64MB
+  access_control_rules: |
+    {"catalogs":[{"user":"analyst","catalog":".*","allow":"all"}]}
+  metrics:
+    enabled: true

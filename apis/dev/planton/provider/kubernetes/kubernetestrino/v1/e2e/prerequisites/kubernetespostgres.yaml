@@ -1,0 +1,33 @@
+# Consumer-scoped PostgreSQL fixture for the KubernetesTrino lanes —
+# the composed warehouse the full-surface scenario's postgres catalog
+# queries through Trino:
+# - SHARED NAMESPACE (e2e-trino): the scenarios co-locate with this
+#   fixture because the catalog's password env var is a secretKeyRef
+#   and Secrets cannot be consumed across namespaces.
+# - ONE BOOTSTRAP DATABASE: initdb creates `warehouse` owned by the
+#   `warehouse` role — information_schema exists from birth, so the
+#   federation proof needs no test data.
+# - The operator maintains the `e2e-trino-pg-app` credential Secret
+#   (keys username/password) across failovers — the composition target
+#   of the full-surface catalog's password reference.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesPostgres
+metadata:
+  name: e2e-trino-pg
+spec:
+  namespace:
+    value: e2e-trino
+  create_namespace: true
+  instances: 1
+  storage:
+    size: 2Gi
+  bootstrap:
+    initdb:
+      database: warehouse
+      owner: warehouse
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi

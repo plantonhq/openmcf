@@ -896,6 +896,51 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			StateProof:    strings.Contains(manifestPath, "behavioral-durability"),
 		}, nil
 
+	// A Trino cluster: coordinator + worker rollouts, THE AUTH GATE
+	// (anonymous statement submission rejected — upstream ships no
+	// authentication and that never deploys), and THE QUERY PROOF on
+	// every lane (a real query through the statement API as the
+	// generated admin, answered through real workers). The
+	// full-surface scenario adds THE FEDERATION PROOF (the composed
+	// PostgreSQL catalog answers, and a cross-catalog join runs in
+	// one statement); the behavioral scenario adds THE RECOVERY PROOF
+	// (a UID-verified coordinator replacement answers the same query
+	// — the engine is stateless by design). Destroy is clean: a plain
+	// Helm release plus module-owned Secrets, no CRDs.
+	case "kubernetestrino":
+		spec := manifestSpecMap(manifestPath)
+		return &TrinoVerifier{
+			Namespace:       info.Namespace,
+			Name:            info.Name,
+			AdminUsername:   trinoAdminUsername(spec),
+			AuthEnabled:     trinoAuthEnabled(spec),
+			WorkerReplicas:  trinoWorkerReplicas(spec),
+			FederationProof: strings.Contains(manifestPath, "full-surface"),
+			CatalogName:     "warehouse",
+			RecoveryProof:   strings.Contains(manifestPath, "behavioral"),
+		}, nil
+
+	// An Apache Superset deployment: the web rollout (gated on the
+	// init Job's schema migration), /health, THE AUTH GATE (anonymous
+	// API read rejected + the chart's documented admin/admin default
+	// dead), a real sign-in through the security API, and THE
+	// DASHBOARD PROOF on every lane (a dashboard created through the
+	// REST API with the JWT+CSRF contract real clients use, read
+	// back, and swept). The behavioral-durability scenario replaces
+	// the web pod UID-verified and finds the same dashboard from a
+	// fresh session — BI state lives in the composed PostgreSQL.
+	// Destroy is clean: a plain Helm release plus module-owned
+	// Secrets, no CRDs.
+	case "kubernetessuperset":
+		spec := manifestSpecMap(manifestPath)
+		return &SupersetVerifier{
+			Namespace:     info.Namespace,
+			Name:          info.Name,
+			AdminUsername: supersetAdminUsername(spec),
+			WorkerEnabled: supersetWorkerEnabled(spec),
+			StateProof:    strings.Contains(manifestPath, "behavioral-durability"),
+		}, nil
+
 	// The Apache Spark operator: rollout + both spark.apache.org CRDs
 	// established + THE JOB PROOF on every lane (a verifier-owned
 	// SparkApplication — the in-image SparkPi — runs to Succeeded

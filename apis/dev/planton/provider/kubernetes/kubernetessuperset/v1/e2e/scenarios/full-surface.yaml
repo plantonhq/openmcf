@@ -1,0 +1,51 @@
+# The composed full stack: metadata database + the AUTHED Valkey cache
+# (REDIS_PASSWORD riding an environment reference to the fixture's own
+# Secret, and the module's env-reading results-backend override live),
+# a Celery worker executing async work, beat firing schedules, and
+# dashboard-level RBAC. The verifier proves the worker rollout beside
+# the web proof set — THE DASHBOARD PROOF runs with the Celery stack
+# alive.
+apiVersion: kubernetes.planton.dev/v1
+kind: KubernetesSuperset
+metadata:
+  name: e2e-sprst-full
+spec:
+  namespace:
+    value: e2e-superset
+  metadata_database:
+    host:
+      value: e2e-sprst-pg-rw
+    password_secret:
+      secret_name:
+        value: e2e-sprst-pg-app
+      secret_key: password
+  cache:
+    host:
+      value: e2e-sprst-vk
+    password_secret:
+      secret_name:
+        value: e2e-sprst-vk-auth
+      secret_key: default
+  web:
+    resources:
+      requests:
+        cpu: 250m
+        memory: 1Gi
+      limits:
+        memory: 2560Mi
+  worker:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 768Mi
+      limits:
+        memory: 1536Mi
+  beat:
+    enabled: true
+  init:
+    admin:
+      username: bi-admin
+      email: bi-admin@example.com
+  feature_flags:
+    DASHBOARD_RBAC: true

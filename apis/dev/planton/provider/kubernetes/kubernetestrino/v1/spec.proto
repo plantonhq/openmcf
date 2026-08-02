@@ -1,0 +1,959 @@
+syntax = "proto3";
+
+package dev.planton.provider.kubernetes.kubernetestrino.v1;
+
+import "buf/validate/validate.proto";
+import "dev/planton/provider/kubernetes/kubernetes.proto";
+import "dev/planton/provider/kubernetes/workload_pod.proto";
+import "dev/planton/shared/foreignkey/v1/foreign_key.proto";
+import "dev/planton/shared/options/options.proto";
+
+/**
+ * **KubernetesTrinoSpec** deploys Trino — the distributed SQL query
+ * engine that lets you query data where it lives (data lakes, object
+ * stores, relational databases) and JOIN across sources in one query
+ * (https://trino.io).
+ *
+ * WHAT GETS INSTALLED: the official trino Helm chart (trinodb org)
+ * renders a coordinator Deployment (the brain: parses, plans and
+ * schedules queries, serves the REST API and Web UI on port 8080)
+ * and a worker Deployment (the muscle: executes query splits). Every
+ * configuration surface — config.properties, catalogs, access
+ * control — renders into ConfigMaps with checksum annotations, so
+ * config changes roll the pods automatically.
+ *
+ * SECURED BY DEFAULT: upstream ships NO authentication — anyone who
+ * can reach the Service can query every catalog. This kind enables
+ * PASSWORD (file) authentication by default with a module-generated
+ * admin user (`<name>-auth` Secret), and configures the
+ * internal-communication shared secret Trino requires once
+ * authentication is on. Password auth normally demands HTTPS; the
+ * module sets `http-server.authentication.allow-insecure-over-http`
+ * because in-cluster traffic rides the ClusterIP Service and TLS
+ * terminates at composed exposure kinds (or the `https` arm here).
+ *
+ * CREDENTIALS ARE SECRET-NATIVE: catalog passwords and the internal
+ * shared secret never appear in rendered ConfigMaps — properties
+ * reference environment variables (`${ENV:VAR}`, Trino's own secrets
+ * mechanism) and the variables arrive via Secret references.
+ *
+ * QUERY DATA IMMEDIATELY: the chart's default `tpch` and `tpcds`
+ * sample catalogs (in-image data generators) stay available until
+ * disabled — `SELECT count(*) FROM tpch.tiny.nation` works on a
+ * fresh install. Declare postgres/mysql catalogs to query real
+ * databases; a KubernetesPostgres composes naturally.
+ *
+ * EXPOSURE: the Service stays ClusterIP; expose it via first-class
+ * kinds over the exported coordinator handle.
+ */
+message KubernetesTrinoSpec {
+  /**
+   * Namespace to install into. Accepts a literal namespace name or a
+   * reference to a KubernetesNamespace resource.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesNamespace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.name"
+  ];
+
+  /**
+   * When true, the namespace is created (with the standard Planton
+   * governance labels) before installing and deleted with the
+   * resource. When false, the namespace must already exist. KNOW
+   * THIS: catalog credential Secrets are read by the pods at
+   * runtime, and a Secret can only be referenced from the workload's
+   * OWN namespace — co-locate Trino with the database Secrets its
+   * catalogs reference.
+   */
+  bool create_namespace = 2;
+
+  /**
+   * Container image. Empty = the official `trinodb/trino` image at
+   * the Trino release this kind is built against. The chart takes
+   * the SPLIT form (registry + repository) — a mirror override sets
+   * `registry` (e.g. "my-registry.example.com") while `repository`
+   * keeps the path.
+   */
+  KubernetesTrinoImage image = 3;
+
+  /**
+   * Names of image-pull Secrets in the same namespace, for pulling
+   * from private mirrors.
+   */
+  repeated string image_pull_secrets = 4 [(dev.planton.shared.options.sensitive_exempt_reason) = "Secret NAMES (references to existing image-pull Secrets), not secret material"];
+
+  /**
+   * Trino node environment name — shows in the Web UI and groups
+   * nodes into one cluster identity. Empty = "production". Must be
+   * lowercase alphanumeric/underscore (Trino rejects anything else
+   * at startup).
+   */
+  optional string node_environment = 5 [
+    (dev.planton.shared.options.default) = "production",
+    (buf.validate.field).string.pattern = "^[a-z0-9][a-z0-9_]*$"
+  ];
+
+  /**
+   * Log level for the `io.trino` logger. Empty = "INFO".
+   */
+  optional string log_level = 6 [
+    (dev.planton.shared.options.default) = "INFO",
+    (buf.validate.field).string.in = "DEBUG",
+    (buf.validate.field).string.in = "INFO",
+    (buf.validate.field).string.in = "WARN",
+    (buf.validate.field).string.in = "ERROR"
+  ];
+
+  /**
+   * The coordinator: query planning, scheduling, the REST API and
+   * Web UI.
+   */
+  KubernetesTrinoCoordinator coordinator = 7;
+
+  /**
+   * The worker fleet: query execution. Empty = 2 workers with chart
+   * defaults.
+   */
+  KubernetesTrinoWorkers workers = 8;
+
+  /**
+   * Cluster-wide query memory ceiling (`query.max-memory` — the
+   * total distributed memory one query may consume across all
+   * nodes). Empty = "4GB". Size together with the per-node limits
+   * under coordinator/workers.
+   */
+  optional string max_query_memory = 9 [
+    (dev.planton.shared.options.default) = "4GB",
+    (buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]+)?(B|kB|MB|GB|TB)$"
+  ];
+
+  /**
+   * Authentication. Empty = ENABLED with a module-generated admin
+   * user — the open, anyone-can-query server never ships.
+   */
+  KubernetesTrinoAuth auth = 10;
+
+  /**
+   * HTTPS directly on the Trino pods (a JKS keystore from an
+   * existing Secret). Most deployments leave this empty and
+   * terminate TLS at composed exposure kinds instead.
+   */
+  KubernetesTrinoHttps https = 11;
+
+  /**
+   * The catalogs — each one connects Trino to a data source and
+   * becomes a queryable prefix (`SELECT ... FROM <catalog>.<schema>.<table>`).
+   * Empty = the chart's tpch/tpcds sample catalogs only.
+   */
+  KubernetesTrinoCatalogs catalogs = 12;
+
+  /**
+   * Fault-tolerant execution: queries survive worker failures by
+   * spooling exchange data to durable storage and retrying failed
+   * tasks. Off by default (the standard pipeline execution).
+   */
+  KubernetesTrinoFaultTolerantExecution fault_tolerant_execution = 13;
+
+  /**
+   * System access control rules (the `file` provider) as the JSON
+   * rules document — who may access which catalogs/schemas/tables.
+   * Empty = no system access control (authenticated users see
+   * everything). See
+   * https://trino.io/docs/current/security/file-system-access-control.html
+   * for the document shape.
+   */
+  string access_control_rules = 14;
+
+  /**
+   * Resource-group configuration (the `file` manager) as the JSON
+   * document — concurrency/memory/queue limits per user group.
+   * Empty = no resource groups.
+   */
+  string resource_groups_config = 15;
+
+  /**
+   * Session-property overrides per resource group / user, as the
+   * JSON document for the `file` session property manager. Empty =
+   * none.
+   */
+  string session_properties_config = 16;
+
+  /**
+   * Event-listener properties (`event-listener.name=...` plus its
+   * configuration) — query audit/logging integrations. Empty =
+   * none. Reference environment variables for any secret values
+   * (`${ENV:VAR}` with `extra_env_from_secret`), never literals.
+   */
+  repeated string event_listener_properties = 17;
+
+  /**
+   * Additional raw `config.properties` lines applied to BOTH
+   * coordinator and workers — the escape hatch for tuning
+   * properties the typed fields do not model. These render into a
+   * ConfigMap: reference environment variables for secret values
+   * (`${ENV:VAR}` with `extra_env_from_secret`), never literals.
+   */
+  repeated string additional_config_properties = 18;
+
+  /**
+   * Extra environment variables injected into every Trino container
+   * (plain values). For secret values use `extra_env_from_secret`.
+   */
+  map<string, string> extra_env = 19;
+
+  /**
+   * Extra environment variables sourced from existing Secrets —
+   * name → Secret reference. Pair with `${ENV:VAR}` references in
+   * catalog properties or config properties to keep credentials out
+   * of rendered ConfigMaps (Trino's own secrets mechanism).
+   */
+  map<string, KubernetesTrinoSecretKeyRef> extra_env_from_secret = 20;
+
+  /**
+   * JMX metrics and Prometheus scraping.
+   */
+  KubernetesTrinoMetrics metrics = 21;
+
+  /**
+   * Restrict pod traffic with a NetworkPolicy (Trino pods may talk
+   * to each other; add extra ingress rules for clients/scrapers).
+   * Requires a CNI that enforces NetworkPolicy.
+   */
+  bool network_policy_enabled = 22;
+
+  /**
+   * The coordinator Service — this kind keeps it ClusterIP (compose
+   * exposure kinds over the exported handle); the annotations
+   * surface carries cloud LB configuration when you flip the type.
+   */
+  KubernetesTrinoService service = 23;
+
+  /**
+   * Raw Helm values (YAML) merged LAST over everything this spec
+   * renders — the escape hatch for chart surfaces the typed fields
+   * do not model (probes, lifecycle hooks, sidecars, configMounts).
+   * The module re-pins security-critical values after the merge
+   * (authentication wiring, the shared secret) — those cannot be
+   * silently disabled from here.
+   */
+  string helm_values = 24;
+
+  option (buf.validate.message).cel = {
+    id: "https.keystore_required"
+    message: "HTTPS on the Trino pods needs the keystore: set https.keystore_secret (a Secret holding the JKS keystore) when https.enabled is true."
+    expression: "!has(this.https) || !this.https.enabled || has(this.https.keystore_secret)"
+  };
+}
+
+/**
+ * A container image reference in the chart's SPLIT form.
+ */
+message KubernetesTrinoImage {
+  /**
+   * Image registry host. Empty = Docker Hub.
+   */
+  string registry = 1;
+
+  /**
+   * Image repository (path without the registry host). Empty =
+   * "trinodb/trino".
+   */
+  optional string repository = 2 [(dev.planton.shared.options.default) = "trinodb/trino"];
+
+  /**
+   * Image tag. Empty = "480" (the Trino release this kind is built
+   * against).
+   */
+  optional string tag = 3 [(dev.planton.shared.options.default) = "480"];
+}
+
+/**
+ * The coordinator.
+ */
+message KubernetesTrinoCoordinator {
+  /**
+   * JVM heap sizing for the coordinator container.
+   */
+  KubernetesTrinoJvm jvm = 1;
+
+  /**
+   * Per-node memory ceiling for a single query on the coordinator
+   * (`query.max-memory-per-node`). Empty = "1GB".
+   */
+  optional string max_query_memory_per_node = 2 [
+    (dev.planton.shared.options.default) = "1GB",
+    (buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]+)?(B|kB|MB|GB|TB)$"
+  ];
+
+  /**
+   * Heap memory reserved for non-query work
+   * (`memory.heap-headroom-per-node`). Empty = the Trino default
+   * (30% of heap).
+   */
+  string heap_headroom_per_node = 3;
+
+  /**
+   * Also schedule query work ON the coordinator
+   * (`node-scheduler.include-coordinator`). With `workers.replicas`
+   * 0 this gives a true single-node Trino — fine for dev/small
+   * loads; on real clusters keep it false so coordinator resources
+   * stay dedicated to planning and scheduling.
+   */
+  bool include_in_scheduling = 4;
+
+  /**
+   * CPU/memory for the coordinator container. Empty = no requests
+   * (fine for dev; size for production). KNOW THIS: the chart's JVM
+   * default is an 8G max heap — when setting container limits,
+   * either size them above the heap or switch to
+   * `jvm.max_heap_percent` so the heap follows the limit.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 5;
+
+  /**
+   * Pod scheduling for the coordinator.
+   */
+  KubernetesTrinoScheduling scheduling = 6;
+}
+
+/**
+ * The worker fleet.
+ */
+message KubernetesTrinoWorkers {
+  /**
+   * Worker count. Empty = 2. Set 0 for the single-node shape
+   * (pair with `coordinator.include_in_scheduling`) — otherwise
+   * queries have no execution capacity. Ignored when an autoscaling
+   * arm is set.
+   */
+  optional int32 replicas = 1 [
+    (dev.planton.shared.options.default) = "2",
+    (buf.validate.field).int32 = {gte: 0}
+  ];
+
+  /**
+   * JVM heap sizing for worker containers.
+   */
+  KubernetesTrinoJvm jvm = 2;
+
+  /**
+   * Per-node memory ceiling for a single query on each worker
+   * (`query.max-memory-per-node`). Empty = "1GB".
+   */
+  optional string max_query_memory_per_node = 3 [
+    (dev.planton.shared.options.default) = "1GB",
+    (buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]+)?(B|kB|MB|GB|TB)$"
+  ];
+
+  /**
+   * Heap memory reserved for non-query work. Empty = the Trino
+   * default.
+   */
+  string heap_headroom_per_node = 4;
+
+  /**
+   * CPU/memory per worker container. Empty = no requests. The same
+   * heap-vs-limit rule as the coordinator applies.
+   */
+  dev.planton.provider.kubernetes.ContainerResources resources = 5;
+
+  /**
+   * Pod scheduling for workers.
+   */
+  KubernetesTrinoScheduling scheduling = 6;
+
+  /**
+   * Drain workers before termination (`shutdown.grace-period`) so
+   * running queries finish instead of failing. Strongly recommended
+   * with autoscaling.
+   */
+  KubernetesTrinoGracefulShutdown graceful_shutdown = 7;
+
+  /**
+   * Worker autoscaling — at most one arm.
+   */
+  oneof autoscaling {
+    /**
+     * Horizontal Pod Autoscaler on CPU/memory utilization (needs a
+     * metrics server and worker resource REQUESTS to compute
+     * utilization against).
+     */
+    KubernetesTrinoWorkerHpa hpa = 8;
+
+    /**
+     * KEDA event-driven autoscaling (scale on Prometheus query
+     * metrics, scale to zero). Requires the KEDA operator on the
+     * cluster — a KubernetesKeda composes naturally.
+     */
+    KubernetesTrinoWorkerKeda keda = 9;
+  }
+}
+
+/**
+ * JVM heap sizing. Prefer `max_heap_percent` — the heap follows the
+ * container memory limit (upstream's recommended container
+ * ergonomics); `max_heap_size` is the fixed-size alternative.
+ */
+message KubernetesTrinoJvm {
+  /**
+   * Fixed max heap (e.g. "8G" — the chart default when nothing is
+   * set). Ignored when `max_heap_percent` is set.
+   */
+  string max_heap_size = 1;
+
+  /**
+   * Max heap as a percentage of the container memory limit
+   * (`-XX:MaxRAMPercentage`). Requires a memory LIMIT on the
+   * container. When set, the module clears the fixed `-Xmx`.
+   */
+  optional int32 max_heap_percent = 2 [(buf.validate.field).int32 = {
+    gte: 10
+    lte: 95
+  }];
+}
+
+/**
+ * Worker graceful shutdown.
+ */
+message KubernetesTrinoGracefulShutdown {
+  /**
+   * Enable coordinated drain: a terminating worker stops accepting
+   * new tasks and finishes running ones within the grace period.
+   */
+  bool enabled = 1;
+
+  /**
+   * Drain window in seconds (`shutdown.grace-period`). Empty = 120.
+   * The chart requires the pod termination budget to be at least
+   * TWICE this value — the module sets
+   * `terminationGracePeriodSeconds` to 2× automatically.
+   */
+  optional int32 grace_period_seconds = 2 [
+    (dev.planton.shared.options.default) = "120",
+    (buf.validate.field).int32 = {gte: 1}
+  ];
+}
+
+/**
+ * HPA-based worker autoscaling.
+ */
+message KubernetesTrinoWorkerHpa {
+  /**
+   * Upper replica bound. Required.
+   */
+  int32 max_replicas = 1 [(buf.validate.field).int32 = {gte: 1}];
+
+  /**
+   * Target average CPU utilization percentage (of worker CPU
+   * requests). Empty = 50 (the chart default). Set 0 to disable the
+   * CPU metric.
+   */
+  optional int32 target_cpu_utilization_percent = 2 [
+    (dev.planton.shared.options.default) = "50",
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 100
+    }
+  ];
+
+  /**
+   * Target average memory utilization percentage (of worker memory
+   * requests). Empty = 80 (the chart default). Set 0 to disable the
+   * memory metric.
+   */
+  optional int32 target_memory_utilization_percent = 3 [
+    (dev.planton.shared.options.default) = "80",
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 100
+    }
+  ];
+}
+
+/**
+ * KEDA-based worker autoscaling. Requires the KEDA operator
+ * (`ScaledObject` CRD) on the cluster.
+ */
+message KubernetesTrinoWorkerKeda {
+  /**
+   * Lower replica bound. Empty = 0 (scale to zero between queries —
+   * pair with graceful shutdown).
+   */
+  optional int32 min_replicas = 1 [(buf.validate.field).int32 = {gte: 0}];
+
+  /**
+   * Upper replica bound. Required.
+   */
+  int32 max_replicas = 2 [(buf.validate.field).int32 = {gte: 1}];
+
+  /**
+   * Seconds between trigger evaluations. Empty = 30.
+   */
+  optional int32 polling_interval_seconds = 3 [(buf.validate.field).int32 = {gte: 1}];
+
+  /**
+   * Seconds to wait after the last active trigger before scaling
+   * down. Empty = 300.
+   */
+  optional int32 cooldown_period_seconds = 4 [(buf.validate.field).int32 = {gte: 0}];
+
+  /**
+   * KEDA trigger list as raw YAML (the `triggers:` array content —
+   * e.g. a prometheus trigger on Trino's own
+   * `trino_execution_ClusterSizeMonitor_RequiredWorkers` metric).
+   * Required — KEDA without triggers scales nothing.
+   */
+  string triggers = 5 [(buf.validate.field).required = true];
+}
+
+/**
+ * Authentication. The PASSWORD (file) authenticator with a
+ * module-managed password file, or bring your own.
+ */
+message KubernetesTrinoAuth {
+  /**
+   * Require authentication. Empty = true — the open server never
+   * ships by default. Disabling means anyone who can reach the
+   * Service can query every catalog and impersonate any user.
+   */
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * The bootstrap admin username. Empty = "trino". The module
+   * generates this user's password into the `<name>-auth` Secret
+   * (key `password`) and writes the matching bcrypt entry into the
+   * server's password file — exported for clients and verifiers.
+   * Ignored when `existing_password_db_secret` is set.
+   */
+  optional string admin_username = 2 [
+    (dev.planton.shared.options.default) = "trino",
+    (buf.validate.field).string.pattern = "^[a-z0-9][a-z0-9._-]*$"
+  ];
+
+  /**
+   * Bring-your-own password file: an existing Secret whose
+   * `password.db` key holds the full htpasswd-format file
+   * (bcrypt entries, one `user:hash` per line). Replaces the
+   * module-generated admin file entirely — manage every user
+   * yourself.
+   */
+  KubernetesTrinoExistingSecret existing_password_db_secret = 3;
+
+  /**
+   * Group mappings: an existing Secret whose `group.db` key holds
+   * the group file (`group_name:user_1,user_2` per line) — pairs
+   * with `access_control_rules` group selectors.
+   */
+  KubernetesTrinoExistingSecret groups_secret = 4;
+}
+
+/**
+ * A reference to an existing Secret by name (the key is fixed by
+ * the chart's mount contract).
+ */
+message KubernetesTrinoExistingSecret {
+  /**
+   * Name of the Secret. Same-namespace constraint applies.
+   */
+  string secret_name = 1 [(buf.validate.field).required = true];
+}
+
+/**
+ * HTTPS on the Trino pods.
+ */
+message KubernetesTrinoHttps {
+  /**
+   * Serve HTTPS from the Trino containers.
+   */
+  bool enabled = 1;
+
+  /**
+   * HTTPS port. Empty = 8443.
+   */
+  optional int32 port = 2 [
+    (dev.planton.shared.options.default) = "8443",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  /**
+   * Existing Secret holding the JKS keystore. Mounted onto the pods
+   * and wired as `http-server.https.keystore.path`.
+   */
+  KubernetesTrinoKeystoreSecret keystore_secret = 3;
+}
+
+/**
+ * A reference to an existing Secret holding a JKS keystore.
+ */
+message KubernetesTrinoKeystoreSecret {
+  /**
+   * Name of the Secret. Same-namespace constraint applies.
+   */
+  string secret_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key inside the Secret holding the keystore. Empty =
+   * "keystore.jks".
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "keystore.jks",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * The catalog set. Every catalog renders as
+ * `<catalog_name>.properties` in the catalog ConfigMap — credentials
+ * ride `${ENV:VAR}` references resolved from Secrets, never
+ * literals.
+ */
+message KubernetesTrinoCatalogs {
+  /**
+   * Keep the chart's built-in `tpch` and `tpcds` sample catalogs
+   * (in-image synthetic data generators — zero dependencies, great
+   * for trying queries). Empty = true; disable for a
+   * production-only catalog list.
+   */
+  optional bool sample_catalogs_enabled = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * PostgreSQL catalogs — each connects one PostgreSQL database. A
+   * KubernetesPostgres composes naturally (host and credential FK
+   * onto its outputs).
+   */
+  repeated KubernetesTrinoPostgresCatalog postgres = 2;
+
+  /**
+   * MySQL catalogs — each connects one MySQL server. A
+   * KubernetesMysql composes naturally.
+   */
+  repeated KubernetesTrinoMysqlCatalog mysql = 3;
+
+  /**
+   * Any other connector: catalog name → raw catalog properties
+   * (`connector.name=...` plus its configuration). Reference
+   * environment variables for secret values (`${ENV:VAR}` paired
+   * with `extra_env_from_secret`) — properties render into a
+   * ConfigMap.
+   */
+  map<string, string> custom = 4;
+
+  option (buf.validate.message).cel = {
+    id: "catalogs.unique_names"
+    message: "Catalog names must be unique across postgres, mysql and custom catalogs — each becomes one <name>.properties file."
+    expression: "(this.postgres.map(c, c.name) + this.mysql.map(c, c.name)).all(n, (this.postgres.map(c, c.name) + this.mysql.map(c, c.name)).filter(m, m == n).size() == 1 && !(n in this.custom))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "catalogs.reserved_names"
+    message: "Catalog name 'system' is reserved (Trino's internal catalog), and 'tpch'/'tpcds' collide with the sample catalogs while sample_catalogs_enabled is on — pick another name or disable the samples."
+    expression: "(this.postgres.map(c, c.name) + this.mysql.map(c, c.name) + this.custom.map(k, k)).all(n, n != 'system' && (!(has(this.sample_catalogs_enabled) ? this.sample_catalogs_enabled : true) || (n != 'tpch' && n != 'tpcds')))"
+  };
+}
+
+/**
+ * A PostgreSQL catalog. Renders `connector.name=postgresql` with
+ * `connection-url=jdbc:postgresql://<host>:<port>/<database>`; the
+ * password reaches Trino as `${ENV:...}` from the referenced Secret.
+ */
+message KubernetesTrinoPostgresCatalog {
+  /**
+   * Catalog name — the query prefix
+   * (`SELECT ... FROM <name>.<schema>.<table>`). Lowercase
+   * alphanumeric/underscore.
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+
+  /**
+   * Database server host. Defaults compose a KubernetesPostgres
+   * resource's read-write Service.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.rw_service"
+  ];
+
+  /**
+   * Database server port. Empty = 5432.
+   */
+  optional int32 port = 3 [
+    (dev.planton.shared.options.default) = "5432",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  /**
+   * Database to connect to (Trino sees its schemas/tables).
+   */
+  string database = 4 [(buf.validate.field).required = true];
+
+  /**
+   * Database user Trino connects as — its grants bound what queries
+   * through this catalog can read/write. Empty = "app" (the
+   * KubernetesPostgres application-user convention).
+   */
+  optional string username = 5 [(dev.planton.shared.options.default) = "app"];
+
+  /**
+   * The Secret holding the user's password (delivered as an
+   * environment variable the catalog references — never rendered).
+   * Defaults compose a KubernetesPostgres resource's
+   * application-user Secret. Same-namespace constraint applies.
+   */
+  KubernetesTrinoPostgresPasswordSecret password_secret = 6 [(buf.validate.field).required = true];
+
+  /**
+   * Additional catalog properties appended to this catalog's file
+   * (connector tuning — e.g. `postgresql.array-mapping`). Never put
+   * secret literals here.
+   */
+  repeated string additional_properties = 7;
+}
+
+/**
+ * A reference to an existing Secret holding the PostgreSQL user's
+ * password.
+ */
+message KubernetesTrinoPostgresPasswordSecret {
+  /**
+   * Name of the Secret. Defaults compose a KubernetesPostgres
+   * resource's application-user Secret (`<cluster>-app`).
+   * Same-namespace constraint applies.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesPostgres,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.password_secret.name"
+  ];
+
+  /**
+   * Key inside the Secret holding the password. Empty = "password"
+   * (the KubernetesPostgres application-Secret convention).
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * A MySQL catalog (`connector.name=mysql`,
+ * `connection-url=jdbc:mysql://<host>:<port>`), secret-native the
+ * same way as the postgres arm. MySQL exposes databases as Trino
+ * SCHEMAS — no database segment in the URL.
+ */
+message KubernetesTrinoMysqlCatalog {
+  /**
+   * Catalog name — the query prefix. Lowercase
+   * alphanumeric/underscore.
+   */
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z][a-z0-9_]*$"
+  ];
+
+  /**
+   * Database server host. Defaults compose a KubernetesMysql
+   * resource's client Service.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef host = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesMysql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_service"
+  ];
+
+  /**
+   * Database server port. Empty = 3306.
+   */
+  optional int32 port = 3 [
+    (dev.planton.shared.options.default) = "3306",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+
+  /**
+   * Database user Trino connects as. Empty = "root".
+   */
+  optional string username = 4 [(dev.planton.shared.options.default) = "root"];
+
+  /**
+   * The Secret holding the user's password. Defaults compose a
+   * KubernetesMysql resource's root credential Secret; for a
+   * dedicated read-only Trino user (recommended), point at that
+   * user's Secret. Same-namespace constraint applies.
+   */
+  KubernetesTrinoMysqlPasswordSecret password_secret = 5 [(buf.validate.field).required = true];
+
+  /**
+   * Additional catalog properties appended to this catalog's file.
+   * Never put secret literals here.
+   */
+  repeated string additional_properties = 6;
+}
+
+/**
+ * A reference to an existing Secret holding the MySQL user's
+ * password.
+ */
+message KubernetesTrinoMysqlPasswordSecret {
+  /**
+   * Name of the Secret. Defaults compose a KubernetesMysql
+   * resource's root credential Secret. Same-namespace constraint
+   * applies.
+   */
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesMysql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.root_password_secret.name"
+  ];
+
+  /**
+   * Key inside the Secret holding the password. Empty = "password".
+   */
+  optional string secret_key = 2 [
+    (dev.planton.shared.options.default) = "password",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * Fault-tolerant execution (task retries + spooled exchanges).
+ */
+message KubernetesTrinoFaultTolerantExecution {
+  /**
+   * Retry granularity: "TASK" (retry failed tasks — the batch/ETL
+   * mode, pairs with worker autoscaling and spot capacity) or
+   * "QUERY" (retry whole failed queries — the interactive mode).
+   */
+  string retry_policy = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.in = "QUERY",
+    (buf.validate.field).string.in = "TASK"
+  ];
+
+  /**
+   * Where exchange data spools. Required — fault tolerance without
+   * durable spooling loses the data it needs to retry.
+   */
+  KubernetesTrinoExchangeManager exchange_manager = 2 [(buf.validate.field).required = true];
+}
+
+/**
+ * The exchange manager (spooling storage for fault-tolerant
+ * execution).
+ */
+message KubernetesTrinoExchangeManager {
+  /**
+   * Spooling destinations: local paths (single-node/dev) or object
+   * store URIs (`s3://bucket` — production; a KubernetesSeaweedFs
+   * bucket works via its S3 endpoint). At least one.
+   */
+  repeated string base_directories = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  /**
+   * Additional exchange-manager properties (S3 endpoint, region —
+   * e.g. `exchange.s3.endpoint=...`). Reference environment
+   * variables for keys (`exchange.s3.aws-access-key=${ENV:VAR}`
+   * with `extra_env_from_secret`) — never literals.
+   */
+  repeated string additional_properties = 2;
+}
+
+/**
+ * A plain reference to an existing Secret and key.
+ */
+message KubernetesTrinoSecretKeyRef {
+  /**
+   * Name of the Secret. Same-namespace constraint applies.
+   */
+  string secret_name = 1 [(buf.validate.field).required = true];
+
+  /**
+   * Key inside the Secret.
+   */
+  string secret_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Key NAME within an existing Secret (a reference), not secret material"
+  ];
+}
+
+/**
+ * JMX metrics and Prometheus scraping.
+ */
+message KubernetesTrinoMetrics {
+  /**
+   * Enable JMX metrics and the bundled Prometheus JMX exporter
+   * sidecar (HTTP metrics on every pod).
+   */
+  bool enabled = 1;
+
+  /**
+   * Render ServiceMonitors (coordinator + worker) for operator-based
+   * scraping. Requires the Prometheus operator CRDs on the cluster —
+   * a KubernetesKubePrometheusStack composes naturally.
+   */
+  bool service_monitor_enabled = 2;
+
+  /**
+   * JMX-exporter sidecar image override. Empty = the chart default
+   * (`bitnamilegacy/jmx-exporter` — a FROZEN legacy mirror that
+   * receives no updates since the Bitnami retirement; override for
+   * production mirrors).
+   */
+  string exporter_image = 3;
+
+  option (buf.validate.message).cel = {
+    id: "metrics.service_monitor_needs_metrics"
+    message: "ServiceMonitors scrape the JMX exporter — enable metrics.enabled too, or remove service_monitor_enabled."
+    expression: "!this.service_monitor_enabled || this.enabled"
+  };
+}
+
+/**
+ * Pod scheduling.
+ */
+message KubernetesTrinoScheduling {
+  /**
+   * Node selector.
+   */
+  map<string, string> node_selector = 1;
+
+  /**
+   * Tolerations.
+   */
+  repeated dev.planton.provider.kubernetes.WorkloadToleration tolerations = 2;
+}
+
+/**
+ * The coordinator Service.
+ */
+message KubernetesTrinoService {
+  /**
+   * Service type. Empty = "ClusterIP" — compose exposure kinds over
+   * the exported handle instead of exposing directly.
+   */
+  optional string type = 1 [
+    (dev.planton.shared.options.default) = "ClusterIP",
+    (buf.validate.field).string.in = "ClusterIP",
+    (buf.validate.field).string.in = "LoadBalancer",
+    (buf.validate.field).string.in = "NodePort"
+  ];
+
+  /**
+   * Service annotations — the cloud load-balancer configuration
+   * surface when `type` is LoadBalancer.
+   */
+  map<string, string> annotations = 2;
+}
