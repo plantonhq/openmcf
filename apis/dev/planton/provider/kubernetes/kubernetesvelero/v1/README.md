@@ -120,7 +120,7 @@ How Velero reaches the object store, per backend arm:
 | EKS / AWS S3 | `s3` | `irsa_role_arn` — the `eks.amazonaws.com/role-arn` annotation on the `velero-server` service account; no Secret exists at all | `access_keys` — materialized into the credentials Secret in the AWS plugin's `cloud` file format |
 | S3-compatible (MinIO, Ceph RGW, ...) | `s3` with `s3_url` (+ `force_path_style`) | none — IRSA only mints AWS credentials (spec-enforced) | `access_keys` — the store's key pair |
 | GKE / GCS | `gcs` | `workload_identity_service_account_email` — the `iam.gke.io/gcp-service-account` annotation plus the storage location's serviceAccount config | `service_account_key_json` — the JSON key as the `cloud` file |
-| AKS / Azure Blob | `azure_blob` | `use_workload_identity` + `workload_identity_client_id` — the `azure.workload.identity/client-id` annotation plus the `azure.workload.identity/use` pod label; a `cloud` file still carries the non-secret parameters | `service_principal` — AZURE_* lines in the credentials Secret |
+| AKS / Azure Blob | `azure_blob` | `workload_identity_client_id` — the `azure.workload.identity/client-id` annotation plus the `azure.workload.identity/use` pod label; a `cloud` file still carries the non-secret parameters | `service_principal` — AZURE_* lines in the credentials Secret |
 
 Leaving both postures unset means ambient node credentials. The
 cloud-side half of each keyless contract is written against the chart's

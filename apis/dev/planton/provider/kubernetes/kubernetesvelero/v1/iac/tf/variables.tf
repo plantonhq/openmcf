@@ -45,7 +45,6 @@ variable "spec" {
         container                   = string
         resource_group              = string
         subscription_id             = string
-        use_workload_identity       = optional(bool, false)
         workload_identity_client_id = optional(string, "")
         service_principal = optional(object({
           tenant_id     = string

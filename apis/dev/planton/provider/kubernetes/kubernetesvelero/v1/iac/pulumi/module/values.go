@@ -205,9 +205,11 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		vslConfig["subscriptionId"] = azure.GetSubscriptionId()
 
 		switch {
-		case azure.GetUseWorkloadIdentity():
-			// Keyless AKS posture. Unlike AWS/GCP, the Azure plugin STILL
-			// reads a `cloud` file for the non-credential parameters
+		case azure.GetWorkloadIdentityClientId().GetValue() != "":
+			// Keyless AKS posture, selected by the client id's presence
+			// (the same presence semantics as the S3 IRSA and GCS WI
+			// arms). Unlike AWS/GCP, the Azure plugin STILL reads a
+			// `cloud` file for the non-credential parameters
 			// (subscription, resource group, cloud name) — the chart
 			// README defers the file's contents to the Azure plugin's own
 			// README, which prescribes exactly these three lines for
@@ -224,7 +226,7 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 				},
 			}
 			values["serviceAccount"] = serverServiceAccountAnnotations(map[string]interface{}{
-				"azure.workload.identity/client-id": azure.GetWorkloadIdentityClientId(),
+				"azure.workload.identity/client-id": azure.GetWorkloadIdentityClientId().GetValue(),
 			})
 			values["podLabels"] = map[string]interface{}{
 				"azure.workload.identity/use": "true",

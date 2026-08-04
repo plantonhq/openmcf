@@ -163,10 +163,19 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("azure with workload identity and client id should be valid", func() {
+		ginkgo.It("azure with a workload-identity client id should be valid", func() {
 			azure := validAzureBlob()
-			azure.UseWorkloadIdentity = true
-			azure.WorkloadIdentityClientId = "55555555-6666-7777-8888-999999999999"
+			azure.WorkloadIdentityClientId = literal("55555555-6666-7777-8888-999999999999")
+			input.Spec.BackupStorage = azureBackend(azure)
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("azure workload identity as an AzureUserAssignedIdentity reference should be valid", func() {
+			// The one-run composition shape: the backup identity deploys in
+			// the same run and its client id flows in by reference.
+			azure := validAzureBlob()
+			azure.WorkloadIdentityClientId = valueFrom(
+				cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity, "velero-backups", "status.outputs.client_id")
 			input.Spec.BackupStorage = azureBackend(azure)
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
@@ -363,22 +372,14 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("azure with both workload identity and a service principal should fail (wi_xor_sp)", func() {
+		ginkgo.It("azure with both a workload-identity client id and a service principal should fail (wi_xor_sp)", func() {
 			azure := validAzureBlob()
-			azure.UseWorkloadIdentity = true
-			azure.WorkloadIdentityClientId = "55555555-6666-7777-8888-999999999999"
+			azure.WorkloadIdentityClientId = literal("55555555-6666-7777-8888-999999999999")
 			azure.ServicePrincipal = &KubernetesVeleroAzureServicePrincipal{
 				TenantId:     "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 				ClientId:     "11111111-2222-3333-4444-555555555555",
 				ClientSecret: "sp-secret-value",
 			}
-			input.Spec.BackupStorage = azureBackend(azure)
-			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
-		})
-
-		ginkgo.It("azure workload identity without client id should fail (wi_needs_client_id)", func() {
-			azure := validAzureBlob()
-			azure.UseWorkloadIdentity = true
 			input.Spec.BackupStorage = azureBackend(azure)
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
