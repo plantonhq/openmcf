@@ -58,7 +58,7 @@ their kubelets serve CA-signed certificates:
 |---|---|---|
 | GKE | NO — metrics-server ships built-in | — |
 | EKS | Yes | false (kubelet certs verify against the cluster CA) |
-| AKS | Yes (resource metrics) | false |
+| AKS | NO — metrics-server runs as an AKS-managed component in kube-system | — |
 | kind | Yes | **true** (self-signed kubelet certs) |
 | k3s | Yes | **true** (self-signed kubelet certs) |
 | kubeadm | Yes | **true** unless kubelet certificate rotation/signing is configured |
