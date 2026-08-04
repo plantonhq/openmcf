@@ -148,7 +148,10 @@ func BuildSpec(resourceName, secretsNamespace string, clusterScoped bool, config
 	case config.GetAzureKeyVault() != nil:
 		az := config.GetAzureKeyVault()
 		azSpec := map[string]interface{}{
-			"vaultUrl": az.GetVaultUrl(),
+			// vault_url is a StringValueOrRef (an AzureKeyVault's vault_uri
+			// output, or a literal URL); by module time the platform has
+			// resolved any reference, so the flat value is read here.
+			"vaultUrl": az.GetVaultUrl().GetValue(),
 		}
 		if az.AuthType != nil {
 			azSpec["authType"] = az.GetAuthType()
