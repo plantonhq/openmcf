@@ -237,15 +237,17 @@ message KubernetesKarpenterAws {
    * IAM role ARN for IRSA: annotates Karpenter's service account so the
    * controller calls EC2/EKS/SQS/Pricing without stored keys (the role's
    * trust policy must allow the cluster's OIDC provider and the
-   * "karpenter" service account). Leave empty when using EKS Pod Identity
-   * — the association is configured on the AWS side and needs no
+   * "karpenter" service account). Reference an AwsIamRole's role_arn output
+   * -- the reference is also the deploy-ordering edge, so the role exists
+   * before the controller starts -- or pass a literal ARN
+   * (arn:aws:iam::<account>:role/<name>). Leave unset when using EKS Pod
+   * Identity — the association is configured on the AWS side and needs no
    * annotation here.
    */
-  string irsa_role_arn = 1 [(buf.validate.field).cel = {
-    id: "spec.aws.irsa_role_arn_format"
-    message: "irsa_role_arn must be an IAM role ARN (arn:aws:iam::<account>:role/<name>)"
-    expression: "this == '' || this.matches('^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+$')"
-  }];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef irsa_role_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
 
   /**
    * Name of the SQS queue receiving EC2 interruption events (spot

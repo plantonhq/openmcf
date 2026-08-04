@@ -74,11 +74,13 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 	if aws := spec.GetAws(); aws != nil {
 		// IRSA rides the service-account annotation the EKS webhook watches
 		// — not a settings entry. Empty means EKS Pod Identity (association
-		// configured cloud-side, no annotation needed).
-		if aws.GetIrsaRoleArn() != "" {
+		// configured cloud-side, no annotation needed). A valueFrom
+		// reference is resolved to the AwsIamRole's role_arn before the
+		// module runs.
+		if aws.GetIrsaRoleArn().GetValue() != "" {
 			values["serviceAccount"] = map[string]interface{}{
 				"annotations": map[string]interface{}{
-					"eks.amazonaws.com/role-arn": aws.GetIrsaRoleArn(),
+					"eks.amazonaws.com/role-arn": aws.GetIrsaRoleArn().GetValue(),
 				},
 			}
 		}
