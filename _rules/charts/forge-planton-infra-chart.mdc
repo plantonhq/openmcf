@@ -342,18 +342,25 @@ the README. Conventions:
   never from `arn_suffix`-class outputs), or make it an explicit day-2 recipe
   in the README with the exact outputs to read — a template that renders a
   placeholder where a real value belongs is a silent-failure ship.
-- **Selector-bound kinds are a weaker link than references — bundle them
-  deliberately or not at all.** Some kinds bind to their host by a by-name
-  selector rather than a `StringValueOrRef` (the Kubernetes workload/addon
-  kinds' `target_cluster` — a cluster-kind enum plus the cluster's resource
-  name in the same environment). A selector is not a resolved reference: the
-  offline gate cannot verify it, and no output flows through it. A chart that
-  owns the infrastructure layer (network, cluster, identity, registry) should
-  generally TEACH the selector pattern in its README rather than bundle
-  selector-bound resources — what runs ON a cluster is a separate, composable
-  decision from the cluster itself. If a chart does include one, pair the
-  selector with an explicit `metadata.relationships` edge so ordering is
-  still real.
+- **Kubernetes workloads bind to their cluster through a connection, never a
+  spec field — wire the annotation pair and a real ordering edge.** Kubernetes
+  kinds carry no cluster selector in their specs: the cluster a resource
+  deploys to is the provider connection the platform resolves for it
+  (precedence: explicit value → annotation → environment default →
+  organization default). In a one-run composition — a chart that provisions a
+  cluster AND deploys workloads onto it — the cluster resource publishes its
+  connection under a chart-controlled name (`planton.dev/connection-name`)
+  and every Kubernetes workload consumes it by the same value
+  (`planton.dev/connection`); drive both annotations from ONE values param so
+  the producer and its consumers can never drift. The annotation is
+  credentials, not ordering, and the offline gate cannot verify annotation
+  wiring: pair every in-chart workload with an explicit
+  `metadata.relationships` edge of type `runs_on` naming the cluster
+  resource, so the DAG edge is structural rather than incidental. A chart
+  that deploys onto an EXISTING cluster skips the producer side — the
+  deploying environment's connection default (or an explicit connection-slug
+  parameter feeding `planton.dev/connection`) selects the cluster; state
+  that expectation in the parameter description and the README.
 
 #### Renderer mechanics charts rely on
 
