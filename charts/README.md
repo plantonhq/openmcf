@@ -29,9 +29,13 @@ from components whose schemas and modules meet the catalog's full depth bar.
 
 The tree is provider-rooted, with one home rule:
 
-- **A chart lives under the provider that hosts its centerpiece.** A chart
-  that provisions an EKS cluster and everything on it lives under
-  [`aws/`](aws) — the cluster is what you are buying.
+- **A chart lives under the provider that hosts its centerpiece.**
+- **Cluster charts nest under a `kubernetes/` subfolder inside their
+  cloud.** A chart whose centerpiece is a managed Kubernetes cluster —
+  the cluster plus everything wired onto it — lives at
+  `<cloud>/kubernetes/<chart>` (for example `aws/kubernetes/` for EKS
+  platforms, `gcp/kubernetes/` for GKE, `azure/kubernetes/` for AKS).
+  Non-Kubernetes cloud charts live directly under `<cloud>/`.
 - **[`kubernetes/`](kubernetes) holds charts that deploy onto a cluster you
   already have**, whichever cloud or datacenter it runs in. Cross-cloud
   combinations — a cluster on one provider, DNS or secrets on another — are

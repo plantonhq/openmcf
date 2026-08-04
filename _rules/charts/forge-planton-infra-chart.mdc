@@ -109,18 +109,33 @@ Two validation surfaces exist:
 ## Anatomy (all four files, every chart)
 
 ```
-charts/<provider>/<chart-name>/
+charts/<provider>/<chart-name>/              # the general home
+charts/<cloud>/kubernetes/<chart-name>/      # cluster charts: a managed
+                                             # Kubernetes cluster is the
+                                             # centerpiece (EKS/GKE/AKS
+                                             # platforms and their kin)
 ├── Chart.yaml      # catalog identity: name, description, VERIFIED iconUrl, web links
 ├── values.yaml     # the public input surface: typed params with dense descriptions
 ├── templates/      # richly-commented manifests rendering the Cloud Resources
 └── README.md       # component-docs-grade documentation
 ```
 
+The home rule: a chart lives under the provider that hosts its centerpiece;
+charts whose centerpiece is that cloud's managed Kubernetes cluster nest
+under the cloud's `kubernetes/` subfolder, and `charts/kubernetes/` holds
+charts that deploy onto an existing cluster. Every chart tool (discovery,
+the structure guard, validation, seeding) walks the tree by `Chart.yaml`
+presence, so nesting depth is not load-bearing — the layout exists for the
+human browsing the catalog.
+
 The chart directory name is kebab-case and names the ARCHITECTURE, not a
 product SKU (`hub-spoke-network-foundation`, not `firewall-chart`) — the name
-is the first word of the desirability pitch. It is also the chart's slug and
-its platform identity (platform charts upsert by a slug-derived deterministic
-id) — choose it as carefully as a kind name, and expect it to be permanent.
+is the first word of the desirability pitch. The chart's platform identity is
+the slugified `metadata.name` (platform charts upsert by a slug-derived
+deterministic id), and by convention the directory name matches it — so
+`metadata.name` must be globally unique across the WHOLE tree (not just
+within one provider folder); choose both as carefully as a kind name, and
+expect them to be permanent.
 
 ### Chart.yaml
 
@@ -136,9 +151,12 @@ spec:
   iconUrl: <VERIFIED live URL — see icon rules below>
   isReady: true
   webLinks:
-    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/<provider>/<chart-name>
-    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/<provider>/<chart-name>/README.md
+    chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/<path-to-chart>
+    readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/<path-to-chart>/README.md
 ```
+
+(`<path-to-chart>` is the chart's real tree path — `<provider>/<chart-name>`
+or `<cloud>/kubernetes/<chart-name>` — the web links always mirror the tree.)
 
 The description is catalog copy: concrete, outcome-first, no filler. Say what
 the deployed result IS, not what the chart "provides".
