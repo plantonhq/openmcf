@@ -2,7 +2,7 @@ apiVersion: v2
 name: planton-runner
 description: Deploy Planton Runner with a single RunnerCredentials JSON file for identity, connectivity, and authentication
 type: application
-version: 0.2.0
+version: 0.3.0
 # appVersion is the runner image tag this chart deploys. The runner image is built
 # in the platform repo and published to ghcr.io/plantonhq/planton/runner; keep this
 # pinned to a known-good published tag. NOTE: the runner deployment path is not yet

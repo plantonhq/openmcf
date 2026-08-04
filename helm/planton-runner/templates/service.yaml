@@ -7,8 +7,9 @@ metadata:
     {{- include "planton-runner.labels" . | nindent 4 }}
 spec:
   # ClusterIP only -- the runner receives traffic through the reverse tunnel,
-  # not through Kubernetes networking. This Service exists for health monitoring
-  # and kubectl port-forward debugging.
+  # not through Kubernetes networking. This Service exists for health monitoring,
+  # kubectl port-forward debugging, and (when builds are enabled) as the
+  # in-cluster target Tekton posts pipeline CloudEvents to.
   type: ClusterIP
   selector:
     {{- include "planton-runner.selectorLabels" . | nindent 4 }}
@@ -17,3 +18,13 @@ spec:
       port: 8093
       targetPort: health
       protocol: TCP
+    {{- if .Values.build.enabled }}
+    # Tekton posts pipeline CloudEvents here: point default-cloud-events-sink
+    # in the tekton-pipelines/config-defaults ConfigMap at
+    # http://<this-service>.<namespace>.svc.cluster.local/ -- served on port 80
+    # so the sink URL needs no explicit port.
+    - name: webhook
+      port: 80
+      targetPort: webhook
+      protocol: TCP
+    {{- end }}

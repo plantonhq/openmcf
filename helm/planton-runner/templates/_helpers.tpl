@@ -65,6 +65,27 @@ Create the name of the service account to use.
 {{- end }}
 
 {{/*
+Namespace where build PipelineRuns land and the log streamer watches:
+the configured tektonNamespace, or the runner's own namespace when empty
+(mirroring the runner binary's own fallback).
+*/}}
+{{- define "planton-runner.buildNamespace" -}}
+{{- default .Release.Namespace .Values.build.tektonNamespace }}
+{{- end }}
+
+{{/*
+Fail fast at install time when the build block cannot work as configured --
+a clear error beats a build worker that silently never polls.
+*/}}
+{{- define "planton-runner.validateBuild" -}}
+{{- if .Values.build.enabled }}
+{{- if not (or (eq .Values.runner.executionMode "temporal") (eq .Values.runner.executionMode "dual")) }}
+{{- fail "build.enabled requires runner.executionMode \"temporal\" or \"dual\" -- the build worker is a Temporal worker" }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Container image with tag.
 */}}
 {{- define "planton-runner.image" -}}

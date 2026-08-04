@@ -93,6 +93,64 @@ The environment variables are only injected into the pod when `temporal.address`
 | `temporal.namespace` | Temporal namespace | `"default"` |
 | `temporal.maxConcurrency` | Maximum concurrent Temporal activities | `10` |
 
+### Build capability
+
+Enable this to make the cluster a **build cluster**: the runner executes build
+pipelines on it (Tekton PipelineRuns), streams task pod logs to the control
+plane, receives Tekton CloudEvents on its webhook, and serves the readiness
+checks a registered build connection reports.
+
+Prerequisites:
+
+- **Tekton Pipelines** installed on the cluster.
+- `runner.executionMode` set to `temporal` or `dual` (the build worker is a
+  Temporal worker; the chart fails at render time if builds are enabled in
+  `grpc` mode).
+- Exactly **one** build-capable runner per watched Tekton namespace (the build
+  log streamer is a singleton; the chart already pins one replica).
+
+```bash
+helm install my-runner oci://ghcr.io/plantonhq/charts/planton-runner \
+  --namespace planton-runner \
+  --create-namespace \
+  --set-file credentials.content=/path/to/credentials.json \
+  --set runner.executionMode=dual \
+  --set build.enabled=true \
+  --set build.tektonNamespace=build-pipelines
+```
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `build.enabled` | Run the pipeline-build worker and the Tekton CloudEvents webhook | `false` |
+| `build.tektonNamespace` | Namespace where builds land and the log streamer watches; empty uses the runner's own namespace | `""` |
+| `build.webhookPort` | Container port for the Tekton CloudEvents webhook | `8086` |
+| `build.rbac.create` | Create the Role/RoleBinding the build capability needs | `true` |
+| `build.tekton.installNamespace` | Namespace of the Tekton Pipelines installation | `"tekton-pipelines"` |
+
+Two steps complete the build-cluster setup after install:
+
+1. **Point Tekton's CloudEvents sink at the runner's webhook** so live build
+   status flows without waiting on the reconciliation safety net. In the
+   `tekton-pipelines/config-defaults` ConfigMap set:
+
+   ```yaml
+   default-cloud-events-sink: http://<release-fullname>.<namespace>.svc.cluster.local/
+   ```
+
+   (The chart's Service serves the webhook on port 80, so the URL needs no
+   explicit port. The exact URL is printed in the post-install notes.)
+
+2. **Register the cluster as a build connection** (console: Connections →
+   Build, or `planton apply` a `TektonConnection` naming this runner), then
+   verify it. The readiness check runs on this runner over the same queue real
+   builds ride, so a passing verify also proves end-to-end routing.
+
+The RBAC the chart creates mirrors exactly what the build capability performs:
+create PipelineRuns and their per-build supporting resources, reconcile by
+list, label-scoped cleanup, and follow task pod logs — plus a read grant on
+Tekton's `config-defaults` ConfigMap so the events-sink readiness check can
+report a conclusive verdict.
+
 ### Image
 
 | Parameter | Description | Default |
@@ -128,6 +186,10 @@ Runner Pod (your cluster)
 The runner maintains a persistent reverse tunnel through which the Planton control plane
 sends cloud operations requests. It also makes authenticated gRPC calls to the control
 plane API to resolve secrets and variables at runtime.
+
+With builds enabled there is one additional, **cluster-internal** listener: Tekton posts
+pipeline CloudEvents to the runner's webhook through the chart's ClusterIP Service. No
+Ingress and no public exposure — the traffic never leaves the cluster.
 
 ### Credentials File
 
