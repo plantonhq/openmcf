@@ -4,7 +4,8 @@ metadata:
   name: awssecuritygroup-demo
 spec:
   region: us-west-2
-  vpcId: vpc-0123456789abcdef0
+  vpcId:
+    value: vpc-0123456789abcdef0
   description: Demo security group
   ingress:
     - protocol: tcp

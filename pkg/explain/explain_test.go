@@ -1,6 +1,8 @@
 package explain
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -255,6 +257,49 @@ func TestDispatcher(t *testing.T) {
 			t.Fatalf("err = %v", err)
 		}
 	})
+}
+
+// TestConstraintJSONDumpsAreCompact guards report determinism: the structural
+// buf.validate dump comes from protojson, whose whitespace is deliberately
+// randomized per compiled binary. Reports are committed and byte-compared by
+// freshness gates, so every JSON constraint must survive json.Compact
+// unchanged -- if this fails, applyValidateRules lost its compaction step.
+func TestConstraintJSONDumpsAreCompact(t *testing.T) {
+	engine := DefaultEngine()
+	jsonDumps := 0
+	for _, kind := range crkreflect.KindsList() {
+		res, err := KindResource(kind)
+		if err != nil {
+			t.Fatalf("%s: %v", kind, err)
+		}
+		report, err := engine.Explain(res, nil)
+		if err != nil {
+			t.Fatalf("%s: %v", kind, err)
+		}
+		var walk func(fields []Field)
+		walk = func(fields []Field) {
+			for _, f := range fields {
+				for _, c := range f.Constraints {
+					if !strings.HasPrefix(c, "{") {
+						continue
+					}
+					jsonDumps++
+					var compacted bytes.Buffer
+					if err := json.Compact(&compacted, []byte(c)); err != nil {
+						t.Errorf("%s %s: constraint is not valid JSON: %q", kind, f.Name, c)
+					} else if compacted.String() != c {
+						t.Errorf("%s %s: constraint dump not compact: %q", kind, f.Name, c)
+					}
+				}
+				walk(f.Fields)
+			}
+		}
+		walk(report.Spec)
+		walk(report.Outputs)
+	}
+	if jsonDumps == 0 {
+		t.Fatal("no structural JSON constraint dumps found across the catalog -- the guard is vacuous")
+	}
 }
 
 // TestAllKindsExplain is the walker's survival gate: every compiled-in kind

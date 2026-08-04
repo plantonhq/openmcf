@@ -1,6 +1,8 @@
 package explain
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -176,6 +178,15 @@ func applyValidateRules(fd protoreflect.FieldDescriptor, f *Field) {
 	structural := proto.Clone(rules).(*validatepb.FieldRules)
 	structural.Cel = nil
 	if body, err := protojson.Marshal(structural); err == nil && string(body) != "{}" {
+		// protojson deliberately randomizes its whitespace, re-seeded from a
+		// hash of each compiled binary, so its raw output is only stable
+		// within one build. Reports are committed to disk and byte-compared
+		// by freshness gates, so the dump must be compacted here at the
+		// source -- never rely on protojson output being byte-stable.
+		var compacted bytes.Buffer
+		if err := json.Compact(&compacted, body); err == nil {
+			body = compacted.Bytes()
+		}
 		f.Constraints = append(f.Constraints, string(body))
 	}
 }

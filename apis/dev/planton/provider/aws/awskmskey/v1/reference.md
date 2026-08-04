@@ -1,0 +1,222 @@
+# AwsKmsKey
+
+> Generated from the protobuf schema by `make generate-reference` -- do not
+> edit by hand. To change a fact on this page, change the proto field comment
+> or validation rule it is derived from, then regenerate.
+
+**apiVersion**: `aws.planton.dev/v1`
+
+AwsKmsKeySpec defines a customer-managed AWS KMS key: its
+cryptographic shape (key spec and usage), the key policy that
+governs access, automatic rotation, multi-region designation, and
+friendly aliases.
+
+KMS keys have no name in AWS -- identity is the generated key ID/ARN
+-- so consumers compose with this key by referencing its key_arn
+output (encryption-at-rest fields across databases, queues, buckets,
+and functions all take it), or through an alias for humans and SDK
+callers. metadata.name drives the Name identity tag.
+
+Key-shape guidance: the default SYMMETRIC_DEFAULT encrypt/decrypt
+key is what every AWS service-integration (S3, RDS, DynamoDB, MSK,
+Lambda environment encryption, ...) expects -- choose an asymmetric
+RSA/ECC spec only for external signing or public-key encryption
+workflows, and an HMAC spec only for token authentication. The
+shape is create-time immutable: changing key_spec or key_usage
+replaces the key (old ciphertext stays decryptable only by the old
+key -- plan key migration deliberately).
+
+## Example
+
+```yaml
+apiVersion: aws.planton.dev/v1
+kind: AwsKmsKey
+metadata:
+  name: app-encryption-key-demo
+spec:
+  region: us-west-2
+  description: "Demo encryption key for application data"
+  aliases:
+    - alias/demo/app-data
+  deletionWindowDays: 30
+```
+
+## Spec Fields
+
+| Path | Type | Required | Default | References |
+|---|---|---|---|---|
+| `spec.region` | `string` | yes |  |  |
+| `spec.description` | `string` |  |  |  |
+| `spec.keySpec` | `string` |  |  |  |
+| `spec.keyUsage` | `string` |  |  |  |
+| `spec.policy` | `string` |  |  |  |
+| `spec.bypassPolicyLockoutSafetyCheck` | `bool` |  |  |  |
+| `spec.disabled` | `bool` |  |  |  |
+| `spec.enableKeyRotation` | `bool` |  |  |  |
+| `spec.rotationPeriodInDays` | `int32` |  |  |  |
+| `spec.multiRegion` | `bool` |  |  |  |
+| `spec.deletionWindowDays` | `int32` |  | `30` |  |
+| `spec.aliases` | `[]string` |  |  |  |
+
+## Field Details
+
+### spec.region
+
+`string` · required
+
+The AWS region the key lives in. Ciphertext is regional: data
+encrypted under this key is decrypted in this region (use
+multi_region + replica keys for cross-region decryption with the
+same key material).
+Example: "us-west-2", "eu-west-1".
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.description
+
+`string`
+
+Free-form description shown in the AWS Console. Up to 8192
+characters.
+
+- rule: {"string":{"maxLen":"8192"}}
+
+### spec.keySpec
+
+`string`
+
+The cryptographic configuration, create-time immutable:
+"SYMMETRIC_DEFAULT" (AES-256-GCM -- the default and what AWS
+service integrations require), "RSA_2048"/"RSA_3072"/"RSA_4096"
+(asymmetric encrypt/decrypt or sign/verify),
+"ECC_NIST_P256"/"ECC_NIST_P384"/"ECC_NIST_P521"/"ECC_SECG_P256K1"
+(asymmetric sign/verify -- P256K1 is the blockchain curve),
+"HMAC_224"/"HMAC_256"/"HMAC_384"/"HMAC_512" (MAC generation), or
+"SM2" (China regions). Empty keeps the AWS default
+(SYMMETRIC_DEFAULT).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["SYMMETRIC_DEFAULT","RSA_2048","RSA_3072","RSA_4096","ECC_NIST_P256","ECC_NIST_P384","ECC_NIST_P521","ECC_SECG_P256K1","HMAC_224","HMAC_256","HMAC_384","HMAC_512","SM2"]}}
+
+### spec.keyUsage
+
+`string`
+
+What the key is used for, create-time immutable:
+"ENCRYPT_DECRYPT" (the default -- required for SYMMETRIC_DEFAULT
+and the only usage AWS service integrations support),
+"SIGN_VERIFY" (asymmetric RSA/ECC/SM2 keys), or
+"GENERATE_VERIFY_MAC" (HMAC keys). Empty keeps the AWS default
+(ENCRYPT_DECRYPT).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ENCRYPT_DECRYPT","SIGN_VERIFY","GENERATE_VERIFY_MAC"]}}
+
+### spec.policy
+
+`string`
+
+The key policy as a JSON document -- the resource-based policy
+that is the root of access control on the key (IAM policies only
+work when the key policy delegates to them). Empty keeps the AWS
+default policy, which grants the account's root user full access
+and enables IAM-policy delegation -- the right choice for most
+keys. Set a custom policy for cross-account grants or to restrict
+administration; keep the account root (or your admin role) as an
+administrator so the key cannot become unmanageable.
+
+### spec.bypassPolicyLockoutSafetyCheck
+
+`bool`
+
+Skip AWS's check that the key policy leaves the calling principal
+able to manage the key. Setting this with a policy that locks out
+every administrator makes the key PERMANENTLY unmanageable (only
+AWS Support can recover it) -- leave false unless you are
+deliberately constructing a lockout and understand the blast
+radius.
+
+### spec.disabled
+
+`bool`
+
+Create the key in (or flip a live key to) the disabled state --
+every cryptographic operation under it fails until re-enabled. An
+operational pause switch, gentler than deletion. False (the
+default) keeps the key enabled.
+
+### spec.enableKeyRotation
+
+`bool`
+
+Rotate the key material automatically. AWS supports automatic
+rotation only for SYMMETRIC_DEFAULT keys with KMS-generated
+material; rotation is transparent to callers (old material is
+retained to decrypt old ciphertext). Recommended for long-lived
+encryption keys. False (the AWS default) never rotates.
+
+### spec.rotationPeriodInDays
+
+`int32`
+
+How often (in days) the material rotates, 90-2560. 0 keeps the
+AWS default (365 days). Only meaningful with enable_key_rotation.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":2560,"gte":90}}
+
+### spec.multiRegion
+
+`bool`
+
+Make this a multi-Region PRIMARY key, create-time immutable.
+Replica keys in other regions then share its key material --
+ciphertext encrypted in one region decrypts in another. This kind
+always creates the primary; replicas are created from it and
+reference its key_arn.
+
+### spec.deletionWindowDays
+
+`int32`
+
+Waiting period (days) between scheduling deletion and the key
+being destroyed, 7-30 -- the recovery window against accidental
+deletion (ciphertext under a destroyed key is unrecoverable).
+0 keeps the AWS default (30 days).
+
+- default: `30`
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":30,"gte":7}}
+
+### spec.aliases
+
+`[]string`
+
+Friendly names for the key, each beginning "alias/" (e.g.
+"alias/orders-db"). Aliases are how humans and SDK callers
+address the key without its generated ID; many aliases may point
+at one key, and each materializes as its own alias resource so
+list edits add/remove in place. The "alias/aws/" prefix is
+reserved for AWS-managed keys.
+
+- rule: {"repeated":{"unique":true,"items":{"string":{"pattern":"^alias/[0-9A-Za-z_/-]+$"}}}}
+
+## Validation Rules
+
+- `rotation_only_for_symmetric`: automatic rotation is only supported for SYMMETRIC_DEFAULT keys -- asymmetric and HMAC key material never rotates automatically
+- `rotation_period_requires_rotation`: rotation_period_in_days only applies when enable_key_rotation is true
+- `symmetric_keys_encrypt_decrypt`: SYMMETRIC_DEFAULT keys only support key_usage ENCRYPT_DECRYPT (the default -- leave key_usage empty)
+- `hmac_keys_generate_verify_mac`: HMAC key specs require key_usage GENERATE_VERIFY_MAC, and GENERATE_VERIFY_MAC requires an HMAC key spec
+- `ecc_keys_sign_verify`: ECC key specs are signing keys -- set key_usage SIGN_VERIFY
+- `no_reserved_aws_aliases`: the alias/aws/ prefix is reserved for AWS-managed keys -- choose a different alias name
+
+## Outputs
+
+Reference an output from another manifest as `valueFrom: {kind: AwsKmsKey, name: <resource-name>, fieldPath: status.outputs.<output>}`.
+
+| Output | Type | Description |
+|---|---|---|
+| `status.outputs.keyId` | `string` | The generated key ID (UUID; "mrk-..." for multi-Region keys). |
+| `status.outputs.keyArn` | `string` | The key ARN -- the join key encryption-at-rest fields across the catalog reference (databases, queues, buckets, functions, ...). |
+| `status.outputs.aliasNames` | `[]string` | The alias names attached to the key (each "alias/..."), in spec order -- the human-friendly addresses SDK callers may use instead of the key ID. |
+
+## See Also
+
+- [Overview](./README.md)
+- [Design notes](./docs/README.md)

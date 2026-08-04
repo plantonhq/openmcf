@@ -8,6 +8,7 @@ go_library(
         "options.go",
         "path.go",
         "render.go",
+        "render_markdown.go",
         "walker.go",
     ],
     importpath = "github.com/plantonhq/planton/pkg/explain",
@@ -28,7 +29,10 @@ go_library(
 
 go_test(
     name = "explain_test",
-    srcs = ["explain_test.go"],
+    srcs = [
+        "explain_test.go",
+        "render_markdown_test.go",
+    ],
     embed = [":explain"],
     deps = [
         "//apis/dev/planton/shared/cloudresourcekind",

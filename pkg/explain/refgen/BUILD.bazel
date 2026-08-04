@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "refgen_lib",
+    srcs = [
+        "generate.go",
+        "main.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/explain/refgen",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//internal/manifest",
+        "//pkg/explain",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_binary(
+    name = "refgen",
+    embed = [":refgen_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "refgen_test",
+    srcs = ["drift_test.go"],
+    embed = [":refgen_lib"],
+)

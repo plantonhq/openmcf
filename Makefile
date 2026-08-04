@@ -112,6 +112,16 @@ generate-proto-docs:
 		--include dev/planton
 	rm -f build/proto-docs-image.binpb
 
+# Regenerates the committed per-kind markdown reference files (reference.md,
+# co-located with each kind's protos) from the compiled-in descriptors via
+# the explain engine. Scope with provider=<name> (e.g. `make
+# generate-reference provider=aws`); no argument regenerates every kind.
+# Deterministic: unchanged schemas regenerate byte-identical files (enforced
+# by the drift test in pkg/explain/refgen).
+.PHONY: generate-reference
+generate-reference:
+	go run ./pkg/explain/refgen --provider "$(provider)"
+
 .PHONY: build-go
 build-go: fmt deps vet
 	GOOS=darwin GOARCH=amd64 ${build_cmd} -o ${build_dir}/${name}-darwin-amd64 .

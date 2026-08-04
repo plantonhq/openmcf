@@ -13,9 +13,3 @@ metadata:
 spec:
   region: us-west-2
   signatureVersion: 2
-  subscriptions:
-    - name: test-queue
-      protocol: sqs
-      endpoint:
-        value: arn:aws:sqs:us-east-1:123456789012:test-queue
-      rawMessageDelivery: true
