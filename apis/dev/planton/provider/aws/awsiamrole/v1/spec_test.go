@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/apis/dev/planton/shared"
+	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/apis/dev/planton/shared/foreignkey/v1"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -49,9 +50,19 @@ func minimalValidRole() *AwsIamRole {
 			Name: "test-role",
 		},
 		Spec: &AwsIamRoleSpec{
-			Region:      "us-west-2",
-			TrustPolicy: lambdaTrustPolicy(),
+			Region: "us-west-2",
+			Trust:  &AwsIamRoleSpec_TrustPolicy{TrustPolicy: lambdaTrustPolicy()},
 		},
+	}
+}
+
+// minimalOidcTrust is the EKS IRSA shape: a provider pair plus one exact
+// service-account subject.
+func minimalOidcTrust() *AwsIamRoleOidcTrust {
+	return &AwsIamRoleOidcTrust{
+		ProviderArn: literalArn("arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED"),
+		ProviderUrl: literalArn("oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED"),
+		Subjects:    []string{"system:serviceaccount:kube-system:external-dns"},
 	}
 }
 
@@ -75,6 +86,53 @@ var _ = ginkgo.Describe("AwsIamRoleSpec Validation Tests", func() {
 				input.Spec.MaxSessionDuration = 7200
 				input.Spec.PermissionsBoundary = literalArn("arn:aws:iam::123456789012:policy/boundaries/workload")
 				input.Spec.ForceDetachPolicies = true
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for oidc_trust with an exact subject", func() {
+				input := minimalValidRole()
+				input.Spec.Trust = &AwsIamRoleSpec_OidcTrust{OidcTrust: minimalOidcTrust()}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for oidc_trust wired by reference", func() {
+				// The one-run composition shape: the OIDC provider deploys in
+				// the same run and both halves flow in by reference.
+				input := minimalValidRole()
+				input.Spec.Trust = &AwsIamRoleSpec_OidcTrust{OidcTrust: &AwsIamRoleOidcTrust{
+					ProviderArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+							ValueFrom: &foreignkeyv1.ValueFromRef{
+								Kind: cloudresourcekind.CloudResourceKind_AwsIamOidcProvider,
+								Name: "eks-oidc",
+							},
+						},
+					},
+					ProviderUrl: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+							ValueFrom: &foreignkeyv1.ValueFromRef{
+								Kind:      cloudresourcekind.CloudResourceKind_AwsIamOidcProvider,
+								Name:      "eks-oidc",
+								FieldPath: "status.outputs.provider_url",
+							},
+						},
+					},
+					Subjects: []string{"system:serviceaccount:karpenter:karpenter"},
+				}}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for oidc_trust with only wildcard subjects", func() {
+				// The CI-federation shape (e.g. GitHub Actions).
+				input := minimalValidRole()
+				oidcTrust := minimalOidcTrust()
+				oidcTrust.Subjects = nil
+				oidcTrust.WildcardSubjects = []string{"repo:my-org/my-repo:*"}
+				oidcTrust.Audiences = []string{"sts.amazonaws.com"}
+				input.Spec.Trust = &AwsIamRoleSpec_OidcTrust{OidcTrust: oidcTrust}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -172,9 +230,45 @@ var _ = ginkgo.Describe("AwsIamRoleSpec Validation Tests", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should return a validation error when the trust policy is missing", func() {
+			ginkgo.It("should return a validation error when neither trust arm is set", func() {
 				input := minimalValidRole()
-				input.Spec.TrustPolicy = nil
+				input.Spec.Trust = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when oidc_trust has no subjects at all", func() {
+				input := minimalValidRole()
+				oidcTrust := minimalOidcTrust()
+				oidcTrust.Subjects = nil
+				input.Spec.Trust = &AwsIamRoleSpec_OidcTrust{OidcTrust: oidcTrust}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when oidc_trust omits provider_arn", func() {
+				input := minimalValidRole()
+				oidcTrust := minimalOidcTrust()
+				oidcTrust.ProviderArn = nil
+				input.Spec.Trust = &AwsIamRoleSpec_OidcTrust{OidcTrust: oidcTrust}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when oidc_trust omits provider_url", func() {
+				input := minimalValidRole()
+				oidcTrust := minimalOidcTrust()
+				oidcTrust.ProviderUrl = nil
+				input.Spec.Trust = &AwsIamRoleSpec_OidcTrust{OidcTrust: oidcTrust}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when an oidc_trust subject entry is empty", func() {
+				input := minimalValidRole()
+				oidcTrust := minimalOidcTrust()
+				oidcTrust.Subjects = []string{""}
+				input.Spec.Trust = &AwsIamRoleSpec_OidcTrust{OidcTrust: oidcTrust}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

@@ -17,7 +17,14 @@ variable "spec" {
     region = string
     description = optional(string, "")
     path = optional(string, "")
-    trust_policy = any
+    trust_policy = optional(any)
+    oidc_trust = optional(object({
+      provider_arn = string
+      provider_url = string
+      subjects = optional(list(string), [])
+      wildcard_subjects = optional(list(string), [])
+      audiences = optional(list(string), [])
+    }))
     managed_policy_arns = optional(list(string), [])
     inline_policies = optional(any, {})
     max_session_duration = optional(number, 0)
