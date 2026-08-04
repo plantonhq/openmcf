@@ -355,7 +355,25 @@ the README. Conventions:
   not-yet-created resources cannot appear in it anyway. Feed cross-resource
   values inside Structs from render-time params instead (e.g. an account id
   scoping a service-principal condition), and teach the post-deploy tightening
-  in the README when an exact-ARN form exists.
+  in the README when an exact-ARN form exists. Before settling for a wildcard,
+  check whether the target's identifier is DETERMINISTIC from values the chart
+  already holds: many AWS ARNs compose entirely from region + account id +
+  the resource's chart-controlled name (SQS queues, S3 buckets, IAM roles by
+  name), so a policy document can name its exact resource at render time —
+  scoped now, not tightened later. Wildcards remain the honest shape only
+  where the identifier embeds a server-generated segment (hosted-zone IDs,
+  OIDC issuer paths).
+- **Cloud-side discovery tags ride `metadata.labels`.** The catalog's cloud
+  kinds stamp user labels into the provider's resource tags (identity keys
+  winning on collision), so a controller that discovers infrastructure by
+  cloud tag — Karpenter's `karpenter.sh/discovery` subnet selector is the
+  canonical case — is wired by LABELING the producing resources and matching
+  the same render-known value in the consumer's selector. No spec-level tags
+  field and no reference is needed; both sides render from the same values
+  expression. For provider-created resources the chart cannot label (an EKS
+  cluster security group), select by the tag the provider itself stamps
+  (`aws:eks:cluster-name`, re-added by EKS if removed) — verify the stamped
+  tag in the provider's documentation before relying on it.
 - **Outputs only feed `StringValueOrRef` fields — every other field type takes
   render-time literals.** A plain `string`, `repeated string` (a DNS record's
   `values`), or `map<string,string>` (an alarm's `dimensions`, a pipeline
