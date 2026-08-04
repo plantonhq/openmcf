@@ -309,13 +309,13 @@ Reference an output from another manifest as `valueFrom: {kind: AwsMemcachedElas
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.clusterId` | `string` | The identifier of the ElastiCache cluster. |
-| `status.outputs.clusterAddress` | `string` | The DNS name of the Memcached auto-discovery endpoint (without port). Clients that support auto-discovery connect here to automatically discover all nodes in the cluster. Empty for single-node clusters. |
-| `status.outputs.configurationEndpoint` | `string` | The full configuration endpoint in "address:port" format. Memcached clients use this for auto-discovery of cluster topology. This is the recommended connection endpoint for multi-node clusters. |
+| `status.outputs.cluster_id` | `string` | The identifier of the ElastiCache cluster. |
+| `status.outputs.cluster_address` | `string` | The DNS name of the Memcached auto-discovery endpoint (without port). Clients that support auto-discovery connect here to automatically discover all nodes in the cluster. Empty for single-node clusters. |
+| `status.outputs.configuration_endpoint` | `string` | The full configuration endpoint in "address:port" format. Memcached clients use this for auto-discovery of cluster topology. This is the recommended connection endpoint for multi-node clusters. |
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the ElastiCache cluster. Used in IAM policies and cross-service permissions. |
 | `status.outputs.port` | `int32` | The port on which the cluster accepts connections. |
-| `status.outputs.subnetGroupName` | `string` | The name of the ElastiCache subnet group associated with this cluster. Only populated when `subnet_ids` were provided and a subnet group was created by the module. |
-| `status.outputs.parameterGroupName` | `string` | The name of the custom parameter group associated with this cluster. Only populated when `parameters` were provided and a parameter group was created by the module. |
+| `status.outputs.subnet_group_name` | `string` | The name of the ElastiCache subnet group associated with this cluster. Only populated when `subnet_ids` were provided and a subnet group was created by the module. |
+| `status.outputs.parameter_group_name` | `string` | The name of the custom parameter group associated with this cluster. Only populated when `parameters` were provided and a parameter group was created by the module. |
 
 ## References
 

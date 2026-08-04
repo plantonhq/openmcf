@@ -113,10 +113,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsKinesisStream
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.consumerArn` | `string` | The Amazon Resource Name (ARN) of the registered stream consumer. This is the primary identifier used for Lambda event source mappings configured with enhanced fan-out (StartingPosition + ConsumerARN), IAM policies, and API calls (SubscribeToShard, DescribeStreamConsumer). Format: arn:aws:kinesis:{region}:{account}:stream/{stream-name}/consumer/{consumer-name}:{creation-timestamp} |
-| `status.outputs.consumerName` | `string` | The name of the registered stream consumer. Matches metadata.name from the resource spec. Used for human-readable identification and as the consumer name in Kinesis API calls (ListStreamConsumers filtering). |
-| `status.outputs.streamArn` | `string` | The ARN of the parent Kinesis Data Stream this consumer is registered with. Echoed back for convenience — enables downstream resources to discover the stream without a separate lookup. |
-| `status.outputs.creationTimestamp` | `string` | RFC3339 timestamp of when the consumer was registered with the stream. Useful for operational visibility and debugging registration order. |
+| `status.outputs.consumer_arn` | `string` | The Amazon Resource Name (ARN) of the registered stream consumer. This is the primary identifier used for Lambda event source mappings configured with enhanced fan-out (StartingPosition + ConsumerARN), IAM policies, and API calls (SubscribeToShard, DescribeStreamConsumer). Format: arn:aws:kinesis:{region}:{account}:stream/{stream-name}/consumer/{consumer-name}:{creation-timestamp} |
+| `status.outputs.consumer_name` | `string` | The name of the registered stream consumer. Matches metadata.name from the resource spec. Used for human-readable identification and as the consumer name in Kinesis API calls (ListStreamConsumers filtering). |
+| `status.outputs.stream_arn` | `string` | The ARN of the parent Kinesis Data Stream this consumer is registered with. Echoed back for convenience — enables downstream resources to discover the stream without a separate lookup. |
+| `status.outputs.creation_timestamp` | `string` | RFC3339 timestamp of when the consumer was registered with the stream. Useful for operational visibility and debugging registration order. |
 
 ## References
 

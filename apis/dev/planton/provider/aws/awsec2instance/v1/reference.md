@@ -986,15 +986,15 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEc2Instance, 
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.instanceId` | `string` | The instance ID (e.g. "i-0123456789abcdef0"). The primary handle: what load-balancer target groups register (an AwsLbTargetGroup instance target references this output), what the CLI and APIs address. |
+| `status.outputs.instance_id` | `string` | The instance ID (e.g. "i-0123456789abcdef0"). The primary handle: what load-balancer target groups register (an AwsLbTargetGroup instance target references this output), what the CLI and APIs address. |
 | `status.outputs.arn` | `string` | The ARN of the instance, for IAM policies and EventBridge rules scoped to this instance. |
-| `status.outputs.instanceState` | `string` | The instance lifecycle state as of the last deploy ("running", "stopped", ...). |
-| `status.outputs.availabilityZone` | `string` | The availability zone the instance runs in (e.g. "us-west-2a"). |
-| `status.outputs.privateIp` | `string` | The primary private IPv4 address. |
-| `status.outputs.privateDns` | `string` | The private DNS hostname within the VPC (e.g. "ip-10-0-1-5.us-west-2.compute.internal"). |
-| `status.outputs.publicIp` | `string` | The public IPv4 address, when one is associated. Empty for private-only instances. Note this address changes across stop/start cycles -- compose an AwsElasticIp for a stable public address. |
-| `status.outputs.publicDns` | `string` | The public DNS hostname, when a public address is associated. Empty for private-only instances. |
-| `status.outputs.primaryNetworkInterfaceId` | `string` | The ID of the primary network interface (eth0) -- the attachment point for Elastic IP associations and flow-log scoping. |
+| `status.outputs.instance_state` | `string` | The instance lifecycle state as of the last deploy ("running", "stopped", ...). |
+| `status.outputs.availability_zone` | `string` | The availability zone the instance runs in (e.g. "us-west-2a"). |
+| `status.outputs.private_ip` | `string` | The primary private IPv4 address. |
+| `status.outputs.private_dns` | `string` | The private DNS hostname within the VPC (e.g. "ip-10-0-1-5.us-west-2.compute.internal"). |
+| `status.outputs.public_ip` | `string` | The public IPv4 address, when one is associated. Empty for private-only instances. Note this address changes across stop/start cycles -- compose an AwsElasticIp for a stable public address. |
+| `status.outputs.public_dns` | `string` | The public DNS hostname, when a public address is associated. Empty for private-only instances. |
+| `status.outputs.primary_network_interface_id` | `string` | The ID of the primary network interface (eth0) -- the attachment point for Elastic IP associations and flow-log scoping. |
 
 ## References
 
@@ -1009,6 +1009,14 @@ Fields that can point at another resource's outputs:
 | `spec.secondaryNetworkInterfaces[].subnetId` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.rootBlockDevice.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.ebsBlockDevices[].kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsLbTargetGroup | `spec.targets[].targetId` | `status.outputs.instance_id` |
 
 ## See Also
 

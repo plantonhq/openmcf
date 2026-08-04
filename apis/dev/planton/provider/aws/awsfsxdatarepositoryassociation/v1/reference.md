@@ -193,9 +193,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsFsxDataReposi
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.associationId` | `string` | The AWS-assigned association ID (dra-...). The identifier FSx data repository task APIs and the console use to address this link. |
-| `status.outputs.associationArn` | `string` | The Amazon Resource Name of the association, for IAM resource-level permissions. |
-| `status.outputs.fileSystemId` | `string` | The ID of the Lustre file system the association is attached to (fs-...), echoed for downstream composition without re-resolving the file-system reference. |
+| `status.outputs.association_id` | `string` | The AWS-assigned association ID (dra-...). The identifier FSx data repository task APIs and the console use to address this link. |
+| `status.outputs.association_arn` | `string` | The Amazon Resource Name of the association, for IAM resource-level permissions. |
+| `status.outputs.file_system_id` | `string` | The ID of the Lustre file system the association is attached to (fs-...), echoed for downstream composition without re-resolving the file-system reference. |
 
 ## References
 

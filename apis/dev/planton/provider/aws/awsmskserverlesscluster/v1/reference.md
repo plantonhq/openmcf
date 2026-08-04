@@ -97,10 +97,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsMskServerless
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.clusterArn` | `string` | cluster_arn is the Amazon Resource Name of the MSK Serverless cluster -- also the resource identifier AWS uses for it. Referenced in IAM policies (kafka-cluster:* actions) and Lambda event source mappings. |
-| `status.outputs.clusterName` | `string` | cluster_name is the human-readable name of the cluster. |
-| `status.outputs.clusterUuid` | `string` | cluster_uuid is the unique identifier extracted from the cluster ARN. |
-| `status.outputs.bootstrapBrokersSaslIam` | `string` | bootstrap_brokers_sasl_iam is the comma-separated SASL/IAM broker endpoint list (port 9098) -- the only connection string serverless MSK exposes. |
+| `status.outputs.cluster_arn` | `string` | cluster_arn is the Amazon Resource Name of the MSK Serverless cluster -- also the resource identifier AWS uses for it. Referenced in IAM policies (kafka-cluster:* actions) and Lambda event source mappings. |
+| `status.outputs.cluster_name` | `string` | cluster_name is the human-readable name of the cluster. |
+| `status.outputs.cluster_uuid` | `string` | cluster_uuid is the unique identifier extracted from the cluster ARN. |
+| `status.outputs.bootstrap_brokers_sasl_iam` | `string` | bootstrap_brokers_sasl_iam is the comma-separated SASL/IAM broker endpoint list (port 9098) -- the only connection string serverless MSK exposes. |
 
 ## References
 

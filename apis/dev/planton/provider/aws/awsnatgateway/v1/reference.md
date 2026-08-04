@@ -168,11 +168,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsNatGateway, n
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.natGatewayId` | `string` | The NAT gateway's id (e.g. "nat-0abc123"). This is the value a subnet route uses as its target_id when target_type is nat_gateway. |
-| `status.outputs.publicIp` | `string` | The public IPv4 address of a public gateway (the Elastic IP's address). Empty for a private gateway. |
-| `status.outputs.privateIp` | `string` | The private IPv4 address assigned to the gateway within its subnet. |
-| `status.outputs.networkInterfaceId` | `string` | The id of the elastic network interface AWS created for the gateway. |
-| `status.outputs.subnetId` | `string` | The id of the subnet the gateway lives in. |
+| `status.outputs.nat_gateway_id` | `string` | The NAT gateway's id (e.g. "nat-0abc123"). This is the value a subnet route uses as its target_id when target_type is nat_gateway. |
+| `status.outputs.public_ip` | `string` | The public IPv4 address of a public gateway (the Elastic IP's address). Empty for a private gateway. |
+| `status.outputs.private_ip` | `string` | The private IPv4 address assigned to the gateway within its subnet. |
+| `status.outputs.network_interface_id` | `string` | The id of the elastic network interface AWS created for the gateway. |
+| `status.outputs.subnet_id` | `string` | The id of the subnet the gateway lives in. |
 | `status.outputs.region` | `string` | The AWS region the NAT gateway was created in. Echoed so downstream tooling and verifiers can target the correct region. |
 
 ## References

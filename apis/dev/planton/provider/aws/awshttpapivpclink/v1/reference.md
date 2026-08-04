@@ -103,8 +103,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsHttpApiVpcLin
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.vpcLinkId` | `string` | The VPC link ID (e.g. "abc123"). This is the identifier private integrations set as their connection_id. |
-| `status.outputs.vpcLinkArn` | `string` | The ARN of the VPC link. Useful for IAM policies and tag-based governance. |
+| `status.outputs.vpc_link_id` | `string` | The VPC link ID (e.g. "abc123"). This is the identifier private integrations set as their connection_id. |
+| `status.outputs.vpc_link_arn` | `string` | The ARN of the VPC link. Useful for IAM policies and tag-based governance. |
 
 ## References
 
@@ -114,6 +114,14 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsHttpApiGateway | `spec.routes[].integration.connectionId` | `status.outputs.vpc_link_id` |
 
 ## See Also
 

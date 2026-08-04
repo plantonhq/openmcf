@@ -490,16 +490,16 @@ Reference an output from another manifest as `valueFrom: {kind: AwsMwaaEnvironme
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.environmentArn` | `string` | environment_arn is the Amazon Resource Name of the MWAA environment, used in IAM policies and cross-service references. |
-| `status.outputs.environmentName` | `string` | environment_name is the human-readable name of the environment. |
-| `status.outputs.webserverUrl` | `string` | webserver_url is the URL of the Airflow web UI. Format: "{random-id}.{region}.airflow.amazonaws.com". Access depends on webserver_access_mode (PRIVATE_ONLY requires VPC access, PUBLIC_ONLY is internet-accessible). |
-| `status.outputs.airflowVersion` | `string` | airflow_version is the effective Apache Airflow version running in the environment. |
-| `status.outputs.serviceRoleArn` | `string` | service_role_arn is the ARN of the AWS service role created by MWAA for managing environment infrastructure (VPC endpoints, CloudWatch Logs, etc.). |
-| `status.outputs.environmentClass` | `string` | environment_class is the effective environment class (compute capacity). |
+| `status.outputs.environment_arn` | `string` | environment_arn is the Amazon Resource Name of the MWAA environment, used in IAM policies and cross-service references. |
+| `status.outputs.environment_name` | `string` | environment_name is the human-readable name of the environment. |
+| `status.outputs.webserver_url` | `string` | webserver_url is the URL of the Airflow web UI. Format: "{random-id}.{region}.airflow.amazonaws.com". Access depends on webserver_access_mode (PRIVATE_ONLY requires VPC access, PUBLIC_ONLY is internet-accessible). |
+| `status.outputs.airflow_version` | `string` | airflow_version is the effective Apache Airflow version running in the environment. |
+| `status.outputs.service_role_arn` | `string` | service_role_arn is the ARN of the AWS service role created by MWAA for managing environment infrastructure (VPC endpoints, CloudWatch Logs, etc.). |
+| `status.outputs.environment_class` | `string` | environment_class is the effective environment class (compute capacity). |
 | `status.outputs.status` | `string` | status is the current status of the MWAA environment (e.g., "AVAILABLE", "CREATING", "UPDATING", "DELETING"). |
-| `status.outputs.createdAt` | `string` | created_at is the timestamp when the environment was created. |
-| `status.outputs.databaseVpcEndpointService` | `string` | database_vpc_endpoint_service is the VPC endpoint service name for the environment's Airflow metadata database. When endpoint_management is "CUSTOMER", create an AwsVpcEndpoint against this service name. |
-| `status.outputs.webserverVpcEndpointService` | `string` | webserver_vpc_endpoint_service is the VPC endpoint service name for the environment's Airflow webserver. When endpoint_management is "CUSTOMER", create an AwsVpcEndpoint against this service name. Empty when the webserver is PUBLIC_ONLY. |
+| `status.outputs.created_at` | `string` | created_at is the timestamp when the environment was created. |
+| `status.outputs.database_vpc_endpoint_service` | `string` | database_vpc_endpoint_service is the VPC endpoint service name for the environment's Airflow metadata database. When endpoint_management is "CUSTOMER", create an AwsVpcEndpoint against this service name. |
+| `status.outputs.webserver_vpc_endpoint_service` | `string` | webserver_vpc_endpoint_service is the VPC endpoint service name for the environment's Airflow webserver. When endpoint_management is "CUSTOMER", create an AwsVpcEndpoint against this service name. Empty when the webserver is PUBLIC_ONLY. |
 
 ## References
 

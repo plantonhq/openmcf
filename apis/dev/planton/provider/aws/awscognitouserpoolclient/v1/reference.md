@@ -421,9 +421,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCognitoUserPo
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.clientId` | `string` | The app client ID (e.g. "1a2b3c4d5e6f7g8h9i0j"). The public identifier applications present at sign-in and token endpoints -- and the "aud" claim JWT authorizers validate. |
-| `status.outputs.clientSecret` | `string` | The app client secret. Only populated when `generate_secret` is true. Sensitive -- treat as a credential and handle securely; confidential clients present it at the token endpoint. |
-| `status.outputs.userPoolId` | `string` | The user pool this client belongs to, resolved from the spec reference. Application configs typically need the (pool id, client id) pair together, and a consumer holding only this resource gets both from its outputs. |
+| `status.outputs.client_id` | `string` | The app client ID (e.g. "1a2b3c4d5e6f7g8h9i0j"). The public identifier applications present at sign-in and token endpoints -- and the "aud" claim JWT authorizers validate. |
+| `status.outputs.client_secret` | `string` | The app client secret. Only populated when `generate_secret` is true. Sensitive -- treat as a credential and handle securely; confidential clients present it at the token endpoint. |
+| `status.outputs.user_pool_id` | `string` | The user pool this client belongs to, resolved from the spec reference. Application configs typically need the (pool id, client id) pair together, and a consumer holding only this resource gets both from its outputs. |
 
 ## References
 
@@ -434,6 +434,16 @@ Fields that can point at another resource's outputs:
 | `spec.userPoolId` | AwsCognitoUserPool | `status.outputs.user_pool_id` |
 | `spec.supportedIdentityProviders` | AwsCognitoIdentityProvider | `status.outputs.provider_name` |
 | `spec.analyticsConfiguration.roleArn` | AwsIamRole | `status.outputs.role_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsHttpApiGateway | `spec.authorizers[].jwtConfiguration.audiences` | `status.outputs.client_id` |
+| AwsLbListener | `spec.defaultActions[].authenticateCognito.userPoolClientId` | `status.outputs.client_id` |
+| AwsLbListenerRule | `spec.actions[].authenticateCognito.userPoolClientId` | `status.outputs.client_id` |
 
 ## See Also
 

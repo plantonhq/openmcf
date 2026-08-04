@@ -1239,10 +1239,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEcsService, n
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.serviceArn` | `string` | The ARN of the service (e.g. "arn:aws:ecs:us-west-2:123456789012: service/my-cluster/api"). The primary handle for IAM policies, audit tooling, and imports; it encodes both the cluster and service names. |
-| `status.outputs.serviceName` | `string` | The service's name (metadata.name), the ECS API's join key together with the cluster. |
-| `status.outputs.clusterArn` | `string` | The ARN of the cluster the service runs in -- resolved from the cluster_arn reference, republished so downstream consumers can join on it without re-resolving the reference chain. |
-| `status.outputs.taskDefinitionArn` | `string` | The full task definition ARN (family:revision) this deployment of the service is running -- the resolved value of the task_definition reference at deploy time. |
+| `status.outputs.service_arn` | `string` | The ARN of the service (e.g. "arn:aws:ecs:us-west-2:123456789012: service/my-cluster/api"). The primary handle for IAM policies, audit tooling, and imports; it encodes both the cluster and service names. |
+| `status.outputs.service_name` | `string` | The service's name (metadata.name), the ECS API's join key together with the cluster. |
+| `status.outputs.cluster_arn` | `string` | The ARN of the cluster the service runs in -- resolved from the cluster_arn reference, republished so downstream consumers can join on it without re-resolving the reference chain. |
+| `status.outputs.task_definition_arn` | `string` | The full task definition ARN (family:revision) this deployment of the service is running -- the resolved value of the task_definition reference at deploy time. |
 
 ## References
 

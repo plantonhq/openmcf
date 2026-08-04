@@ -248,11 +248,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsServerlessEla
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the serverless cache. Used in IAM policies and cross-service permissions. |
-| `status.outputs.endpointAddress` | `string` | The primary connection endpoint DNS address. All clients connect here for read-write operations. |
-| `status.outputs.endpointPort` | `int32` | The port of the primary connection endpoint. |
-| `status.outputs.readerEndpointAddress` | `string` | The reader endpoint DNS address. Distributes read traffic for Redis/Valkey engines. Empty for Memcached (no read replicas). |
-| `status.outputs.readerEndpointPort` | `int32` | The port of the reader endpoint. |
-| `status.outputs.fullEngineVersion` | `string` | The full engine version string (e.g., "7.1.0"). Useful for confirming the exact version deployed when only major_engine_version was specified. |
+| `status.outputs.endpoint_address` | `string` | The primary connection endpoint DNS address. All clients connect here for read-write operations. |
+| `status.outputs.endpoint_port` | `int32` | The port of the primary connection endpoint. |
+| `status.outputs.reader_endpoint_address` | `string` | The reader endpoint DNS address. Distributes read traffic for Redis/Valkey engines. Empty for Memcached (no read replicas). |
+| `status.outputs.reader_endpoint_port` | `int32` | The port of the reader endpoint. |
+| `status.outputs.full_engine_version` | `string` | The full engine version string (e.g., "7.1.0"). Useful for confirming the exact version deployed when only major_engine_version was specified. |
 | `status.outputs.name` | `string` | The name of the serverless cache. Matches the metadata ID used during creation. Useful for downstream references and data source lookups. |
 
 ## References

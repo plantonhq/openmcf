@@ -253,9 +253,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsGlueCatalogDa
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.databaseName` | `string` | The name of the Glue Data Catalog database. Used in Athena queries (FROM database.table), Glue crawler configurations, Glue ETL job scripts, and Redshift Spectrum external schema definitions. The database name is unique within a catalog (AWS account + region). |
-| `status.outputs.databaseArn` | `string` | The Amazon Resource Name (ARN) of the Glue Data Catalog database. Used for IAM policies, Lake Formation permissions, and cross-service authorization. Format: arn:aws:glue:{region}:{account-id}:database/{database-name} |
-| `status.outputs.catalogId` | `string` | The ID of the AWS Glue Data Catalog that contains this database. In most cases this is the AWS Account ID. Useful for downstream resources that require the catalog context (e.g., Glue crawlers, cross-account references). |
+| `status.outputs.database_name` | `string` | The name of the Glue Data Catalog database. Used in Athena queries (FROM database.table), Glue crawler configurations, Glue ETL job scripts, and Redshift Spectrum external schema definitions. The database name is unique within a catalog (AWS account + region). |
+| `status.outputs.database_arn` | `string` | The Amazon Resource Name (ARN) of the Glue Data Catalog database. Used for IAM policies, Lake Formation permissions, and cross-service authorization. Format: arn:aws:glue:{region}:{account-id}:database/{database-name} |
+| `status.outputs.catalog_id` | `string` | The ID of the AWS Glue Data Catalog that contains this database. In most cases this is the AWS Account ID. Useful for downstream resources that require the catalog context (e.g., Glue crawlers, cross-account references). |
 
 ## See Also
 

@@ -750,12 +750,12 @@ Reference an output from another manifest as `valueFrom: {kind: AwsHttpApiGatewa
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.apiId` | `string` | The API Gateway API identifier. Used for constructing resource ARNs and referencing the API in other AWS services. |
-| `status.outputs.apiEndpoint` | `string` | The default endpoint URL of the API. Format: https://{api-id}.execute-api.{region}.amazonaws.com Clients use this URL to invoke the API when no custom domain is configured. |
-| `status.outputs.apiArn` | `string` | The Amazon Resource Name (ARN) of the API. Used for IAM policies and resource-based permissions. |
-| `status.outputs.executionArn` | `string` | The execution ARN prefix for the API. Used in Lambda resource-based policies to grant API Gateway permission to invoke Lambda functions. Format: arn:aws:execute-api:{region}:{account-id}:{api-id} Append "/*/*" for all stages and routes, or "/{stage}/{method}/{path}" for specific permissions. |
-| `status.outputs.stageInvokeUrl` | `string` | The invoke URL for the deployed stage. For the "$default" stage this is the same as api_endpoint. For named stages the URL includes the stage name: https://{api-id}.execute-api.{region}.amazonaws.com/{stage-name} |
-| `status.outputs.stageName` | `string` | The name of the deployed stage (e.g., "$default", "prod"). |
+| `status.outputs.api_id` | `string` | The API Gateway API identifier. Used for constructing resource ARNs and referencing the API in other AWS services. |
+| `status.outputs.api_endpoint` | `string` | The default endpoint URL of the API. Format: https://{api-id}.execute-api.{region}.amazonaws.com Clients use this URL to invoke the API when no custom domain is configured. |
+| `status.outputs.api_arn` | `string` | The Amazon Resource Name (ARN) of the API. Used for IAM policies and resource-based permissions. |
+| `status.outputs.execution_arn` | `string` | The execution ARN prefix for the API. Used in Lambda resource-based policies to grant API Gateway permission to invoke Lambda functions. Format: arn:aws:execute-api:{region}:{account-id}:{api-id} Append "/*/*" for all stages and routes, or "/{stage}/{method}/{path}" for specific permissions. |
+| `status.outputs.stage_invoke_url` | `string` | The invoke URL for the deployed stage. For the "$default" stage this is the same as api_endpoint. For named stages the URL includes the stage name: https://{api-id}.execute-api.{region}.amazonaws.com/{stage-name} |
+| `status.outputs.stage_name` | `string` | The name of the deployed stage (e.g., "$default", "prod"). |
 
 ## References
 
@@ -771,6 +771,14 @@ Fields that can point at another resource's outputs:
 | `spec.authorizers[].jwtConfiguration.audiences` | AwsCognitoUserPoolClient | `status.outputs.client_id` |
 | `spec.authorizers[].authorizerUri` | AwsLambda | `status.outputs.function_arn` |
 | `spec.authorizers[].authorizerCredentialsArn` | AwsIamRole | `status.outputs.role_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsHttpApiDomain | `spec.apiMappings[].apiId` | `status.outputs.api_id` |
 
 ## See Also
 

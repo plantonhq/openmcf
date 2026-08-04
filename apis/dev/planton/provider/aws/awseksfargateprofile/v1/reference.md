@@ -152,8 +152,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEksFargatePro
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.fargateProfileArn` | `string` | fargate_profile_arn is the Amazon Resource Name of the profile -- arn:aws:eks:<region>:<account>:fargateprofile/<cluster>/<name>/<uuid>. |
-| `status.outputs.fargateProfileName` | `string` | fargate_profile_name is the name of the profile. |
+| `status.outputs.fargate_profile_arn` | `string` | fargate_profile_arn is the Amazon Resource Name of the profile -- arn:aws:eks:<region>:<account>:fargateprofile/<cluster>/<name>/<uuid>. |
+| `status.outputs.fargate_profile_name` | `string` | fargate_profile_name is the name of the profile. |
 | `status.outputs.status` | `string` | status is the profile's state after provisioning -- "ACTIVE" on a successful create. |
 
 ## References

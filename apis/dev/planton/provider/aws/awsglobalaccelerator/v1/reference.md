@@ -507,13 +507,13 @@ Reference an output from another manifest as `valueFrom: {kind: AwsGlobalAcceler
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.acceleratorArn` | `string` | The Amazon Resource Name of the Global Accelerator. Used in IAM policies and cross-service permissions. |
-| `status.outputs.acceleratorDnsName` | `string` | The DNS name assigned to the accelerator (e.g., "a1234567890abcdef.awsglobalaccelerator.com"). Clients connect to this DNS name to reach the accelerator. Create Route53 alias records pointing custom domains here. |
-| `status.outputs.acceleratorDualStackDnsName` | `string` | The dual-stack DNS name assigned to the accelerator. Only populated when ip_address_type is DUAL_STACK. Supports both IPv4 and IPv6 clients. |
-| `status.outputs.acceleratorHostedZoneId` | `string` | The Route53 hosted zone ID for the accelerator's DNS name. Always Z2BJ6XQ5FK7U4H for Global Accelerator. Required when creating Route53 alias records that point to this accelerator. |
-| `status.outputs.acceleratorIpAddresses` | `[]string` | The static anycast IP addresses assigned to the accelerator. Typically two IPv4 addresses. These never change for the lifetime of the accelerator (unless using BYOIP and the accelerator is recreated). |
-| `status.outputs.listenerArns` | `map<string, string>` | Map of listener name to listener ARN. The keys correspond to the name field of each entry in spec.listeners. Downstream resources can reference specific listener ARNs via valueFrom using status.outputs.listener_arns.{name}. |
-| `status.outputs.endpointGroupArns` | `map<string, string>` | Map of composite key to endpoint group ARN. Keys use the format "listener_name/group_name" to uniquely identify each endpoint group across the accelerator. Downstream resources can reference specific endpoint group ARNs via valueFrom. |
+| `status.outputs.accelerator_arn` | `string` | The Amazon Resource Name of the Global Accelerator. Used in IAM policies and cross-service permissions. |
+| `status.outputs.accelerator_dns_name` | `string` | The DNS name assigned to the accelerator (e.g., "a1234567890abcdef.awsglobalaccelerator.com"). Clients connect to this DNS name to reach the accelerator. Create Route53 alias records pointing custom domains here. |
+| `status.outputs.accelerator_dual_stack_dns_name` | `string` | The dual-stack DNS name assigned to the accelerator. Only populated when ip_address_type is DUAL_STACK. Supports both IPv4 and IPv6 clients. |
+| `status.outputs.accelerator_hosted_zone_id` | `string` | The Route53 hosted zone ID for the accelerator's DNS name. Always Z2BJ6XQ5FK7U4H for Global Accelerator. Required when creating Route53 alias records that point to this accelerator. |
+| `status.outputs.accelerator_ip_addresses` | `[]string` | The static anycast IP addresses assigned to the accelerator. Typically two IPv4 addresses. These never change for the lifetime of the accelerator (unless using BYOIP and the accelerator is recreated). |
+| `status.outputs.listener_arns` | `map<string, string>` | Map of listener name to listener ARN. The keys correspond to the name field of each entry in spec.listeners. Downstream resources can reference specific listener ARNs via valueFrom using status.outputs.listener_arns.{name}. |
+| `status.outputs.endpoint_group_arns` | `map<string, string>` | Map of composite key to endpoint group ARN. Keys use the format "listener_name/group_name" to uniquely identify each endpoint group across the accelerator. Downstream resources can reference specific endpoint group ARNs via valueFrom. |
 
 ## References
 

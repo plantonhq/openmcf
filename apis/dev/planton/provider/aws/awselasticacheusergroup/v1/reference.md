@@ -101,7 +101,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsElasticacheUs
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.userGroupId` | `string` | The group's AWS identifier (the user group id). This is what caches reference to attach RBAC and what the AWS CLI/API address. |
+| `status.outputs.user_group_id` | `string` | The group's AWS identifier (the user group id). This is what caches reference to attach RBAC and what the AWS CLI/API address. |
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the user group. Used in IAM policies and cross-service permissions. |
 
 ## References
@@ -111,6 +111,15 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.userIds` | AwsElasticacheUser | `status.outputs.user_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsRedisElasticache | `spec.userGroupIds` | `status.outputs.user_group_id` |
+| AwsServerlessElasticache | `spec.userGroupId` | `status.outputs.user_group_id` |
 
 ## See Also
 

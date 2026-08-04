@@ -1214,14 +1214,14 @@ Reference an output from another manifest as `valueFrom: {kind: AwsS3Bucket, nam
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.bucketId` | `string` | id (name) of the S3 bucket created on AWS |
-| `status.outputs.bucketArn` | `string` | ARN (Amazon Resource Name) of the S3 bucket Format: arn:aws:s3:::bucket-name Used for IAM policies, bucket policies, and cross-account access |
+| `status.outputs.bucket_id` | `string` | id (name) of the S3 bucket created on AWS |
+| `status.outputs.bucket_arn` | `string` | ARN (Amazon Resource Name) of the S3 bucket Format: arn:aws:s3:::bucket-name Used for IAM policies, bucket policies, and cross-account access |
 | `status.outputs.region` | `string` | AWS region where the bucket is created |
-| `status.outputs.bucketRegionalDomainName` | `string` | Regional domain name of the S3 bucket Format: bucket-name.s3.region.amazonaws.com Used for accessing bucket via regional endpoint |
-| `status.outputs.hostedZoneId` | `string` | Hosted zone ID for the S3 bucket's region Used for Route53 alias records pointing to S3 bucket |
-| `status.outputs.bucketDomainName` | `string` | Global (legacy path-style) domain name of the S3 bucket Format: bucket-name.s3.amazonaws.com |
-| `status.outputs.websiteEndpoint` | `string` | Website endpoint for the bucket, populated only when static website hosting is configured Format: bucket-name.s3-website-region.amazonaws.com (or s3-website.region for newer regions) Used as a CloudFront custom origin or direct HTTP website address |
-| `status.outputs.websiteDomain` | `string` | Website domain of the region's S3 website service, populated only when static website hosting is configured Format: s3-website-region.amazonaws.com Used for Route53 alias records pointing to the website endpoint |
+| `status.outputs.bucket_regional_domain_name` | `string` | Regional domain name of the S3 bucket Format: bucket-name.s3.region.amazonaws.com Used for accessing bucket via regional endpoint |
+| `status.outputs.hosted_zone_id` | `string` | Hosted zone ID for the S3 bucket's region Used for Route53 alias records pointing to S3 bucket |
+| `status.outputs.bucket_domain_name` | `string` | Global (legacy path-style) domain name of the S3 bucket Format: bucket-name.s3.amazonaws.com |
+| `status.outputs.website_endpoint` | `string` | Website endpoint for the bucket, populated only when static website hosting is configured Format: bucket-name.s3-website-region.amazonaws.com (or s3-website.region for newer regions) Used as a CloudFront custom origin or direct HTTP website address |
+| `status.outputs.website_domain` | `string` | Website domain of the region's S3 website service, populated only when static website hosting is configured Format: s3-website-region.amazonaws.com Used for Route53 alias records pointing to the website endpoint |
 
 ## References
 
@@ -1237,6 +1237,41 @@ Fields that can point at another resource's outputs:
 | `spec.notification.lambdaFunctions[].lambdaFunctionArn` | AwsLambda | `status.outputs.function_arn` |
 | `spec.notification.queues[].queueArn` | AwsSqsQueue | `status.outputs.queue_arn` |
 | `spec.notification.topics[].topicArn` | AwsSnsTopic | `status.outputs.topic_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAlb | `spec.accessLogs.bucket` | `status.outputs.bucket_id` |
+| AwsAlb | `spec.connectionLogs.bucket` | `status.outputs.bucket_id` |
+| AwsAlb | `spec.healthCheckLogs.bucket` | `status.outputs.bucket_id` |
+| AwsCodeBuildProject | `spec.artifacts.location` | `status.outputs.bucket_id` |
+| AwsCodeBuildProject | `spec.secondaryArtifacts[].location` | `status.outputs.bucket_id` |
+| AwsCodeBuildProject | `spec.cache.location` | `status.outputs.bucket_id` |
+| AwsCodeBuildProject | `spec.logsConfig.s3Logs.location` | `status.outputs.bucket_id` |
+| AwsCodePipeline | `spec.artifactStores[].location` | `status.outputs.bucket_id` |
+| AwsCognitoUserPool | `spec.logConfigurations[].s3BucketArn` | `status.outputs.bucket_arn` |
+| AwsDynamodb | `spec.importTable.s3Bucket` | `status.outputs.bucket_id` |
+| AwsGlobalAccelerator | `spec.flowLogs.s3Bucket` | `status.outputs.bucket_id` |
+| AwsKinesisFirehose | `spec.extendedS3.bucketArn` | `status.outputs.bucket_arn` |
+| AwsKinesisFirehose | `spec.extendedS3.s3Backup.bucketArn` | `status.outputs.bucket_arn` |
+| AwsKinesisFirehose | `spec.opensearch.s3Config.bucketArn` | `status.outputs.bucket_arn` |
+| AwsKinesisFirehose | `spec.opensearchServerless.s3Config.bucketArn` | `status.outputs.bucket_arn` |
+| AwsKinesisFirehose | `spec.httpEndpoint.s3Config.bucketArn` | `status.outputs.bucket_arn` |
+| AwsKinesisFirehose | `spec.redshift.s3Config.bucketArn` | `status.outputs.bucket_arn` |
+| AwsKinesisFirehose | `spec.redshift.s3Backup.bucketArn` | `status.outputs.bucket_arn` |
+| AwsKinesisFirehose | `spec.splunk.s3Config.bucketArn` | `status.outputs.bucket_arn` |
+| AwsKinesisFirehose | `spec.snowflake.s3Config.bucketArn` | `status.outputs.bucket_arn` |
+| AwsKinesisFirehose | `spec.iceberg.s3Config.bucketArn` | `status.outputs.bucket_arn` |
+| AwsLambda | `spec.s3.bucket` | `status.outputs.bucket_id` |
+| AwsMskCluster | `spec.logging.s3.bucket` | `status.outputs.bucket_id` |
+| AwsMwaaEnvironment | `spec.sourceBucketArn` | `status.outputs.bucket_arn` |
+| AwsNlb | `spec.accessLogs.bucket` | `status.outputs.bucket_id` |
+| AwsS3Bucket | `spec.replication.rules[].destination.bucketArn` | `status.outputs.bucket_arn` |
+| AwsS3Bucket | `spec.logging.targetBucket` | `status.outputs.bucket_id` |
+| AwsS3ObjectSet | `spec.bucket` | `status.outputs.bucket_id` |
 
 ## See Also
 

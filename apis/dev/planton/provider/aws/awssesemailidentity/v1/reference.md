@@ -232,11 +232,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSesEmailIdent
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.identityArn` | `string` | The Amazon Resource Name (ARN) of the identity -- the resource for identity-policy grants and IAM statements that scope sending. |
-| `status.outputs.emailIdentity` | `string` | The identity string itself (the domain or email address) -- the join key downstream automation uses to compose DNS names. |
-| `status.outputs.identityType` | `string` | The identity type AWS classified this as: "DOMAIN" or "EMAIL_ADDRESS". |
-| `status.outputs.verificationStatus` | `string` | The identity's verification status at deploy time: "PENDING" until the DKIM CNAMEs (domain) or the confirmation link (email address) have been acted on, then "SUCCESS". A PENDING identity exists but cannot send yet -- publish the dkim_tokens records to complete domain verification. |
-| `status.outputs.dkimTokens` | `[]string` | Easy DKIM's three CNAME tokens. Publish each as "<token>._domainkey.<domain>" CNAME "<token>.dkim.amazonses.com" (composable with AwsRoute53DnsRecord); SES flips the identity to verified once it sees them. Empty for BYODKIM (you publish your own selector record) and for email-address identities. |
+| `status.outputs.identity_arn` | `string` | The Amazon Resource Name (ARN) of the identity -- the resource for identity-policy grants and IAM statements that scope sending. |
+| `status.outputs.email_identity` | `string` | The identity string itself (the domain or email address) -- the join key downstream automation uses to compose DNS names. |
+| `status.outputs.identity_type` | `string` | The identity type AWS classified this as: "DOMAIN" or "EMAIL_ADDRESS". |
+| `status.outputs.verification_status` | `string` | The identity's verification status at deploy time: "PENDING" until the DKIM CNAMEs (domain) or the confirmation link (email address) have been acted on, then "SUCCESS". A PENDING identity exists but cannot send yet -- publish the dkim_tokens records to complete domain verification. |
+| `status.outputs.dkim_tokens` | `[]string` | Easy DKIM's three CNAME tokens. Publish each as "<token>._domainkey.<domain>" CNAME "<token>.dkim.amazonses.com" (composable with AwsRoute53DnsRecord); SES flips the identity to verified once it sees them. Empty for BYODKIM (you publish your own selector record) and for email-address identities. |
 
 ## References
 

@@ -156,12 +156,12 @@ Reference an output from another manifest as `valueFrom: {kind: AwsIamUser, name
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.userArn` | `string` | user_arn is the ARN of the created IAM user. |
-| `status.outputs.accessKeyId` | `string` | access_key_id is the access key ID for the user (present if an access key was created). |
-| `status.outputs.secretAccessKey` | `string` | secret_access_key is the base64-encoded secret key associated with the access key. This value is sensitive and should be handled securely. |
-| `status.outputs.consoleUrl` | `string` | console_url is the AWS console sign-in URL for this user. |
-| `status.outputs.userName` | `string` | user_name is the friendly name of the IAM user. |
-| `status.outputs.userId` | `string` | user_id is the stable unique ID of the IAM user. |
+| `status.outputs.user_arn` | `string` | user_arn is the ARN of the created IAM user. |
+| `status.outputs.access_key_id` | `string` | access_key_id is the access key ID for the user (present if an access key was created). |
+| `status.outputs.secret_access_key` | `string` | secret_access_key is the base64-encoded secret key associated with the access key. This value is sensitive and should be handled securely. |
+| `status.outputs.console_url` | `string` | console_url is the AWS console sign-in URL for this user. |
+| `status.outputs.user_name` | `string` | user_name is the friendly name of the IAM user. |
+| `status.outputs.user_id` | `string` | user_id is the stable unique ID of the IAM user. |
 
 ## References
 

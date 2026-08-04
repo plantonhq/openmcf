@@ -419,8 +419,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSesConfigurat
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.configurationSetArn` | `string` | The Amazon Resource Name (ARN) of the configuration set -- the target for IAM policies that scope who may send under this set. |
-| `status.outputs.configurationSetName` | `string` | The configuration set's name (derived from metadata.name) -- what email identities reference through their configuration_set field and what SendEmail calls name explicitly. |
+| `status.outputs.configuration_set_arn` | `string` | The Amazon Resource Name (ARN) of the configuration set -- the target for IAM policies that scope who may send under this set. |
+| `status.outputs.configuration_set_name` | `string` | The configuration set's name (derived from metadata.name) -- what email identities reference through their configuration_set field and what SendEmail calls name explicitly. |
 
 ## References
 
@@ -432,6 +432,14 @@ Fields that can point at another resource's outputs:
 | `spec.eventDestinations[].firehose.deliveryStream` | AwsKinesisFirehose | `status.outputs.delivery_stream_arn` |
 | `spec.eventDestinations[].firehose.iamRole` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.eventDestinations[].snsTopic` | AwsSnsTopic | `status.outputs.topic_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsSesEmailIdentity | `spec.configurationSet` | `status.outputs.configuration_set_name` |
 
 ## See Also
 

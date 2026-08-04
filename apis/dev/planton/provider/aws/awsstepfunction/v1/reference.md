@@ -236,12 +236,12 @@ Reference an output from another manifest as `valueFrom: {kind: AwsStepFunction,
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.stateMachineArn` | `string` | The Amazon Resource Name (ARN) of the state machine. This is the primary identifier used for invoking the state machine and for cross-service references (EventBridge targets, API Gateway integrations, IAM policies). |
-| `status.outputs.stateMachineName` | `string` | The name of the state machine. Useful for dashboards, monitoring, and human-readable references in logs and alerts. |
-| `status.outputs.stateMachineVersionArn` | `string` | The ARN of the most recently published version of the state machine (e.g. "...:stateMachine:orders:3"). Populated only when spec.publish is true. Point consumers (EventBridge targets, aliases) at this ARN to pin them to an immutable snapshot instead of the mutable state machine. |
-| `status.outputs.revisionId` | `string` | The revision identifier of the current state machine definition. AWS assigns a new revision id on every definition or configuration change, whether or not a version is published. Useful for change auditing. |
+| `status.outputs.state_machine_arn` | `string` | The Amazon Resource Name (ARN) of the state machine. This is the primary identifier used for invoking the state machine and for cross-service references (EventBridge targets, API Gateway integrations, IAM policies). |
+| `status.outputs.state_machine_name` | `string` | The name of the state machine. Useful for dashboards, monitoring, and human-readable references in logs and alerts. |
+| `status.outputs.state_machine_version_arn` | `string` | The ARN of the most recently published version of the state machine (e.g. "...:stateMachine:orders:3"). Populated only when spec.publish is true. Point consumers (EventBridge targets, aliases) at this ARN to pin them to an immutable snapshot instead of the mutable state machine. |
+| `status.outputs.revision_id` | `string` | The revision identifier of the current state machine definition. AWS assigns a new revision id on every definition or configuration change, whether or not a version is published. Useful for change auditing. |
 | `status.outputs.status` | `string` | Lifecycle status of the state machine as reported by AWS (e.g. "ACTIVE", "DELETING"). |
-| `status.outputs.creationDate` | `string` | RFC3339 timestamp of when the state machine was created. |
+| `status.outputs.creation_date` | `string` | RFC3339 timestamp of when the state machine was created. |
 
 ## References
 

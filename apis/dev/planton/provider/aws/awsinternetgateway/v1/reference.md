@@ -78,9 +78,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsInternetGatew
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.internetGatewayId` | `string` | The internet gateway's id (e.g. "igw-0abc123"). This is the value a subnet route uses as its target_id when target_type is internet_gateway. |
-| `status.outputs.internetGatewayArn` | `string` | The internet gateway's ARN. |
-| `status.outputs.vpcId` | `string` | The id of the VPC this gateway is attached to. |
+| `status.outputs.internet_gateway_id` | `string` | The internet gateway's id (e.g. "igw-0abc123"). This is the value a subnet route uses as its target_id when target_type is internet_gateway. |
+| `status.outputs.internet_gateway_arn` | `string` | The internet gateway's ARN. |
+| `status.outputs.vpc_id` | `string` | The id of the VPC this gateway is attached to. |
 | `status.outputs.region` | `string` | The AWS region the internet gateway was created in. Echoed so downstream tooling and verifiers can target the correct region. |
 
 ## References

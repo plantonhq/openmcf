@@ -21,7 +21,13 @@ import (
 //	## Validation Rules -- the spec's cross-field rules
 //	## Outputs          -- deployment outputs table
 //	## References       -- outbound foreign-key targets
+//	## Referenced By    -- inbound foreign keys (catalog-computed, via options)
 //	## See Also         -- links to hand-written essays (never duplicated here)
+//
+// Path spelling is deliberately asymmetric: spec paths use protojson names
+// (the exact keys an author writes in manifest YAML), while output paths use
+// proto field names (snake_case) -- the canonical valueFrom fieldPath
+// spelling the control plane stores and canonicalizes to.
 //
 // Output must be byte-deterministic for identical descriptors: everything
 // renders in descriptor declaration order and nothing here may introduce
@@ -49,7 +55,7 @@ func RenderMarkdown(report *Report, opts MarkdownOptions) string {
 		b.WriteString("\n```\n\n")
 	}
 
-	specRows := flattenFields("spec", report.Spec)
+	specRows := flattenFields("spec", report.Spec, authoredName)
 	if len(specRows) > 0 {
 		b.WriteString("## Spec Fields\n\n")
 		writeFieldTable(&b, specRows)
@@ -71,7 +77,7 @@ func RenderMarkdown(report *Report, opts MarkdownOptions) string {
 		b.WriteString("\n")
 	}
 
-	outputRows := flattenFields("status.outputs", report.Outputs)
+	outputRows := flattenFields("status.outputs", report.Outputs, protoName)
 	if len(outputRows) > 0 {
 		b.WriteString("## Outputs\n\n")
 		b.WriteString("Reference an output from another manifest as `valueFrom: {kind: " + report.Kind +
@@ -86,6 +92,7 @@ func RenderMarkdown(report *Report, opts MarkdownOptions) string {
 	}
 
 	writeReferences(&b, specRows)
+	writeReferencedBy(&b, opts.ReferencedBy)
 
 	if len(opts.SeeAlso) > 0 {
 		b.WriteString("## See Also\n\n")
@@ -106,9 +113,29 @@ type MarkdownOptions struct {
 	// pass YAML that already passed validation -- an invalid example teaches
 	// every reader a broken shape.
 	ExampleYAML string
+	// ReferencedBy lists the catalog's inbound foreign keys into this kind
+	// -- knowledge a single kind's schema cannot carry, so the caller (who
+	// sees the whole catalog) computes it. Entries name kinds, never file
+	// paths: kind names survive every artifact layout, and the catalog
+	// indexes own the kind-to-file mapping.
+	ReferencedBy []InboundRef
 	// SeeAlso links to the kind's hand-written essays. Reference pages link
 	// to prose, never duplicate it.
 	SeeAlso []MarkdownLink
+}
+
+// InboundRef is one inbound foreign-key edge: a field on another kind whose
+// valueFrom reads this kind.
+type InboundRef struct {
+	// Kind is the referencing kind.
+	Kind string
+	// FieldPath is the referencing field on that kind, in its spec-path
+	// spelling (protojson, as rendered in that kind's own reference page).
+	FieldPath string
+	// TargetFieldPath is the field on THIS kind that the reference reads
+	// (usually a status.outputs leaf, occasionally metadata.name or a spec
+	// field), exactly as authored in the schema.
+	TargetFieldPath string
 }
 
 // MarkdownLink is one See-Also entry, Path relative to the rendered file.
@@ -125,14 +152,21 @@ type flatField struct {
 	Field Field
 }
 
+// authoredName and protoName select which of a field's two names a path is
+// built from: spec paths spell what an author writes in manifest YAML
+// (protojson), output paths spell the canonical valueFrom fieldPath (proto
+// field names -- see the RenderMarkdown doc comment).
+func authoredName(f Field) string { return f.Name }
+func protoName(f Field) string    { return f.ProtoName }
+
 // flattenFields linearizes a field tree into dotted YAML paths in declaration
 // order. List elements keep a `[]` marker (`spec.instances[].name`) and
 // message-valued map entries a `.*` marker (`spec.envVars.*.value`), so a
 // rendered path always spells out the YAML nesting an author writes.
-func flattenFields(prefix string, fields []Field) []flatField {
+func flattenFields(prefix string, fields []Field, nameOf func(Field) string) []flatField {
 	out := make([]flatField, 0, len(fields))
 	for _, f := range fields {
-		path := prefix + "." + f.Name
+		path := prefix + "." + nameOf(f)
 		out = append(out, flatField{Path: path, Field: f})
 		childPrefix := path
 		switch {
@@ -141,7 +175,7 @@ func flattenFields(prefix string, fields []Field) []flatField {
 		case strings.HasPrefix(f.Type, "map<"):
 			childPrefix += ".*"
 		}
-		out = append(out, flattenFields(childPrefix, f.Fields)...)
+		out = append(out, flattenFields(childPrefix, f.Fields, nameOf)...)
 	}
 	return out
 }
@@ -253,6 +287,57 @@ func writeReferences(b *strings.Builder, rows []flatField) {
 			row.Path, row.Field.RefKind, row.Field.RefFieldPath)
 	}
 	b.WriteString("\n")
+}
+
+// writeReferencedBy renders the inbound half of the cross-reference story:
+// which fields elsewhere in the catalog can point at this kind. The caller
+// computes the edges (a single kind's schema cannot know them); an empty
+// list renders nothing, matching every other absent section.
+func writeReferencedBy(b *strings.Builder, refs []InboundRef) {
+	if len(refs) == 0 {
+		return
+	}
+	b.WriteString("## Referenced By\n\n")
+	b.WriteString("Fields on other kinds that can point at this resource:\n\n")
+	b.WriteString("| Kind | Field | Reads |\n")
+	b.WriteString("|---|---|---|\n")
+	for _, ref := range refs {
+		fmt.Fprintf(b, "| %s | `%s` | `%s` |\n", ref.Kind, ref.FieldPath, ref.TargetFieldPath)
+	}
+	b.WriteString("\n")
+}
+
+// ReferenceEdge is one outbound foreign-key edge of a kind: a spec field
+// that can read another kind through a valueFrom reference.
+type ReferenceEdge struct {
+	// FieldPath is the referencing field in its spec-path spelling, exactly
+	// as the kind's own reference page renders it.
+	FieldPath string
+	// Kind is the target kind name.
+	Kind string
+	// TargetFieldPath is the field the reference reads on the target kind,
+	// exactly as authored in the schema (usually a status.outputs leaf,
+	// occasionally metadata.name or a spec field).
+	TargetFieldPath string
+}
+
+// ReferenceEdges extracts a root report's outbound foreign-key edges in
+// declaration order. It shares the renderer's path flattening so an edge's
+// FieldPath and the page's References table can never spell the same field
+// differently.
+func ReferenceEdges(report *Report) []ReferenceEdge {
+	var edges []ReferenceEdge
+	for _, row := range flattenFields("spec", report.Spec, authoredName) {
+		if row.Field.RefKind == "" {
+			continue
+		}
+		edges = append(edges, ReferenceEdge{
+			FieldPath:       row.Path,
+			Kind:            row.Field.RefKind,
+			TargetFieldPath: row.Field.RefFieldPath,
+		})
+	}
+	return edges
 }
 
 // flattenText collapses text onto one line for bullets and table cells.

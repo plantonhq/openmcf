@@ -116,9 +116,17 @@ Reference an output from another manifest as `valueFrom: {kind: AwsAppRunnerAuto
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.configurationArn` | `string` | The ARN of this configuration revision (e.g. "arn:aws:apprunner: us-west-2:123456789012:autoscalingconfiguration/my-asc/3/abc123"). The ARN carries the revision number, so registering a new revision changes this output and rolls referencing services on their next deployment. |
-| `status.outputs.configurationRevision` | `int64` | The revision this deployment registered (e.g. 3). Revisions are immutable; every value change registers the next number under the same configuration name. |
+| `status.outputs.configuration_arn` | `string` | The ARN of this configuration revision (e.g. "arn:aws:apprunner: us-west-2:123456789012:autoscalingconfiguration/my-asc/3/abc123"). The ARN carries the revision number, so registering a new revision changes this output and rolls referencing services on their next deployment. |
+| `status.outputs.configuration_revision` | `int64` | The revision this deployment registered (e.g. 3). Revisions are immutable; every value change registers the next number under the same configuration name. |
 | `status.outputs.latest` | `bool` | Whether this revision is the latest one registered under the configuration name. |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAppRunnerService | `spec.autoScalingConfigurationArn` | `status.outputs.configuration_arn` |
 
 ## See Also
 

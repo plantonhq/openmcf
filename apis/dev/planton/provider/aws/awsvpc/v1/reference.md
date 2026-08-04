@@ -212,16 +212,34 @@ Reference an output from another manifest as `valueFrom: {kind: AwsVpc, name: <r
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.vpcId` | `string` | The ID of the VPC (e.g. "vpc-0abc123"). The primary handle other resources reference via status.outputs.vpc_id. |
-| `status.outputs.vpcArn` | `string` | The ARN of the VPC. |
-| `status.outputs.cidrBlock` | `string` | The primary IPv4 CIDR block of the VPC (e.g. "10.0.0.0/16"). Reflects the allocated block even when it was assigned from IPAM. |
-| `status.outputs.ipv6CidrBlock` | `string` | The IPv6 CIDR block associated with the VPC (e.g. "2600:1f18:abcd:1200::/56"), empty when the VPC is IPv4-only. |
-| `status.outputs.ownerId` | `string` | The AWS account ID that owns the VPC. |
-| `status.outputs.mainRouteTableId` | `string` | The ID of the VPC's main route table. Subnets with no explicit route-table association use this table. |
-| `status.outputs.defaultSecurityGroupId` | `string` | The ID of the default security group created with the VPC. |
-| `status.outputs.defaultNetworkAclId` | `string` | The ID of the default network ACL created with the VPC. |
-| `status.outputs.defaultRouteTableId` | `string` | The ID of the default route table created with the VPC (equal to the main route table). |
+| `status.outputs.vpc_id` | `string` | The ID of the VPC (e.g. "vpc-0abc123"). The primary handle other resources reference via status.outputs.vpc_id. |
+| `status.outputs.vpc_arn` | `string` | The ARN of the VPC. |
+| `status.outputs.cidr_block` | `string` | The primary IPv4 CIDR block of the VPC (e.g. "10.0.0.0/16"). Reflects the allocated block even when it was assigned from IPAM. |
+| `status.outputs.ipv6_cidr_block` | `string` | The IPv6 CIDR block associated with the VPC (e.g. "2600:1f18:abcd:1200::/56"), empty when the VPC is IPv4-only. |
+| `status.outputs.owner_id` | `string` | The AWS account ID that owns the VPC. |
+| `status.outputs.main_route_table_id` | `string` | The ID of the VPC's main route table. Subnets with no explicit route-table association use this table. |
+| `status.outputs.default_security_group_id` | `string` | The ID of the default security group created with the VPC. |
+| `status.outputs.default_network_acl_id` | `string` | The ID of the default network ACL created with the VPC. |
+| `status.outputs.default_route_table_id` | `string` | The ID of the default route table created with the VPC (equal to the main route table). |
 | `status.outputs.region` | `string` | The region the VPC was created in (mirrors spec.region, included for convenience). |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsClientVpn | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsCodeBuildProject | `spec.vpcConfig.vpcId` | `status.outputs.vpc_id` |
+| AwsEgressOnlyInternetGateway | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsInternetGateway | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsLbTargetGroup | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsRoute53Zone | `spec.vpcAssociations[].vpcId` | `status.outputs.vpc_id` |
+| AwsSagemakerDomain | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsSecurityGroup | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsSubnet | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsTransitGatewayVpcAttachment | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsVpcEndpoint | `spec.vpcId` | `status.outputs.vpc_id` |
 
 ## See Also
 

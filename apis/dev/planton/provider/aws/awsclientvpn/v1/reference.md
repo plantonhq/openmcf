@@ -601,12 +601,12 @@ Reference an output from another manifest as `valueFrom: {kind: AwsClientVpn, na
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.clientVpnEndpointId` | `string` | The AWS-assigned identifier for the Client VPN endpoint (e.g. "cvpn-endpoint-012345abcdeEXAMPLE"). Used for AWS CLI/API operations — including exporting the client configuration file (`aws ec2 export-client-vpn-client-configuration`). |
-| `status.outputs.clientVpnEndpointArn` | `string` | The Amazon Resource Name of the endpoint. Used in IAM policies and cross-service permissions. |
-| `status.outputs.endpointDnsName` | `string` | The DNS name clients connect to. Note AWS's quirk: the OpenVPN client configuration must prepend a random subdomain label to this name (e.g. "asdf.cvpn-endpoint-....amazonaws.com") — the exported client configuration handles this automatically. |
-| `status.outputs.selfServicePortalUrl` | `string` | The URL of the self-service portal where federated users download their own client configuration. Empty when the portal is disabled. |
-| `status.outputs.subnetAssociationIds` | `map<string, string>` | A map of subnet ID → target network association ID (e.g. "cvpn-assoc-0abcd1234efgh5678") for each associated subnet in `spec.subnet_ids`. Useful for referencing or manually managing a specific association. |
-| `status.outputs.transitGatewayAttachmentId` | `string` | The transit gateway attachment created when the endpoint is associated with a transit gateway via `spec.transit_gateway_configuration`. Empty for VPC-attached endpoints. |
+| `status.outputs.client_vpn_endpoint_id` | `string` | The AWS-assigned identifier for the Client VPN endpoint (e.g. "cvpn-endpoint-012345abcdeEXAMPLE"). Used for AWS CLI/API operations — including exporting the client configuration file (`aws ec2 export-client-vpn-client-configuration`). |
+| `status.outputs.client_vpn_endpoint_arn` | `string` | The Amazon Resource Name of the endpoint. Used in IAM policies and cross-service permissions. |
+| `status.outputs.endpoint_dns_name` | `string` | The DNS name clients connect to. Note AWS's quirk: the OpenVPN client configuration must prepend a random subdomain label to this name (e.g. "asdf.cvpn-endpoint-....amazonaws.com") — the exported client configuration handles this automatically. |
+| `status.outputs.self_service_portal_url` | `string` | The URL of the self-service portal where federated users download their own client configuration. Empty when the portal is disabled. |
+| `status.outputs.subnet_association_ids` | `map<string, string>` | A map of subnet ID → target network association ID (e.g. "cvpn-assoc-0abcd1234efgh5678") for each associated subnet in `spec.subnet_ids`. Useful for referencing or manually managing a specific association. |
+| `status.outputs.transit_gateway_attachment_id` | `string` | The transit gateway attachment created when the endpoint is associated with a transit gateway via `spec.transit_gateway_configuration`. Empty for VPC-attached endpoints. |
 
 ## References
 

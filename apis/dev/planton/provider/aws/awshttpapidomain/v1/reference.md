@@ -202,10 +202,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsHttpApiDomain
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.domainName` | `string` | The custom domain name (e.g. "api.example.com"). Exported as an output because it is the domain's join key -- downstream resources resolve references against outputs. |
-| `status.outputs.domainNameArn` | `string` | The ARN of the domain name resource. Useful for IAM policies and tag-based governance. |
-| `status.outputs.targetDomainName` | `string` | The API Gateway-managed regional domain name to target from DNS (e.g. "d-abc123.execute-api.us-east-1.amazonaws.com"). Create an alias or CNAME record from the custom domain to this value. |
-| `status.outputs.hostedZoneId` | `string` | The Route 53 hosted zone ID of the API Gateway regional endpoint. Use as the alias target zone when creating a Route 53 alias record for the domain. |
+| `status.outputs.domain_name` | `string` | The custom domain name (e.g. "api.example.com"). Exported as an output because it is the domain's join key -- downstream resources resolve references against outputs. |
+| `status.outputs.domain_name_arn` | `string` | The ARN of the domain name resource. Useful for IAM policies and tag-based governance. |
+| `status.outputs.target_domain_name` | `string` | The API Gateway-managed regional domain name to target from DNS (e.g. "d-abc123.execute-api.us-east-1.amazonaws.com"). Create an alias or CNAME record from the custom domain to this value. |
+| `status.outputs.hosted_zone_id` | `string` | The Route 53 hosted zone ID of the API Gateway regional endpoint. Use as the alias target zone when creating a Route 53 alias record for the domain. |
 
 ## References
 

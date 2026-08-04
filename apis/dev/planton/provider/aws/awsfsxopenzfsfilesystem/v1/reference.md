@@ -616,14 +616,14 @@ Reference an output from another manifest as `valueFrom: {kind: AwsFsxOpenzfsFil
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.fileSystemId` | `string` | The ID of the file system (e.g., "fs-0123456789abcdef0"). Primary identifier used by EKS PersistentVolumes, ECS task definitions, and other AWS services. |
-| `status.outputs.fileSystemArn` | `string` | The Amazon Resource Name of the file system. Used in IAM policies for resource-level permissions. |
-| `status.outputs.dnsName` | `string` | The DNS name for the file system (e.g., "fs-0123456789abcdef0.fsx.us-east-1.amazonaws.com"). Used in NFS mount commands: mount -t nfs <dns_name>:/fsx /mnt/fsx |
-| `status.outputs.endpointIpAddress` | `string` | The endpoint IP address for the file system. For MULTI_AZ_1 deployments, this is the floating IP used for failover. For SINGLE_AZ deployments, this is the primary ENI IP. |
-| `status.outputs.rootVolumeId` | `string` | The root volume ID (e.g., "fsvol-0123456789abcdef0"). Required as parent_volume_id when creating child OpenZFS volumes on this file system. |
-| `status.outputs.networkInterfaceIds` | `[]string` | The network interface IDs created for the file system, in order. SINGLE_AZ creates 1 ENI; MULTI_AZ creates 2 ENIs. Useful for security group debugging and network troubleshooting. |
-| `status.outputs.vpcId` | `string` | The VPC ID in which the file system was created. Computed from the subnets. Useful for constructing security group rules and verifying network placement. |
-| `status.outputs.ownerId` | `string` | The AWS account ID of the file system owner. |
+| `status.outputs.file_system_id` | `string` | The ID of the file system (e.g., "fs-0123456789abcdef0"). Primary identifier used by EKS PersistentVolumes, ECS task definitions, and other AWS services. |
+| `status.outputs.file_system_arn` | `string` | The Amazon Resource Name of the file system. Used in IAM policies for resource-level permissions. |
+| `status.outputs.dns_name` | `string` | The DNS name for the file system (e.g., "fs-0123456789abcdef0.fsx.us-east-1.amazonaws.com"). Used in NFS mount commands: mount -t nfs <dns_name>:/fsx /mnt/fsx |
+| `status.outputs.endpoint_ip_address` | `string` | The endpoint IP address for the file system. For MULTI_AZ_1 deployments, this is the floating IP used for failover. For SINGLE_AZ deployments, this is the primary ENI IP. |
+| `status.outputs.root_volume_id` | `string` | The root volume ID (e.g., "fsvol-0123456789abcdef0"). Required as parent_volume_id when creating child OpenZFS volumes on this file system. |
+| `status.outputs.network_interface_ids` | `[]string` | The network interface IDs created for the file system, in order. SINGLE_AZ creates 1 ENI; MULTI_AZ creates 2 ENIs. Useful for security group debugging and network troubleshooting. |
+| `status.outputs.vpc_id` | `string` | The VPC ID in which the file system was created. Computed from the subnets. Useful for constructing security group rules and verifying network placement. |
+| `status.outputs.owner_id` | `string` | The AWS account ID of the file system owner. |
 
 ## References
 

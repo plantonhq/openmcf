@@ -1781,8 +1781,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsAutoScalingGr
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.autoscalingGroupName` | `string` | The name of the auto-scaling group (metadata.name). The handle the AWS CLI, CloudWatch dimensions (AutoScalingGroupName), and ECS capacity providers reference. |
-| `status.outputs.autoscalingGroupArn` | `string` | The ARN of the auto-scaling group, for IAM policies and EventBridge rules scoped to this group. |
+| `status.outputs.autoscaling_group_name` | `string` | The name of the auto-scaling group (metadata.name). The handle the AWS CLI, CloudWatch dimensions (AutoScalingGroupName), and ECS capacity providers reference. |
+| `status.outputs.autoscaling_group_arn` | `string` | The ARN of the auto-scaling group, for IAM policies and EventBridge rules scoped to this group. |
 
 ## References
 
@@ -1799,6 +1799,14 @@ Fields that can point at another resource's outputs:
 | `spec.lifecycleHooks[].notificationTargetArn` | AwsSnsTopic | `status.outputs.topic_arn` |
 | `spec.lifecycleHooks[].roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.notifications.topic` | AwsSnsTopic | `status.outputs.topic_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsEcsCluster | `spec.ec2CapacityProviders[].autoScalingGroupArn` | `status.outputs.autoscaling_group_arn` |
 
 ## See Also
 

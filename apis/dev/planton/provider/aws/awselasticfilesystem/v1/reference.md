@@ -401,14 +401,14 @@ Reference an output from another manifest as `valueFrom: {kind: AwsElasticFileSy
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.fileSystemId` | `string` | The ID of the file system (e.g., "fs-0123456789abcdef0"). This is the primary identifier used by EKS PersistentVolumes, ECS task definitions, and AwsEfsAccessPoint references. |
-| `status.outputs.fileSystemArn` | `string` | The Amazon Resource Name of the file system. Used in IAM policies for resource-level permissions. |
-| `status.outputs.dnsName` | `string` | The regional DNS name for mounting the file system via NFS (e.g., "fs-0123456789abcdef0.efs.us-east-1.amazonaws.com"). Clients can mount using: `mount -t nfs4 <dns_name>:/ /mnt/efs`. |
-| `status.outputs.mountTargetIds` | `map<string, string>` | Map of subnet ID to mount target ID. The keys are the resolved subnet IDs of spec.mount_targets. Use to reference specific mount targets for monitoring or troubleshooting. |
-| `status.outputs.mountTargetIps` | `map<string, string>` | Map of subnet ID to the mount target's IPv4 address within that subnet. Useful for static NFS mount configurations or network debugging. Empty values for IPV6_ONLY mount targets. |
-| `status.outputs.mountTargetIpv6Addresses` | `map<string, string>` | Map of subnet ID to the mount target's IPv6 address. Populated only for mount targets with ip_address_type "IPV6_ONLY" or "DUAL_STACK". |
-| `status.outputs.mountTargetDnsNames` | `map<string, string>` | Map of subnet ID to per-AZ mount target DNS name (e.g., "us-east-1a.fs-xxx.efs.us-east-1.amazonaws.com"). AZ-specific DNS names route to the mount target in that AZ, avoiding cross-AZ traffic. |
-| `status.outputs.replicationDestinationFileSystemId` | `string` | The file system ID of the replication destination, when spec.replication is configured and AWS created (or was pointed at) a replica. Empty when replication is not configured. |
+| `status.outputs.file_system_id` | `string` | The ID of the file system (e.g., "fs-0123456789abcdef0"). This is the primary identifier used by EKS PersistentVolumes, ECS task definitions, and AwsEfsAccessPoint references. |
+| `status.outputs.file_system_arn` | `string` | The Amazon Resource Name of the file system. Used in IAM policies for resource-level permissions. |
+| `status.outputs.dns_name` | `string` | The regional DNS name for mounting the file system via NFS (e.g., "fs-0123456789abcdef0.efs.us-east-1.amazonaws.com"). Clients can mount using: `mount -t nfs4 <dns_name>:/ /mnt/efs`. |
+| `status.outputs.mount_target_ids` | `map<string, string>` | Map of subnet ID to mount target ID. The keys are the resolved subnet IDs of spec.mount_targets. Use to reference specific mount targets for monitoring or troubleshooting. |
+| `status.outputs.mount_target_ips` | `map<string, string>` | Map of subnet ID to the mount target's IPv4 address within that subnet. Useful for static NFS mount configurations or network debugging. Empty values for IPV6_ONLY mount targets. |
+| `status.outputs.mount_target_ipv6_addresses` | `map<string, string>` | Map of subnet ID to the mount target's IPv6 address. Populated only for mount targets with ip_address_type "IPV6_ONLY" or "DUAL_STACK". |
+| `status.outputs.mount_target_dns_names` | `map<string, string>` | Map of subnet ID to per-AZ mount target DNS name (e.g., "us-east-1a.fs-xxx.efs.us-east-1.amazonaws.com"). AZ-specific DNS names route to the mount target in that AZ, avoiding cross-AZ traffic. |
+| `status.outputs.replication_destination_file_system_id` | `string` | The file system ID of the replication destination, when spec.replication is configured and AWS created (or was pointed at) a replica. Empty when replication is not configured. |
 
 ## References
 
@@ -421,6 +421,19 @@ Fields that can point at another resource's outputs:
 | `spec.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.replication.destinationKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.replication.destinationFileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBatchJobDefinition | `spec.container.volumes[].efs.fileSystemId` | `status.outputs.file_system_id` |
+| AwsEcsTaskDefinition | `spec.volumes[].efs.fileSystemId` | `status.outputs.file_system_id` |
+| AwsEfsAccessPoint | `spec.fileSystemId` | `status.outputs.file_system_id` |
+| AwsElasticFileSystem | `spec.replication.destinationFileSystemId` | `status.outputs.file_system_id` |
+| AwsSagemakerDomain | `spec.defaultUserSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemId` | `status.outputs.file_system_id` |
+| AwsSagemakerDomain | `spec.defaultSpaceSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemId` | `status.outputs.file_system_id` |
 
 ## See Also
 

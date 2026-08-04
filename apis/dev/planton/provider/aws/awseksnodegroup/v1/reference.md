@@ -524,10 +524,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEksNodeGroup,
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.nodegroupName` | `string` | nodegroup_name is the name of the managed node group. |
-| `status.outputs.nodegroupArn` | `string` | nodegroup_arn is the Amazon Resource Name of the node group -- the identifier EKS access entries and IAM policies reference. |
-| `status.outputs.asgName` | `string` | asg_name is the name of the EC2 Auto Scaling group AWS manages behind the node group -- the hook for ASG-level tooling (activity history, suspended processes, custom CloudWatch metrics). |
-| `status.outputs.remoteAccessSgId` | `string` | remote_access_sg_id is the ID of the security group AWS creates for SSH access when remote_access is enabled without explicit source security groups. Empty when remote access is off or scoped to provided groups. |
+| `status.outputs.nodegroup_name` | `string` | nodegroup_name is the name of the managed node group. |
+| `status.outputs.nodegroup_arn` | `string` | nodegroup_arn is the Amazon Resource Name of the node group -- the identifier EKS access entries and IAM policies reference. |
+| `status.outputs.asg_name` | `string` | asg_name is the name of the EC2 Auto Scaling group AWS manages behind the node group -- the hook for ASG-level tooling (activity history, suspended processes, custom CloudWatch metrics). |
+| `status.outputs.remote_access_sg_id` | `string` | remote_access_sg_id is the ID of the security group AWS creates for SSH access when remote_access is enabled without explicit source security groups. Empty when remote access is off or scoped to provided groups. |
 
 ## References
 

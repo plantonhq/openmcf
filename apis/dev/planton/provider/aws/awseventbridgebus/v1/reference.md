@@ -192,8 +192,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEventBridgeBu
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.busName` | `string` | The name of the event bus. This is the primary identifier used in EventBridge API calls and in rule configurations that target this bus. |
-| `status.outputs.busArn` | `string` | The Amazon Resource Name (ARN) of the event bus. Used for IAM policies, cross-account event delivery, and as a reference in other resources. |
+| `status.outputs.bus_name` | `string` | The name of the event bus. This is the primary identifier used in EventBridge API calls and in rule configurations that target this bus. |
+| `status.outputs.bus_arn` | `string` | The Amazon Resource Name (ARN) of the event bus. Used for IAM policies, cross-account event delivery, and as a reference in other resources. |
 
 ## References
 
@@ -203,6 +203,15 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.kmsKeyIdentifier` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.deadLetterConfig.arn` | AwsSqsQueue | `status.outputs.queue_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsEventBridgeRule | `spec.eventBusName` | `status.outputs.bus_name` |
+| AwsSesConfigurationSet | `spec.eventDestinations[].eventBus` | `status.outputs.bus_arn` |
 
 ## See Also
 

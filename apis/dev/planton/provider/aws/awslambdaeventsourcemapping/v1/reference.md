@@ -531,8 +531,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsLambdaEventSo
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.uuid` | `string` | The server-assigned mapping UUID -- the identity AWS APIs (GetEventSourceMapping, UpdateEventSourceMapping) key on. |
-| `status.outputs.mappingArn` | `string` | The mapping ARN. |
-| `status.outputs.functionArn` | `string` | The ARN of the function the mapping invokes, as resolved by AWS. |
+| `status.outputs.mapping_arn` | `string` | The mapping ARN. |
+| `status.outputs.function_arn` | `string` | The ARN of the function the mapping invokes, as resolved by AWS. |
 | `status.outputs.state` | `string` | The mapping state as last observed at deploy time (e.g. "Enabled", "Disabled") -- transitional states settle asynchronously. |
 
 ## References

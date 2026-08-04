@@ -394,10 +394,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEcsCluster, n
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.clusterName` | `string` | The cluster name (mirrors metadata.name). What the AWS CLI and the ECS agent's ECS_CLUSTER setting address. |
-| `status.outputs.clusterArn` | `string` | The ARN of the cluster. The join key: an AwsEcsService's cluster_arn references this output. |
-| `status.outputs.capacityProviderNames` | `[]string` | Every capacity provider associated with the cluster -- the Fargate built-ins plus the names of the folded EC2 capacity providers. The vocabulary services can use in a capacity_provider_strategy. |
-| `status.outputs.capacityProviderArns` | `[]string` | The ARNs of the EC2 capacity providers this cluster defines (empty for Fargate-only clusters), in the order declared in the spec. |
+| `status.outputs.cluster_name` | `string` | The cluster name (mirrors metadata.name). What the AWS CLI and the ECS agent's ECS_CLUSTER setting address. |
+| `status.outputs.cluster_arn` | `string` | The ARN of the cluster. The join key: an AwsEcsService's cluster_arn references this output. |
+| `status.outputs.capacity_provider_names` | `[]string` | Every capacity provider associated with the cluster -- the Fargate built-ins plus the names of the folded EC2 capacity providers. The vocabulary services can use in a capacity_provider_strategy. |
+| `status.outputs.capacity_provider_arns` | `[]string` | The ARNs of the EC2 capacity providers this cluster defines (empty for Fargate-only clusters), in the order declared in the spec. |
 
 ## References
 
@@ -409,6 +409,14 @@ Fields that can point at another resource's outputs:
 | `spec.executeCommandConfiguration.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.managedStorageConfiguration.fargateEphemeralStorageKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.managedStorageConfiguration.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsEcsService | `spec.clusterArn` | `status.outputs.cluster_arn` |
 
 ## See Also
 

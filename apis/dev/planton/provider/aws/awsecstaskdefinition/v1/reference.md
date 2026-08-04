@@ -843,12 +843,12 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEcsTaskDefini
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.taskDefinitionArn` | `string` | The full ARN of the registered revision, including the revision number (e.g. "arn:aws:ecs:us-west-2:123456789012:task-definition/api:7"). The primary handle an ECS service references via status.outputs.task_definition_arn -- because it carries the revision, each newly registered revision changes this output and rolls the referencing service on its next deployment. |
-| `status.outputs.arnWithoutRevision` | `string` | The ARN without the revision suffix (e.g. "arn:aws:ecs:us-west-2: 123456789012:task-definition/api"), for consumers that should always track the family's latest ACTIVE revision instead of a pinned one. |
+| `status.outputs.task_definition_arn` | `string` | The full ARN of the registered revision, including the revision number (e.g. "arn:aws:ecs:us-west-2:123456789012:task-definition/api:7"). The primary handle an ECS service references via status.outputs.task_definition_arn -- because it carries the revision, each newly registered revision changes this output and rolls the referencing service on its next deployment. |
+| `status.outputs.arn_without_revision` | `string` | The ARN without the revision suffix (e.g. "arn:aws:ecs:us-west-2: 123456789012:task-definition/api"), for consumers that should always track the family's latest ACTIVE revision instead of a pinned one. |
 | `status.outputs.family` | `string` | The family name (metadata.name) the revisions are registered under. |
 | `status.outputs.revision` | `int64` | The revision number this deployment registered (e.g. 7). Revisions are immutable; every spec change registers the next number. |
-| `status.outputs.logGroupName` | `string` | The name of the CloudWatch log group the task's containers log to -- the auto-created "/ecs/<family>" group or the referenced existing one. Empty when task-level logging is disabled and no container configures its own awslogs driver. |
-| `status.outputs.logGroupArn` | `string` | The ARN of that CloudWatch log group. Empty under the same conditions as log_group_name, and when the group is referenced by name rather than created by the modules. |
+| `status.outputs.log_group_name` | `string` | The name of the CloudWatch log group the task's containers log to -- the auto-created "/ecs/<family>" group or the referenced existing one. Empty when task-level logging is disabled and no container configures its own awslogs driver. |
+| `status.outputs.log_group_arn` | `string` | The ARN of that CloudWatch log group. Empty under the same conditions as log_group_name, and when the group is referenced by name rather than created by the modules. |
 
 ## References
 
@@ -861,6 +861,15 @@ Fields that can point at another resource's outputs:
 | `spec.volumes[].efs.fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
 | `spec.volumes[].efs.accessPointId` | AwsEfsAccessPoint | `status.outputs.access_point_id` |
 | `spec.logging.logGroup` | AwsCloudwatchLogGroup | `status.outputs.log_group_name` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsEcsService | `spec.taskDefinition` | `status.outputs.task_definition_arn` |
+| AwsEventBridgeRule | `spec.targets[].ecsTarget.taskDefinitionArn` | `status.outputs.task_definition_arn` |
 
 ## See Also
 

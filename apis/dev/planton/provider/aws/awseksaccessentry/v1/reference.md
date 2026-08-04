@@ -198,8 +198,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEksAccessEntr
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.accessEntryArn` | `string` | access_entry_arn is the Amazon Resource Name of the entry -- arn:aws:eks:<region>:<account>:access-entry/<cluster>/<principal type>/<account>/<principal name>/<uuid>. |
-| `status.outputs.principalArn` | `string` | principal_arn is the IAM principal the entry grants access to, as resolved at provisioning time. |
+| `status.outputs.access_entry_arn` | `string` | access_entry_arn is the Amazon Resource Name of the entry -- arn:aws:eks:<region>:<account>:access-entry/<cluster>/<principal type>/<account>/<principal name>/<uuid>. |
+| `status.outputs.principal_arn` | `string` | principal_arn is the IAM principal the entry grants access to, as resolved at provisioning time. |
 
 ## References
 

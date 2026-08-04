@@ -882,14 +882,14 @@ Reference an output from another manifest as `valueFrom: {kind: AwsLambda, name:
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.functionArn` | `string` | The function ARN -- the join key for event-source mappings, trigger configurations (Cognito, Firehose), resource policies, and IAM policy resources. |
-| `status.outputs.functionName` | `string` | The function name -- what SDK invoke calls and CLI commands reference. |
-| `status.outputs.invokeArn` | `string` | The ARN AWS service integrations invoke through (the apigateway-shaped invocation ARN) -- what API Gateway integrations reference. |
-| `status.outputs.qualifiedArn` | `string` | The qualified ARN of the most recently published version (empty when publish is disabled). |
+| `status.outputs.function_arn` | `string` | The function ARN -- the join key for event-source mappings, trigger configurations (Cognito, Firehose), resource policies, and IAM policy resources. |
+| `status.outputs.function_name` | `string` | The function name -- what SDK invoke calls and CLI commands reference. |
+| `status.outputs.invoke_arn` | `string` | The ARN AWS service integrations invoke through (the apigateway-shaped invocation ARN) -- what API Gateway integrations reference. |
+| `status.outputs.qualified_arn` | `string` | The qualified ARN of the most recently published version (empty when publish is disabled). |
 | `status.outputs.version` | `string` | The most recently published version number (empty when publish is disabled). |
-| `status.outputs.functionUrl` | `string` | The HTTPS endpoint of the function URL (empty when no function URL is configured). |
-| `status.outputs.aliasArns` | `map<string, string>` | ARNs of the function's aliases, keyed by alias name -- the stable invocation targets clients reference for traffic-shifted rollouts. Example valueFrom: status.outputs.alias_arns.live |
-| `status.outputs.logGroupName` | `string` | The CloudWatch log group receiving the function's logs -- the AWS-default "/aws/lambda/<function-name>" or the custom group from logging_config.log_group. |
+| `status.outputs.function_url` | `string` | The HTTPS endpoint of the function URL (empty when no function URL is configured). |
+| `status.outputs.alias_arns` | `map<string, string>` | ARNs of the function's aliases, keyed by alias name -- the stable invocation targets clients reference for traffic-shifted rollouts. Example valueFrom: status.outputs.alias_arns.live |
+| `status.outputs.log_group_name` | `string` | The CloudWatch log group receiving the function's logs -- the AWS-default "/aws/lambda/<function-name>" or the custom group from logging_config.log_group. |
 
 ## References
 
@@ -908,6 +908,39 @@ Fields that can point at another resource's outputs:
 | `spec.loggingConfig.logGroup` | AwsCloudwatchLogGroup | `status.outputs.log_group_name` |
 | `spec.asyncInvokeConfig.onSuccessDestinationArn` | AwsSqsQueue | `status.outputs.queue_arn` |
 | `spec.asyncInvokeConfig.onFailureDestinationArn` | AwsSqsQueue | `status.outputs.queue_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsClientVpn | `spec.clientConnectOptions.lambdaFunctionArn` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.preSignUp` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.preAuthentication` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.postAuthentication` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.postConfirmation` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.preTokenGeneration` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.preTokenGenerationConfig.lambdaArn` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.customMessage` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.userMigration` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.defineAuthChallenge` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.createAuthChallenge` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.verifyAuthChallengeResponse` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.customEmailSender.lambdaArn` | `status.outputs.function_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.customSmsSender.lambdaArn` | `status.outputs.function_arn` |
+| AwsHttpApiGateway | `spec.routes[].integration.integrationUri` | `status.outputs.function_arn` |
+| AwsHttpApiGateway | `spec.authorizers[].authorizerUri` | `status.outputs.function_arn` |
+| AwsKinesisFirehose | `spec.extendedS3.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
+| AwsKinesisFirehose | `spec.opensearch.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
+| AwsKinesisFirehose | `spec.opensearchServerless.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
+| AwsKinesisFirehose | `spec.httpEndpoint.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
+| AwsKinesisFirehose | `spec.redshift.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
+| AwsKinesisFirehose | `spec.splunk.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
+| AwsKinesisFirehose | `spec.snowflake.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
+| AwsKinesisFirehose | `spec.iceberg.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
+| AwsLambdaEventSourceMapping | `spec.functionArn` | `status.outputs.function_arn` |
+| AwsS3Bucket | `spec.notification.lambdaFunctions[].lambdaFunctionArn` | `status.outputs.function_arn` |
 
 ## See Also
 

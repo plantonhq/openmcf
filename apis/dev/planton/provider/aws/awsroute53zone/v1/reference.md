@@ -247,11 +247,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRoute53Zone, 
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.zoneId` | `string` | The hosted zone ID (e.g. "Z1D633PJN98FT9"). The identifier used by every resource that composes onto this zone. |
-| `status.outputs.zoneName` | `string` | The zone's domain name as normalized by Route 53 (trailing dot removed), e.g. "example.com". |
+| `status.outputs.zone_id` | `string` | The hosted zone ID (e.g. "Z1D633PJN98FT9"). The identifier used by every resource that composes onto this zone. |
+| `status.outputs.zone_name` | `string` | The zone's domain name as normalized by Route 53 (trailing dot removed), e.g. "example.com". |
 | `status.outputs.nameservers` | `[]string` | The four authoritative name servers assigned to the zone. For a public zone, these are the values to set as the domain's NS delegation at the registrar. |
-| `status.outputs.primaryNameServer` | `string` | The first (primary) name server of the zone's delegation set — the one used as the SOA MNAME. |
-| `status.outputs.zoneArn` | `string` | The Amazon Resource Name of the hosted zone (arn:aws:route53:::hostedzone/<zone_id>). Used in IAM policies scoping route53:ChangeResourceRecordSets to specific zones. |
+| `status.outputs.primary_name_server` | `string` | The first (primary) name server of the zone's delegation set — the one used as the SOA MNAME. |
+| `status.outputs.zone_arn` | `string` | The Amazon Resource Name of the hosted zone (arn:aws:route53:::hostedzone/<zone_id>). Used in IAM policies scoping route53:ChangeResourceRecordSets to specific zones. |
 
 ## References
 
@@ -262,6 +262,18 @@ Fields that can point at another resource's outputs:
 | `spec.vpcAssociations[].vpcId` | AwsVpc | `status.outputs.vpc_id` |
 | `spec.queryLogging.cloudwatchLogGroupArn` | AwsCloudwatchLogGroup | `status.outputs.log_group_arn` |
 | `spec.dnssec.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAlb | `spec.dns.route53ZoneId` | `status.outputs.zone_id` |
+| AwsCertManagerCert | `spec.route53HostedZoneId` | `status.outputs.zone_id` |
+| AwsNlb | `spec.dns.route53ZoneId` | `status.outputs.zone_id` |
+| AwsRoute53DnsRecord | `spec.zoneId` | `status.outputs.zone_id` |
+| KubernetesExternalDns | `spec.awsRoute53.zoneIdFilters` | `status.outputs.zone_id` |
 
 ## See Also
 

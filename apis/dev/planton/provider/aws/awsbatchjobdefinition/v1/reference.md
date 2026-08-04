@@ -751,9 +751,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsBatchJobDefin
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.jobDefinitionArn` | `string` | The full ARN of the registered revision, including the revision number (e.g. "arn:aws:batch:us-west-2:123456789012:job-definition/etl:7"). The primary handle consumers reference -- because it carries the revision, each newly registered revision changes this output and rolls referencing EventBridge rules on their next deployment. |
-| `status.outputs.arnWithoutRevision` | `string` | The ARN without the revision suffix (e.g. "arn:aws:batch:us-west-2: 123456789012:job-definition/etl"), for consumers that should always track the name's latest ACTIVE revision instead of a pinned one. |
-| `status.outputs.jobDefinitionName` | `string` | The job definition name (metadata.name) the revisions are registered under. |
+| `status.outputs.job_definition_arn` | `string` | The full ARN of the registered revision, including the revision number (e.g. "arn:aws:batch:us-west-2:123456789012:job-definition/etl:7"). The primary handle consumers reference -- because it carries the revision, each newly registered revision changes this output and rolls referencing EventBridge rules on their next deployment. |
+| `status.outputs.arn_without_revision` | `string` | The ARN without the revision suffix (e.g. "arn:aws:batch:us-west-2: 123456789012:job-definition/etl"), for consumers that should always track the name's latest ACTIVE revision instead of a pinned one. |
+| `status.outputs.job_definition_name` | `string` | The job definition name (metadata.name) the revisions are registered under. |
 | `status.outputs.revision` | `int64` | The revision number this deployment registered (e.g. 7). Revisions are immutable; every spec change registers the next number. |
 
 ## References
@@ -766,6 +766,14 @@ Fields that can point at another resource's outputs:
 | `spec.container.executionRole` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.container.volumes[].efs.fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
 | `spec.container.volumes[].efs.accessPointId` | AwsEfsAccessPoint | `status.outputs.access_point_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsEventBridgeRule | `spec.targets[].batchTarget.jobDefinition` | `status.outputs.job_definition_arn` |
 
 ## See Also
 

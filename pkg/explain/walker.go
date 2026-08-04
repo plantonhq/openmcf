@@ -28,9 +28,10 @@ func (e *Engine) walkFields(md protoreflect.MessageDescriptor, visited map[proto
 
 func (e *Engine) renderField(fd protoreflect.FieldDescriptor, visited map[protoreflect.FullName]bool) Field {
 	f := Field{
-		Name:     fd.JSONName(),
-		Doc:      e.doc(fd.FullName()),
-		Optional: fd.HasOptionalKeyword(),
+		Name:      fd.JSONName(),
+		ProtoName: string(fd.Name()),
+		Doc:       e.doc(fd.FullName()),
+		Optional:  fd.HasOptionalKeyword(),
 	}
 	for _, interpret := range e.Interpreters {
 		interpret(fd, &f)

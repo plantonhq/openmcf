@@ -299,8 +299,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRoute53Health
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.healthCheckId` | `string` | The health check ID (a UUID, e.g. "abcdef11-2222-3333-4444-555555fedcba"). The identifier DNS records and calculated parent checks reference. |
-| `status.outputs.healthCheckArn` | `string` | The Amazon Resource Name of the health check (arn:aws:route53:::healthcheck/<id>). Used in IAM policies and as the dimension for the CloudWatch HealthCheckStatus metric. |
+| `status.outputs.health_check_id` | `string` | The health check ID (a UUID, e.g. "abcdef11-2222-3333-4444-555555fedcba"). The identifier DNS records and calculated parent checks reference. |
+| `status.outputs.health_check_arn` | `string` | The Amazon Resource Name of the health check (arn:aws:route53:::healthcheck/<id>). Used in IAM policies and as the dimension for the CloudWatch HealthCheckStatus metric. |
 
 ## References
 
@@ -309,6 +309,15 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.childHealthChecks` | AwsRoute53HealthCheck | `status.outputs.health_check_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsRoute53DnsRecord | `spec.healthCheckId` | `status.outputs.health_check_id` |
+| AwsRoute53HealthCheck | `spec.childHealthChecks` | `status.outputs.health_check_id` |
 
 ## See Also
 

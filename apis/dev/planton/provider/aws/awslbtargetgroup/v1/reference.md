@@ -574,9 +574,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsLbTargetGroup
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.targetGroupArn` | `string` | The ARN of the target group (e.g. "arn:aws:elasticloadbalancing: us-west-2:123456789012:targetgroup/api/50dc6c495c0c9188"). The primary handle other resources reference via status.outputs.target_group_arn -- listener forward actions, ECS service load-balancer wiring, and ASG attachments all take this value. |
-| `status.outputs.targetGroupName` | `string` | The friendly name of the target group (metadata.name, truncated to the 32-character AWS limit when necessary), for console URLs and CLI commands. |
-| `status.outputs.arnSuffix` | `string` | The ARN suffix (e.g. "targetgroup/api/50dc6c495c0c9188") used as the TargetGroup dimension in CloudWatch metrics -- the handle alarms and dashboards need. |
+| `status.outputs.target_group_arn` | `string` | The ARN of the target group (e.g. "arn:aws:elasticloadbalancing: us-west-2:123456789012:targetgroup/api/50dc6c495c0c9188"). The primary handle other resources reference via status.outputs.target_group_arn -- listener forward actions, ECS service load-balancer wiring, and ASG attachments all take this value. |
+| `status.outputs.target_group_name` | `string` | The friendly name of the target group (metadata.name, truncated to the 32-character AWS limit when necessary), for console URLs and CLI commands. |
+| `status.outputs.arn_suffix` | `string` | The ARN suffix (e.g. "targetgroup/api/50dc6c495c0c9188") used as the TargetGroup dimension in CloudWatch metrics -- the handle alarms and dashboards need. |
 
 ## References
 
@@ -586,6 +586,19 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.vpcId` | AwsVpc | `status.outputs.vpc_id` |
 | `spec.targets[].targetId` | AwsEc2Instance | `status.outputs.instance_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAutoScalingGroup | `spec.targetGroups` | `status.outputs.target_group_arn` |
+| AwsEcsService | `spec.loadBalancers[].targetGroupArn` | `status.outputs.target_group_arn` |
+| AwsEcsService | `spec.loadBalancers[].advancedConfiguration.alternateTargetGroupArn` | `status.outputs.target_group_arn` |
+| AwsEcsService | `spec.autoscaling.requestsPerTarget.targetGroupArnSuffix` | `status.outputs.arn_suffix` |
+| AwsLbListener | `spec.defaultActions[].forward.targetGroups[].arn` | `status.outputs.target_group_arn` |
+| AwsLbListenerRule | `spec.actions[].forward.targetGroups[].arn` | `status.outputs.target_group_arn` |
 
 ## See Also
 

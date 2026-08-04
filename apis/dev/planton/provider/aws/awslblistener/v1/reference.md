@@ -877,7 +877,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsLbListener, n
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.listenerArn` | `string` | The ARN of the listener (e.g. "arn:aws:elasticloadbalancing:us-west-2: 123456789012:listener/app/api/50dc6c495c0c9188/f2f7dc8efc522ab2"). The primary handle other resources reference via status.outputs.listener_arn -- listener rules attach through this value. |
+| `status.outputs.listener_arn` | `string` | The ARN of the listener (e.g. "arn:aws:elasticloadbalancing:us-west-2: 123456789012:listener/app/api/50dc6c495c0c9188/f2f7dc8efc522ab2"). The primary handle other resources reference via status.outputs.listener_arn -- listener rules attach through this value. |
 
 ## References
 
@@ -892,6 +892,14 @@ Fields that can point at another resource's outputs:
 | `spec.defaultActions[].authenticateCognito.userPoolArn` | AwsCognitoUserPool | `status.outputs.user_pool_arn` |
 | `spec.defaultActions[].authenticateCognito.userPoolClientId` | AwsCognitoUserPoolClient | `status.outputs.client_id` |
 | `spec.defaultActions[].authenticateCognito.userPoolDomain` | AwsCognitoUserPool | `status.outputs.user_pool_domain` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsLbListenerRule | `spec.listenerArn` | `status.outputs.listener_arn` |
 
 ## See Also
 

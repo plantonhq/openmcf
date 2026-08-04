@@ -703,8 +703,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEventBridgeRu
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.ruleArn` | `string` | The Amazon Resource Name (ARN) of the rule. Used in IAM policies that grant or restrict access to manage this rule, and as a reference in monitoring and alerting configurations. |
-| `status.outputs.ruleName` | `string` | The name of the rule. This is the human-readable identifier used in EventBridge API calls. |
+| `status.outputs.rule_arn` | `string` | The Amazon Resource Name (ARN) of the rule. Used in IAM policies that grant or restrict access to manage this rule, and as a reference in monitoring and alerting configurations. |
+| `status.outputs.rule_name` | `string` | The name of the rule. This is the human-readable identifier used in EventBridge API calls. |
 
 ## References
 

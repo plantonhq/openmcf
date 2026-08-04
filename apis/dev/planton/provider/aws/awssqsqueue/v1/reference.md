@@ -292,9 +292,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSqsQueue, nam
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.queueUrl` | `string` | The URL of the SQS queue. This is the primary identifier used in the SQS API for sending, receiving, and deleting messages. |
-| `status.outputs.queueArn` | `string` | The Amazon Resource Name (ARN) of the queue. Used for IAM policies, cross-service permissions, and as a target reference in other resources (e.g., dead letter queue targets, SNS subscription endpoints). |
-| `status.outputs.queueName` | `string` | The name of the SQS queue. For FIFO queues this includes the `.fifo` suffix. |
+| `status.outputs.queue_url` | `string` | The URL of the SQS queue. This is the primary identifier used in the SQS API for sending, receiving, and deleting messages. |
+| `status.outputs.queue_arn` | `string` | The Amazon Resource Name (ARN) of the queue. Used for IAM policies, cross-service permissions, and as a target reference in other resources (e.g., dead letter queue targets, SNS subscription endpoints). |
+| `status.outputs.queue_name` | `string` | The name of the SQS queue. For FIFO queues this includes the `.fifo` suffix. |
 
 ## References
 
@@ -305,6 +305,24 @@ Fields that can point at another resource's outputs:
 | `spec.deadLetterConfig.targetArn` | AwsSqsQueue | `status.outputs.queue_arn` |
 | `spec.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.redriveAllowPolicy.sourceQueueArns` | AwsSqsQueue | `status.outputs.queue_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsEventBridgeBus | `spec.deadLetterConfig.arn` | `status.outputs.queue_arn` |
+| AwsEventBridgeRule | `spec.targets[].deadLetterConfig.arn` | `status.outputs.queue_arn` |
+| AwsLambda | `spec.deadLetterTargetArn` | `status.outputs.queue_arn` |
+| AwsLambda | `spec.asyncInvokeConfig.onSuccessDestinationArn` | `status.outputs.queue_arn` |
+| AwsLambda | `spec.asyncInvokeConfig.onFailureDestinationArn` | `status.outputs.queue_arn` |
+| AwsLambdaEventSourceMapping | `spec.eventSourceArn` | `status.outputs.queue_arn` |
+| AwsLambdaEventSourceMapping | `spec.onFailureDestinationArn` | `status.outputs.queue_arn` |
+| AwsS3Bucket | `spec.notification.queues[].queueArn` | `status.outputs.queue_arn` |
+| AwsSnsSubscription | `spec.deadLetterConfig.deadLetterTargetArn` | `status.outputs.queue_arn` |
+| AwsSqsQueue | `spec.deadLetterConfig.targetArn` | `status.outputs.queue_arn` |
+| AwsSqsQueue | `spec.redriveAllowPolicy.sourceQueueArns` | `status.outputs.queue_arn` |
 
 ## See Also
 

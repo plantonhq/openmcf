@@ -294,16 +294,16 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCertManagerCe
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.certArn` | `string` | The certificate ARN -- the join key every TLS consumer references (load-balancer listeners, CloudFront, Cognito custom domains, OpenSearch custom endpoints, Client VPN, ...). |
+| `status.outputs.cert_arn` | `string` | The certificate ARN -- the join key every TLS consumer references (load-balancer listeners, CloudFront, Cognito custom domains, OpenSearch custom endpoints, Client VPN, ...). |
 | `status.outputs.status` | `string` | The certificate status at the end of the deployment: "PENDING_VALIDATION" (created, waiting for domain validation -- the resting state when validation records are managed externally), "ISSUED" (ready to serve traffic), or a failure state ("VALIDATION_TIMED_OUT", "FAILED", "REVOKED", "EXPIRED"). |
-| `status.outputs.domainValidationRecords` | `[]AwsCertManagerCertDomainValidationRecord` | The DNS records that prove domain ownership, one per domain -- create these in your DNS when route53_hosted_zone_id is not set, and keep them in place afterwards so ACM can renew automatically. Empty for imported and private certificates (no public validation). |
-| `status.outputs.domainValidationRecords[].domainName` | `string` | The certificate domain this record validates. |
-| `status.outputs.domainValidationRecords[].recordName` | `string` | The DNS record name to create (a "_<hash>.<domain>." CNAME). |
-| `status.outputs.domainValidationRecords[].recordType` | `string` | The DNS record type (always "CNAME" today). |
-| `status.outputs.domainValidationRecords[].recordValue` | `string` | The DNS record value ACM expects the name to resolve to. |
-| `status.outputs.notBefore` | `string` | Start of the certificate's validity window (RFC3339). Empty until the certificate is issued. |
-| `status.outputs.notAfter` | `string` | End of the certificate's validity window (RFC3339) -- when an imported certificate must be re-imported by. Empty until the certificate is issued. |
-| `status.outputs.certificateType` | `string` | How the certificate came to be: "AMAZON_ISSUED" (requested), "IMPORTED", or "PRIVATE" (ACM-PCA). |
+| `status.outputs.domain_validation_records` | `[]AwsCertManagerCertDomainValidationRecord` | The DNS records that prove domain ownership, one per domain -- create these in your DNS when route53_hosted_zone_id is not set, and keep them in place afterwards so ACM can renew automatically. Empty for imported and private certificates (no public validation). |
+| `status.outputs.domain_validation_records[].domain_name` | `string` | The certificate domain this record validates. |
+| `status.outputs.domain_validation_records[].record_name` | `string` | The DNS record name to create (a "_<hash>.<domain>." CNAME). |
+| `status.outputs.domain_validation_records[].record_type` | `string` | The DNS record type (always "CNAME" today). |
+| `status.outputs.domain_validation_records[].record_value` | `string` | The DNS record value ACM expects the name to resolve to. |
+| `status.outputs.not_before` | `string` | Start of the certificate's validity window (RFC3339). Empty until the certificate is issued. |
+| `status.outputs.not_after` | `string` | End of the certificate's validity window (RFC3339) -- when an imported certificate must be re-imported by. Empty until the certificate is issued. |
+| `status.outputs.certificate_type` | `string` | How the certificate came to be: "AMAZON_ISSUED" (requested), "IMPORTED", or "PRIVATE" (ACM-PCA). |
 
 ## References
 
@@ -312,6 +312,21 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.route53HostedZoneId` | AwsRoute53Zone | `status.outputs.zone_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsClientVpn | `spec.authenticationOptions[].rootCertificateChainArn` | `status.outputs.cert_arn` |
+| AwsClientVpn | `spec.serverCertificateArn` | `status.outputs.cert_arn` |
+| AwsCloudFront | `spec.viewerCertificate.acmCertificateArn` | `status.outputs.cert_arn` |
+| AwsCognitoUserPool | `spec.domain.certificateArn` | `status.outputs.cert_arn` |
+| AwsHttpApiDomain | `spec.certificateArn` | `status.outputs.cert_arn` |
+| AwsLbListener | `spec.certificateArn` | `status.outputs.cert_arn` |
+| AwsLbListener | `spec.additionalCertificateArns` | `status.outputs.cert_arn` |
+| AwsOpenSearchDomain | `spec.domainEndpointOptions.customEndpointCertificateArn` | `status.outputs.cert_arn` |
 
 ## See Also
 

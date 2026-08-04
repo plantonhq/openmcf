@@ -610,16 +610,16 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRedshiftClust
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.clusterIdentifier` | `string` | The cluster identifier (e.g. "analytics-warehouse"). |
-| `status.outputs.clusterArn` | `string` | The Amazon Resource Name of the cluster, for IAM policies and cross-service references. |
-| `status.outputs.clusterNamespaceArn` | `string` | The namespace ARN of the cluster, used by Redshift data sharing and the Redshift Data API. |
+| `status.outputs.cluster_identifier` | `string` | The cluster identifier (e.g. "analytics-warehouse"). |
+| `status.outputs.cluster_arn` | `string` | The Amazon Resource Name of the cluster, for IAM policies and cross-service references. |
+| `status.outputs.cluster_namespace_arn` | `string` | The namespace ARN of the cluster, used by Redshift data sharing and the Redshift Data API. |
 | `status.outputs.endpoint` | `string` | The connection endpoint in "address:port" form, for SQL client connection strings. |
-| `status.outputs.dnsName` | `string` | The DNS hostname of the cluster's leader node (without port), for building connection strings and DNS alias records. |
-| `status.outputs.databaseName` | `string` | The name of the first database in the cluster. |
+| `status.outputs.dns_name` | `string` | The DNS hostname of the cluster's leader node (without port), for building connection strings and DNS alias records. |
+| `status.outputs.database_name` | `string` | The name of the first database in the cluster. |
 | `status.outputs.port` | `int32` | The port the cluster accepts connections on. |
-| `status.outputs.subnetGroupName` | `string` | The name of the Redshift subnet group the cluster runs in (module-managed from subnet_ids or the referenced existing group). |
-| `status.outputs.parameterGroupName` | `string` | The name of the cluster parameter group in use (module-managed from inline parameters or the referenced existing group). |
-| `status.outputs.masterPasswordSecretArn` | `string` | The ARN of the AWS-managed admin-password secret in Secrets Manager. Populated only when manage_master_password is true -- the handle applications use to fetch credentials at runtime. |
+| `status.outputs.subnet_group_name` | `string` | The name of the Redshift subnet group the cluster runs in (module-managed from subnet_ids or the referenced existing group). |
+| `status.outputs.parameter_group_name` | `string` | The name of the cluster parameter group in use (module-managed from inline parameters or the referenced existing group). |
+| `status.outputs.master_password_secret_arn` | `string` | The ARN of the AWS-managed admin-password secret in Secrets Manager. Populated only when manage_master_password is true -- the handle applications use to fetch credentials at runtime. |
 
 ## References
 

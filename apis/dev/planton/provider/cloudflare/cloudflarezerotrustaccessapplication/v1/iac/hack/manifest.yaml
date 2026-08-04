@@ -9,5 +9,6 @@ spec:
   domain: dashboard.example.com
   sessionDuration: 24h
   policies:
-    - policy: "00000000000000000000000000000000"
+    - policy:
+        value: "00000000000000000000000000000000"
       precedence: 1

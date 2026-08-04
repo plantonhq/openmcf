@@ -95,10 +95,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsIamInstancePr
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.instanceProfileArn` | `string` | The ARN of the instance profile (e.g. "arn:aws:iam::123456789012:instance-profile/web-server"). What an EC2 instance's iam_instance_profile_arn references via status.outputs.instance_profile_arn. |
-| `status.outputs.instanceProfileName` | `string` | The friendly name of the instance profile (mirrors metadata.name). Launch templates and some APIs take the profile by name rather than ARN. |
-| `status.outputs.instanceProfileId` | `string` | The stable unique ID AWS assigns to the profile (e.g. "AIPA..."). |
-| `status.outputs.roleName` | `string` | The name of the IAM role the profile carries, resolved from spec.role -- exported for convenience so downstream consumers can see the effective role without dereferencing the AwsIamRole resource. |
+| `status.outputs.instance_profile_arn` | `string` | The ARN of the instance profile (e.g. "arn:aws:iam::123456789012:instance-profile/web-server"). What an EC2 instance's iam_instance_profile_arn references via status.outputs.instance_profile_arn. |
+| `status.outputs.instance_profile_name` | `string` | The friendly name of the instance profile (mirrors metadata.name). Launch templates and some APIs take the profile by name rather than ARN. |
+| `status.outputs.instance_profile_id` | `string` | The stable unique ID AWS assigns to the profile (e.g. "AIPA..."). |
+| `status.outputs.role_name` | `string` | The name of the IAM role the profile carries, resolved from spec.role -- exported for convenience so downstream consumers can see the effective role without dereferencing the AwsIamRole resource. |
 
 ## References
 
@@ -107,6 +107,16 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.role` | AwsIamRole | `status.outputs.role_name` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBatchComputeEnvironment | `spec.computeResources.instanceRole` | `status.outputs.instance_profile_arn` |
+| AwsEc2Instance | `spec.instanceProfile` | `status.outputs.instance_profile_name` |
+| AwsLaunchTemplate | `spec.instanceProfile` | `status.outputs.instance_profile_arn` |
 
 ## See Also
 

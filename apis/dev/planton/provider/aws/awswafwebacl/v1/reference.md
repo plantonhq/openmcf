@@ -4626,11 +4626,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsWafWebAcl, na
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.webAclArn` | `string` | The Amazon Resource Name (ARN) of the Web ACL. This is the primary output used to associate the Web ACL with ALB, API Gateway, CloudFront, AppSync, Cognito, or App Runner resources. |
-| `status.outputs.webAclId` | `string` | The unique identifier of the Web ACL. |
-| `status.outputs.webAclName` | `string` | The name of the Web ACL as specified in metadata. |
+| `status.outputs.web_acl_arn` | `string` | The Amazon Resource Name (ARN) of the Web ACL. This is the primary output used to associate the Web ACL with ALB, API Gateway, CloudFront, AppSync, Cognito, or App Runner resources. |
+| `status.outputs.web_acl_id` | `string` | The unique identifier of the Web ACL. |
+| `status.outputs.web_acl_name` | `string` | The name of the Web ACL as specified in metadata. |
 | `status.outputs.capacity` | `int32` | The Web ACL Capacity Units (WCUs) consumed by all rules in this Web ACL. The default account limit is 5,000 WCUs per Web ACL. Use this output to monitor capacity usage and plan rule additions. |
-| `status.outputs.applicationIntegrationUrl` | `string` | The URL to use in your application's client integration when the Web ACL serves CAPTCHA or Challenge actions (the AWS WAF JavaScript integration endpoint). Empty when the ACL uses neither action. |
+| `status.outputs.application_integration_url` | `string` | The URL to use in your application's client integration when the Web ACL serves CAPTCHA or Challenge actions (the AWS WAF JavaScript integration endpoint). Empty when the ACL uses neither action. |
 
 ## References
 
@@ -4640,6 +4640,16 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.rules[].statement.ipSetReference.arn` | AwsWafIpSet | `status.outputs.ip_set_arn` |
 | `spec.rules[].statement.regexPatternSetReference.arn` | AwsWafRegexPatternSet | `status.outputs.regex_pattern_set_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAlb | `spec.webAclArn` | `status.outputs.web_acl_arn` |
+| AwsAppRunnerService | `spec.webAclArn` | `status.outputs.web_acl_arn` |
+| AwsCloudFront | `spec.webAclArn` | `status.outputs.web_acl_arn` |
 
 ## See Also
 

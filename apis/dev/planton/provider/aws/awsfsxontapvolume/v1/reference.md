@@ -661,12 +661,12 @@ Reference an output from another manifest as `valueFrom: {kind: AwsFsxOntapVolum
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.volumeId` | `string` | The ID of the volume (e.g., "fsvol-0123456789abcdef0"). Primary identifier used in AWS APIs and CloudWatch metrics for this volume. |
+| `status.outputs.volume_id` | `string` | The ID of the volume (e.g., "fsvol-0123456789abcdef0"). Primary identifier used in AWS APIs and CloudWatch metrics for this volume. |
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the volume. Used in IAM policies for resource-level permissions (e.g., restricting backup or snapshot operations to specific volumes). |
 | `status.outputs.uuid` | `string` | The universally unique identifier of the volume in ONTAP. Used for SnapMirror replication relationships, ONTAP REST API operations, and cross-cluster volume identification. |
-| `status.outputs.fileSystemId` | `string` | The file system ID that this volume belongs to (e.g., "fs-0123456789abcdef0"). Computed from the SVM's parent file system — useful for constructing CloudWatch metric dimensions or cross-referencing with the file system component. |
-| `status.outputs.flexcacheEndpointType` | `string` | The FlexCache endpoint type for this volume. - "NONE": Not participating in any FlexCache relationship. - "ORIGIN": This volume is the origin (source of truth) for one or more FlexCache volumes. - "CACHE": This volume is a FlexCache (read cache) of a remote origin. |
-| `status.outputs.ontapVolumeType` | `string` | The ONTAP volume type confirmation. Either "RW" (read-write) or "DP" (data protection / SnapMirror destination). |
+| `status.outputs.file_system_id` | `string` | The file system ID that this volume belongs to (e.g., "fs-0123456789abcdef0"). Computed from the SVM's parent file system — useful for constructing CloudWatch metric dimensions or cross-referencing with the file system component. |
+| `status.outputs.flexcache_endpoint_type` | `string` | The FlexCache endpoint type for this volume. - "NONE": Not participating in any FlexCache relationship. - "ORIGIN": This volume is the origin (source of truth) for one or more FlexCache volumes. - "CACHE": This volume is a FlexCache (read cache) of a remote origin. |
+| `status.outputs.ontap_volume_type` | `string` | The ONTAP volume type confirmation. Either "RW" (read-write) or "DP" (data protection / SnapMirror destination). |
 
 ## References
 

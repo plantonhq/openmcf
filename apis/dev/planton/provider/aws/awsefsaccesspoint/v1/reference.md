@@ -198,10 +198,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEfsAccessPoin
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.accessPointId` | `string` | The ID of the access point (e.g., "fsap-0123456789abcdef0"). ECS task definition EFS volume authorization references this. |
-| `status.outputs.accessPointArn` | `string` | The Amazon Resource Name of the access point. Lambda file system configurations and IAM policy conditions reference this. |
-| `status.outputs.fileSystemId` | `string` | The ID of the file system this access point enters (e.g., "fs-0123456789abcdef0"). Exported so a consumer composing on the access point (an ECS EFS volume needs both) can wire everything from this one node. |
-| `status.outputs.fileSystemArn` | `string` | The ARN of the file system this access point enters. Used in IAM policies that scope permissions to the file system while mounting through the access point. |
+| `status.outputs.access_point_id` | `string` | The ID of the access point (e.g., "fsap-0123456789abcdef0"). ECS task definition EFS volume authorization references this. |
+| `status.outputs.access_point_arn` | `string` | The Amazon Resource Name of the access point. Lambda file system configurations and IAM policy conditions reference this. |
+| `status.outputs.file_system_id` | `string` | The ID of the file system this access point enters (e.g., "fs-0123456789abcdef0"). Exported so a consumer composing on the access point (an ECS EFS volume needs both) can wire everything from this one node. |
+| `status.outputs.file_system_arn` | `string` | The ARN of the file system this access point enters. Used in IAM policies that scope permissions to the file system while mounting through the access point. |
 
 ## References
 
@@ -210,6 +210,16 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBatchJobDefinition | `spec.container.volumes[].efs.accessPointId` | `status.outputs.access_point_id` |
+| AwsEcsTaskDefinition | `spec.volumes[].efs.accessPointId` | `status.outputs.access_point_id` |
+| AwsLambda | `spec.fileSystemConfig.accessPointArn` | `status.outputs.access_point_arn` |
 
 ## See Also
 

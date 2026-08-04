@@ -225,8 +225,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsKinesisStream
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.streamArn` | `string` | The Amazon Resource Name (ARN) of the Kinesis stream. This is the primary identifier used for IAM policies, cross-service permissions, and as a source/target reference in other resources (e.g., Firehose source, Lambda event source mapping, EventBridge target). |
-| `status.outputs.streamName` | `string` | The name of the Kinesis stream. Used for Kinesis API calls (PutRecord, GetRecords, etc.) and for human-readable identification. The stream name is unique within an AWS account and region. |
+| `status.outputs.stream_arn` | `string` | The Amazon Resource Name (ARN) of the Kinesis stream. This is the primary identifier used for IAM policies, cross-service permissions, and as a source/target reference in other resources (e.g., Firehose source, Lambda event source mapping, EventBridge target). |
+| `status.outputs.stream_name` | `string` | The name of the Kinesis stream. Used for Kinesis API calls (PutRecord, GetRecords, etc.) and for human-readable identification. The stream name is unique within an AWS account and region. |
 
 ## References
 
@@ -235,6 +235,16 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsDynamodb | `spec.kinesisStreamingDestination.streamArn` | `status.outputs.stream_arn` |
+| AwsKinesisFirehose | `spec.kinesisStreamSource.streamArn` | `status.outputs.stream_arn` |
+| AwsKinesisStreamConsumer | `spec.streamArn` | `status.outputs.stream_arn` |
 
 ## See Also
 

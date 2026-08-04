@@ -145,9 +145,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCognitoResour
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.resourceServerIdentifier` | `string` | The resource server's identifier within its pool -- the scope prefix access tokens carry (e.g. "https://api.example.com"). |
-| `status.outputs.scopeIdentifiers` | `[]string` | The fully-qualified scope identifiers this resource server mints, in "{identifier}/{scope_name}" form (e.g. "https://api.example.com/read"). These are the exact strings app clients list in allowed_oauth_scopes. |
-| `status.outputs.userPoolId` | `string` | The user pool this resource server belongs to, resolved from the spec reference. Resource servers are keyed by (pool id, identifier) in AWS, and a consumer holding only this resource gets both halves of that key from its outputs. |
+| `status.outputs.resource_server_identifier` | `string` | The resource server's identifier within its pool -- the scope prefix access tokens carry (e.g. "https://api.example.com"). |
+| `status.outputs.scope_identifiers` | `[]string` | The fully-qualified scope identifiers this resource server mints, in "{identifier}/{scope_name}" form (e.g. "https://api.example.com/read"). These are the exact strings app clients list in allowed_oauth_scopes. |
+| `status.outputs.user_pool_id` | `string` | The user pool this resource server belongs to, resolved from the spec reference. Resource servers are keyed by (pool id, identifier) in AWS, and a consumer holding only this resource gets both halves of that key from its outputs. |
 
 ## References
 

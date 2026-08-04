@@ -130,9 +130,20 @@ Reference an output from another manifest as `valueFrom: {kind: AwsIamPolicy, na
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.policyArn` | `string` | The ARN of the managed policy (e.g. "arn:aws:iam::123456789012:policy/s3-read-only"). The primary handle other resources reference via status.outputs.policy_arn -- attachments and permissions boundaries both take this value. |
-| `status.outputs.policyId` | `string` | The stable unique ID AWS assigns to the policy (e.g. "ANPA..."). Unlike the ARN it never encodes the name or path, so it survives as a stable identifier in audit trails. |
-| `status.outputs.policyName` | `string` | The friendly name of the policy (mirrors metadata.name), for building IAM console URLs and CLI commands. |
+| `status.outputs.policy_arn` | `string` | The ARN of the managed policy (e.g. "arn:aws:iam::123456789012:policy/s3-read-only"). The primary handle other resources reference via status.outputs.policy_arn -- attachments and permissions boundaries both take this value. |
+| `status.outputs.policy_id` | `string` | The stable unique ID AWS assigns to the policy (e.g. "ANPA..."). Unlike the ARN it never encodes the name or path, so it survives as a stable identifier in audit trails. |
+| `status.outputs.policy_name` | `string` | The friendly name of the policy (mirrors metadata.name), for building IAM console URLs and CLI commands. |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsIamRole | `spec.managedPolicyArns` | `status.outputs.policy_arn` |
+| AwsIamRole | `spec.permissionsBoundary` | `status.outputs.policy_arn` |
+| AwsIamUser | `spec.managedPolicyArns` | `status.outputs.policy_arn` |
+| AwsIamUser | `spec.permissionsBoundary` | `status.outputs.policy_arn` |
 
 ## See Also
 

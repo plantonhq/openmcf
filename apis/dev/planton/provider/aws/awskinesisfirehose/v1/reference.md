@@ -5089,10 +5089,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsKinesisFireho
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.deliveryStreamArn` | `string` | The Amazon Resource Name (ARN) of the delivery stream. Used for IAM policies, CloudWatch alarm dimensions, and as a reference in other resources that need to send data to this delivery stream. |
-| `status.outputs.deliveryStreamName` | `string` | The name of the delivery stream. Used for Firehose API calls (PutRecord, PutRecordBatch) and for human-readable identification. The name is unique within an AWS account and region. |
-| `status.outputs.destinationId` | `string` | Identifier of the destination configuration within the delivery stream. AWS assigns it at creation (e.g., "destinationId-000000000001"); the UpdateDestination API requires it when modifying destination settings out of band. |
-| `status.outputs.versionId` | `string` | Version of the delivery stream configuration. AWS increments it on every configuration update; the UpdateDestination API requires the current version as an optimistic-concurrency token. |
+| `status.outputs.delivery_stream_arn` | `string` | The Amazon Resource Name (ARN) of the delivery stream. Used for IAM policies, CloudWatch alarm dimensions, and as a reference in other resources that need to send data to this delivery stream. |
+| `status.outputs.delivery_stream_name` | `string` | The name of the delivery stream. Used for Firehose API calls (PutRecord, PutRecordBatch) and for human-readable identification. The name is unique within an AWS account and region. |
+| `status.outputs.destination_id` | `string` | Identifier of the destination configuration within the delivery stream. AWS assigns it at creation (e.g., "destinationId-000000000001"); the UpdateDestination API requires it when modifying destination settings out of band. |
+| `status.outputs.version_id` | `string` | Version of the delivery stream configuration. AWS increments it on every configuration update; the UpdateDestination API requires the current version as an optimistic-concurrency token. |
 
 ## References
 
@@ -5161,6 +5161,16 @@ Fields that can point at another resource's outputs:
 | `spec.iceberg.s3Config.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.iceberg.s3Config.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.iceberg.processing.processors[].lambda.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsCognitoUserPool | `spec.logConfigurations[].firehoseStreamArn` | `status.outputs.delivery_stream_arn` |
+| AwsMskCluster | `spec.logging.firehose.deliveryStream` | `status.outputs.delivery_stream_name` |
+| AwsSesConfigurationSet | `spec.eventDestinations[].firehose.deliveryStream` | `status.outputs.delivery_stream_arn` |
 
 ## See Also
 

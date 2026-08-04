@@ -429,10 +429,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSnsTopic, nam
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.topicArn` | `string` | The Amazon Resource Name (ARN) of the SNS topic. This is the primary identifier used for IAM policies, cross-service permissions, subscription wiring (AwsSnsSubscription.topic_arn), and as a target reference in other resources (e.g., EventBridge rule targets, CloudWatch alarm actions). |
-| `status.outputs.topicName` | `string` | The name of the SNS topic. For FIFO topics this includes the `.fifo` suffix. |
+| `status.outputs.topic_arn` | `string` | The Amazon Resource Name (ARN) of the SNS topic. This is the primary identifier used for IAM policies, cross-service permissions, subscription wiring (AwsSnsSubscription.topic_arn), and as a target reference in other resources (e.g., EventBridge rule targets, CloudWatch alarm actions). |
+| `status.outputs.topic_name` | `string` | The name of the SNS topic. For FIFO topics this includes the `.fifo` suffix. |
 | `status.outputs.owner` | `string` | The AWS account ID that owns the topic. Useful for composing cross-account policies without hardcoding the account number. |
-| `status.outputs.beginningArchiveTime` | `string` | When `archive_policy` is active on a FIFO topic, the timestamp from which archived messages are available for replay (ISO 8601). Empty when message archiving is not enabled. |
+| `status.outputs.beginning_archive_time` | `string` | When `archive_policy` is active on a FIFO topic, the timestamp from which archived messages are available for replay (ISO 8601). Empty when message archiving is not enabled. |
 
 ## References
 
@@ -451,6 +451,27 @@ Fields that can point at another resource's outputs:
 | `spec.deliveryFeedback.lambda.failureFeedbackRole` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.deliveryFeedback.sqs.successFeedbackRole` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.deliveryFeedback.sqs.failureFeedbackRole` | AwsIamRole | `status.outputs.role_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAutoScalingGroup | `spec.lifecycleHooks[].notificationTargetArn` | `status.outputs.topic_arn` |
+| AwsAutoScalingGroup | `spec.notifications.topic` | `status.outputs.topic_arn` |
+| AwsCloudwatchAlarm | `spec.alarmActions` | `status.outputs.topic_arn` |
+| AwsCloudwatchAlarm | `spec.okActions` | `status.outputs.topic_arn` |
+| AwsCloudwatchAlarm | `spec.insufficientDataActions` | `status.outputs.topic_arn` |
+| AwsCloudwatchCompositeAlarm | `spec.alarmActions` | `status.outputs.topic_arn` |
+| AwsCloudwatchCompositeAlarm | `spec.okActions` | `status.outputs.topic_arn` |
+| AwsCloudwatchCompositeAlarm | `spec.insufficientDataActions` | `status.outputs.topic_arn` |
+| AwsMemcachedElasticache | `spec.notificationTopicArn` | `status.outputs.topic_arn` |
+| AwsMemorydbCluster | `spec.snsTopicArn` | `status.outputs.topic_arn` |
+| AwsRedisElasticache | `spec.notificationTopicArn` | `status.outputs.topic_arn` |
+| AwsS3Bucket | `spec.notification.topics[].topicArn` | `status.outputs.topic_arn` |
+| AwsSesConfigurationSet | `spec.eventDestinations[].snsTopic` | `status.outputs.topic_arn` |
+| AwsSnsSubscription | `spec.topicArn` | `status.outputs.topic_arn` |
 
 ## See Also
 

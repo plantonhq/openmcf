@@ -1193,8 +1193,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCodePipeline,
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.pipelineArn` | `string` | The Amazon Resource Name (ARN) of the pipeline. Use this for IAM policies, EventBridge targets, and cross-resource references. |
-| `status.outputs.pipelineName` | `string` | The name of the pipeline. Use this when referencing the pipeline in action configurations of other pipelines or in CLI commands. |
+| `status.outputs.pipeline_arn` | `string` | The Amazon Resource Name (ARN) of the pipeline. Use this for IAM policies, EventBridge targets, and cross-resource references. |
+| `status.outputs.pipeline_name` | `string` | The name of the pipeline. Use this when referencing the pipeline in action configurations of other pipelines or in CLI commands. |
 
 ## References
 

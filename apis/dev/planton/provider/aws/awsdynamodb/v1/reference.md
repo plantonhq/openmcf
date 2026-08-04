@@ -936,11 +936,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsDynamodb, nam
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.tableName` | `string` | The table name -- what SDK calls, IAM policy resources, and application configuration reference. |
-| `status.outputs.tableArn` | `string` | The table ARN -- the join key for IAM policies, resource policies, and cross-service integrations. |
-| `status.outputs.tableId` | `string` | The provider-assigned table identifier. |
-| `status.outputs.streamArn` | `string` | The DynamoDB Streams ARN -- what Lambda event-source mappings and other stream consumers attach to. Empty when streams are disabled. |
-| `status.outputs.streamLabel` | `string` | The stream label (a per-stream timestamp qualifier); combined with the account and table name it uniquely identifies the stream. Empty when streams are disabled. |
+| `status.outputs.table_name` | `string` | The table name -- what SDK calls, IAM policy resources, and application configuration reference. |
+| `status.outputs.table_arn` | `string` | The table ARN -- the join key for IAM policies, resource policies, and cross-service integrations. |
+| `status.outputs.table_id` | `string` | The provider-assigned table identifier. |
+| `status.outputs.stream_arn` | `string` | The DynamoDB Streams ARN -- what Lambda event-source mappings and other stream consumers attach to. Empty when streams are disabled. |
+| `status.outputs.stream_label` | `string` | The stream label (a per-stream timestamp qualifier); combined with the account and table name it uniquely identifies the stream. Empty when streams are disabled. |
 
 ## References
 

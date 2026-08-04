@@ -435,8 +435,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCloudwatchLog
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.logGroupArn` | `string` | The Amazon Resource Name (ARN) of the log group. This is the primary identifier used to reference the log group in other AWS resources such as Step Functions logging, API Gateway access logs, and OpenSearch log publishing. |
-| `status.outputs.logGroupName` | `string` | The name of the log group. Some AWS services (e.g., ElastiCache log delivery, ECS awslogs driver) reference log groups by name rather than ARN. |
+| `status.outputs.log_group_arn` | `string` | The Amazon Resource Name (ARN) of the log group. This is the primary identifier used to reference the log group in other AWS resources such as Step Functions logging, API Gateway access logs, and OpenSearch log publishing. |
+| `status.outputs.log_group_name` | `string` | The name of the log group. Some AWS services (e.g., ElastiCache log delivery, ECS awslogs driver) reference log groups by name rather than ARN. |
 
 ## References
 
@@ -446,6 +446,25 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.subscriptionFilters[].roleArn` | AwsIamRole | `status.outputs.role_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsClientVpn | `spec.connectionLog.cloudwatchLogGroup` | `status.outputs.log_group_name` |
+| AwsCodeBuildProject | `spec.logsConfig.cloudwatchLogs.groupName` | `status.outputs.log_group_name` |
+| AwsCognitoUserPool | `spec.logConfigurations[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
+| AwsEcsTaskDefinition | `spec.logging.logGroup` | `status.outputs.log_group_name` |
+| AwsFsxLustreFileSystem | `spec.logConfiguration.destination` | `status.outputs.log_group_arn` |
+| AwsFsxWindowsFileSystem | `spec.auditLogConfiguration.auditLogDestination` | `status.outputs.log_group_arn` |
+| AwsHttpApiGateway | `spec.stage.accessLog.destinationArn` | `status.outputs.log_group_arn` |
+| AwsLambda | `spec.loggingConfig.logGroup` | `status.outputs.log_group_name` |
+| AwsMskCluster | `spec.logging.cloudwatchLogs.logGroup` | `status.outputs.log_group_name` |
+| AwsOpenSearchDomain | `spec.logPublishingOptions[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
+| AwsRoute53Zone | `spec.queryLogging.cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
+| AwsStepFunction | `spec.logging.logDestination` | `status.outputs.log_group_arn` |
 
 ## See Also
 

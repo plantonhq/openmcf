@@ -559,14 +559,14 @@ Reference an output from another manifest as `valueFrom: {kind: AwsFsxWindowsFil
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.fileSystemId` | `string` | The ID of the file system (e.g., "fs-0123456789abcdef0"). Primary identifier used by EKS SMB CSI driver, AWS Backup, and other AWS services. |
-| `status.outputs.fileSystemArn` | `string` | The Amazon Resource Name of the file system. Used in IAM policies for resource-level permissions. |
-| `status.outputs.dnsName` | `string` | The DNS name for the file system (e.g., "fs-0123456789abcdef0.corp.example.com" for AD-joined file systems). Used in SMB mount commands: net use Z: \\<dns_name>\share |
-| `status.outputs.preferredFileServerIp` | `string` | The IP address of the preferred (active) file server. For MULTI_AZ_1, this is the active server's IP; in failover, the standby takes over. For SINGLE_AZ, this is the primary ENI IP. Useful for DNS record creation and network troubleshooting. |
-| `status.outputs.remoteAdministrationEndpoint` | `string` | The endpoint for remote administration via Windows Remote PowerShell. For MULTI_AZ_1: a floating endpoint that follows the active file server. For SINGLE_AZ: the file system's DNS name. Connect with: Enter-PSSession -ComputerName <endpoint> -ConfigurationName FsxRemoteAdmin |
-| `status.outputs.networkInterfaceIds` | `[]string` | The network interface IDs created for the file system, in order. SINGLE_AZ creates 1 ENI; MULTI_AZ creates 2 ENIs. Useful for security group debugging and network troubleshooting. |
-| `status.outputs.vpcId` | `string` | The VPC ID in which the file system was created. Computed from the subnets. Useful for constructing security group rules and verifying network placement. |
-| `status.outputs.ownerId` | `string` | The AWS account ID of the file system owner. |
+| `status.outputs.file_system_id` | `string` | The ID of the file system (e.g., "fs-0123456789abcdef0"). Primary identifier used by EKS SMB CSI driver, AWS Backup, and other AWS services. |
+| `status.outputs.file_system_arn` | `string` | The Amazon Resource Name of the file system. Used in IAM policies for resource-level permissions. |
+| `status.outputs.dns_name` | `string` | The DNS name for the file system (e.g., "fs-0123456789abcdef0.corp.example.com" for AD-joined file systems). Used in SMB mount commands: net use Z: \\<dns_name>\share |
+| `status.outputs.preferred_file_server_ip` | `string` | The IP address of the preferred (active) file server. For MULTI_AZ_1, this is the active server's IP; in failover, the standby takes over. For SINGLE_AZ, this is the primary ENI IP. Useful for DNS record creation and network troubleshooting. |
+| `status.outputs.remote_administration_endpoint` | `string` | The endpoint for remote administration via Windows Remote PowerShell. For MULTI_AZ_1: a floating endpoint that follows the active file server. For SINGLE_AZ: the file system's DNS name. Connect with: Enter-PSSession -ComputerName <endpoint> -ConfigurationName FsxRemoteAdmin |
+| `status.outputs.network_interface_ids` | `[]string` | The network interface IDs created for the file system, in order. SINGLE_AZ creates 1 ENI; MULTI_AZ creates 2 ENIs. Useful for security group debugging and network troubleshooting. |
+| `status.outputs.vpc_id` | `string` | The VPC ID in which the file system was created. Computed from the subnets. Useful for constructing security group rules and verifying network placement. |
+| `status.outputs.owner_id` | `string` | The AWS account ID of the file system owner. |
 
 ## References
 

@@ -1,30 +1,30 @@
-// Command refgen generates the committed per-kind markdown reference files
-// (reference.md, co-located with each kind's protos) from the descriptors
-// compiled into the binary, via the explain engine's markdown renderer.
+// Command refgen generates the committed markdown reference for the cloud
+// component catalog from the descriptors compiled into the binary, via the
+// explain engine's markdown renderer: one reference.md co-located with each
+// kind's protos, plus the catalog-level files (per-provider indexes, the
+// root index, the foreign-key graph, the commons page).
 //
-// Run through `make generate-reference` (optionally scoped with
-// provider=<name>). Output is deterministic: identical descriptors produce
-// byte-identical files, and the drift test in this package holds committed
-// files to that promise.
+// Run through `make generate-reference`. Generation is always whole-catalog:
+// a kind's Referenced By section and every catalog-level file depend on
+// every other kind's schema, so a scoped run could never leave the
+// committed tree consistent. Output is deterministic: identical descriptors
+// produce byte-identical files, and the drift test in this package holds
+// committed files to that promise.
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 )
 
 func main() {
-	provider := flag.String("provider", "", "generate only kinds under this provider (e.g. aws); empty generates every kind")
-	flag.Parse()
-
 	repoRoot, err := os.Getwd()
 	if err != nil {
 		fatal(err)
 	}
 
-	summary, err := Generate(repoRoot, *provider)
+	summary, err := Generate(repoRoot)
 	if err != nil {
 		fatal(err)
 	}

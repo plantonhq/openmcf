@@ -1641,14 +1641,14 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCodeBuildProj
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.projectArn` | `string` | The Amazon Resource Name (ARN) of the CodeBuild project. Use this for IAM policies, EventBridge targets, and cross-resource references. |
-| `status.outputs.projectName` | `string` | The name of the CodeBuild project. Use this in CodePipeline Build action configurations (the ProjectName key). |
-| `status.outputs.serviceRoleArn` | `string` | The IAM service role ARN used by the project. Echoed back for downstream reference in job definitions or policies. |
-| `status.outputs.badgeUrl` | `string` | The build badge URL, when badge_enabled is true. Embed it in a repository README to show live build status. Empty when the badge is disabled. |
-| `status.outputs.publicProjectAlias` | `string` | The public alias of the project, when project_visibility is PUBLIC_READ. This is the identifier in the public build results URL. Empty for private projects. |
-| `status.outputs.webhookUrl` | `string` | The webhook URL for the source provider, if a webhook was created. Empty when no webhook is configured. |
-| `status.outputs.webhookPayloadUrl` | `string` | The webhook payload URL, if a webhook was created. This is the URL the source provider posts events to; with webhook.manual_creation, register it on the repository by hand. Empty when no webhook is configured. |
-| `status.outputs.webhookSecret` | `string` | The webhook's HMAC signing secret (sensitive — a provider-minted credential, only returned at webhook creation). With webhook.manual_creation, configure it on the repository webhook so CodeBuild can authenticate payloads. Empty when no webhook is configured. |
+| `status.outputs.project_arn` | `string` | The Amazon Resource Name (ARN) of the CodeBuild project. Use this for IAM policies, EventBridge targets, and cross-resource references. |
+| `status.outputs.project_name` | `string` | The name of the CodeBuild project. Use this in CodePipeline Build action configurations (the ProjectName key). |
+| `status.outputs.service_role_arn` | `string` | The IAM service role ARN used by the project. Echoed back for downstream reference in job definitions or policies. |
+| `status.outputs.badge_url` | `string` | The build badge URL, when badge_enabled is true. Embed it in a repository README to show live build status. Empty when the badge is disabled. |
+| `status.outputs.public_project_alias` | `string` | The public alias of the project, when project_visibility is PUBLIC_READ. This is the identifier in the public build results URL. Empty for private projects. |
+| `status.outputs.webhook_url` | `string` | The webhook URL for the source provider, if a webhook was created. Empty when no webhook is configured. |
+| `status.outputs.webhook_payload_url` | `string` | The webhook payload URL, if a webhook was created. This is the URL the source provider posts events to; with webhook.manual_creation, register it on the repository by hand. Empty when no webhook is configured. |
+| `status.outputs.webhook_secret` | `string` | The webhook's HMAC signing secret (sensitive — a provider-minted credential, only returned at webhook creation). With webhook.manual_creation, configure it on the repository webhook so CodeBuild can authenticate payloads. Empty when no webhook is configured. |
 
 ## References
 

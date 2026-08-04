@@ -1331,10 +1331,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCloudFront, n
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.distributionId` | `string` | The distribution ID (e.g. "E2ABCDEF123456") -- what invalidation requests and monitoring subscriptions key on. |
-| `status.outputs.distributionArn` | `string` | The distribution ARN -- what WAF associations and resource policies reference. |
-| `status.outputs.domainName` | `string` | The CloudFront domain name (e.g. "d123abc.cloudfront.net") -- the target for Route53 alias records and CNAMEs pointing custom domains at the distribution. |
-| `status.outputs.hostedZoneId` | `string` | The Route53 hosted zone ID for CloudFront alias records -- always "Z2FDTNDATAQYW2" (CloudFront's global zone), exported so alias records can compose without hardcoding it. |
+| `status.outputs.distribution_id` | `string` | The distribution ID (e.g. "E2ABCDEF123456") -- what invalidation requests and monitoring subscriptions key on. |
+| `status.outputs.distribution_arn` | `string` | The distribution ARN -- what WAF associations and resource policies reference. |
+| `status.outputs.domain_name` | `string` | The CloudFront domain name (e.g. "d123abc.cloudfront.net") -- the target for Route53 alias records and CNAMEs pointing custom domains at the distribution. |
+| `status.outputs.hosted_zone_id` | `string` | The Route53 hosted zone ID for CloudFront alias records -- always "Z2FDTNDATAQYW2" (CloudFront's global zone), exported so alias records can compose without hardcoding it. |
 | `status.outputs.status` | `string` | The distribution status at the end of the deployment: "Deployed" (propagated to every edge location) or "InProgress" (still propagating -- the resting state when wait_for_deployment is false). |
 
 ## References

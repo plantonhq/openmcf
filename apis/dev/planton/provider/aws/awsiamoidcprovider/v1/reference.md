@@ -118,8 +118,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsIamOidcProvid
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.providerArn` | `string` | provider_arn is the Amazon Resource Name (ARN) of the IAM OIDC provider (e.g. "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED"). This is the value an AwsIamRole trust policy references as a `Federated` principal to grant web-identity (IRSA / CI federation) access. |
-| `status.outputs.providerUrl` | `string` | provider_url is the issuer URL AWS stored for this provider, with the "https://" scheme stripped (e.g. "oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED"). It matches the `<provider-url>` segment of provider_arn and is the value used to build the `<provider-url>:sub` / `<provider-url>:aud` condition keys in a role's trust policy. |
+| `status.outputs.provider_arn` | `string` | provider_arn is the Amazon Resource Name (ARN) of the IAM OIDC provider (e.g. "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED"). This is the value an AwsIamRole trust policy references as a `Federated` principal to grant web-identity (IRSA / CI federation) access. |
+| `status.outputs.provider_url` | `string` | provider_url is the issuer URL AWS stored for this provider, with the "https://" scheme stripped (e.g. "oidc.eks.us-west-2.amazonaws.com/id/EXAMPLED"). It matches the `<provider-url>` segment of provider_arn and is the value used to build the `<provider-url>:sub` / `<provider-url>:aud` condition keys in a role's trust policy. |
 
 ## References
 

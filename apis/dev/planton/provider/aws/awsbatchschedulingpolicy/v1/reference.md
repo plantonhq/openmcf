@@ -131,8 +131,16 @@ Reference an output from another manifest as `valueFrom: {kind: AwsBatchScheduli
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.schedulingPolicyArn` | `string` | The Amazon Resource Name (ARN) of the scheduling policy -- what job queues reference through their scheduling_policy field. |
-| `status.outputs.schedulingPolicyName` | `string` | The scheduling policy's name (derived from metadata.name). |
+| `status.outputs.scheduling_policy_arn` | `string` | The Amazon Resource Name (ARN) of the scheduling policy -- what job queues reference through their scheduling_policy field. |
+| `status.outputs.scheduling_policy_name` | `string` | The scheduling policy's name (derived from metadata.name). |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBatchJobQueue | `spec.schedulingPolicy` | `status.outputs.scheduling_policy_arn` |
 
 ## See Also
 

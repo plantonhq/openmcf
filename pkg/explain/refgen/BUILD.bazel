@@ -6,6 +6,7 @@ go_library(
         "generate.go",
         "main.go",
     ],
+    embedsrcs = ["commons.md"],
     importpath = "github.com/plantonhq/planton/pkg/explain/refgen",
     visibility = ["//visibility:private"],
     deps = [

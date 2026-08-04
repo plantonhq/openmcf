@@ -458,9 +458,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCognitoIdenti
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.providerName` | `string` | The name of the identity provider as registered in the User Pool. This is the value that must appear in a User Pool Client's `supported_identity_providers` list to enable federated sign-in through this provider. |
-| `status.outputs.providerType` | `string` | The type of the identity provider (e.g., "Google", "OIDC", "SAML"). Informational — useful for downstream tooling and display. |
-| `status.outputs.userPoolId` | `string` | The user pool this identity provider is attached to, resolved from the spec reference. Providers are keyed by (pool id, provider name) in AWS, and a consumer holding only this resource gets both halves of that key from its outputs. |
+| `status.outputs.provider_name` | `string` | The name of the identity provider as registered in the User Pool. This is the value that must appear in a User Pool Client's `supported_identity_providers` list to enable federated sign-in through this provider. |
+| `status.outputs.provider_type` | `string` | The type of the identity provider (e.g., "Google", "OIDC", "SAML"). Informational — useful for downstream tooling and display. |
+| `status.outputs.user_pool_id` | `string` | The user pool this identity provider is attached to, resolved from the spec reference. Providers are keyed by (pool id, provider name) in AWS, and a consumer holding only this resource gets both halves of that key from its outputs. |
 
 ## References
 
@@ -469,6 +469,14 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.userPoolId` | AwsCognitoUserPool | `status.outputs.user_pool_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsCognitoUserPoolClient | `spec.supportedIdentityProviders` | `status.outputs.provider_name` |
 
 ## See Also
 

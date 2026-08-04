@@ -435,15 +435,15 @@ Reference an output from another manifest as `valueFrom: {kind: AwsFsxOntapFileS
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.fileSystemId` | `string` | The ID of the file system (e.g., "fs-0123456789abcdef0"). Primary identifier used by Storage Virtual Machines and other AWS services. |
-| `status.outputs.fileSystemArn` | `string` | The Amazon Resource Name of the file system. Used in IAM policies for resource-level permissions. |
-| `status.outputs.managementDnsName` | `string` | The management endpoint DNS name. Used for SSH (ONTAP CLI) and REST API access to the file system. Connect via: ssh fsxadmin@<management_dns_name> Data access (NFS/SMB/iSCSI) endpoints live on the SVM — see AwsFsxOntapStorageVirtualMachine outputs. An ONTAP file system has no file-system-level data DNS name. |
-| `status.outputs.managementIpAddresses` | `[]string` | The management endpoint IP addresses. Alternative to DNS for direct IP access to the ONTAP management interface. |
-| `status.outputs.interclusterDnsName` | `string` | The intercluster endpoint DNS name. Used for NetApp SnapMirror replication between FSx for ONTAP file systems (same or cross-region). |
-| `status.outputs.interclusterIpAddresses` | `[]string` | The intercluster endpoint IP addresses. Used for SnapMirror peering when DNS resolution is not available. |
-| `status.outputs.networkInterfaceIds` | `[]string` | The network interface IDs created for the file system, in order. Single-AZ creates 1 ENI per HA pair; multi-AZ creates 2 ENIs. Useful for security group debugging and network troubleshooting. |
-| `status.outputs.vpcId` | `string` | The VPC ID in which the file system was created. Computed from the subnets. Useful for constructing security group rules and verifying network placement. |
-| `status.outputs.ownerId` | `string` | The AWS account ID of the file system owner. |
+| `status.outputs.file_system_id` | `string` | The ID of the file system (e.g., "fs-0123456789abcdef0"). Primary identifier used by Storage Virtual Machines and other AWS services. |
+| `status.outputs.file_system_arn` | `string` | The Amazon Resource Name of the file system. Used in IAM policies for resource-level permissions. |
+| `status.outputs.management_dns_name` | `string` | The management endpoint DNS name. Used for SSH (ONTAP CLI) and REST API access to the file system. Connect via: ssh fsxadmin@<management_dns_name> Data access (NFS/SMB/iSCSI) endpoints live on the SVM — see AwsFsxOntapStorageVirtualMachine outputs. An ONTAP file system has no file-system-level data DNS name. |
+| `status.outputs.management_ip_addresses` | `[]string` | The management endpoint IP addresses. Alternative to DNS for direct IP access to the ONTAP management interface. |
+| `status.outputs.intercluster_dns_name` | `string` | The intercluster endpoint DNS name. Used for NetApp SnapMirror replication between FSx for ONTAP file systems (same or cross-region). |
+| `status.outputs.intercluster_ip_addresses` | `[]string` | The intercluster endpoint IP addresses. Used for SnapMirror peering when DNS resolution is not available. |
+| `status.outputs.network_interface_ids` | `[]string` | The network interface IDs created for the file system, in order. Single-AZ creates 1 ENI per HA pair; multi-AZ creates 2 ENIs. Useful for security group debugging and network troubleshooting. |
+| `status.outputs.vpc_id` | `string` | The VPC ID in which the file system was created. Computed from the subnets. Useful for constructing security group rules and verifying network placement. |
+| `status.outputs.owner_id` | `string` | The AWS account ID of the file system owner. |
 
 ## References
 
@@ -456,6 +456,14 @@ Fields that can point at another resource's outputs:
 | `spec.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.routeTableIds` | AwsSubnet | `status.outputs.route_table_id` |
 | `spec.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsFsxOntapStorageVirtualMachine | `spec.fileSystemId` | `status.outputs.file_system_id` |
 
 ## See Also
 

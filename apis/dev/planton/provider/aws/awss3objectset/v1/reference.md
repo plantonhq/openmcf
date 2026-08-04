@@ -431,10 +431,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsS3ObjectSet, 
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.bucketId` | `string` | The bucket the objects were uploaded to. Carried for downstream references and for E2E verification (HeadObject per key). |
-| `status.outputs.objectArns` | `map<string, string>` | Map of object key to its ARN (arn:aws:s3:::bucket/key). Composes into IAM policy Resource lists that must grant access to exactly these objects. |
-| `status.outputs.objectEtags` | `map<string, string>` | Map of object key to its ETag (content hash). The ETag changes when the object content changes, useful for cache invalidation. |
-| `status.outputs.objectVersionIds` | `map<string, string>` | Map of object key to its version ID. Only populated when the target bucket has versioning enabled. |
+| `status.outputs.bucket_id` | `string` | The bucket the objects were uploaded to. Carried for downstream references and for E2E verification (HeadObject per key). |
+| `status.outputs.object_arns` | `map<string, string>` | Map of object key to its ARN (arn:aws:s3:::bucket/key). Composes into IAM policy Resource lists that must grant access to exactly these objects. |
+| `status.outputs.object_etags` | `map<string, string>` | Map of object key to its ETag (content hash). The ETag changes when the object content changes, useful for cache invalidation. |
+| `status.outputs.object_version_ids` | `map<string, string>` | Map of object key to its version ID. Only populated when the target bucket has versioning enabled. |
 
 ## References
 

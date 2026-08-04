@@ -255,11 +255,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSubnet, name:
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.subnetId` | `string` | The subnet's id (e.g. "subnet-0abc123"). |
-| `status.outputs.subnetArn` | `string` | The subnet's ARN. |
-| `status.outputs.availabilityZone` | `string` | The availability zone the subnet resides in (e.g. "us-west-2a"). |
-| `status.outputs.cidrBlock` | `string` | The subnet's IPv4 CIDR block. |
-| `status.outputs.routeTableId` | `string` | The id of the route table this subnet owns or references: the inline table created from routes, or the externally referenced route_table_id. EMPTY when neither is set -- the subnet then rides the VPC main route table, which is deliberately not echoed here (attaching to it is an explicit choice); use the AwsVpc's main_route_table_id / default_route_table_id outputs instead. |
+| `status.outputs.subnet_id` | `string` | The subnet's id (e.g. "subnet-0abc123"). |
+| `status.outputs.subnet_arn` | `string` | The subnet's ARN. |
+| `status.outputs.availability_zone` | `string` | The availability zone the subnet resides in (e.g. "us-west-2a"). |
+| `status.outputs.cidr_block` | `string` | The subnet's IPv4 CIDR block. |
+| `status.outputs.route_table_id` | `string` | The id of the route table this subnet owns or references: the inline table created from routes, or the externally referenced route_table_id. EMPTY when neither is set -- the subnet then rides the VPC main route table, which is deliberately not echoed here (attaching to it is an explicit choice); use the AwsVpc's main_route_table_id / default_route_table_id outputs instead. |
 | `status.outputs.region` | `string` | The AWS region the subnet was created in. Echoed so downstream tooling and verifiers can target the correct region. |
 
 ## References
@@ -269,6 +269,64 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.vpcId` | AwsVpc | `status.outputs.vpc_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAlb | `spec.subnets` | `status.outputs.subnet_id` |
+| AwsAppRunnerVpcConnector | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsAutoScalingGroup | `spec.subnets` | `status.outputs.subnet_id` |
+| AwsBatchComputeEnvironment | `spec.computeResources.subnetIds` | `status.outputs.subnet_id` |
+| AwsClientVpn | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsClientVpn | `spec.routes[].targetSubnetId` | `status.outputs.subnet_id` |
+| AwsCodeBuildProject | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
+| AwsDocumentDb | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsEc2Instance | `spec.subnetId` | `status.outputs.subnet_id` |
+| AwsEc2Instance | `spec.secondaryNetworkInterfaces[].subnetId` | `status.outputs.subnet_id` |
+| AwsEcsService | `spec.network.subnets` | `status.outputs.subnet_id` |
+| AwsEksCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsEksFargateProfile | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsEksNodeGroup | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsElasticFileSystem | `spec.mountTargets[].subnetId` | `status.outputs.subnet_id` |
+| AwsEventBridgeRule | `spec.targets[].ecsTarget.networkConfiguration.subnets` | `status.outputs.subnet_id` |
+| AwsFsxLustreFileSystem | `spec.subnetId` | `status.outputs.subnet_id` |
+| AwsFsxOntapFileSystem | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsFsxOntapFileSystem | `spec.preferredSubnetId` | `status.outputs.subnet_id` |
+| AwsFsxOntapFileSystem | `spec.routeTableIds` | `status.outputs.route_table_id` |
+| AwsFsxOpenzfsFileSystem | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsFsxOpenzfsFileSystem | `spec.preferredSubnetId` | `status.outputs.subnet_id` |
+| AwsFsxOpenzfsFileSystem | `spec.routeTableIds` | `status.outputs.route_table_id` |
+| AwsFsxWindowsFileSystem | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsFsxWindowsFileSystem | `spec.preferredSubnetId` | `status.outputs.subnet_id` |
+| AwsHttpApiVpcLink | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsKinesisFirehose | `spec.opensearch.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
+| AwsKinesisFirehose | `spec.opensearchServerless.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
+| AwsLambda | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsLaunchTemplate | `spec.networkInterfaces[].subnetId` | `status.outputs.subnet_id` |
+| AwsMemcachedElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsMemorydbCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsMskCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsMskServerlessCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsMwaaEnvironment | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsNatGateway | `spec.subnetId` | `status.outputs.subnet_id` |
+| AwsNeptuneCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsNlb | `spec.subnetMappings[].subnetId` | `status.outputs.subnet_id` |
+| AwsOpenSearchDomain | `spec.vpcOptions.subnetIds` | `status.outputs.subnet_id` |
+| AwsPlantonRunner | `spec.subnets` | `status.outputs.subnet_id` |
+| AwsRdsCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsRdsInstance | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsRedisElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsRedshiftCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsRedshiftServerlessWorkgroup | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsSagemakerDomain | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsServerlessElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsTransitGatewayVpcAttachment | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsVpcEndpoint | `spec.routeTableIds` | `status.outputs.route_table_id` |
+| AwsVpcEndpoint | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsVpcEndpoint | `spec.subnetConfigurations[].subnetId` | `status.outputs.subnet_id` |
 
 ## See Also
 

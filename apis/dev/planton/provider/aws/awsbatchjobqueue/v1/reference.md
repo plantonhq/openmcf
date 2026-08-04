@@ -212,8 +212,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsBatchJobQueue
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.jobQueueArn` | `string` | The Amazon Resource Name (ARN) of the job queue -- the handle jobs are submitted against (SubmitJob) and the target EventBridge Batch targets point at. |
-| `status.outputs.jobQueueName` | `string` | The job queue's name (derived from metadata.name). SubmitJob accepts the name or the ARN interchangeably within the same account/region. |
+| `status.outputs.job_queue_arn` | `string` | The Amazon Resource Name (ARN) of the job queue -- the handle jobs are submitted against (SubmitJob) and the target EventBridge Batch targets point at. |
+| `status.outputs.job_queue_name` | `string` | The job queue's name (derived from metadata.name). SubmitJob accepts the name or the ARN interchangeably within the same account/region. |
 
 ## References
 

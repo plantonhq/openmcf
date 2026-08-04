@@ -110,10 +110,21 @@ Reference an output from another manifest as `valueFrom: {kind: AwsElasticIp, na
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.allocationId` | `string` | The allocation ID of the Elastic IP (e.g., "eipalloc-0123456789abcdef0"). This is the primary identifier used to reference the EIP in other AWS resources such as NLB subnet mappings, NAT Gateways, and EIP associations. |
-| `status.outputs.publicIp` | `string` | The public IPv4 address assigned to this Elastic IP. |
+| `status.outputs.allocation_id` | `string` | The allocation ID of the Elastic IP (e.g., "eipalloc-0123456789abcdef0"). This is the primary identifier used to reference the EIP in other AWS resources such as NLB subnet mappings, NAT Gateways, and EIP associations. |
+| `status.outputs.public_ip` | `string` | The public IPv4 address assigned to this Elastic IP. |
 | `status.outputs.arn` | `string` | The Amazon Resource Name (ARN) of the Elastic IP. Used for IAM policies and resource-level permissions. |
-| `status.outputs.publicDns` | `string` | The public DNS hostname associated with the Elastic IP (e.g., "ec2-1-2-3-4.compute-1.amazonaws.com"). |
+| `status.outputs.public_dns` | `string` | The public DNS hostname associated with the Elastic IP (e.g., "ec2-1-2-3-4.compute-1.amazonaws.com"). |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsNatGateway | `spec.allocationId` | `status.outputs.allocation_id` |
+| AwsNatGateway | `spec.secondaryAllocationIds` | `status.outputs.allocation_id` |
+| AwsNlb | `spec.subnetMappings[].allocationId` | `status.outputs.allocation_id` |
+| AwsRedshiftCluster | `spec.elasticIp` | `status.outputs.public_ip` |
 
 ## See Also
 

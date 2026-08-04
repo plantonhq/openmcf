@@ -1115,15 +1115,15 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCognitoUserPo
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.userPoolId` | `string` | The user pool identifier. Primary reference used in SDK calls, IAM policies, and as the user_pool_id input for app clients, identity providers, and resource servers. Format: "{region}_{poolId}" (e.g., "us-east-1_Ab1Cd2EfG"). |
-| `status.outputs.userPoolArn` | `string` | The Amazon Resource Name of the user pool. Used in IAM policies, cross-service permissions, and ALB authenticate-cognito actions. |
-| `status.outputs.userPoolEndpoint` | `string` | The pool's endpoint as AWS reports it -- host and path WITHOUT a scheme: "cognito-idp.{region}.amazonaws.com/{user_pool_id}". Use `issuer` when a consumer needs the full OIDC issuer URL. |
+| `status.outputs.user_pool_id` | `string` | The user pool identifier. Primary reference used in SDK calls, IAM policies, and as the user_pool_id input for app clients, identity providers, and resource servers. Format: "{region}_{poolId}" (e.g., "us-east-1_Ab1Cd2EfG"). |
+| `status.outputs.user_pool_arn` | `string` | The Amazon Resource Name of the user pool. Used in IAM policies, cross-service permissions, and ALB authenticate-cognito actions. |
+| `status.outputs.user_pool_endpoint` | `string` | The pool's endpoint as AWS reports it -- host and path WITHOUT a scheme: "cognito-idp.{region}.amazonaws.com/{user_pool_id}". Use `issuer` when a consumer needs the full OIDC issuer URL. |
 | `status.outputs.issuer` | `string` | The OIDC issuer URL for tokens minted by this pool: "https://cognito-idp.{region}.amazonaws.com/{user_pool_id}". This is the value JWT authorizers (API Gateway, ALB) and OIDC client libraries validate the token's "iss" claim against. |
-| `status.outputs.userPoolDomain` | `string` | The hosted-UI domain exactly as configured on the pool -- the prefix of a Cognito-hosted domain (e.g. "myapp-auth") or the full custom domain (e.g. "auth.example.com"), with no scheme. This is the join key ALB authenticate-cognito actions take as their user_pool_domain. Empty when no domain is configured. |
-| `status.outputs.hostedUiUrl` | `string` | The full https:// URL of the hosted sign-in UI: "https://{prefix}.auth.{region}.amazoncognito.com" for Cognito-hosted domains, or "https://{custom_domain}" for custom domains. Empty when no domain is configured. |
-| `status.outputs.cloudfrontDistribution` | `string` | The CloudFront distribution DOMAIN NAME fronting a custom domain (e.g. "d111abcdef8.cloudfront.net"). Point the custom domain's DNS at this value -- with AwsRoute53DnsRecord, an alias A record composed from this output and `cloudfront_hosted_zone_id`. Empty for Cognito-hosted prefix domains or when no domain is configured. |
-| `status.outputs.cloudfrontDistributionArn` | `string` | The ARN of the CloudFront distribution fronting a custom domain. Useful for IAM policies and tag-based governance. Empty for prefix domains. |
-| `status.outputs.cloudfrontHostedZoneId` | `string` | The Route53 hosted-zone ID of the CloudFront distribution (the fixed CloudFront zone) -- the alias target zone for DNS alias records pointing the custom domain at CloudFront. Empty for prefix domains. |
+| `status.outputs.user_pool_domain` | `string` | The hosted-UI domain exactly as configured on the pool -- the prefix of a Cognito-hosted domain (e.g. "myapp-auth") or the full custom domain (e.g. "auth.example.com"), with no scheme. This is the join key ALB authenticate-cognito actions take as their user_pool_domain. Empty when no domain is configured. |
+| `status.outputs.hosted_ui_url` | `string` | The full https:// URL of the hosted sign-in UI: "https://{prefix}.auth.{region}.amazoncognito.com" for Cognito-hosted domains, or "https://{custom_domain}" for custom domains. Empty when no domain is configured. |
+| `status.outputs.cloudfront_distribution` | `string` | The CloudFront distribution DOMAIN NAME fronting a custom domain (e.g. "d111abcdef8.cloudfront.net"). Point the custom domain's DNS at this value -- with AwsRoute53DnsRecord, an alias A record composed from this output and `cloudfront_hosted_zone_id`. Empty for Cognito-hosted prefix domains or when no domain is configured. |
+| `status.outputs.cloudfront_distribution_arn` | `string` | The ARN of the CloudFront distribution fronting a custom domain. Useful for IAM policies and tag-based governance. Empty for prefix domains. |
+| `status.outputs.cloudfront_hosted_zone_id` | `string` | The Route53 hosted-zone ID of the CloudFront distribution (the fixed CloudFront zone) -- the alias target zone for DNS alias records pointing the custom domain at CloudFront. Empty for prefix domains. |
 
 ## References
 
@@ -1150,6 +1150,22 @@ Fields that can point at another resource's outputs:
 | `spec.logConfigurations[].firehoseStreamArn` | AwsKinesisFirehose | `status.outputs.delivery_stream_arn` |
 | `spec.logConfigurations[].s3BucketArn` | AwsS3Bucket | `status.outputs.bucket_arn` |
 | `spec.domain.certificateArn` | AwsCertManagerCert | `status.outputs.cert_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsCognitoIdentityProvider | `spec.userPoolId` | `status.outputs.user_pool_id` |
+| AwsCognitoResourceServer | `spec.userPoolId` | `status.outputs.user_pool_id` |
+| AwsCognitoUserPoolClient | `spec.userPoolId` | `status.outputs.user_pool_id` |
+| AwsHttpApiGateway | `spec.authorizers[].jwtConfiguration.issuer` | `status.outputs.issuer` |
+| AwsLbListener | `spec.defaultActions[].authenticateCognito.userPoolArn` | `status.outputs.user_pool_arn` |
+| AwsLbListener | `spec.defaultActions[].authenticateCognito.userPoolDomain` | `status.outputs.user_pool_domain` |
+| AwsLbListenerRule | `spec.actions[].authenticateCognito.userPoolArn` | `status.outputs.user_pool_arn` |
+| AwsLbListenerRule | `spec.actions[].authenticateCognito.userPoolDomain` | `status.outputs.user_pool_domain` |
+| AwsOpenSearchDomain | `spec.cognitoOptions.userPoolId` | `status.outputs.user_pool_id` |
 
 ## See Also
 

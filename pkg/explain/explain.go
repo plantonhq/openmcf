@@ -94,11 +94,16 @@ type EnumValue struct {
 }
 
 // Field is one manifest field. Name is the protojson name -- the exact key
-// written in YAML manifests and chart templates.
+// written in YAML manifests and chart templates. ProtoName is the proto
+// field name (snake_case) -- the canonical spelling of a valueFrom
+// fieldPath, because the control plane stores cloud objects with proto
+// field names and canonicalizes reference paths to them (camelCase is
+// tolerated on input and rewritten).
 type Field struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-	Doc  string `json:"doc,omitempty"`
+	Name      string `json:"name"`
+	ProtoName string `json:"protoName"`
+	Type      string `json:"type"`
+	Doc       string `json:"doc,omitempty"`
 
 	Required bool `json:"required,omitempty"`
 	// Optional mirrors the proto3 `optional` keyword (explicit presence):

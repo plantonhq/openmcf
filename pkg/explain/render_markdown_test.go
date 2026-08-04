@@ -16,6 +16,7 @@ var markdownHeadingVocabulary = []string{
 	"## Validation Rules",
 	"## Outputs",
 	"## References",
+	"## Referenced By",
 	"## See Also",
 }
 
@@ -45,7 +46,9 @@ func TestRenderMarkdownRootView(t *testing.T) {
 		"## Field Details",
 		"### spec.region",
 		"## Outputs",
-		"| `status.outputs.vpcId` |",
+		// Output paths spell the proto field name (snake_case) -- the
+		// canonical valueFrom fieldPath spelling the control plane stores.
+		"| `status.outputs.vpc_id` |",
 		"## See Also",
 		"[Overview](./README.md)",
 	} {
@@ -118,6 +121,47 @@ func TestRenderMarkdownForeignKeys(t *testing.T) {
 	// the only place an author learns a bare string does not parse.
 	if !strings.Contains(text, "write as {value:") || !strings.Contains(text, "kind: AwsVpc") {
 		t.Errorf("valueFrom contract missing from field details:\n%s", text)
+	}
+}
+
+func TestRenderMarkdownReferencedBy(t *testing.T) {
+	text := renderKindMarkdown(t, "AwsVpc", MarkdownOptions{
+		ReferencedBy: []InboundRef{
+			{Kind: "AwsSecurityGroup", FieldPath: "spec.vpcId", TargetFieldPath: "status.outputs.vpc_id"},
+		},
+	})
+	if !strings.Contains(text, "## Referenced By") {
+		t.Fatalf("Referenced By section missing:\n%s", text)
+	}
+	if !strings.Contains(text, "| AwsSecurityGroup | `spec.vpcId` | `status.outputs.vpc_id` |") {
+		t.Errorf("inbound reference row missing:\n%s", text)
+	}
+
+	// Absent edges render no section -- same contract as every other
+	// optional section.
+	if strings.Contains(renderKindMarkdown(t, "AwsVpc", MarkdownOptions{}), "## Referenced By") {
+		t.Error("Referenced By must not render without edges")
+	}
+}
+
+func TestReferenceEdges(t *testing.T) {
+	engine := DefaultEngine()
+	report, err := engine.Explain(mustResource(t, "aws-security-group"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edges := ReferenceEdges(report)
+	if len(edges) == 0 {
+		t.Fatal("AwsSecurityGroup declares foreign keys; expected edges")
+	}
+	found := false
+	for _, edge := range edges {
+		if edge.FieldPath == "spec.vpcId" && edge.Kind == "AwsVpc" && edge.TargetFieldPath == "status.outputs.vpc_id" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected edge spec.vpcId -> AwsVpc status.outputs.vpc_id, got %+v", edges)
 	}
 }
 

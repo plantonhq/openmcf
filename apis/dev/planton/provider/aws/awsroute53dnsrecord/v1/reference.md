@@ -471,10 +471,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRoute53DnsRec
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.fqdn` | `string` | The fully qualified domain name (FQDN) of the created DNS record. Example: "www.example.com" or "example.com" for apex records. |
-| `status.outputs.recordType` | `string` | The DNS record type that was created. Example: "A", "AAAA", "CNAME", "MX", "TXT" |
-| `status.outputs.zoneId` | `string` | The hosted zone ID where the record was created. |
-| `status.outputs.isAlias` | `bool` | Whether this is an alias record (pointing to an AWS resource). |
-| `status.outputs.setIdentifier` | `string` | The set identifier (if using routing policies). Empty for simple routing. |
+| `status.outputs.record_type` | `string` | The DNS record type that was created. Example: "A", "AAAA", "CNAME", "MX", "TXT" |
+| `status.outputs.zone_id` | `string` | The hosted zone ID where the record was created. |
+| `status.outputs.is_alias` | `bool` | Whether this is an alias record (pointing to an AWS resource). |
+| `status.outputs.set_identifier` | `string` | The set identifier (if using routing policies). Empty for simple routing. |
 
 ## References
 

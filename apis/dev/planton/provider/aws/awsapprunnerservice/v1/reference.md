@@ -530,19 +530,19 @@ Reference an output from another manifest as `valueFrom: {kind: AwsAppRunnerServ
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.serviceArn` | `string` | The full ARN of the App Runner service (e.g. "arn:aws:apprunner: us-west-2:123456789012:service/my-api/abc123"). The handle IAM policies, VPC Ingress Connections, and deployment triggers reference. |
-| `status.outputs.serviceId` | `string` | The service ID -- the AWS-assigned identifier unique within the account and region (the trailing component of the ARN). |
-| `status.outputs.serviceUrl` | `string` | The default HTTPS endpoint of the service (e.g. "abc123.us-west-2.awsapprunner.com", without scheme). For private services this is the domain a VPC Ingress Connection resolves to. |
-| `status.outputs.serviceName` | `string` | The service name (metadata.name) the service was created under. |
-| `status.outputs.serviceStatus` | `string` | The service's lifecycle status at the end of the deployment ("RUNNING" when serving traffic). |
-| `status.outputs.customDomains` | `[]AwsAppRunnerServiceCustomDomainOutput` | Per-domain DNS material for the associated custom_domains -- one entry per spec entry. Create the certificate-validation CNAMEs (and a CNAME or alias from the domain to dns_target) in your DNS -- each record composes directly into an AwsRoute53DnsRecord resource. Empty when the spec associates no custom domains. |
-| `status.outputs.customDomains[].domainName` | `string` | The associated domain (matches the spec entry's domain_name). |
-| `status.outputs.customDomains[].dnsTarget` | `string` | The App Runner subdomain to point the custom domain at -- create a CNAME (subdomains) or ALIAS (apex) from domain_name to this target. |
-| `status.outputs.customDomains[].status` | `string` | The association status at the end of the deployment. The resting state right after creation is "pending_certificate_dns_validation" -- the association completes on its own once the validation records below are resolvable in DNS. |
-| `status.outputs.customDomains[].certificateValidationRecords` | `[]AwsAppRunnerServiceCertificateValidationRecord` | The certificate-validation CNAME records proving domain ownership. Keep them in place after validation so App Runner can renew the certificate automatically. |
-| `status.outputs.customDomains[].certificateValidationRecords[].recordName` | `string` | The DNS record name to create (a "_<hash>.<domain>." CNAME). |
-| `status.outputs.customDomains[].certificateValidationRecords[].recordType` | `string` | The DNS record type (always "CNAME" today). |
-| `status.outputs.customDomains[].certificateValidationRecords[].recordValue` | `string` | The DNS record value the name must resolve to. |
+| `status.outputs.service_arn` | `string` | The full ARN of the App Runner service (e.g. "arn:aws:apprunner: us-west-2:123456789012:service/my-api/abc123"). The handle IAM policies, VPC Ingress Connections, and deployment triggers reference. |
+| `status.outputs.service_id` | `string` | The service ID -- the AWS-assigned identifier unique within the account and region (the trailing component of the ARN). |
+| `status.outputs.service_url` | `string` | The default HTTPS endpoint of the service (e.g. "abc123.us-west-2.awsapprunner.com", without scheme). For private services this is the domain a VPC Ingress Connection resolves to. |
+| `status.outputs.service_name` | `string` | The service name (metadata.name) the service was created under. |
+| `status.outputs.service_status` | `string` | The service's lifecycle status at the end of the deployment ("RUNNING" when serving traffic). |
+| `status.outputs.custom_domains` | `[]AwsAppRunnerServiceCustomDomainOutput` | Per-domain DNS material for the associated custom_domains -- one entry per spec entry. Create the certificate-validation CNAMEs (and a CNAME or alias from the domain to dns_target) in your DNS -- each record composes directly into an AwsRoute53DnsRecord resource. Empty when the spec associates no custom domains. |
+| `status.outputs.custom_domains[].domain_name` | `string` | The associated domain (matches the spec entry's domain_name). |
+| `status.outputs.custom_domains[].dns_target` | `string` | The App Runner subdomain to point the custom domain at -- create a CNAME (subdomains) or ALIAS (apex) from domain_name to this target. |
+| `status.outputs.custom_domains[].status` | `string` | The association status at the end of the deployment. The resting state right after creation is "pending_certificate_dns_validation" -- the association completes on its own once the validation records below are resolvable in DNS. |
+| `status.outputs.custom_domains[].certificate_validation_records` | `[]AwsAppRunnerServiceCertificateValidationRecord` | The certificate-validation CNAME records proving domain ownership. Keep them in place after validation so App Runner can renew the certificate automatically. |
+| `status.outputs.custom_domains[].certificate_validation_records[].record_name` | `string` | The DNS record name to create (a "_<hash>.<domain>." CNAME). |
+| `status.outputs.custom_domains[].certificate_validation_records[].record_type` | `string` | The DNS record type (always "CNAME" today). |
+| `status.outputs.custom_domains[].certificate_validation_records[].record_value` | `string` | The DNS record value the name must resolve to. |
 
 ## References
 

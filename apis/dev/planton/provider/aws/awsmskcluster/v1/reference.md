@@ -548,23 +548,23 @@ Reference an output from another manifest as `valueFrom: {kind: AwsMskCluster, n
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.clusterArn` | `string` | cluster_arn is the Amazon Resource Name of the MSK cluster, used in IAM policies, event source mappings, and cross-service references. |
-| `status.outputs.clusterName` | `string` | cluster_name is the human-readable name of the cluster. |
-| `status.outputs.clusterUuid` | `string` | cluster_uuid is the unique identifier extracted from the cluster ARN. |
-| `status.outputs.currentVersion` | `string` | current_version is the cluster version string, required for update operations. This value changes after each successful cluster modification. |
-| `status.outputs.bootstrapBrokers` | `string` | bootstrap_brokers is a comma-separated list of broker endpoints for plaintext connections (port 9092). Empty when client_broker_encryption is "TLS" (plaintext disabled). |
-| `status.outputs.bootstrapBrokersTls` | `string` | bootstrap_brokers_tls is a comma-separated list of broker endpoints for TLS connections (port 9094). The primary endpoint when client_broker_encryption is "TLS" or "TLS_PLAINTEXT". |
-| `status.outputs.bootstrapBrokersSaslIam` | `string` | bootstrap_brokers_sasl_iam is a comma-separated list of broker endpoints for SASL/IAM connections (port 9098). Populated when authentication.sasl_iam_enabled is true. |
-| `status.outputs.bootstrapBrokersSaslScram` | `string` | bootstrap_brokers_sasl_scram is a comma-separated list of broker endpoints for SASL/SCRAM connections (port 9096). Populated when authentication.sasl_scram_enabled is true. |
-| `status.outputs.bootstrapBrokersPublicTls` | `string` | bootstrap_brokers_public_tls is a comma-separated list of public TLS broker endpoints. Populated when public_access_type is "SERVICE_PROVIDED_EIPS". |
-| `status.outputs.bootstrapBrokersPublicSaslIam` | `string` | bootstrap_brokers_public_sasl_iam is a comma-separated list of public SASL/IAM broker endpoints. Populated when public access and SASL/IAM authentication are both enabled. |
-| `status.outputs.bootstrapBrokersPublicSaslScram` | `string` | bootstrap_brokers_public_sasl_scram is a comma-separated list of public SASL/SCRAM broker endpoints. Populated when public access and SASL/SCRAM authentication are both enabled. |
-| `status.outputs.bootstrapBrokersVpcConnectivityTls` | `string` | bootstrap_brokers_vpc_connectivity_tls is a comma-separated list of PrivateLink broker endpoints for mutual-TLS connections. Populated when vpc_connectivity.tls_enabled is true. |
-| `status.outputs.bootstrapBrokersVpcConnectivitySaslIam` | `string` | bootstrap_brokers_vpc_connectivity_sasl_iam is a comma-separated list of PrivateLink broker endpoints for SASL/IAM connections. Populated when vpc_connectivity.sasl_iam_enabled is true. |
-| `status.outputs.bootstrapBrokersVpcConnectivitySaslScram` | `string` | bootstrap_brokers_vpc_connectivity_sasl_scram is a comma-separated list of PrivateLink broker endpoints for SASL/SCRAM connections. Populated when vpc_connectivity.sasl_scram_enabled is true. |
-| `status.outputs.zookeeperConnectString` | `string` | zookeeper_connect_string is a comma-separated list of ZooKeeper endpoints for plaintext connections. Empty on KRaft-mode clusters (Kafka versions without ZooKeeper). |
-| `status.outputs.zookeeperConnectStringTls` | `string` | zookeeper_connect_string_tls is a comma-separated list of ZooKeeper endpoints for TLS connections. Empty on KRaft-mode clusters (Kafka versions without ZooKeeper). |
-| `status.outputs.configurationArn` | `string` | configuration_arn is the ARN of the module-managed MSK Configuration resource, if one was created from server_properties in the spec. |
+| `status.outputs.cluster_arn` | `string` | cluster_arn is the Amazon Resource Name of the MSK cluster, used in IAM policies, event source mappings, and cross-service references. |
+| `status.outputs.cluster_name` | `string` | cluster_name is the human-readable name of the cluster. |
+| `status.outputs.cluster_uuid` | `string` | cluster_uuid is the unique identifier extracted from the cluster ARN. |
+| `status.outputs.current_version` | `string` | current_version is the cluster version string, required for update operations. This value changes after each successful cluster modification. |
+| `status.outputs.bootstrap_brokers` | `string` | bootstrap_brokers is a comma-separated list of broker endpoints for plaintext connections (port 9092). Empty when client_broker_encryption is "TLS" (plaintext disabled). |
+| `status.outputs.bootstrap_brokers_tls` | `string` | bootstrap_brokers_tls is a comma-separated list of broker endpoints for TLS connections (port 9094). The primary endpoint when client_broker_encryption is "TLS" or "TLS_PLAINTEXT". |
+| `status.outputs.bootstrap_brokers_sasl_iam` | `string` | bootstrap_brokers_sasl_iam is a comma-separated list of broker endpoints for SASL/IAM connections (port 9098). Populated when authentication.sasl_iam_enabled is true. |
+| `status.outputs.bootstrap_brokers_sasl_scram` | `string` | bootstrap_brokers_sasl_scram is a comma-separated list of broker endpoints for SASL/SCRAM connections (port 9096). Populated when authentication.sasl_scram_enabled is true. |
+| `status.outputs.bootstrap_brokers_public_tls` | `string` | bootstrap_brokers_public_tls is a comma-separated list of public TLS broker endpoints. Populated when public_access_type is "SERVICE_PROVIDED_EIPS". |
+| `status.outputs.bootstrap_brokers_public_sasl_iam` | `string` | bootstrap_brokers_public_sasl_iam is a comma-separated list of public SASL/IAM broker endpoints. Populated when public access and SASL/IAM authentication are both enabled. |
+| `status.outputs.bootstrap_brokers_public_sasl_scram` | `string` | bootstrap_brokers_public_sasl_scram is a comma-separated list of public SASL/SCRAM broker endpoints. Populated when public access and SASL/SCRAM authentication are both enabled. |
+| `status.outputs.bootstrap_brokers_vpc_connectivity_tls` | `string` | bootstrap_brokers_vpc_connectivity_tls is a comma-separated list of PrivateLink broker endpoints for mutual-TLS connections. Populated when vpc_connectivity.tls_enabled is true. |
+| `status.outputs.bootstrap_brokers_vpc_connectivity_sasl_iam` | `string` | bootstrap_brokers_vpc_connectivity_sasl_iam is a comma-separated list of PrivateLink broker endpoints for SASL/IAM connections. Populated when vpc_connectivity.sasl_iam_enabled is true. |
+| `status.outputs.bootstrap_brokers_vpc_connectivity_sasl_scram` | `string` | bootstrap_brokers_vpc_connectivity_sasl_scram is a comma-separated list of PrivateLink broker endpoints for SASL/SCRAM connections. Populated when vpc_connectivity.sasl_scram_enabled is true. |
+| `status.outputs.zookeeper_connect_string` | `string` | zookeeper_connect_string is a comma-separated list of ZooKeeper endpoints for plaintext connections. Empty on KRaft-mode clusters (Kafka versions without ZooKeeper). |
+| `status.outputs.zookeeper_connect_string_tls` | `string` | zookeeper_connect_string_tls is a comma-separated list of ZooKeeper endpoints for TLS connections. Empty on KRaft-mode clusters (Kafka versions without ZooKeeper). |
+| `status.outputs.configuration_arn` | `string` | configuration_arn is the ARN of the module-managed MSK Configuration resource, if one was created from server_properties in the spec. |
 
 ## References
 
@@ -578,6 +578,14 @@ Fields that can point at another resource's outputs:
 | `spec.logging.cloudwatchLogs.logGroup` | AwsCloudwatchLogGroup | `status.outputs.log_group_name` |
 | `spec.logging.firehose.deliveryStream` | AwsKinesisFirehose | `status.outputs.delivery_stream_name` |
 | `spec.logging.s3.bucket` | AwsS3Bucket | `status.outputs.bucket_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsKinesisFirehose | `spec.mskSource.mskClusterArn` | `status.outputs.cluster_arn` |
 
 ## See Also
 

@@ -587,18 +587,18 @@ Reference an output from another manifest as `valueFrom: {kind: AwsDocumentDb, n
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.clusterIdentifier` | `string` | The cluster identifier (e.g. "orders-docdb"). |
+| `status.outputs.cluster_identifier` | `string` | The cluster identifier (e.g. "orders-docdb"). |
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the cluster. |
-| `status.outputs.clusterResourceId` | `string` | The immutable cluster resource ID (cluster-...). Survives identifier renames -- the durable handle for point-in-time restores and CloudWatch dimensions. |
+| `status.outputs.cluster_resource_id` | `string` | The immutable cluster resource ID (cluster-...). Survives identifier renames -- the durable handle for point-in-time restores and CloudWatch dimensions. |
 | `status.outputs.endpoint` | `string` | The writer endpoint -- connect here for reads and writes. |
-| `status.outputs.readerEndpoint` | `string` | The reader endpoint -- load-balances connections across the cluster's reader instances. |
+| `status.outputs.reader_endpoint` | `string` | The reader endpoint -- load-balances connections across the cluster's reader instances. |
 | `status.outputs.port` | `int32` | The port the cluster accepts connections on. |
-| `status.outputs.hostedZoneId` | `string` | The Route53 hosted zone ID of the cluster endpoints, for DNS alias records. |
-| `status.outputs.engineVersionActual` | `string` | The resolved engine version actually running (meaningful when the spec leaves engine_version to the AWS default). |
-| `status.outputs.masterUserSecretArn` | `string` | The ARN of the AWS-managed master-user secret in Secrets Manager. Populated only when manage_master_user_password is true -- the handle applications use to fetch credentials at runtime. |
-| `status.outputs.dbSubnetGroupName` | `string` | The name of the DB subnet group the cluster runs in. |
-| `status.outputs.dbClusterParameterGroupName` | `string` | The name of the cluster parameter group in use (module-managed or the referenced existing group). |
-| `status.outputs.instanceEndpoints` | `[]string` | Per-instance endpoints of the cluster's folded instances, ordered as declared in spec.instances. Empty for headless shapes (restores and global-cluster members created without instances). |
+| `status.outputs.hosted_zone_id` | `string` | The Route53 hosted zone ID of the cluster endpoints, for DNS alias records. |
+| `status.outputs.engine_version_actual` | `string` | The resolved engine version actually running (meaningful when the spec leaves engine_version to the AWS default). |
+| `status.outputs.master_user_secret_arn` | `string` | The ARN of the AWS-managed master-user secret in Secrets Manager. Populated only when manage_master_user_password is true -- the handle applications use to fetch credentials at runtime. |
+| `status.outputs.db_subnet_group_name` | `string` | The name of the DB subnet group the cluster runs in. |
+| `status.outputs.db_cluster_parameter_group_name` | `string` | The name of the cluster parameter group in use (module-managed or the referenced existing group). |
+| `status.outputs.instance_endpoints` | `[]string` | Per-instance endpoints of the cluster's folded instances, ordered as declared in spec.instances. Empty for headless shapes (restores and global-cluster members created without instances). |
 
 ## References
 

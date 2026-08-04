@@ -220,11 +220,21 @@ Reference an output from another manifest as `valueFrom: {kind: AwsTransitGatewa
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.transitGatewayId` | `string` | The Transit Gateway ID (e.g., "tgw-0123456789abcdef0"). This is the primary identifier used by VPC attachments, route tables, subnet routes, VPN connections, Direct Connect gateways, and peering attachments. |
-| `status.outputs.transitGatewayArn` | `string` | The Amazon Resource Name (ARN) of the Transit Gateway. Used for IAM policies, resource-level permissions, and AWS RAM sharing. |
-| `status.outputs.ownerId` | `string` | The AWS account ID that owns this Transit Gateway. |
-| `status.outputs.associationDefaultRouteTableId` | `string` | The ID of the default association route table. Attachments created with default route table association enabled are automatically associated with this table. Empty when the gateway is created with default association disabled. |
-| `status.outputs.propagationDefaultRouteTableId` | `string` | The ID of the default propagation route table. Attachments created with default route table propagation enabled automatically advertise their routes into this table. Empty when the gateway is created with default propagation disabled. |
+| `status.outputs.transit_gateway_id` | `string` | The Transit Gateway ID (e.g., "tgw-0123456789abcdef0"). This is the primary identifier used by VPC attachments, route tables, subnet routes, VPN connections, Direct Connect gateways, and peering attachments. |
+| `status.outputs.transit_gateway_arn` | `string` | The Amazon Resource Name (ARN) of the Transit Gateway. Used for IAM policies, resource-level permissions, and AWS RAM sharing. |
+| `status.outputs.owner_id` | `string` | The AWS account ID that owns this Transit Gateway. |
+| `status.outputs.association_default_route_table_id` | `string` | The ID of the default association route table. Attachments created with default route table association enabled are automatically associated with this table. Empty when the gateway is created with default association disabled. |
+| `status.outputs.propagation_default_route_table_id` | `string` | The ID of the default propagation route table. Attachments created with default route table propagation enabled automatically advertise their routes into this table. Empty when the gateway is created with default propagation disabled. |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsClientVpn | `spec.transitGatewayConfiguration.transitGatewayId` | `status.outputs.transit_gateway_id` |
+| AwsTransitGatewayRouteTable | `spec.transitGatewayId` | `status.outputs.transit_gateway_id` |
+| AwsTransitGatewayVpcAttachment | `spec.transitGatewayId` | `status.outputs.transit_gateway_id` |
 
 ## See Also
 

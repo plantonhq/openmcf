@@ -141,9 +141,17 @@ Reference an output from another manifest as `valueFrom: {kind: AwsMemorydbUser,
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.userName` | `string` | The user's name — the single identity clients present in the AUTH command and the identifier ACLs reference in their membership list. Exported so ACL membership and application configuration are wired from the resource graph instead of duplicating the value. |
-| `status.outputs.userArn` | `string` | The Amazon Resource Name of the user. Used in IAM policies — an IAM-authenticated client needs `memorydb:Connect` on both the user ARN and the cluster ARN. |
-| `status.outputs.minimumEngineVersion` | `string` | The minimum engine version the user's configuration requires. AWS computes this from the ACL feature set the user exercises; an ACL (and the cluster it attaches to) must run at least this engine version. |
+| `status.outputs.user_name` | `string` | The user's name — the single identity clients present in the AUTH command and the identifier ACLs reference in their membership list. Exported so ACL membership and application configuration are wired from the resource graph instead of duplicating the value. |
+| `status.outputs.user_arn` | `string` | The Amazon Resource Name of the user. Used in IAM policies — an IAM-authenticated client needs `memorydb:Connect` on both the user ARN and the cluster ARN. |
+| `status.outputs.minimum_engine_version` | `string` | The minimum engine version the user's configuration requires. AWS computes this from the ACL feature set the user exercises; an ACL (and the cluster it attaches to) must run at least this engine version. |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsMemorydbAcl | `spec.userNames` | `status.outputs.user_name` |
 
 ## See Also
 

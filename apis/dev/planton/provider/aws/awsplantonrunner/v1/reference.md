@@ -243,15 +243,15 @@ Reference an output from another manifest as `valueFrom: {kind: AwsPlantonRunner
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.serviceArn` | `string` | The ARN of the compute service keeping the runner running (e.g. "arn:aws:ecs:us-west-2:123456789012:service/<name>/<name>"). The primary handle for inspecting the appliance with AWS tooling. |
-| `status.outputs.serviceName` | `string` | The service's name (metadata.name). |
-| `status.outputs.clusterArn` | `string` | The ARN of the dedicated compute cluster the runner runs in. |
-| `status.outputs.taskDefinitionArn` | `string` | The full task definition ARN (family:revision) of the running revision -- changes on every configuration or version change. |
-| `status.outputs.logGroupName` | `string` | The CloudWatch log group carrying the runner's logs -- the audit trail of every operation the runner executed (e.g. "aws logs tail <log_group_name> --follow"). |
-| `status.outputs.securityGroupId` | `string` | The id of the outbound-only security group created for the runner. Private targets that admit traffic by source security group (a cluster API endpoint, a database) reference this id to trust the runner. |
-| `status.outputs.executionRoleArn` | `string` | The ARN of the execution role -- the setup identity that pulls the runner image, writes its logs, and reads its credentials secret. |
-| `status.outputs.taskRoleArn` | `string` | The ARN of the runner's runtime IAM role -- the identity the runner holds while executing work. Grant this role permissions to let keyless cloud operations run through the runner (it is the referenced task_role when one was supplied, else the permissionless role created with the appliance). |
-| `status.outputs.credentialsSecretArn` | `string` | The ARN of the secret holding the runner's credentials document. |
+| `status.outputs.service_arn` | `string` | The ARN of the compute service keeping the runner running (e.g. "arn:aws:ecs:us-west-2:123456789012:service/<name>/<name>"). The primary handle for inspecting the appliance with AWS tooling. |
+| `status.outputs.service_name` | `string` | The service's name (metadata.name). |
+| `status.outputs.cluster_arn` | `string` | The ARN of the dedicated compute cluster the runner runs in. |
+| `status.outputs.task_definition_arn` | `string` | The full task definition ARN (family:revision) of the running revision -- changes on every configuration or version change. |
+| `status.outputs.log_group_name` | `string` | The CloudWatch log group carrying the runner's logs -- the audit trail of every operation the runner executed (e.g. "aws logs tail <log_group_name> --follow"). |
+| `status.outputs.security_group_id` | `string` | The id of the outbound-only security group created for the runner. Private targets that admit traffic by source security group (a cluster API endpoint, a database) reference this id to trust the runner. |
+| `status.outputs.execution_role_arn` | `string` | The ARN of the execution role -- the setup identity that pulls the runner image, writes its logs, and reads its credentials secret. |
+| `status.outputs.task_role_arn` | `string` | The ARN of the runner's runtime IAM role -- the identity the runner holds while executing work. Grant this role permissions to let keyless cloud operations run through the runner (it is the referenced task_role when one was supplied, else the permissionless role created with the appliance). |
+| `status.outputs.credentials_secret_arn` | `string` | The ARN of the secret holding the runner's credentials document. |
 | `status.outputs.region` | `string` | The AWS region the runner was deployed in. Echoed so downstream tooling and verifiers can target the correct region. |
 
 ## References

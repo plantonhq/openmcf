@@ -208,8 +208,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCloudwatchCom
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.alarmArn` | `string` | The Amazon Resource Name (ARN) of the composite alarm. |
-| `status.outputs.alarmName` | `string` | The name of the composite alarm. Unique within the AWS account and region; this is how other composite alarms reference it in their rule expressions. |
+| `status.outputs.alarm_arn` | `string` | The Amazon Resource Name (ARN) of the composite alarm. |
+| `status.outputs.alarm_name` | `string` | The name of the composite alarm. Unique within the AWS account and region; this is how other composite alarms reference it in their rule expressions. |
 
 ## References
 

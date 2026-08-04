@@ -107,8 +107,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsAppRunnerVpcC
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.vpcConnectorArn` | `string` | The ARN of the VPC connector (e.g. "arn:aws:apprunner:us-west-2: 123456789012:vpcconnector/my-connector/1/abc123"). This is the identifier App Runner services set as their egress vpc_connector_arn. |
-| `status.outputs.vpcConnectorRevision` | `int64` | The revision of this connector. AWS creates a new revision (same name, incremented revision) whenever a connector with the same name is recreated with different subnets or security groups. |
+| `status.outputs.vpc_connector_arn` | `string` | The ARN of the VPC connector (e.g. "arn:aws:apprunner:us-west-2: 123456789012:vpcconnector/my-connector/1/abc123"). This is the identifier App Runner services set as their egress vpc_connector_arn. |
+| `status.outputs.vpc_connector_revision` | `int64` | The revision of this connector. AWS creates a new revision (same name, incremented revision) whenever a connector with the same name is recreated with different subnets or security groups. |
 | `status.outputs.status` | `string` | The connector's lifecycle status at the end of the deployment ("ACTIVE" when ready for services to attach). |
 
 ## References
@@ -119,6 +119,14 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAppRunnerService | `spec.vpcConnectorArn` | `status.outputs.vpc_connector_arn` |
 
 ## See Also
 

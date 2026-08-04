@@ -283,18 +283,18 @@ Reference an output from another manifest as `valueFrom: {kind: AwsFsxOntapStora
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.svmId` | `string` | The ID of the SVM (e.g., "svm-0123456789abcdef0"). Primary identifier used by ONTAP volumes and other AWS services referencing this SVM. |
+| `status.outputs.svm_id` | `string` | The ID of the SVM (e.g., "svm-0123456789abcdef0"). Primary identifier used by ONTAP volumes and other AWS services referencing this SVM. |
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the SVM. Used in IAM policies for resource-level permissions. |
 | `status.outputs.uuid` | `string` | The universally unique identifier of the SVM in ONTAP. Used for SnapMirror relationships and ONTAP REST API operations. |
 | `status.outputs.subtype` | `string` | The SVM subtype (e.g., "DEFAULT"). Indicates the SVM's functional role within the file system. |
-| `status.outputs.iscsiDnsName` | `string` | The iSCSI endpoint DNS name. Used by iSCSI initiators for block-level storage access to volumes on this SVM. |
-| `status.outputs.iscsiIpAddresses` | `[]string` | The iSCSI endpoint IP addresses. Alternative to DNS for direct IP access to the iSCSI target portal. |
-| `status.outputs.managementDnsName` | `string` | The management endpoint DNS name. Used for SSH (ONTAP CLI) and REST API access scoped to this SVM. Connect via: ssh vsadmin@<management_dns_name> |
-| `status.outputs.managementIpAddresses` | `[]string` | The management endpoint IP addresses. Alternative to DNS for direct IP access to the SVM management interface. |
-| `status.outputs.nfsDnsName` | `string` | The NFS endpoint DNS name. Used by NFS clients to mount volumes on this SVM. Mount command: mount -t nfs <nfs_dns_name>:/vol1 /mnt/vol1 |
-| `status.outputs.nfsIpAddresses` | `[]string` | The NFS endpoint IP addresses. Alternative to DNS for direct IP-based NFS mounts. |
-| `status.outputs.smbDnsName` | `string` | The SMB endpoint DNS name. Used by Windows clients for SMB/CIFS file share access. UNC path: \\<smb_dns_name>\share_name. Only available when the SVM is joined to an Active Directory domain. |
-| `status.outputs.smbIpAddresses` | `[]string` | The SMB endpoint IP addresses. Alternative to DNS for direct IP-based SMB access. Only populated when Active Directory is configured. |
+| `status.outputs.iscsi_dns_name` | `string` | The iSCSI endpoint DNS name. Used by iSCSI initiators for block-level storage access to volumes on this SVM. |
+| `status.outputs.iscsi_ip_addresses` | `[]string` | The iSCSI endpoint IP addresses. Alternative to DNS for direct IP access to the iSCSI target portal. |
+| `status.outputs.management_dns_name` | `string` | The management endpoint DNS name. Used for SSH (ONTAP CLI) and REST API access scoped to this SVM. Connect via: ssh vsadmin@<management_dns_name> |
+| `status.outputs.management_ip_addresses` | `[]string` | The management endpoint IP addresses. Alternative to DNS for direct IP access to the SVM management interface. |
+| `status.outputs.nfs_dns_name` | `string` | The NFS endpoint DNS name. Used by NFS clients to mount volumes on this SVM. Mount command: mount -t nfs <nfs_dns_name>:/vol1 /mnt/vol1 |
+| `status.outputs.nfs_ip_addresses` | `[]string` | The NFS endpoint IP addresses. Alternative to DNS for direct IP-based NFS mounts. |
+| `status.outputs.smb_dns_name` | `string` | The SMB endpoint DNS name. Used by Windows clients for SMB/CIFS file share access. UNC path: \\<smb_dns_name>\share_name. Only available when the SVM is joined to an Active Directory domain. |
+| `status.outputs.smb_ip_addresses` | `[]string` | The SMB endpoint IP addresses. Alternative to DNS for direct IP-based SMB access. Only populated when Active Directory is configured. |
 
 ## References
 
@@ -303,6 +303,14 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.fileSystemId` | AwsFsxOntapFileSystem | `status.outputs.file_system_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsFsxOntapVolume | `spec.storageVirtualMachineId` | `status.outputs.svm_id` |
 
 ## See Also
 

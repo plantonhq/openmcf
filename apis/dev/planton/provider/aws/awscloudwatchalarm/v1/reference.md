@@ -597,8 +597,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsCloudwatchAla
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.alarmArn` | `string` | The Amazon Resource Name (ARN) of the metric alarm. This is the primary identifier used to reference the alarm in composite alarms, dashboards, and operational tooling. |
-| `status.outputs.alarmName` | `string` | The name of the metric alarm. The alarm name is unique within the AWS account and region. Useful for CloudWatch API calls, CLI operations, and dashboard widgets. |
+| `status.outputs.alarm_arn` | `string` | The Amazon Resource Name (ARN) of the metric alarm. This is the primary identifier used to reference the alarm in composite alarms, dashboards, and operational tooling. |
+| `status.outputs.alarm_name` | `string` | The name of the metric alarm. The alarm name is unique within the AWS account and region. Useful for CloudWatch API calls, CLI operations, and dashboard widgets. |
 
 ## References
 
@@ -609,6 +609,16 @@ Fields that can point at another resource's outputs:
 | `spec.alarmActions` | AwsSnsTopic | `status.outputs.topic_arn` |
 | `spec.okActions` | AwsSnsTopic | `status.outputs.topic_arn` |
 | `spec.insufficientDataActions` | AwsSnsTopic | `status.outputs.topic_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAutoScalingGroup | `spec.instanceRefresh.preferences.alarms` | `status.outputs.alarm_name` |
+| AwsCloudwatchCompositeAlarm | `spec.actionsSuppressor.alarm` | `status.outputs.alarm_name` |
+| AwsEcsService | `spec.alarms.alarmNames` | `status.outputs.alarm_name` |
 
 ## See Also
 

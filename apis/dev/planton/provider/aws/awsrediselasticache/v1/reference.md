@@ -648,15 +648,15 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRedisElastica
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.replicationGroupId` | `string` | The identifier of the replication group. Used in AWS CLI/API calls and as a reference in other ElastiCache operations. |
-| `status.outputs.primaryEndpointAddress` | `string` | The primary (writer) endpoint DNS name. Applications connect here for read-write operations. For non-clustered mode, this is the single primary node endpoint. |
-| `status.outputs.readerEndpointAddress` | `string` | The reader endpoint DNS name. Distributes read traffic across all read replicas using DNS round-robin. Use this endpoint for read-heavy workloads to offload the primary. Empty for single-node deployments. |
-| `status.outputs.configurationEndpointAddress` | `string` | The configuration endpoint for Cluster Mode Enabled. Redis clients that support cluster mode use this endpoint for automatic slot discovery and routing. Empty when Cluster Mode is disabled. |
+| `status.outputs.replication_group_id` | `string` | The identifier of the replication group. Used in AWS CLI/API calls and as a reference in other ElastiCache operations. |
+| `status.outputs.primary_endpoint_address` | `string` | The primary (writer) endpoint DNS name. Applications connect here for read-write operations. For non-clustered mode, this is the single primary node endpoint. |
+| `status.outputs.reader_endpoint_address` | `string` | The reader endpoint DNS name. Distributes read traffic across all read replicas using DNS round-robin. Use this endpoint for read-heavy workloads to offload the primary. Empty for single-node deployments. |
+| `status.outputs.configuration_endpoint_address` | `string` | The configuration endpoint for Cluster Mode Enabled. Redis clients that support cluster mode use this endpoint for automatic slot discovery and routing. Empty when Cluster Mode is disabled. |
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the replication group. Used in IAM policies and cross-service permissions. |
 | `status.outputs.port` | `int32` | The port on which the cluster accepts connections. |
-| `status.outputs.subnetGroupName` | `string` | The name of the ElastiCache subnet group associated with this cluster. Only populated when `subnet_ids` were provided and a subnet group was created by the module. |
-| `status.outputs.parameterGroupName` | `string` | The name of the custom parameter group associated with this cluster. Only populated when `parameters` were provided and a parameter group was created by the module. |
-| `status.outputs.engineVersionActual` | `string` | The engine version actually running, as resolved by AWS. Useful for confirming the exact version deployed when `engine_version` was left empty or given as a major version only. |
+| `status.outputs.subnet_group_name` | `string` | The name of the ElastiCache subnet group associated with this cluster. Only populated when `subnet_ids` were provided and a subnet group was created by the module. |
+| `status.outputs.parameter_group_name` | `string` | The name of the custom parameter group associated with this cluster. Only populated when `parameters` were provided and a parameter group was created by the module. |
+| `status.outputs.engine_version_actual` | `string` | The engine version actually running, as resolved by AWS. Useful for confirming the exact version deployed when `engine_version` was left empty or given as a major version only. |
 
 ## References
 

@@ -373,10 +373,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEcrRepo, name
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.repositoryName` | `string` | The repository name, matching spec.repository_name |
-| `status.outputs.repositoryUrl` | `string` | The repository URL, e.g. "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-repo" |
-| `status.outputs.repositoryArn` | `string` | The repository ARN, e.g. "arn:aws:ecr:us-east-1:123456789012:repository/my-repo" |
-| `status.outputs.registryId` | `string` | The registry ID associated with this repository (i.e., the AWS Account ID) |
+| `status.outputs.repository_name` | `string` | The repository name, matching spec.repository_name |
+| `status.outputs.repository_url` | `string` | The repository URL, e.g. "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-repo" |
+| `status.outputs.repository_arn` | `string` | The repository ARN, e.g. "arn:aws:ecr:us-east-1:123456789012:repository/my-repo" |
+| `status.outputs.registry_id` | `string` | The registry ID associated with this repository (i.e., the AWS Account ID) |
 
 ## References
 

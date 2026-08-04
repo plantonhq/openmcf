@@ -345,9 +345,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSecurityGroup
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.securityGroupId` | `string` | the unique ID of the security group (sg-...). The join key other resources reference to attach this group. |
-| `status.outputs.securityGroupArn` | `string` | the ARN of the security group -- the form IAM policy conditions and resource-level permissions expect. |
-| `status.outputs.ownerId` | `string` | the AWS account ID that owns the security group. Needed when another account references this group in a cross-account rule ("<owner_id>/<group_id>"). |
+| `status.outputs.security_group_id` | `string` | the unique ID of the security group (sg-...). The join key other resources reference to attach this group. |
+| `status.outputs.security_group_arn` | `string` | the ARN of the security group -- the form IAM policy conditions and resource-level permissions expect. |
+| `status.outputs.owner_id` | `string` | the AWS account ID that owns the security group. Needed when another account references this group in a cross-account rule ("<owner_id>/<group_id>"). |
 
 ## References
 
@@ -360,6 +360,59 @@ Fields that can point at another resource's outputs:
 | `spec.ingress[].destinationSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.egress[].sourceSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.egress[].destinationSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAlb | `spec.securityGroups` | `status.outputs.security_group_id` |
+| AwsAppRunnerVpcConnector | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBatchComputeEnvironment | `spec.computeResources.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsClientVpn | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsCodeBuildProject | `spec.environment.dockerServer.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsCodeBuildProject | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsDocumentDb | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsEc2Instance | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsEcsService | `spec.network.securityGroups` | `status.outputs.security_group_id` |
+| AwsEksCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsEksNodeGroup | `spec.remoteAccess.sourceSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsElasticFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsEventBridgeRule | `spec.targets[].ecsTarget.networkConfiguration.securityGroups` | `status.outputs.security_group_id` |
+| AwsFsxLustreFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsFsxOntapFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsFsxOpenzfsFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsFsxWindowsFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsHttpApiVpcLink | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsKinesisFirehose | `spec.opensearch.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsKinesisFirehose | `spec.opensearchServerless.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsLambda | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsLaunchTemplate | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsLaunchTemplate | `spec.networkInterfaces[].securityGroupIds` | `status.outputs.security_group_id` |
+| AwsMemcachedElasticache | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsMemorydbCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsMskCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsMskServerlessCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsMwaaEnvironment | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsNeptuneCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsNlb | `spec.securityGroups` | `status.outputs.security_group_id` |
+| AwsOpenSearchDomain | `spec.vpcOptions.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsPlantonRunner | `spec.securityGroups` | `status.outputs.security_group_id` |
+| AwsRdsCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsRdsInstance | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsRedisElasticache | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsRedshiftCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsRedshiftServerlessWorkgroup | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsSagemakerDomain | `spec.defaultUserSettings.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsSagemakerDomain | `spec.defaultSpaceSettings.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsSagemakerDomain | `spec.domainSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsSecurityGroup | `spec.ingress[].sourceSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsSecurityGroup | `spec.ingress[].destinationSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsSecurityGroup | `spec.egress[].sourceSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsSecurityGroup | `spec.egress[].destinationSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsServerlessElasticache | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsVpcEndpoint | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 
 ## See Also
 

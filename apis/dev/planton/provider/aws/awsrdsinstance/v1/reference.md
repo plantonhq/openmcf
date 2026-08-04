@@ -753,16 +753,16 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRdsInstance, 
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.instanceIdentifier` | `string` | The instance identifier (e.g. "orders-db"). |
+| `status.outputs.instance_identifier` | `string` | The instance identifier (e.g. "orders-db"). |
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the instance. |
-| `status.outputs.resourceId` | `string` | The immutable DB instance resource ID (db-...). Survives identifier renames -- the durable handle for point-in-time restores, IAM auth policies, and CloudWatch dimensions. |
+| `status.outputs.resource_id` | `string` | The immutable DB instance resource ID (db-...). Survives identifier renames -- the durable handle for point-in-time restores, IAM auth policies, and CloudWatch dimensions. |
 | `status.outputs.endpoint` | `string` | The connection endpoint in "address:port" form. |
 | `status.outputs.address` | `string` | The DNS address of the instance (endpoint without the port). |
 | `status.outputs.port` | `int32` | The port the instance accepts connections on. |
-| `status.outputs.hostedZoneId` | `string` | The Route53 hosted zone ID of the endpoint, for DNS alias records. |
-| `status.outputs.engineVersionActual` | `string` | The resolved engine version actually running (meaningful when the spec leaves engine_version to the AWS default). |
-| `status.outputs.masterUserSecretArn` | `string` | The ARN of the AWS-managed master-user secret in Secrets Manager. Populated only when manage_master_user_password is true -- the handle applications use to fetch credentials at runtime. |
-| `status.outputs.dbSubnetGroupName` | `string` | The name of the DB subnet group the instance runs in. |
+| `status.outputs.hosted_zone_id` | `string` | The Route53 hosted zone ID of the endpoint, for DNS alias records. |
+| `status.outputs.engine_version_actual` | `string` | The resolved engine version actually running (meaningful when the spec leaves engine_version to the AWS default). |
+| `status.outputs.master_user_secret_arn` | `string` | The ARN of the AWS-managed master-user secret in Secrets Manager. Populated only when manage_master_user_password is true -- the handle applications use to fetch credentials at runtime. |
+| `status.outputs.db_subnet_group_name` | `string` | The name of the DB subnet group the instance runs in. |
 
 ## References
 

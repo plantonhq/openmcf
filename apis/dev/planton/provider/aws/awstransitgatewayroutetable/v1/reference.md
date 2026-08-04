@@ -240,8 +240,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsTransitGatewa
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.routeTableId` | `string` | The Transit Gateway route table ID (e.g., "tgw-rtb-0123456789abcdef0"). Referenced by tooling that manages routes or inspects the routing domain, and by the gateway-level default-table designation surface. |
-| `status.outputs.routeTableArn` | `string` | The Amazon Resource Name (ARN) of the route table. Used for IAM policies and resource-level permissions. |
+| `status.outputs.route_table_id` | `string` | The Transit Gateway route table ID (e.g., "tgw-rtb-0123456789abcdef0"). Referenced by tooling that manages routes or inspects the routing domain, and by the gateway-level default-table designation surface. |
+| `status.outputs.route_table_arn` | `string` | The Amazon Resource Name (ARN) of the route table. Used for IAM policies and resource-level permissions. |
 
 ## References
 

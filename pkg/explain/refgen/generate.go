@@ -1,6 +1,8 @@
 package main
 
 import (
+	_ "embed"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,12 +20,20 @@ import (
 // reconstruct these paths from kind metadata.
 const providerPathPrefix = "dev/planton/provider/"
 
+// commonsContent is the catalog-commons page (the manifest grammar shared by
+// every kind, stated once). It ships through the generator so the freshness
+// gate owns it like every other generated file; edit commons.md here and
+// regenerate.
+//
+//go:embed commons.md
+var commonsContent string
+
 // Summary is one generation run's full account: the files to write plus
 // every degradation, so a caller can render an honest report and CI can fail
 // on real catalog bugs instead of silently shipping thinner pages.
 type Summary struct {
-	// Files maps repo-relative output paths (apis/.../reference.md) to
-	// rendered content.
+	// Files maps repo-relative output paths (apis/.../reference.md and the
+	// catalog-level index/graph/commons files) to rendered content.
 	Files map[string]string
 	// MissingManifests lists kinds with no iac/hack/manifest.yaml; their
 	// pages render without an Example section.
@@ -40,13 +50,42 @@ type InvalidManifest struct {
 	Err  error
 }
 
-// Generate renders the reference page for every kind under the provider
-// filter (empty = every kind). It touches nothing on disk except reads;
-// writing is the caller's decision so tests can byte-compare in memory.
-func Generate(repoRoot, provider string) (*Summary, error) {
+// kindEntry carries one kind through the generation passes.
+type kindEntry struct {
+	name string
+	// protoDir is the descriptor-derived source directory
+	// (dev/planton/provider/<provider>/<kind>/<version>).
+	protoDir string
+	provider string
+	report   *explain.Report
+	example  string
+}
+
+// graphEdge is one foreign-key edge for the catalog graph: from's field can
+// read target on to through a valueFrom reference.
+type graphEdge struct {
+	From   string
+	Field  string
+	To     string
+	Target string
+}
+
+// Generate renders the reference page for every catalog kind plus the
+// catalog-level files (per-provider indexes, the root index, the
+// foreign-key graph, the commons page). It touches nothing on disk except
+// reads; writing is the caller's decision so tests can byte-compare in
+// memory.
+//
+// Generation is always whole-catalog: a kind's Referenced By section and
+// every catalog-level file depend on every other kind's schema, so a scoped
+// run could never be trusted to leave the committed tree consistent.
+func Generate(repoRoot string) (*Summary, error) {
 	engine := explain.DefaultEngine()
 	summary := &Summary{Files: map[string]string{}}
 
+	// Pass 1: explain every catalog kind. KindNames is sorted, so every
+	// derived artifact inherits a deterministic order.
+	var entries []kindEntry
 	for _, name := range explain.KindNames() {
 		res, err := explain.ResolveKindName(name)
 		if err != nil {
@@ -56,7 +95,10 @@ func Generate(repoRoot, provider string) (*Summary, error) {
 		if !strings.HasPrefix(protoDir, providerPathPrefix) {
 			continue
 		}
-		if provider != "" && !strings.HasPrefix(protoDir, providerPathPrefix+provider+"/") {
+		provider, _, _ := strings.Cut(strings.TrimPrefix(protoDir, providerPathPrefix), "/")
+		if strings.HasPrefix(provider, "_") {
+			// Underscore providers (_test) hold registered test-scaffolding
+			// kinds, not catalog knowledge.
 			continue
 		}
 
@@ -65,20 +107,162 @@ func Generate(repoRoot, provider string) (*Summary, error) {
 			return nil, errors.Wrapf(err, "explain %s", name)
 		}
 
+		entry := kindEntry{name: name, protoDir: protoDir, provider: provider, report: report}
 		kindDir := filepath.Join(repoRoot, "apis", protoDir)
-		opts := explain.MarkdownOptions{SeeAlso: seeAlso(kindDir)}
 		switch example, err := loadValidatedExample(res, kindDir); {
 		case err != nil:
 			summary.InvalidManifests = append(summary.InvalidManifests, InvalidManifest{Kind: name, Err: err})
 		case example == "":
 			summary.MissingManifests = append(summary.MissingManifests, name)
 		default:
-			opts.ExampleYAML = example
+			entry.example = example
 		}
-
-		summary.Files[filepath.Join("apis", protoDir, "reference.md")] = explain.RenderMarkdown(report, opts)
+		entries = append(entries, entry)
 	}
+
+	// Pass 2: the catalog-wide edge list, projected two ways -- the graph
+	// file and each target kind's inbound (Referenced By) edges.
+	var edges []graphEdge
+	inbound := map[string][]explain.InboundRef{}
+	for _, entry := range entries {
+		for _, edge := range explain.ReferenceEdges(entry.report) {
+			edges = append(edges, graphEdge{
+				From:   entry.name,
+				Field:  edge.FieldPath,
+				To:     edge.Kind,
+				Target: edge.TargetFieldPath,
+			})
+			inbound[edge.Kind] = append(inbound[edge.Kind], explain.InboundRef{
+				Kind:            entry.name,
+				FieldPath:       edge.FieldPath,
+				TargetFieldPath: edge.TargetFieldPath,
+			})
+		}
+	}
+
+	// Pass 3: render every page and the catalog-level files.
+	for _, entry := range entries {
+		kindDir := filepath.Join(repoRoot, "apis", entry.protoDir)
+		opts := explain.MarkdownOptions{
+			ExampleYAML:  entry.example,
+			ReferencedBy: inbound[entry.name],
+			SeeAlso:      seeAlso(kindDir),
+		}
+		summary.Files[filepath.Join("apis", entry.protoDir, "reference.md")] = explain.RenderMarkdown(entry.report, opts)
+	}
+	renderProviderIndexes(summary, entries)
+	renderRootIndex(summary, entries)
+	renderGraph(summary, edges)
+	summary.Files[catalogPath("reference-commons.md")] = commonsContent
+
 	return summary, nil
+}
+
+// catalogPath places a catalog-level file at the provider root, above every
+// provider directory.
+func catalogPath(name string) string {
+	return filepath.Join("apis", providerPathPrefix, name)
+}
+
+// generatedBanner is the do-not-edit header every generated markdown file
+// opens with. sourceHint names where the content actually comes from, so a
+// wrong fact gets fixed at its source instead of on the page.
+func generatedBanner(b *strings.Builder, sourceHint string) {
+	b.WriteString("> Generated by `make generate-reference` -- do not edit by hand. ")
+	b.WriteString(sourceHint)
+	b.WriteString("\n\n")
+}
+
+// renderProviderIndexes emits one kind index per provider: the entry point
+// an agent reads to map kind names to reference pages.
+func renderProviderIndexes(summary *Summary, entries []kindEntry) {
+	byProvider := map[string][]kindEntry{}
+	for _, entry := range entries {
+		byProvider[entry.provider] = append(byProvider[entry.provider], entry)
+	}
+	for provider, kinds := range byProvider {
+		var b strings.Builder
+		fmt.Fprintf(&b, "# %s Components -- Reference Index\n\n", provider)
+		generatedBanner(&b, "Kind facts come from the protobuf schemas.")
+		fmt.Fprintf(&b, "%d kinds. Shared manifest grammar and the search grammar of every page:\n[reference-commons.md](../reference-commons.md). Cross-kind wiring:\n[reference-graph.yaml](../reference-graph.yaml).\n\n", len(kinds))
+		b.WriteString("| Kind | Purpose | Example |\n")
+		b.WriteString("|---|---|---|\n")
+		for _, entry := range kinds {
+			relPage := strings.TrimPrefix(entry.protoDir, providerPathPrefix+provider+"/") + "/reference.md"
+			example := ""
+			if entry.example != "" {
+				example = "yes"
+			}
+			fmt.Fprintf(&b, "| [%s](%s) | %s | %s |\n",
+				entry.name, relPage, indexCell(firstSentence(entry.report.Doc)), example)
+		}
+		summary.Files[filepath.Join("apis", providerPathPrefix, provider, "reference-index.md")] = b.String()
+	}
+}
+
+// renderRootIndex emits the catalog's front door: where everything lives and
+// how to read it.
+func renderRootIndex(summary *Summary, entries []kindEntry) {
+	providers := map[string]int{}
+	withExample := map[string]int{}
+	for _, entry := range entries {
+		providers[entry.provider]++
+		if entry.example != "" {
+			withExample[entry.provider]++
+		}
+	}
+	names := make([]string, 0, len(providers))
+	for provider := range providers {
+		names = append(names, provider)
+	}
+	sort.Strings(names)
+
+	var b strings.Builder
+	b.WriteString("# Cloud Component Catalog -- Reference Index\n\n")
+	generatedBanner(&b, "Kind facts come from the protobuf schemas.")
+	fmt.Fprintf(&b, "%d kinds across %d providers. Every kind has a `reference.md` co-located\nwith its protos: the complete spec field reference, validation rules,\noutputs, cross-kind references (both directions), and a validated example.\n\nStart with:\n\n", len(entries), len(names))
+	b.WriteString("- [reference-commons.md](reference-commons.md) -- the manifest grammar shared\n  by every kind (envelope, metadata, value/valueFrom, fieldPath spelling)\n  and the search grammar for reading these pages.\n")
+	b.WriteString("- [reference-graph.yaml](reference-graph.yaml) -- every foreign-key edge in\n  the catalog, for wiring resources and planning architectures.\n")
+	b.WriteString("- The per-provider indexes below, which link every kind's page.\n\n")
+	b.WriteString("| Provider | Kinds | With Example |\n")
+	b.WriteString("|---|---|---|\n")
+	for _, provider := range names {
+		fmt.Fprintf(&b, "| [%s](%s/reference-index.md) | %d | %d |\n",
+			provider, provider, providers[provider], withExample[provider])
+	}
+	summary.Files[catalogPath("reference-index.md")] = b.String()
+}
+
+// renderGraph emits the catalog's foreign-key edge list. Hand-built line by
+// line: YAML libraries do not promise deterministic serialization, and this
+// file is byte-compared by the freshness gate.
+func renderGraph(summary *Summary, edges []graphEdge) {
+	var b strings.Builder
+	b.WriteString("# Generated by `make generate-reference` -- do not edit by hand.\n")
+	b.WriteString("# Every foreign-key edge in the catalog: `from`'s `field` accepts a valueFrom\n")
+	b.WriteString("# reference reading `target` on a `to` resource. Field paths are quoted\n")
+	b.WriteString("# verbatim from the schemas ([] marks list elements, .* map values).\n")
+	b.WriteString("edges:\n")
+	for _, edge := range edges {
+		fmt.Fprintf(&b, "  - from: %q\n    field: %q\n    to: %q\n    target: %q\n",
+			edge.From, edge.Field, edge.To, edge.Target)
+	}
+	summary.Files[catalogPath("reference-graph.yaml")] = b.String()
+}
+
+// firstSentence truncates documentation to its first sentence, collapsed
+// onto one line -- the right size for an index cell.
+func firstSentence(doc string) string {
+	text := strings.Join(strings.Fields(doc), " ")
+	if i := strings.Index(text, ". "); i >= 0 {
+		return text[:i+1]
+	}
+	return text
+}
+
+// indexCell makes arbitrary prose safe inside a markdown table row.
+func indexCell(text string) string {
+	return strings.ReplaceAll(text, "|", "\\|")
 }
 
 // loadValidatedExample reads the kind's hack manifest and admits it as the

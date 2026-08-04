@@ -347,13 +347,13 @@ Reference an output from another manifest as `valueFrom: {kind: AwsVpcEndpoint, 
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.vpcEndpointId` | `string` | vpc_endpoint_id is the endpoint's id (e.g. "vpce-0abc..."), the handle every AWS API and route inspection uses. |
+| `status.outputs.vpc_endpoint_id` | `string` | vpc_endpoint_id is the endpoint's id (e.g. "vpce-0abc..."), the handle every AWS API and route inspection uses. |
 | `status.outputs.arn` | `string` | arn is the endpoint's Amazon Resource Name -- arn:aws:ec2:<region>:<account>:vpc-endpoint/<vpce-id>. |
 | `status.outputs.state` | `string` | state is the endpoint's lifecycle state after provisioning -- "available" on a successful create ("pendingAcceptance" when the PrivateLink service requires manual acceptance). |
-| `status.outputs.prefixListId` | `string` | prefix_list_id is the service's prefix list (e.g. "pl-68a54001" for S3) -- gateway endpoints only. Reference it in security-group or route rules that must scope traffic to the service's address ranges. Empty for ENI-based endpoint types. |
-| `status.outputs.dnsName` | `string` | dns_name is the endpoint's primary private DNS name -- the regional endpoint-specific name clients use when private DNS is off, and the name Route53 aliases target. Interface endpoints only; empty for gateway endpoints (which have no DNS presence). |
-| `status.outputs.hostedZoneId` | `string` | hosted_zone_id is the Route53 hosted zone of dns_name, needed alongside it when creating a Route53 alias record to the endpoint. Interface endpoints only. |
-| `status.outputs.networkInterfaceIds` | `[]string` | network_interface_ids are the endpoint's ENIs, one per attached subnet -- the objects flow logs, firewall rules, and IP lookups operate on. Empty for gateway endpoints. |
+| `status.outputs.prefix_list_id` | `string` | prefix_list_id is the service's prefix list (e.g. "pl-68a54001" for S3) -- gateway endpoints only. Reference it in security-group or route rules that must scope traffic to the service's address ranges. Empty for ENI-based endpoint types. |
+| `status.outputs.dns_name` | `string` | dns_name is the endpoint's primary private DNS name -- the regional endpoint-specific name clients use when private DNS is off, and the name Route53 aliases target. Interface endpoints only; empty for gateway endpoints (which have no DNS presence). |
+| `status.outputs.hosted_zone_id` | `string` | hosted_zone_id is the Route53 hosted zone of dns_name, needed alongside it when creating a Route53 alias record to the endpoint. Interface endpoints only. |
+| `status.outputs.network_interface_ids` | `[]string` | network_interface_ids are the endpoint's ENIs, one per attached subnet -- the objects flow logs, firewall rules, and IP lookups operate on. Empty for gateway endpoints. |
 
 ## References
 

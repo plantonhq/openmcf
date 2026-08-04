@@ -212,9 +212,89 @@ Reference an output from another manifest as `valueFrom: {kind: AwsKmsKey, name:
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.keyId` | `string` | The generated key ID (UUID; "mrk-..." for multi-Region keys). |
-| `status.outputs.keyArn` | `string` | The key ARN -- the join key encryption-at-rest fields across the catalog reference (databases, queues, buckets, functions, ...). |
-| `status.outputs.aliasNames` | `[]string` | The alias names attached to the key (each "alias/..."), in spec order -- the human-friendly addresses SDK callers may use instead of the key ID. |
+| `status.outputs.key_id` | `string` | The generated key ID (UUID; "mrk-..." for multi-Region keys). |
+| `status.outputs.key_arn` | `string` | The key ARN -- the join key encryption-at-rest fields across the catalog reference (databases, queues, buckets, functions, ...). |
+| `status.outputs.alias_names` | `[]string` | The alias names attached to the key (each "alias/..."), in spec order -- the human-friendly addresses SDK callers may use instead of the key ID. |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAppRunnerService | `spec.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsAthenaWorkgroup | `spec.resultConfiguration.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsAthenaWorkgroup | `spec.managedQueryResults.kmsKey` | `status.outputs.key_arn` |
+| AwsAthenaWorkgroup | `spec.customerContentEncryptionKmsKey` | `status.outputs.key_arn` |
+| AwsAthenaWorkgroup | `spec.monitoring.managedLogging.kmsKey` | `status.outputs.key_arn` |
+| AwsAthenaWorkgroup | `spec.monitoring.s3Logging.kmsKey` | `status.outputs.key_arn` |
+| AwsCloudwatchLogGroup | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsCodeBuildProject | `spec.encryptionKey` | `status.outputs.key_arn` |
+| AwsCodePipeline | `spec.artifactStores[].encryptionKeyId` | `status.outputs.key_arn` |
+| AwsCognitoUserPool | `spec.lambdaConfig.kmsKeyId` | `status.outputs.key_arn` |
+| AwsDocumentDb | `spec.instances[].performanceInsightsKmsKeyId` | `status.outputs.key_arn` |
+| AwsDocumentDb | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsDynamodb | `spec.serverSideEncryption.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsDynamodb | `spec.replicas[].kmsKeyArn` | `status.outputs.key_arn` |
+| AwsEc2Instance | `spec.rootBlockDevice.kmsKeyId` | `status.outputs.key_arn` |
+| AwsEc2Instance | `spec.ebsBlockDevices[].kmsKeyId` | `status.outputs.key_arn` |
+| AwsEcrRepo | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsEcsCluster | `spec.executeCommandConfiguration.kmsKeyId` | `status.outputs.key_arn` |
+| AwsEcsCluster | `spec.managedStorageConfiguration.fargateEphemeralStorageKmsKeyId` | `status.outputs.key_arn` |
+| AwsEcsCluster | `spec.managedStorageConfiguration.kmsKeyId` | `status.outputs.key_arn` |
+| AwsEcsService | `spec.serviceConnect.services[].tls.kmsKey` | `status.outputs.key_arn` |
+| AwsEcsService | `spec.volumeConfiguration.managedEbsVolume.kmsKeyId` | `status.outputs.key_arn` |
+| AwsEksCluster | `spec.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsElasticFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsElasticFileSystem | `spec.replication.destinationKmsKeyId` | `status.outputs.key_arn` |
+| AwsEventBridgeBus | `spec.kmsKeyIdentifier` | `status.outputs.key_arn` |
+| AwsFsxLustreFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsFsxOntapFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsFsxOpenzfsFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsFsxWindowsFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.sseKmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.extendedS3.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.extendedS3.s3Backup.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.opensearch.s3Config.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.opensearchServerless.s3Config.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.httpEndpoint.s3Config.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.redshift.s3Config.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.redshift.s3Backup.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.splunk.s3Config.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.snowflake.s3Config.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisFirehose | `spec.iceberg.s3Config.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsKinesisStream | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsLambda | `spec.sourceKmsKeyArn` | `status.outputs.key_arn` |
+| AwsLambda | `spec.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsLambdaEventSourceMapping | `spec.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsLaunchTemplate | `spec.blockDeviceMappings[].ebs.kmsKeyId` | `status.outputs.key_arn` |
+| AwsMemorydbCluster | `spec.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsMskCluster | `spec.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsMwaaEnvironment | `spec.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsNeptuneCluster | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsOpenSearchDomain | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsRdsCluster | `spec.masterUserSecretKmsKeyId` | `status.outputs.key_arn` |
+| AwsRdsCluster | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsRdsCluster | `spec.performanceInsightsKmsKeyId` | `status.outputs.key_arn` |
+| AwsRdsInstance | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsRdsInstance | `spec.masterUserSecretKmsKeyId` | `status.outputs.key_arn` |
+| AwsRdsInstance | `spec.performanceInsightsKmsKeyId` | `status.outputs.key_arn` |
+| AwsRedisElasticache | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsRedshiftCluster | `spec.masterPasswordSecretKmsKeyId` | `status.outputs.key_arn` |
+| AwsRedshiftCluster | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsRedshiftServerlessNamespace | `spec.adminPasswordSecretKmsKeyId` | `status.outputs.key_arn` |
+| AwsRedshiftServerlessNamespace | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsRoute53Zone | `spec.dnssec.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsS3Bucket | `spec.encryption.kmsKeyId` | `status.outputs.key_arn` |
+| AwsS3Bucket | `spec.replication.rules[].destination.replicaKmsKeyId` | `status.outputs.key_arn` |
+| AwsS3ObjectSet | `spec.objects[].kmsKey` | `status.outputs.key_arn` |
+| AwsSagemakerDomain | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsSagemakerDomain | `spec.defaultUserSettings.canvasAppSettings.workspaceSettings.s3KmsKeyId` | `status.outputs.key_arn` |
+| AwsSagemakerDomain | `spec.defaultUserSettings.sharingSettings.s3KmsKeyId` | `status.outputs.key_arn` |
+| AwsServerlessElasticache | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsSnsTopic | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsSqsQueue | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsStepFunction | `spec.encryption.kmsKeyId` | `status.outputs.key_arn` |
 
 ## See Also
 

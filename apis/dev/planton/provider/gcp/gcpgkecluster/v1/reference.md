@@ -1,0 +1,1483 @@
+# GcpGkeCluster
+
+> Generated from the protobuf schema by `make generate-reference` -- do not
+> edit by hand. To change a fact on this page, change the proto field comment
+> or validation rule it is derived from, then regenerate.
+
+**apiVersion**: `gcp.planton.dev/v1`
+
+GcpGkeClusterSpec defines a GKE cluster (`google_container_cluster`) — the
+Kubernetes control plane plus cluster-wide configuration.
+
+One GcpGkeCluster resource is one cluster. Node pools are separate
+composable resources — GcpGkeNodePool — referencing this cluster by its
+name output; the cluster's default node pool is always removed at create
+time so every node pool is an explicitly managed, first-class node.
+In Autopilot mode (enable_autopilot) GKE manages nodes entirely and no
+GcpGkeNodePool resources are attached.
+
+Clusters are always VPC-native (alias-IP): pods and services draw from
+secondary ranges on the referenced subnetwork — either ranges you name in
+ip_allocation, or ranges GKE creates and manages when none are named.
+Legacy routes-based networking is deliberately not modeled.
+
+## Example
+
+```yaml
+apiVersion: gcp.planton.dev/v1
+kind: GcpGkeCluster
+metadata:
+  name: test-gke-cluster
+spec:
+  projectId:
+    value: test-project-123
+  location: us-central1
+  description: hack manifest exercising the broad cluster surface offline
+  network:
+    value: projects/test-project-123/global/networks/test-vpc
+  subnetwork:
+    value: projects/test-project-123/regions/us-central1/subnetworks/test-subnet
+  nodeLocations:
+    - us-central1-a
+    - us-central1-b
+  deletionProtection: false
+  ipAllocation:
+    clusterSecondaryRangeName:
+      value: pods-range
+    servicesSecondaryRangeName:
+      value: services-range
+  datapathProvider: ADVANCED_DATAPATH
+  privateCluster:
+    enablePrivateNodes: true
+    masterIpv4CidrBlock: "172.16.0.16/28"
+    enableMasterGlobalAccess: true
+  masterAuthorizedNetworks:
+    cidrBlocks:
+      - cidrBlock: 203.0.113.0/24
+        displayName: office
+  releaseChannel: REGULAR
+  maintenancePolicy:
+    dailyWindow:
+      startTime: "03:00"
+  clusterAutoscaling:
+    enabled: true
+    resourceLimits:
+      - resourceType: cpu
+        minimum: 4
+        maximum: 64
+      - resourceType: memory
+        minimum: 16
+        maximum: 256
+    autoProvisioningDefaults:
+      diskType: pd-balanced
+  enableVerticalPodAutoscaling: true
+  databaseEncryption:
+    state: ENCRYPTED
+    keyName:
+      value: projects/test-project-123/locations/us-central1/keyRings/test-ring/cryptoKeys/etcd-key
+  securityPosture:
+    mode: BASIC
+    vulnerabilityMode: VULNERABILITY_BASIC
+  logging:
+    components:
+      - SYSTEM_COMPONENTS
+      - WORKLOADS
+  monitoring:
+    components:
+      - SYSTEM_COMPONENTS
+    managedPrometheusEnabled: true
+  enableCostManagement: true
+  addons:
+    gcsFuseCsiDriverEnabled: true
+    gkeBackupAgentEnabled: true
+  resourceLabels:
+    team: platform
+```
+
+## Spec Fields
+
+| Path | Type | Required | Default | References |
+|---|---|---|---|---|
+| `spec.projectId` | `string \| valueFrom` |  |  | GcpProject (`status.outputs.project_id`) |
+| `spec.clusterName` | `string` |  |  |  |
+| `spec.location` | `string` | yes |  |  |
+| `spec.description` | `string` |  |  |  |
+| `spec.network` | `string \| valueFrom` | yes |  | GcpVpcNetwork (`status.outputs.network_self_link`) |
+| `spec.subnetwork` | `string \| valueFrom` | yes |  | GcpSubnetwork (`status.outputs.subnetwork_self_link`) |
+| `spec.nodeLocations` | `[]string` |  |  |  |
+| `spec.resourceLabels` | `map<string, string>` |  |  |  |
+| `spec.deletionProtection` | `bool` |  | `true` |  |
+| `spec.ipAllocation` | `GcpGkeClusterIpAllocation` |  |  |  |
+| `spec.ipAllocation.clusterSecondaryRangeName` | `string \| valueFrom` |  |  | GcpSubnetwork (`status.outputs.secondary_ranges.[*].range_name`) |
+| `spec.ipAllocation.servicesSecondaryRangeName` | `string \| valueFrom` |  |  | GcpSubnetwork (`status.outputs.secondary_ranges.[*].range_name`) |
+| `spec.ipAllocation.clusterIpv4CidrBlock` | `string` |  |  |  |
+| `spec.ipAllocation.servicesIpv4CidrBlock` | `string` |  |  |  |
+| `spec.ipAllocation.stackType` | `string` |  | `IPV4` |  |
+| `spec.ipAllocation.additionalPodRangeNames` | `[]string` |  |  |  |
+| `spec.ipAllocation.podCidrOverprovisionDisabled` | `bool` |  |  |  |
+| `spec.datapathProvider` | `string` |  |  |  |
+| `spec.defaultMaxPodsPerNode` | `int32` |  |  |  |
+| `spec.enableIntranodeVisibility` | `bool` |  |  |  |
+| `spec.enableL4IlbSubsetting` | `bool` |  |  |  |
+| `spec.enableFqdnNetworkPolicy` | `bool` |  |  |  |
+| `spec.enableCiliumClusterwideNetworkPolicy` | `bool` |  |  |  |
+| `spec.enableMultiNetworking` | `bool` |  |  |  |
+| `spec.privateIpv6GoogleAccess` | `string` |  |  |  |
+| `spec.inTransitEncryption` | `string` |  |  |  |
+| `spec.disableDefaultSnat` | `bool` |  |  |  |
+| `spec.enableNetworkPolicy` | `bool` |  |  |  |
+| `spec.dnsConfig` | `GcpGkeClusterDnsConfig` |  |  |  |
+| `spec.dnsConfig.clusterDns` | `string` |  |  |  |
+| `spec.dnsConfig.clusterDnsScope` | `string` |  |  |  |
+| `spec.dnsConfig.clusterDnsDomain` | `string` |  |  |  |
+| `spec.dnsConfig.additiveVpcScopeDnsDomain` | `string` |  |  |  |
+| `spec.gatewayApiChannel` | `string` |  |  |  |
+| `spec.enableServiceExternalIps` | `bool` |  |  |  |
+| `spec.totalEgressBandwidthTier` | `string` |  |  |  |
+| `spec.disableL4LbFirewallReconciliation` | `bool` |  |  |  |
+| `spec.privateCluster` | `GcpGkeClusterPrivateCluster` |  |  |  |
+| `spec.privateCluster.enablePrivateNodes` | `bool` |  |  |  |
+| `spec.privateCluster.enablePrivateEndpoint` | `bool` |  |  |  |
+| `spec.privateCluster.masterIpv4CidrBlock` | `string` |  |  |  |
+| `spec.privateCluster.privateEndpointSubnetwork` | `string \| valueFrom` |  |  | GcpSubnetwork (`status.outputs.subnetwork_self_link`) |
+| `spec.privateCluster.enableMasterGlobalAccess` | `bool` |  |  |  |
+| `spec.masterAuthorizedNetworks` | `GcpGkeClusterMasterAuthorizedNetworks` |  |  |  |
+| `spec.masterAuthorizedNetworks.cidrBlocks` | `[]GcpGkeClusterMasterAuthorizedNetworkCidr` |  |  |  |
+| `spec.masterAuthorizedNetworks.cidrBlocks[].cidrBlock` | `string` | yes |  |  |
+| `spec.masterAuthorizedNetworks.cidrBlocks[].displayName` | `string` |  |  |  |
+| `spec.masterAuthorizedNetworks.gcpPublicCidrsAccessEnabled` | `bool` |  |  |  |
+| `spec.masterAuthorizedNetworks.privateEndpointEnforcementEnabled` | `bool` |  |  |  |
+| `spec.controlPlaneEndpoints` | `GcpGkeClusterControlPlaneEndpoints` |  |  |  |
+| `spec.controlPlaneEndpoints.dnsEndpointAllowExternalTraffic` | `bool` |  |  |  |
+| `spec.controlPlaneEndpoints.ipEndpointsEnabled` | `bool` |  | `true` |  |
+| `spec.releaseChannel` | `enum` |  | `REGULAR` |  |
+| `spec.minMasterVersion` | `string` |  |  |  |
+| `spec.maintenancePolicy` | `GcpGkeClusterMaintenancePolicy` |  |  |  |
+| `spec.maintenancePolicy.dailyWindow` | `GcpGkeClusterDailyMaintenanceWindow` |  |  |  |
+| `spec.maintenancePolicy.dailyWindow.startTime` | `string` | yes |  |  |
+| `spec.maintenancePolicy.recurringWindow` | `GcpGkeClusterRecurringMaintenanceWindow` |  |  |  |
+| `spec.maintenancePolicy.recurringWindow.startTime` | `string` | yes |  |  |
+| `spec.maintenancePolicy.recurringWindow.endTime` | `string` | yes |  |  |
+| `spec.maintenancePolicy.recurringWindow.recurrence` | `string` | yes |  |  |
+| `spec.maintenancePolicy.exclusions` | `[]GcpGkeClusterMaintenanceExclusion` |  |  |  |
+| `spec.maintenancePolicy.exclusions[].exclusionName` | `string` | yes |  |  |
+| `spec.maintenancePolicy.exclusions[].startTime` | `string` | yes |  |  |
+| `spec.maintenancePolicy.exclusions[].endTime` | `string` | yes |  |  |
+| `spec.maintenancePolicy.exclusions[].scope` | `string` |  |  |  |
+| `spec.clusterAutoscaling` | `GcpGkeClusterAutoscaling` |  |  |  |
+| `spec.clusterAutoscaling.enabled` | `bool` |  |  |  |
+| `spec.clusterAutoscaling.resourceLimits` | `[]GcpGkeClusterAutoscalingResourceLimit` |  |  |  |
+| `spec.clusterAutoscaling.resourceLimits[].resourceType` | `string` | yes |  |  |
+| `spec.clusterAutoscaling.resourceLimits[].minimum` | `int64` |  |  |  |
+| `spec.clusterAutoscaling.resourceLimits[].maximum` | `int64` |  |  |  |
+| `spec.clusterAutoscaling.autoscalingProfile` | `string` |  | `BALANCED` |  |
+| `spec.clusterAutoscaling.autoProvisioningLocations` | `[]string` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults` | `GcpGkeClusterAutoProvisioningDefaults` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.serviceAccount` | `string \| valueFrom` |  |  | GcpServiceAccount (`status.outputs.email`) |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.oauthScopes` | `[]string` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.diskSizeGb` | `int32` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.diskType` | `string` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.imageType` | `string` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.minCpuPlatform` | `string` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.bootDiskKmsKey` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.enableSecureBoot` | `bool` |  |  |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.enableIntegrityMonitoring` | `bool` |  | `true` |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.autoUpgrade` | `bool` |  | `true` |  |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.autoRepair` | `bool` |  | `true` |  |
+| `spec.enableVerticalPodAutoscaling` | `bool` |  |  |  |
+| `spec.hpaProfile` | `string` |  |  |  |
+| `spec.workloadIdentityEnabled` | `bool` |  | `true` |  |
+| `spec.enableShieldedNodes` | `bool` |  |  |  |
+| `spec.databaseEncryption` | `GcpGkeClusterDatabaseEncryption` |  |  |  |
+| `spec.databaseEncryption.state` | `string` | yes |  |  |
+| `spec.databaseEncryption.keyName` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.binaryAuthorizationEvaluationMode` | `string` |  |  |  |
+| `spec.securityPosture` | `GcpGkeClusterSecurityPosture` |  |  |  |
+| `spec.securityPosture.mode` | `string` |  |  |  |
+| `spec.securityPosture.vulnerabilityMode` | `string` |  |  |  |
+| `spec.authenticatorSecurityGroup` | `string` |  |  |  |
+| `spec.enableLegacyAbac` | `bool` |  |  |  |
+| `spec.enableMeshCertificates` | `bool` |  |  |  |
+| `spec.enableSecretManagerCsi` | `bool` |  |  |  |
+| `spec.confidentialNodes` | `GcpGkeClusterConfidentialNodes` |  |  |  |
+| `spec.confidentialNodes.enabled` | `bool` |  |  |  |
+| `spec.confidentialNodes.confidentialInstanceType` | `string` |  |  |  |
+| `spec.anonymousAuthenticationMode` | `string` |  |  |  |
+| `spec.enableIdentityService` | `bool` |  |  |  |
+| `spec.logging` | `GcpGkeClusterLogging` |  |  |  |
+| `spec.logging.components` | `[]string` |  |  |  |
+| `spec.monitoring` | `GcpGkeClusterMonitoring` |  |  |  |
+| `spec.monitoring.components` | `[]string` |  |  |  |
+| `spec.monitoring.managedPrometheusEnabled` | `bool` |  | `true` |  |
+| `spec.monitoring.autoMonitoringScope` | `string` |  |  |  |
+| `spec.monitoring.advancedDatapathMetricsEnabled` | `bool` |  |  |  |
+| `spec.monitoring.advancedDatapathRelayEnabled` | `bool` |  |  |  |
+| `spec.notificationPubsub` | `GcpGkeClusterNotificationPubSub` |  |  |  |
+| `spec.notificationPubsub.enabled` | `bool` |  |  |  |
+| `spec.notificationPubsub.topic` | `string \| valueFrom` |  |  | GcpPubSubTopic (`status.outputs.topic_id`) |
+| `spec.notificationPubsub.eventTypes` | `[]string` |  |  |  |
+| `spec.enableCostManagement` | `bool` |  |  |  |
+| `spec.resourceUsageExport` | `GcpGkeClusterResourceUsageExport` |  |  |  |
+| `spec.resourceUsageExport.bigqueryDatasetId` | `string \| valueFrom` | yes |  | GcpBigQueryDataset (`status.outputs.dataset_id`) |
+| `spec.resourceUsageExport.enableNetworkEgressMetering` | `bool` |  |  |  |
+| `spec.resourceUsageExport.enableResourceConsumptionMetering` | `bool` |  | `true` |  |
+| `spec.addons` | `GcpGkeClusterAddons` |  |  |  |
+| `spec.addons.httpLoadBalancingEnabled` | `bool` |  | `true` |  |
+| `spec.addons.horizontalPodAutoscalingEnabled` | `bool` |  | `true` |  |
+| `spec.addons.gcePersistentDiskCsiDriverEnabled` | `bool` |  | `true` |  |
+| `spec.addons.gcpFilestoreCsiDriverEnabled` | `bool` |  |  |  |
+| `spec.addons.gcsFuseCsiDriverEnabled` | `bool` |  |  |  |
+| `spec.addons.gkeBackupAgentEnabled` | `bool` |  |  |  |
+| `spec.addons.dnsCacheEnabled` | `bool` |  |  |  |
+| `spec.addons.configConnectorEnabled` | `bool` |  |  |  |
+| `spec.addons.statefulHaEnabled` | `bool` |  |  |  |
+| `spec.addons.rayOperatorEnabled` | `bool` |  |  |  |
+| `spec.enableAutopilot` | `bool` |  |  |  |
+| `spec.allowNetAdmin` | `bool` |  |  |  |
+| `spec.fleetProject` | `string` |  |  |  |
+
+## Field Details
+
+### spec.projectId
+
+`string | valueFrom`
+
+The GCP project in which to create this cluster.
+Can be a literal project ID or a reference to a GcpProject resource.
+If omitted, the provider's default project is used.
+Example: "my-prod-project-123"
+
+- references: GcpProject (`status.outputs.project_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpProject, name: <that resource's name>, fieldPath: status.outputs.project_id}} -- a bare string does not parse
+
+### spec.clusterName
+
+`string`
+
+Name of the GKE cluster in GCP. Immutable. If not specified, defaults to
+metadata.name. Must be 1-40 characters: lowercase letters, digits, and
+hyphens; starting with a letter and ending with a letter or digit.
+Example: "prod-primary"
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$"}}
+
+### spec.location
+
+`string` · required
+
+Location of the cluster's control plane. Immutable. A region
+("us-central1") creates a REGIONAL cluster — control-plane replicas in
+three zones, higher availability, and node_locations defaulting to all
+zones in the region. A zone ("us-central1-a") creates a ZONAL cluster —
+a single control-plane instance, cheaper, with a brief control-plane
+outage during upgrades. Production clusters should be regional.
+
+- rule: {"required":true,"string":{"pattern":"^[a-z]+-[a-z]+[0-9]+(-[a-z])?$"}}
+
+### spec.description
+
+`string`
+
+Human-readable description of the cluster. Immutable.
+
+### spec.network
+
+`string | valueFrom` · required
+
+The VPC network the cluster lives in. Accepts a network self link or a
+reference to a GcpVpcNetwork resource. Immutable. An explicit network is
+deliberately required — clusters on the legacy auto-created "default"
+network do not compose into reviewable infrastructure.
+
+- references: GcpVpcNetwork (`status.outputs.network_self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpVpcNetwork, name: <that resource's name>, fieldPath: status.outputs.network_self_link}} -- a bare string does not parse
+
+### spec.subnetwork
+
+`string | valueFrom` · required
+
+The subnetwork nodes are attached to. Accepts a subnetwork self link or
+a reference to a GcpSubnetwork resource. Immutable. Must be in the same
+region as the cluster location. Pod and service ranges come from this
+subnetwork's secondary ranges (see ip_allocation).
+
+- references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_self_link}} -- a bare string does not parse
+
+### spec.nodeLocations
+
+`[]string`
+
+Zones in which nodes (not the control plane) run, e.g.
+["us-central1-a", "us-central1-b"]. For a regional cluster this narrows
+node placement from all zones in the region; for a zonal cluster it adds
+node zones beyond the control-plane zone (multi-zonal). Mutable.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"pattern":"^[a-z]+-[a-z]+[0-9]+-[a-z]$"}}}}
+
+### spec.resourceLabels
+
+`map<string, string>`
+
+GCE resource labels applied to the cluster (merged with the standard
+platform labels). Mutable. These are cloud-billing/inventory labels, not
+Kubernetes object labels.
+
+### spec.deletionProtection
+
+`bool` · optional (explicit presence)
+
+Engine-side delete guard: while true (the default, matching GCP), both
+IaC engines refuse to destroy the cluster — the plan/preview fails until
+this is set to false. A cluster deletion destroys every workload on it;
+keep this on for anything real.
+
+- default: `true`
+
+### spec.ipAllocation
+
+`GcpGkeClusterIpAllocation`
+
+VPC-native pod/service IP allocation. If omitted, GKE creates and
+manages the secondary ranges itself — fine for dev clusters; production
+clusters should name planned ranges on the subnetwork for address-space
+governance.
+
+- rule: set either cluster_secondary_range_name (use an existing subnetwork range) or cluster_ipv4_cidr_block (GKE creates the range) — not both
+- rule: set either services_secondary_range_name (use an existing subnetwork range) or services_ipv4_cidr_block (GKE creates the range) — not both
+
+### spec.ipAllocation.clusterSecondaryRangeName
+
+`string | valueFrom`
+
+Name of an existing secondary range on the subnetwork for POD IPs.
+Accepts a literal range name or a reference to a GcpSubnetwork
+resource's secondary ranges. Immutable.
+
+- references: GcpSubnetwork (`status.outputs.secondary_ranges.[*].range_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.secondary_ranges.[*].range_name}} -- a bare string does not parse
+
+### spec.ipAllocation.servicesSecondaryRangeName
+
+`string | valueFrom`
+
+Name of an existing secondary range on the subnetwork for SERVICE
+(ClusterIP) IPs. Immutable.
+
+- references: GcpSubnetwork (`status.outputs.secondary_ranges.[*].range_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.secondary_ranges.[*].range_name}} -- a bare string does not parse
+
+### spec.ipAllocation.clusterIpv4CidrBlock
+
+`string`
+
+CIDR block for a GKE-created pod range (e.g. "10.4.0.0/14"), or a
+netmask size (e.g. "/14") to let GKE pick the space. Immutable.
+
+### spec.ipAllocation.servicesIpv4CidrBlock
+
+`string`
+
+CIDR block for a GKE-created services range (e.g. "10.8.0.0/20"), or a
+netmask size. Immutable.
+
+### spec.ipAllocation.stackType
+
+`string` · optional (explicit presence)
+
+IP stack of the cluster: IPV4 (default) or IPV4_IPV6 (dual-stack;
+requires a dual-stack subnetwork). Immutable.
+
+- default: `IPV4`
+- rule: stack_type must be IPV4 or IPV4_IPV6
+
+### spec.ipAllocation.additionalPodRangeNames
+
+`[]string`
+
+Names of ADDITIONAL existing secondary ranges node pools may use for
+pod IPs — the mechanism for growing pod address space after creation
+(added ranges are mutable; the primary pod range is not).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
+
+### spec.ipAllocation.podCidrOverprovisionDisabled
+
+`bool`
+
+Disables the 2x pod-CIDR overprovisioning GKE applies per node by
+default — doubles node density per pod range at the cost of headroom
+for pod churn. Immutable.
+
+### spec.datapathProvider
+
+`string`
+
+The cluster dataplane. ADVANCED_DATAPATH is Dataplane V2 (eBPF/Cilium):
+built-in NetworkPolicy enforcement without Calico, dataplane
+observability, and FQDN/Cilium policy support — the recommended choice
+for new clusters. LEGACY_DATAPATH is kube-proxy/iptables. Immutable.
+
+- rule: datapath_provider must be empty, LEGACY_DATAPATH, or ADVANCED_DATAPATH
+
+### spec.defaultMaxPodsPerNode
+
+`int32` · optional (explicit presence)
+
+Default maximum pods per node for the cluster (8-256, default 110).
+Lower values shrink the per-node pod CIDR slice and stretch the pod
+range across more nodes. Immutable; node pools can override it.
+
+- rule: {"int32":{"lte":256,"gte":8}}
+
+### spec.enableIntranodeVisibility
+
+`bool`
+
+Mirrors pod-to-pod traffic on the same node to the VPC dataplane, making
+it visible to VPC flow logs and packet mirroring. Mutable.
+
+### spec.enableL4IlbSubsetting
+
+`bool`
+
+GKE subsetting for internal L4 load balancers: backends become a subset
+of nodes instead of all nodes, lifting the 250-node ILB ceiling for
+large clusters. Enabling is one-way — it cannot be turned off without
+recreating the cluster.
+
+### spec.enableFqdnNetworkPolicy
+
+`bool`
+
+Allows FQDN (domain-name based) NetworkPolicy rules. Requires Dataplane
+V2 (datapath_provider ADVANCED_DATAPATH). Mutable.
+
+### spec.enableCiliumClusterwideNetworkPolicy
+
+`bool`
+
+Allows CiliumClusterwideNetworkPolicy objects (cluster-scoped L3/L4
+policy). Requires Dataplane V2. Mutable.
+
+### spec.enableMultiNetworking
+
+`bool`
+
+Enables multi-networking: pods can attach to additional node network
+interfaces (Network/GKENetworkParamSet objects). Immutable; requires
+Dataplane V2.
+
+### spec.privateIpv6GoogleAccess
+
+`string`
+
+Outbound-only private IPv6 access from nodes/pods to Google services
+(PRIVATE_IPV6_GOOGLE_ACCESS_TO_GOOGLE) or bidirectional
+(PRIVATE_IPV6_GOOGLE_ACCESS_BIDIRECTIONAL); DISABLED turns it off.
+
+- rule: private_ipv6_google_access must be empty, PRIVATE_IPV6_GOOGLE_ACCESS_DISABLED, PRIVATE_IPV6_GOOGLE_ACCESS_TO_GOOGLE, or PRIVATE_IPV6_GOOGLE_ACCESS_BIDIRECTIONAL
+
+### spec.inTransitEncryption
+
+`string`
+
+Encrypts inter-node pod traffic transparently (Dataplane V2 only):
+INTER_NODE_TRANSPARENT encrypts, IN_TRANSIT_ENCRYPTION_DISABLED does
+not. Zero application changes; small latency cost.
+
+- rule: in_transit_encryption must be empty, IN_TRANSIT_ENCRYPTION_DISABLED, or IN_TRANSIT_ENCRYPTION_INTER_NODE_TRANSPARENT
+
+### spec.disableDefaultSnat
+
+`bool`
+
+Disables the default source NAT for pod IPs leaving the cluster —
+required for some routable-pod (non-masquerade) network designs where
+pod IPs must be preserved end to end. Mutable.
+
+### spec.enableNetworkPolicy
+
+`bool`
+
+Enables Kubernetes NetworkPolicy enforcement via Calico (the legacy
+enforcement path, paired with the network-policy addon). On Dataplane V2
+clusters leave this off — NetworkPolicy is enforced natively. Mutable.
+
+### spec.dnsConfig
+
+`GcpGkeClusterDnsConfig`
+
+Cluster DNS provider configuration (Cloud DNS instead of kube-dns).
+If omitted, GKE uses its platform default.
+
+- rule: additive_vpc_scope_dns_domain requires cluster_dns CLOUD_DNS
+- rule: cluster_dns_scope applies to Cloud DNS — set cluster_dns to CLOUD_DNS
+
+### spec.dnsConfig.clusterDns
+
+`string`
+
+In-cluster DNS provider: CLOUD_DNS (managed, no kube-dns pods to scale)
+or PLATFORM_DEFAULT (kube-dns).
+
+- rule: cluster_dns must be empty, PROVIDER_UNSPECIFIED, PLATFORM_DEFAULT, or CLOUD_DNS
+
+### spec.dnsConfig.clusterDnsScope
+
+`string`
+
+Cloud DNS scope: CLUSTER_SCOPE (records visible in-cluster only) or
+VPC_SCOPE (cluster DNS records resolvable across the whole VPC —
+enables VMs to resolve headless services etc.).
+
+- rule: cluster_dns_scope must be empty, DNS_SCOPE_UNSPECIFIED, CLUSTER_SCOPE, or VPC_SCOPE
+
+### spec.dnsConfig.clusterDnsDomain
+
+`string`
+
+Custom cluster DNS suffix (default "cluster.local").
+
+### spec.dnsConfig.additiveVpcScopeDnsDomain
+
+`string`
+
+With CLUSTER_SCOPE Cloud DNS, ALSO publishes services under this domain
+VPC-wide — cluster-scoped DNS plus selective VPC visibility.
+
+### spec.gatewayApiChannel
+
+`string`
+
+Gateway API support: CHANNEL_STANDARD installs the Gateway API CRDs and
+the GKE Gateway controller (the successor to Ingress);
+CHANNEL_DISABLED turns it off. Mutable.
+
+- rule: gateway_api_channel must be empty, CHANNEL_DISABLED, or CHANNEL_STANDARD
+
+### spec.enableServiceExternalIps
+
+`bool`
+
+Allows Services of type LoadBalancer/ClusterIP to use external IPs.
+Off by default as a security posture (CVE-2020-8554 mitigation) —
+enable only if a workload genuinely needs external IPs on Services.
+
+### spec.totalEgressBandwidthTier
+
+`string`
+
+Total egress bandwidth tier for node network performance. TIER_1
+unlocks up to 100 Gbps on supported machine families (N2/N2D/C2/C3...);
+requires gVNIC on the node pools that use it.
+
+- rule: total_egress_bandwidth_tier must be empty, TIER_UNSPECIFIED, or TIER_1
+
+### spec.disableL4LbFirewallReconciliation
+
+`bool`
+
+Stops GKE from reconciling the VPC firewall rules it creates for L4
+load balancers — for environments where firewall rules are governed
+externally and GKE's reconciliation fights the desired state.
+
+### spec.privateCluster
+
+`GcpGkeClusterPrivateCluster`
+
+Private-cluster topology: private nodes (no public node IPs) and/or a
+private-only control-plane endpoint. If omitted, nodes get public IPs
+and the control plane has a public endpoint — fine for sandboxes, not
+for production.
+
+- rule: enable_private_endpoint requires enable_private_nodes — a public-node cluster cannot have a private-only control plane
+- rule: set either master_ipv4_cidr_block (peering-based control-plane range) or private_endpoint_subnetwork (PSC-based endpoint placement) — not both
+
+### spec.privateCluster.enablePrivateNodes
+
+`bool`
+
+Nodes get only internal IPs. Outbound internet (image pulls from
+non-Google registries, external APIs) then requires Cloud NAT on the
+network — compose a GcpRouterNat.
+
+### spec.privateCluster.enablePrivateEndpoint
+
+`bool`
+
+Removes the control plane's PUBLIC endpoint entirely: kubectl works
+only from inside the VPC (or via the DNS endpoint / authorized
+networks' private enforcement). The strictest posture; requires
+enable_private_nodes.
+
+### spec.privateCluster.masterIpv4CidrBlock
+
+`string`
+
+RFC1918 /28 block for the control plane on peering-based private
+clusters, e.g. "172.16.0.16/28". Must not overlap any range in the VPC.
+Immutable. Newer PSC-based clusters don't need it.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^\\d+\\.\\d+\\.\\d+\\.\\d+/28$"}}
+
+### spec.privateCluster.privateEndpointSubnetwork
+
+`string | valueFrom`
+
+Subnetwork in which the control plane's private endpoint is placed
+(PSC-based private clusters). Accepts a self link or a GcpSubnetwork
+reference. Immutable.
+
+- references: GcpSubnetwork (`status.outputs.subnetwork_self_link`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_self_link}} -- a bare string does not parse
+
+### spec.privateCluster.enableMasterGlobalAccess
+
+`bool`
+
+Makes the private control-plane endpoint reachable from other GCP
+regions and on-prem over interconnect/VPN (not just the cluster's
+region).
+
+### spec.masterAuthorizedNetworks
+
+`GcpGkeClusterMasterAuthorizedNetworks`
+
+CIDR allowlist for control-plane API access. Without it, the public
+endpoint (when enabled) accepts connections from any IP that presents
+valid credentials.
+
+### spec.masterAuthorizedNetworks.cidrBlocks
+
+`[]GcpGkeClusterMasterAuthorizedNetworkCidr`
+
+CIDR ranges allowed to reach the control-plane endpoint(s). An empty
+list with the block present means "no external networks authorized".
+
+### spec.masterAuthorizedNetworks.cidrBlocks[].cidrBlock
+
+`string` · required
+
+The CIDR range, e.g. "203.0.113.0/24".
+
+- rule: {"required":true,"string":{"pattern":"^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$"}}
+
+### spec.masterAuthorizedNetworks.cidrBlocks[].displayName
+
+`string`
+
+Display label for this entry in the console.
+
+### spec.masterAuthorizedNetworks.gcpPublicCidrsAccessEnabled
+
+`bool` · optional (explicit presence)
+
+Whether Google Cloud public IPs (e.g. Cloud Shell, Cloud Build default
+pools) may reach the control plane.
+
+### spec.masterAuthorizedNetworks.privateEndpointEnforcementEnabled
+
+`bool` · optional (explicit presence)
+
+Enforces the allowlist on the PRIVATE endpoint too (by default only the
+public endpoint is filtered).
+
+### spec.controlPlaneEndpoints
+
+`GcpGkeClusterControlPlaneEndpoints`
+
+Control-plane endpoint surface: the DNS endpoint (a Google-managed
+*.gke.goog name reachable without VPC peering — the modern access path)
+and the IP endpoints toggle.
+
+### spec.controlPlaneEndpoints.dnsEndpointAllowExternalTraffic
+
+`bool`
+
+Allows the Google-managed DNS endpoint (*.gke.goog) to accept traffic
+from outside the cluster's VPC — IAM-authenticated access without
+peering, bastions, or public IPs. The modern alternative to juggling
+authorized networks.
+
+### spec.controlPlaneEndpoints.ipEndpointsEnabled
+
+`bool` · optional (explicit presence)
+
+Whether IP-based endpoints (the classic public/private IPs) are served
+at all. Set false for DNS-endpoint-only clusters — the strongest
+endpoint posture.
+
+- default: `true`
+
+### spec.releaseChannel
+
+`enum` · optional (explicit presence)
+
+Kubernetes release channel for automatic upgrades. REGULAR (default)
+balances freshness and stability; RAPID gets new minors first; STABLE
+lags for maximum soak; EXTENDED keeps a minor supported longer for slow
+movers; NONE opts out of channel-based auto-upgrade (you own version
+management via min_master_version).
+
+- default: `REGULAR`
+
+Allowed values (use exactly as shown):
+
+- `gke_release_channel_unspecified`
+- `RAPID`
+- `REGULAR`
+- `STABLE`
+- `NONE`
+- `EXTENDED`
+
+### spec.minMasterVersion
+
+`string`
+
+Minimum Kubernetes version for the control plane, e.g. "1.31" or
+"1.31.4-gke.1256000". GKE may run a newer patch. Use with release
+channel NONE for pinned-version clusters; on a channel, prefer letting
+the channel drive versions.
+
+### spec.maintenancePolicy
+
+`GcpGkeClusterMaintenancePolicy`
+
+Maintenance windows and exclusions controlling WHEN GKE may perform
+automatic control-plane and node maintenance.
+
+- rule: set exactly one of daily_window or recurring_window
+
+### spec.maintenancePolicy.dailyWindow
+
+`GcpGkeClusterDailyMaintenanceWindow`
+
+Same 4-hour window every day, starting at this UTC time.
+
+### spec.maintenancePolicy.dailyWindow.startTime
+
+`string` · required
+
+Start of the daily 4-hour window, "HH:MM" (UTC), e.g. "03:00".
+
+- rule: {"required":true,"string":{"pattern":"^([0-1][0-9]|2[0-3]):[0-5][0-9]$"}}
+
+### spec.maintenancePolicy.recurringWindow
+
+`GcpGkeClusterRecurringMaintenanceWindow`
+
+RRULE-based recurring window (e.g. weekends only) — finer control than
+the daily window.
+
+### spec.maintenancePolicy.recurringWindow.startTime
+
+`string` · required
+
+Window start, RFC3339, e.g. "2026-01-01T02:00:00Z".
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.maintenancePolicy.recurringWindow.endTime
+
+`string` · required
+
+Window end (defines the window LENGTH; recurrence drives repetition),
+RFC3339.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.maintenancePolicy.recurringWindow.recurrence
+
+`string` · required
+
+RFC5545 RRULE, e.g. "FREQ=WEEKLY;BYDAY=SA,SU" for weekends.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.maintenancePolicy.exclusions
+
+`[]GcpGkeClusterMaintenanceExclusion`
+
+Date ranges during which non-emergency maintenance is blocked (change
+freezes). Maximum 20; the allowed scope/duration depends on the release
+channel.
+
+- rule: {"repeated":{"maxItems":"20"}}
+
+### spec.maintenancePolicy.exclusions[].exclusionName
+
+`string` · required
+
+Name of the exclusion, e.g. "year-end-freeze".
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.maintenancePolicy.exclusions[].startTime
+
+`string` · required
+
+Exclusion start, RFC3339.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.maintenancePolicy.exclusions[].endTime
+
+`string` · required
+
+Exclusion end, RFC3339.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.maintenancePolicy.exclusions[].scope
+
+`string`
+
+What the exclusion blocks: NO_UPGRADES (everything),
+NO_MINOR_UPGRADES, or NO_MINOR_OR_NODE_UPGRADES. Empty means
+NO_UPGRADES.
+
+- rule: scope must be empty, NO_UPGRADES, NO_MINOR_UPGRADES, or NO_MINOR_OR_NODE_UPGRADES
+
+### spec.clusterAutoscaling
+
+`GcpGkeClusterAutoscaling`
+
+Node auto-provisioning (NAP): GKE creates and deletes node pools
+automatically within the resource limits you set — the cluster-level
+autoscaler above individual node-pool autoscaling.
+
+- rule: node auto-provisioning requires resource_limits — set at least cpu and memory maximums so provisioning is bounded
+- rule: resource_limits apply only when enabled is true
+
+### spec.clusterAutoscaling.enabled
+
+`bool`
+
+Whether node auto-provisioning is on.
+
+### spec.clusterAutoscaling.resourceLimits
+
+`[]GcpGkeClusterAutoscalingResourceLimit`
+
+Cluster-wide bounds per resource type ("cpu", "memory", or an
+accelerator like "nvidia-tesla-t4"). NAP never provisions beyond the
+maximums — the cost brake.
+
+### spec.clusterAutoscaling.resourceLimits[].resourceType
+
+`string` · required
+
+"cpu", "memory", or an accelerator type such as "nvidia-tesla-t4".
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.clusterAutoscaling.resourceLimits[].minimum
+
+`int64`
+
+Minimum amount kept provisioned (0 = none).
+
+- rule: {"int64":{"gte":"0"}}
+
+### spec.clusterAutoscaling.resourceLimits[].maximum
+
+`int64`
+
+Maximum amount NAP may provision. Required — an unbounded NAP is an
+unbounded bill.
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.clusterAutoscaling.autoscalingProfile
+
+`string` · optional (explicit presence)
+
+BALANCED (default) or OPTIMIZE_UTILIZATION (scales down harder and
+faster — denser packing, more pod churn).
+
+- default: `BALANCED`
+- rule: autoscaling_profile must be BALANCED or OPTIMIZE_UTILIZATION
+
+### spec.clusterAutoscaling.autoProvisioningLocations
+
+`[]string`
+
+Zones in which NAP may create node pools (defaults to the cluster's
+node zones).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"pattern":"^[a-z]+-[a-z]+[0-9]+-[a-z]$"}}}}
+
+### spec.clusterAutoscaling.autoProvisioningDefaults
+
+`GcpGkeClusterAutoProvisioningDefaults`
+
+Defaults applied to every node pool NAP creates (identity, disks,
+image, shielding, auto-repair/upgrade).
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.serviceAccount
+
+`string | valueFrom`
+
+IAM service account NAP-created nodes run as. Accepts an email or a
+reference to a GcpServiceAccount resource. Defaults to the Compute
+Engine default SA — create a minimal dedicated SA for production.
+
+- references: GcpServiceAccount (`status.outputs.email`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpServiceAccount, name: <that resource's name>, fieldPath: status.outputs.email}} -- a bare string does not parse
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.oauthScopes
+
+`[]string`
+
+OAuth scopes on NAP-created nodes. With Workload Identity, the
+cloud-platform scope is the norm (IAM governs actual access).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.diskSizeGb
+
+`int32` · optional (explicit presence)
+
+Boot disk size in GB for NAP-created nodes (default 100).
+
+- rule: {"int32":{"lte":65536,"gte":10}}
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.diskType
+
+`string`
+
+Boot disk type: pd-standard (default), pd-balanced, or pd-ssd.
+
+- rule: disk_type must be empty, pd-standard, pd-balanced, or pd-ssd
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.imageType
+
+`string`
+
+Node image, e.g. "COS_CONTAINERD" (default) or "UBUNTU_CONTAINERD".
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.minCpuPlatform
+
+`string`
+
+Minimum CPU platform, e.g. "Intel Ice Lake".
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.bootDiskKmsKey
+
+`string | valueFrom`
+
+Customer-managed key encrypting NAP-created node boot disks. Accepts a
+full crypto key path or a reference to a GcpKmsKey resource.
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.enableSecureBoot
+
+`bool`
+
+Shielded-VM secure boot on NAP-created nodes (GCP default false).
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.enableIntegrityMonitoring
+
+`bool` · optional (explicit presence)
+
+Shielded-VM integrity monitoring on NAP-created nodes (GCP default
+true).
+
+- default: `true`
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.autoUpgrade
+
+`bool` · optional (explicit presence)
+
+Automatic node upgrades on NAP-created pools (GCP default true;
+required on a release channel).
+
+- default: `true`
+
+### spec.clusterAutoscaling.autoProvisioningDefaults.autoRepair
+
+`bool` · optional (explicit presence)
+
+Automatic node repair on NAP-created pools (GCP default true).
+
+- default: `true`
+
+### spec.enableVerticalPodAutoscaling
+
+`bool`
+
+Enables Vertical Pod Autoscaling: recommends (and can apply) per-pod
+CPU/memory requests based on observed usage. Mutable.
+
+### spec.hpaProfile
+
+`string`
+
+Horizontal Pod Autoscaler profile. PERFORMANCE makes HPA react faster
+(higher-resolution metrics pipeline); NONE is the classic behavior.
+
+- rule: hpa_profile must be empty, NONE, or PERFORMANCE
+
+### spec.workloadIdentityEnabled
+
+`bool` · optional (explicit presence)
+
+Workload Identity Federation for GKE: pods authenticate to GCP APIs as
+IAM service accounts via the cluster's workload pool
+(PROJECT_ID.svc.id.goog) — no exported service-account keys. Enabled by
+default; disabling it forces workloads back to node service-account
+scopes or key files, which is almost never the right call.
+
+- default: `true`
+
+### spec.enableShieldedNodes
+
+`bool` · optional (explicit presence)
+
+Shielded GKE nodes: secure boot + integrity monitoring on node VMs,
+verifying node provenance cryptographically. GCP's default (true);
+leave unset on Autopilot clusters (always shielded).
+
+### spec.databaseEncryption
+
+`GcpGkeClusterDatabaseEncryption`
+
+Envelope encryption of Kubernetes secrets at the application layer with
+a Cloud KMS key (CMEK for etcd secrets).
+
+- rule: state ENCRYPTED requires key_name — the Cloud KMS key that wraps Kubernetes secrets
+
+### spec.databaseEncryption.state
+
+`string` · required
+
+ENCRYPTED (secrets wrapped with key_name) or DECRYPTED.
+
+- rule: state must be ENCRYPTED or DECRYPTED
+- rule: {"required":true}
+
+### spec.databaseEncryption.keyName
+
+`string | valueFrom`
+
+The Cloud KMS crypto key (full path) used for envelope encryption.
+Accepts a literal or a reference to a GcpKmsKey resource. The GKE
+service agent needs Encrypter/Decrypter on it.
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.binaryAuthorizationEvaluationMode
+
+`string`
+
+Binary Authorization: PROJECT_SINGLETON_POLICY_ENFORCE admits only
+container images that satisfy the project's Binary Authorization policy
+(signature/attestation-based supply-chain control); DISABLED turns
+enforcement off.
+
+- rule: binary_authorization_evaluation_mode must be empty, DISABLED, or PROJECT_SINGLETON_POLICY_ENFORCE
+
+### spec.securityPosture
+
+`GcpGkeClusterSecurityPosture`
+
+GKE Security Posture dashboard: workload configuration auditing and
+vulnerability scanning surfaced in the console.
+
+### spec.securityPosture.mode
+
+`string`
+
+Workload configuration auditing: DISABLED, BASIC, or ENTERPRISE.
+
+- rule: mode must be empty, DISABLED, BASIC, or ENTERPRISE
+
+### spec.securityPosture.vulnerabilityMode
+
+`string`
+
+Workload vulnerability scanning: VULNERABILITY_DISABLED,
+VULNERABILITY_BASIC, or VULNERABILITY_ENTERPRISE.
+
+- rule: vulnerability_mode must be empty, VULNERABILITY_DISABLED, VULNERABILITY_BASIC, or VULNERABILITY_ENTERPRISE
+
+### spec.authenticatorSecurityGroup
+
+`string`
+
+Google Group for RBAC: members of this group (and its subgroups) can be
+referenced in RBAC bindings. Must be named gke-security-groups@YOURDOMAIN.
+
+### spec.enableLegacyAbac
+
+`bool`
+
+Legacy Attribute-Based Access Control. Leave off: ABAC predates RBAC
+and grants coarse permissions that defeat modern authorization. Exists
+only for very old workloads being migrated.
+
+### spec.enableMeshCertificates
+
+`bool`
+
+Issues workload mTLS certificates via the mesh CA (used by Anthos
+Service Mesh / managed Istio). Requires Workload Identity.
+
+### spec.enableSecretManagerCsi
+
+`bool`
+
+Built-in Secret Manager add-on: mounts Secret Manager secrets into pods
+via the CSI driver without third-party operators.
+
+### spec.confidentialNodes
+
+`GcpGkeClusterConfidentialNodes`
+
+Confidential GKE nodes: node VMs run with hardware memory encryption
+(AMD SEV / SEV-SNP or Intel TDX). Immutable; restricts machine families.
+
+### spec.confidentialNodes.enabled
+
+`bool`
+
+Whether Confidential GKE Nodes are enabled cluster-wide. Immutable.
+
+### spec.confidentialNodes.confidentialInstanceType
+
+`string`
+
+Confidential computing technology: SEV (default), SEV_SNP, or TDX.
+Machine-family support varies by choice.
+
+- rule: confidential_instance_type must be empty, SEV, SEV_SNP, or TDX
+
+### spec.anonymousAuthenticationMode
+
+`string`
+
+Anonymous Kubernetes API authentication posture. LIMITED restricts the
+anonymous user to the health-check endpoints only (the hardened
+default on new versions); ENABLED preserves full legacy anonymous
+access subject to RBAC.
+
+- rule: anonymous_authentication_mode must be empty, ENABLED, or LIMITED
+
+### spec.enableIdentityService
+
+`bool`
+
+GKE Identity Service: authenticate to the Kubernetes API with external
+OIDC identity providers (beyond Google accounts).
+
+### spec.logging
+
+`GcpGkeClusterLogging`
+
+Which cluster components ship logs to Cloud Logging. If omitted, GKE's
+default (system components + workloads) applies.
+
+### spec.logging.components
+
+`[]string`
+
+Components exposing logs: SYSTEM_COMPONENTS, WORKLOADS, APISERVER,
+CONTROLLER_MANAGER, SCHEDULER, KCP_CONNECTION, KCP_SSHD, KCP_HPA.
+An empty list disables Cloud Logging integration entirely.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"in":["SYSTEM_COMPONENTS","WORKLOADS","APISERVER","CONTROLLER_MANAGER","SCHEDULER","KCP_CONNECTION","KCP_SSHD","KCP_HPA"]}}}}
+
+### spec.monitoring
+
+`GcpGkeClusterMonitoring`
+
+Which cluster components ship metrics to Cloud Monitoring, plus managed
+Prometheus. If omitted, GKE's defaults apply (system metrics + managed
+Prometheus on current versions).
+
+### spec.monitoring.components
+
+`[]string`
+
+Components exposing metrics: SYSTEM_COMPONENTS, APISERVER, SCHEDULER,
+CONTROLLER_MANAGER, STORAGE, HPA, POD, DAEMONSET, DEPLOYMENT,
+STATEFULSET, KUBELET, CADVISOR, DCGM, JOBSET. An empty list disables
+Cloud Monitoring integration.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"in":["SYSTEM_COMPONENTS","APISERVER","SCHEDULER","CONTROLLER_MANAGER","STORAGE","HPA","POD","DAEMONSET","DEPLOYMENT","STATEFULSET","KUBELET","CADVISOR","DCGM","JOBSET"]}}}}
+
+### spec.monitoring.managedPrometheusEnabled
+
+`bool` · optional (explicit presence)
+
+Google Cloud Managed Service for Prometheus: managed collection of
+Prometheus metrics (GKE's default on current versions). Disabling it
+means running your own Prometheus stack.
+
+- default: `true`
+
+### spec.monitoring.autoMonitoringScope
+
+`string`
+
+Managed Prometheus auto-monitoring scope: ALL deploys packaged
+PodMonitorings for supported workloads automatically; NONE leaves
+monitoring configuration entirely to you.
+
+- rule: auto_monitoring_scope must be empty, ALL, or NONE
+
+### spec.monitoring.advancedDatapathMetricsEnabled
+
+`bool`
+
+Dataplane V2 observability metrics (per-flow network telemetry).
+
+### spec.monitoring.advancedDatapathRelayEnabled
+
+`bool`
+
+Dataplane V2 observability relay (Hubble-compatible flow export for
+in-cluster observability tooling).
+
+### spec.notificationPubsub
+
+`GcpGkeClusterNotificationPubSub`
+
+Cluster lifecycle notifications (upgrades, security bulletins)
+published to a Pub/Sub topic — the hook for upgrade automation and
+fleet dashboards.
+
+- rule: notification_pubsub.enabled requires topic — the Pub/Sub topic GKE publishes to
+
+### spec.notificationPubsub.enabled
+
+`bool`
+
+Whether notifications are published.
+
+### spec.notificationPubsub.topic
+
+`string | valueFrom`
+
+The Pub/Sub topic (projects/{project}/topics/{name}). Accepts a literal
+or a reference to a GcpPubSubTopic resource.
+
+- references: GcpPubSubTopic (`status.outputs.topic_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpPubSubTopic, name: <that resource's name>, fieldPath: status.outputs.topic_id}} -- a bare string does not parse
+
+### spec.notificationPubsub.eventTypes
+
+`[]string`
+
+Restrict to specific event types; empty publishes all. Values:
+UPGRADE_EVENT, UPGRADE_AVAILABLE_EVENT, SECURITY_BULLETIN_EVENT,
+UPGRADE_INFO_EVENT.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"in":["UPGRADE_EVENT","UPGRADE_AVAILABLE_EVENT","SECURITY_BULLETIN_EVENT","UPGRADE_INFO_EVENT"]}}}}
+
+### spec.enableCostManagement
+
+`bool`
+
+Cost allocation: exports per-namespace/per-label resource usage into
+the billing export, so cluster cost can be attributed to teams.
+
+### spec.resourceUsageExport
+
+`GcpGkeClusterResourceUsageExport`
+
+Continuous resource-usage metering into a BigQuery dataset (network
+egress and resource consumption records).
+
+### spec.resourceUsageExport.bigqueryDatasetId
+
+`string | valueFrom` · required
+
+The BigQuery dataset receiving usage records. Accepts a dataset ID or a
+reference to a GcpBigQueryDataset resource. The dataset must be in the
+cluster's project.
+
+- references: GcpBigQueryDataset (`status.outputs.dataset_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpBigQueryDataset, name: <that resource's name>, fieldPath: status.outputs.dataset_id}} -- a bare string does not parse
+
+### spec.resourceUsageExport.enableNetworkEgressMetering
+
+`bool`
+
+Also meter pod network egress (deploys a metering agent per node).
+
+### spec.resourceUsageExport.enableResourceConsumptionMetering
+
+`bool` · optional (explicit presence)
+
+Meter resource requests/consumption (GCP default true).
+
+- default: `true`
+
+### spec.addons
+
+`GcpGkeClusterAddons`
+
+Cluster addons. If omitted, GKE defaults apply: HTTP load balancing,
+horizontal pod autoscaling, and the PD CSI driver enabled; everything
+else disabled.
+
+### spec.addons.httpLoadBalancingEnabled
+
+`bool` · optional (explicit presence)
+
+The GCE ingress controller backing Kubernetes Ingress/Gateway with
+Google Cloud Load Balancers. Disable only when bringing your own
+ingress stack end to end.
+
+- default: `true`
+
+### spec.addons.horizontalPodAutoscalingEnabled
+
+`bool` · optional (explicit presence)
+
+The Horizontal Pod Autoscaler controller.
+
+- default: `true`
+
+### spec.addons.gcePersistentDiskCsiDriverEnabled
+
+`bool` · optional (explicit presence)
+
+The Compute Engine Persistent Disk CSI driver (dynamic PD volumes).
+
+- default: `true`
+
+### spec.addons.gcpFilestoreCsiDriverEnabled
+
+`bool`
+
+The Filestore CSI driver (managed NFS volumes).
+
+### spec.addons.gcsFuseCsiDriverEnabled
+
+`bool`
+
+The Cloud Storage FUSE CSI driver (mount GCS buckets as volumes).
+
+### spec.addons.gkeBackupAgentEnabled
+
+`bool`
+
+The Backup for GKE agent (workload + volume backup/restore).
+
+### spec.addons.dnsCacheEnabled
+
+`bool`
+
+NodeLocal DNSCache (per-node DNS cache; reduces DNS latency and
+kube-dns/Cloud DNS load). Enabling recreates node pools on existing
+clusters.
+
+### spec.addons.configConnectorEnabled
+
+`bool`
+
+Config Connector (manage GCP resources through Kubernetes CRDs).
+
+### spec.addons.statefulHaEnabled
+
+`bool`
+
+Stateful HA operator (faster failover for stateful workloads).
+
+### spec.addons.rayOperatorEnabled
+
+`bool`
+
+The Ray operator (KubeRay) for distributed Python/AI workloads.
+
+### spec.enableAutopilot
+
+`bool`
+
+Creates an Autopilot cluster: GKE provisions and manages nodes, bills
+per pod, and enforces a hardened posture. Immutable. Autopilot clusters
+take no GcpGkeNodePool resources and reject the node-management fields
+guarded by validation rules above.
+
+### spec.allowNetAdmin
+
+`bool`
+
+Autopilot only: permit workloads with NET_ADMIN capability (needed by
+some networking agents/service meshes on Autopilot).
+
+### spec.fleetProject
+
+`string`
+
+Registers the cluster with a fleet in the given project (the hub for
+multi-cluster features: multi-cluster ingress/services, config
+management, team scopes).
+
+## Validation Rules
+
+- `autopilot_conflicts_cluster_autoscaling`: cluster_autoscaling (node auto-provisioning) cannot be configured on an Autopilot cluster — Autopilot manages node provisioning itself
+- `autopilot_conflicts_max_pods`: default_max_pods_per_node cannot be set on an Autopilot cluster — Autopilot manages pod density itself
+- `autopilot_conflicts_intranode_visibility`: enable_intranode_visibility cannot be set on an Autopilot cluster — Autopilot controls dataplane telemetry itself
+- `autopilot_conflicts_network_policy`: enable_network_policy (Calico) cannot be set on an Autopilot cluster — Autopilot enforces NetworkPolicy through Dataplane V2 natively
+- `autopilot_conflicts_shielded_nodes`: enable_shielded_nodes must be left unset on an Autopilot cluster — Autopilot nodes are always shielded
+- `autopilot_conflicts_addons`: dns_cache and stateful_ha addons cannot be enabled on an Autopilot cluster — Autopilot manages the addon set itself
+- `net_admin_requires_autopilot`: allow_net_admin applies to Autopilot clusters only — Standard clusters always permit NET_ADMIN
+
+## Outputs
+
+Reference an output from another manifest as `valueFrom: {kind: GcpGkeCluster, name: <resource-name>, fieldPath: status.outputs.<output>}`.
+
+| Output | Type | Description |
+|---|---|---|
+| `status.outputs.endpoint` | `string` | Kubernetes API server endpoint (IP address). For a cluster with a private-only control plane this is the private endpoint. |
+| `status.outputs.cluster_ca_certificate` | `string` | Base64-encoded CA certificate for the cluster's API server. Clients need this to validate the API server's TLS certificate. Public trust material, not a secret. |
+| `status.outputs.workload_identity_pool` | `string` | Workload Identity pool used by this cluster (e.g. "PROJECT_ID.svc.id.goog"). Empty when Workload Identity is disabled. |
+| `status.outputs.cluster_id` | `string` | Fully qualified GKE cluster resource ID: projects/{project}/locations/{location}/clusters/{name}. Downstream resources (e.g. Dataproc on GKE) reference the cluster by this ID. |
+| `status.outputs.name` | `string` | The cluster name as created in GCP — the handle node pools and gcloud commands use. Matches spec.cluster_name when set, otherwise metadata.name. |
+| `status.outputs.location` | `string` | The cluster's location (region for regional clusters, zone for zonal), exactly as provided in the spec. |
+| `status.outputs.self_link` | `string` | Server-defined URL of the cluster resource. |
+| `status.outputs.master_version` | `string` | The Kubernetes version currently running on the control plane. |
+
+## References
+
+Fields that can point at another resource's outputs:
+
+| Field | Kind | Output |
+|---|---|---|
+| `spec.projectId` | GcpProject | `status.outputs.project_id` |
+| `spec.network` | GcpVpcNetwork | `status.outputs.network_self_link` |
+| `spec.subnetwork` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
+| `spec.ipAllocation.clusterSecondaryRangeName` | GcpSubnetwork | `status.outputs.secondary_ranges.[*].range_name` |
+| `spec.ipAllocation.servicesSecondaryRangeName` | GcpSubnetwork | `status.outputs.secondary_ranges.[*].range_name` |
+| `spec.privateCluster.privateEndpointSubnetwork` | GcpSubnetwork | `status.outputs.subnetwork_self_link` |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.serviceAccount` | GcpServiceAccount | `status.outputs.email` |
+| `spec.clusterAutoscaling.autoProvisioningDefaults.bootDiskKmsKey` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.databaseEncryption.keyName` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.notificationPubsub.topic` | GcpPubSubTopic | `status.outputs.topic_id` |
+| `spec.resourceUsageExport.bigqueryDatasetId` | GcpBigQueryDataset | `status.outputs.dataset_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| GcpDataprocCluster | `spec.virtualClusterConfig.kubernetesClusterConfig.gkeClusterConfig.gkeClusterTarget` | `status.outputs.cluster_id` |
+| GcpDnsZone | `spec.privateVisibilityConfig.gkeClusters[].gkeClusterName` | `status.outputs.cluster_id` |
+| GcpGkeNodePool | `spec.clusterName` | `status.outputs.name` |
+| GcpGkeNodePool | `spec.location` | `status.outputs.location` |
+
+## See Also
+
+- [Overview](./README.md)
+- [Design notes](./docs/README.md)

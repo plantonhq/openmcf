@@ -228,9 +228,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEksAddon, nam
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.addonArn` | `string` | addon_arn is the Amazon Resource Name of the add-on -- arn:aws:eks:<region>:<account>:addon/<cluster>/<addon-name>/<uuid>. |
-| `status.outputs.addonName` | `string` | addon_name is the EKS catalog name the add-on was installed under (e.g. "vpc-cni"). |
-| `status.outputs.addonVersion` | `string` | addon_version is the version actually running -- the resolved AWS default when the spec left addon_version empty, else the pinned version. |
+| `status.outputs.addon_arn` | `string` | addon_arn is the Amazon Resource Name of the add-on -- arn:aws:eks:<region>:<account>:addon/<cluster>/<addon-name>/<uuid>. |
+| `status.outputs.addon_name` | `string` | addon_name is the EKS catalog name the add-on was installed under (e.g. "vpc-cni"). |
+| `status.outputs.addon_version` | `string` | addon_version is the version actually running -- the resolved AWS default when the spec left addon_version empty, else the pinned version. |
 
 ## References
 

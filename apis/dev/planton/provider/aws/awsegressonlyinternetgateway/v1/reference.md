@@ -82,8 +82,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEgressOnlyInt
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.egressOnlyInternetGatewayId` | `string` | The egress-only internet gateway's id (e.g. "eigw-0abc123"). This is the value a subnet route uses as its target_id when target_type is egress_only_internet_gateway. AWS exposes no ARN for this resource. |
-| `status.outputs.vpcId` | `string` | The id of the VPC this gateway is attached to. |
+| `status.outputs.egress_only_internet_gateway_id` | `string` | The egress-only internet gateway's id (e.g. "eigw-0abc123"). This is the value a subnet route uses as its target_id when target_type is egress_only_internet_gateway. AWS exposes no ARN for this resource. |
+| `status.outputs.vpc_id` | `string` | The id of the VPC this gateway is attached to. |
 | `status.outputs.region` | `string` | The AWS region the egress-only internet gateway was created in. Echoed so downstream tooling and verifiers can target the correct region. |
 
 ## References

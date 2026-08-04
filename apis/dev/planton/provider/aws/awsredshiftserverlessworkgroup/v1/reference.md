@@ -245,10 +245,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRedshiftServe
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.workgroupName` | `string` | The workgroup name -- the handle the Redshift Serverless APIs, the credentials API (GetCredentials), and custom domain associations address the workgroup by. |
-| `status.outputs.workgroupId` | `string` | The unique identifier AWS assigns to the workgroup. |
+| `status.outputs.workgroup_name` | `string` | The workgroup name -- the handle the Redshift Serverless APIs, the credentials API (GetCredentials), and custom domain associations address the workgroup by. |
+| `status.outputs.workgroup_id` | `string` | The unique identifier AWS assigns to the workgroup. |
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the workgroup, for IAM policies and usage limits. |
-| `status.outputs.endpointAddress` | `string` | The DNS hostname SQL clients connect to. |
+| `status.outputs.endpoint_address` | `string` | The DNS hostname SQL clients connect to. |
 | `status.outputs.port` | `int32` | The port the workgroup accepts connections on. |
 
 ## References

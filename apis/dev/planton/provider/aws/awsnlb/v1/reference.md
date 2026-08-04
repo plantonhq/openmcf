@@ -292,10 +292,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsNlb, name: <r
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.loadBalancerArn` | `string` | ARN of the Network Load Balancer. The primary handle other resources reference via status.outputs.load_balancer_arn -- listeners attach through it, and IAM policies, CloudWatch alarms, and Global Accelerator endpoints all take this value. |
-| `status.outputs.loadBalancerName` | `string` | Name assigned to the NLB (metadata.name, truncated to the 32-character AWS limit when necessary), for console URLs and CLI queries. |
-| `status.outputs.loadBalancerDnsName` | `string` | DNS name automatically assigned by AWS (e.g., "my-nlb-abc123.elb.us-east-1.amazonaws.com"). Use this to create CNAME records or as the target for Route53 alias records. |
-| `status.outputs.loadBalancerHostedZoneId` | `string` | Route53 hosted zone ID for the NLB's DNS name. Required when creating Route53 alias records that point to this NLB. |
+| `status.outputs.load_balancer_arn` | `string` | ARN of the Network Load Balancer. The primary handle other resources reference via status.outputs.load_balancer_arn -- listeners attach through it, and IAM policies, CloudWatch alarms, and Global Accelerator endpoints all take this value. |
+| `status.outputs.load_balancer_name` | `string` | Name assigned to the NLB (metadata.name, truncated to the 32-character AWS limit when necessary), for console URLs and CLI queries. |
+| `status.outputs.load_balancer_dns_name` | `string` | DNS name automatically assigned by AWS (e.g., "my-nlb-abc123.elb.us-east-1.amazonaws.com"). Use this to create CNAME records or as the target for Route53 alias records. |
+| `status.outputs.load_balancer_hosted_zone_id` | `string` | Route53 hosted zone ID for the NLB's DNS name. Required when creating Route53 alias records that point to this NLB. |
 
 ## References
 

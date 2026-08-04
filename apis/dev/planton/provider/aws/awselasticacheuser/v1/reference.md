@@ -176,9 +176,17 @@ Reference an output from another manifest as `valueFrom: {kind: AwsElasticacheUs
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.userId` | `string` | The user's AWS identifier (the user id). This is what user groups reference in their membership list and what the AWS CLI/API address. |
+| `status.outputs.user_id` | `string` | The user's AWS identifier (the user id). This is what user groups reference in their membership list and what the AWS CLI/API address. |
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the user. Used in IAM policies — an IAM-authenticated client needs `elasticache:Connect` on both the user ARN and the cache ARN. |
-| `status.outputs.userName` | `string` | The name this user presents in the AUTH command. Exported so application configuration can be wired from the resource graph instead of duplicating the value. |
+| `status.outputs.user_name` | `string` | The name this user presents in the AUTH command. Exported so application configuration can be wired from the resource graph instead of duplicating the value. |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsElasticacheUserGroup | `spec.userIds` | `status.outputs.user_id` |
 
 ## See Also
 

@@ -451,9 +451,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsBatchComputeE
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.computeEnvironmentArn` | `string` | The Amazon Resource Name (ARN) of the compute environment -- what job queues reference in their compute_environment_order. |
-| `status.outputs.computeEnvironmentName` | `string` | The compute environment's name (derived from metadata.name). |
-| `status.outputs.ecsClusterArn` | `string` | The ARN of the ECS cluster AWS Batch provisions behind a MANAGED compute environment -- useful for monitoring and debugging the tasks Batch actually runs. |
+| `status.outputs.compute_environment_arn` | `string` | The Amazon Resource Name (ARN) of the compute environment -- what job queues reference in their compute_environment_order. |
+| `status.outputs.compute_environment_name` | `string` | The compute environment's name (derived from metadata.name). |
+| `status.outputs.ecs_cluster_arn` | `string` | The ARN of the ECS cluster AWS Batch provisions behind a MANAGED compute environment -- useful for monitoring and debugging the tasks Batch actually runs. |
 | `status.outputs.status` | `string` | The environment's current status (e.g. "VALID", "INVALID"). A queue can only associate environments whose status is VALID. |
 
 ## References
@@ -469,6 +469,14 @@ Fields that can point at another resource's outputs:
 | `spec.computeResources.spotIamFleetRole` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.computeResources.launchTemplate.launchTemplateId` | AwsLaunchTemplate | `status.outputs.launch_template_id` |
 | `spec.eksConfiguration.eksClusterArn` | AwsEksCluster | `status.outputs.cluster_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBatchJobQueue | `spec.computeEnvironmentOrder[].computeEnvironment` | `status.outputs.compute_environment_arn` |
 
 ## See Also
 

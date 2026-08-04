@@ -1166,10 +1166,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsLaunchTemplat
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.launchTemplateId` | `string` | The launch template ID (e.g. "lt-0123456789abcdef0"). The primary handle other resources reference via status.outputs.launch_template_id -- auto-scaling groups, EKS managed node groups, and Batch compute environments all take this value. |
-| `status.outputs.launchTemplateArn` | `string` | The ARN of the launch template, for IAM policies that scope ec2:RunInstances to approved templates. |
-| `status.outputs.latestVersion` | `int64` | The latest version number of the template. Every spec change creates a new immutable version; this tracks the newest one. |
-| `status.outputs.defaultVersion` | `int64` | The default version number -- what consumers referencing "$Default" launch from. The modules promote each new version to default, so this normally equals latest_version. |
+| `status.outputs.launch_template_id` | `string` | The launch template ID (e.g. "lt-0123456789abcdef0"). The primary handle other resources reference via status.outputs.launch_template_id -- auto-scaling groups, EKS managed node groups, and Batch compute environments all take this value. |
+| `status.outputs.launch_template_arn` | `string` | The ARN of the launch template, for IAM policies that scope ec2:RunInstances to approved templates. |
+| `status.outputs.latest_version` | `int64` | The latest version number of the template. Every spec change creates a new immutable version; this tracks the newest one. |
+| `status.outputs.default_version` | `int64` | The default version number -- what consumers referencing "$Default" launch from. The modules promote each new version to default, so this normally equals latest_version. |
 
 ## References
 
@@ -1182,6 +1182,19 @@ Fields that can point at another resource's outputs:
 | `spec.blockDeviceMappings[].ebs.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.networkInterfaces[].subnetId` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.networkInterfaces[].securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAutoScalingGroup | `spec.launchTemplate.launchTemplateId` | `status.outputs.launch_template_id` |
+| AwsAutoScalingGroup | `spec.mixedInstancesPolicy.launchTemplate.launchTemplateId` | `status.outputs.launch_template_id` |
+| AwsAutoScalingGroup | `spec.mixedInstancesPolicy.overrides[].launchTemplate.launchTemplateId` | `status.outputs.launch_template_id` |
+| AwsBatchComputeEnvironment | `spec.computeResources.launchTemplate.launchTemplateId` | `status.outputs.launch_template_id` |
+| AwsEc2Instance | `spec.launchTemplate.id` | `status.outputs.launch_template_id` |
+| AwsEksNodeGroup | `spec.launchTemplate.launchTemplateId` | `status.outputs.launch_template_id` |
 
 ## See Also
 

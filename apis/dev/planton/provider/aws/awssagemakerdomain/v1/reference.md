@@ -2300,13 +2300,13 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSagemakerDoma
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.domainId` | `string` | domain_id is the unique identifier of the SageMaker Domain. Used in API calls and as a reference when creating user profiles, spaces, and apps. |
-| `status.outputs.domainArn` | `string` | domain_arn is the Amazon Resource Name of the SageMaker Domain. Used in IAM policies, CloudWatch metrics filters, and cross-service references. |
-| `status.outputs.domainUrl` | `string` | domain_url is the HTTPS URL for accessing the SageMaker Studio web interface. Users navigate to this URL (with their user profile appended) to open Studio. |
-| `status.outputs.homeEfsFileSystemId` | `string` | home_efs_file_system_id is the ID of the EFS file system automatically created by AWS for user home directories. Each user gets a dedicated directory on this file system. Useful for monitoring, backup policies, and lifecycle management. |
-| `status.outputs.securityGroupIdForDomainBoundary` | `string` | security_group_id_for_domain_boundary is the ID of the security group that AWS automatically creates to establish the network boundary for the domain. This security group controls cross-app and cross-user traffic within the domain. |
-| `status.outputs.singleSignOnApplicationArn` | `string` | single_sign_on_application_arn is the ARN of the IAM Identity Center application created for this domain. Only populated when auth_mode is "SSO". Useful for SSO configuration and access management. |
-| `status.outputs.singleSignOnManagedApplicationInstanceId` | `string` | single_sign_on_managed_application_instance_id is the IAM Identity Center managed application instance ID for this domain. Only populated when auth_mode is "SSO". Used when assigning Identity Center users and groups to the domain programmatically. |
+| `status.outputs.domain_id` | `string` | domain_id is the unique identifier of the SageMaker Domain. Used in API calls and as a reference when creating user profiles, spaces, and apps. |
+| `status.outputs.domain_arn` | `string` | domain_arn is the Amazon Resource Name of the SageMaker Domain. Used in IAM policies, CloudWatch metrics filters, and cross-service references. |
+| `status.outputs.domain_url` | `string` | domain_url is the HTTPS URL for accessing the SageMaker Studio web interface. Users navigate to this URL (with their user profile appended) to open Studio. |
+| `status.outputs.home_efs_file_system_id` | `string` | home_efs_file_system_id is the ID of the EFS file system automatically created by AWS for user home directories. Each user gets a dedicated directory on this file system. Useful for monitoring, backup policies, and lifecycle management. |
+| `status.outputs.security_group_id_for_domain_boundary` | `string` | security_group_id_for_domain_boundary is the ID of the security group that AWS automatically creates to establish the network boundary for the domain. This security group controls cross-app and cross-user traffic within the domain. |
+| `status.outputs.single_sign_on_application_arn` | `string` | single_sign_on_application_arn is the ARN of the IAM Identity Center application created for this domain. Only populated when auth_mode is "SSO". Useful for SSO configuration and access management. |
+| `status.outputs.single_sign_on_managed_application_instance_id` | `string` | single_sign_on_managed_application_instance_id is the IAM Identity Center managed application instance ID for this domain. Only populated when auth_mode is "SSO". Used when assigning Identity Center users and groups to the domain programmatically. |
 
 ## References
 

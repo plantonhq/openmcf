@@ -22,4 +22,5 @@ spec:
         LOG_LEVEL: info
       kvNamespaces:
         - name: CONFIG
-          namespaceId: "0f1e2d3c4b5a69788796a5b4c3d2e1f0"
+          namespaceId:
+            value: 0f1e2d3c4b5a69788796a5b4c3d2e1f0

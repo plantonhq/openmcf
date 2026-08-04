@@ -528,17 +528,17 @@ Reference an output from another manifest as `valueFrom: {kind: AwsNeptuneCluste
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.clusterIdentifier` | `string` | The cluster identifier (e.g. "knowledge-graph"). |
+| `status.outputs.cluster_identifier` | `string` | The cluster identifier (e.g. "knowledge-graph"). |
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the cluster. |
-| `status.outputs.clusterResourceId` | `string` | The immutable cluster resource ID (cluster-...). Survives identifier renames -- the durable handle for CloudWatch dimensions and IAM database authentication policies. |
+| `status.outputs.cluster_resource_id` | `string` | The immutable cluster resource ID (cluster-...). Survives identifier renames -- the durable handle for CloudWatch dimensions and IAM database authentication policies. |
 | `status.outputs.endpoint` | `string` | The writer endpoint -- send Gremlin/openCypher/SPARQL queries here for reads and writes. |
-| `status.outputs.readerEndpoint` | `string` | The reader endpoint -- load-balances read-only queries across the cluster's reader instances. |
+| `status.outputs.reader_endpoint` | `string` | The reader endpoint -- load-balances read-only queries across the cluster's reader instances. |
 | `status.outputs.port` | `int32` | The port the cluster accepts connections on. |
-| `status.outputs.hostedZoneId` | `string` | The Route53 hosted zone ID of the cluster endpoints, for DNS alias records. |
-| `status.outputs.engineVersionActual` | `string` | The resolved engine version actually running (meaningful when the spec leaves engine_version to the AWS default). |
-| `status.outputs.neptuneSubnetGroupName` | `string` | The name of the Neptune subnet group the cluster runs in. |
-| `status.outputs.neptuneClusterParameterGroupName` | `string` | The name of the cluster parameter group in use (module-managed or the referenced existing group). |
-| `status.outputs.instanceEndpoints` | `[]string` | Per-instance endpoints of the cluster's folded instances, ordered as declared in spec.instances. Empty for headless shapes (restores, replicas, and global-cluster members created without instances). |
+| `status.outputs.hosted_zone_id` | `string` | The Route53 hosted zone ID of the cluster endpoints, for DNS alias records. |
+| `status.outputs.engine_version_actual` | `string` | The resolved engine version actually running (meaningful when the spec leaves engine_version to the AWS default). |
+| `status.outputs.neptune_subnet_group_name` | `string` | The name of the Neptune subnet group the cluster runs in. |
+| `status.outputs.neptune_cluster_parameter_group_name` | `string` | The name of the cluster parameter group in use (module-managed or the referenced existing group). |
+| `status.outputs.instance_endpoints` | `[]string` | Per-instance endpoints of the cluster's folded instances, ordered as declared in spec.instances. Empty for headless shapes (restores, replicas, and global-cluster members created without instances). |
 
 ## References
 

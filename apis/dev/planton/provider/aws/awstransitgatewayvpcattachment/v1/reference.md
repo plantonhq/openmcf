@@ -191,9 +191,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsTransitGatewa
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.attachmentId` | `string` | The Transit Gateway attachment ID (e.g., "tgw-attach-0123456789abcdef0"). Referenced by route table associations, propagations, and static routes. |
-| `status.outputs.attachmentArn` | `string` | The Amazon Resource Name (ARN) of the attachment. Used for IAM policies and resource-level permissions. |
-| `status.outputs.vpcOwnerId` | `string` | The AWS account ID that owns the attached VPC. Differs from the gateway owner in cross-account (RAM-shared) topologies. |
+| `status.outputs.attachment_id` | `string` | The Transit Gateway attachment ID (e.g., "tgw-attach-0123456789abcdef0"). Referenced by route table associations, propagations, and static routes. |
+| `status.outputs.attachment_arn` | `string` | The Amazon Resource Name (ARN) of the attachment. Used for IAM policies and resource-level permissions. |
+| `status.outputs.vpc_owner_id` | `string` | The AWS account ID that owns the attached VPC. Differs from the gateway owner in cross-account (RAM-shared) topologies. |
 
 ## References
 
@@ -204,6 +204,17 @@ Fields that can point at another resource's outputs:
 | `spec.transitGatewayId` | AwsTransitGateway | `status.outputs.transit_gateway_id` |
 | `spec.vpcId` | AwsVpc | `status.outputs.vpc_id` |
 | `spec.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsTransitGatewayRouteTable | `spec.associations` | `status.outputs.attachment_id` |
+| AwsTransitGatewayRouteTable | `spec.propagations` | `status.outputs.attachment_id` |
+| AwsTransitGatewayRouteTable | `spec.routes[].attachmentId` | `status.outputs.attachment_id` |
+| AwsTransitGatewayRouteTable | `spec.prefixListReferences[].attachmentId` | `status.outputs.attachment_id` |
 
 ## See Also
 

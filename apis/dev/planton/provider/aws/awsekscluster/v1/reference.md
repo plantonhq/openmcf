@@ -363,12 +363,12 @@ Reference an output from another manifest as `valueFrom: {kind: AwsEksCluster, n
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.endpoint` | `string` | endpoint is the URL of the Kubernetes API server for the EKS cluster. |
-| `status.outputs.clusterCaCertificate` | `string` | cluster_ca_certificate is the Base64-encoded certificate authority for the cluster. |
-| `status.outputs.clusterSecurityGroupId` | `string` | cluster_security_group_id is the ID of the security group created by EKS for the cluster control plane. |
-| `status.outputs.oidcIssuerUrl` | `string` | oidc_issuer_url is the URL of the OpenID Connect issuer for the cluster (used for IAM Roles for Service Accounts). |
-| `status.outputs.clusterArn` | `string` | cluster_arn is the Amazon Resource Name of the EKS cluster. |
+| `status.outputs.cluster_ca_certificate` | `string` | cluster_ca_certificate is the Base64-encoded certificate authority for the cluster. |
+| `status.outputs.cluster_security_group_id` | `string` | cluster_security_group_id is the ID of the security group created by EKS for the cluster control plane. |
+| `status.outputs.oidc_issuer_url` | `string` | oidc_issuer_url is the URL of the OpenID Connect issuer for the cluster (used for IAM Roles for Service Accounts). |
+| `status.outputs.cluster_arn` | `string` | cluster_arn is the Amazon Resource Name of the EKS cluster. |
 | `status.outputs.name` | `string` | name is the EKS cluster name. |
-| `status.outputs.platformVersion` | `string` | platform_version is the EKS platform version of the control plane (e.g. "eks.12") -- AWS's own revision of the control plane software for the cluster's Kubernetes minor version. |
+| `status.outputs.platform_version` | `string` | platform_version is the EKS platform version of the control plane (e.g. "eks.12") -- AWS's own revision of the control plane software for the cluster's Kubernetes minor version. |
 
 ## References
 
@@ -381,6 +381,19 @@ Fields that can point at another resource's outputs:
 | `spec.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.autoMode.nodeRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBatchComputeEnvironment | `spec.eksConfiguration.eksClusterArn` | `status.outputs.cluster_arn` |
+| AwsEksAccessEntry | `spec.clusterName` | `status.outputs.name` |
+| AwsEksAddon | `spec.clusterName` | `status.outputs.name` |
+| AwsEksFargateProfile | `spec.clusterName` | `status.outputs.name` |
+| AwsEksNodeGroup | `spec.clusterName` | `status.outputs.name` |
+| AwsIamOidcProvider | `spec.url` | `status.outputs.oidc_issuer_url` |
 
 ## See Also
 

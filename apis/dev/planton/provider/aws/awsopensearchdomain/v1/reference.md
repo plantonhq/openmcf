@@ -935,14 +935,14 @@ Reference an output from another manifest as `valueFrom: {kind: AwsOpenSearchDom
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.domainId` | `string` | The unique identifier assigned to the domain by AWS. |
-| `status.outputs.domainName` | `string` | The name of the domain. Matches the name derived from metadata. |
-| `status.outputs.domainArn` | `string` | The Amazon Resource Name of the domain. Used in IAM policies, cross-service permissions, and as a reference in other AWS resources. |
+| `status.outputs.domain_id` | `string` | The unique identifier assigned to the domain by AWS. |
+| `status.outputs.domain_name` | `string` | The name of the domain. Matches the name derived from metadata. |
+| `status.outputs.domain_arn` | `string` | The Amazon Resource Name of the domain. Used in IAM policies, cross-service permissions, and as a reference in other AWS resources. |
 | `status.outputs.endpoint` | `string` | The domain-specific endpoint for submitting index, search, and data upload requests. For VPC domains, this is a VPC endpoint. For public domains, this is an internet-accessible endpoint. Format: "search-{domain-name}-{id}.{region}.es.amazonaws.com" (no https://). |
-| `status.outputs.dashboardEndpoint` | `string` | The endpoint for OpenSearch Dashboards (the visualization and management UI). Format: endpoint + "/_dashboards". |
-| `status.outputs.endpointV2` | `string` | The dual-stack (IPv4 + IPv6) V2 domain endpoint that works with both ip_address_type settings. Populated for domains created or migrated onto the V2 endpoint format. |
-| `status.outputs.dashboardEndpointV2` | `string` | The OpenSearch Dashboards endpoint on the dual-stack V2 domain endpoint. |
-| `status.outputs.domainEndpointV2HostedZoneId` | `string` | The Route 53 hosted zone ID to alias when pointing DNS records at the V2 domain endpoint. |
+| `status.outputs.dashboard_endpoint` | `string` | The endpoint for OpenSearch Dashboards (the visualization and management UI). Format: endpoint + "/_dashboards". |
+| `status.outputs.endpoint_v2` | `string` | The dual-stack (IPv4 + IPv6) V2 domain endpoint that works with both ip_address_type settings. Populated for domains created or migrated onto the V2 endpoint format. |
+| `status.outputs.dashboard_endpoint_v2` | `string` | The OpenSearch Dashboards endpoint on the dual-stack V2 domain endpoint. |
+| `status.outputs.domain_endpoint_v2_hosted_zone_id` | `string` | The Route 53 hosted zone ID to alias when pointing DNS records at the V2 domain endpoint. |
 
 ## References
 
@@ -958,6 +958,14 @@ Fields that can point at another resource's outputs:
 | `spec.cognitoOptions.userPoolId` | AwsCognitoUserPool | `status.outputs.user_pool_id` |
 | `spec.cognitoOptions.roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.logPublishingOptions[].cloudwatchLogGroupArn` | AwsCloudwatchLogGroup | `status.outputs.log_group_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsKinesisFirehose | `spec.opensearch.domainArn` | `status.outputs.domain_arn` |
 
 ## See Also
 

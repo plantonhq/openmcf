@@ -443,13 +443,13 @@ Reference an output from another manifest as `valueFrom: {kind: AwsMemorydbClust
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.clusterEndpointAddress` | `string` | The DNS address of the cluster endpoint. Applications connect here for read-write operations. MemoryDB exposes a single cluster endpoint that handles slot discovery and routing internally. |
-| `status.outputs.clusterEndpointPort` | `int32` | The port of the cluster endpoint. |
-| `status.outputs.clusterArn` | `string` | The Amazon Resource Name of the MemoryDB cluster. Used in IAM policies and cross-service permissions. |
-| `status.outputs.clusterName` | `string` | The name of the MemoryDB cluster. Matches metadata.name. |
-| `status.outputs.enginePatchVersion` | `string` | The actual engine patch version running on the cluster (e.g., "7.1.0.20"). May differ from the requested engine_version due to automatic patching. |
-| `status.outputs.subnetGroupName` | `string` | The name of the subnet group the cluster is placed in — the module-managed group (when subnet_ids were provided), the referenced existing group (when subnet_group_name was set), or empty when the cluster fell back to the account's default group. |
-| `status.outputs.parameterGroupName` | `string` | The name of the parameter group attached to the cluster — the module-managed group (when parameters were provided), the referenced existing group (when parameter_group_name was set), or empty when the cluster runs on the family default. |
+| `status.outputs.cluster_endpoint_address` | `string` | The DNS address of the cluster endpoint. Applications connect here for read-write operations. MemoryDB exposes a single cluster endpoint that handles slot discovery and routing internally. |
+| `status.outputs.cluster_endpoint_port` | `int32` | The port of the cluster endpoint. |
+| `status.outputs.cluster_arn` | `string` | The Amazon Resource Name of the MemoryDB cluster. Used in IAM policies and cross-service permissions. |
+| `status.outputs.cluster_name` | `string` | The name of the MemoryDB cluster. Matches metadata.name. |
+| `status.outputs.engine_patch_version` | `string` | The actual engine patch version running on the cluster (e.g., "7.1.0.20"). May differ from the requested engine_version due to automatic patching. |
+| `status.outputs.subnet_group_name` | `string` | The name of the subnet group the cluster is placed in — the module-managed group (when subnet_ids were provided), the referenced existing group (when subnet_group_name was set), or empty when the cluster fell back to the account's default group. |
+| `status.outputs.parameter_group_name` | `string` | The name of the parameter group attached to the cluster — the module-managed group (when parameters were provided), the referenced existing group (when parameter_group_name was set), or empty when the cluster runs on the family default. |
 
 ## References
 

@@ -88,9 +88,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsMemorydbAcl, 
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.aclName` | `string` | The ACL's AWS name. This is what clusters attach via their `acl_name` and what the AWS CLI/API address. |
-| `status.outputs.aclArn` | `string` | The Amazon Resource Name of the ACL. Used in IAM policies and cross-service permissions. |
-| `status.outputs.minimumEngineVersion` | `string` | The minimum engine version the ACL's combined user set requires. A cluster attaching this ACL must run at least this engine version. |
+| `status.outputs.acl_name` | `string` | The ACL's AWS name. This is what clusters attach via their `acl_name` and what the AWS CLI/API address. |
+| `status.outputs.acl_arn` | `string` | The Amazon Resource Name of the ACL. Used in IAM policies and cross-service permissions. |
+| `status.outputs.minimum_engine_version` | `string` | The minimum engine version the ACL's combined user set requires. A cluster attaching this ACL must run at least this engine version. |
 
 ## References
 
@@ -99,6 +99,14 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.userNames` | AwsMemorydbUser | `status.outputs.user_name` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsMemorydbCluster | `spec.aclName` | `status.outputs.acl_name` |
 
 ## See Also
 

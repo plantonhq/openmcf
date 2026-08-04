@@ -369,11 +369,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsAlb, name: <r
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.loadBalancerArn` | `string` | load_balancer_arn is the ARN of the created Application Load Balancer. |
-| `status.outputs.loadBalancerName` | `string` | load_balancer_name is the final name assigned to the ALB (may differ from metadata.name). |
-| `status.outputs.loadBalancerDnsName` | `string` | load_balancer_dns_name is the DNS name automatically assigned to the ALB. |
-| `status.outputs.loadBalancerHostedZoneId` | `string` | load_balancer_hosted_zone_id is the Route53 hosted zone ID for the ALB's DNS entry. |
-| `status.outputs.arnSuffix` | `string` | arn_suffix is the ARN suffix (e.g. "app/my-alb/50dc6c495c0c9188") used as the LoadBalancer dimension in CloudWatch metrics -- the handle alarms, dashboards, and request-count autoscaling policies need. |
+| `status.outputs.load_balancer_arn` | `string` | load_balancer_arn is the ARN of the created Application Load Balancer. |
+| `status.outputs.load_balancer_name` | `string` | load_balancer_name is the final name assigned to the ALB (may differ from metadata.name). |
+| `status.outputs.load_balancer_dns_name` | `string` | load_balancer_dns_name is the DNS name automatically assigned to the ALB. |
+| `status.outputs.load_balancer_hosted_zone_id` | `string` | load_balancer_hosted_zone_id is the Route53 hosted zone ID for the ALB's DNS entry. |
+| `status.outputs.arn_suffix` | `string` | arn_suffix is the ARN suffix (e.g. "app/my-alb/50dc6c495c0c9188") used as the LoadBalancer dimension in CloudWatch metrics -- the handle alarms, dashboards, and request-count autoscaling policies need. |
 
 ## References
 
@@ -388,6 +388,17 @@ Fields that can point at another resource's outputs:
 | `spec.connectionLogs.bucket` | AwsS3Bucket | `status.outputs.bucket_id` |
 | `spec.healthCheckLogs.bucket` | AwsS3Bucket | `status.outputs.bucket_id` |
 | `spec.dns.route53ZoneId` | AwsRoute53Zone | `status.outputs.zone_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsEcsService | `spec.autoscaling.requestsPerTarget.loadBalancerArnSuffix` | `status.outputs.arn_suffix` |
+| AwsLbListener | `spec.loadBalancerArn` | `status.outputs.load_balancer_arn` |
+| AwsRoute53DnsRecord | `spec.aliasTarget.dnsName` | `status.outputs.load_balancer_dns_name` |
+| AwsRoute53DnsRecord | `spec.aliasTarget.zoneId` | `status.outputs.load_balancer_hosted_zone_id` |
 
 ## See Also
 

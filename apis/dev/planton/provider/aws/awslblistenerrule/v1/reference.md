@@ -820,7 +820,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsLbListenerRul
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.ruleArn` | `string` | The ARN of the rule (e.g. "arn:aws:elasticloadbalancing:us-west-2: 123456789012:listener-rule/app/api/50dc.../f2f7.../9683b2d02a6cabee"). The handle audit tooling and imports reference. |
+| `status.outputs.rule_arn` | `string` | The ARN of the rule (e.g. "arn:aws:elasticloadbalancing:us-west-2: 123456789012:listener-rule/app/api/50dc.../f2f7.../9683b2d02a6cabee"). The handle audit tooling and imports reference. |
 | `status.outputs.priority` | `string` | The priority AWS assigned to the rule -- meaningful when the spec left priority unset and AWS picked the next free slot. |
 
 ## References
@@ -834,6 +834,15 @@ Fields that can point at another resource's outputs:
 | `spec.actions[].authenticateCognito.userPoolArn` | AwsCognitoUserPool | `status.outputs.user_pool_arn` |
 | `spec.actions[].authenticateCognito.userPoolClientId` | AwsCognitoUserPoolClient | `status.outputs.client_id` |
 | `spec.actions[].authenticateCognito.userPoolDomain` | AwsCognitoUserPool | `status.outputs.user_pool_domain` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsEcsService | `spec.loadBalancers[].advancedConfiguration.productionListenerRule` | `status.outputs.rule_arn` |
+| AwsEcsService | `spec.loadBalancers[].advancedConfiguration.testListenerRule` | `status.outputs.rule_arn` |
 
 ## See Also
 

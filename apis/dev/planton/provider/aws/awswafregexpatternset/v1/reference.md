@@ -114,9 +114,17 @@ Reference an output from another manifest as `valueFrom: {kind: AwsWafRegexPatte
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.regexPatternSetArn` | `string` | The Amazon Resource Name of the regex pattern set (arn:aws:wafv2:<region>:<account>:<scope>/regexpatternset/<name>/<id>). The identifier web ACL rules reference. |
-| `status.outputs.regexPatternSetId` | `string` | The AWS-assigned pattern set ID (a UUID). Used together with the name and scope when addressing the set through the WAFv2 API directly. |
-| `status.outputs.regexPatternSetName` | `string` | The pattern set name as created in AWS (derived from metadata.name). |
+| `status.outputs.regex_pattern_set_arn` | `string` | The Amazon Resource Name of the regex pattern set (arn:aws:wafv2:<region>:<account>:<scope>/regexpatternset/<name>/<id>). The identifier web ACL rules reference. |
+| `status.outputs.regex_pattern_set_id` | `string` | The AWS-assigned pattern set ID (a UUID). Used together with the name and scope when addressing the set through the WAFv2 API directly. |
+| `status.outputs.regex_pattern_set_name` | `string` | The pattern set name as created in AWS (derived from metadata.name). |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsWafWebAcl | `spec.rules[].statement.regexPatternSetReference.arn` | `status.outputs.regex_pattern_set_arn` |
 
 ## See Also
 

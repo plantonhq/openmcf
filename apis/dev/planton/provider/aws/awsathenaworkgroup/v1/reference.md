@@ -561,9 +561,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsAthenaWorkgro
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.workgroupArn` | `string` | The Amazon Resource Name (ARN) of the Athena workgroup. Used for IAM policies, cross-service permissions, and as a reference identifier. |
-| `status.outputs.workgroupName` | `string` | The name of the Athena workgroup. Used in Athena API calls (StartQueryExecution, etc.) and as a human-readable identifier. The workgroup name is unique within an AWS account and region. |
-| `status.outputs.effectiveEngineVersion` | `string` | The actual engine version in use by the workgroup. When selected_engine_version is "AUTO" or empty, this reflects the latest engine version AWS has assigned. When a specific version is pinned, this confirms the version is active. |
+| `status.outputs.workgroup_arn` | `string` | The Amazon Resource Name (ARN) of the Athena workgroup. Used for IAM policies, cross-service permissions, and as a reference identifier. |
+| `status.outputs.workgroup_name` | `string` | The name of the Athena workgroup. Used in Athena API calls (StartQueryExecution, etc.) and as a human-readable identifier. The workgroup name is unique within an AWS account and region. |
+| `status.outputs.effective_engine_version` | `string` | The actual engine version in use by the workgroup. When selected_engine_version is "AUTO" or empty, this reflects the latest engine version AWS has assigned. When a specific version is pinned, this confirms the version is active. |
 
 ## References
 

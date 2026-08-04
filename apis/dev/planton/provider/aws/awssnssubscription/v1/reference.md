@@ -237,10 +237,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSnsSubscripti
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.subscriptionArn` | `string` | The Amazon Resource Name (ARN) of the subscription. The identifier used for sns:Unsubscribe/SetSubscriptionAttributes permissions and for auditing which subscriptions exist on a topic. |
-| `status.outputs.ownerId` | `string` | The AWS account ID that owns the subscription. Useful when subscribing an owned endpoint to a cross-account topic. |
-| `status.outputs.pendingConfirmation` | `bool` | True while the subscription is awaiting endpoint confirmation (HTTP/S endpoints that have not completed the handshake, or email recipients who have not clicked the confirmation link). Deliveries do not start until confirmation completes. |
-| `status.outputs.confirmationWasAuthenticated` | `bool` | True when the confirmation request was authenticated (signed). Always true for protocols that confirm automatically (SQS, Lambda, Firehose). |
+| `status.outputs.subscription_arn` | `string` | The Amazon Resource Name (ARN) of the subscription. The identifier used for sns:Unsubscribe/SetSubscriptionAttributes permissions and for auditing which subscriptions exist on a topic. |
+| `status.outputs.owner_id` | `string` | The AWS account ID that owns the subscription. Useful when subscribing an owned endpoint to a cross-account topic. |
+| `status.outputs.pending_confirmation` | `bool` | True while the subscription is awaiting endpoint confirmation (HTTP/S endpoints that have not completed the handshake, or email recipients who have not clicked the confirmation link). Deliveries do not start until confirmation completes. |
+| `status.outputs.confirmation_was_authenticated` | `bool` | True when the confirmation request was authenticated (signed). Always true for protocols that confirm automatically (SQS, Lambda, Firehose). |
 
 ## References
 
