@@ -652,6 +652,7 @@ go_test(
     name = "crkreflect_test",
     srcs = [
         "kind_by_id_prefix_test.go",
+        "kind_by_kind_name_test.go",
         "kind_from_string_test.go",
         "prerequisites_test.go",
     ],

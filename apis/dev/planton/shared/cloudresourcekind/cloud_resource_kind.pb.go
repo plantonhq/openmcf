@@ -2539,9 +2539,14 @@ type CloudResourceKindMeta struct {
 	Provider CloudResourceProvider `protobuf:"varint,1,opt,name=provider,proto3,enum=dev.planton.shared.cloudresourcekind.CloudResourceProvider" json:"provider,omitempty"`
 	// cloud-resource kind version
 	Version CloudResourceKindVersion `protobuf:"varint,2,opt,name=version,proto3,enum=dev.planton.shared.cloudresourcekind.CloudResourceKindVersion" json:"version,omitempty"`
-	// name of the kind. this might be different from the enum value.
-	// ex: AwsVpcV2 enum will still have "kind: AwsVpc" but groupVersion will have "aws.planton.dev/v2".
-	// this is only set in options when the name is different from enum value.
+	// name of the kind as written in manifests. set only when it differs from the
+	// enum value name; resolution falls back to the enum value name otherwise.
+	// a kind keeps one enum entry for its entire life: new schema versions never
+	// add sibling enum entries or version-suffixed names — version is a separate
+	// axis carried in kind metadata, and the name stays constant across versions.
+	// effective names must be unique across the registry (registry tests enforce
+	// this): resolution is keyed by name, so a duplicate would make manifests
+	// ambiguous about which kind they declare.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// cloud-resource id-prefix
 	IdPrefix string `protobuf:"bytes,4,opt,name=id_prefix,json=idPrefix,proto3" json:"id_prefix,omitempty"`

@@ -1,28 +1,45 @@
 package crkreflect
 
 import (
+	"sync"
+
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/apis/dev/planton/shared/cloudresourcekind"
 )
 
-// KindByIdPrefix takes an id prefix as input and returns the corresponding CloudResourceKind.
-func KindByIdPrefix(idPrefix string) (cloudresourcekind.CloudResourceKind, error) {
-	// Iterate over all the enum values in CloudResourceKind
-	for _, enumValue := range cloudresourcekind.CloudResourceKind_value {
-		kind := cloudresourcekind.CloudResourceKind(enumValue)
+// kindIdPrefixIndex maps each kind's id prefix to its kind. Built once;
+// construction fails if two kinds claim the same prefix, because resource
+// ids embed the prefix as the only type discriminator — a shared prefix
+// would decode ids as the wrong kind.
+var kindIdPrefixIndex = sync.OnceValues(buildKindIdPrefixIndex)
 
+func buildKindIdPrefixIndex() (map[string]cloudresourcekind.CloudResourceKind, error) {
+	index := make(map[string]cloudresourcekind.CloudResourceKind)
+	for _, kind := range KindsList() {
 		kindMeta, err := KindMeta(kind)
-		if err != nil {
+		if err != nil || kindMeta.IdPrefix == "" {
 			continue
 		}
-		// Compare the id_prefix in the meta with the input idPrefix
-		if kindMeta.IdPrefix == idPrefix {
-			// If it matches, return the corresponding CloudResourceKind
-			return kind, nil
+		if owner, taken := index[kindMeta.IdPrefix]; taken {
+			return nil, errors.Errorf(
+				"cloud-resource kind registry is ambiguous: %s and %s share the id prefix %q; "+
+					"id prefixes must be unique across the registry so every resource id resolves to exactly one kind — change one of them",
+				owner, kind, kindMeta.IdPrefix)
 		}
+		index[kindMeta.IdPrefix] = kind
 	}
+	return index, nil
+}
 
-	// If no match is found, return an error
+// KindByIdPrefix takes an id prefix as input and returns the corresponding CloudResourceKind.
+func KindByIdPrefix(idPrefix string) (cloudresourcekind.CloudResourceKind, error) {
+	index, err := kindIdPrefixIndex()
+	if err != nil {
+		return cloudresourcekind.CloudResourceKind_unspecified, err
+	}
+	if kind, ok := index[idPrefix]; ok {
+		return kind, nil
+	}
 	return cloudresourcekind.CloudResourceKind_unspecified,
 		errors.Errorf("no matching CloudResourceKind found for id prefix: %s", idPrefix)
 }
