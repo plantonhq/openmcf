@@ -526,6 +526,14 @@ go build -o /tmp/planton . && /tmp/planton chart validate charts/<provider>/<cha
 
 # 4. Exercise specific parameter combinations beyond the automatic flips
 /tmp/planton chart validate charts/<provider>/<chart-name> --set dnsEnabled=false
+
+# 5. Probe the reserved env binding beyond its default. env is
+#    platform-injected and rides most rendered identifiers, and the default
+#    "dev" hides two failure classes at once: charset (some identifier
+#    fields forbid characters an environment name may carry — GCP IAM
+#    custom-role IDs reject hyphens, for example) and length (env-prefixed
+#    names against per-field budgets). A hyphenated env probes both cheaply.
+/tmp/planton chart validate charts/<provider>/<chart-name> --env my-env
 ```
 
 What it proves:
@@ -570,6 +578,13 @@ the engine-of-record gate for publishing — see `@publish-planton-infra-charts`
 - **Traceable to proto**: every field a template sets must exist in the kind's
   `spec.proto`, with values that satisfy its validation rules. Read the proto;
   never guess.
+- **Every identifier composed from `env` respects the target field's charset
+  and length budget.** Filter out what a field's charset forbids (e.g.
+  `{{ values.env | replace('-', '') }}` where hyphens are rejected) rather
+  than constraining what environments may be named, and state the tightest
+  length budget (which field binds, at what env length) in the README's
+  parameter section — the env-probe validation run above is what catches a
+  missed one.
 - **No silent data loss**: a toggle that skips a resource must skip every
   reference to it as well (the variant-aware target diagnosis flags this).
 - **Timeless public artifacts**: templates, values, and READMEs never narrate
