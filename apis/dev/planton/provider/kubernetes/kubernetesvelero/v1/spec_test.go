@@ -101,7 +101,15 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 		})
 
 		ginkgo.It("s3 with IRSA should be valid", func() {
-			input.Spec.BackupStorage.GetS3().IrsaRoleArn = "arn:aws:iam::123456789012:role/velero-backups"
+			input.Spec.BackupStorage.GetS3().IrsaRoleArn = literal("arn:aws:iam::123456789012:role/velero-backups")
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("s3 IRSA role as an AwsIamRole reference should be valid", func() {
+			// The one-run composition shape: the backup role deploys in the
+			// same run and its ARN flows in by reference.
+			input.Spec.BackupStorage.GetS3().IrsaRoleArn = valueFrom(
+				cloudresourcekind.CloudResourceKind_AwsIamRole, "velero-backups", "status.outputs.role_arn")
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
@@ -249,7 +257,7 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 
 		ginkgo.It("s3 with both IRSA and access keys should fail (irsa_xor_keys)", func() {
 			s3 := input.Spec.BackupStorage.GetS3()
-			s3.IrsaRoleArn = "arn:aws:iam::123456789012:role/velero-backups"
+			s3.IrsaRoleArn = literal("arn:aws:iam::123456789012:role/velero-backups")
 			s3.AccessKeys = &KubernetesVeleroS3AccessKeys{
 				AccessKeyId:     "AKIAEXAMPLE",
 				SecretAccessKey: "secret",
@@ -260,7 +268,7 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 		ginkgo.It("s3-compatible endpoint with IRSA should fail (compatible_needs_keys)", func() {
 			s3 := input.Spec.BackupStorage.GetS3()
 			s3.S3Url = "http://minio.minio.svc:9000"
-			s3.IrsaRoleArn = "arn:aws:iam::123456789012:role/velero-backups"
+			s3.IrsaRoleArn = literal("arn:aws:iam::123456789012:role/velero-backups")
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
@@ -269,8 +277,10 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("malformed IRSA role ARN should fail (irsa_role_arn_format)", func() {
-			input.Spec.BackupStorage.GetS3().IrsaRoleArn = "role/velero-backups"
+		ginkgo.It("IRSA role present but empty should fail (StringValueOrRef contract)", func() {
+			// The shared StringValueOrRef rule: a present message must carry a
+			// non-empty literal or a reference.
+			input.Spec.BackupStorage.GetS3().IrsaRoleArn = &foreignkeyv1.StringValueOrRef{}
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 

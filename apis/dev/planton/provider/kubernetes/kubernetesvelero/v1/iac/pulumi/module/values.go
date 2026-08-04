@@ -116,12 +116,14 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		// Credential posture (spec-enforced: at most one of IRSA /
 		// access keys; an s3_url endpoint never rides IRSA).
 		switch {
-		case s3.GetIrsaRoleArn() != "":
+		case s3.GetIrsaRoleArn().GetValue() != "":
 			// Keyless EKS posture: the role-arn annotation on the server
 			// ServiceAccount makes the pod exchange its projected token
-			// for role credentials — no Secret exists at all.
+			// for role credentials — no Secret exists at all. A valueFrom
+			// reference is resolved to the AwsIamRole's role_arn before
+			// the module runs.
 			values["serviceAccount"] = serverServiceAccountAnnotations(map[string]interface{}{
-				"eks.amazonaws.com/role-arn": s3.GetIrsaRoleArn(),
+				"eks.amazonaws.com/role-arn": s3.GetIrsaRoleArn().GetValue(),
 			})
 			values["credentials"] = map[string]interface{}{"useSecret": false}
 		case s3.GetAccessKeys() != nil:

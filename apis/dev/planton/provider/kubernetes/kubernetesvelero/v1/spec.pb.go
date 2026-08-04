@@ -481,8 +481,11 @@ type KubernetesVeleroS3Backend struct {
 	// *
 	// IAM role ARN for IRSA: annotates Velero's service account so it
 	// reaches S3 without stored keys — the keyless posture on EKS.
-	// Mutually exclusive with access_keys.
-	IrsaRoleArn string `protobuf:"bytes,7,opt,name=irsa_role_arn,json=irsaRoleArn,proto3" json:"irsa_role_arn,omitempty"`
+	// Reference an AwsIamRole's role_arn output -- the reference is also the
+	// deploy-ordering edge, so the role exists before Velero starts -- or
+	// pass a literal ARN (arn:aws:iam::<account>:role/<name>). Mutually
+	// exclusive with access_keys.
+	IrsaRoleArn *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=irsa_role_arn,json=irsaRoleArn,proto3" json:"irsa_role_arn,omitempty"`
 	// *
 	// Static access keys, materialized into Velero's credentials Secret
 	// (the `cloud` credentials-file format the AWS plugin reads). The
@@ -565,11 +568,11 @@ func (x *KubernetesVeleroS3Backend) GetCaCert() string {
 	return ""
 }
 
-func (x *KubernetesVeleroS3Backend) GetIrsaRoleArn() string {
+func (x *KubernetesVeleroS3Backend) GetIrsaRoleArn() *v1.StringValueOrRef {
 	if x != nil {
 		return x.IrsaRoleArn
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesVeleroS3Backend) GetAccessKeys() *KubernetesVeleroS3AccessKeys {
@@ -1524,7 +1527,7 @@ const file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_rawDes
 	"azure_blob\x18\x03 \x01(\v2U.dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureBlobBackendH\x00R\tazureBlob\x12\x16\n" +
 	"\x06prefix\x18\x04 \x01(\tR\x06prefix\x12!\n" +
 	"\fplugin_image\x18\x05 \x01(\tR\vpluginImageB\x10\n" +
-	"\abackend\x12\x05\xbaH\x02\b\x01\"\xea\b\n" +
+	"\abackend\x12\x05\xbaH\x02\b\x01\"\xff\a\n" +
 	"\x19KubernetesVeleroS3Backend\x12\x1e\n" +
 	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\x1e\n" +
 	"\x06region\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12\xc8\x01\n" +
@@ -1533,13 +1536,12 @@ const file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_rawDes
 	"\x10force_path_style\x18\x04 \x01(\bR\x0eforcePathStyle\x12\x1c\n" +
 	"\n" +
 	"kms_key_id\x18\x05 \x01(\tR\bkmsKeyId\x12\x17\n" +
-	"\aca_cert\x18\x06 \x01(\tR\x06caCert\x12\xe1\x01\n" +
-	"\rirsa_role_arn\x18\a \x01(\tB\xbc\x01\xbaH\xb8\x01\xba\x01\xb4\x01\n" +
-	"\x1cspec.s3.irsa_role_arn_format\x12Jirsa_role_arn must be an IAM role ARN (arn:aws:iam::<account>:role/<name>)\x1aHthis == '' || this.matches('^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+$')R\virsaRoleArn\x12r\n" +
+	"\aca_cert\x18\x06 \x01(\tR\x06caCert\x12x\n" +
+	"\rirsa_role_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xd0\x01\x92\xd4a\x17status.outputs.role_arnR\virsaRoleArn\x12r\n" +
 	"\vaccess_keys\x18\b \x01(\v2Q.dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3AccessKeysR\n" +
-	"accessKeys:\x88\x03\xbaH\x84\x03\x1a\xc9\x01\n" +
-	"\x15spec.s3.irsa_xor_keys\x12zirsa_role_arn and access_keys are alternative credential postures — set at most one (neither = ambient node credentials)\x1a4!(this.irsa_role_arn != '' && has(this.access_keys))\x1a\xb5\x01\n" +
-	"\x1dspec.s3.compatible_needs_keys\x12ean S3-compatible endpoint (s3_url) authenticates with access_keys — IRSA only mints AWS credentials\x1a-this.s3_url == '' || this.irsa_role_arn == ''\"\x82\x01\n" +
+	"accessKeys:\x87\x03\xbaH\x83\x03\x1a\xc8\x01\n" +
+	"\x15spec.s3.irsa_xor_keys\x12zirsa_role_arn and access_keys are alternative credential postures — set at most one (neither = ambient node credentials)\x1a3!(has(this.irsa_role_arn) && has(this.access_keys))\x1a\xb5\x01\n" +
+	"\x1dspec.s3.compatible_needs_keys\x12ean S3-compatible endpoint (s3_url) authenticates with access_keys — IRSA only mints AWS credentials\x1a-this.s3_url == '' || !has(this.irsa_role_arn)\"\x82\x01\n" +
 	"\x1cKubernetesVeleroS3AccessKeys\x12*\n" +
 	"\raccess_key_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vaccessKeyId\x126\n" +
 	"\x11secret_access_key\x18\x02 \x01(\tB\n" +
@@ -1680,19 +1682,20 @@ var file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_depIdxs 
 	3,  // 9: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroBackupStorage.s3:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3Backend
 	5,  // 10: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroBackupStorage.gcs:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroGcsBackend
 	6,  // 11: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroBackupStorage.azure_blob:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureBlobBackend
-	4,  // 12: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3Backend.access_keys:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3AccessKeys
-	7,  // 13: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureBlobBackend.service_principal:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureServicePrincipal
-	17, // 14: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroFsBackup.node_agent_resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	18, // 15: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroFsBackup.node_agent_tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
-	14, // 16: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroSchedule.label_selector:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroSchedule.LabelSelectorEntry
-	17, // 17: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	15, // 18: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.NodeSelectorEntry
-	18, // 19: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	16, // 12: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3Backend.irsa_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 13: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3Backend.access_keys:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3AccessKeys
+	7,  // 14: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureBlobBackend.service_principal:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureServicePrincipal
+	17, // 15: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroFsBackup.node_agent_resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	18, // 16: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroFsBackup.node_agent_tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	14, // 17: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroSchedule.label_selector:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroSchedule.LabelSelectorEntry
+	17, // 18: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	15, // 19: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.NodeSelectorEntry
+	18, // 20: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	21, // [21:21] is the sub-list for method output_type
+	21, // [21:21] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_init() }

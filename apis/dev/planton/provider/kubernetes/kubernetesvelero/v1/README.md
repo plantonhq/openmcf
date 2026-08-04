@@ -166,7 +166,8 @@ spec:
     s3:
       bucket: my-cluster-backups
       region: us-west-2
-      irsaRoleArn: arn:aws:iam::111111111111:role/velero
+      irsaRoleArn:
+        value: arn:aws:iam::111111111111:role/velero
     prefix: prod-cluster
   volumeSnapshots:
     enableCsi: true
@@ -218,7 +219,8 @@ spec:
     s3:
       bucket: my-cluster-backups
       region: us-west-2
-      irsaRoleArn: arn:aws:iam::111111111111:role/velero-standby
+      irsaRoleArn:
+        value: arn:aws:iam::111111111111:role/velero-standby
     prefix: prod-cluster
   server:
     restoreOnlyMode: true # backups, schedules and GC are blocked

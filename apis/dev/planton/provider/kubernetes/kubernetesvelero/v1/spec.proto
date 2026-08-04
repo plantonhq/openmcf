@@ -260,13 +260,15 @@ message KubernetesVeleroS3Backend {
   /**
    * IAM role ARN for IRSA: annotates Velero's service account so it
    * reaches S3 without stored keys — the keyless posture on EKS.
-   * Mutually exclusive with access_keys.
+   * Reference an AwsIamRole's role_arn output -- the reference is also the
+   * deploy-ordering edge, so the role exists before Velero starts -- or
+   * pass a literal ARN (arn:aws:iam::<account>:role/<name>). Mutually
+   * exclusive with access_keys.
    */
-  string irsa_role_arn = 7 [(buf.validate.field).cel = {
-    id: "spec.s3.irsa_role_arn_format"
-    message: "irsa_role_arn must be an IAM role ARN (arn:aws:iam::<account>:role/<name>)"
-    expression: "this == '' || this.matches('^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role/.+$')"
-  }];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef irsa_role_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
 
   /**
    * Static access keys, materialized into Velero's credentials Secret
@@ -279,12 +281,12 @@ message KubernetesVeleroS3Backend {
   option (buf.validate.message).cel = {
     id: "spec.s3.irsa_xor_keys"
     message: "irsa_role_arn and access_keys are alternative credential postures — set at most one (neither = ambient node credentials)"
-    expression: "!(this.irsa_role_arn != '' && has(this.access_keys))"
+    expression: "!(has(this.irsa_role_arn) && has(this.access_keys))"
   };
   option (buf.validate.message).cel = {
     id: "spec.s3.compatible_needs_keys"
     message: "an S3-compatible endpoint (s3_url) authenticates with access_keys — IRSA only mints AWS credentials"
-    expression: "this.s3_url == '' || this.irsa_role_arn == ''"
+    expression: "this.s3_url == '' || !has(this.irsa_role_arn)"
   };
 }
 
