@@ -134,7 +134,18 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 		ginkgo.It("gcs with workload identity should be valid", func() {
 			input.Spec.BackupStorage = gcsBackend(&KubernetesVeleroGcsBackend{
 				Bucket:                              "velero-backups",
-				WorkloadIdentityServiceAccountEmail: "velero@my-project.iam.gserviceaccount.com",
+				WorkloadIdentityServiceAccountEmail: literal("velero@my-project.iam.gserviceaccount.com"),
+			})
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("gcs workload identity as a GcpServiceAccount reference should be valid", func() {
+			// The one-run composition shape: the backup identity deploys in
+			// the same run and its email flows in by reference.
+			input.Spec.BackupStorage = gcsBackend(&KubernetesVeleroGcsBackend{
+				Bucket: "velero-backups",
+				WorkloadIdentityServiceAccountEmail: valueFrom(
+					cloudresourcekind.CloudResourceKind_GcpServiceAccount, "velero-backups", "status.outputs.email"),
 			})
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
@@ -300,7 +311,7 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 
 		ginkgo.It("gcs without a bucket should fail", func() {
 			input.Spec.BackupStorage = gcsBackend(&KubernetesVeleroGcsBackend{
-				WorkloadIdentityServiceAccountEmail: "velero@my-project.iam.gserviceaccount.com",
+				WorkloadIdentityServiceAccountEmail: literal("velero@my-project.iam.gserviceaccount.com"),
 			})
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
@@ -308,16 +319,18 @@ var _ = ginkgo.Describe("KubernetesVelero Validation Tests", func() {
 		ginkgo.It("gcs with both workload identity and a key should fail (wi_xor_key)", func() {
 			input.Spec.BackupStorage = gcsBackend(&KubernetesVeleroGcsBackend{
 				Bucket:                              "velero-backups",
-				WorkloadIdentityServiceAccountEmail: "velero@my-project.iam.gserviceaccount.com",
+				WorkloadIdentityServiceAccountEmail: literal("velero@my-project.iam.gserviceaccount.com"),
 				ServiceAccountKeyJson:               `{"type":"service_account"}`,
 			})
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("malformed GCP service-account email should fail (wi_email_format)", func() {
+		ginkgo.It("gcs workload identity present but empty should fail (StringValueOrRef contract)", func() {
+			// The shared StringValueOrRef rule: a present message must carry a
+			// non-empty literal or a reference.
 			input.Spec.BackupStorage = gcsBackend(&KubernetesVeleroGcsBackend{
 				Bucket:                              "velero-backups",
-				WorkloadIdentityServiceAccountEmail: "velero@example.com",
+				WorkloadIdentityServiceAccountEmail: &foreignkeyv1.StringValueOrRef{},
 			})
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})

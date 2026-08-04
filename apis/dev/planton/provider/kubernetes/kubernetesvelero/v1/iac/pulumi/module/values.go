@@ -158,17 +158,17 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		// only optional keys — project, snapshotLocation).
 
 		switch {
-		case gcs.GetWorkloadIdentityServiceAccountEmail() != "":
+		case gcs.GetWorkloadIdentityServiceAccountEmail().GetValue() != "":
 			// Keyless GKE posture: the WI annotation binds the pod to the
 			// GCP service account, and the BSL's config.serviceAccount
 			// (values.yaml: "Specify the service account here if you want
 			// to use workload identity instead of providing the key
 			// file") points the plugin at the same identity.
 			bsl["config"] = map[string]interface{}{
-				"serviceAccount": gcs.GetWorkloadIdentityServiceAccountEmail(),
+				"serviceAccount": gcs.GetWorkloadIdentityServiceAccountEmail().GetValue(),
 			}
 			values["serviceAccount"] = serverServiceAccountAnnotations(map[string]interface{}{
-				"iam.gke.io/gcp-service-account": gcs.GetWorkloadIdentityServiceAccountEmail(),
+				"iam.gke.io/gcp-service-account": gcs.GetWorkloadIdentityServiceAccountEmail().GetValue(),
 			})
 			values["credentials"] = map[string]interface{}{"useSecret": false}
 		case gcs.GetServiceAccountKeyJson() != "":

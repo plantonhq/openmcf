@@ -324,13 +324,16 @@ message KubernetesVeleroGcsBackend {
    * GCP service-account email for Workload Identity: annotates Velero's
    * Kubernetes service account (and is set on the storage location) so
    * Velero reaches GCS without a stored key — the keyless posture on
-   * GKE. Mutually exclusive with service_account_key_json.
+   * GKE. Reference a GcpServiceAccount's email output -- the reference is
+   * also the deploy-ordering edge, so the identity (and the grants riding
+   * it) exists before Velero starts -- or pass a literal email
+   * (<id>@<project>.iam.gserviceaccount.com). Mutually exclusive with
+   * service_account_key_json.
    */
-  string workload_identity_service_account_email = 2 [(buf.validate.field).cel = {
-    id: "spec.gcs.wi_email_format"
-    message: "workload_identity_service_account_email must be a GCP service-account email (…@…gserviceaccount.com)"
-    expression: "this == '' || this.matches('^[a-z0-9-]+@[a-z0-9-]+(\\\\.[a-z0-9-]+)*\\\\.gserviceaccount\\\\.com$')"
-  }];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workload_identity_service_account_email = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
 
   /**
    * GCP service-account key (the JSON key file's content), materialized
@@ -342,7 +345,7 @@ message KubernetesVeleroGcsBackend {
   option (buf.validate.message).cel = {
     id: "spec.gcs.wi_xor_key"
     message: "workload_identity_service_account_email and service_account_key_json are alternative credential postures — set at most one (neither = ambient node credentials)"
-    expression: "!(this.workload_identity_service_account_email != '' && this.service_account_key_json != '')"
+    expression: "!(has(this.workload_identity_service_account_email) && this.service_account_key_json != '')"
   };
 }
 

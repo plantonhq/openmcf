@@ -654,8 +654,12 @@ type KubernetesVeleroGcsBackend struct {
 	// GCP service-account email for Workload Identity: annotates Velero's
 	// Kubernetes service account (and is set on the storage location) so
 	// Velero reaches GCS without a stored key — the keyless posture on
-	// GKE. Mutually exclusive with service_account_key_json.
-	WorkloadIdentityServiceAccountEmail string `protobuf:"bytes,2,opt,name=workload_identity_service_account_email,json=workloadIdentityServiceAccountEmail,proto3" json:"workload_identity_service_account_email,omitempty"`
+	// GKE. Reference a GcpServiceAccount's email output -- the reference is
+	// also the deploy-ordering edge, so the identity (and the grants riding
+	// it) exists before Velero starts -- or pass a literal email
+	// (<id>@<project>.iam.gserviceaccount.com). Mutually exclusive with
+	// service_account_key_json.
+	WorkloadIdentityServiceAccountEmail *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=workload_identity_service_account_email,json=workloadIdentityServiceAccountEmail,proto3" json:"workload_identity_service_account_email,omitempty"`
 	// *
 	// GCP service-account key (the JSON key file's content), materialized
 	// into Velero's credentials Secret. The declared-credential arm for
@@ -702,11 +706,11 @@ func (x *KubernetesVeleroGcsBackend) GetBucket() string {
 	return ""
 }
 
-func (x *KubernetesVeleroGcsBackend) GetWorkloadIdentityServiceAccountEmail() string {
+func (x *KubernetesVeleroGcsBackend) GetWorkloadIdentityServiceAccountEmail() *v1.StringValueOrRef {
 	if x != nil {
 		return x.WorkloadIdentityServiceAccountEmail
 	}
-	return ""
+	return nil
 }
 
 func (x *KubernetesVeleroGcsBackend) GetServiceAccountKeyJson() string {
@@ -1545,13 +1549,12 @@ const file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_rawDes
 	"\x1cKubernetesVeleroS3AccessKeys\x12*\n" +
 	"\raccess_key_id\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vaccessKeyId\x126\n" +
 	"\x11secret_access_key\x18\x02 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x0fsecretAccessKey\"\xe1\x05\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x0fsecretAccessKey\"\xc5\x04\n" +
 	"\x1aKubernetesVeleroGcsBackend\x12\x1e\n" +
-	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\xc2\x02\n" +
-	"'workload_identity_service_account_email\x18\x02 \x01(\tB\xeb\x01\xbaH\xe7\x01\xba\x01\xe3\x01\n" +
-	"\x18spec.gcs.wi_email_format\x12hworkload_identity_service_account_email must be a GCP service-account email (…@…gserviceaccount.com)\x1a]this == '' || this.matches('^[a-z0-9-]+@[a-z0-9-]+(\\\\.[a-z0-9-]+)*\\\\.gserviceaccount\\\\.com$')R#workloadIdentityServiceAccountEmail\x12=\n" +
-	"\x18service_account_key_json\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\x15serviceAccountKeyJson:\x9e\x02\xbaH\x9a\x02\x1a\x97\x02\n" +
-	"\x13spec.gcs.wi_xor_key\x12\xa1\x01workload_identity_service_account_email and service_account_key_json are alternative credential postures — set at most one (neither = ambient node credentials)\x1a\\!(this.workload_identity_service_account_email != '' && this.service_account_key_json != '')\"\xee\x06\n" +
+	"\x06bucket\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06bucket\x12\xa7\x01\n" +
+	"'workload_identity_service_account_email\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xe6\x04\x92\xd4a\x14status.outputs.emailR#workloadIdentityServiceAccountEmail\x12=\n" +
+	"\x18service_account_key_json\x18\x03 \x01(\tB\x04\xa0\xa6\x1d\x01R\x15serviceAccountKeyJson:\x9d\x02\xbaH\x99\x02\x1a\x96\x02\n" +
+	"\x13spec.gcs.wi_xor_key\x12\xa1\x01workload_identity_service_account_email and service_account_key_json are alternative credential postures — set at most one (neither = ambient node credentials)\x1a[!(has(this.workload_identity_service_account_email) && this.service_account_key_json != '')\"\xee\x06\n" +
 	" KubernetesVeleroAzureBlobBackend\x12/\n" +
 	"\x0fstorage_account\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0estorageAccount\x12$\n" +
 	"\tcontainer\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12-\n" +
@@ -1684,18 +1687,19 @@ var file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_depIdxs 
 	6,  // 11: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroBackupStorage.azure_blob:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureBlobBackend
 	16, // 12: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3Backend.irsa_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	4,  // 13: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3Backend.access_keys:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroS3AccessKeys
-	7,  // 14: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureBlobBackend.service_principal:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureServicePrincipal
-	17, // 15: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroFsBackup.node_agent_resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	18, // 16: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroFsBackup.node_agent_tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
-	14, // 17: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroSchedule.label_selector:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroSchedule.LabelSelectorEntry
-	17, // 18: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
-	15, // 19: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.NodeSelectorEntry
-	18, // 20: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	16, // 14: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroGcsBackend.workload_identity_service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 15: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureBlobBackend.service_principal:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroAzureServicePrincipal
+	17, // 16: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroFsBackup.node_agent_resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	18, // 17: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroFsBackup.node_agent_tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	14, // 18: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroSchedule.label_selector:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroSchedule.LabelSelectorEntry
+	17, // 19: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.resources:type_name -> dev.planton.provider.kubernetes.ContainerResources
+	15, // 20: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.node_selector:type_name -> dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.NodeSelectorEntry
+	18, // 21: dev.planton.provider.kubernetes.kubernetesvelero.v1.KubernetesVeleroDeployment.tolerations:type_name -> dev.planton.provider.kubernetes.WorkloadToleration
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_kubernetes_kubernetesvelero_v1_spec_proto_init() }

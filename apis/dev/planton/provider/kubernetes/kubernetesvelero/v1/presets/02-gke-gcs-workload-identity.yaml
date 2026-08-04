@@ -15,10 +15,12 @@ spec:
       bucket: '<velero-backups-bucket>'
       # Workload Identity: the keyless posture on GKE — the GSA needs
       # storage permissions on the bucket and a WI binding to Velero's
-      # Kubernetes service account. Replace with your GSA email
-      # (placeholder value; the field requires the gserviceaccount.com
-      # email format).
-      workloadIdentityServiceAccountEmail: velero-backups@my-project.iam.gserviceaccount.com
+      # Kubernetes service account. Replace with your GSA email, or
+      # reference a GcpServiceAccount deployed in the same run
+      # (valueFrom: { name: <resource-name> } — the reference is also
+      # the deploy-ordering edge).
+      workloadIdentityServiceAccountEmail:
+        value: velero-backups@my-project.iam.gserviceaccount.com
     prefix: '<cluster-name>' # one bucket, one prefix per cluster
   fsBackup:
     # Node-agent DaemonSet (kopia): reads volume data directly from pods —
