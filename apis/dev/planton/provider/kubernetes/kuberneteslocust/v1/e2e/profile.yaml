@@ -13,10 +13,11 @@ spec:
   # HPA/KEDA arms. Offline-validated (35 spec tests, both engines'
   # plan/preview proofs across minimal/full/keda/headless shapes with
   # rendered-value spot-checks, leak greps and a byte-identical
-  # cross-engine config checksum); the prior green predates this
-  # rebuild and is honestly reset — awaiting the live lanes.
-  status: pending_proof
-  validated_provisioners: []
+  # cross-engine config checksum) and live-proven on the kind lanes.
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   # Small images (locust + podinfo); the full-surface lane's
   # pip-install-at-pod-start rides the readiness window.
   timeout_minutes: 20
