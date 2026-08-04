@@ -45,8 +45,12 @@ if [[ -d "$charts_base" ]]; then
       fi
     fi
 
-    # 2) A non-empty templates/ directory must exist (required by IsProject discovery).
-    if [[ ! -d "$chart_dir/templates" ]] || [[ -z "$(find "$chart_dir/templates" -maxdepth 1 -type f -name '*.yaml' -print -quit 2>/dev/null)" ]]; then
+    # 2) A non-empty templates/ directory must exist (required by IsProject
+    #    discovery). Template files may nest in subdirectories — every loader
+    #    (the offline validator and the platform's project loader) walks
+    #    templates/ recursively — so this presence check walks recursively too
+    #    and accepts both .yaml and .yml, matching what the loaders read.
+    if [[ ! -d "$chart_dir/templates" ]] || [[ -z "$(find "$chart_dir/templates" -type f \( -name '*.yaml' -o -name '*.yml' \) -print -quit 2>/dev/null)" ]]; then
       missing_templates+=("$chart_dir")
     fi
 
