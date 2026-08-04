@@ -38,8 +38,11 @@ func Resources(ctx *pulumi.Context, stackInput *azureroleassignmentv1.AzureRoleA
 	if spec.RoleDefinitionName != "" {
 		assignmentArgs.RoleDefinitionName = pulumi.String(spec.RoleDefinitionName)
 	}
-	if spec.RoleDefinitionId != "" {
-		assignmentArgs.RoleDefinitionId = pulumi.String(spec.RoleDefinitionId)
+	// role_definition_id is a StringValueOrRef (an AzureRoleDefinition's
+	// role_definition_id output, or a literal ID); by module time the
+	// platform has resolved any reference, so the flat value is read here.
+	if spec.GetRoleDefinitionId().GetValue() != "" {
+		assignmentArgs.RoleDefinitionId = pulumi.String(spec.GetRoleDefinitionId().GetValue())
 	}
 	if locals.PrincipalType != "" {
 		assignmentArgs.PrincipalType = pulumi.String(locals.PrincipalType)

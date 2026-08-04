@@ -61,7 +61,17 @@ var _ = ginkgo.Describe("AzureRoleAssignmentSpec Validation Tests", func() {
 			ginkgo.It("should accept a role referenced by role_definition_id instead of name", func() {
 				input := validResource()
 				input.Spec.RoleDefinitionName = ""
-				input.Spec.RoleDefinitionId = "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7"
+				input.Spec.RoleDefinitionId = literal("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a role_definition_id referencing an AzureRoleDefinition", func() {
+				// The composed-environment shape: the custom role deploys in
+				// the same run and its fully-scoped ID flows in by reference.
+				input := validResource()
+				input.Spec.RoleDefinitionName = ""
+				input.Spec.RoleDefinitionId = ref("velero-backup-role")
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -147,14 +157,14 @@ var _ = ginkgo.Describe("AzureRoleAssignmentSpec Validation Tests", func() {
 			ginkgo.It("should return a validation error when neither role name nor role id is set", func() {
 				input := validResource()
 				input.Spec.RoleDefinitionName = ""
-				input.Spec.RoleDefinitionId = ""
+				input.Spec.RoleDefinitionId = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
 			ginkgo.It("should return a validation error when both role name and role id are set", func() {
 				input := validResource()
-				input.Spec.RoleDefinitionId = "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7"
+				input.Spec.RoleDefinitionId = literal("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7")
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

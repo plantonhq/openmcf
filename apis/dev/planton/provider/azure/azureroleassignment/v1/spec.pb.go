@@ -152,13 +152,16 @@ type AzureRoleAssignmentSpec struct {
 	// Use role_definition_id instead when assigning a custom role.
 	RoleDefinitionName string `protobuf:"bytes,2,opt,name=role_definition_name,json=roleDefinitionName,proto3" json:"role_definition_name,omitempty"`
 	// The fully-scoped resource ID of the role definition to assign. This is the
-	// way to bind custom roles (whose IDs come from an AzureRoleDefinition or
-	// an existing definition), and also works for built-ins when the caller
-	// already holds the ID. Format:
+	// way to bind custom roles -- reference an AzureRoleDefinition's
+	// role_definition_id output (in a composed environment the reference is
+	// also the deploy-ordering edge, so the custom role exists before the
+	// grant that binds it), or pass a literal ID for an existing definition;
+	// it also works for built-ins when the caller already holds the ID.
+	// Format:
 	// "/subscriptions/{sub}/providers/Microsoft.Authorization/roleDefinitions/{guid}"
 	// (or "/providers/Microsoft.Authorization/roleDefinitions/{guid}" for
 	// tenant-level built-in definitions).
-	RoleDefinitionId string `protobuf:"bytes,3,opt,name=role_definition_id,json=roleDefinitionId,proto3" json:"role_definition_id,omitempty"`
+	RoleDefinitionId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=role_definition_id,json=roleDefinitionId,proto3" json:"role_definition_id,omitempty"`
 	// The Azure AD object ID of the principal receiving the role. This is the
 	// OBJECT ID (also called principal ID) -- not the application (client) ID.
 	// Confusing the two is the most common role-assignment mistake: the
@@ -265,11 +268,11 @@ func (x *AzureRoleAssignmentSpec) GetRoleDefinitionName() string {
 	return ""
 }
 
-func (x *AzureRoleAssignmentSpec) GetRoleDefinitionId() string {
+func (x *AzureRoleAssignmentSpec) GetRoleDefinitionId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.RoleDefinitionId
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureRoleAssignmentSpec) GetPrincipalId() *v1.StringValueOrRef {
@@ -332,12 +335,11 @@ var File_dev_planton_provider_azure_azureroleassignment_v1_spec_proto protorefle
 
 const file_dev_planton_provider_azure_azureroleassignment_v1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<dev/planton/provider/azure/azureroleassignment/v1/spec.proto\x121dev.planton.provider.azure.azureroleassignment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xe6\n" +
-	"\n" +
+	"<dev/planton/provider/azure/azureroleassignment/v1/spec.proto\x121dev.planton.provider.azure.azureroleassignment.v1\x1a\x1bbuf/validate/validate.proto\x1a2dev/planton/shared/foreignkey/v1/foreign_key.proto\"\xc6\v\n" +
 	"\x17AzureRoleAssignmentSpec\x12y\n" +
 	"\x05scope\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\x90\x03\x92\xd4a status.outputs.resource_group_idR\x05scope\x120\n" +
-	"\x14role_definition_name\x18\x02 \x01(\tR\x12roleDefinitionName\x12,\n" +
-	"\x12role_definition_id\x18\x03 \x01(\tR\x10roleDefinitionId\x12\x81\x01\n" +
+	"\x14role_definition_name\x18\x02 \x01(\tR\x12roleDefinitionName\x12\x8c\x01\n" +
+	"\x12role_definition_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xce\x03\x92\xd4a!status.outputs.role_definition_idR\x10roleDefinitionId\x12\x81\x01\n" +
 	"\fprincipal_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\x03\x92\xd4a\x1bstatus.outputs.principal_idR\vprincipalId\x12z\n" +
 	"\x0eprincipal_type\x18\x05 \x01(\x0e2S.dev.planton.provider.azure.azureroleassignment.v1.AzureRoleAssignmentPrincipalTypeR\rprincipalType\x12 \n" +
 	"\vdescription\x18\x06 \x01(\tR\vdescription\x12\x1c\n" +
@@ -347,8 +349,8 @@ const file_dev_planton_provider_azure_azureroleassignment_v1_spec_proto_rawDesc 
 	"&delegated_managed_identity_resource_id\x18\t \x01(\tR\"delegatedManagedIdentityResourceId\x12F\n" +
 	" skip_service_principal_aad_check\x18\n" +
 	" \x01(\bR\x1cskipServicePrincipalAadCheck\x12\x1f\n" +
-	"\x04name\x18\v \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\x04name:\xb1\x04\xbaH\xad\x04\x1a\xc0\x02\n" +
-	"\x15spec.role_exactly_one\x12\x9b\x01Specify the role exactly one way: either role_definition_name (built-in roles like 'Reader') or role_definition_id (custom roles), not both and not neither\x1a\x88\x01(this.role_definition_name != '' && this.role_definition_id == '') || (this.role_definition_name == '' && this.role_definition_id != '')\x1a\xe7\x01\n" +
+	"\x04name\x18\v \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\xb0\x01\x01R\x04name:\xb0\x04\xbaH\xac\x04\x1a\xbf\x02\n" +
+	"\x15spec.role_exactly_one\x12\x9b\x01Specify the role exactly one way: either role_definition_name (built-in roles like 'Reader') or role_definition_id (custom roles), not both and not neither\x1a\x87\x01(this.role_definition_name != '' && !has(this.role_definition_id)) || (this.role_definition_name == '' && has(this.role_definition_id))\x1a\xe7\x01\n" +
 	")spec.condition_version_requires_condition\x12\x83\x01condition_version is only meaningful together with condition -- either add an ABAC condition expression or remove condition_version\x1a4this.condition != '' || this.condition_version == ''*\x84\x01\n" +
 	" AzureRoleAssignmentPrincipalType\x124\n" +
 	"0azure_role_assignment_principal_type_unspecified\x10\x00\x12\x15\n" +
@@ -378,13 +380,14 @@ var file_dev_planton_provider_azure_azureroleassignment_v1_spec_proto_goTypes = 
 }
 var file_dev_planton_provider_azure_azureroleassignment_v1_spec_proto_depIdxs = []int32{
 	2, // 0: dev.planton.provider.azure.azureroleassignment.v1.AzureRoleAssignmentSpec.scope:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 1: dev.planton.provider.azure.azureroleassignment.v1.AzureRoleAssignmentSpec.principal_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 2: dev.planton.provider.azure.azureroleassignment.v1.AzureRoleAssignmentSpec.principal_type:type_name -> dev.planton.provider.azure.azureroleassignment.v1.AzureRoleAssignmentPrincipalType
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2, // 1: dev.planton.provider.azure.azureroleassignment.v1.AzureRoleAssignmentSpec.role_definition_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 2: dev.planton.provider.azure.azureroleassignment.v1.AzureRoleAssignmentSpec.principal_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0, // 3: dev.planton.provider.azure.azureroleassignment.v1.AzureRoleAssignmentSpec.principal_type:type_name -> dev.planton.provider.azure.azureroleassignment.v1.AzureRoleAssignmentPrincipalType
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_dev_planton_provider_azure_azureroleassignment_v1_spec_proto_init() }
