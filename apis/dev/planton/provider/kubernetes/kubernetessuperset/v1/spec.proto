@@ -484,7 +484,12 @@ message KubernetesSupersetCachePasswordSecret {
   ];
 
   /**
-   * Key inside the Secret holding the password. Empty = "password".
+   * Key inside the Secret holding the password. For a KubernetesValkey
+   * auth Secret this is the ACL username ("default" unless you declared
+   * users) — that Secret keys entries BY USERNAME, one key per user.
+   * Empty = "password" (the generic existing-Secret convention; wrong
+   * for Valkey auth Secrets, where an unset key deploys cleanly and
+   * then fails authentication at runtime).
    */
   optional string secret_key = 2 [
     (dev.planton.shared.options.default) = "password",
