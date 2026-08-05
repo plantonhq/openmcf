@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesRabbitMqOperatorSpec** installs the RabbitMQ Cluster
 Operator — the MPL-2.0 operator maintained by the RabbitMQ team —
 which reconciles `RabbitmqCluster` custom resources into running

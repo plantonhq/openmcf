@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesClickHouseSpec** declares one ClickHouse cluster — the
 columnar OLAP database — as a `ClickHouseInstallation` (CHI) custom
 resource reconciled by the Altinity ClickHouse operator (declare the

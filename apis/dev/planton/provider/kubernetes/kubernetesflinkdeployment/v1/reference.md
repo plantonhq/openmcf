@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesFlinkDeploymentSpec** declares a Flink cluster — the
 Kubernetes CR (`flinkdeployments.flink.apache.org/v1beta1`) that
 the Flink Kubernetes Operator reconciles into a JobManager, its

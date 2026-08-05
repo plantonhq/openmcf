@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesTektonSpec** declares the cluster's Tekton installation —
 which components run (Pipelines, Triggers, Dashboard, Chains), where
 they install, the pipeline feature flags and defaults, and the

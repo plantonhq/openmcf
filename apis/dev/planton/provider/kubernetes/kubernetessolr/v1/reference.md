@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesSolrSpec** declares an Apache SolrCloud cluster as a
 `SolrCloud` custom resource reconciled by the Apache Solr Operator
 (KubernetesSolrOperator, the registry prerequisite).

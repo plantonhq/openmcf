@@ -30,7 +30,8 @@ KubernetesPerconaMysqlOperator is the registry prerequisite; its watch
 scope and the two placement shapes (co-located vs shared-chart
 cluster-wide) are the
 [operator guide](../../kubernetesperconamysqloperator/v1/GUIDE.md)'s
-judgment. The coupling never appears as a manifest edge — reviewers
+judgment. The coupling is invisible in the manifests
+([operator-prerequisite pattern](../../../patterns/operator-prerequisite.md)) —
 check the watch scope.
 
 ## Namespace ownership

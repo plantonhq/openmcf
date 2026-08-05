@@ -15,8 +15,9 @@ databases co-located beside a per-namespace operator (the upstream
 default posture) or one shared-chart operator watching cluster-wide —
 are the
 [operator guide](../../kubernetesperconamongooperator/v1/GUIDE.md)'s
-judgment. Either way, the coupling never appears as a manifest edge:
-reviewers verify the watch scope covers the database's namespace.
+judgment. Either way the coupling is invisible in the manifests — see the
+[operator-prerequisite pattern](../../../patterns/operator-prerequisite.md);
+verify the watch scope covers the database's namespace.
 
 ## Credentials are operator-generated — wire, never copy
 

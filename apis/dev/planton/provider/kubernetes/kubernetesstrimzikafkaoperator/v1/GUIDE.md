@@ -33,12 +33,12 @@ sole-tenant case.
 
 ## On the diagram
 
-The operator renders in the shared-cluster layer, but nothing draws an
-edge from a Kafka cluster to it — the dependency is enforced by the
-platform's prerequisite metadata, not by a manifest reference. When
-reviewing an architecture with Kafka in it, verify the operator node
-exists and its watch scope covers the cluster's namespace; the diagram
-alone will not surface a mismatch.
+The operator renders in the shared-cluster layer, and — as the
+[operator-prerequisite pattern](../../../patterns/operator-prerequisite.md)
+explains — no edge connects a Kafka cluster to it. When reviewing an
+architecture with Kafka in it, verify the operator node exists and its
+watch scope covers the cluster's namespace; the diagram alone will not
+surface a mismatch.
 
 ## Pairs well with
 

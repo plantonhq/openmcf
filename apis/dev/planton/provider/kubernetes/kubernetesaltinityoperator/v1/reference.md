@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesAltinityOperatorSpec** installs the Altinity ClickHouse
 operator — the Apache-2.0 operator for running ClickHouse (the
 columnar OLAP database) on Kubernetes — from the official

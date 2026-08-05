@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesTektonOperatorSpec** installs the Tekton Operator — the
 lifecycle manager that turns a `TektonConfig` declaration into
 running Tekton components (Pipelines, Triggers, Dashboard, Chains),

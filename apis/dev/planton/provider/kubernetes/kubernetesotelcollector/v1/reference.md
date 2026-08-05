@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesOtelCollectorSpec** declares one OpenTelemetry Collector —
 the telemetry pipeline that receives, processes and exports logs,
 metrics and traces — as an `OpenTelemetryCollector` custom resource

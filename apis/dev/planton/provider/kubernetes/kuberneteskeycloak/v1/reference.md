@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesKeycloakSpec** declares a Keycloak server — the
 Kubernetes CR (`keycloaks.k8s.keycloak.org/v2beta1`) that the
 official Keycloak Operator reconciles into a StatefulSet.

@@ -40,9 +40,10 @@ feeds it — the multi-tenant case where `createNamespace: true` is wrong;
 
 Cluster (with Dashboards inside it) and operator render as separate
 nodes — the operator in the shared layer, the cluster in its
-application environment. Like every operator-backed kind, nothing draws
-the dependency edge between them; reviewers verify the operator node
-exists.
+application environment. Like every operator-backed kind, no edge
+connects them (the
+[operator-prerequisite pattern](../../../patterns/operator-prerequisite.md));
+verify the operator node exists.
 
 ## Pairs well with
 

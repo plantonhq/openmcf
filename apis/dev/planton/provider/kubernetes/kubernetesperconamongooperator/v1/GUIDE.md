@@ -20,10 +20,10 @@ works.
   platform shape where teams declare databases without touching the
   shared layer.
 
-Either way the coupling is invisible in manifests — nothing draws an
-edge from a database to its operator. When a KubernetesMongodb sits
-NotReady with nothing reconciling it, the watch scope is the first
-thing to check.
+Either way the coupling is invisible in the manifests (the
+[operator-prerequisite pattern](../../../patterns/operator-prerequisite.md)
+explains why). When a KubernetesMongodb sits NotReady with nothing
+reconciling it, the watch scope is the first thing to check.
 
 ## Uninstall does not take the databases — but read before upgrading
 

@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesKubeRayOperatorSpec** deploys the KubeRay operator —
 the controller that turns KubernetesRayCluster declarations (and,
 unmodeled here, RayJob/RayService CRs authored directly) into

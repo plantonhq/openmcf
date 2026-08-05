@@ -41,7 +41,9 @@ sole-tenant case.
 The operator renders in the shared-cluster layer; each ClusterSecretStore
 draws its `secretsNamespace` reference edge into it. Like every
 operator-backed capability, ExternalSecrets do not draw an edge to the
-operator itself — reviewers verify the operator node exists.
+operator itself (the
+[operator-prerequisite pattern](../../../patterns/operator-prerequisite.md)) —
+verify the operator node exists.
 
 ## Pairs well with
 

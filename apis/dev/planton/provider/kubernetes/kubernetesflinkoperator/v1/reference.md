@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesFlinkOperatorSpec** deploys the Apache Flink Kubernetes
 Operator — the official ASF controller that turns
 KubernetesFlinkDeployment declarations (and, unmodeled here,

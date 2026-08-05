@@ -6,6 +6,8 @@
 
 **apiVersion**: `kubernetes.planton.dev/v1`
 
+**Guide**: [GUIDE.md](GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 **KubernetesOtelOperatorSpec** deploys the OpenTelemetry Operator —
 the controller that turns OpenTelemetryCollector declarations into
 running collector fleets — from the official `opentelemetry-operator`
